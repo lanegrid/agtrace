@@ -1,10 +1,17 @@
-use crate::error::Result;
+use crate::cli::OutputFormat;
+use crate::error::{Error, Result};
 use crate::model::{Agent, Event};
 use crate::storage;
 
 use super::formatters::{format_duration, format_number, format_project_short};
 
-pub fn cmd_find(id: &str, show_events: bool, as_json: bool) -> Result<()> {
+pub fn cmd_find(
+    id: &str,
+    show_events: bool,
+    events_limit: Option<usize>,
+    format: OutputFormat,
+    use_color: bool,
+) -> Result<()> {
     // Try exact match first
     let execution = match storage::find_execution(id) {
         Ok(exec) => exec,
@@ -17,31 +24,47 @@ pub fn cmd_find(id: &str, show_events: bool, as_json: bool) -> Result<()> {
                 .collect();
 
             match matches.len() {
-                0 => return Err(crate::error::Error::ExecutionNotFound(id.to_string())),
+                0 => return Err(Error::ExecutionNotFound(id.to_string())),
                 1 => matches.into_iter().next().unwrap(),
                 _ => {
-                    eprintln!(
-                        "Error: Multiple executions match '{}'. Please provide more characters:",
+                    let mut error_msg = format!(
+                        "Multiple executions match '{}'. Please provide more characters:\n",
                         id
                     );
                     for exec in matches.iter().take(10) {
-                        eprintln!("  {}", exec.id);
+                        error_msg.push_str(&format!("  {}\n", exec.id));
                     }
-                    return Ok(());
+                    return Err(Error::Parse(error_msg));
                 }
             }
         }
     };
 
-    if as_json {
-        let json = serde_json::to_string_pretty(&execution)?;
-        println!("{}", json);
+    if format.is_json() {
+        match format {
+            OutputFormat::Json => {
+                println!("{}", serde_json::to_string_pretty(&execution)?);
+            }
+            OutputFormat::Jsonl => {
+                println!("{}", serde_json::to_string(&execution)?);
+            }
+            _ => unreachable!(),
+        }
         return Ok(());
     }
 
     // Print compact summary format
+    use nu_ansi_term::Color;
+
     println!();
-    println!("Session: {}", execution.id);
+    if use_color {
+        println!(
+            "{}",
+            Color::Cyan.bold().paint(format!("Session: {}", execution.id))
+        );
+    } else {
+        println!("Session: {}", execution.id);
+    }
     println!();
 
     // Agent and project info
@@ -132,12 +155,12 @@ pub fn cmd_find(id: &str, show_events: bool, as_json: bool) -> Result<()> {
         println!("Events ({}):", execution.events.len());
         println!();
 
-        // Show limited events by default
-        let event_limit = 20;
+        // Use provided limit or default to 20
+        let event_limit = events_limit.unwrap_or(20);
         let events_to_show = execution.events.len().min(event_limit);
 
         for (i, event) in execution.events.iter().take(events_to_show).enumerate() {
-            print_event(i, event);
+            print_event(i, event, use_color);
         }
 
         if execution.events.len() > event_limit {
@@ -146,7 +169,7 @@ pub fn cmd_find(id: &str, show_events: bool, as_json: bool) -> Result<()> {
                 "... and {} more events",
                 execution.events.len() - event_limit
             );
-            println!("Use --json to see full event timeline");
+            println!("Use --format json to see full event timeline, or --events-limit N to show more");
         }
     } else {
         println!("Use --events to see event timeline.");
@@ -155,13 +178,25 @@ pub fn cmd_find(id: &str, show_events: bool, as_json: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn print_event(index: usize, event: &Event) {
+pub fn print_event(index: usize, event: &Event, use_color: bool) {
+    use nu_ansi_term::Color;
+
     match event {
         Event::UserMessage { timestamp, .. } => {
-            println!("  [{}] {} - User message", index, timestamp);
+            let msg = format!("  [{}] {} - User message", index, timestamp);
+            if use_color {
+                println!("{}", Color::Blue.paint(msg));
+            } else {
+                println!("{}", msg);
+            }
         }
         Event::AssistantMessage { timestamp, .. } => {
-            println!("  [{}] {} - Assistant message", index, timestamp);
+            let msg = format!("  [{}] {} - Assistant message", index, timestamp);
+            if use_color {
+                println!("{}", Color::Green.paint(msg));
+            } else {
+                println!("{}", msg);
+            }
         }
         Event::Thinking {
             duration_ms,
@@ -171,12 +206,22 @@ pub fn print_event(index: usize, event: &Event) {
             let duration = duration_ms
                 .map(|ms| format!(" ({}ms)", ms))
                 .unwrap_or_default();
-            println!("  [{}] {} - Thinking{}", index, timestamp, duration);
+            let msg = format!("  [{}] {} - Thinking{}", index, timestamp, duration);
+            if use_color {
+                println!("{}", Color::Magenta.paint(msg));
+            } else {
+                println!("{}", msg);
+            }
         }
         Event::ToolCall {
             name, timestamp, ..
         } => {
-            println!("  [{}] {} - Tool call: {}", index, timestamp, name);
+            let msg = format!("  [{}] {} - Tool call: {}", index, timestamp, name);
+            if use_color {
+                println!("{}", Color::Cyan.paint(msg));
+            } else {
+                println!("{}", msg);
+            }
         }
         Event::ToolResult { timestamp, .. } => {
             println!("  [{}] {} - Tool result", index, timestamp);

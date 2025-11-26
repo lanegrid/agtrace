@@ -1,28 +1,38 @@
-use crate::error::Result;
-use crate::model::Agent;
+use crate::cli::OutputFormat;
+use crate::error::{Error, Result};
+use crate::model::{Agent, Execution};
 use crate::storage;
 use std::path::PathBuf;
 
 use super::formatters::{format_date_short, format_duration, format_id_short, format_project_short};
 
+#[allow(clippy::too_many_arguments)]
 pub fn cmd_list(
     agent_filter: Option<String>,
     custom_path: Option<PathBuf>,
     project_filter: Option<PathBuf>,
     since_filter: Option<String>,
+    until_filter: Option<String>,
+    min_duration: Option<u64>,
+    max_duration: Option<u64>,
     show_all: bool,
     limit: Option<usize>,
+    sort_field: String,
+    reverse: bool,
+    format: OutputFormat,
+    quiet: bool,
+    no_header: bool,
+    use_color: bool,
 ) -> Result<()> {
     let mut executions = if let Some(agent) = &agent_filter {
         match agent.as_str() {
             "claude-code" => storage::list_claude_code_executions(custom_path)?,
             "codex" => storage::list_codex_executions(custom_path)?,
             _ => {
-                eprintln!(
-                    "Error: Unknown agent '{}'. Use 'claude-code' or 'codex'",
+                return Err(Error::UnknownAgent(format!(
+                    "Unknown agent '{}'. Use 'claude-code' or 'codex'",
                     agent
-                );
-                return Ok(());
+                )));
             }
         }
     } else {
@@ -49,7 +59,54 @@ pub fn cmd_list(
         }
     }
 
+    if let Some(until) = until_filter {
+        if let Ok(until_date) = chrono::NaiveDate::parse_from_str(&until, "%Y-%m-%d") {
+            let until_datetime = until_date.and_hms_opt(23, 59, 59).unwrap().and_utc();
+            executions.retain(|e| e.started_at <= until_datetime);
+        }
+    }
+
+    if let Some(min_dur) = min_duration {
+        executions.retain(|e| e.metrics.duration_seconds.unwrap_or(0) >= min_dur);
+    }
+
+    if let Some(max_dur) = max_duration {
+        executions.retain(|e| e.metrics.duration_seconds.unwrap_or(0) <= max_dur);
+    }
+
     let filtered_count = executions.len();
+
+    // Apply sorting
+    match sort_field.as_str() {
+        "started_at" => {
+            executions.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+        }
+        "duration" => {
+            executions.sort_by(|a, b| {
+                b.metrics
+                    .duration_seconds
+                    .unwrap_or(0)
+                    .cmp(&a.metrics.duration_seconds.unwrap_or(0))
+            });
+        }
+        "tokens" => {
+            executions.sort_by(|a, b| {
+                let a_tokens = a.metrics.input_tokens + a.metrics.output_tokens;
+                let b_tokens = b.metrics.input_tokens + b.metrics.output_tokens;
+                b_tokens.cmp(&a_tokens)
+            });
+        }
+        _ => {
+            return Err(Error::InvalidSortField(format!(
+                "Invalid sort field '{}'. Use 'started_at', 'duration', or 'tokens'",
+                sort_field
+            )));
+        }
+    }
+
+    if reverse {
+        executions.reverse();
+    }
 
     // Apply limit (default: 10 unless --all is specified)
     let display_limit = if show_all {
@@ -61,32 +118,82 @@ pub fn cmd_list(
     let showing_count = display_limit.min(filtered_count);
     executions.truncate(display_limit);
 
-    // Print header
-    if filtered_count == 0 {
-        println!("No executions found.");
-        return Ok(());
+    // Output based on format
+    match format {
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&executions)?);
+        }
+        OutputFormat::Jsonl => {
+            for exec in &executions {
+                println!("{}", serde_json::to_string(exec)?);
+            }
+        }
+        OutputFormat::Table => {
+            output_table(
+                &executions,
+                showing_count,
+                filtered_count,
+                total_count,
+                quiet,
+                no_header,
+                show_all,
+                use_color,
+            );
+        }
     }
 
-    println!();
-    if showing_count < filtered_count {
-        println!(
-            "Recent executions (showing {} of {}):",
-            showing_count, total_count
-        );
-    } else {
-        println!("Recent executions ({}):", filtered_count);
+    Ok(())
+}
+
+fn output_table(
+    executions: &[Execution],
+    showing_count: usize,
+    filtered_count: usize,
+    total_count: usize,
+    quiet: bool,
+    no_header: bool,
+    show_all: bool,
+    use_color: bool,
+) {
+    use nu_ansi_term::Color;
+
+    if filtered_count == 0 {
+        if !quiet {
+            eprintln!("No executions found.");
+        }
+        return;
     }
-    println!();
+
+    // Print header
+    if !quiet {
+        eprintln!();
+        if showing_count < filtered_count {
+            eprintln!(
+                "Recent executions (showing {} of {} after filters, {} total):",
+                showing_count, filtered_count, total_count
+            );
+        } else {
+            eprintln!("Recent executions ({}):", filtered_count);
+        }
+        eprintln!();
+    }
 
     // Print table header
-    println!(
-        "{:<10} {:<12} {:<25} {:<8} {}",
-        "ID", "Agent", "Project", "Duration", "Date"
-    );
-    println!("{}", "─".repeat(80));
+    if !no_header {
+        let header = format!(
+            "{:<10} {:<12} {:<25} {:<8} {}",
+            "ID", "Agent", "Project", "Duration", "Date"
+        );
+        if use_color {
+            println!("{}", Color::Yellow.bold().paint(header));
+        } else {
+            println!("{}", header);
+        }
+        println!("{}", "─".repeat(80));
+    }
 
     // Print executions in compact format
-    for exec in &executions {
+    for (idx, exec) in executions.iter().enumerate() {
         let agent_name = match &exec.agent {
             Agent::ClaudeCode { .. } => "claude-code",
             Agent::Codex { .. } => "codex",
@@ -102,30 +209,37 @@ pub fn cmd_list(
         let id = format_id_short(&exec.id);
         let date = format_date_short(&exec.started_at);
 
-        println!(
+        let line = format!(
             "{:<10} {:<12} {:<25} {:<8} {}",
             id, agent_name, project, duration, date
         );
-    }
 
-    println!();
-
-    // Print footer with hints
-    if !show_all && showing_count < filtered_count {
-        println!(
-            "Use --all to see all {} executions, or --limit N to change count.",
-            filtered_count
-        );
-    }
-
-    // Print summary if there's at least one execution with a summary
-    if let Some(exec) = executions.first() {
-        if !exec.summaries.is_empty() {
-            println!();
-            println!("Latest session summary:");
-            println!("  {}", exec.summaries[0]);
+        // Highlight the first (most recent) execution
+        if use_color && idx == 0 {
+            println!("{}", Color::White.bold().paint(line));
+        } else {
+            println!("{}", line);
         }
     }
 
-    Ok(())
+    if !quiet {
+        println!();
+
+        // Print footer with hints
+        if !show_all && showing_count < filtered_count {
+            eprintln!(
+                "Use --all to see all {} executions, or --limit N to change count.",
+                filtered_count
+            );
+        }
+
+        // Print summary if there's at least one execution with a summary
+        if let Some(exec) = executions.first() {
+            if !exec.summaries.is_empty() {
+                eprintln!();
+                eprintln!("Latest session summary:");
+                eprintln!("  {}", exec.summaries[0]);
+            }
+        }
+    }
 }

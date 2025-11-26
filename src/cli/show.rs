@@ -1,3 +1,4 @@
+use crate::cli::OutputFormat;
 use crate::error::Result;
 use crate::model::Agent;
 use crate::storage;
@@ -10,19 +11,34 @@ pub fn cmd_show(
     id: &str,
     custom_path: Option<PathBuf>,
     show_events: bool,
-    as_json: bool,
+    events_limit: Option<usize>,
+    format: OutputFormat,
+    use_color: bool,
 ) -> Result<()> {
     let execution = storage::find_execution_by_agent(agent, id, custom_path)?;
 
-    if as_json {
-        let json = serde_json::to_string_pretty(&execution)?;
-        println!("{}", json);
+    if format.is_json() {
+        match format {
+            OutputFormat::Json => {
+                println!("{}", serde_json::to_string_pretty(&execution)?);
+            }
+            OutputFormat::Jsonl => {
+                println!("{}", serde_json::to_string(&execution)?);
+            }
+            _ => unreachable!(),
+        }
         return Ok(());
     }
 
     // Print compact summary format
+    use nu_ansi_term::Color;
+
     println!();
-    println!("Session: {}", execution.id);
+    if use_color {
+        println!("{}", Color::Cyan.bold().paint(format!("Session: {}", execution.id)));
+    } else {
+        println!("Session: {}", execution.id);
+    }
     println!();
 
     // Agent and project info
@@ -113,12 +129,12 @@ pub fn cmd_show(
         println!("Events ({}):", execution.events.len());
         println!();
 
-        // Show limited events by default
-        let event_limit = 20;
+        // Use provided limit or default to 20
+        let event_limit = events_limit.unwrap_or(20);
         let events_to_show = execution.events.len().min(event_limit);
 
         for (i, event) in execution.events.iter().take(events_to_show).enumerate() {
-            super::find::print_event(i, event);
+            super::find::print_event(i, event, use_color);
         }
 
         if execution.events.len() > event_limit {
@@ -127,7 +143,7 @@ pub fn cmd_show(
                 "... and {} more events",
                 execution.events.len() - event_limit
             );
-            println!("Use --json to see full event timeline");
+            println!("Use --format json to see full event timeline, or --events-limit N to show more");
         }
     } else {
         println!("Use --events to see event timeline.");

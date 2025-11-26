@@ -11,6 +11,7 @@ fn main() {
 
     if let Err(e) = cli::run(cli) {
         eprintln!("Error: {}", e);
-        std::process::exit(1);
+        let exit_code = e.exit_code();
+        std::process::exit(exit_code);
     }
 }
