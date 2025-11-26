@@ -11,3 +11,4 @@ Cargo.lock
 
 # OS
 .DS_Store
+.lanegrid
