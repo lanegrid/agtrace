@@ -4,6 +4,9 @@ mod formatters;
 mod list;
 mod show;
 mod stats;
+mod validate;
+mod scrub;
+mod schema;
 
 use crate::error::Result;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -14,6 +17,9 @@ use find::cmd_find;
 use list::cmd_list;
 use show::cmd_show;
 use stats::cmd_stats;
+use validate::cmd_validate;
+use scrub::cmd_scrub;
+use schema::cmd_schema;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum OutputFormat {
@@ -213,6 +219,39 @@ pub enum Commands {
         format: OutputFormat,
     },
 
+    /// Validate that on-disk session data matches known schemas
+    Validate {
+        /// Agent type to validate (claude-code or codex)
+        #[arg(long)]
+        agent: String,
+
+        /// Custom path to read from (defaults to standard agent path)
+        #[arg(long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Infer JSON schema from on-disk session data
+    Schema {
+        /// Agent type to inspect (claude-code or codex)
+        #[arg(long)]
+        agent: String,
+
+        /// Custom path to read from (defaults to standard agent path)
+        #[arg(long)]
+        path: Option<PathBuf>,
+    },
+
+    /// Create dummy fixtures from real JSONL logs (scrub values but keep structure)
+    Scrub {
+        /// Input JSONL file path
+        #[arg(long)]
+        input: PathBuf,
+
+        /// Output JSONL file path
+        #[arg(long)]
+        output: PathBuf,
+    },
+
     /// Generate shell completion scripts
     Completions {
         /// Shell type
@@ -292,6 +331,9 @@ pub fn run(cli: Cli) -> Result<()> {
             limit,
             format,
         } => cmd_export(agent, id, all, path, since, project, limit, format),
+        Commands::Validate { agent, path } => cmd_validate(agent, path),
+        Commands::Scrub { input, output } => cmd_scrub(input, output),
+        Commands::Schema { agent, path } => cmd_schema(agent, path),
         Commands::Completions { shell } => {
             use clap::CommandFactory;
             let mut cmd = Cli::command();

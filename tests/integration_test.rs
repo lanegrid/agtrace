@@ -1,5 +1,5 @@
 use agtrace::model::*;
-use agtrace::parser::codex;
+use agtrace::parser::{claude_code, codex};
 use chrono::Utc;
 use std::path::PathBuf;
 
@@ -230,4 +230,116 @@ fn test_codex_edge_cases() {
         has_failure,
         "Should have failed tool call with non-zero exit code"
     );
+}
+
+#[test]
+fn test_claude_raw_schema_matches_fixtures() {
+    let fixtures_dir = PathBuf::from("tests/fixtures/claude-code");
+
+    for entry in std::fs::read_dir(&fixtures_dir).expect("Failed to read claude-code fixtures") {
+        let entry = entry.expect("Invalid fixture dir entry");
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
+            continue;
+        }
+
+        let file = std::fs::File::open(&path)
+            .unwrap_or_else(|e| panic!("Failed to open {:?}: {}", path, e));
+        let reader = std::io::BufReader::new(file);
+
+        for (idx, line) in reader.lines().enumerate() {
+            let line = line.unwrap_or_else(|e| {
+                panic!("Failed to read line {} in {:?}: {}", idx + 1, path, e)
+            });
+            if line.trim().is_empty() {
+                continue;
+            }
+
+            serde_json::from_str::<claude_code::ClaudeCodeMessage>(&line).unwrap_or_else(|e| {
+                panic!(
+                    "Failed to parse ClaudeCodeMessage from {:?} line {}: {}",
+                    path,
+                    idx + 1,
+                    e
+                )
+            });
+        }
+    }
+}
+
+#[test]
+fn test_codex_raw_schema_matches_fixtures() {
+    let fixtures_dir = PathBuf::from("tests/fixtures/codex");
+
+    // Traverse YYYY/MM/DD directories as codex::parse_dir does
+    for year_entry in std::fs::read_dir(&fixtures_dir).expect("Failed to read codex fixtures root")
+    {
+        let year_entry = year_entry.expect("Invalid year dir entry");
+        let year_path = year_entry.path();
+        if !year_path.is_dir() {
+            continue;
+        }
+
+        for month_entry in std::fs::read_dir(&year_path).unwrap_or_else(|e| {
+            panic!("Failed to read month dir in {:?}: {}", year_path, e)
+        }) {
+            let month_entry = month_entry.expect("Invalid month dir entry");
+            let month_path = month_entry.path();
+            if !month_path.is_dir() {
+                continue;
+            }
+
+            for day_entry in std::fs::read_dir(&month_path).unwrap_or_else(|e| {
+                panic!("Failed to read day dir in {:?}: {}", month_path, e)
+            }) {
+                let day_entry = day_entry.expect("Invalid day dir entry");
+                let day_path = day_entry.path();
+                if !day_path.is_dir() {
+                    continue;
+                }
+
+                for file_entry in std::fs::read_dir(&day_path).unwrap_or_else(|e| {
+                    panic!("Failed to read files in {:?}: {}", day_path, e)
+                }) {
+                    let file_entry = file_entry.expect("Invalid file entry");
+                    let file_path = file_entry.path();
+                    if !file_path.is_file()
+                        || file_path
+                            .extension()
+                            .and_then(|s| s.to_str())
+                            != Some("jsonl")
+                    {
+                        continue;
+                    }
+
+                    let file = std::fs::File::open(&file_path)
+                        .unwrap_or_else(|e| panic!("Failed to open {:?}: {}", file_path, e));
+                    let reader = std::io::BufReader::new(file);
+
+                    for (idx, line) in reader.lines().enumerate() {
+                        let line = line.unwrap_or_else(|e| {
+                            panic!(
+                                "Failed to read line {} in {:?}: {}",
+                                idx + 1,
+                                file_path,
+                                e
+                            )
+                        });
+                        if line.trim().is_empty() {
+                            continue;
+                        }
+
+                        serde_json::from_str::<codex::CodexEvent>(&line).unwrap_or_else(|e| {
+                            panic!(
+                                "Failed to parse CodexEvent from {:?} line {}: {}",
+                                file_path,
+                                idx + 1,
+                                e
+                            )
+                        });
+                    }
+                }
+            }
+        }
+    }
 }

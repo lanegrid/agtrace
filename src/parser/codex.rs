@@ -7,8 +7,10 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 /// Codex event structure (JSONL format)
+#[cfg_attr(test, derive(serde::Serialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 #[derive(Debug, Deserialize)]
-struct CodexEvent {
+pub struct CodexEvent {
     timestamp: String,
     #[serde(rename = "type")]
     event_type: String,

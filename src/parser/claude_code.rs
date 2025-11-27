@@ -8,8 +8,10 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 /// Claude Code JSONL message format (as-is model capturing all fields)
+#[cfg_attr(test, derive(Serialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 #[derive(Debug, Deserialize)]
-struct ClaudeCodeMessage {
+pub struct ClaudeCodeMessage {
     #[serde(rename = "type")]
     msg_type: String,
     #[serde(rename = "sessionId")]
@@ -34,6 +36,8 @@ struct ClaudeCodeMessage {
     version: Option<String>,
 }
 
+#[cfg_attr(test, derive(Serialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 #[derive(Debug, Deserialize)]
 struct SnapshotInfo {
     #[serde(rename = "messageId")]
@@ -43,6 +47,8 @@ struct SnapshotInfo {
     _tracked_file_backups: Option<serde_json::Value>,
 }
 
+#[cfg_attr(test, derive(Serialize))]
+#[cfg_attr(test, serde(deny_unknown_fields))]
 #[derive(Debug, Deserialize)]
 struct MessageContent {
     role: Option<String>,
