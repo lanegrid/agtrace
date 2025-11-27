@@ -188,12 +188,13 @@ fn compute_agent_stats(executions: &[Execution]) -> Vec<AgentStats> {
 }
 
 fn compute_project_stats(executions: &[Execution]) -> Vec<ProjectStats> {
+    use super::formatters::format_path;
     let mut stats_map: HashMap<PathBuf, (usize, u64)> = HashMap::new();
 
     for exec in executions {
         let tokens = exec.metrics.input_tokens + exec.metrics.output_tokens;
         let entry = stats_map
-            .entry(exec.project_path.clone())
+            .entry(exec.working_dir.clone())
             .or_insert((0, 0));
         entry.0 += 1;
         entry.1 += tokens;
@@ -201,8 +202,8 @@ fn compute_project_stats(executions: &[Execution]) -> Vec<ProjectStats> {
 
     let mut stats: Vec<ProjectStats> = stats_map
         .into_iter()
-        .map(|(project, (executions, total_tokens))| ProjectStats {
-            project: project.display().to_string(),
+        .map(|(working_dir, (executions, total_tokens))| ProjectStats {
+            project: format_path(&working_dir),
             executions,
             total_tokens,
         })

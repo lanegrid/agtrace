@@ -310,7 +310,7 @@ fn parse_session_file(path: &Path) -> Result<Execution> {
     let started_at =
         started_at.ok_or_else(|| Error::Parse("Missing timestamp in session file".to_string()))?;
 
-    let project_path = if let Some(cwd_str) = cwd {
+    let working_dir = if let Some(cwd_str) = cwd {
         PathBuf::from(cwd_str)
     } else {
         PathBuf::from(".")
@@ -325,9 +325,9 @@ fn parse_session_file(path: &Path) -> Result<Execution> {
     };
 
     let mut execution = Execution {
-        id: format!("codex-{}", session_id),
+        id: session_id,
         agent,
-        project_path,
+        working_dir,
         git_branch,
         started_at,
         ended_at: last_timestamp,

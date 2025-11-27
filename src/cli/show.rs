@@ -4,7 +4,7 @@ use crate::model::Agent;
 use crate::storage;
 use std::path::PathBuf;
 
-use super::formatters::{format_duration, format_number, format_project_short};
+use super::formatters::{format_duration, format_number, format_path};
 
 pub fn cmd_show(
     agent: &str,
@@ -47,7 +47,7 @@ pub fn cmd_show(
         Agent::Codex { model } => format!("Codex ({})", model),
     };
 
-    let project = format_project_short(&execution.project_path);
+    let working_dir = format_path(&execution.working_dir);
     let branch_info = execution
         .git_branch
         .as_ref()
@@ -55,7 +55,7 @@ pub fn cmd_show(
         .unwrap_or_default();
 
     println!("Agent:    {}", agent_name);
-    println!("Project:  {}{}", project, branch_info);
+    println!("Path:     {}{}", working_dir, branch_info);
 
     // Duration info
     if let (Some(duration), Some(ended)) = (execution.metrics.duration_seconds, execution.ended_at)
@@ -104,6 +104,36 @@ pub fn cmd_show(
             execution.metrics.tool_call_count,
             tool_summary.join(", ")
         );
+
+        // Categorize tools into read (exploration) vs write (execution)
+        let read_tools = ["Read", "Glob", "Grep", "WebFetch"];
+        let write_tools = ["Write", "Edit", "Bash", "NotebookEdit"];
+
+        let read_count: u64 = execution
+            .metrics
+            .tool_calls_by_name
+            .iter()
+            .filter(|(name, _)| read_tools.contains(&name.as_str()))
+            .map(|(_, count)| *count as u64)
+            .sum();
+
+        let write_count: u64 = execution
+            .metrics
+            .tool_calls_by_name
+            .iter()
+            .filter(|(name, _)| write_tools.contains(&name.as_str()))
+            .map(|(_, count)| *count as u64)
+            .sum();
+
+        if read_count > 0 || write_count > 0 {
+            let total = read_count + write_count;
+            let read_pct = (read_count as f64 / total as f64 * 100.0) as u32;
+            println!(
+                "  Read/Write ratio:  {}% / {}% (explore vs execute)",
+                read_pct,
+                100 - read_pct
+            );
+        }
     } else {
         println!("  Tool calls:        {}", execution.metrics.tool_call_count);
     }

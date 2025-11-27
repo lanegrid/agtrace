@@ -104,6 +104,10 @@ pub enum Commands {
         /// Suppress table header
         #[arg(long)]
         no_header: bool,
+
+        /// Columns to display (comma-separated: id,agent,path,turns,duration,date,task)
+        #[arg(long)]
+        columns: Option<String>,
     },
 
     /// Find and show details of an execution by ID (searches all agents)
@@ -237,6 +241,7 @@ pub fn run(cli: Cli) -> Result<()> {
             format,
             quiet,
             no_header,
+            columns,
         } => cmd_list(
             agent,
             path,
@@ -252,6 +257,7 @@ pub fn run(cli: Cli) -> Result<()> {
             format,
             quiet,
             no_header,
+            columns,
             use_color,
         ),
         Commands::Find {

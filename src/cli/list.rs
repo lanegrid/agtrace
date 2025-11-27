@@ -4,7 +4,57 @@ use crate::model::{Agent, Execution};
 use crate::storage;
 use std::path::PathBuf;
 
-use super::formatters::{format_date_short, format_duration, format_id_short, format_project_short};
+use super::formatters::{format_date_short, format_path, format_task_snippet};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Column {
+    Id,
+    Agent,
+    Path,
+    Turns,
+    Tools,
+    Date,
+    Task,
+}
+
+impl Column {
+    fn from_str(s: &str) -> Option<Self> {
+        match s.trim().to_lowercase().as_str() {
+            "id" => Some(Column::Id),
+            "agent" => Some(Column::Agent),
+            "path" | "project" => Some(Column::Path),
+            "turns" => Some(Column::Turns),
+            "tools" => Some(Column::Tools),
+            "date" => Some(Column::Date),
+            "task" => Some(Column::Task),
+            _ => None,
+        }
+    }
+
+    fn header(&self) -> &'static str {
+        match self {
+            Column::Id => "ID",
+            Column::Agent => "Agent",
+            Column::Path => "Path",
+            Column::Turns => "Turns",
+            Column::Tools => "Tools",
+            Column::Date => "Date",
+            Column::Task => "Task",
+        }
+    }
+
+    fn width(&self) -> usize {
+        match self {
+            Column::Id => 36,  // UUID length
+            Column::Agent => 12,
+            Column::Path => 50,  // Longer for full paths
+            Column::Turns => 6,
+            Column::Tools => 6,
+            Column::Date => 10,
+            Column::Task => 50,
+        }
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn cmd_list(
@@ -22,6 +72,7 @@ pub fn cmd_list(
     format: OutputFormat,
     quiet: bool,
     no_header: bool,
+    columns_str: Option<String>,
     use_color: bool,
 ) -> Result<()> {
     let mut executions = if let Some(agent) = &agent_filter {
@@ -45,7 +96,7 @@ pub fn cmd_list(
     if let Some(project) = project_filter {
         let project = project.canonicalize().unwrap_or(project);
         executions.retain(|e| {
-            e.project_path
+            e.working_dir
                 .canonicalize()
                 .map(|p| p == project)
                 .unwrap_or(false)
@@ -118,6 +169,9 @@ pub fn cmd_list(
     let showing_count = display_limit.min(filtered_count);
     executions.truncate(display_limit);
 
+    // Parse columns
+    let columns = parse_columns(columns_str)?;
+
     // Output based on format
     match format {
         OutputFormat::Json => {
@@ -137,12 +191,40 @@ pub fn cmd_list(
                 quiet,
                 no_header,
                 show_all,
+                &columns,
                 use_color,
             );
         }
     }
 
     Ok(())
+}
+
+fn parse_columns(columns_str: Option<String>) -> Result<Vec<Column>> {
+    if let Some(cols) = columns_str {
+        let mut parsed = Vec::new();
+        for col in cols.split(',') {
+            match Column::from_str(col) {
+                Some(c) => parsed.push(c),
+                None => {
+                    return Err(Error::Parse(format!(
+                        "Unknown column '{}'. Valid columns: id, agent, path, turns, tools, date, task",
+                        col
+                    )));
+                }
+            }
+        }
+        Ok(parsed)
+    } else {
+        // Default columns
+        Ok(vec![
+            Column::Id,
+            Column::Agent,
+            Column::Path,
+            Column::Turns,
+            Column::Date,
+        ])
+    }
 }
 
 fn output_table(
@@ -153,6 +235,7 @@ fn output_table(
     quiet: bool,
     no_header: bool,
     show_all: bool,
+    columns: &[Column],
     use_color: bool,
 ) {
     use nu_ansi_term::Color;
@@ -178,41 +261,68 @@ fn output_table(
         eprintln!();
     }
 
-    // Print table header
+    // Build and print table header
     if !no_header {
-        let header = format!(
-            "{:<10} {:<12} {:<25} {:<8} {}",
-            "ID", "Agent", "Project", "Duration", "Date"
-        );
+        let mut header_parts = Vec::new();
+        for col in columns {
+            header_parts.push(format!("{:<width$}", col.header(), width = col.width()));
+        }
+        let header = header_parts.join(" ");
+
         if use_color {
             println!("{}", Color::Yellow.bold().paint(header));
         } else {
             println!("{}", header);
         }
-        println!("{}", "─".repeat(80));
+
+        let total_width: usize = columns.iter().map(|c| c.width()).sum::<usize>()
+            + (columns.len() - 1); // spaces between columns
+        println!("{}", "─".repeat(total_width));
     }
 
-    // Print executions in compact format
+    // Print executions
     for (idx, exec) in executions.iter().enumerate() {
-        let agent_name = match &exec.agent {
-            Agent::ClaudeCode { .. } => "claude-code",
-            Agent::Codex { .. } => "codex",
-        };
+        let mut row_parts = Vec::new();
 
-        let duration = exec
-            .metrics
-            .duration_seconds
-            .map(|s| format_duration(s))
-            .unwrap_or_else(|| "?".to_string());
+        for col in columns {
+            let value = match col {
+                Column::Id => format!("{:<width$}", exec.id, width = col.width()),
+                Column::Agent => {
+                    let agent_name = match &exec.agent {
+                        Agent::ClaudeCode { .. } => "claude-code",
+                        Agent::Codex { .. } => "codex",
+                    };
+                    format!("{:<width$}", agent_name, width = col.width())
+                }
+                Column::Path => {
+                    format!(
+                        "{:<width$}",
+                        format_path(&exec.working_dir),
+                        width = col.width()
+                    )
+                }
+                Column::Turns => {
+                    format!("{:<width$}", exec.metrics.user_message_count, width = col.width())
+                }
+                Column::Tools => {
+                    format!("{:<width$}", exec.metrics.tool_call_count, width = col.width())
+                }
+                Column::Date => {
+                    format!(
+                        "{:<width$}",
+                        format_date_short(&exec.started_at),
+                        width = col.width()
+                    )
+                }
+                Column::Task => {
+                    let task = format_task_snippet(exec, col.width());
+                    format!("{:<width$}", task, width = col.width())
+                }
+            };
+            row_parts.push(value);
+        }
 
-        let project = format_project_short(&exec.project_path);
-        let id = format_id_short(&exec.id);
-        let date = format_date_short(&exec.started_at);
-
-        let line = format!(
-            "{:<10} {:<12} {:<25} {:<8} {}",
-            id, agent_name, project, duration, date
-        );
+        let line = row_parts.join(" ");
 
         // Highlight the first (most recent) execution
         if use_color && idx == 0 {
@@ -231,15 +341,6 @@ fn output_table(
                 "Use --all to see all {} executions, or --limit N to change count.",
                 filtered_count
             );
-        }
-
-        // Print summary if there's at least one execution with a summary
-        if let Some(exec) = executions.first() {
-            if !exec.summaries.is_empty() {
-                eprintln!();
-                eprintln!("Latest session summary:");
-                eprintln!("  {}", exec.summaries[0]);
-            }
         }
     }
 }

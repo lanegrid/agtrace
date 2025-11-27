@@ -221,7 +221,7 @@ fn parse_jsonl_file(path: &Path) -> Result<Execution> {
         .or_else(|| Some(format!("claude-{}", path.file_stem()?.to_str()?)))
         .unwrap_or_else(|| format!("claude-{}", chrono::Utc::now().timestamp()));
 
-    let project_path = messages
+    let working_dir = messages
         .iter()
         .filter_map(|m| m.cwd.as_ref())
         .next()
@@ -392,7 +392,7 @@ fn parse_jsonl_file(path: &Path) -> Result<Execution> {
     let mut execution = Execution {
         id: session_id,
         agent,
-        project_path,
+        working_dir,
         git_branch,
         started_at,
         ended_at,

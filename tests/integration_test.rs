@@ -11,7 +11,7 @@ fn test_execution_creation() {
             model: "claude-sonnet-4".to_string(),
             version: "2.0.0".to_string(),
         },
-        project_path: PathBuf::from("/test/project"),
+        working_dir: PathBuf::from("/test/project"),
         git_branch: Some("main".to_string()),
         started_at: Utc::now(),
         ended_at: Some(Utc::now()),
@@ -32,7 +32,7 @@ fn test_compute_metrics() {
         agent: Agent::Codex {
             model: "gpt-5-codex".to_string(),
         },
-        project_path: PathBuf::from("/test/project"),
+        working_dir: PathBuf::from("/test/project"),
         git_branch: None,
         started_at: now,
         ended_at: Some(now + chrono::Duration::seconds(60)),
@@ -80,7 +80,7 @@ fn test_serialization() {
             model: "claude-sonnet-4".to_string(),
             version: "2.0.0".to_string(),
         },
-        project_path: PathBuf::from("/test/project"),
+        working_dir: PathBuf::from("/test/project"),
         git_branch: Some("main".to_string()),
         started_at: Utc::now(),
         ended_at: None,
@@ -147,7 +147,7 @@ fn test_codex_parsing() {
     // Verify session metadata
     assert_eq!(basic_exec.id, "codex-019a1234-5678-7890-abcd-ef1234567890");
     assert_eq!(
-        basic_exec.project_path,
+        basic_exec.working_dir,
         PathBuf::from("/Users/testuser/projects/test-project")
     );
     assert_eq!(basic_exec.git_branch, Some("main".to_string()));

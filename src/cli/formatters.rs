@@ -1,8 +1,43 @@
+use crate::model::{Event, Execution};
 use chrono::{DateTime, Utc};
 use std::path::Path;
 
+/// Format path with home directory replaced by ~
+/// Example: /Users/user/projects/foo → ~/projects/foo
+pub fn format_path(path: &Path) -> String {
+    if let Some(home) = std::env::var_os("HOME") {
+        let home_path = Path::new(&home);
+        if let Ok(relative) = path.strip_prefix(home_path) {
+            return format!("~/{}", relative.display());
+        }
+    }
+    path.display().to_string()
+}
+
+/// Format path compactly for table display
+/// Shows last 2 components, or uses ~ replacement if under home
+/// Example: /Users/user/go/src/github.com/org/project → ~/go/.../org/project
+pub fn format_path_compact(path: &Path, max_width: usize) -> String {
+    let formatted = format_path(path);
+
+    if formatted.len() <= max_width {
+        return formatted;
+    }
+
+    // If too long, show first part and last 2 components
+    let components: Vec<_> = path.iter().map(|s| s.to_string_lossy()).collect();
+    if components.len() > 2 {
+        let last_two = components[components.len()-2..].join("/");
+        format!(".../{}", last_two)
+    } else {
+        formatted
+    }
+}
+
 /// Format project path to show only last 2 components
-/// Example: /Users/zawakin/go/src/github.com/lanegrid/lanegrid → lanegrid/lanegrid
+/// Example: /Users/user/go/src/github.com/org/project → org/project
+/// DEPRECATED: Use format_path or format_path_compact instead
+#[allow(dead_code)]
 pub fn format_project_short(path: &Path) -> String {
     path.iter()
         .rev()
@@ -27,9 +62,9 @@ pub fn format_duration(seconds: u64) -> String {
     }
 }
 
-/// Format date to short format (e.g., "Nov 22")
+/// Format date to short format (e.g., "2025-11-26")
 pub fn format_date_short(dt: &DateTime<Utc>) -> String {
-    dt.format("%b %d").to_string()
+    dt.format("%Y-%m-%d").to_string()
 }
 
 /// Format ID to show only first 8 characters
@@ -55,4 +90,106 @@ pub fn format_number(n: u64) -> String {
     }
 
     result
+}
+
+/// Extract and format the first user message as a task snippet
+/// Removes special XML tags and truncates to a reasonable length
+pub fn format_task_snippet(execution: &Execution, max_len: usize) -> String {
+    for event in &execution.events {
+        if let Event::UserMessage { content, .. } = event {
+            // Skip common system/generated messages
+            if is_system_message(content) {
+                continue;
+            }
+
+            let cleaned = clean_task_content(content);
+            if !cleaned.is_empty() && cleaned.len() > 3 {
+                // Make sure it's not just whitespace or very short
+                return truncate_with_ellipsis(&cleaned, max_len);
+            }
+        }
+    }
+    String::from("-")
+}
+
+/// Check if a message is a system-generated message that should be skipped
+fn is_system_message(content: &str) -> bool {
+    let trimmed = content.trim();
+
+    // Common system message patterns
+    let system_patterns = [
+        "Caveat:",
+        "<command-name>",
+        "<local-command-stdout>",
+        "# Lanegrid Context Package",
+    ];
+
+    for pattern in &system_patterns {
+        if trimmed.starts_with(pattern) {
+            return true;
+        }
+    }
+
+    // If it's very short or only XML tags, it's probably not a real task
+    let cleaned = clean_task_content(content);
+    cleaned.is_empty() || cleaned.len() < 10
+}
+
+/// Clean task content by removing XML-like tags and extra whitespace
+fn clean_task_content(content: &str) -> String {
+    let mut result = content.to_string();
+
+    // Remove "Caveat:" prefix section (everything from Caveat to the first actual content)
+    if let Some(caveat_pos) = result.find("Caveat:") {
+        // Find the end of the caveat section (usually ends with a double newline or after a long sentence)
+        if let Some(content_start) = result[caveat_pos..].find("\n\n") {
+            result = result[caveat_pos + content_start + 2..].to_string();
+        } else if let Some(newline) = result[caveat_pos..].find('\n') {
+            result = result[caveat_pos + newline + 1..].to_string();
+        }
+    }
+
+    // Remove common environment/system tags
+    let patterns = [
+        ("<command-name>", "</command-name>"),
+        ("<command-message>", "</command-message>"),
+        ("<command-args>", "</command-args>"),
+        ("<environment_context>", "</environment_context>"),
+        ("<local-command-stdout>", "</local-command-stdout>"),
+    ];
+
+    for (start, end) in patterns {
+        while let Some(start_pos) = result.find(start) {
+            if let Some(end_pos) = result.find(end) {
+                result.replace_range(start_pos..=end_pos + end.len() - 1, "");
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Collapse multiple whitespace and newlines
+    let words: Vec<&str> = result.split_whitespace().collect();
+    let cleaned = words.join(" ").trim().to_string();
+
+    // If the result starts with "# " (markdown header), that's probably generated context, skip to next real content
+    if cleaned.starts_with("# ") {
+        // This is likely a "# Lanegrid Context Package" type message, which isn't the real task
+        // Try to find the next user message or real content
+        if let Some(hash_end) = cleaned.find("**") {
+            // Skip past the generated context header
+            return cleaned[hash_end..].split_whitespace().skip(5).collect::<Vec<_>>().join(" ");
+        }
+    }
+
+    cleaned
+}
+
+/// Truncate string with ellipsis if it exceeds max_len
+fn truncate_with_ellipsis(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_len.saturating_sub(3)])
+    }
 }

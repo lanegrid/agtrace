@@ -33,7 +33,7 @@ pub fn cmd_export(
         if let Some(project) = project_filter {
             let project = project.canonicalize().unwrap_or(project);
             executions.retain(|e| {
-                e.project_path
+                e.working_dir
                     .canonicalize()
                     .map(|p| p == project)
                     .unwrap_or(false)

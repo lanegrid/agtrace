@@ -3,7 +3,7 @@ use crate::error::{Error, Result};
 use crate::model::{Agent, Event};
 use crate::storage;
 
-use super::formatters::{format_duration, format_number, format_project_short};
+use super::formatters::{format_duration, format_number, format_path};
 
 pub fn cmd_find(
     id: &str,
@@ -73,7 +73,7 @@ pub fn cmd_find(
         Agent::Codex { model } => format!("Codex ({})", model),
     };
 
-    let project = format_project_short(&execution.project_path);
+    let working_dir = format_path(&execution.working_dir);
     let branch_info = execution
         .git_branch
         .as_ref()
@@ -81,7 +81,7 @@ pub fn cmd_find(
         .unwrap_or_default();
 
     println!("Agent:    {}", agent_name);
-    println!("Project:  {}{}", project, branch_info);
+    println!("Path:     {}{}", working_dir, branch_info);
 
     // Duration info
     if let (Some(duration), Some(ended)) = (execution.metrics.duration_seconds, execution.ended_at)

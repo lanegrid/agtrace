@@ -12,8 +12,8 @@ pub struct Execution {
     /// Which agent produced this execution
     pub agent: Agent,
 
-    /// Project directory the agent was working in
-    pub project_path: PathBuf,
+    /// Working directory where the agent was executed
+    pub working_dir: PathBuf,
 
     /// Git branch at time of execution (if available)
     pub git_branch: Option<String>,
