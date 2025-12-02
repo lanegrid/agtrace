@@ -4,7 +4,7 @@ use crate::model::{Agent, Execution};
 use crate::storage;
 use std::path::PathBuf;
 
-use super::formatters::{format_date_short, format_path, format_task_snippet};
+use super::formatters::{format_date_short, format_path_compact, format_task_snippet};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Column {
@@ -45,9 +45,9 @@ impl Column {
 
     fn width(&self) -> usize {
         match self {
-            Column::Id => 36,  // UUID length
+            Column::Id => 36, // UUID length
             Column::Agent => 12,
-            Column::Path => 50,  // Longer for full paths
+            Column::Path => 50, // Longer for full paths
             Column::Turns => 6,
             Column::Tools => 6,
             Column::Date => 10,
@@ -275,8 +275,8 @@ fn output_table(
             println!("{}", header);
         }
 
-        let total_width: usize = columns.iter().map(|c| c.width()).sum::<usize>()
-            + (columns.len() - 1); // spaces between columns
+        let total_width: usize =
+            columns.iter().map(|c| c.width()).sum::<usize>() + (columns.len() - 1); // spaces between columns
         println!("{}", "─".repeat(total_width));
     }
 
@@ -297,15 +297,23 @@ fn output_table(
                 Column::Path => {
                     format!(
                         "{:<width$}",
-                        format_path(&exec.working_dir),
+                        format_path_compact(&exec.working_dir, col.width()),
                         width = col.width()
                     )
                 }
                 Column::Turns => {
-                    format!("{:<width$}", exec.metrics.user_message_count, width = col.width())
+                    format!(
+                        "{:<width$}",
+                        exec.metrics.user_message_count,
+                        width = col.width()
+                    )
                 }
                 Column::Tools => {
-                    format!("{:<width$}", exec.metrics.tool_call_count, width = col.width())
+                    format!(
+                        "{:<width$}",
+                        exec.metrics.tool_call_count,
+                        width = col.width()
+                    )
                 }
                 Column::Date => {
                     format!(

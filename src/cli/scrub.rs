@@ -105,4 +105,3 @@ fn scrub_value(value: &mut Value) {
         }
     }
 }
-

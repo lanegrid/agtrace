@@ -12,3 +12,7 @@ Cargo.lock
 # OS
 .DS_Store
 .lanegrid
+
+# AI
+/.claude
+

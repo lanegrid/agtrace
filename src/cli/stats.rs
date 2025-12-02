@@ -175,12 +175,14 @@ fn compute_agent_stats(executions: &[Execution]) -> Vec<AgentStats> {
 
     let mut stats: Vec<AgentStats> = stats_map
         .into_iter()
-        .map(|(agent, (executions, total_tokens, total_tool_calls))| AgentStats {
-            agent,
-            executions,
-            total_tokens,
-            total_tool_calls,
-        })
+        .map(
+            |(agent, (executions, total_tokens, total_tool_calls))| AgentStats {
+                agent,
+                executions,
+                total_tokens,
+                total_tool_calls,
+            },
+        )
         .collect();
 
     stats.sort_by(|a, b| b.executions.cmp(&a.executions));
@@ -188,14 +190,12 @@ fn compute_agent_stats(executions: &[Execution]) -> Vec<AgentStats> {
 }
 
 fn compute_project_stats(executions: &[Execution]) -> Vec<ProjectStats> {
-    use super::formatters::format_path;
+    use super::formatters::format_path_compact;
     let mut stats_map: HashMap<PathBuf, (usize, u64)> = HashMap::new();
 
     for exec in executions {
         let tokens = exec.metrics.input_tokens + exec.metrics.output_tokens;
-        let entry = stats_map
-            .entry(exec.working_dir.clone())
-            .or_insert((0, 0));
+        let entry = stats_map.entry(exec.working_dir.clone()).or_insert((0, 0));
         entry.0 += 1;
         entry.1 += tokens;
     }
@@ -203,7 +203,8 @@ fn compute_project_stats(executions: &[Execution]) -> Vec<ProjectStats> {
     let mut stats: Vec<ProjectStats> = stats_map
         .into_iter()
         .map(|(working_dir, (executions, total_tokens))| ProjectStats {
-            project: format_path(&working_dir),
+            // Aim for a reasonably compact project column
+            project: format_path_compact(&working_dir, 48),
             executions,
             total_tokens,
         })
@@ -268,7 +269,10 @@ fn print_stats_table(stats: &StatsOutput, use_color: bool) {
         "  Avg tokens/execution:  {}",
         format_number(stats.overall.avg_tokens_per_execution)
     );
-    println!("  Total tool calls:      {}", stats.overall.total_tool_calls);
+    println!(
+        "  Total tool calls:      {}",
+        stats.overall.total_tool_calls
+    );
     println!(
         "  Total duration:        {}",
         format_duration_long(stats.overall.total_duration_seconds)
@@ -308,14 +312,9 @@ fn print_stats_table(stats: &StatsOutput, use_color: bool) {
         );
         println!("  {}", "─".repeat(80));
         for stat in project_stats.iter().take(10) {
-            let project = if stat.project.len() > 48 {
-                format!("...{}", &stat.project[stat.project.len() - 45..])
-            } else {
-                stat.project.clone()
-            };
             println!(
                 "  {:<50} {:<12} {}",
-                project,
+                stat.project,
                 stat.executions,
                 format_number(stat.total_tokens)
             );

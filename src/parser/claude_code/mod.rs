@@ -1,161 +1,16 @@
 use crate::error::{Error, Result};
-use crate::model::{Agent, Event, Execution, ExecutionMetrics};
+use crate::model::{Agent, Event, Execution, ExecutionMetrics, ToolStatus};
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-/// Claude Code JSONL message format (as-is model capturing all fields)
-#[cfg_attr(test, derive(Serialize))]
-#[cfg_attr(test, serde(deny_unknown_fields))]
-#[derive(Debug, Deserialize)]
-pub struct ClaudeCodeMessage {
-    #[serde(rename = "type")]
-    msg_type: String,
-    #[serde(rename = "sessionId")]
-    session_id: Option<String>,
-    #[serde(rename = "messageId")]
-    message_id: Option<String>,
-    timestamp: Option<String>,
-    cwd: Option<String>,
-    #[serde(rename = "gitBranch")]
-    git_branch: Option<String>,
-    message: Option<MessageContent>,
-    text: Option<String>,
-    snapshot: Option<SnapshotInfo>,
-    // Additional fields from actual format
-    _uuid: Option<String>,
-    #[serde(rename = "parentUuid")]
-    _parent_uuid: Option<String>,
-    #[serde(rename = "isSidechain")]
-    _is_sidechain: Option<bool>,
-    #[serde(rename = "userType")]
-    _user_type: Option<String>,
-    version: Option<String>,
-}
+mod raw;
 
-#[cfg_attr(test, derive(Serialize))]
-#[cfg_attr(test, serde(deny_unknown_fields))]
-#[derive(Debug, Deserialize)]
-struct SnapshotInfo {
-    #[serde(rename = "messageId")]
-    message_id: Option<String>,
-    timestamp: Option<String>,
-    #[serde(rename = "trackedFileBackups")]
-    _tracked_file_backups: Option<serde_json::Value>,
-}
-
-#[cfg_attr(test, derive(Serialize))]
-#[cfg_attr(test, serde(deny_unknown_fields))]
-#[derive(Debug, Deserialize)]
-struct MessageContent {
-    role: Option<String>,
-    #[serde(deserialize_with = "deserialize_content")]
-    content: Option<Vec<ContentBlock>>,
-    usage: Option<Usage>,
-    model: Option<String>,
-}
-
-fn deserialize_content<'de, D>(
-    deserializer: D,
-) -> std::result::Result<Option<Vec<ContentBlock>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::Deserialize;
-
-    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
-
-    match value {
-        None => Ok(None),
-        Some(serde_json::Value::Null) => Ok(None),
-        Some(serde_json::Value::String(s)) => {
-            // Convert string to a text content block
-            Ok(Some(vec![ContentBlock::Text { text: s }]))
-        }
-        Some(serde_json::Value::Array(arr)) => {
-            // Try to deserialize as Vec<ContentBlock>
-            let blocks: Vec<ContentBlock> = serde_json::from_value(serde_json::Value::Array(arr))
-                .map_err(serde::de::Error::custom)?;
-            Ok(Some(blocks))
-        }
-        Some(_) => {
-            // For any other type (object, number, bool), return None or an empty vec
-            Ok(None)
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(tag = "type")]
-enum ContentBlock {
-    #[serde(rename = "text", alias = "input_text")]
-    Text { text: String },
-    #[serde(rename = "thinking")]
-    Thinking { thinking: String },
-    #[serde(rename = "tool_use")]
-    ToolUse {
-        name: String,
-        input: serde_json::Value,
-        id: Option<String>,
-    },
-    #[serde(rename = "tool_result")]
-    ToolResult {
-        tool_use_id: Option<String>,
-        #[serde(deserialize_with = "deserialize_tool_result_content")]
-        content: Option<Vec<ToolResultContent>>,
-    },
-}
-
-fn deserialize_tool_result_content<'de, D>(
-    deserializer: D,
-) -> std::result::Result<Option<Vec<ToolResultContent>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    use serde::de::Deserialize;
-
-    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
-
-    match value {
-        None => Ok(None),
-        Some(serde_json::Value::Null) => Ok(None),
-        Some(serde_json::Value::String(s)) => {
-            // Convert string to a ToolResultContent::String
-            Ok(Some(vec![ToolResultContent::String(s)]))
-        }
-        Some(serde_json::Value::Array(arr)) => {
-            // Try to deserialize as Vec<ToolResultContent>
-            let contents: Vec<ToolResultContent> =
-                serde_json::from_value(serde_json::Value::Array(arr))
-                    .map_err(serde::de::Error::custom)?;
-            Ok(Some(contents))
-        }
-        Some(_) => {
-            // For any other type, return None
-            Ok(None)
-        }
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(untagged)]
-enum ToolResultContent {
-    Text { text: String },
-    String(String),
-    // Catch-all for any other JSON value (objects, arrays, numbers, bools, null)
-    Other(serde_json::Value),
-}
-
-#[derive(Debug, Deserialize)]
-struct Usage {
-    input_tokens: Option<u64>,
-    output_tokens: Option<u64>,
-    cache_read_input_tokens: Option<u64>,
-    cache_creation_input_tokens: Option<u64>,
-}
+pub use raw::ClaudeCodeMessage;
+use raw::{ContentBlock, ToolResultContent};
 
 /// Parse Claude Code sessions from the default directory (~/.claude/projects)
 pub fn parse_default_dir() -> Result<Vec<Execution>> {
@@ -358,6 +213,7 @@ fn parse_jsonl_file(path: &Path) -> Result<Execution> {
                                 }
                                 ContentBlock::ToolResult {
                                     tool_use_id,
+                                    is_error,
                                     content,
                                 } => {
                                     let output = content
@@ -376,10 +232,19 @@ fn parse_jsonl_file(path: &Path) -> Result<Execution> {
                                         })
                                         .unwrap_or_default();
 
+                                    let status = derive_status(None, is_error);
+                                    let raw_metadata = serde_json::to_value(
+                                        &json!({"provider": "claude-code", "is_error": is_error}),
+                                    )
+                                    .ok();
+
                                     events.push(Event::ToolResult {
                                         call_id: tool_use_id,
                                         output,
                                         exit_code: None,
+                                        is_error,
+                                        status,
+                                        raw_metadata,
                                         duration_ms: None,
                                         timestamp,
                                     });
@@ -429,4 +294,25 @@ fn parse_timestamp(ts: &str) -> Result<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(ts)
         .map(|dt| dt.with_timezone(&Utc))
         .map_err(|e| Error::Parse(format!("Invalid timestamp '{}': {}", ts, e)))
+}
+
+fn derive_status(exit_code: Option<i32>, is_error: Option<bool>) -> ToolStatus {
+    if let Some(code) = exit_code {
+        return if code == 0 {
+            ToolStatus::Success
+        } else {
+            ToolStatus::Failure
+        };
+    }
+
+    if let Some(err) = is_error {
+        return if err {
+            ToolStatus::Failure
+        } else {
+            ToolStatus::Success
+        };
+    }
+
+    // If no signals provided, default to success to avoid Unknown.
+    ToolStatus::Success
 }

@@ -30,7 +30,9 @@ fn validate_claude(path: Option<PathBuf>) -> Result<()> {
     for entry in walkdir::WalkDir::new(&dir)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_file() && e.path().extension().and_then(|s| s.to_str()) == Some("jsonl"))
+        .filter(|e| {
+            e.path().is_file() && e.path().extension().and_then(|s| s.to_str()) == Some("jsonl")
+        })
     {
         let path = entry.path();
         let file = std::fs::File::open(path)?;
@@ -115,10 +117,7 @@ fn validate_codex(path: Option<PathBuf>) -> Result<()> {
                     let file_entry = file_entry?;
                     let file_path = file_entry.path();
                     if !file_path.is_file()
-                        || file_path
-                            .extension()
-                            .and_then(|s| s.to_str())
-                            != Some("jsonl")
+                        || file_path.extension().and_then(|s| s.to_str()) != Some("jsonl")
                     {
                         continue;
                     }
@@ -166,4 +165,3 @@ fn validate_codex(path: Option<PathBuf>) -> Result<()> {
 
     Ok(())
 }
-

@@ -15,6 +15,12 @@ pub struct JsonSchemaNode {
     /// For array types: merged schema of all items
     #[serde(skip_serializing_if = "Option::is_none")]
     pub items: Option<Box<JsonSchemaNode>>,
+    /// For enum-like strings: small set of observed values
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enum_values: Option<BTreeSet<String>>,
+    /// True if there were more distinct string values than we kept
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub enum_truncated: bool,
 }
 
 impl JsonSchemaNode {
@@ -22,7 +28,46 @@ impl JsonSchemaNode {
         self.types.insert(t.to_string());
     }
 
-    fn update_with_value(&mut self, value: &Value) {
+    fn record_string_variant(&mut self, parent_key: Option<&str>, s: &str) {
+        // Only collect enum-like values for selected keys (e.g., type, role, userType),
+        // and avoid obviously free-form text.
+        const MAX_ENUM_VARIANTS: usize = 32;
+
+        let key = match parent_key {
+            Some(k) => k,
+            None => return,
+        };
+
+        let is_enum_key = matches!(
+            key,
+            "type"
+                | "role"
+                | "userType"
+                | "approval_policy"
+                | "event_type"
+                | "user_type"
+                | "service_tier"
+        ) || key.ends_with("_type");
+
+        if !is_enum_key {
+            return;
+        }
+
+        // Skip very long values that are unlikely to be enums
+        if s.len() > 64 {
+            return;
+        }
+
+        let variants = self.enum_values.get_or_insert_with(BTreeSet::new);
+        if variants.len() >= MAX_ENUM_VARIANTS {
+            self.enum_truncated = true;
+            return;
+        }
+
+        variants.insert(s.to_string());
+    }
+
+    fn update_with_value(&mut self, value: &Value, parent_key: Option<&str>) {
         match value {
             Value::Null => {
                 self.record_type("null");
@@ -33,24 +78,48 @@ impl JsonSchemaNode {
             Value::Number(_) => {
                 self.record_type("number");
             }
-            Value::String(_) => {
+            Value::String(s) => {
                 self.record_type("string");
+                self.record_string_variant(parent_key, s);
             }
             Value::Array(arr) => {
                 self.record_type("array");
                 if arr.is_empty() {
                     return;
                 }
-                let items_schema = self.items.get_or_insert_with(|| Box::new(JsonSchemaNode::default()));
+                let items_schema = self
+                    .items
+                    .get_or_insert_with(|| Box::new(JsonSchemaNode::default()));
                 for item in arr {
-                    items_schema.update_with_value(item);
+                    items_schema.update_with_value(item, None);
                 }
             }
             Value::Object(map) => {
                 self.record_type("object");
-                for (k, v) in map {
-                    let field_schema = self.fields.entry(k.clone()).or_insert_with(JsonSchemaNode::default);
-                    field_schema.update_with_value(v);
+                let dynamic_map = matches!(
+                    parent_key,
+                    Some("answers") | Some("fields") | Some("trackedFileBackups")
+                );
+
+                if dynamic_map {
+                    // Treat maps under `answers`/`fields` as key-agnostic: merge all values
+                    // into a single synthetic entry to avoid leaking actual keys.
+                    let placeholder = "<key>";
+                    let field_schema = self
+                        .fields
+                        .entry(placeholder.to_string())
+                        .or_insert_with(JsonSchemaNode::default);
+                    for (_k, v) in map {
+                        field_schema.update_with_value(v, None);
+                    }
+                } else {
+                    for (k, v) in map {
+                        let field_schema = self
+                            .fields
+                            .entry(k.clone())
+                            .or_insert_with(JsonSchemaNode::default);
+                        field_schema.update_with_value(v, Some(k));
+                    }
                 }
             }
         }
@@ -66,9 +135,8 @@ pub fn cmd_schema(agent: String, path: Option<PathBuf>) -> Result<()> {
         other => return Err(Error::UnknownAgent(other.to_string())),
     }
 
-    serde_json::to_writer_pretty(std::io::stdout(), &schema).map_err(|e| {
-        Error::Parse(format!("Failed to serialize schema as JSON: {}", e))
-    })?;
+    serde_json::to_writer_pretty(std::io::stdout(), &schema)
+        .map_err(|e| Error::Parse(format!("Failed to serialize schema as JSON: {}", e)))?;
     println!();
 
     Ok(())
@@ -90,7 +158,9 @@ fn build_claude_schema(root: &mut JsonSchemaNode, path: Option<PathBuf>) -> Resu
     for entry in walkdir::WalkDir::new(&dir)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().is_file() && e.path().extension().and_then(|s| s.to_str()) == Some("jsonl"))
+        .filter(|e| {
+            e.path().is_file() && e.path().extension().and_then(|s| s.to_str()) == Some("jsonl")
+        })
     {
         let path = entry.path();
         let file = std::fs::File::open(path)?;
@@ -102,13 +172,9 @@ fn build_claude_schema(root: &mut JsonSchemaNode, path: Option<PathBuf>) -> Resu
                 continue;
             }
             let value: Value = serde_json::from_str(&line).map_err(|e| {
-                Error::Parse(format!(
-                    "Failed to parse JSON in {}: {}",
-                    path.display(),
-                    e
-                ))
+                Error::Parse(format!("Failed to parse JSON in {}: {}", path.display(), e))
             })?;
-            root.update_with_value(&value);
+            root.update_with_value(&value, None);
         }
     }
 
@@ -153,10 +219,7 @@ fn build_codex_schema(root: &mut JsonSchemaNode, path: Option<PathBuf>) -> Resul
                     let file_entry = file_entry?;
                     let file_path = file_entry.path();
                     if !file_path.is_file()
-                        || file_path
-                            .extension()
-                            .and_then(|s| s.to_str())
-                            != Some("jsonl")
+                        || file_path.extension().and_then(|s| s.to_str()) != Some("jsonl")
                     {
                         continue;
                     }
@@ -177,7 +240,7 @@ fn build_codex_schema(root: &mut JsonSchemaNode, path: Option<PathBuf>) -> Resul
                                 e
                             ))
                         })?;
-                        root.update_with_value(&value);
+                        root.update_with_value(&value, None);
                     }
                 }
             }
@@ -186,4 +249,3 @@ fn build_codex_schema(root: &mut JsonSchemaNode, path: Option<PathBuf>) -> Resul
 
     Ok(())
 }
-

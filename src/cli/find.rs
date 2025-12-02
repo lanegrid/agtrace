@@ -3,7 +3,7 @@ use crate::error::{Error, Result};
 use crate::model::{Agent, Event};
 use crate::storage;
 
-use super::formatters::{format_duration, format_number, format_path};
+use super::formatters::{format_duration, format_number, format_path_compact};
 
 pub fn cmd_find(
     id: &str,
@@ -60,7 +60,9 @@ pub fn cmd_find(
     if use_color {
         println!(
             "{}",
-            Color::Cyan.bold().paint(format!("Session: {}", execution.id))
+            Color::Cyan
+                .bold()
+                .paint(format!("Session: {}", execution.id))
         );
     } else {
         println!("Session: {}", execution.id);
@@ -73,7 +75,7 @@ pub fn cmd_find(
         Agent::Codex { model } => format!("Codex ({})", model),
     };
 
-    let working_dir = format_path(&execution.working_dir);
+    let working_dir = format_path_compact(&execution.working_dir, 80);
     let branch_info = execution
         .git_branch
         .as_ref()
@@ -169,7 +171,9 @@ pub fn cmd_find(
                 "... and {} more events",
                 execution.events.len() - event_limit
             );
-            println!("Use --format json to see full event timeline, or --events-limit N to show more");
+            println!(
+                "Use --format json to see full event timeline, or --events-limit N to show more"
+            );
         }
     } else {
         println!("Use --events to see event timeline.");

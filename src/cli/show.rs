@@ -35,7 +35,12 @@ pub fn cmd_show(
 
     println!();
     if use_color {
-        println!("{}", Color::Cyan.bold().paint(format!("Session: {}", execution.id)));
+        println!(
+            "{}",
+            Color::Cyan
+                .bold()
+                .paint(format!("Session: {}", execution.id))
+        );
     } else {
         println!("Session: {}", execution.id);
     }
@@ -173,7 +178,9 @@ pub fn cmd_show(
                 "... and {} more events",
                 execution.events.len() - event_limit
             );
-            println!("Use --format json to see full event timeline, or --events-limit N to show more");
+            println!(
+                "Use --format json to see full event timeline, or --events-limit N to show more"
+            );
         }
     } else {
         println!("Use --events to see event timeline.");

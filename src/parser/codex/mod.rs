@@ -1,21 +1,14 @@
 use crate::error::{Error, Result};
-use crate::model::{Agent, Event, Execution, ExecutionMetrics};
+use crate::model::{Agent, Event, Execution, ExecutionMetrics, ToolStatus};
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde_json::json;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
-/// Codex event structure (JSONL format)
-#[cfg_attr(test, derive(serde::Serialize))]
-#[cfg_attr(test, serde(deny_unknown_fields))]
-#[derive(Debug, Deserialize)]
-pub struct CodexEvent {
-    timestamp: String,
-    #[serde(rename = "type")]
-    event_type: String,
-    payload: serde_json::Value,
-}
+mod raw;
+
+pub use raw::CodexEvent;
 
 /// Parse Codex sessions from the default directory (~/.codex/sessions)
 pub fn parse_default_dir() -> Result<Vec<Execution>> {
@@ -260,7 +253,7 @@ fn parse_session_file(path: &Path) -> Result<Execution> {
                                 .to_string();
 
                             // Parse output if it's a JSON string
-                            let (parsed_output, exit_code) = if let Ok(output_json) =
+                            let (parsed_output, exit_code, raw_metadata) = if let Ok(output_json) =
                                 serde_json::from_str::<serde_json::Value>(&output_str)
                             {
                                 let output = output_json
@@ -275,9 +268,14 @@ fn parse_session_file(path: &Path) -> Result<Execution> {
                                     .and_then(|c| c.as_i64())
                                     .map(|c| c as i32);
 
-                                (output, exit_code)
+                                let raw_metadata = output_json
+                                    .get("metadata")
+                                    .cloned()
+                                    .map(|meta| json!({"provider": "codex", "metadata": meta}));
+
+                                (output, exit_code, raw_metadata)
                             } else {
-                                (output_str, None)
+                                (output_str, None, None)
                             };
 
                             let call_id = event
@@ -291,6 +289,9 @@ fn parse_session_file(path: &Path) -> Result<Execution> {
                                 call_id,
                                 output: parsed_output,
                                 exit_code,
+                                is_error: None,
+                                status: derive_status(exit_code, None),
+                                raw_metadata,
                                 duration_ms: None,
                                 timestamp,
                             });
@@ -379,4 +380,25 @@ fn parse_timestamp(ts: &str) -> Result<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(ts)
         .map(|dt| dt.with_timezone(&Utc))
         .map_err(|e| Error::Parse(format!("Invalid timestamp '{}': {}", ts, e)))
+}
+
+fn derive_status(exit_code: Option<i32>, is_error: Option<bool>) -> ToolStatus {
+    if let Some(code) = exit_code {
+        return if code == 0 {
+            ToolStatus::Success
+        } else {
+            ToolStatus::Failure
+        };
+    }
+
+    if let Some(err) = is_error {
+        return if err {
+            ToolStatus::Failure
+        } else {
+            ToolStatus::Success
+        };
+    }
+
+    // If no signals provided, default to success to avoid Unknown.
+    ToolStatus::Success
 }

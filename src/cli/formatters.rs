@@ -15,8 +15,9 @@ pub fn format_path(path: &Path) -> String {
 }
 
 /// Format path compactly for table display
-/// Shows last 2 components, or uses ~ replacement if under home
-/// Example: /Users/user/go/src/github.com/org/project → ~/go/.../org/project
+/// Shortens long paths by abbreviating intermediate components and keeping
+/// only the last directory in full.
+/// Example: /Users/user/go/src/github.com/org/project → ~/g/s/.../project
 pub fn format_path_compact(path: &Path, max_width: usize) -> String {
     let formatted = format_path(path);
 
@@ -24,13 +25,73 @@ pub fn format_path_compact(path: &Path, max_width: usize) -> String {
         return formatted;
     }
 
-    // If too long, show first part and last 2 components
-    let components: Vec<_> = path.iter().map(|s| s.to_string_lossy()).collect();
-    if components.len() > 2 {
-        let last_two = components[components.len()-2..].join("/");
-        format!(".../{}", last_two)
+    // Split into components (already with ~ if under home)
+    let parts: Vec<&str> = formatted.split('/').collect();
+    if parts.len() <= 2 {
+        // Nothing to abbreviate, just truncate visibly
+        return truncate_with_ellipsis(&formatted, max_width);
+    }
+
+    // Determine head (~, /, or first component)
+    let (head, start_idx) = if formatted.starts_with("~/") {
+        ("~", 1)
+    } else if formatted.starts_with('/') {
+        ("/", 1)
     } else {
-        formatted
+        (parts[0], 1)
+    };
+
+    if parts.len() - start_idx <= 1 {
+        return truncate_with_ellipsis(&formatted, max_width);
+    }
+
+    let last = parts.last().unwrap();
+    let mid = &parts[start_idx..parts.len() - 1];
+
+    // Abbreviate intermediate components to their first character
+    let mid_short: Vec<String> = mid
+        .iter()
+        .map(|s| s.chars().next().unwrap_or('?').to_string())
+        .collect();
+
+    // First attempt: head + all abbreviated components + last
+    let mut candidate = String::new();
+    candidate.push_str(head);
+    if head != "/" && !head.is_empty() {
+        candidate.push('/');
+    }
+    candidate.push_str(&mid_short.join("/"));
+    candidate.push('/');
+    candidate.push_str(last);
+
+    if candidate.len() <= max_width {
+        return candidate;
+    }
+
+    // Second attempt: head + first abbreviated + ... + last
+    let mut candidate2 = String::new();
+    candidate2.push_str(head);
+    if head != "/" && !head.is_empty() {
+        candidate2.push('/');
+    }
+    if !mid_short.is_empty() {
+        candidate2.push_str(&mid_short[0]);
+        candidate2.push('/');
+    }
+    candidate2.push_str("...");
+    candidate2.push('/');
+    candidate2.push_str(last);
+
+    if candidate2.len() <= max_width {
+        return candidate2;
+    }
+
+    // Fallback: .../last (or truncated last)
+    let fallback = format!(".../{}", last);
+    if fallback.len() <= max_width {
+        fallback
+    } else {
+        truncate_with_ellipsis(last, max_width)
     }
 }
 
@@ -65,15 +126,6 @@ pub fn format_duration(seconds: u64) -> String {
 /// Format date to short format (e.g., "2025-11-26")
 pub fn format_date_short(dt: &DateTime<Utc>) -> String {
     dt.format("%Y-%m-%d").to_string()
-}
-
-/// Format ID to show only first 8 characters
-pub fn format_id_short(id: &str) -> String {
-    if id.len() > 8 {
-        id[..8].to_string()
-    } else {
-        id.to_string()
-    }
 }
 
 /// Format number with commas (e.g., 12345 → "12,345")
@@ -178,7 +230,11 @@ fn clean_task_content(content: &str) -> String {
         // Try to find the next user message or real content
         if let Some(hash_end) = cleaned.find("**") {
             // Skip past the generated context header
-            return cleaned[hash_end..].split_whitespace().skip(5).collect::<Vec<_>>().join(" ");
+            return cleaned[hash_end..]
+                .split_whitespace()
+                .skip(5)
+                .collect::<Vec<_>>()
+                .join(" ");
         }
     }
 

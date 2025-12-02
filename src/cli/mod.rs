@@ -2,11 +2,12 @@ mod export;
 mod find;
 mod formatters;
 mod list;
+mod schema;
+mod scrub;
 mod show;
 mod stats;
+mod trace;
 mod validate;
-mod scrub;
-mod schema;
 
 use crate::error::Result;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -15,11 +16,12 @@ use std::path::PathBuf;
 use export::cmd_export;
 use find::cmd_find;
 use list::cmd_list;
+use schema::cmd_schema;
+use scrub::cmd_scrub;
 use show::cmd_show;
 use stats::cmd_stats;
+use trace::cmd_trace;
 use validate::cmd_validate;
-use scrub::cmd_scrub;
-use schema::cmd_schema;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum OutputFormat {
@@ -219,6 +221,47 @@ pub enum Commands {
         format: OutputFormat,
     },
 
+    /// Show detailed turn/trace view for a specific execution
+    Trace {
+        /// Agent type (claude-code or codex)
+        agent: String,
+
+        /// Execution ID
+        id: String,
+
+        /// Custom path to read from
+        #[arg(long)]
+        path: Option<PathBuf>,
+
+        /// Show only a single turn (1-based index)
+        #[arg(long)]
+        turn: Option<usize>,
+
+        /// Show only tool calls/results, hide thinking and assistant messages
+        #[arg(long)]
+        tools_only: bool,
+
+        /// Hide thinking events
+        #[arg(long)]
+        no_thinking: bool,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "table")]
+        format: OutputFormat,
+
+        /// Maximum length of assistant messages (for table/json)
+        #[arg(long, default_value_t = 100)]
+        max_assistant_len: usize,
+
+        /// Maximum length of tool outputs (for table/json)
+        #[arg(long, default_value_t = 60)]
+        max_output_len: usize,
+
+        /// Maximum length of thinking content (for table/json)
+        #[arg(long, default_value_t = 120)]
+        max_thinking_len: usize,
+    },
+
     /// Validate that on-disk session data matches known schemas
     Validate {
         /// Agent type to validate (claude-code or codex)
@@ -331,6 +374,30 @@ pub fn run(cli: Cli) -> Result<()> {
             limit,
             format,
         } => cmd_export(agent, id, all, path, since, project, limit, format),
+        Commands::Trace {
+            agent,
+            id,
+            path,
+            turn,
+            tools_only,
+            no_thinking,
+            format,
+            max_assistant_len,
+            max_output_len,
+            max_thinking_len,
+        } => cmd_trace(
+            &agent,
+            &id,
+            path,
+            turn,
+            tools_only,
+            no_thinking,
+            format,
+            max_assistant_len,
+            max_output_len,
+            max_thinking_len,
+            use_color,
+        ),
         Commands::Validate { agent, path } => cmd_validate(agent, path),
         Commands::Scrub { input, output } => cmd_scrub(input, output),
         Commands::Schema { agent, path } => cmd_schema(agent, path),

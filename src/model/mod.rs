@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt;
 use std::path::PathBuf;
 
 /// A single agent session
@@ -90,6 +92,12 @@ pub enum Event {
         call_id: Option<String>,
         output: String,
         exit_code: Option<i32>, // For shell commands
+        #[serde(default)]
+        is_error: Option<bool>,
+        #[serde(default)]
+        status: ToolStatus,
+        #[serde(default)]
+        raw_metadata: Option<Value>,
         duration_ms: Option<u64>,
         timestamp: DateTime<Utc>,
     },
@@ -129,6 +137,25 @@ pub struct ExecutionMetrics {
 
     /// Shell commands executed
     pub shell_commands: Vec<String>,
+}
+
+/// Normalized execution result for tool calls across providers
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum ToolStatus {
+    #[default]
+    Unknown,
+    Success,
+    Failure,
+}
+
+impl fmt::Display for ToolStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ToolStatus::Unknown => write!(f, "unknown"),
+            ToolStatus::Success => write!(f, "success"),
+            ToolStatus::Failure => write!(f, "failure"),
+        }
+    }
 }
 
 impl Execution {

@@ -1,6 +1,7 @@
 use agtrace::model::*;
 use agtrace::parser::{claude_code, codex};
 use chrono::Utc;
+use std::io::BufRead;
 use std::path::PathBuf;
 
 #[test]
@@ -56,6 +57,9 @@ fn test_compute_metrics() {
                 call_id: Some("call-1".to_string()),
                 output: "file contents".to_string(),
                 exit_code: None,
+                is_error: None,
+                status: ToolStatus::Unknown,
+                raw_metadata: None,
                 duration_ms: Some(100),
                 timestamp: now,
             },
@@ -145,7 +149,7 @@ fn test_codex_parsing() {
         .expect("Basic fixture not found");
 
     // Verify session metadata
-    assert_eq!(basic_exec.id, "codex-019a1234-5678-7890-abcd-ef1234567890");
+    assert_eq!(basic_exec.id, "019a1234-5678-7890-abcd-ef1234567890");
     assert_eq!(
         basic_exec.working_dir,
         PathBuf::from("/Users/testuser/projects/test-project")
@@ -230,6 +234,45 @@ fn test_codex_edge_cases() {
         has_failure,
         "Should have failed tool call with non-zero exit code"
     );
+
+    let has_failure_status = edge_case_exec.events.iter().any(|e| {
+        matches!(
+            e,
+            Event::ToolResult {
+                status: ToolStatus::Failure,
+                ..
+            }
+        )
+    });
+    assert!(
+        has_failure_status,
+        "Should derive failure status from non-zero exit code"
+    );
+}
+
+#[test]
+fn test_claude_is_error_sets_status() {
+    let fixture_dir = PathBuf::from("tests/fixtures/claude-code");
+    let executions =
+        claude_code::parse_dir(&fixture_dir).expect("Failed to parse claude-code fixtures");
+
+    let has_error_result = executions.iter().any(|exec| {
+        exec.events.iter().any(|event| {
+            matches!(
+                event,
+                Event::ToolResult {
+                    is_error: Some(true),
+                    status: ToolStatus::Failure,
+                    ..
+                }
+            )
+        })
+    });
+
+    assert!(
+        has_error_result,
+        "Should capture Claude tool results with is_error=true as failures"
+    );
 }
 
 #[test]
@@ -248,9 +291,8 @@ fn test_claude_raw_schema_matches_fixtures() {
         let reader = std::io::BufReader::new(file);
 
         for (idx, line) in reader.lines().enumerate() {
-            let line = line.unwrap_or_else(|e| {
-                panic!("Failed to read line {} in {:?}: {}", idx + 1, path, e)
-            });
+            let line = line
+                .unwrap_or_else(|e| panic!("Failed to read line {} in {:?}: {}", idx + 1, path, e));
             if line.trim().is_empty() {
                 continue;
             }
@@ -280,34 +322,31 @@ fn test_codex_raw_schema_matches_fixtures() {
             continue;
         }
 
-        for month_entry in std::fs::read_dir(&year_path).unwrap_or_else(|e| {
-            panic!("Failed to read month dir in {:?}: {}", year_path, e)
-        }) {
+        for month_entry in std::fs::read_dir(&year_path)
+            .unwrap_or_else(|e| panic!("Failed to read month dir in {:?}: {}", year_path, e))
+        {
             let month_entry = month_entry.expect("Invalid month dir entry");
             let month_path = month_entry.path();
             if !month_path.is_dir() {
                 continue;
             }
 
-            for day_entry in std::fs::read_dir(&month_path).unwrap_or_else(|e| {
-                panic!("Failed to read day dir in {:?}: {}", month_path, e)
-            }) {
+            for day_entry in std::fs::read_dir(&month_path)
+                .unwrap_or_else(|e| panic!("Failed to read day dir in {:?}: {}", month_path, e))
+            {
                 let day_entry = day_entry.expect("Invalid day dir entry");
                 let day_path = day_entry.path();
                 if !day_path.is_dir() {
                     continue;
                 }
 
-                for file_entry in std::fs::read_dir(&day_path).unwrap_or_else(|e| {
-                    panic!("Failed to read files in {:?}: {}", day_path, e)
-                }) {
+                for file_entry in std::fs::read_dir(&day_path)
+                    .unwrap_or_else(|e| panic!("Failed to read files in {:?}: {}", day_path, e))
+                {
                     let file_entry = file_entry.expect("Invalid file entry");
                     let file_path = file_entry.path();
                     if !file_path.is_file()
-                        || file_path
-                            .extension()
-                            .and_then(|s| s.to_str())
-                            != Some("jsonl")
+                        || file_path.extension().and_then(|s| s.to_str()) != Some("jsonl")
                     {
                         continue;
                     }
@@ -318,12 +357,7 @@ fn test_codex_raw_schema_matches_fixtures() {
 
                     for (idx, line) in reader.lines().enumerate() {
                         let line = line.unwrap_or_else(|e| {
-                            panic!(
-                                "Failed to read line {} in {:?}: {}",
-                                idx + 1,
-                                file_path,
-                                e
-                            )
+                            panic!("Failed to read line {} in {:?}: {}", idx + 1, file_path, e)
                         });
                         if line.trim().is_empty() {
                             continue;
