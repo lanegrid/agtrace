@@ -60,6 +60,16 @@ type EventType =
   | "meta"
   | "log";
 
+/**
+ * Role indicates who/what is responsible for the event
+ *
+ * - user: human user
+ * - assistant: LLM agent (Claude / Codex / Gemini)
+ * - system: system / runtime / IDE
+ * - tool: external tool output (bash, apply_patch, editor API, etc.)
+ * - cli: CLI user terminal input (e.g. Gemini CLI `/model` command)
+ * - other: fallback for cases that don't fit above categories
+ */
 type Role = "user" | "assistant" | "system" | "tool" | "cli" | "other";
 
 type Channel = "chat" | "editor" | "terminal" | "filesystem" | "system" | "other";
@@ -232,13 +242,41 @@ interface AgentEventV1 {
 
 ---
 
-## 4. ベンダー別マッピング仕様
+## 4. EventType × Role Mapping Rules (v1.5)
+
+This section defines **mandatory** role assignments for each event_type to eliminate ambiguity and ensure consistency across providers.
+
+### 4.1 Invariant: EventType → Role Mapping
+
+| event_type         | allowed role(s)      | rationale                                                                 |
+|--------------------|----------------------|---------------------------------------------------------------------------|
+| user_message       | `user`               | Human user input                                                         |
+| assistant_message  | `assistant`          | LLM agent response                                                       |
+| system_message     | `system`             | System-level messages (e.g., IDE notifications)                          |
+| reasoning          | `assistant`          | Agent's internal thinking process                                        |
+| tool_call          | `assistant`          | Agent is the entity calling the tool                                     |
+| tool_result        | `tool`               | Result returned by the tool itself                                       |
+| file_snapshot      | `system`             | IDE/runtime state update                                                 |
+| session_summary    | `assistant` \| `system` | Agent's summary → `assistant`; Pure metadata → `system`              |
+| meta               | `system`             | Metadata from runtime/system                                             |
+| log                | `system` \| `cli`    | Local command logs → `cli`; Runtime logs → `system`                      |
+
+**Key principle:**
+- `tool_result` must **always** be `role = "tool"`, not `"assistant"` or `"user"`.
+- `reasoning` is always `role = "assistant"` (agent's internal thought).
+- `tool_call` is always `role = "assistant"` (agent invokes tools).
+
+This mapping is **enforced** in the normalization layer. Any violation is a spec compliance error.
+
+---
+
+## 5. ベンダー別マッピング仕様
 
 この章では、各ベンダーの生ログから `AgentEventV1` を生成する際の方針を示す。
 
-### 4.1 Claude Code
+### 5.1 Claude Code
 
-#### 4.1.1 project / session / ID
+#### 5.1.1 project / session / ID
 
 * `project_root` ← `cwd`
 * `project_hash` ← `sha256(project_root)` を推奨（Gemini と合わせたい場合）。
@@ -249,7 +287,7 @@ interface AgentEventV1 {
   * user_message: `uuid` または `messageId`
   * assistant 系: `uuid` または `message.id` / `tool_use.id` / 合成 ID
 
-#### 4.1.2 イベント分解
+#### 5.1.2 イベント分解
 
 Claude の 1 レコード（JSONL 1 行）から、最大で以下のイベントを生成する。
 
@@ -284,7 +322,7 @@ Claude の 1 レコード（JSONL 1 行）から、最大で以下のイベン�
 
   * 条件: `type == "summary"`
 
-#### 4.1.3 parent_event_id の付与
+#### 5.1.3 parent_event_id の付与
 
 * user_message イベント:
 
@@ -293,22 +331,43 @@ Claude の 1 レコード（JSONL 1 行）から、最大で以下のイベン�
 
   * 同一セッション内で、「直近の user_message」の `event_id` を `parent_event_id` に設定
 
-#### 4.1.4 event_type / role / channel / text
+#### 5.1.4 event_type / role / channel / text
 
-* `event_type`:
+**event_type 判定の優先順位（重要）:**
 
-  * user_message: `"user_message"`
-  * assistant_message: `"assistant_message"`
-  * reasoning: `"reasoning"`
-  * tool_call: `"tool_call"`
-  * tool_result: `"tool_result"`
-  * file_snapshot: `"file_snapshot"`
-  * summary メタ: `"session_summary"` または `"meta"`
-* `role`:
+Claude Code では、tool_result が `message.role="user"` でラップされることがあるため、
+**content の type を最優先で判定**する必要がある。以下の順序で適用：
 
-  * user_message: `"user"`
-  * assistant_message / reasoning / tool_*: `"assistant"`
-  * local_command 系: `"cli"` など必要に応じて `"other"` を使用
+1. `message.content[]` に `type == "tool_use"` を含む場合:
+   * `event_type = "tool_call"`
+   * `tool_call_id` = 該当コンテンツの `id`
+
+2. `message.content[]` に `type == "tool_result"` を含む場合、または top-level に `toolUseResult` が存在する場合:
+   * `event_type = "tool_result"`
+   * `tool_call_id` = 該当コンテンツの `tool_use_id`
+   * **注:** この場合、`message.role` が `"user"` であっても無視する
+
+3. `message.content[]` に `type == "thinking"` を含む場合:
+   * `event_type = "reasoning"`
+
+4. 上記いずれにも該当しない場合:
+   * `message.role == "user"` のとき `event_type = "user_message"`
+   * `message.role == "assistant"` のとき `event_type = "assistant_message"`
+
+**role 判定 (v1.5 - strictly enforced):**
+
+* `event_type = "user_message"`:
+  * `role = "user"`
+* `event_type = "assistant_message"`:
+  * `role = "assistant"`
+* `event_type = "reasoning"`:
+  * `role = "assistant"`
+* `event_type = "tool_call"`:
+  * `role = "assistant"`
+* `event_type = "tool_result"`:
+  * `role = "tool"` (**`message.role` が `"user"` であっても override する**)
+* `event_type = "file_snapshot"` / `event_type = "meta"`:
+  * 原則として `role = "system"`
 * `channel`:
 
   * 通常の対話: `"chat"`
@@ -323,7 +382,7 @@ Claude の 1 レコード（JSONL 1 行）から、最大で以下のイベン�
   * tool_result: stdout / content のサマリ
   * file_snapshot: `"snapshot of N files"` のような短い要約
 
-#### 4.1.5 ツール / トークン
+#### 5.1.5 ツール / トークン
 
 * `tool_name` ← `message.content[].name`（type == "tool_use"）
 * `tool_call_id` ← `message.content[].id` / `.tool_use_id`
@@ -340,9 +399,9 @@ Claude の 1 レコード（JSONL 1 行）から、最大で以下のイベン�
 
 ---
 
-### 4.2 Codex
+### 5.2 Codex
 
-#### 4.2.1 project / session / ID
+#### 5.2.1 project / session / ID
 
 * `project_root` ← `payload.cwd`（存在する場合）
 * `project_hash` ← `sha256(project_root)` を推奨
@@ -355,7 +414,7 @@ Claude の 1 レコード（JSONL 1 行）から、最大で以下のイベン�
   * tool 関連: `payload.call_id`
   * それ以外: `timestamp + 通し番号` 等で合成してもよい
 
-#### 4.2.2 イベント分解
+#### 5.2.2 イベント分解
 
 Codex はすでに 1 レコード = 1 イベントの構造になっているので、そのまま 1→1 で AgentEventV1 に対応させる。
 
@@ -375,14 +434,14 @@ Codex はすでに 1 レコード = 1 イベントの構造になっているの
 
   * meta イベント
 
-#### 4.2.3 parent_event_id
+#### 5.2.3 parent_event_id
 
 * `payload.role == "user"` の message を user_message とし、`parent_event_id = null`
 * 同じ `session_id` 内で、それ以降のイベント（assistant_message / reasoning / tool_* / meta）は、
 
   * 「直近の user_message」の `event_id` を `parent_event_id` に設定
 
-#### 4.2.4 event_type / role / channel / text
+#### 5.2.4 event_type / role / channel / text
 
 * `event_type`:
 
@@ -392,10 +451,14 @@ Codex はすでに 1 レコード = 1 イベントの構造になっているの
   * `payload.name` あり → `"tool_call"`
   * `payload.status` あり → `"tool_result"`
   * `payload.type in ("token_count", "sandbox_policy", ...)` → `"meta"`
-* `role`:
+* `role` (v1.5 - strictly enforced):
 
-  * message: `payload.role`（user/assistant）
-  * tool_call / tool_result: `"assistant"`（エージェントがツールを操作している前提）
+  * payload.type == "message" && role == "user": `role = "user"`
+  * payload.type == "message" && role == "assistant": `role = "assistant"`
+  * payload.type == "reasoning" or "agent_reasoning": `role = "assistant"`
+  * function_call (tool invocation): `role = "assistant"`
+  * function_call_output (tool result): `role = "tool"` (**not** `"assistant"`)
+  * meta (token_count, session_meta, etc.): `role = "system"`
 * `channel`:
 
   * tool_call `name == "shell"` → `"terminal"`
@@ -417,7 +480,7 @@ Codex はすでに 1 レコード = 1 イベントの構造になっているの
 
     * 必要に応じて簡易テキストを生成（例: `"sandbox_policy updated"`）
 
-#### 4.2.5 ツール / トークン
+#### 5.2.5 ツール / トークン
 
 * `tool_name` ← `payload.name`
 * `tool_call_id` ← `payload.call_id`
@@ -433,14 +496,14 @@ Codex はすでに 1 レコード = 1 イベントの構造になっているの
 
 ---
 
-### 4.3 Gemini CLI
+### 5.3 Gemini CLI
 
 Gemini CLI は 2 種類のログを統合して扱う:
 
 1. CLI イベント（`messageId`, `type`, `message`, `timestamp` 等）
 2. セッションスナップショット（`projectHash`, `sessionId`, `messages[]` など）
 
-#### 4.3.1 project / session / ID
+#### 5.3.1 project / session / ID
 
 * `project_hash`:
 
@@ -456,7 +519,7 @@ Gemini CLI は 2 種類のログを統合して扱う:
   * CLI イベント: `String(messageId)`
   * messages[]: `messages[].id`
 
-#### 4.3.2 CLI 1 行イベント
+#### 5.3.2 CLI 1 行イベント
 
 * 条件: `messageId`, `type`, `message`, `timestamp` を持つ行
 * マッピング:
@@ -467,7 +530,7 @@ Gemini CLI は 2 種類のログを統合して扱う:
   * `text`: `message`（例: `/model`, `summary this repo`）
   * `parent_event_id`: `null`
 
-#### 4.3.3 会話 messages[]
+#### 5.3.3 会話 messages[]
 
 セッションスナップショットには `messages[]` が含まれる。
 各 `messages[]` 要素を 1 AgentEvent として扱う。
@@ -514,16 +577,24 @@ Gemini CLI は 2 種類のログを統合して扱う:
 
   * `messages[].toolCalls[]` の各要素について 1 `tool_call`（または tool_call+tool_result）イベントを生成:
 
-    * `event_type`: `"tool_call"` or `"tool_result"`（result が同じ要素に含まれている場合）
-    * `tool_name`: `name`
-    * `tool_call_id`: `id`
-    * `tool_status`: `status` を `"success"` / `"error"` / `"unknown"` にマップ
-    * `text`: `args` や `resultDisplay` のサマリ
-    * `parent_event_id`: 対応する user_message の event_id
+    * tool_call イベント:
+      * `event_type`: `"tool_call"`
+      * `role`: `"assistant"` (v1.5 - agent invokes tool)
+      * `tool_name`: `name`
+      * `tool_call_id`: `id`
+      * `text`: `args` のサマリ
+      * `parent_event_id`: 対応する user_message の event_id
+    * tool_result イベント（result が含まれている場合）:
+      * `event_type`: `"tool_result"`
+      * `role`: `"tool"` (v1.5 - tool output, **not** `"assistant"`)
+      * `tool_call_id`: `id`
+      * `tool_status`: `status` を `"success"` / `"error"` / `"unknown"` にマップ
+      * `text`: `resultDisplay` のサマリ
+      * `parent_event_id`: 対応する user_message の event_id
 
 ---
 
-## 5. バージョニングと拡張
+## 6. バージョニングと拡張
 
 * 本仕様は `agtrace.event.v1` として固定する。
 * 互換性の壊れる変更（フィールド削除 / 意味の変化）は `v2` を定義して行う。
@@ -531,7 +602,7 @@ Gemini CLI は 2 種類のログを統合して扱う:
 
 ---
 
-## 6. 現時点での割り切り / 注意点
+## 7. 現時点での割り切り / 注意点
 
 * `project_hash`:
 

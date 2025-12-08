@@ -80,51 +80,28 @@ where
                         .or_else(|| rec.get("uuid").and_then(|v| v.as_str()))
                         .map(|s| s.to_string());
 
-                    if role == Some("user") {
-                        // User message
-                        let mut ev = AgentEventV1::new(
-                            Source::ClaudeCode,
-                            project_hash_val.clone(),
-                            ts.clone(),
-                            EventType::UserMessage,
-                        );
+                    // Priority-based detection (v1.5):
+                    // Check content[] types BEFORE checking message.role
+                    // This is critical because Claude wraps tool_result in role="user"
+                    let content = message.get("content");
+                    let content_array = content.and_then(|c| c.as_array());
 
-                        ev.session_id = session_id.clone();
-                        ev.event_id = message_id.clone();
-                        ev.parent_event_id = None;
-                        ev.role = Some(Role::User);
-                        ev.channel = Some(Channel::Chat);
-                        ev.project_root = project_root_str.clone();
+                    // Check if content contains tool_use, tool_result, or thinking
+                    let has_tool_content = content_array
+                        .map(|arr| {
+                            arr.iter().any(|item| {
+                                let t = item.get("type").and_then(|v| v.as_str());
+                                t == Some("tool_use")
+                                    || t == Some("tool_result")
+                                    || t == Some("thinking")
+                            })
+                        })
+                        .unwrap_or(false);
 
-                        // Extract text from content
-                        if let Some(content) = message.get("content") {
-                            if let Some(s) = content.as_str() {
-                                ev.text = Some(s.to_string());
-                            } else if let Some(arr) = content.as_array() {
-                                let texts: Vec<String> = arr
-                                    .iter()
-                                    .filter_map(|c| c.get("text").and_then(|v| v.as_str()))
-                                    .map(|s| s.to_string())
-                                    .collect();
-                                if !texts.is_empty() {
-                                    ev.text = Some(texts.join("\n"));
-                                }
-                            }
-                        }
-
-                        ev.model = message
-                            .get("model")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
-                        ev.raw = rec.clone();
-
-                        last_user_event_id = ev.event_id.clone();
-                        events.push(ev);
-                    } else if role == Some("assistant") {
-                        // Assistant message - may contain thinking, tool_use, and text
-                        let content = message.get("content");
-
-                        if let Some(arr) = content.and_then(|c| c.as_array()) {
+                    if has_tool_content {
+                        // Priority 1-3: Process tool_use, tool_result, thinking, and text
+                        // This applies regardless of message.role
+                        if let Some(arr) = content_array {
                             for item in arr {
                                 let item_type = item.get("type").and_then(|v| v.as_str());
 
@@ -213,6 +190,7 @@ where
                                     }
                                     Some("tool_result") => {
                                         // Tool result event
+                                        // v1.5: role is always "tool", even if message.role is "user"
                                         let mut ev = AgentEventV1::new(
                                             Source::ClaudeCode,
                                             project_hash_val.clone(),
@@ -228,7 +206,7 @@ where
                                                 .unwrap_or("")
                                         ));
                                         ev.parent_event_id = last_user_event_id.clone();
-                                        ev.role = Some(Role::Assistant);
+                                        ev.role = Some(Role::Tool); // v1.5: tool_result role is Tool
                                         ev.channel = Some(Channel::Terminal);
                                         ev.project_root = project_root_str.clone();
 
@@ -248,49 +226,99 @@ where
                                         events.push(ev);
                                     }
                                     Some("text") => {
-                                        // Assistant text message
-                                        let mut ev = AgentEventV1::new(
-                                            Source::ClaudeCode,
-                                            project_hash_val.clone(),
-                                            ts.clone(),
-                                            EventType::AssistantMessage,
-                                        );
+                                        // Assistant text message (only create if role is assistant)
+                                        if role == Some("assistant") {
+                                            let mut ev = AgentEventV1::new(
+                                                Source::ClaudeCode,
+                                                project_hash_val.clone(),
+                                                ts.clone(),
+                                                EventType::AssistantMessage,
+                                            );
 
-                                        ev.session_id = session_id.clone();
-                                        ev.event_id = message_id.clone();
-                                        ev.parent_event_id = last_user_event_id.clone();
-                                        ev.role = Some(Role::Assistant);
-                                        ev.channel = Some(Channel::Chat);
-                                        ev.project_root = project_root_str.clone();
+                                            ev.session_id = session_id.clone();
+                                            ev.event_id = message_id.clone();
+                                            ev.parent_event_id = last_user_event_id.clone();
+                                            ev.role = Some(Role::Assistant);
+                                            ev.channel = Some(Channel::Chat);
+                                            ev.project_root = project_root_str.clone();
 
-                                        ev.text = item
-                                            .get("text")
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| s.to_string());
+                                            ev.text = item
+                                                .get("text")
+                                                .and_then(|v| v.as_str())
+                                                .map(|s| s.to_string());
 
-                                        ev.model = message
-                                            .get("model")
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| s.to_string());
+                                            ev.model = message
+                                                .get("model")
+                                                .and_then(|v| v.as_str())
+                                                .map(|s| s.to_string());
 
-                                        // Extract token usage
-                                        if let Some(usage) = message.get("usage") {
-                                            ev.tokens_input =
-                                                usage.get("input_tokens").and_then(|v| v.as_u64());
-                                            ev.tokens_output =
-                                                usage.get("output_tokens").and_then(|v| v.as_u64());
-                                            ev.tokens_cached = usage
-                                                .get("cache_read_input_tokens")
-                                                .and_then(|v| v.as_u64());
+                                            // Extract token usage
+                                            if let Some(usage) = message.get("usage") {
+                                                ev.tokens_input = usage
+                                                    .get("input_tokens")
+                                                    .and_then(|v| v.as_u64());
+                                                ev.tokens_output = usage
+                                                    .get("output_tokens")
+                                                    .and_then(|v| v.as_u64());
+                                                ev.tokens_cached = usage
+                                                    .get("cache_read_input_tokens")
+                                                    .and_then(|v| v.as_u64());
+                                            }
+
+                                            ev.raw = rec.clone();
+                                            events.push(ev);
                                         }
-
-                                        ev.raw = rec.clone();
-                                        events.push(ev);
                                     }
                                     _ => {}
                                 }
                             }
-                        } else if let Some(text) = content.and_then(|c| c.as_str()) {
+                        }
+                    } else if role == Some("user") {
+                        // Priority 4: Normal user message (no tool content)
+                        let mut ev = AgentEventV1::new(
+                            Source::ClaudeCode,
+                            project_hash_val.clone(),
+                            ts.clone(),
+                            EventType::UserMessage,
+                        );
+
+                        ev.session_id = session_id.clone();
+                        ev.event_id = message_id.clone();
+                        ev.parent_event_id = None;
+                        ev.role = Some(Role::User);
+                        ev.channel = Some(Channel::Chat);
+                        ev.project_root = project_root_str.clone();
+
+                        // Extract text from content
+                        if let Some(content) = message.get("content") {
+                            if let Some(s) = content.as_str() {
+                                ev.text = Some(s.to_string());
+                            } else if let Some(arr) = content.as_array() {
+                                let texts: Vec<String> = arr
+                                    .iter()
+                                    .filter_map(|c| c.get("text").and_then(|v| v.as_str()))
+                                    .map(|s| s.to_string())
+                                    .collect();
+                                if !texts.is_empty() {
+                                    ev.text = Some(texts.join("\n"));
+                                }
+                            }
+                        }
+
+                        ev.model = message
+                            .get("model")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+                        ev.raw = rec.clone();
+
+                        last_user_event_id = ev.event_id.clone();
+                        events.push(ev);
+                    } else if role == Some("assistant") {
+                        // Priority 4: Normal assistant message (no tool content)
+                        // Only simple text messages reach here
+                        let content = message.get("content");
+
+                        if let Some(text) = content.and_then(|c| c.as_str()) {
                             // Simple text assistant message
                             let mut ev = AgentEventV1::new(
                                 Source::ClaudeCode,
@@ -327,43 +355,102 @@ where
             }
             "user" => {
                 // Legacy format: type "user" with message field
+                // v1.5: Check for tool_result in content FIRST (same priority as "message" type)
                 if let Some(message) = rec.get("message") {
-                    let mut ev = AgentEventV1::new(
-                        Source::ClaudeCode,
-                        project_hash_val.clone(),
-                        ts.clone(),
-                        EventType::UserMessage,
-                    );
+                    let content = message.get("content");
+                    let content_array = content.and_then(|c| c.as_array());
 
-                    ev.session_id = session_id.clone();
-                    ev.event_id = rec
+                    // Check if content contains tool_result
+                    let has_tool_result = content_array
+                        .map(|arr| {
+                            arr.iter().any(|item| {
+                                item.get("type").and_then(|v| v.as_str()) == Some("tool_result")
+                            })
+                        })
+                        .unwrap_or(false);
+
+                    let message_id = rec
                         .get("uuid")
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
-                    ev.parent_event_id = None;
-                    ev.role = Some(Role::User);
-                    ev.channel = Some(Channel::Chat);
-                    ev.project_root = project_root_str.clone();
 
-                    // Extract text from content
-                    if let Some(content) = message.get("content") {
-                        if let Some(s) = content.as_str() {
-                            ev.text = Some(s.to_string());
-                        } else if let Some(arr) = content.as_array() {
-                            let texts: Vec<String> = arr
-                                .iter()
-                                .filter_map(|c| c.get("text").and_then(|v| v.as_str()))
-                                .map(|s| s.to_string())
-                                .collect();
-                            if !texts.is_empty() {
-                                ev.text = Some(texts.join("\n"));
+                    if has_tool_result {
+                        // Priority 1: Process as tool_result, not user_message
+                        if let Some(arr) = content_array {
+                            for item in arr {
+                                if item.get("type").and_then(|v| v.as_str()) == Some("tool_result") {
+                                    let mut ev = AgentEventV1::new(
+                                        Source::ClaudeCode,
+                                        project_hash_val.clone(),
+                                        ts.clone(),
+                                        EventType::ToolResult,
+                                    );
+
+                                    ev.session_id = session_id.clone();
+                                    ev.event_id = Some(format!(
+                                        "{}#result",
+                                        item.get("tool_use_id")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                    ));
+                                    ev.parent_event_id = last_user_event_id.clone();
+                                    ev.role = Some(Role::Tool); // v1.5: override role
+                                    ev.channel = Some(Channel::Terminal);
+                                    ev.project_root = project_root_str.clone();
+
+                                    ev.tool_call_id = item
+                                        .get("tool_use_id")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
+
+                                    // Extract content/output
+                                    if let Some(content) = item.get("content") {
+                                        if let Some(s) = content.as_str() {
+                                            ev.text = Some(truncate(s, 1000));
+                                        }
+                                    }
+
+                                    ev.raw = rec.clone();
+                                    events.push(ev);
+                                }
                             }
                         }
-                    }
+                    } else {
+                        // Priority 2: Normal user message
+                        let mut ev = AgentEventV1::new(
+                            Source::ClaudeCode,
+                            project_hash_val.clone(),
+                            ts.clone(),
+                            EventType::UserMessage,
+                        );
 
-                    ev.raw = rec.clone();
-                    last_user_event_id = ev.event_id.clone();
-                    events.push(ev);
+                        ev.session_id = session_id.clone();
+                        ev.event_id = message_id.clone();
+                        ev.parent_event_id = None;
+                        ev.role = Some(Role::User);
+                        ev.channel = Some(Channel::Chat);
+                        ev.project_root = project_root_str.clone();
+
+                        // Extract text from content
+                        if let Some(content) = message.get("content") {
+                            if let Some(s) = content.as_str() {
+                                ev.text = Some(s.to_string());
+                            } else if let Some(arr) = content.as_array() {
+                                let texts: Vec<String> = arr
+                                    .iter()
+                                    .filter_map(|c| c.get("text").and_then(|v| v.as_str()))
+                                    .map(|s| s.to_string())
+                                    .collect();
+                                if !texts.is_empty() {
+                                    ev.text = Some(texts.join("\n"));
+                                }
+                            }
+                        }
+
+                        ev.raw = rec.clone();
+                        last_user_event_id = ev.event_id.clone();
+                        events.push(ev);
+                    }
                 }
             }
             "assistant" => {
@@ -474,7 +561,7 @@ where
                                             .unwrap_or("")
                                     ));
                                     ev.parent_event_id = last_user_event_id.clone();
-                                    ev.role = Some(Role::Assistant);
+                                    ev.role = Some(Role::Tool); // v1.5: tool_result role is Tool
                                     ev.channel = Some(Channel::Terminal);
                                     ev.project_root = project_root_str.clone();
 
@@ -576,7 +663,7 @@ where
 
                     ev.session_id = session_id.clone();
                     ev.parent_event_id = last_user_event_id.clone();
-                    ev.role = Some(Role::Assistant);
+                    ev.role = Some(Role::Tool); // v1.5: tool_result role is Tool
                     ev.channel = Some(Channel::Terminal);
                     ev.project_root = project_root_str.clone();
 

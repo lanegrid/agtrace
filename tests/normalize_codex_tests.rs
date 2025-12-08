@@ -65,6 +65,20 @@ fn test_codex_tool_call_and_result() {
         tool_call.tool_call_id, tool_result.tool_call_id,
         "tool_call and tool_result should share the same tool_call_id"
     );
+
+    // v1.5: tool_call role should be Assistant
+    assert_eq!(
+        tool_call.role,
+        Some(Role::Assistant),
+        "tool_call role should be Assistant"
+    );
+
+    // v1.5: tool_result role should be Tool (not Assistant)
+    assert_eq!(
+        tool_result.role,
+        Some(Role::Tool),
+        "tool_result role should be Tool, not Assistant"
+    );
 }
 
 #[test]

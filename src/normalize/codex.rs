@@ -215,7 +215,7 @@ where
         } else if p_type == "function_call_output" {
             // function_call_output should be mapped to ToolResult
             ev.event_type = EventType::ToolResult;
-            ev.role = Some(Role::Assistant);
+            ev.role = Some(Role::Tool); // v1.5: tool_result role is Tool
             ev.channel = Some(Channel::Terminal); // Assume terminal for shell commands
 
             ev.tool_status = Some(
@@ -250,7 +250,7 @@ where
         } else if p_status.is_some() {
             // Tool result
             ev.event_type = EventType::ToolResult;
-            ev.role = Some(Role::Assistant);
+            ev.role = Some(Role::Tool); // v1.5: tool_result role is Tool
             ev.channel = Some(Channel::Terminal);
 
             ev.tool_status = Some(match p_status.unwrap() {

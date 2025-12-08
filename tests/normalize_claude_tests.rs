@@ -89,6 +89,20 @@ fn test_claude_tool_result_matching() {
 
     // tool_result should have status
     assert!(tool_results[0].tool_status.is_some());
+
+    // v1.5: tool_call role should be Assistant
+    assert_eq!(
+        tool_calls[0].role,
+        Some(Role::Assistant),
+        "tool_call role should be Assistant"
+    );
+
+    // v1.5: tool_result role should be Tool (not Assistant)
+    assert_eq!(
+        tool_results[0].role,
+        Some(Role::Tool),
+        "tool_result role should be Tool, not Assistant"
+    );
 }
 
 #[test]
@@ -145,4 +159,55 @@ fn test_claude_schema_version() {
     for event in &events {
         assert_eq!(event.schema_version, AgentEventV1::SCHEMA_VERSION);
     }
+}
+
+#[test]
+fn test_claude_tool_result_wrapped_in_user_role() {
+    // v1.5: Test that tool_result in message.role="user" is correctly detected
+    use serde_json::json;
+
+    let record = json!({
+        "type": "message",
+        "timestamp": "2025-01-01T12:00:00Z",
+        "sessionId": "test-session",
+        "cwd": "/test/project",
+        "message": {
+            "id": "msg_001",
+            "role": "user",  // Note: role is "user" but content contains tool_result
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": "toolu_001",
+                    "content": "Test output from tool"
+                }
+            ]
+        }
+    });
+
+    let events = normalize_claude_stream(vec![record], None);
+
+    // Should produce a tool_result event, not a user_message
+    assert_eq!(events.len(), 1, "Should produce exactly 1 event");
+
+    let event = &events[0];
+    assert_eq!(
+        event.event_type,
+        EventType::ToolResult,
+        "Should be tool_result despite message.role being 'user'"
+    );
+    assert_eq!(
+        event.role,
+        Some(Role::Tool),
+        "Role should be 'tool', not 'user'"
+    );
+    assert_eq!(
+        event.tool_call_id,
+        Some("toolu_001".to_string()),
+        "Should extract tool_use_id"
+    );
+    assert_eq!(
+        event.text.as_deref(),
+        Some("Test output from tool"),
+        "Should extract content as text"
+    );
 }
