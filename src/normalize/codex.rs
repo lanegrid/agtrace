@@ -2,6 +2,7 @@ use crate::model::*;
 use crate::utils::*;
 use anyhow::{Context, Result};
 use serde_json::Value;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 /// Parse Codex JSONL file and normalize to AgentEventV1
@@ -285,4 +286,26 @@ fn extract_codex_message_text(payload: &Value) -> Option<String> {
     obj.get("text")
         .and_then(|v| v.as_str())
         .map(|s| truncate(s, 2000))
+}
+
+/// Extract cwd from a Codex session file by reading the first few records
+/// Returns None if cwd cannot be determined
+pub fn extract_cwd_from_codex_file(path: &Path) -> Option<String> {
+    let file = std::fs::File::open(path).ok()?;
+    let reader = BufReader::new(file);
+
+    // Read first 10 lines to find cwd in payload
+    for line in reader.lines().take(10) {
+        if let Ok(line) = line {
+            if let Ok(json) = serde_json::from_str::<Value>(&line) {
+                if let Some(payload) = json.get("payload") {
+                    if let Some(cwd) = payload.get("cwd").and_then(|v| v.as_str()) {
+                        return Some(cwd.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }

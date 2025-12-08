@@ -1,4 +1,4 @@
-# agtrace CLI Specification (v1)
+# agtrace CLI Specification (v1.x)
 
 ## 0. Overview
 
@@ -11,6 +11,49 @@
 ための CLI ツールである。
 
 本仕様では、CLI インターフェイス（コマンド・引数・出力）の要件を定義する。
+
+---
+
+## 0.1 Core Concepts
+
+### Provider（プロバイダ）
+
+Claude Code / Codex / Gemini CLI 等、エージェント行動ログを出力するツールをまとめて「プロバイダ」と呼ぶ。
+
+各プロバイダは、ユーザのホームディレクトリ配下に既定のログルートを持つ:
+
+- Claude: `$HOME/.claude/projects`
+- Codex:  `$HOME/.codex/sessions`
+- Gemini: `$HOME/.gemini/tmp`
+
+これらの情報は `~/.agtrace/config.toml` に保存される。
+
+```toml
+[providers.claude]
+enabled = true
+log_root = "/Users/<user>/.claude/projects"
+
+[providers.codex]
+enabled = true
+log_root = "/Users/<user>/.codex/sessions"
+
+[providers.gemini]
+enabled = true
+log_root = "/Users/<user>/.gemini/tmp"
+```
+
+### Project（プロジェクト）
+
+`agtrace` が対象とするソースコードリポジトリ単位を「プロジェクト」と呼ぶ。
+
+`project_root` は次の優先順位で決定される:
+
+1. `--project-root <PATH>` が指定されていればそれ
+2. `AGTRACE_PROJECT_ROOT` 環境変数があればそれ
+3. Git リポジトリであれば `git rev-parse --show-toplevel` の結果
+4. 上記がすべて無ければカレントディレクトリ (`cwd`)
+
+`project_hash` は `project_root` に対する `sha256(project_root).hex` とする。
 
 ---
 
@@ -37,6 +80,15 @@
 
 * **`agtrace export`**
   正規化済みイベントを JSONL / CSV などでエクスポートする。
+
+* **`agtrace providers`**
+  プロバイダ設定の確認・更新を行う。
+
+* **`agtrace project`**
+  プロジェクト情報の表示を行う。
+
+* **`agtrace status`**
+  プロジェクトとセッションの診断を行う。
 
 ### 1.2 グローバルオプション
 
@@ -79,33 +131,33 @@
 
 ```sh
 agtrace import \
-  --source <claude|codex|gemini> \
-  --root <PATH> \
+  [--source <claude|codex|gemini|all>] \
   [--project-root <PATH>] \
-  [--session-id-prefix <STRING>] \
+  [--root <PATH>] \
   [--dry-run] \
   [--out-jsonl <PATH>]
 ```
 
 ### 2.3 オプション詳細
 
-* `--source <claude|codex|gemini>` (必須)
+* `--source <claude|codex|gemini|all>` (任意)
 
   * 説明: 取り込み対象のベンダーを指定する。
+  * 既定値: `all`
+  * `all` の場合、config.toml で `enabled = true` となっている全プロバイダを対象にする。
   * 対応:
 
     * `claude`  → Claude Code JSONL (`~/.claude/projects/.../*.jsonl`)
     * `codex`   → Codex rollout JSONL (`~/.codex/sessions/.../rollout-*.jsonl`)
     * `gemini`  → Gemini CLI (`~/.gemini/tmp/**/logs.json` + `chats/*.json`)
 
-* `--root <PATH>` (必須)
+* `--root <PATH>` (任意)
 
-  * 説明: ベンダーログのルートディレクトリ。
-  * 例:
+  * 説明: 生ログ探索のルートを明示的に上書きする（高度な override 用）。
+  * 挙動:
 
-    * Claude: `~/.claude/projects/-Users-zawakin-go-src-github-com-lanegrid-agtrace`
-    * Codex:  `~/.codex/sessions/2025/11`
-    * Gemini: `~/.gemini/tmp`
+    * 指定された場合、その PATH 配下だけを探索対象とする（`log_root` を無視）。
+    * 指定されない場合、config.toml の `providers.<name>.log_root` を探索起点とする。
 
 * `--project-root <PATH>` (任意)
 
@@ -113,12 +165,8 @@ agtrace import \
   * 挙動:
 
     * 指定された場合、`project_root` として優先的に使用し、`project_hash = sha256(project_root)` とする。
-    * 指定されない場合、ベンダーログ内の `cwd` や `projectHash` から推定する。
-
-* `--session-id-prefix <STRING>` (任意)
-
-  * 説明: 生成される `session_id` の先頭に付与する接頭辞。
-  * 例: `"codex-2025-11-"` など。
+    * 指定されない場合は「Project Discovery」の優先順位（`AGTRACE_PROJECT_ROOT` → git → `cwd`）に従い決定する。
+  * 重要: プロジェクトに対応するセッション判定は、`project_root` / `project_hash` と生ログ側の `cwd` / `projectHash` を突き合わせることで行われる。
 
 * `--dry-run`
 
@@ -146,19 +194,66 @@ agtrace import \
 
     * 中身は `AgentEventV1` の 1 行 1 イベント JSON
 
-### 2.5 生ログファイル検出仕様
+### 2.5 ログ検出とマッチングの仕様
 
-`--root` に指定されたパスから、各ベンダーの生ログファイルを検出する仕様を定義する。
+`agtrace import` は次の 3 つのフェーズでログを検出・マッチングする:
 
-#### 2.5.1 共通ルール
+1. Provider Discovery（プロバイダのログルート検出）
+2. Project Discovery（プロジェクトルートと project_hash の決定）
+3. Session Matching（プロジェクトに紐づくセッションの選別）
 
-* `--root` にはファイルまたはディレクトリを指定可能:
+#### 2.5.1 Provider Discovery
+
+`agtrace` は起動時に `~/.agtrace/config.toml` を読み、各プロバイダごとのログルートを決定する。
+
+- デフォルト値:
+  - claude: `$HOME/.claude/projects`
+  - codex:  `$HOME/.codex/sessions`
+  - gemini: `$HOME/.gemini/tmp`
+
+- config に `providers.<name>.enabled = true` かつ `log_root` が存在する場合、
+  そのプロバイダは import 対象候補となる。
+
+`--root` が明示された場合、そのプロバイダについては `log_root` の代わりに `--root` を探索起点とする。
+
+#### 2.5.2 Project Discovery
+
+`agtrace import` は、対象プロジェクトを以下の優先順位で決定する:
+
+1. `--project-root <PATH>` が指定されていればそれ
+2. `AGTRACE_PROJECT_ROOT` 環境変数
+3. Git リポジトリであれば `git rev-parse --show-toplevel`
+4. 上記がすべて無ければカレントディレクトリ (`cwd`)
+
+`project_hash = sha256(project_root).hex` を計算し、全イベントに埋め込む。
+
+#### 2.5.3 Session Matching
+
+各プロバイダごとに、log_root（または `--root`）配下の全セッション候補を列挙した上で、
+「このプロジェクトに紐づくセッション」だけを import 対象とする。
+
+- Claude:
+  - 各 `*.jsonl` ファイルの先頭数行から `cwd` を抽出する。
+  - `normalize_path(cwd) == normalize_path(project_root)` のファイルだけを「このプロジェクトのセッション」とみなす。
+
+- Codex:
+  - 各 `rollout-*.jsonl` のレコードから `payload.cwd` を抽出する。
+  - 1 ファイルの中で最初に出現した `cwd` をそのセッションの `cwd` とみなし、
+    `normalize_path(cwd) == normalize_path(project_root)` の場合だけ import する。
+
+- Gemini:
+  - 各 `<64hex>/logs.json` から `projectHash` を抽出する。
+  - `project_hash_from(project_root) == projectHash` のディレクトリ配下のセッションだけを import する。
+
+#### 2.5.4 生ログファイル検出の共通ルール
+
+* log_root（または `--root`）にはファイルまたはディレクトリを指定可能:
   * **ファイル**: その 1 ファイルのみを import 対象とする
   * **ディレクトリ**: 以下のベンダー固有ルールに従って再帰的に探索する
 
 * 検出されたファイルごとに正規化処理を行い、結果を統合して保存する
 
-#### 2.5.2 Codex
+#### 2.5.5 Codex
 
 **ディレクトリ構造例:**
 ```
@@ -177,7 +272,7 @@ agtrace import \
 ```
 
 **検出ルール:**
-* `--root` 配下を**再帰的に探索**する
+* Provider Discovery で決まった `log_root`（または `--root`）配下を**再帰的に探索**する
 * 以下の条件を満たすファイルを Codex セッションログとして検出:
   * 拡張子が `.jsonl`
   * ファイル名が `rollout-` で始まる（例: `rollout-2025-11-28T13-37-13-....jsonl`）
@@ -187,7 +282,7 @@ agtrace import \
 * 例: `rollout-2025-11-28T13-37-13-019ac8c0` → session_id = `"rollout-2025-11-28T13-37-13-019ac8c0"`
 * `--session-id-prefix` が指定されている場合は、その接頭辞を追加する
 
-#### 2.5.3 Claude Code
+#### 2.5.6 Claude Code
 
 **ディレクトリ構造例:**
 ```
@@ -201,17 +296,19 @@ agtrace import \
 ```
 
 **検出ルール:**
-* `--root` 配下を**再帰的に探索**する
+* Provider Discovery で決まった `log_root`（または `--root`）配下を**再帰的に探索**する
 * 以下の条件を満たすファイルを Claude Code セッションログとして検出:
   * 拡張子が `.jsonl`
-  * （オプション）ファイルの 1 行目を読み、`type` および `sessionId` フィールドが存在することを確認
-    * これにより、Claude Code 以外の `.jsonl` ファイルを誤検出するリスクを減らす
+  * （推奨）ファイルの 1 行目を読み、`type` および `sessionId` フィールドが両方存在することを確認
+    * この確認はベストエフォート。チェックに失敗しても、ファイルは処理対象に含める
+    * これにより、Claude Code 以外の `.jsonl` ファイルを誤検出するリスクを減らしつつ、読み込みエラーで有効なファイルを見落とさないようにする
+* **基本方針**: `*.jsonl` であれば可能な限り処理を試みる。パース時にエラーが出た場合はそのファイルをスキップする
 
 **session_id の決定:**
 * ファイル内の各レコードに含まれる `sessionId` フィールドを使用
 * 1 ファイル = 1 セッションを想定
 
-#### 2.5.4 Gemini CLI
+#### 2.5.7 Gemini CLI
 
 **ディレクトリ構造例:**
 ```
@@ -233,7 +330,7 @@ agtrace import \
 ```
 
 **検出ルール:**
-* `--root` 直下のディレクトリを探索
+* Provider Discovery で決まった `log_root`（または `--root`）直下のディレクトリを探索
 * 以下の条件を満たすディレクトリを「プロジェクトディレクトリ」として検出:
   * ディレクトリ名が **64 桁の 16 進数**（SHA256 ハッシュ値）
   * ディレクトリ内に `logs.json` ファイルが存在する
@@ -248,7 +345,7 @@ agtrace import \
 * `logs.json` または `chats/session-*.json` 内の `sessionId` フィールドを使用
 * 複数のチャットセッションが存在する場合、それぞれ個別のセッションとして扱う
 
-#### 2.5.5 検出例
+#### 2.5.8 検出例
 
 **Codex の場合:**
 ```sh
@@ -546,7 +643,98 @@ agtrace export \
 
 ---
 
-## 8. エラーコード・終了ステータス
+## 8. `agtrace providers` — プロバイダ設定の確認・更新
+
+### 8.1 概要
+
+現在有効なプロバイダと、各プロバイダのログルート (`log_root`) を表示・設定する。
+
+### 8.2 シグネチャ
+
+```sh
+agtrace providers          # 一覧表示
+agtrace providers detect   # デフォルトディレクトリを検出して config に書き込む
+agtrace providers set <PROVIDER> --log-root <PATH> [--enable|--disable]
+```
+
+### 8.3 挙動
+
+* `agtrace providers`:
+
+  * `config.toml` の `providers.*` セクションを読み取り、名前・enabled・log_root を表示する。
+* `agtrace providers detect`:
+
+  * `$HOME/.claude`, `$HOME/.codex`, `$HOME/.gemini` などを探索し、存在するものを `enabled = true` として config に書き込む。
+* `agtrace providers set`:
+
+  * 指定されたプロバイダの `log_root` と `enabled` フラグを更新する。
+
+---
+
+## 9. `agtrace project` — プロジェクト情報の表示
+
+### 9.1 概要
+
+`project_root` / `project_hash` および、現在のプロジェクトに紐づくセッション数を確認する。
+
+### 9.2 シグネチャ
+
+```sh
+agtrace project [--project-root <PATH>]
+```
+
+### 9.3 出力例
+
+```text
+Project root: /Users/zawakin/go/src/github.com/lanegrid/agtrace
+Project hash: 623b4447...
+
+Detected providers:
+  claude:  enabled, log_root = /Users/zawakin/.claude/projects
+  codex:   enabled, log_root = /Users/zawakin/.codex/sessions
+  gemini:  enabled, log_root = /Users/zawakin/.gemini/tmp
+```
+
+---
+
+## 10. `agtrace status` — プロジェクトとセッションの診断
+
+### 10.1 概要
+
+現在のプロジェクトに対して、各プロバイダから検出されたセッション数・マッチしたセッション数を表示する。
+
+### 10.2 シグネチャ
+
+```sh
+agtrace status [--project-root <PATH>]
+```
+
+### 10.3 出力例
+
+```text
+Project root: /Users/zawakin/go/src/github.com/lanegrid/agtrace
+Project hash: 623b4447...
+
+Providers:
+  claude:
+    log_root: /Users/zawakin/.claude/projects
+    sessions detected: 21
+    sessions matching this project: 3
+
+  codex:
+    log_root: /Users/zawakin/.codex/sessions
+    sessions detected: 58
+    sessions matching this project: 5
+
+  gemini:
+    log_root: /Users/zawakin/.gemini/tmp
+    sessions detected: 4
+    sessions matching this project: 2
+```
+
+---
+
+## 11. エラーコード・終了ステータス
 
 * `0` … 正常終了
 * `1` … 一般的なエラー（パース失敗 / 入力不正など）
@@ -556,7 +744,7 @@ agtrace export \
 
 ---
 
-## 9. 今後の拡張余地（非必須）
+## 12. 今後の拡張余地（非必須）
 
 * `agtrace graph`
 
@@ -570,5 +758,5 @@ agtrace export \
 
 ---
 
-以上が **agtrace CLI v1** の仕様である。
+以上が **agtrace CLI v1.x** の仕様である。
 この仕様に沿って CLI 実装を進めれば、正規化済みスキーマ `AgentEventV1` と自然に整合するはずである。

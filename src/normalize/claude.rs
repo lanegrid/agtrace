@@ -2,6 +2,7 @@ use crate::model::*;
 use crate::utils::*;
 use anyhow::{Context, Result};
 use serde_json::Value;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 /// Parse Claude Code JSONL file and normalize to AgentEventV1
@@ -326,4 +327,24 @@ where
     }
 
     events
+}
+
+/// Extract cwd from a Claude session file by reading the first few lines
+/// Returns None if cwd cannot be determined
+pub fn extract_cwd_from_claude_file(path: &Path) -> Option<String> {
+    let file = std::fs::File::open(path).ok()?;
+    let reader = BufReader::new(file);
+
+    // Read first 10 lines to find cwd
+    for line in reader.lines().take(10) {
+        if let Ok(line) = line {
+            if let Ok(json) = serde_json::from_str::<Value>(&line) {
+                if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
+                    return Some(cwd.to_string());
+                }
+            }
+        }
+    }
+
+    None
 }
