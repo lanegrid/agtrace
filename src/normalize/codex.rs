@@ -328,3 +328,37 @@ pub fn extract_cwd_from_codex_file(path: &Path) -> Option<String> {
 
     None
 }
+
+/// Check if a Codex session file is empty or incomplete (has only metadata, no actual events)
+pub fn is_empty_codex_session(path: &Path) -> bool {
+    let Ok(file) = std::fs::File::open(path) else {
+        return true;
+    };
+    let reader = BufReader::new(file);
+
+    let mut line_count = 0;
+    let mut has_event = false;
+
+    // Check first 20 lines
+    for line in reader.lines().take(20) {
+        if let Ok(line) = line {
+            line_count += 1;
+            if let Ok(json) = serde_json::from_str::<Value>(&line) {
+                // If there's a payload with actual event data (not just session metadata)
+                if let Some(payload) = json.get("payload") {
+                    // Check if this looks like an actual event (has cwd, or text, or other event fields)
+                    if payload.get("cwd").is_some()
+                        || payload.get("text").is_some()
+                        || payload.get("content").is_some()
+                    {
+                        has_event = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // If we only have 1-2 lines and no events, it's likely an empty session
+    line_count <= 2 && !has_event
+}

@@ -223,6 +223,11 @@ fn import_codex_directory(
             continue;
         }
 
+        // Skip empty/incomplete session files silently
+        if codex::is_empty_codex_session(entry.path()) {
+            continue;
+        }
+
         // Skip project filtering if all_projects is true
         if let Some(ref target_root) = target_project_root {
             if let Some(session_cwd) = codex::extract_cwd_from_codex_file(entry.path()) {
@@ -404,6 +409,11 @@ pub fn count_codex_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usiz
 
         let filename = entry.file_name().to_string_lossy();
         if !filename.starts_with("rollout-") {
+            continue;
+        }
+
+        // Skip empty/incomplete session files
+        if codex::is_empty_codex_session(entry.path()) {
             continue;
         }
 
