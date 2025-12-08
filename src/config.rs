@@ -78,28 +78,37 @@ impl Config {
         // Check for Claude
         let claude_path = home_path.join(".claude").join("projects");
         if claude_path.exists() {
-            providers.insert("claude".to_string(), ProviderConfig {
-                enabled: true,
-                log_root: claude_path,
-            });
+            providers.insert(
+                "claude".to_string(),
+                ProviderConfig {
+                    enabled: true,
+                    log_root: claude_path,
+                },
+            );
         }
 
         // Check for Codex
         let codex_path = home_path.join(".codex").join("sessions");
         if codex_path.exists() {
-            providers.insert("codex".to_string(), ProviderConfig {
-                enabled: true,
-                log_root: codex_path,
-            });
+            providers.insert(
+                "codex".to_string(),
+                ProviderConfig {
+                    enabled: true,
+                    log_root: codex_path,
+                },
+            );
         }
 
         // Check for Gemini
         let gemini_path = home_path.join(".gemini").join("tmp");
         if gemini_path.exists() {
-            providers.insert("gemini".to_string(), ProviderConfig {
-                enabled: true,
-                log_root: gemini_path,
-            });
+            providers.insert(
+                "gemini".to_string(),
+                ProviderConfig {
+                    enabled: true,
+                    log_root: gemini_path,
+                },
+            );
         }
 
         Ok(Config { providers })
@@ -144,10 +153,13 @@ mod tests {
         let config_path = temp_dir.path().join("config.toml");
 
         let mut config = Config::default();
-        config.set_provider("claude".to_string(), ProviderConfig {
-            enabled: true,
-            log_root: PathBuf::from("/home/user/.claude/projects"),
-        });
+        config.set_provider(
+            "claude".to_string(),
+            ProviderConfig {
+                enabled: true,
+                log_root: PathBuf::from("/home/user/.claude/projects"),
+            },
+        );
 
         config.save_to(&config_path)?;
         assert!(config_path.exists());
@@ -163,14 +175,20 @@ mod tests {
     #[test]
     fn test_enabled_providers() {
         let mut config = Config::default();
-        config.set_provider("claude".to_string(), ProviderConfig {
-            enabled: true,
-            log_root: PathBuf::from("/test/claude"),
-        });
-        config.set_provider("codex".to_string(), ProviderConfig {
-            enabled: false,
-            log_root: PathBuf::from("/test/codex"),
-        });
+        config.set_provider(
+            "claude".to_string(),
+            ProviderConfig {
+                enabled: true,
+                log_root: PathBuf::from("/test/claude"),
+            },
+        );
+        config.set_provider(
+            "codex".to_string(),
+            ProviderConfig {
+                enabled: false,
+                log_root: PathBuf::from("/test/codex"),
+            },
+        );
 
         let enabled = config.enabled_providers();
         assert_eq!(enabled.len(), 1);

@@ -1,6 +1,11 @@
+use super::import::{
+    count_claude_sessions, count_codex_sessions, count_gemini_sessions, count_unique_sessions,
+    import_vendor_logs,
+};
+use super::output::{
+    print_events_timeline, print_sessions_table, print_stats, write_csv, write_jsonl,
+};
 use super::{Cli, Commands, ProvidersCommand};
-use super::import::{import_vendor_logs, count_unique_sessions, count_claude_sessions, count_codex_sessions, count_gemini_sessions};
-use super::output::{print_sessions_table, print_events_timeline, print_stats, write_jsonl, write_csv};
 use crate::model::*;
 use crate::storage::Storage;
 use crate::utils::discover_project_root;
@@ -20,17 +25,27 @@ pub fn run(cli: Cli) -> Result<()> {
             dry_run,
             out_jsonl,
         } => {
-            let events = import_vendor_logs(&source, root.as_ref(), project_root.as_deref(), session_id_prefix.as_deref(), cli.all_projects)?;
+            let events = import_vendor_logs(
+                &source,
+                root.as_ref(),
+                project_root.as_deref(),
+                session_id_prefix.as_deref(),
+                cli.all_projects,
+            )?;
 
             if dry_run {
-                println!("Dry run: Would import {} events from {} sessions",
+                println!(
+                    "Dry run: Would import {} events from {} sessions",
                     events.len(),
-                    count_unique_sessions(&events));
+                    count_unique_sessions(&events)
+                );
             } else {
                 storage.save_events(&events)?;
-                println!("Imported {} events from {} sessions",
+                println!(
+                    "Imported {} events from {} sessions",
                     events.len(),
-                    count_unique_sessions(&events));
+                    count_unique_sessions(&events)
+                );
             }
 
             if let Some(out_path) = out_jsonl {
@@ -56,12 +71,18 @@ pub fn run(cli: Cli) -> Result<()> {
             } else {
                 // Use current project hash
                 let project_root_path = discover_project_root(None)?;
-                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                let current_project_hash =
+                    crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
                 (Some(current_project_hash.leak() as &str), false)
             };
 
             let source_enum = source.as_deref().and_then(parse_source);
-            let sessions = storage.list_sessions(effective_project_hash, source_enum, Some(limit), all_projects)?;
+            let sessions = storage.list_sessions(
+                effective_project_hash,
+                source_enum,
+                Some(limit),
+                all_projects,
+            )?;
 
             if cli.format == "json" {
                 println!("{}", serde_json::to_string_pretty(&sessions)?);
@@ -84,7 +105,9 @@ pub fn run(cli: Cli) -> Result<()> {
             }
 
             if no_tool {
-                events.retain(|e| e.event_type != EventType::ToolCall && e.event_type != EventType::ToolResult);
+                events.retain(|e| {
+                    e.event_type != EventType::ToolCall && e.event_type != EventType::ToolResult
+                });
             }
 
             if let Some(lim) = limit {
@@ -116,7 +139,8 @@ pub fn run(cli: Cli) -> Result<()> {
             } else {
                 // Use current project hash
                 let project_root_path = discover_project_root(None)?;
-                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                let current_project_hash =
+                    crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
                 (Some(current_project_hash.leak() as &str), false)
             };
 
@@ -154,12 +178,14 @@ pub fn run(cli: Cli) -> Result<()> {
             } else {
                 // Use current project hash
                 let project_root_path = discover_project_root(None)?;
-                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                let current_project_hash =
+                    crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
                 (Some(current_project_hash.leak() as &str), false)
             };
 
             let source_enum = source.as_deref().and_then(parse_source);
-            let sessions = storage.list_sessions(effective_project_hash, source_enum, None, all_projects)?;
+            let sessions =
+                storage.list_sessions(effective_project_hash, source_enum, None, all_projects)?;
 
             print_stats(&sessions);
         }
@@ -184,7 +210,8 @@ pub fn run(cli: Cli) -> Result<()> {
             } else {
                 // Use current project hash
                 let project_root_path = discover_project_root(None)?;
-                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                let current_project_hash =
+                    crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
                 (Some(current_project_hash.leak() as &str), false)
             };
 
@@ -221,10 +248,12 @@ pub fn run(cli: Cli) -> Result<()> {
                     println!("{}", "-".repeat(80));
 
                     for (name, provider_config) in &config.providers {
-                        println!("{:<15} {:<10} {}",
+                        println!(
+                            "{:<15} {:<10} {}",
                             name,
                             if provider_config.enabled { "yes" } else { "no" },
-                            provider_config.log_root.display());
+                            provider_config.log_root.display()
+                        );
                     }
                 }
 
@@ -258,22 +287,30 @@ pub fn run(cli: Cli) -> Result<()> {
                         true
                     };
 
-                    config.set_provider(provider.clone(), crate::config::ProviderConfig {
-                        enabled,
-                        log_root: log_root.clone(),
-                    });
+                    config.set_provider(
+                        provider.clone(),
+                        crate::config::ProviderConfig {
+                            enabled,
+                            log_root: log_root.clone(),
+                        },
+                    );
 
                     config.save()?;
 
-                    println!("Set provider '{}': enabled={}, log_root={}",
-                        provider, enabled, log_root.display());
+                    println!(
+                        "Set provider '{}': enabled={}, log_root={}",
+                        provider,
+                        enabled,
+                        log_root.display()
+                    );
                 }
             }
         }
 
         Commands::Project { project_root } => {
             let project_root_path = discover_project_root(project_root.as_deref())?;
-            let project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+            let project_hash =
+                crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
 
             println!("Project root: {}", project_root_path.display());
             println!("Project hash: {}", project_hash);
@@ -282,16 +319,23 @@ pub fn run(cli: Cli) -> Result<()> {
             let config = crate::config::Config::load()?;
             println!("Detected providers:");
             for (name, provider_config) in &config.providers {
-                println!("  {}: {}, log_root = {}",
+                println!(
+                    "  {}: {}, log_root = {}",
                     name,
-                    if provider_config.enabled { "enabled" } else { "disabled" },
-                    provider_config.log_root.display());
+                    if provider_config.enabled {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    },
+                    provider_config.log_root.display()
+                );
             }
         }
 
         Commands::Status { project_root } => {
             let project_root_path = discover_project_root(project_root.as_deref())?;
-            let project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+            let project_hash =
+                crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
 
             println!("Project root: {}", project_root_path.display());
             println!("Project hash: {}", project_hash);
@@ -309,7 +353,9 @@ pub fn run(cli: Cli) -> Result<()> {
                 println!("    log_root: {}", provider_config.log_root.display());
 
                 let (total, matching) = match name.as_str() {
-                    "claude" => count_claude_sessions(&provider_config.log_root, &project_root_path),
+                    "claude" => {
+                        count_claude_sessions(&provider_config.log_root, &project_root_path)
+                    }
                     "codex" => count_codex_sessions(&provider_config.log_root, &project_root_path),
                     "gemini" => count_gemini_sessions(&provider_config.log_root, &project_hash),
                     _ => (0, 0),

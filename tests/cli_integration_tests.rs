@@ -1,8 +1,8 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use tempfile::TempDir;
 use std::fs;
 use std::path::Path;
+use tempfile::TempDir;
 
 #[test]
 fn test_cli_version() {
@@ -30,9 +30,12 @@ fn test_import_claude_dry_run() {
     let temp_dir = TempDir::new().unwrap();
 
     cmd.arg("import")
-        .arg("--source").arg("claude")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("claude")
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--dry-run")
         .assert()
         .success()
@@ -45,16 +48,22 @@ fn test_import_claude_actual() {
     let temp_dir = TempDir::new().unwrap();
 
     cmd.arg("import")
-        .arg("--source").arg("claude")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("claude")
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success();
 
     // Verify events were written
     let data_dir = temp_dir.path();
-    assert!(data_dir.join("projects").exists(), "projects directory should be created");
+    assert!(
+        data_dir.join("projects").exists(),
+        "projects directory should be created"
+    );
 }
 
 #[test]
@@ -63,9 +72,12 @@ fn test_import_codex() {
     let temp_dir = TempDir::new().unwrap();
 
     cmd.arg("import")
-        .arg("--source").arg("codex")
-        .arg("--root").arg("tests/fixtures/codex")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("codex")
+        .arg("--root")
+        .arg("tests/fixtures/codex")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success();
@@ -77,9 +89,12 @@ fn test_import_gemini() {
     let temp_dir = TempDir::new().unwrap();
 
     cmd.arg("import")
-        .arg("--source").arg("gemini")
-        .arg("--root").arg("tests/fixtures/gemini")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("gemini")
+        .arg("--root")
+        .arg("tests/fixtures/gemini")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success();
@@ -93,9 +108,12 @@ fn test_list_sessions() {
     let mut import_cmd = Command::cargo_bin("agtrace").unwrap();
     import_cmd
         .arg("import")
-        .arg("--source").arg("claude")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("claude")
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success();
@@ -104,7 +122,8 @@ fn test_list_sessions() {
     let mut list_cmd = Command::cargo_bin("agtrace").unwrap();
     list_cmd
         .arg("list")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success()
@@ -119,9 +138,12 @@ fn test_list_sessions_json_format() {
     let mut import_cmd = Command::cargo_bin("agtrace").unwrap();
     import_cmd
         .arg("import")
-        .arg("--source").arg("claude")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("claude")
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success();
@@ -130,8 +152,10 @@ fn test_list_sessions_json_format() {
     let mut list_cmd = Command::cargo_bin("agtrace").unwrap();
     list_cmd
         .arg("list")
-        .arg("--data-dir").arg(temp_dir.path())
-        .arg("--format").arg("json")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
+        .arg("--format")
+        .arg("json")
         .arg("--all-projects")
         .assert()
         .success()
@@ -147,9 +171,12 @@ fn test_show_session() {
     let mut import_cmd = Command::cargo_bin("agtrace").unwrap();
     import_cmd
         .arg("import")
-        .arg("--source").arg("claude")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("claude")
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success();
@@ -158,8 +185,10 @@ fn test_show_session() {
     let mut list_cmd = Command::cargo_bin("agtrace").unwrap();
     let list_output = list_cmd
         .arg("list")
-        .arg("--data-dir").arg(temp_dir.path())
-        .arg("--format").arg("json")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
+        .arg("--format")
+        .arg("json")
         .arg("--all-projects")
         .output()
         .unwrap();
@@ -172,11 +201,14 @@ fn test_show_session() {
     show_cmd
         .arg("show")
         .arg(session_id)
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .assert()
         .success()
-        .stdout(predicate::str::contains("user_message")
-            .or(predicate::str::contains("assistant_message")));
+        .stdout(
+            predicate::str::contains("user_message")
+                .or(predicate::str::contains("assistant_message")),
+        );
 }
 
 #[test]
@@ -187,9 +219,12 @@ fn test_show_session_with_filters() {
     let mut import_cmd = Command::cargo_bin("agtrace").unwrap();
     import_cmd
         .arg("import")
-        .arg("--source").arg("claude")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("claude")
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--all-projects")
         .assert()
         .success();
@@ -198,8 +233,10 @@ fn test_show_session_with_filters() {
     let mut list_cmd = Command::cargo_bin("agtrace").unwrap();
     let list_output = list_cmd
         .arg("list")
-        .arg("--data-dir").arg(temp_dir.path())
-        .arg("--format").arg("json")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
+        .arg("--format")
+        .arg("json")
         .arg("--all-projects")
         .output()
         .unwrap();
@@ -212,7 +249,8 @@ fn test_show_session_with_filters() {
     show_cmd
         .arg("show")
         .arg(session_id)
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .arg("--no-reasoning")
         .assert()
         .success();
@@ -224,8 +262,10 @@ fn test_import_missing_source() {
     let temp_dir = TempDir::new().unwrap();
 
     cmd.arg("import")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .assert()
         .failure();
 }
@@ -236,9 +276,12 @@ fn test_import_invalid_source() {
     let temp_dir = TempDir::new().unwrap();
 
     cmd.arg("import")
-        .arg("--source").arg("invalid_source")
-        .arg("--root").arg("tests/fixtures/claude")
-        .arg("--data-dir").arg(temp_dir.path())
+        .arg("--source")
+        .arg("invalid_source")
+        .arg("--root")
+        .arg("tests/fixtures/claude")
+        .arg("--data-dir")
+        .arg(temp_dir.path())
         .assert()
         .failure();
 }

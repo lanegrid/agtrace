@@ -32,9 +32,14 @@ impl Storage {
 
         // Write each group to a file
         for ((project_hash, session_id), group) in grouped {
-            let sessions_dir = self.data_dir.join("projects").join(&project_hash).join("sessions");
-            fs::create_dir_all(&sessions_dir)
-                .with_context(|| format!("Failed to create directory: {}", sessions_dir.display()))?;
+            let sessions_dir = self
+                .data_dir
+                .join("projects")
+                .join(&project_hash)
+                .join("sessions");
+            fs::create_dir_all(&sessions_dir).with_context(|| {
+                format!("Failed to create directory: {}", sessions_dir.display())
+            })?;
 
             let file_path = sessions_dir.join(format!("{}.jsonl", session_id));
 
@@ -104,7 +109,9 @@ impl Storage {
             .into_iter()
             .filter_map(|e| e.ok())
         {
-            if entry.file_type().is_file() && entry.path().extension().map_or(false, |e| e == "jsonl") {
+            if entry.file_type().is_file()
+                && entry.path().extension().map_or(false, |e| e == "jsonl")
+            {
                 let events = self.read_jsonl_file(entry.path())?;
 
                 if events.is_empty() {
@@ -145,15 +152,9 @@ impl Storage {
                     .filter(|e| e.event_type == EventType::UserMessage)
                     .count();
 
-                let tokens_input_total: u64 = events
-                    .iter()
-                    .filter_map(|e| e.tokens_input)
-                    .sum();
+                let tokens_input_total: u64 = events.iter().filter_map(|e| e.tokens_input).sum();
 
-                let tokens_output_total: u64 = events
-                    .iter()
-                    .filter_map(|e| e.tokens_output)
-                    .sum();
+                let tokens_output_total: u64 = events.iter().filter_map(|e| e.tokens_output).sum();
 
                 summaries.push(SessionSummary {
                     session_id,
@@ -203,7 +204,9 @@ impl Storage {
             .into_iter()
             .filter_map(|e| e.ok())
         {
-            if entry.file_type().is_file() && entry.path().extension().map_or(false, |e| e == "jsonl") {
+            if entry.file_type().is_file()
+                && entry.path().extension().map_or(false, |e| e == "jsonl")
+            {
                 let events = self.read_jsonl_file(entry.path())?;
 
                 for event in events {

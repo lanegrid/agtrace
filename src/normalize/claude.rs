@@ -24,7 +24,10 @@ pub fn normalize_claude_file(
         records.push(v);
     }
 
-    Ok(normalize_claude_stream(records.into_iter(), project_root_override))
+    Ok(normalize_claude_stream(
+        records.into_iter(),
+        project_root_override,
+    ))
 }
 
 pub fn normalize_claude_stream<I>(
@@ -109,7 +112,10 @@ where
                             }
                         }
 
-                        ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        ev.model = message
+                            .get("model")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
                         ev.raw = rec.clone();
 
                         last_user_event_id = ev.event_id.clone();
@@ -133,18 +139,25 @@ where
                                         );
 
                                         ev.session_id = session_id.clone();
-                                        ev.event_id = Some(format!("{}#thinking", message_id.as_ref().unwrap_or(&"".to_string())));
+                                        ev.event_id = Some(format!(
+                                            "{}#thinking",
+                                            message_id.as_ref().unwrap_or(&"".to_string())
+                                        ));
                                         ev.parent_event_id = last_user_event_id.clone();
                                         ev.role = Some(Role::Assistant);
                                         ev.channel = Some(Channel::Chat);
                                         ev.project_root = project_root_str.clone();
 
-                                        ev.text = item.get("thinking")
+                                        ev.text = item
+                                            .get("thinking")
                                             .or_else(|| item.get("text"))
                                             .and_then(|v| v.as_str())
                                             .map(|s| truncate(s, 2000));
 
-                                        ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        ev.model = message
+                                            .get("model")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
                                         ev.raw = item.clone();
 
                                         events.push(ev);
@@ -159,29 +172,41 @@ where
                                         );
 
                                         ev.session_id = session_id.clone();
-                                        ev.event_id = item.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        ev.event_id = item
+                                            .get("id")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
                                         ev.parent_event_id = last_user_event_id.clone();
                                         ev.role = Some(Role::Assistant);
                                         ev.project_root = project_root_str.clone();
 
-                                        ev.tool_name = item.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        ev.tool_name = item
+                                            .get("name")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
                                         ev.tool_call_id = ev.event_id.clone();
 
                                         // Determine channel based on tool name
                                         ev.channel = match ev.tool_name.as_deref() {
                                             Some("Bash") => Some(Channel::Terminal),
                                             Some("Edit") | Some("Write") => Some(Channel::Editor),
-                                            Some("Read") | Some("Glob") => Some(Channel::Filesystem),
+                                            Some("Read") | Some("Glob") => {
+                                                Some(Channel::Filesystem)
+                                            }
                                             _ => Some(Channel::Chat),
                                         };
 
                                         // Summarize input
                                         if let Some(input) = item.get("input") {
-                                            let input_str = serde_json::to_string(input).unwrap_or_default();
+                                            let input_str =
+                                                serde_json::to_string(input).unwrap_or_default();
                                             ev.text = Some(truncate(&input_str, 500));
                                         }
 
-                                        ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        ev.model = message
+                                            .get("model")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
                                         ev.raw = item.clone();
 
                                         events.push(ev);
@@ -196,13 +221,21 @@ where
                                         );
 
                                         ev.session_id = session_id.clone();
-                                        ev.event_id = Some(format!("{}#result", item.get("tool_use_id").and_then(|v| v.as_str()).unwrap_or("")));
+                                        ev.event_id = Some(format!(
+                                            "{}#result",
+                                            item.get("tool_use_id")
+                                                .and_then(|v| v.as_str())
+                                                .unwrap_or("")
+                                        ));
                                         ev.parent_event_id = last_user_event_id.clone();
                                         ev.role = Some(Role::Assistant);
                                         ev.channel = Some(Channel::Terminal);
                                         ev.project_root = project_root_str.clone();
 
-                                        ev.tool_call_id = item.get("tool_use_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        ev.tool_call_id = item
+                                            .get("tool_use_id")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
 
                                         // Extract content/output
                                         if let Some(content) = item.get("content") {
@@ -230,15 +263,25 @@ where
                                         ev.channel = Some(Channel::Chat);
                                         ev.project_root = project_root_str.clone();
 
-                                        ev.text = item.get("text").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        ev.text = item
+                                            .get("text")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
 
-                                        ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                        ev.model = message
+                                            .get("model")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string());
 
                                         // Extract token usage
                                         if let Some(usage) = message.get("usage") {
-                                            ev.tokens_input = usage.get("input_tokens").and_then(|v| v.as_u64());
-                                            ev.tokens_output = usage.get("output_tokens").and_then(|v| v.as_u64());
-                                            ev.tokens_cached = usage.get("cache_read_input_tokens").and_then(|v| v.as_u64());
+                                            ev.tokens_input =
+                                                usage.get("input_tokens").and_then(|v| v.as_u64());
+                                            ev.tokens_output =
+                                                usage.get("output_tokens").and_then(|v| v.as_u64());
+                                            ev.tokens_cached = usage
+                                                .get("cache_read_input_tokens")
+                                                .and_then(|v| v.as_u64());
                                         }
 
                                         ev.raw = rec.clone();
@@ -264,11 +307,16 @@ where
                             ev.project_root = project_root_str.clone();
                             ev.text = Some(text.to_string());
 
-                            ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                            ev.model = message
+                                .get("model")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
 
                             if let Some(usage) = message.get("usage") {
-                                ev.tokens_input = usage.get("input_tokens").and_then(|v| v.as_u64());
-                                ev.tokens_output = usage.get("output_tokens").and_then(|v| v.as_u64());
+                                ev.tokens_input =
+                                    usage.get("input_tokens").and_then(|v| v.as_u64());
+                                ev.tokens_output =
+                                    usage.get("output_tokens").and_then(|v| v.as_u64());
                             }
 
                             ev.raw = rec.clone();
@@ -288,7 +336,10 @@ where
                     );
 
                     ev.session_id = session_id.clone();
-                    ev.event_id = rec.get("uuid").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    ev.event_id = rec
+                        .get("uuid")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
                     ev.parent_event_id = None;
                     ev.role = Some(Role::User);
                     ev.channel = Some(Channel::Chat);
@@ -340,18 +391,25 @@ where
                                     );
 
                                     ev.session_id = session_id.clone();
-                                    ev.event_id = Some(format!("{}#thinking", message_id.as_ref().unwrap_or(&"".to_string())));
+                                    ev.event_id = Some(format!(
+                                        "{}#thinking",
+                                        message_id.as_ref().unwrap_or(&"".to_string())
+                                    ));
                                     ev.parent_event_id = last_user_event_id.clone();
                                     ev.role = Some(Role::Assistant);
                                     ev.channel = Some(Channel::Chat);
                                     ev.project_root = project_root_str.clone();
 
-                                    ev.text = item.get("thinking")
+                                    ev.text = item
+                                        .get("thinking")
                                         .or_else(|| item.get("text"))
                                         .and_then(|v| v.as_str())
                                         .map(|s| truncate(s, 2000));
 
-                                    ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.model = message
+                                        .get("model")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
                                     ev.raw = item.clone();
 
                                     events.push(ev);
@@ -365,12 +423,18 @@ where
                                     );
 
                                     ev.session_id = session_id.clone();
-                                    ev.event_id = item.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.event_id = item
+                                        .get("id")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
                                     ev.parent_event_id = last_user_event_id.clone();
                                     ev.role = Some(Role::Assistant);
                                     ev.project_root = project_root_str.clone();
 
-                                    ev.tool_name = item.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.tool_name = item
+                                        .get("name")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
                                     ev.tool_call_id = ev.event_id.clone();
 
                                     ev.channel = match ev.tool_name.as_deref() {
@@ -381,11 +445,15 @@ where
                                     };
 
                                     if let Some(input) = item.get("input") {
-                                        let input_str = serde_json::to_string(input).unwrap_or_default();
+                                        let input_str =
+                                            serde_json::to_string(input).unwrap_or_default();
                                         ev.text = Some(truncate(&input_str, 500));
                                     }
 
-                                    ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.model = message
+                                        .get("model")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
                                     ev.raw = item.clone();
 
                                     events.push(ev);
@@ -399,13 +467,21 @@ where
                                     );
 
                                     ev.session_id = session_id.clone();
-                                    ev.event_id = Some(format!("{}#result", item.get("tool_use_id").and_then(|v| v.as_str()).unwrap_or("")));
+                                    ev.event_id = Some(format!(
+                                        "{}#result",
+                                        item.get("tool_use_id")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("")
+                                    ));
                                     ev.parent_event_id = last_user_event_id.clone();
                                     ev.role = Some(Role::Assistant);
                                     ev.channel = Some(Channel::Terminal);
                                     ev.project_root = project_root_str.clone();
 
-                                    ev.tool_call_id = item.get("tool_use_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.tool_call_id = item
+                                        .get("tool_use_id")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
 
                                     if let Some(content) = item.get("content") {
                                         if let Some(s) = content.as_str() {
@@ -431,14 +507,24 @@ where
                                     ev.channel = Some(Channel::Chat);
                                     ev.project_root = project_root_str.clone();
 
-                                    ev.text = item.get("text").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.text = item
+                                        .get("text")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
 
-                                    ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.model = message
+                                        .get("model")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string());
 
                                     if let Some(usage) = message.get("usage") {
-                                        ev.tokens_input = usage.get("input_tokens").and_then(|v| v.as_u64());
-                                        ev.tokens_output = usage.get("output_tokens").and_then(|v| v.as_u64());
-                                        ev.tokens_cached = usage.get("cache_read_input_tokens").and_then(|v| v.as_u64());
+                                        ev.tokens_input =
+                                            usage.get("input_tokens").and_then(|v| v.as_u64());
+                                        ev.tokens_output =
+                                            usage.get("output_tokens").and_then(|v| v.as_u64());
+                                        ev.tokens_cached = usage
+                                            .get("cache_read_input_tokens")
+                                            .and_then(|v| v.as_u64());
                                     }
 
                                     ev.raw = rec.clone();
@@ -463,7 +549,10 @@ where
                         ev.project_root = project_root_str.clone();
                         ev.text = Some(text.to_string());
 
-                        ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                        ev.model = message
+                            .get("model")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
 
                         if let Some(usage) = message.get("usage") {
                             ev.tokens_input = usage.get("input_tokens").and_then(|v| v.as_u64());
@@ -491,8 +580,14 @@ where
                     ev.channel = Some(Channel::Terminal);
                     ev.project_root = project_root_str.clone();
 
-                    ev.tool_call_id = result.get("tool_use_id").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    ev.event_id = Some(format!("{}#result", ev.tool_call_id.as_ref().unwrap_or(&"".to_string())));
+                    ev.tool_call_id = result
+                        .get("tool_use_id")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    ev.event_id = Some(format!(
+                        "{}#result",
+                        ev.tool_call_id.as_ref().unwrap_or(&"".to_string())
+                    ));
 
                     // Status
                     if let Some(status) = result.get("status").and_then(|v| v.as_str()) {

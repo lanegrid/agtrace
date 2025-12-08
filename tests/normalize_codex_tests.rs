@@ -16,7 +16,10 @@ fn test_parse_codex_simple_session() {
     assert_eq!(user_event.source, Source::Codex);
     assert_eq!(user_event.event_type, EventType::UserMessage);
     assert_eq!(user_event.role, Some(Role::User));
-    assert_eq!(user_event.parent_event_id, None, "User message should have no parent");
+    assert_eq!(
+        user_event.parent_event_id, None,
+        "User message should have no parent"
+    );
     assert_eq!(user_event.session_id, Some(session_id.to_string()));
     assert!(user_event.text.as_ref().unwrap().contains("summarize"));
 }
@@ -54,8 +57,14 @@ fn test_codex_tool_call_and_result() {
     assert_eq!(tool_result.tool_status, Some(ToolStatus::Success));
 
     // Verify event_ids are different but tool_call_id is the same
-    assert_ne!(tool_call.event_id, tool_result.event_id, "tool_call and tool_result should have different event_ids");
-    assert_eq!(tool_call.tool_call_id, tool_result.tool_call_id, "tool_call and tool_result should share the same tool_call_id");
+    assert_ne!(
+        tool_call.event_id, tool_result.event_id,
+        "tool_call and tool_result should have different event_ids"
+    );
+    assert_eq!(
+        tool_call.tool_call_id, tool_result.tool_call_id,
+        "tool_call and tool_result should share the same tool_call_id"
+    );
 }
 
 #[test]
@@ -92,7 +101,8 @@ fn test_codex_token_usage() {
     let events = normalize_codex_file(path, "test-session", None).unwrap();
 
     // Tool result event should have token info from last_token_usage
-    let tool_result = events.iter()
+    let tool_result = events
+        .iter()
         .find(|e| e.event_type == EventType::ToolResult)
         .expect("Should have tool_result");
 
@@ -107,7 +117,8 @@ fn test_codex_assistant_message() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
     let events = normalize_codex_file(path, "test-session", None).unwrap();
 
-    let assistant_msg = events.iter()
+    let assistant_msg = events
+        .iter()
         .find(|e| e.event_type == EventType::AssistantMessage)
         .expect("Should have assistant message");
 

@@ -28,14 +28,27 @@ pub fn import_vendor_logs(
         }
 
         for (provider_name, provider_config) in enabled_providers {
-            println!("Importing from {} (log_root: {})", provider_name, provider_config.log_root.display());
+            println!(
+                "Importing from {} (log_root: {})",
+                provider_name,
+                provider_config.log_root.display()
+            );
             match provider_name.as_str() {
                 "claude" => {
-                    let events = import_claude_directory(&provider_config.log_root, project_root_override, all_projects)?;
+                    let events = import_claude_directory(
+                        &provider_config.log_root,
+                        project_root_override,
+                        all_projects,
+                    )?;
                     all_events.extend(events);
                 }
                 "codex" => {
-                    let events = import_codex_directory(&provider_config.log_root, project_root_override, session_id_prefix, all_projects)?;
+                    let events = import_codex_directory(
+                        &provider_config.log_root,
+                        project_root_override,
+                        session_id_prefix,
+                        all_projects,
+                    )?;
                     all_events.extend(events);
                 }
                 "gemini" => {
@@ -58,7 +71,10 @@ pub fn import_vendor_logs(
         if let Some(provider_config) = config.providers.get(source) {
             provider_config.log_root.clone()
         } else {
-            anyhow::bail!("Provider '{}' not found in config. Run 'agtrace providers detect' first.", source);
+            anyhow::bail!(
+                "Provider '{}' not found in config. Run 'agtrace providers detect' first.",
+                source
+            );
         }
     };
 
@@ -69,7 +85,8 @@ pub fn import_vendor_logs(
                 all_events.extend(events);
             }
             "codex" => {
-                let filename = root_path.file_name()
+                let filename = root_path
+                    .file_name()
                     .ok_or_else(|| anyhow::anyhow!("Invalid file path"))?
                     .to_string_lossy();
                 let session_id_base = if filename.ends_with(".jsonl") {
@@ -82,7 +99,8 @@ pub fn import_vendor_logs(
                     .map(|p| format!("{}{}", p, session_id_base))
                     .unwrap_or_else(|| session_id_base.to_string());
 
-                let events = codex::normalize_codex_file(&root_path, &session_id, project_root_override)?;
+                let events =
+                    codex::normalize_codex_file(&root_path, &session_id, project_root_override)?;
                 all_events.extend(events);
             }
             "gemini" => {
@@ -94,10 +112,16 @@ pub fn import_vendor_logs(
     } else if root_path.is_dir() {
         match source {
             "claude" => {
-                all_events = import_claude_directory(&root_path, project_root_override, all_projects)?;
+                all_events =
+                    import_claude_directory(&root_path, project_root_override, all_projects)?;
             }
             "codex" => {
-                all_events = import_codex_directory(&root_path, project_root_override, session_id_prefix, all_projects)?;
+                all_events = import_codex_directory(
+                    &root_path,
+                    project_root_override,
+                    session_id_prefix,
+                    all_projects,
+                )?;
             }
             "gemini" => {
                 all_events = import_gemini_directory(&root_path, all_projects)?;
@@ -105,7 +129,10 @@ pub fn import_vendor_logs(
             _ => anyhow::bail!("Unknown source: {}", source),
         }
     } else {
-        anyhow::bail!("Root path does not exist or is not accessible: {}", root_path.display());
+        anyhow::bail!(
+            "Root path does not exist or is not accessible: {}",
+            root_path.display()
+        );
     }
 
     Ok(all_events)
@@ -169,7 +196,10 @@ fn import_claude_directory(
                         continue;
                     }
                 } else {
-                    eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
+                    eprintln!(
+                        "Warning: Could not extract cwd from {}, skipping",
+                        entry.path().display()
+                    );
                     continue;
                 }
             }
@@ -206,10 +236,7 @@ fn import_codex_directory(
         Some(discover_project_root(None)?)
     };
 
-    for entry in WalkDir::new(root)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
+    for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() {
             continue;
         }
@@ -236,7 +263,10 @@ fn import_codex_directory(
                     continue;
                 }
             } else {
-                eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
+                eprintln!(
+                    "Warning: Could not extract cwd from {}, skipping",
+                    entry.path().display()
+                );
                 continue;
             }
         }
@@ -274,7 +304,7 @@ fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<Age
     } else {
         let project_root = discover_project_root(None)?;
         Some(crate::utils::project_hash_from_root(
-            &project_root.to_string_lossy()
+            &project_root.to_string_lossy(),
         ))
     };
 
@@ -285,7 +315,11 @@ fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<Age
             // Process only this specific project directory
             let logs_json_path = project_specific_dir.join("logs.json");
             if logs_json_path.exists() {
-                process_gemini_project_directory(&project_specific_dir, &logs_json_path, &mut all_events)?;
+                process_gemini_project_directory(
+                    &project_specific_dir,
+                    &logs_json_path,
+                    &mut all_events,
+                )?;
             }
         }
         // If directory doesn't exist, just return empty results (no warning needed)
@@ -303,9 +337,7 @@ fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<Age
             continue;
         }
 
-        let dir_name = path.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
+        let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         if !is_64_char_hex(dir_name) {
             continue;
@@ -332,7 +364,11 @@ fn process_gemini_project_directory(
             all_events.extend(events);
         }
         Err(e) => {
-            eprintln!("Warning: Failed to parse {}: {}", logs_json_path.display(), e);
+            eprintln!(
+                "Warning: Failed to parse {}: {}",
+                logs_json_path.display(),
+                e
+            );
         }
     }
 
@@ -342,9 +378,8 @@ fn process_gemini_project_directory(
             for chat_entry in chat_entries {
                 if let Ok(chat_entry) = chat_entry {
                     let chat_path = chat_entry.path();
-                    let chat_filename = chat_path.file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("");
+                    let chat_filename =
+                        chat_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                     if chat_path.is_file()
                         && chat_filename.starts_with("session-")
@@ -355,7 +390,11 @@ fn process_gemini_project_directory(
                                 all_events.extend(events);
                             }
                             Err(e) => {
-                                eprintln!("Warning: Failed to parse {}: {}", chat_path.display(), e);
+                                eprintln!(
+                                    "Warning: Failed to parse {}: {}",
+                                    chat_path.display(),
+                                    e
+                                );
                                 continue;
                             }
                         }
@@ -390,9 +429,8 @@ pub fn count_claude_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usi
                     total_sessions.insert(session_id.clone());
 
                     // Check if this session matches the project
-                    let target_hash = crate::utils::project_hash_from_root(
-                        &project_root.to_string_lossy()
-                    );
+                    let target_hash =
+                        crate::utils::project_hash_from_root(&project_root.to_string_lossy());
                     if &event.project_hash == &target_hash {
                         matching_sessions.insert(session_id.clone());
                     }
@@ -443,9 +481,8 @@ pub fn count_codex_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usiz
                     total_sessions.insert(session_id.clone());
 
                     // Check if this session matches the project
-                    let target_hash = crate::utils::project_hash_from_root(
-                        &project_root.to_string_lossy()
-                    );
+                    let target_hash =
+                        crate::utils::project_hash_from_root(&project_root.to_string_lossy());
                     if &event.project_hash == &target_hash {
                         matching_sessions.insert(session_id.clone());
                     }
@@ -503,9 +540,8 @@ pub fn count_gemini_sessions(log_root: &PathBuf, target_project_hash: &str) -> (
                         for chat_entry in chat_entries {
                             if let Ok(chat_entry) = chat_entry {
                                 let chat_path = chat_entry.path();
-                                let chat_filename = chat_path.file_name()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or("");
+                                let chat_filename =
+                                    chat_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
                                 if chat_path.is_file()
                                     && chat_filename.starts_with("session-")

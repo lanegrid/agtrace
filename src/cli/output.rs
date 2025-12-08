@@ -3,8 +3,16 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn print_sessions_table(sessions: &[SessionSummary]) {
-    println!("{:<40} {:<15} {:<20} {:<25} {:<8} {:<8} {:<20}",
-        "SESSION ID", "SOURCE", "PROJECT HASH", "START TIME", "EVENTS", "USER MSG", "TOKENS(in/out)");
+    println!(
+        "{:<40} {:<15} {:<20} {:<25} {:<8} {:<8} {:<20}",
+        "SESSION ID",
+        "SOURCE",
+        "PROJECT HASH",
+        "START TIME",
+        "EVENTS",
+        "USER MSG",
+        "TOKENS(in/out)"
+    );
     println!("{}", "-".repeat(150));
 
     for session in sessions {
@@ -15,7 +23,8 @@ pub fn print_sessions_table(sessions: &[SessionSummary]) {
             session.project_hash.clone()
         };
 
-        println!("{:<40} {:<15} {:<20} {:<25} {:<8} {:<8} {:>9} / {:<9}",
+        println!(
+            "{:<40} {:<15} {:<20} {:<25} {:<8} {:<8} {:>9} / {:<9}",
             session.session_id,
             source_str,
             project_short,
@@ -23,7 +32,8 @@ pub fn print_sessions_table(sessions: &[SessionSummary]) {
             session.event_count,
             session.user_message_count,
             format_number(session.tokens_input_total),
-            format_number(session.tokens_output_total));
+            format_number(session.tokens_output_total)
+        );
     }
 }
 
@@ -41,12 +51,12 @@ pub fn print_events_timeline(events: &[AgentEventV1]) {
             EventType::Meta => "meta",
             EventType::Log => "log",
         };
-        let role_str = event.role.map(|r| format!("{:?}", r)).unwrap_or_else(|| "".to_string());
+        let role_str = event
+            .role
+            .map(|r| format!("{:?}", r))
+            .unwrap_or_else(|| "".to_string());
 
-        println!("[{}] {:<20} (role={})",
-            event.ts,
-            event_type_str,
-            role_str);
+        println!("[{}] {:<20} (role={})", event.ts, event_type_str, role_str);
 
         if let Some(text) = &event.text {
             let preview = if text.chars().count() > 100 {
@@ -80,7 +90,10 @@ pub fn print_stats(sessions: &[SessionSummary]) {
     println!("Total User Messages:  {}", total_user_msgs);
     println!("Total Tokens Input:   {}", format_number(total_tokens_in));
     println!("Total Tokens Output:  {}", format_number(total_tokens_out));
-    println!("Total Tokens:         {}", format_number(total_tokens_in + total_tokens_out));
+    println!(
+        "Total Tokens:         {}",
+        format_number(total_tokens_in + total_tokens_out)
+    );
 }
 
 pub fn write_jsonl(path: &PathBuf, events: &[AgentEventV1]) -> Result<()> {
@@ -115,11 +128,24 @@ pub fn write_csv(path: &PathBuf, events: &[AgentEventV1]) -> Result<()> {
             event.session_id.as_deref().unwrap_or(""),
             event.event_id.as_deref().unwrap_or(""),
             &format!("{:?}", event.event_type),
-            event.role.as_ref().map(|r| format!("{:?}", r)).as_deref().unwrap_or(""),
+            event
+                .role
+                .as_ref()
+                .map(|r| format!("{:?}", r))
+                .as_deref()
+                .unwrap_or(""),
             event.text.as_deref().unwrap_or(""),
             event.tool_name.as_deref().unwrap_or(""),
-            event.tokens_input.map(|t| t.to_string()).as_deref().unwrap_or(""),
-            event.tokens_output.map(|t| t.to_string()).as_deref().unwrap_or(""),
+            event
+                .tokens_input
+                .map(|t| t.to_string())
+                .as_deref()
+                .unwrap_or(""),
+            event
+                .tokens_output
+                .map(|t| t.to_string())
+                .as_deref()
+                .unwrap_or(""),
         ])?;
     }
 

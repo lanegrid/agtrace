@@ -2,11 +2,7 @@ use agtrace::model::*;
 use agtrace::storage::*;
 use tempfile::TempDir;
 
-fn create_test_event(
-    session_id: &str,
-    event_type: EventType,
-    ts: &str,
-) -> AgentEventV1 {
+fn create_test_event(session_id: &str, event_type: EventType, ts: &str) -> AgentEventV1 {
     let mut event = AgentEventV1::new(
         Source::ClaudeCode,
         "test-hash-123".to_string(),
@@ -24,8 +20,16 @@ fn test_storage_save_and_load_events() {
     let storage = Storage::new(temp_dir.path().to_path_buf());
 
     let events = vec![
-        create_test_event("session-1", EventType::UserMessage, "2025-11-26T12:51:28.000Z"),
-        create_test_event("session-1", EventType::AssistantMessage, "2025-11-26T12:51:29.000Z"),
+        create_test_event(
+            "session-1",
+            EventType::UserMessage,
+            "2025-11-26T12:51:28.000Z",
+        ),
+        create_test_event(
+            "session-1",
+            EventType::AssistantMessage,
+            "2025-11-26T12:51:29.000Z",
+        ),
     ];
 
     // Save events
@@ -43,13 +47,17 @@ fn test_storage_multiple_sessions() {
     let temp_dir = TempDir::new().unwrap();
     let storage = Storage::new(temp_dir.path().to_path_buf());
 
-    let events1 = vec![
-        create_test_event("session-1", EventType::UserMessage, "2025-11-26T12:51:28.000Z"),
-    ];
+    let events1 = vec![create_test_event(
+        "session-1",
+        EventType::UserMessage,
+        "2025-11-26T12:51:28.000Z",
+    )];
 
-    let events2 = vec![
-        create_test_event("session-2", EventType::UserMessage, "2025-11-26T13:00:00.000Z"),
-    ];
+    let events2 = vec![create_test_event(
+        "session-2",
+        EventType::UserMessage,
+        "2025-11-26T13:00:00.000Z",
+    )];
 
     storage.save_events(&events1).unwrap();
     storage.save_events(&events2).unwrap();
@@ -70,13 +78,23 @@ fn test_storage_list_sessions() {
     let storage = Storage::new(temp_dir.path().to_path_buf());
 
     let events1 = vec![
-        create_test_event("session-1", EventType::UserMessage, "2025-11-26T12:51:28.000Z"),
-        create_test_event("session-1", EventType::AssistantMessage, "2025-11-26T12:51:29.000Z"),
+        create_test_event(
+            "session-1",
+            EventType::UserMessage,
+            "2025-11-26T12:51:28.000Z",
+        ),
+        create_test_event(
+            "session-1",
+            EventType::AssistantMessage,
+            "2025-11-26T12:51:29.000Z",
+        ),
     ];
 
-    let events2 = vec![
-        create_test_event("session-2", EventType::UserMessage, "2025-11-26T13:00:00.000Z"),
-    ];
+    let events2 = vec![create_test_event(
+        "session-2",
+        EventType::UserMessage,
+        "2025-11-26T13:00:00.000Z",
+    )];
 
     storage.save_events(&events1).unwrap();
     storage.save_events(&events2).unwrap();
@@ -86,7 +104,8 @@ fn test_storage_list_sessions() {
     assert_eq!(sessions.len(), 2);
 
     // Verify session summaries
-    let session1 = sessions.iter()
+    let session1 = sessions
+        .iter()
         .find(|s| s.session_id == "session-1")
         .expect("Should find session-1");
     assert_eq!(session1.event_count, 2);
@@ -98,21 +117,33 @@ fn test_storage_filter_by_source() {
     let temp_dir = TempDir::new().unwrap();
     let storage = Storage::new(temp_dir.path().to_path_buf());
 
-    let mut event1 = create_test_event("session-1", EventType::UserMessage, "2025-11-26T12:51:28.000Z");
+    let mut event1 = create_test_event(
+        "session-1",
+        EventType::UserMessage,
+        "2025-11-26T12:51:28.000Z",
+    );
     event1.source = Source::ClaudeCode;
 
-    let mut event2 = create_test_event("session-2", EventType::UserMessage, "2025-11-26T13:00:00.000Z");
+    let mut event2 = create_test_event(
+        "session-2",
+        EventType::UserMessage,
+        "2025-11-26T13:00:00.000Z",
+    );
     event2.source = Source::Codex;
 
     storage.save_events(&vec![event1]).unwrap();
     storage.save_events(&vec![event2]).unwrap();
 
     // Filter by source
-    let claude_sessions = storage.list_sessions(None, Some(Source::ClaudeCode), None, true).unwrap();
+    let claude_sessions = storage
+        .list_sessions(None, Some(Source::ClaudeCode), None, true)
+        .unwrap();
     assert_eq!(claude_sessions.len(), 1);
     assert_eq!(claude_sessions[0].source, Source::ClaudeCode);
 
-    let codex_sessions = storage.list_sessions(None, Some(Source::Codex), None, true).unwrap();
+    let codex_sessions = storage
+        .list_sessions(None, Some(Source::Codex), None, true)
+        .unwrap();
     assert_eq!(codex_sessions.len(), 1);
     assert_eq!(codex_sessions[0].source, Source::Codex);
 }
@@ -122,11 +153,19 @@ fn test_storage_session_summary_tokens() {
     let temp_dir = TempDir::new().unwrap();
     let storage = Storage::new(temp_dir.path().to_path_buf());
 
-    let mut event1 = create_test_event("session-1", EventType::UserMessage, "2025-11-26T12:51:28.000Z");
+    let mut event1 = create_test_event(
+        "session-1",
+        EventType::UserMessage,
+        "2025-11-26T12:51:28.000Z",
+    );
     event1.tokens_input = Some(100);
     event1.tokens_output = Some(50);
 
-    let mut event2 = create_test_event("session-1", EventType::AssistantMessage, "2025-11-26T12:51:29.000Z");
+    let mut event2 = create_test_event(
+        "session-1",
+        EventType::AssistantMessage,
+        "2025-11-26T12:51:29.000Z",
+    );
     event2.tokens_input = Some(200);
     event2.tokens_output = Some(150);
 
@@ -145,16 +184,26 @@ fn test_storage_find_events_by_text() {
     let temp_dir = TempDir::new().unwrap();
     let storage = Storage::new(temp_dir.path().to_path_buf());
 
-    let mut event1 = create_test_event("session-1", EventType::UserMessage, "2025-11-26T12:51:28.000Z");
+    let mut event1 = create_test_event(
+        "session-1",
+        EventType::UserMessage,
+        "2025-11-26T12:51:28.000Z",
+    );
     event1.text = Some("list files in directory".to_string());
 
-    let mut event2 = create_test_event("session-1", EventType::AssistantMessage, "2025-11-26T12:51:29.000Z");
+    let mut event2 = create_test_event(
+        "session-1",
+        EventType::AssistantMessage,
+        "2025-11-26T12:51:29.000Z",
+    );
     event2.text = Some("running ls command".to_string());
 
     storage.save_events(&vec![event1, event2]).unwrap();
 
     // Search for text
-    let results = storage.find_events(None, None, Some("list files"), None, None, true).unwrap();
+    let results = storage
+        .find_events(None, None, Some("list files"), None, None, true)
+        .unwrap();
     assert_eq!(results.len(), 1);
     assert!(results[0].text.as_ref().unwrap().contains("list files"));
 }
@@ -165,5 +214,8 @@ fn test_storage_load_nonexistent_session() {
     let storage = Storage::new(temp_dir.path().to_path_buf());
 
     let result = storage.load_session_events("nonexistent");
-    assert!(result.is_err(), "Loading nonexistent session should return error");
+    assert!(
+        result.is_err(),
+        "Loading nonexistent session should return error"
+    );
 }

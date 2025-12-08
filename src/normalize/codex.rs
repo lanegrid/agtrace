@@ -93,12 +93,8 @@ where
             .clone()
             .unwrap_or_else(|| "unknown".to_string());
 
-        let mut ev = AgentEventV1::new(
-            Source::Codex,
-            project_hash_val,
-            ts.clone(),
-            EventType::Meta,
-        );
+        let mut ev =
+            AgentEventV1::new(Source::Codex, project_hash_val, ts.clone(), EventType::Meta);
 
         ev.session_id = Some(session_id.to_string());
         ev.project_root = project_root_str.clone();
@@ -130,11 +126,11 @@ where
         }
 
         // Extract token information
-        if let Some(info) = payload_obj.and_then(|m| m.get("info")).and_then(|v| v.as_object()) {
-            if let Some(last) = info
-                .get("last_token_usage")
-                .and_then(|v| v.as_object())
-            {
+        if let Some(info) = payload_obj
+            .and_then(|m| m.get("info"))
+            .and_then(|v| v.as_object())
+        {
+            if let Some(last) = info.get("last_token_usage").and_then(|v| v.as_object()) {
                 ev.tokens_input = last.get("input_tokens").and_then(|v| v.as_u64());
                 ev.tokens_output = last.get("output_tokens").and_then(|v| v.as_u64());
                 ev.tokens_total = last.get("total_tokens").and_then(|v| v.as_u64());
@@ -189,7 +185,11 @@ where
                 if let Some(arr) = summary.as_array() {
                     let texts: Vec<String> = arr
                         .iter()
-                        .filter_map(|s| s.get("text").and_then(|v| v.as_str()).map(|t| t.to_string()))
+                        .filter_map(|s| {
+                            s.get("text")
+                                .and_then(|v| v.as_str())
+                                .map(|t| t.to_string())
+                        })
                         .collect();
                     if !texts.is_empty() {
                         ev.text = Some(texts.join("\n"));
@@ -218,14 +218,16 @@ where
             ev.role = Some(Role::Assistant);
             ev.channel = Some(Channel::Terminal); // Assume terminal for shell commands
 
-            ev.tool_status = Some(match payload_obj
-                .and_then(|m| m.get("status"))
-                .and_then(|v| v.as_str())
-            {
-                Some("completed") => ToolStatus::Success,
-                Some("failed") | Some("error") => ToolStatus::Error,
-                _ => ToolStatus::Unknown,
-            });
+            ev.tool_status = Some(
+                match payload_obj
+                    .and_then(|m| m.get("status"))
+                    .and_then(|v| v.as_str())
+                {
+                    Some("completed") => ToolStatus::Success,
+                    Some("failed") | Some("error") => ToolStatus::Error,
+                    _ => ToolStatus::Unknown,
+                },
+            );
 
             ev.text = payload_obj
                 .and_then(|m| m.get("output"))
@@ -286,10 +288,7 @@ fn extract_codex_message_text(payload: &Value) -> Option<String> {
             let mut texts = Vec::new();
             for c in arr {
                 if let Some(cobj) = c.as_object() {
-                    let c_type = cobj
-                        .get("type")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
+                    let c_type = cobj.get("type").and_then(|v| v.as_str()).unwrap_or("");
                     if c_type == "input_text" || c_type == "output_text" {
                         if let Some(t) = cobj.get("text").and_then(|v| v.as_str()) {
                             texts.push(t.to_string());

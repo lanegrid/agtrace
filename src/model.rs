@@ -109,12 +109,7 @@ pub struct AgentEventV1 {
 impl AgentEventV1 {
     pub const SCHEMA_VERSION: &'static str = "agtrace.event.v1";
 
-    pub fn new(
-        source: Source,
-        project_hash: String,
-        ts: String,
-        event_type: EventType,
-    ) -> Self {
+    pub fn new(source: Source, project_hash: String, ts: String, event_type: EventType) -> Self {
         Self {
             schema_version: Self::SCHEMA_VERSION.to_string(),
             source,

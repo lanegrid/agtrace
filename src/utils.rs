@@ -64,16 +64,15 @@ fn find_git_root() -> Result<PathBuf> {
 pub fn normalize_path(path: &Path) -> PathBuf {
     // Try to canonicalize, but if that fails (e.g., path doesn't exist),
     // just return the absolute path
-    path.canonicalize()
-        .unwrap_or_else(|_| {
-            if path.is_absolute() {
-                path.to_path_buf()
-            } else {
-                std::env::current_dir()
-                    .map(|cwd| cwd.join(path))
-                    .unwrap_or_else(|_| path.to_path_buf())
-            }
-        })
+    path.canonicalize().unwrap_or_else(|_| {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .map(|cwd| cwd.join(path))
+                .unwrap_or_else(|_| path.to_path_buf())
+        }
+    })
 }
 
 /// Check if two paths are equivalent after normalization

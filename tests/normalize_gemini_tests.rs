@@ -9,13 +9,20 @@ fn test_parse_gemini_simple_session() {
 
     // Should produce multiple events from messages array
     // At minimum: 1 user, 1 assistant, 1 reasoning, 1 tool_call, 1 info/meta
-    assert!(events.len() >= 3, "Expected at least 3 events from Gemini fixture");
+    assert!(
+        events.len() >= 3,
+        "Expected at least 3 events from Gemini fixture"
+    );
 
     // First message should be user_message
-    let user_events: Vec<_> = events.iter()
+    let user_events: Vec<_> = events
+        .iter()
         .filter(|e| e.event_type == EventType::UserMessage)
         .collect();
-    assert!(!user_events.is_empty(), "Should have at least one user message");
+    assert!(
+        !user_events.is_empty(),
+        "Should have at least one user message"
+    );
 
     let user_event = user_events[0];
     assert_eq!(user_event.source, Source::Gemini);
@@ -32,7 +39,10 @@ fn test_gemini_project_hash() {
     // All events should have projectHash from the session
     for event in &events {
         assert_eq!(event.project_hash, "abc123def456");
-        assert_eq!(event.project_root, None, "Gemini logs don't contain project_root");
+        assert_eq!(
+            event.project_root, None,
+            "Gemini logs don't contain project_root"
+        );
     }
 }
 
@@ -52,7 +62,8 @@ fn test_gemini_assistant_message() {
     let path = Path::new("tests/fixtures/gemini/simple_session.json");
     let events = normalize_gemini_file(path).unwrap();
 
-    let assistant_msgs: Vec<_> = events.iter()
+    let assistant_msgs: Vec<_> = events
+        .iter()
         .filter(|e| e.event_type == EventType::AssistantMessage)
         .collect();
 
@@ -70,11 +81,15 @@ fn test_gemini_thoughts_as_reasoning() {
     let events = normalize_gemini_file(path).unwrap();
 
     // thoughts array should be converted to reasoning events
-    let reasoning_events: Vec<_> = events.iter()
+    let reasoning_events: Vec<_> = events
+        .iter()
         .filter(|e| e.event_type == EventType::Reasoning)
         .collect();
 
-    assert!(!reasoning_events.is_empty(), "Should have reasoning events from thoughts");
+    assert!(
+        !reasoning_events.is_empty(),
+        "Should have reasoning events from thoughts"
+    );
 
     let reasoning = reasoning_events[0];
     assert_eq!(reasoning.role, Some(Role::Assistant));
@@ -87,7 +102,8 @@ fn test_gemini_tool_calls() {
     let path = Path::new("tests/fixtures/gemini/simple_session.json");
     let events = normalize_gemini_file(path).unwrap();
 
-    let tool_calls: Vec<_> = events.iter()
+    let tool_calls: Vec<_> = events
+        .iter()
         .filter(|e| e.event_type == EventType::ToolCall)
         .collect();
 
@@ -104,11 +120,15 @@ fn test_gemini_info_as_meta() {
     let path = Path::new("tests/fixtures/gemini/simple_session.json");
     let events = normalize_gemini_file(path).unwrap();
 
-    let meta_events: Vec<_> = events.iter()
+    let meta_events: Vec<_> = events
+        .iter()
         .filter(|e| e.event_type == EventType::Meta || e.event_type == EventType::SystemMessage)
         .collect();
 
-    assert!(!meta_events.is_empty(), "Should have meta/system events from info messages");
+    assert!(
+        !meta_events.is_empty(),
+        "Should have meta/system events from info messages"
+    );
 }
 
 #[test]
@@ -117,7 +137,8 @@ fn test_gemini_parent_event_chain() {
     let events = normalize_gemini_file(path).unwrap();
 
     // Find user message
-    let user_msg = events.iter()
+    let user_msg = events
+        .iter()
         .find(|e| e.event_type == EventType::UserMessage)
         .expect("Should have user message");
 
@@ -125,8 +146,7 @@ fn test_gemini_parent_event_chain() {
     for event in &events {
         if event.event_type != EventType::UserMessage {
             assert_eq!(
-                event.parent_event_id,
-                user_msg.event_id,
+                event.parent_event_id, user_msg.event_id,
                 "Non-user event {:?} should have user message as parent",
                 event.event_type
             );
