@@ -348,11 +348,21 @@ agtrace import \
     agent-5937d6b1.jsonl
 ```
 
+**ディレクトリ名エンコーディング:**
+
+Claude Code は `project_root` をディレクトリ名にエンコードする際、以下のルールを使用する:
+* `/` (スラッシュ) を `-` (ハイフン) に置き換える
+* `.` (ドット) を `-` (ハイフン) に置き換える
+* 先頭に `-` を付加する
+
+例: `/Users/zawakin/go/src/github.com/lanegrid/agtrace`
+     → `-Users-zawakin-go-src-github-com-lanegrid-agtrace`
+
 **検出ルール:**
 
 * `--all-projects` が **指定されていない** 場合:
-  * Project Discovery で決定された `project_root` をエンコードしたディレクトリ名
-    `-<project_root>` に対応するディレクトリのみを探索対象とする。
+  * Project Discovery で決定された `project_root` を上記ルールでエンコードしたディレクトリ名に
+    対応するディレクトリのみを探索対象とする。
     例: `project_root = /Users/zawakin/go/src/github.com/lanegrid/agtrace` の場合、
          `~/.claude/projects/-Users-zawakin-go-src-github-com-lanegrid-agtrace/` のみを探索する。
   * 上記ディレクトリ配下で、拡張子が `.jsonl` のファイルを候補セッションとして検出する。
@@ -803,6 +813,11 @@ Detected providers:
 ### 10.1 概要
 
 現在のプロジェクトに対して、各プロバイダから検出されたセッション数・マッチしたセッション数を表示する。
+
+**セッション数のカウント方法:**
+* セッション数は、ユニークな `session_id` の数としてカウントする
+* 複数のファイルが同じ `session_id` を持つ場合（例: Claude Code の agent-*.jsonl）、それらは1つのセッションとしてカウントされる
+* ファイル数ではなく、実際のセッション数を表示することで、`import` コマンドと一貫性を保つ
 
 ### 10.2 シグネチャ
 

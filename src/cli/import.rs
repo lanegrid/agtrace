@@ -369,8 +369,10 @@ fn process_gemini_project_directory(
 }
 
 pub fn count_claude_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usize, usize) {
-    let mut total = 0;
-    let mut matching = 0;
+    use std::collections::HashSet;
+
+    let mut total_sessions = HashSet::new();
+    let mut matching_sessions = HashSet::new();
 
     for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() {
@@ -381,22 +383,32 @@ pub fn count_claude_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usi
             continue;
         }
 
-        total += 1;
+        // Parse the file to extract session_id
+        if let Ok(events) = claude::normalize_claude_file(entry.path(), None) {
+            for event in events {
+                if let Some(session_id) = &event.session_id {
+                    total_sessions.insert(session_id.clone());
 
-        if let Some(cwd) = claude::extract_cwd_from_claude_file(entry.path()) {
-            let cwd_path = Path::new(&cwd);
-            if paths_equal(project_root, cwd_path) {
-                matching += 1;
+                    // Check if this session matches the project
+                    let target_hash = crate::utils::project_hash_from_root(
+                        &project_root.to_string_lossy()
+                    );
+                    if &event.project_hash == &target_hash {
+                        matching_sessions.insert(session_id.clone());
+                    }
+                }
             }
         }
     }
 
-    (total, matching)
+    (total_sessions.len(), matching_sessions.len())
 }
 
 pub fn count_codex_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usize, usize) {
-    let mut total = 0;
-    let mut matching = 0;
+    use std::collections::HashSet;
+
+    let mut total_sessions = HashSet::new();
+    let mut matching_sessions = HashSet::new();
 
     for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() {
@@ -417,22 +429,39 @@ pub fn count_codex_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usiz
             continue;
         }
 
-        total += 1;
+        // Use filename as fallback session_id
+        let session_id_base = if filename.ends_with(".jsonl") {
+            &filename[..filename.len() - 6]
+        } else {
+            filename.as_ref()
+        };
 
-        if let Some(cwd) = codex::extract_cwd_from_codex_file(entry.path()) {
-            let cwd_path = Path::new(&cwd);
-            if paths_equal(project_root, cwd_path) {
-                matching += 1;
+        // Parse the file to extract session_id
+        if let Ok(events) = codex::normalize_codex_file(entry.path(), session_id_base, None) {
+            for event in events {
+                if let Some(session_id) = &event.session_id {
+                    total_sessions.insert(session_id.clone());
+
+                    // Check if this session matches the project
+                    let target_hash = crate::utils::project_hash_from_root(
+                        &project_root.to_string_lossy()
+                    );
+                    if &event.project_hash == &target_hash {
+                        matching_sessions.insert(session_id.clone());
+                    }
+                }
             }
         }
     }
 
-    (total, matching)
+    (total_sessions.len(), matching_sessions.len())
 }
 
 pub fn count_gemini_sessions(log_root: &PathBuf, target_project_hash: &str) -> (usize, usize) {
-    let mut total = 0;
-    let mut matching = 0;
+    use std::collections::HashSet;
+
+    let mut total_sessions = HashSet::new();
+    let mut matching_sessions = HashSet::new();
 
     if let Ok(entries) = std::fs::read_dir(log_root) {
         for entry in entries {
@@ -454,18 +483,55 @@ pub fn count_gemini_sessions(log_root: &PathBuf, target_project_hash: &str) -> (
                     continue;
                 }
 
-                total += 1;
+                // Parse logs.json
+                if let Ok(events) = gemini::normalize_gemini_file(&logs_json_path) {
+                    for event in &events {
+                        if let Some(session_id) = &event.session_id {
+                            total_sessions.insert(session_id.clone());
 
-                if let Some(project_hash) = gemini::extract_project_hash_from_gemini_file(&logs_json_path) {
-                    if project_hash == target_project_hash {
-                        matching += 1;
+                            if &event.project_hash == target_project_hash {
+                                matching_sessions.insert(session_id.clone());
+                            }
+                        }
+                    }
+                }
+
+                // Parse chats/*.json
+                let chats_dir = path.join("chats");
+                if chats_dir.is_dir() {
+                    if let Ok(chat_entries) = std::fs::read_dir(&chats_dir) {
+                        for chat_entry in chat_entries {
+                            if let Ok(chat_entry) = chat_entry {
+                                let chat_path = chat_entry.path();
+                                let chat_filename = chat_path.file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("");
+
+                                if chat_path.is_file()
+                                    && chat_filename.starts_with("session-")
+                                    && chat_filename.ends_with(".json")
+                                {
+                                    if let Ok(events) = gemini::normalize_gemini_file(&chat_path) {
+                                        for event in &events {
+                                            if let Some(session_id) = &event.session_id {
+                                                total_sessions.insert(session_id.clone());
+
+                                                if &event.project_hash == target_project_hash {
+                                                    matching_sessions.insert(session_id.clone());
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    (total, matching)
+    (total_sessions.len(), matching_sessions.len())
 }
 
 pub fn count_unique_sessions(events: &[AgentEventV1]) -> usize {
