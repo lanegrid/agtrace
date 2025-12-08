@@ -8,13 +8,15 @@ use std::path::Path;
 /// Parse Codex JSONL file and normalize to AgentEventV1
 pub fn normalize_codex_file(
     path: &Path,
-    session_id: &str,
+    fallback_session_id: &str,
     project_root_override: Option<&str>,
 ) -> Result<Vec<AgentEventV1>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Codex file: {}", path.display()))?;
 
     let mut records: Vec<Value> = Vec::new();
+    let mut session_id_from_meta: Option<String> = None;
+
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() {
@@ -22,8 +24,25 @@ pub fn normalize_codex_file(
         }
         let v: Value = serde_json::from_str(line)
             .with_context(|| format!("Failed to parse JSON line: {}", line))?;
+
+        // Extract session_id from session_meta record (Spec 2.5.5)
+        if v.get("type").and_then(|t| t.as_str()) == Some("session_meta") {
+            if let Some(id) = v
+                .get("payload")
+                .and_then(|p| p.get("id"))
+                .and_then(|id| id.as_str())
+            {
+                session_id_from_meta = Some(id.to_string());
+            }
+        }
+
         records.push(v);
     }
+
+    // Use session_meta.payload.id if available, otherwise fallback to filename-based ID
+    let session_id = session_id_from_meta
+        .as_deref()
+        .unwrap_or(fallback_session_id);
 
     Ok(normalize_codex_stream(
         records.into_iter(),

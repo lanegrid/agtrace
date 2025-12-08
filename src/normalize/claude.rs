@@ -277,6 +277,204 @@ where
                     }
                 }
             }
+            "user" => {
+                // Legacy format: type "user" with message field
+                if let Some(message) = rec.get("message") {
+                    let mut ev = AgentEventV1::new(
+                        Source::ClaudeCode,
+                        project_hash_val.clone(),
+                        ts.clone(),
+                        EventType::UserMessage,
+                    );
+
+                    ev.session_id = session_id.clone();
+                    ev.event_id = rec.get("uuid").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    ev.parent_event_id = None;
+                    ev.role = Some(Role::User);
+                    ev.channel = Some(Channel::Chat);
+                    ev.project_root = project_root_str.clone();
+
+                    // Extract text from content
+                    if let Some(content) = message.get("content") {
+                        if let Some(s) = content.as_str() {
+                            ev.text = Some(s.to_string());
+                        } else if let Some(arr) = content.as_array() {
+                            let texts: Vec<String> = arr
+                                .iter()
+                                .filter_map(|c| c.get("text").and_then(|v| v.as_str()))
+                                .map(|s| s.to_string())
+                                .collect();
+                            if !texts.is_empty() {
+                                ev.text = Some(texts.join("\n"));
+                            }
+                        }
+                    }
+
+                    ev.raw = rec.clone();
+                    last_user_event_id = ev.event_id.clone();
+                    events.push(ev);
+                }
+            }
+            "assistant" => {
+                // Legacy format: type "assistant" with message field
+                if let Some(message) = rec.get("message") {
+                    let message_id = message
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| rec.get("uuid").and_then(|v| v.as_str()))
+                        .map(|s| s.to_string());
+
+                    let content = message.get("content");
+
+                    if let Some(arr) = content.and_then(|c| c.as_array()) {
+                        for item in arr {
+                            let item_type = item.get("type").and_then(|v| v.as_str());
+
+                            match item_type {
+                                Some("thinking") => {
+                                    let mut ev = AgentEventV1::new(
+                                        Source::ClaudeCode,
+                                        project_hash_val.clone(),
+                                        ts.clone(),
+                                        EventType::Reasoning,
+                                    );
+
+                                    ev.session_id = session_id.clone();
+                                    ev.event_id = Some(format!("{}#thinking", message_id.as_ref().unwrap_or(&"".to_string())));
+                                    ev.parent_event_id = last_user_event_id.clone();
+                                    ev.role = Some(Role::Assistant);
+                                    ev.channel = Some(Channel::Chat);
+                                    ev.project_root = project_root_str.clone();
+
+                                    ev.text = item.get("thinking")
+                                        .or_else(|| item.get("text"))
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| truncate(s, 2000));
+
+                                    ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.raw = item.clone();
+
+                                    events.push(ev);
+                                }
+                                Some("tool_use") => {
+                                    let mut ev = AgentEventV1::new(
+                                        Source::ClaudeCode,
+                                        project_hash_val.clone(),
+                                        ts.clone(),
+                                        EventType::ToolCall,
+                                    );
+
+                                    ev.session_id = session_id.clone();
+                                    ev.event_id = item.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.parent_event_id = last_user_event_id.clone();
+                                    ev.role = Some(Role::Assistant);
+                                    ev.project_root = project_root_str.clone();
+
+                                    ev.tool_name = item.get("name").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.tool_call_id = ev.event_id.clone();
+
+                                    ev.channel = match ev.tool_name.as_deref() {
+                                        Some("Bash") => Some(Channel::Terminal),
+                                        Some("Edit") | Some("Write") => Some(Channel::Editor),
+                                        Some("Read") | Some("Glob") => Some(Channel::Filesystem),
+                                        _ => Some(Channel::Chat),
+                                    };
+
+                                    if let Some(input) = item.get("input") {
+                                        let input_str = serde_json::to_string(input).unwrap_or_default();
+                                        ev.text = Some(truncate(&input_str, 500));
+                                    }
+
+                                    ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+                                    ev.raw = item.clone();
+
+                                    events.push(ev);
+                                }
+                                Some("tool_result") => {
+                                    let mut ev = AgentEventV1::new(
+                                        Source::ClaudeCode,
+                                        project_hash_val.clone(),
+                                        ts.clone(),
+                                        EventType::ToolResult,
+                                    );
+
+                                    ev.session_id = session_id.clone();
+                                    ev.event_id = Some(format!("{}#result", item.get("tool_use_id").and_then(|v| v.as_str()).unwrap_or("")));
+                                    ev.parent_event_id = last_user_event_id.clone();
+                                    ev.role = Some(Role::Assistant);
+                                    ev.channel = Some(Channel::Terminal);
+                                    ev.project_root = project_root_str.clone();
+
+                                    ev.tool_call_id = item.get("tool_use_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                                    if let Some(content) = item.get("content") {
+                                        if let Some(s) = content.as_str() {
+                                            ev.text = Some(truncate(s, 1000));
+                                        }
+                                    }
+
+                                    ev.raw = item.clone();
+                                    events.push(ev);
+                                }
+                                Some("text") => {
+                                    let mut ev = AgentEventV1::new(
+                                        Source::ClaudeCode,
+                                        project_hash_val.clone(),
+                                        ts.clone(),
+                                        EventType::AssistantMessage,
+                                    );
+
+                                    ev.session_id = session_id.clone();
+                                    ev.event_id = message_id.clone();
+                                    ev.parent_event_id = last_user_event_id.clone();
+                                    ev.role = Some(Role::Assistant);
+                                    ev.channel = Some(Channel::Chat);
+                                    ev.project_root = project_root_str.clone();
+
+                                    ev.text = item.get("text").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                                    ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                                    if let Some(usage) = message.get("usage") {
+                                        ev.tokens_input = usage.get("input_tokens").and_then(|v| v.as_u64());
+                                        ev.tokens_output = usage.get("output_tokens").and_then(|v| v.as_u64());
+                                        ev.tokens_cached = usage.get("cache_read_input_tokens").and_then(|v| v.as_u64());
+                                    }
+
+                                    ev.raw = rec.clone();
+                                    events.push(ev);
+                                }
+                                _ => {}
+                            }
+                        }
+                    } else if let Some(text) = content.and_then(|c| c.as_str()) {
+                        let mut ev = AgentEventV1::new(
+                            Source::ClaudeCode,
+                            project_hash_val.clone(),
+                            ts.clone(),
+                            EventType::AssistantMessage,
+                        );
+
+                        ev.session_id = session_id.clone();
+                        ev.event_id = message_id.clone();
+                        ev.parent_event_id = last_user_event_id.clone();
+                        ev.role = Some(Role::Assistant);
+                        ev.channel = Some(Channel::Chat);
+                        ev.project_root = project_root_str.clone();
+                        ev.text = Some(text.to_string());
+
+                        ev.model = message.get("model").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+                        if let Some(usage) = message.get("usage") {
+                            ev.tokens_input = usage.get("input_tokens").and_then(|v| v.as_u64());
+                            ev.tokens_output = usage.get("output_tokens").and_then(|v| v.as_u64());
+                        }
+
+                        ev.raw = rec.clone();
+                        events.push(ev);
+                    }
+                }
+            }
             "tool_result" => {
                 // Standalone tool result
                 if let Some(result) = rec.get("toolUseResult") {

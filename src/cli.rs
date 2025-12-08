@@ -780,15 +780,38 @@ fn import_gemini_directory(root: &PathBuf) -> Result<Vec<AgentEventV1>> {
             continue;
         }
 
-        // Session Matching: Extract projectHash from logs.json and check if it matches target
-        if let Some(session_project_hash) = gemini::extract_project_hash_from_gemini_file(&logs_json_path) {
-            if session_project_hash != target_project_hash {
+        // Session Matching: Extract projectHash from logs.json or chat files
+        let mut session_project_hash = gemini::extract_project_hash_from_gemini_file(&logs_json_path);
+
+        // If logs.json doesn't have projectHash, try the first chat file
+        if session_project_hash.is_none() {
+            let chats_dir = path.join("chats");
+            if chats_dir.is_dir() {
+                if let Ok(chat_entries) = std::fs::read_dir(&chats_dir) {
+                    for chat_entry in chat_entries {
+                        if let Ok(chat_entry) = chat_entry {
+                            let chat_path = chat_entry.path();
+                            if chat_path.is_file() && chat_path.extension().map_or(false, |e| e == "json") {
+                                session_project_hash = gemini::extract_project_hash_from_gemini_file(&chat_path);
+                                if session_project_hash.is_some() {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if we found a matching projectHash
+        if let Some(hash) = session_project_hash {
+            if hash != target_project_hash {
                 // Skip this session as it doesn't match the target project
                 continue;
             }
         } else {
             // If we can't determine projectHash, skip this directory
-            eprintln!("Warning: Could not extract projectHash from {}, skipping", logs_json_path.display());
+            eprintln!("Warning: Could not extract projectHash from {}, skipping", path.display());
             continue;
         }
 
@@ -946,8 +969,9 @@ fn print_events_timeline(events: &[AgentEventV1]) {
             role_str);
 
         if let Some(text) = &event.text {
-            let preview = if text.len() > 100 {
-                format!("{}...", &text[..97])
+            let preview = if text.chars().count() > 100 {
+                let truncated: String = text.chars().take(97).collect();
+                format!("{}...", truncated)
             } else {
                 text.clone()
             };

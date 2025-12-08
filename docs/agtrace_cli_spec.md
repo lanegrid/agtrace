@@ -278,9 +278,12 @@ agtrace import \
   * ファイル名が `rollout-` で始まる（例: `rollout-2025-11-28T13-37-13-....jsonl`）
 
 **session_id の決定:**
-* ファイル名から `.jsonl` 拡張子を除いた部分を `session_id` とする
-* 例: `rollout-2025-11-28T13-37-13-019ac8c0` → session_id = `"rollout-2025-11-28T13-37-13-019ac8c0"`
-* `--session-id-prefix` が指定されている場合は、その接頭辞を追加する
+* 原則として、セッション内の `type == "session_meta"` レコードの `payload.id` を `session_id` とする
+  * 例: `"id": "019ac8c0-3e15-7082-947c-084528a26a26"` → session_id = `"019ac8c0-3e15-7082-947c-084528a26a26"`
+* セッションファイルの形式が古く `session_meta` が存在しない場合のみ、フォールバックとして
+  ファイル名から `.jsonl` 拡張子を除いた部分を暫定的な `session_id` として用いてよい
+* `--session-id-prefix` が指定されている場合は、その接頭辞を `session_id` の先頭に付与してもよい
+  （ただし `payload.id` の生値は `raw` 側に必ず保持すること）
 
 #### 2.5.6 Claude Code
 
