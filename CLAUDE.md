@@ -1,5 +1,4 @@
 - Keep minimal comments and documents.
 - Write comments in English.
-- Make Commist for semantic diff.
+- Make Commits with oneline message like `git commit -m "feat: ........."`
 - Read `docs`.
-
