@@ -110,6 +110,23 @@ log_root = "/Users/<user>/.gemini/tmp"
   * 説明: CLI 自身のログレベル。
   * 既定値: `info`
 
+* `--project-root <PATH>`
+
+  * 説明: 対象とするプロジェクトルートを明示的に指定する。
+  * 挙動:
+    * 指定された場合、このパスを `project_root` とみなし、`project_hash = sha256(project_root)` を用いる。
+    * 指定されない場合は「Project Discovery」（`AGTRACE_PROJECT_ROOT` → git → `cwd`）で自動決定する。
+  * 影響:
+    * `import` / `list` / `find` / `stats` / `export` のデフォルトスコープ（「現在のプロジェクト」）に用いられる。
+
+* `--all-projects`
+
+  * 説明: プロジェクトスコープを無効化し、全ての `project_hash` を対象にする。
+  * 挙動:
+    * 通常は、各コマンドは現在の `project_hash` のみを対象にするが、
+      `--all-projects` が指定された場合は、`project_hash` によるフィルタリングを行わない。
+    * `--project-hash` オプションが同時に指定されている場合は、`--project-hash` が優先される（`--all-projects` は無視される）。
+
 * `--version`
 
   * 説明: agtrace のバージョンを表示する。
@@ -126,6 +143,10 @@ log_root = "/Users/<user>/.gemini/tmp"
 
 ベンダー固有のログ（Claude JSONL / Codex rollout JSONL / Gemini JSON）を走査し、
 `AgentEventV1` に正規化して `data-dir` 配下に保存する。
+
+デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_root`）に
+対応するセッションのみを import する。`--all-projects` を指定した場合のみ、
+全てのプロジェクトに属するセッションをまとめて import する。
 
 ### 2.2 シグネチャ
 
@@ -188,6 +209,16 @@ agtrace import \
   * `normalize_*` 関数で `Vec<AgentEventV1>` に変換
   * `session_id` / `event_id` / `parent_event_id` を埋める
   * `data-dir` 配下に保存
+
+* スコープ:
+
+  * `--all-projects` が指定されていない場合:
+    * Project Discovery で決定した `project_root` / `project_hash` に対応するセッション
+      （Session Matching で `cwd` / `projectHash` が一致したもの）のみを import 対象とする。
+  * `--all-projects` が指定された場合:
+    * Session Matching による `project_root` / `project_hash` の一致判定を行わず、
+      ログルート配下で検出された全セッションを import 対象とする。
+
 * 保存形式:
 
   * `data-dir/projects/<project_hash>/sessions/<session_id>.jsonl`
@@ -385,11 +416,15 @@ $ agtrace import --source gemini --root ~/.gemini/tmp
 
 正規化済みデータから、セッション（= `session_id`）ごとの概要を一覧表示する。
 
+デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
+セッションのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` のセッションを対象とする。
+
 ### 3.2 シグネチャ
 
 ```sh
 agtrace list \
   [--project-hash <HASH>] \
+  [--all-projects] \
   [--source <claude|codex|gemini>] \
   [--limit <N>] \
   [--since <RFC3339>] \
@@ -401,6 +436,11 @@ agtrace list \
 * `--project-hash <HASH>`
 
   * 説明: 特定プロジェクトのセッションだけに絞る。
+
+* `--all-projects`
+
+  * 説明: プロジェクトによる絞り込みを無効化し、全ての `project_hash` のセッションを一覧表示する。
+  * 備考: `--project-hash` と同時に指定された場合、`--project-hash` が優先される。
 
 * `--source <claude|codex|gemini>`
 
@@ -513,12 +553,16 @@ agtrace show <SESSION_ID> \
 
 `event_id` やテキストをキーに、イベントを横断検索する。
 
+デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
+イベントのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` を横断して検索する。
+
 ### 5.2 シグネチャ
 
 ```sh
 agtrace find \
   [--session-id <SESSION_ID>] \
   [--project-hash <HASH>] \
+  [--all-projects] \
   [--event-id <EVENT_ID>] \
   [--text <QUERY>] \
   [--event-type <TYPE,...>] \
@@ -534,6 +578,11 @@ agtrace find \
 * `--project-hash <HASH>`
 
   * 特定プロジェクトだけを対象に検索。
+
+* `--all-projects`
+
+  * プロジェクトによる絞り込みを行わず、全ての `project_hash` を横断して検索する。
+  * 備考: `--project-hash` が指定されている場合は無視される。
 
 * `--event-id <EVENT_ID>`
 
@@ -571,11 +620,15 @@ claude-2025-11-26T12-51-28-0   2025-11-26T15:49:10.000Z   tool_call         tool
 
 プロジェクト / セッション / ベンダーごとの統計情報を集計して表示する。
 
+デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
+セッションのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` を横断して統計を取る。
+
 ### 6.2 シグネチャ
 
 ```sh
 agtrace stats \
   [--project-hash <HASH>] \
+  [--all-projects] \
   [--source <claude|codex|gemini>] \
   [--group-by <project|session|source>] \
   [--since <RFC3339>] \
@@ -587,6 +640,11 @@ agtrace stats \
 * `--project-hash <HASH>`
 
   * 特定プロジェクトのみ集計。
+
+* `--all-projects`
+
+  * プロジェクトによる絞り込みを行わず、全ての `project_hash` を横断して統計を取る。
+  * 備考: `--project-hash` が指定されている場合は無視される。
 
 * `--source <claude|codex|gemini>`
 
@@ -618,11 +676,15 @@ PROJECT HASH                         SESSIONS  EVENTS  USER MSG  TOOL CALLS  TOK
 
 正規化済み `AgentEventV1` を JSONL / CSV にエクスポートする。
 
+デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
+イベントのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` を横断してエクスポートする。
+
 ### 7.2 シグネチャ
 
 ```sh
 agtrace export \
   [--project-hash <HASH>] \
+  [--all-projects] \
   [--session-id <SESSION_ID>] \
   [--source <claude|codex|gemini>] \
   [--event-type <TYPE,...>] \
@@ -643,6 +705,8 @@ agtrace export \
   * 既定値: `jsonl`
 
 * 他のフィルタオプションは `find` / `stats` と同様。
+
+  * `--all-projects`: 全ての `project_hash` を横断してエクスポートする。`--project-hash` が指定されている場合は無視される。
 
 ---
 
