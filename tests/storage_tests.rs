@@ -82,7 +82,7 @@ fn test_storage_list_sessions() {
     storage.save_events(&events2).unwrap();
 
     // List all sessions
-    let sessions = storage.list_sessions(None, None, None).unwrap();
+    let sessions = storage.list_sessions(None, None, None, true).unwrap();
     assert_eq!(sessions.len(), 2);
 
     // Verify session summaries
@@ -108,11 +108,11 @@ fn test_storage_filter_by_source() {
     storage.save_events(&vec![event2]).unwrap();
 
     // Filter by source
-    let claude_sessions = storage.list_sessions(None, Some(Source::ClaudeCode), None).unwrap();
+    let claude_sessions = storage.list_sessions(None, Some(Source::ClaudeCode), None, true).unwrap();
     assert_eq!(claude_sessions.len(), 1);
     assert_eq!(claude_sessions[0].source, Source::ClaudeCode);
 
-    let codex_sessions = storage.list_sessions(None, Some(Source::Codex), None).unwrap();
+    let codex_sessions = storage.list_sessions(None, Some(Source::Codex), None, true).unwrap();
     assert_eq!(codex_sessions.len(), 1);
     assert_eq!(codex_sessions[0].source, Source::Codex);
 }
@@ -132,7 +132,7 @@ fn test_storage_session_summary_tokens() {
 
     storage.save_events(&vec![event1, event2]).unwrap();
 
-    let sessions = storage.list_sessions(None, None, None).unwrap();
+    let sessions = storage.list_sessions(None, None, None, true).unwrap();
     let session = &sessions[0];
 
     // Should aggregate tokens
@@ -154,7 +154,7 @@ fn test_storage_find_events_by_text() {
     storage.save_events(&vec![event1, event2]).unwrap();
 
     // Search for text
-    let results = storage.find_events(None, None, Some("list files"), None, None).unwrap();
+    let results = storage.find_events(None, None, Some("list files"), None, None, true).unwrap();
     assert_eq!(results.len(), 1);
     assert!(results[0].text.as_ref().unwrap().contains("list files"));
 }

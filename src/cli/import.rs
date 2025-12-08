@@ -10,6 +10,7 @@ pub fn import_vendor_logs(
     root: Option<&PathBuf>,
     project_root_override: Option<&str>,
     session_id_prefix: Option<&str>,
+    all_projects: bool,
 ) -> Result<Vec<AgentEventV1>> {
     let mut all_events = Vec::new();
 
@@ -30,15 +31,15 @@ pub fn import_vendor_logs(
             println!("Importing from {} (log_root: {})", provider_name, provider_config.log_root.display());
             match provider_name.as_str() {
                 "claude" => {
-                    let events = import_claude_directory(&provider_config.log_root, project_root_override)?;
+                    let events = import_claude_directory(&provider_config.log_root, project_root_override, all_projects)?;
                     all_events.extend(events);
                 }
                 "codex" => {
-                    let events = import_codex_directory(&provider_config.log_root, project_root_override, session_id_prefix)?;
+                    let events = import_codex_directory(&provider_config.log_root, project_root_override, session_id_prefix, all_projects)?;
                     all_events.extend(events);
                 }
                 "gemini" => {
-                    let events = import_gemini_directory(&provider_config.log_root)?;
+                    let events = import_gemini_directory(&provider_config.log_root, all_projects)?;
                     all_events.extend(events);
                 }
                 _ => {
@@ -93,13 +94,13 @@ pub fn import_vendor_logs(
     } else if root_path.is_dir() {
         match source {
             "claude" => {
-                all_events = import_claude_directory(&root_path, project_root_override)?;
+                all_events = import_claude_directory(&root_path, project_root_override, all_projects)?;
             }
             "codex" => {
-                all_events = import_codex_directory(&root_path, project_root_override, session_id_prefix)?;
+                all_events = import_codex_directory(&root_path, project_root_override, session_id_prefix, all_projects)?;
             }
             "gemini" => {
-                all_events = import_gemini_directory(&root_path)?;
+                all_events = import_gemini_directory(&root_path, all_projects)?;
             }
             _ => anyhow::bail!("Unknown source: {}", source),
         }
@@ -113,13 +114,17 @@ pub fn import_vendor_logs(
 fn import_claude_directory(
     root: &PathBuf,
     project_root_override: Option<&str>,
+    all_projects: bool,
 ) -> Result<Vec<AgentEventV1>> {
     let mut all_events = Vec::new();
 
-    let target_project_root = if let Some(pr) = project_root_override {
-        PathBuf::from(pr)
+    // If all_projects is true, skip project filtering
+    let target_project_root = if all_projects {
+        None
+    } else if let Some(pr) = project_root_override {
+        Some(PathBuf::from(pr))
     } else {
-        discover_project_root(None)?
+        Some(discover_project_root(None)?)
     };
 
     for entry in WalkDir::new(root)
@@ -136,14 +141,17 @@ fn import_claude_directory(
 
         let _is_valid = is_valid_claude_file(entry.path());
 
-        if let Some(session_cwd) = claude::extract_cwd_from_claude_file(entry.path()) {
-            let session_cwd_path = Path::new(&session_cwd);
-            if !paths_equal(&target_project_root, session_cwd_path) {
+        // Skip project filtering if all_projects is true
+        if let Some(ref target_root) = target_project_root {
+            if let Some(session_cwd) = claude::extract_cwd_from_claude_file(entry.path()) {
+                let session_cwd_path = Path::new(&session_cwd);
+                if !paths_equal(target_root, session_cwd_path) {
+                    continue;
+                }
+            } else {
+                eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
                 continue;
             }
-        } else {
-            eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
-            continue;
         }
 
         match claude::normalize_claude_file(entry.path(), project_root_override) {
@@ -164,13 +172,17 @@ fn import_codex_directory(
     root: &PathBuf,
     project_root_override: Option<&str>,
     session_id_prefix: Option<&str>,
+    all_projects: bool,
 ) -> Result<Vec<AgentEventV1>> {
     let mut all_events = Vec::new();
 
-    let target_project_root = if let Some(pr) = project_root_override {
-        PathBuf::from(pr)
+    // If all_projects is true, skip project filtering
+    let target_project_root = if all_projects {
+        None
+    } else if let Some(pr) = project_root_override {
+        Some(PathBuf::from(pr))
     } else {
-        discover_project_root(None)?
+        Some(discover_project_root(None)?)
     };
 
     for entry in WalkDir::new(root)
@@ -190,14 +202,17 @@ fn import_codex_directory(
             continue;
         }
 
-        if let Some(session_cwd) = codex::extract_cwd_from_codex_file(entry.path()) {
-            let session_cwd_path = Path::new(&session_cwd);
-            if !paths_equal(&target_project_root, session_cwd_path) {
+        // Skip project filtering if all_projects is true
+        if let Some(ref target_root) = target_project_root {
+            if let Some(session_cwd) = codex::extract_cwd_from_codex_file(entry.path()) {
+                let session_cwd_path = Path::new(&session_cwd);
+                if !paths_equal(target_root, session_cwd_path) {
+                    continue;
+                }
+            } else {
+                eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
                 continue;
             }
-        } else {
-            eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
-            continue;
         }
 
         let session_id_base = if filename.ends_with(".jsonl") {
@@ -224,13 +239,18 @@ fn import_codex_directory(
     Ok(all_events)
 }
 
-fn import_gemini_directory(root: &PathBuf) -> Result<Vec<AgentEventV1>> {
+fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<AgentEventV1>> {
     let mut all_events = Vec::new();
 
-    let project_root = discover_project_root(None)?;
-    let target_project_hash = crate::utils::project_hash_from_root(
-        &project_root.to_string_lossy()
-    );
+    // If all_projects is true, skip project filtering
+    let target_project_hash = if all_projects {
+        None
+    } else {
+        let project_root = discover_project_root(None)?;
+        Some(crate::utils::project_hash_from_root(
+            &project_root.to_string_lossy()
+        ))
+    };
 
     let entries = std::fs::read_dir(root)?;
 
@@ -276,13 +296,16 @@ fn import_gemini_directory(root: &PathBuf) -> Result<Vec<AgentEventV1>> {
             }
         }
 
-        if let Some(hash) = session_project_hash {
-            if hash != target_project_hash {
+        // Skip project filtering if all_projects is true
+        if let Some(ref target_hash) = target_project_hash {
+            if let Some(hash) = session_project_hash {
+                if &hash != target_hash {
+                    continue;
+                }
+            } else {
+                eprintln!("Warning: Could not extract projectHash from {}, skipping", path.display());
                 continue;
             }
-        } else {
-            eprintln!("Warning: Could not extract projectHash from {}, skipping", path.display());
-            continue;
         }
 
         match gemini::normalize_gemini_file(&logs_json_path) {

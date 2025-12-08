@@ -24,6 +24,10 @@ pub struct Cli {
     #[arg(long, value_parser = ["error", "warn", "info", "debug", "trace"], default_value = "info", global = true)]
     pub log_level: String,
 
+    /// Disable project scoping and target all projects
+    #[arg(long, global = true)]
+    pub all_projects: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }

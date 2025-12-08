@@ -20,7 +20,7 @@ pub fn run(cli: Cli) -> Result<()> {
             dry_run,
             out_jsonl,
         } => {
-            let events = import_vendor_logs(&source, root.as_ref(), project_root.as_deref(), session_id_prefix.as_deref())?;
+            let events = import_vendor_logs(&source, root.as_ref(), project_root.as_deref(), session_id_prefix.as_deref(), cli.all_projects)?;
 
             if dry_run {
                 println!("Dry run: Would import {} events from {} sessions",
@@ -46,8 +46,22 @@ pub fn run(cli: Cli) -> Result<()> {
             since: _,
             until: _,
         } => {
+            // If --project-hash is specified, use it (takes precedence over --all-projects)
+            // If --all-projects is specified and --project-hash is not, set all_projects = true
+            // Otherwise, use current project hash
+            let (effective_project_hash, all_projects) = if project_hash.is_some() {
+                (project_hash.as_deref(), false)
+            } else if cli.all_projects {
+                (None, true)
+            } else {
+                // Use current project hash
+                let project_root_path = discover_project_root(None)?;
+                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                (Some(current_project_hash.leak() as &str), false)
+            };
+
             let source_enum = source.as_deref().and_then(parse_source);
-            let sessions = storage.list_sessions(project_hash.as_deref(), source_enum, Some(limit))?;
+            let sessions = storage.list_sessions(effective_project_hash, source_enum, Some(limit), all_projects)?;
 
             if cli.format == "json" {
                 println!("{}", serde_json::to_string_pretty(&sessions)?);
@@ -92,13 +106,28 @@ pub fn run(cli: Cli) -> Result<()> {
             event_type,
             limit,
         } => {
+            // If --project-hash is specified, use it (takes precedence over --all-projects)
+            // If --all-projects is specified and --project-hash is not, set all_projects = true
+            // Otherwise, use current project hash
+            let (effective_project_hash, all_projects) = if project_hash.is_some() {
+                (project_hash.as_deref(), false)
+            } else if cli.all_projects {
+                (None, true)
+            } else {
+                // Use current project hash
+                let project_root_path = discover_project_root(None)?;
+                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                (Some(current_project_hash.leak() as &str), false)
+            };
+
             let event_type_enum = event_type.as_deref().and_then(parse_event_type);
             let events = storage.find_events(
                 session_id.as_deref(),
-                project_hash.as_deref(),
+                effective_project_hash,
                 text.as_deref(),
                 event_type_enum,
                 Some(limit),
+                all_projects,
             )?;
 
             if cli.format == "json" {
@@ -115,8 +144,22 @@ pub fn run(cli: Cli) -> Result<()> {
             since: _,
             until: _,
         } => {
+            // If --project-hash is specified, use it (takes precedence over --all-projects)
+            // If --all-projects is specified and --project-hash is not, set all_projects = true
+            // Otherwise, use current project hash
+            let (effective_project_hash, all_projects) = if project_hash.is_some() {
+                (project_hash.as_deref(), false)
+            } else if cli.all_projects {
+                (None, true)
+            } else {
+                // Use current project hash
+                let project_root_path = discover_project_root(None)?;
+                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                (Some(current_project_hash.leak() as &str), false)
+            };
+
             let source_enum = source.as_deref().and_then(parse_source);
-            let sessions = storage.list_sessions(project_hash.as_deref(), source_enum, None)?;
+            let sessions = storage.list_sessions(effective_project_hash, source_enum, None, all_projects)?;
 
             print_stats(&sessions);
         }
@@ -131,13 +174,28 @@ pub fn run(cli: Cli) -> Result<()> {
             out,
             format,
         } => {
+            // If --project-hash is specified, use it (takes precedence over --all-projects)
+            // If --all-projects is specified and --project-hash is not, set all_projects = true
+            // Otherwise, use current project hash
+            let (effective_project_hash, all_projects) = if project_hash.is_some() {
+                (project_hash.as_deref(), false)
+            } else if cli.all_projects {
+                (None, true)
+            } else {
+                // Use current project hash
+                let project_root_path = discover_project_root(None)?;
+                let current_project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+                (Some(current_project_hash.leak() as &str), false)
+            };
+
             let event_type_enum = event_type.as_deref().and_then(parse_event_type);
             let events = storage.find_events(
                 session_id.as_deref(),
-                project_hash.as_deref(),
+                effective_project_hash,
                 None,
                 event_type_enum,
                 None,
+                all_projects,
             )?;
 
             match format.as_str() {

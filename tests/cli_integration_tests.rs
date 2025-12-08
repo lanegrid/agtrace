@@ -48,6 +48,7 @@ fn test_import_claude_actual() {
         .arg("--source").arg("claude")
         .arg("--root").arg("tests/fixtures/claude")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success();
 
@@ -65,6 +66,7 @@ fn test_import_codex() {
         .arg("--source").arg("codex")
         .arg("--root").arg("tests/fixtures/codex")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success();
 }
@@ -78,6 +80,7 @@ fn test_import_gemini() {
         .arg("--source").arg("gemini")
         .arg("--root").arg("tests/fixtures/gemini")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success();
 }
@@ -93,6 +96,7 @@ fn test_list_sessions() {
         .arg("--source").arg("claude")
         .arg("--root").arg("tests/fixtures/claude")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success();
 
@@ -101,6 +105,7 @@ fn test_list_sessions() {
     list_cmd
         .arg("list")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success()
         .stdout(predicate::str::contains("SESSION").or(predicate::str::contains("session")));
@@ -117,6 +122,7 @@ fn test_list_sessions_json_format() {
         .arg("--source").arg("claude")
         .arg("--root").arg("tests/fixtures/claude")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success();
 
@@ -126,6 +132,7 @@ fn test_list_sessions_json_format() {
         .arg("list")
         .arg("--data-dir").arg(temp_dir.path())
         .arg("--format").arg("json")
+        .arg("--all-projects")
         .assert()
         .success()
         .stdout(predicate::str::contains("["))
@@ -143,6 +150,7 @@ fn test_show_session() {
         .arg("--source").arg("claude")
         .arg("--root").arg("tests/fixtures/claude")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success();
 
@@ -152,6 +160,7 @@ fn test_show_session() {
         .arg("list")
         .arg("--data-dir").arg(temp_dir.path())
         .arg("--format").arg("json")
+        .arg("--all-projects")
         .output()
         .unwrap();
 
@@ -181,6 +190,7 @@ fn test_show_session_with_filters() {
         .arg("--source").arg("claude")
         .arg("--root").arg("tests/fixtures/claude")
         .arg("--data-dir").arg(temp_dir.path())
+        .arg("--all-projects")
         .assert()
         .success();
 
@@ -190,6 +200,7 @@ fn test_show_session_with_filters() {
         .arg("list")
         .arg("--data-dir").arg(temp_dir.path())
         .arg("--format").arg("json")
+        .arg("--all-projects")
         .output()
         .unwrap();
 

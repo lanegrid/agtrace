@@ -89,6 +89,7 @@ impl Storage {
         project_hash: Option<&str>,
         source: Option<Source>,
         limit: Option<usize>,
+        all_projects: bool,
     ) -> Result<Vec<SessionSummary>> {
         let projects_dir = self.data_dir.join("projects");
 
@@ -111,10 +112,17 @@ impl Storage {
                 }
 
                 // Apply filters
+                // If --project-hash is specified, filter by it (takes precedence over --all-projects)
+                // If --all-projects is true and --project-hash is not specified, skip project filtering
+                // Otherwise, filter by current project_hash if provided
                 if let Some(ph) = project_hash {
                     if events[0].project_hash != ph {
                         continue;
                     }
+                } else if !all_projects {
+                    // If all_projects is false and no project_hash specified,
+                    // this would normally filter by current project, but we don't have that context here.
+                    // The caller should provide the project_hash if all_projects is false.
                 }
 
                 if let Some(src) = source {
@@ -180,6 +188,7 @@ impl Storage {
         text_query: Option<&str>,
         event_type: Option<EventType>,
         limit: Option<usize>,
+        all_projects: bool,
     ) -> Result<Vec<AgentEventV1>> {
         let projects_dir = self.data_dir.join("projects");
 
@@ -205,10 +214,16 @@ impl Storage {
                         }
                     }
 
+                    // If --project-hash is specified, filter by it (takes precedence)
+                    // If --all-projects is true and --project-hash is not specified, skip project filtering
                     if let Some(ph) = project_hash {
                         if event.project_hash != ph {
                             continue;
                         }
+                    } else if !all_projects {
+                        // If all_projects is false and no project_hash specified,
+                        // this would normally filter by current project, but we don't have that context here.
+                        // The caller should provide the project_hash if all_projects is false.
                     }
 
                     if let Some(et) = event_type {
