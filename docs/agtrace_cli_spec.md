@@ -340,7 +340,7 @@ agtrace import \
 **ディレクトリ構造例:**
 ```
 ~/.claude/projects/
-  -Users-zawakin-go-src-github-com-lanegrid-agtrace/
+  -Users-username-projects-example-project/
     038c47b8-a1b2-4c3d-8e9f-0123456789ab.jsonl
     1600ec8f-b2c3-4d5e-9f01-23456789abcd.jsonl
     ...
@@ -355,16 +355,16 @@ Claude Code は `project_root` をディレクトリ名にエンコードする�
 * `.` (ドット) を `-` (ハイフン) に置き換える
 * 先頭に `-` を付加する
 
-例: `/Users/zawakin/go/src/github.com/lanegrid/agtrace`
-     → `-Users-zawakin-go-src-github-com-lanegrid-agtrace`
+例: `/Users/username/projects/example-project`
+     → `-Users-username-projects-example-project`
 
 **検出ルール:**
 
 * `--all-projects` が **指定されていない** 場合:
   * Project Discovery で決定された `project_root` を上記ルールでエンコードしたディレクトリ名に
     対応するディレクトリのみを探索対象とする。
-    例: `project_root = /Users/zawakin/go/src/github.com/lanegrid/agtrace` の場合、
-         `~/.claude/projects/-Users-zawakin-go-src-github-com-lanegrid-agtrace/` のみを探索する。
+    例: `project_root = /Users/username/projects/example-project` の場合、
+         `~/.claude/projects/-Users-username-projects-example-project/` のみを探索する。
   * 上記ディレクトリ配下で、拡張子が `.jsonl` のファイルを候補セッションとして検出する。
 
 * `--all-projects` が指定されている場合:
@@ -437,7 +437,7 @@ $ agtrace import --source codex --root ~/.codex/sessions/2025/11
 **Claude Code の場合:**
 ```sh
 # プロジェクトディレクトリを指定
-$ agtrace import --source claude --root ~/.claude/projects/-Users-zawakin-go-src-github-com-lanegrid-agtrace
+$ agtrace import --source claude --root ~/.claude/projects/-Users-username-projects-example-project
 
 # 検出: 配下のすべての *.jsonl（UUID名 + agent-*.jsonl など）
 # 結果: 10〜50セッション（プロジェクトによる）
@@ -797,13 +797,13 @@ agtrace project [--project-root <PATH>]
 ### 9.3 出力例
 
 ```text
-Project root: /Users/zawakin/go/src/github.com/lanegrid/agtrace
+Project root: /Users/username/projects/example-project
 Project hash: 623b4447...
 
 Detected providers:
-  claude:  enabled, log_root = /Users/zawakin/.claude/projects
-  codex:   enabled, log_root = /Users/zawakin/.codex/sessions
-  gemini:  enabled, log_root = /Users/zawakin/.gemini/tmp
+  claude:  enabled, log_root = /Users/username/.claude/projects
+  codex:   enabled, log_root = /Users/username/.codex/sessions
+  gemini:  enabled, log_root = /Users/username/.gemini/tmp
 ```
 
 ---
@@ -828,22 +828,22 @@ agtrace status [--project-root <PATH>]
 ### 10.3 出力例
 
 ```text
-Project root: /Users/zawakin/go/src/github.com/lanegrid/agtrace
+Project root: /Users/username/projects/example-project
 Project hash: 623b4447...
 
 Providers:
   claude:
-    log_root: /Users/zawakin/.claude/projects
+    log_root: /Users/username/.claude/projects
     sessions detected: 21
     sessions matching this project: 3
 
   codex:
-    log_root: /Users/zawakin/.codex/sessions
+    log_root: /Users/username/.codex/sessions
     sessions detected: 58
     sessions matching this project: 5
 
   gemini:
-    log_root: /Users/zawakin/.gemini/tmp
+    log_root: /Users/username/.gemini/tmp
     sessions detected: 4
     sessions matching this project: 2
 ```
