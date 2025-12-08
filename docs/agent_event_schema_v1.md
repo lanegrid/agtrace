@@ -1,0 +1,553 @@
+# agtrace Agent Event v1 Specification
+
+## 0. Scope / Purpose
+
+本仕様は、以下 3 つのツールから生成されるエージェント行動ログを共通フォーマットに正規化するためのスキーマ仕様である。
+
+* Claude Code
+* Codex（OpenAI Codex CLI ログ）
+* Gemini CLI
+
+正規化後は、**エージェントの行動を「イベント単位」で統一的に扱えること**を目的とする。
+
+* 1 イベント = 1 つの「意味のある事象」
+
+  * 例: user メッセージ、assistant メッセージ、reasoning（思考）、tool 呼び出し、tool の結果、ファイルスナップショットなど
+* 「ベンダー固有のフォーマット」や「ログの粒度の違い」は、正規化ロジックで吸収し、本仕様は vendor-neutral であることを目指す。
+
+---
+
+## 1. イベントモデル概要
+
+### 1.1 基本原則
+
+* 正規化後の最小単位は **`AgentEventV1`**。
+* 各ベンダーの 1 レコードから **0〜N 個の `AgentEventV1`** が生成される。
+
+  * Claude: 1 レコードに複数の tool_use / tool_result / thinking が入っているため、**複数イベントに分解**されうる。
+  * Codex: ほぼ 1 レコード = 1 イベント。
+  * Gemini: 1 セッション JSON の `messages[]` を展開して複数イベント化する。
+* イベント間の関係は、主に次の 3 つで表現する:
+
+  * `session_id` … 会話 / 実行セッション単位
+  * `event_id` … イベント自身の ID
+  * `parent_event_id` … 「どの user_message に属するか」の親 ID（後述）
+  * `tool_call_id` … ツール呼び出しと結果の対応付け
+
+### 1.2 バージョン
+
+* スキーマバージョン: `agtrace.event.v1`
+* 正規化したイベントには必ず `schema_version = "agtrace.event.v1"` を設定する。
+
+---
+
+## 2. 型定義
+
+### 2.1 列挙型
+
+```ts
+type Source = "claude_code" | "codex" | "gemini";
+
+type EventType =
+  | "user_message"
+  | "assistant_message"
+  | "system_message"
+  | "reasoning"
+  | "tool_call"
+  | "tool_result"
+  | "file_snapshot"
+  | "session_summary"
+  | "meta"
+  | "log";
+
+type Role = "user" | "assistant" | "system" | "tool" | "cli" | "other";
+
+type Channel = "chat" | "editor" | "terminal" | "filesystem" | "system" | "other";
+
+type ToolStatus = "success" | "error" | "in_progress" | "unknown";
+```
+
+### 2.2 AgentEventV1 スキーマ
+
+**論理モデル（TypeScript/Pseudo）**
+
+```ts
+interface AgentEventV1 {
+  // --- メタ情報 / 識別子 ---
+  schema_version: "agtrace.event.v1";
+
+  /** 元のツール種別 */
+  source: Source;
+
+  /**
+   * プロジェクトのハッシュ。
+   * Gemini CLI: projectRoot に対する sha256(projectRoot).hex（OSS 実装準拠）。
+   * Claude/Codex: project_root から同じ関数で計算することを推奨するが、
+   *               ツールごとに異なる定義を持つ可能性があるため、あくまで「プロジェクト識別子」として扱う。
+   */
+  project_hash: string;
+
+  /**
+   * プロジェクトのルートパス（絶対パス想定）。
+   * Claude/Codex: cwd やプロジェクトルートを入れる。
+   * Gemini: ログからは復元できないため null とする。
+   */
+  project_root: string | null;
+
+  /**
+   * セッション単位の ID。
+   * Claude: sessionId
+   * Codex: payload.id があればそれ、なければ rollout ファイル名など。
+   * Gemini: sessionId
+   */
+  session_id: string | null;
+
+  /**
+   * イベント固有の ID。
+   * Claude: uuid / message.id / tool_use.id などから合成。
+   * Codex: payload.call_id など、vendor の ID を優先。
+   * Gemini: messages[].id / messageId など。
+   */
+  event_id: string | null;
+
+  /**
+   * 「どの user_message に属するイベントか」を示す ID。
+   *
+   * ルール:
+   * - event_type == "user_message" のイベントだけ parent_event_id = null
+   * - それ以外のイベントは、同一セッション内で「直近の user_message」の event_id を parent_event_id に持つ。
+   *
+   * つまり parent_event_id は「会話ターンのルート」を表す。
+   * tool_call や reasoning の親が assistant_message になるわけではない点に注意。
+   */
+  parent_event_id: string | null;
+
+  /** RFC3339 UTC タイムスタンプ (例: "2025-11-26T12:51:28.093Z") */
+  ts: string;
+
+  // --- イベントの性質 ---
+  event_type: EventType;
+  role: Role | null;
+  channel: Channel | null;
+
+  /**
+   * 人間向けに読めるテキスト。
+   * - user_message: ユーザー発話そのもの
+   * - assistant_message: モデル応答の本文（先頭 N 文字など）
+   * - reasoning: thinking / thoughts / reasoning の本文
+   * - tool_call: 入力引数の要約
+   * - tool_result: stdout や要約
+   * - file_snapshot: snapshot の要約
+   */
+  text: string | null;
+
+  // --- ツール / コマンド実行 ---
+  /** 呼び出されたツール名 / コマンド名 (例: "Bash", "shell", "apply_patch", "Glob") */
+  tool_name: string | null;
+
+  /**
+   * ツール呼び出しの ID。
+   * Claude: tool_use.id / tool_use_id
+   * Codex: payload.call_id
+   * Gemini: messages[].toolCalls[].id
+   *
+   * tool_call と tool_result を紐付けるためのキー。
+   */
+  tool_call_id: string | null;
+
+  /** ツール実行ステータス */
+  tool_status: ToolStatus | null;
+
+  /** ツール実行レイテンシ (ms)。取れる場合のみ埋める。 */
+  tool_latency_ms: number | null;
+
+  /** ツールの exit code（Bash 等）。なければ null。 */
+  tool_exit_code: number | null;
+
+  // --- ファイル / コード ---
+  /** 主に対象となったファイルパス。複数ある場合は代表 1 件。 */
+  file_path: string | null;
+
+  /** 主な言語（例: "rust", "typescript"）。推定できなければ null。 */
+  file_language: string | null;
+
+  /** ファイル操作種別。必要に応じて Enum 化を検討。 */
+  file_op: "read" | "write" | "modify" | "delete" | "create" | "move" | null;
+
+  // --- モデル / トークン ---
+  /** 使用モデル名。Claude: message.model, Codex: payload.model, Gemini: messages[].model */
+  model: string | null;
+
+  /** イベント単位のトークン数（可能な限り「単イベントの usage」を入れる） */
+  tokens_input: number | null;
+  tokens_output: number | null;
+  tokens_total: number | null;
+  tokens_cached: number | null;
+  tokens_thinking: number | null;
+  tokens_tool: number | null;
+
+  /** ベンダー側の agent ID（Claude の agentId 等） */
+  agent_id: string | null;
+
+  /**
+   * ベンダー固有情報の保持用フィールド。
+   *
+   * 現時点では「元レコード全体」または「それに近いサマリ」を格納してよい。
+   * 将来的にはサイズ削減やサマリ化ポリシーを導入する余地がある。
+   */
+  raw: any;
+}
+```
+
+---
+
+## 3. 関係性の表現（重要な不変条件）
+
+### 3.1 parent_event_id
+
+* **目的**: 「どの user_message に対するイベントか」を表す。
+
+* 不変条件:
+
+  1. `event_type == "user_message"` のイベントだけ `parent_event_id = null`。
+  2. それ以外のイベント（assistant_message / reasoning / tool_call / tool_result / file_snapshot / meta / log）は、
+
+     * 同じ `session_id` 内で、
+     * 「直近の user_message イベント」の `event_id` を `parent_event_id` に持つ。
+
+* つまり、`parent_event_id` によって **ユーザーメッセージを根とする「ターン単位」のグルーピング**ができる。
+
+### 3.2 tool_call_id
+
+* **目的**: 「どの tool_result が、どの tool_call に対応しているか」を表す。
+* 不変条件:
+
+  * `event_type == "tool_call"` と `event_type == "tool_result"` のイベントは、同じ `tool_call_id` を共有する。
+  * `tool_call_id` が null の tool_result は「対応する call が特定できない」か「まとめイベント」である。
+
+### 3.3 イベント順序
+
+* 時系列は基本的に `ts`（RFC3339）でソートして追う。
+* 同一 `ts` かつ順序が必要な場合は、元ログのストリーム順を利用する（実装側で sequence を持ちたい場合は別途フィールド追加を検討）。
+
+---
+
+## 4. ベンダー別マッピング仕様
+
+この章では、各ベンダーの生ログから `AgentEventV1` を生成する際の方針を示す。
+
+### 4.1 Claude Code
+
+#### 4.1.1 project / session / ID
+
+* `project_root` ← `cwd`
+* `project_hash` ← `sha256(project_root)` を推奨（Gemini と合わせたい場合）。
+  必須ではないが、一貫性のためこのルールに従う。
+* `session_id` ← `sessionId`
+* `event_id`:
+
+  * user_message: `uuid` または `messageId`
+  * assistant 系: `uuid` または `message.id` / `tool_use.id` / 合成 ID
+
+#### 4.1.2 イベント分解
+
+Claude の 1 レコード（JSONL 1 行）から、最大で以下のイベントを生成する。
+
+* user_message
+
+  * 条件: `message.role == "user"`
+  * 1 レコードにつき 1 イベント
+* reasoning
+
+  * 条件: `message.content[].type == "thinking"` など
+  * 各 thinking ブロックごとに 1 イベント
+* assistant_message
+
+  * 条件: `message.role == "assistant"` かつ text ブロックあり
+  * 通常 1 レコードにつき 1 イベント
+* tool_call
+
+  * 条件: `message.content[].type == "tool_use"`
+  * 各 tool_use ごとに 1 イベント
+* tool_result
+
+  * 条件:
+
+    * `message.content[].type == "tool_result"`
+    * または `toolUseResult` に対応する結果が存在する場合
+  * 各 tool_result ごとに 1 イベント
+* file_snapshot
+
+  * 条件: `type == "file-history-snapshot"`
+  * 1 レコードにつき 1 イベント
+* session_summary
+
+  * 条件: `type == "summary"`
+
+#### 4.1.3 parent_event_id の付与
+
+* user_message イベント:
+
+  * `parent_event_id = null`
+* その他すべてのイベント:
+
+  * 同一セッション内で、「直近の user_message」の `event_id` を `parent_event_id` に設定
+
+#### 4.1.4 event_type / role / channel / text
+
+* `event_type`:
+
+  * user_message: `"user_message"`
+  * assistant_message: `"assistant_message"`
+  * reasoning: `"reasoning"`
+  * tool_call: `"tool_call"`
+  * tool_result: `"tool_result"`
+  * file_snapshot: `"file_snapshot"`
+  * summary メタ: `"session_summary"` または `"meta"`
+* `role`:
+
+  * user_message: `"user"`
+  * assistant_message / reasoning / tool_*: `"assistant"`
+  * local_command 系: `"cli"` など必要に応じて `"other"` を使用
+* `channel`:
+
+  * 通常の対話: `"chat"`
+  * Bash / shell 実行（stdout/stderr を持つ）: `"terminal"`
+  * ファイル read/write / patch: `"editor"` または `"filesystem"`
+* `text`:
+
+  * user_message: `message.content`（string または text ブロック）
+  * assistant_message: text ブロックを join したもの
+  * reasoning: thinking ブロック本文
+  * tool_call: `input`（JSON）をサマライズ
+  * tool_result: stdout / content のサマリ
+  * file_snapshot: `"snapshot of N files"` のような短い要約
+
+#### 4.1.5 ツール / トークン
+
+* `tool_name` ← `message.content[].name`（type == "tool_use"）
+* `tool_call_id` ← `message.content[].id` / `.tool_use_id`
+* `tool_status`:
+
+  * `toolUseResult.status == "completed"` → `"success"`
+  * `interrupted == true` → `"error"`
+  * 不明 → `"unknown"`
+* `file_path`:
+
+  * `toolUseResult.filePath` / `toolUseResult.file.filePath` など
+* `model` ← `message.model`
+* `tokens_*` ← `message.usage.*`（単イベントの usage を優先）
+
+---
+
+### 4.2 Codex
+
+#### 4.2.1 project / session / ID
+
+* `project_root` ← `payload.cwd`（存在する場合）
+* `project_hash` ← `sha256(project_root)` を推奨
+* `session_id`:
+
+  * `payload.id` が存在すればそれ
+  * なければ「rollout ファイル名」など
+* `event_id`:
+
+  * tool 関連: `payload.call_id`
+  * それ以外: `timestamp + 通し番号` 等で合成してもよい
+
+#### 4.2.2 イベント分解
+
+Codex はすでに 1 レコード = 1 イベントの構造になっているので、そのまま 1→1 で AgentEventV1 に対応させる。
+
+* `payload.type == "message"`:
+
+  * user / assistant の両方をカバー
+* `payload.name` がある:
+
+  * tool_call 相当（shell, apply_patch 等）
+* `payload.status` がある:
+
+  * tool_result 相当
+* `payload.type == "reasoning"`:
+
+  * reasoning イベント
+* `payload.type == "token_count"` / `sandbox_policy` / `ghost_commit` など:
+
+  * meta イベント
+
+#### 4.2.3 parent_event_id
+
+* `payload.role == "user"` の message を user_message とし、`parent_event_id = null`
+* 同じ `session_id` 内で、それ以降のイベント（assistant_message / reasoning / tool_* / meta）は、
+
+  * 「直近の user_message」の `event_id` を `parent_event_id` に設定
+
+#### 4.2.4 event_type / role / channel / text
+
+* `event_type`:
+
+  * `payload.type == "message" && role == "user"` → `"user_message"`
+  * `payload.type == "message" && role == "assistant"` → `"assistant_message"`
+  * `payload.type == "reasoning"` → `"reasoning"`
+  * `payload.name` あり → `"tool_call"`
+  * `payload.status` あり → `"tool_result"`
+  * `payload.type in ("token_count", "sandbox_policy", ...)` → `"meta"`
+* `role`:
+
+  * message: `payload.role`（user/assistant）
+  * tool_call / tool_result: `"assistant"`（エージェントがツールを操作している前提）
+* `channel`:
+
+  * tool_call `name == "shell"` → `"terminal"`
+  * tool_call `name == "apply_patch"` → `"editor"`
+  * それ以外の message → `"chat"`
+* `text`:
+
+  * message:
+
+    * `payload.content[].text` を join
+    * なければ `payload.text`
+  * tool_call:
+
+    * `payload.arguments`（JSON string）をそのまま or サマライズ
+  * tool_result:
+
+    * `payload.output` の `"output"` 部分をサマライズ
+  * meta:
+
+    * 必要に応じて簡易テキストを生成（例: `"sandbox_policy updated"`）
+
+#### 4.2.5 ツール / トークン
+
+* `tool_name` ← `payload.name`
+* `tool_call_id` ← `payload.call_id`
+* `tool_status`:
+
+  * `status == "completed"` → `"success"`
+  * その他 → `"error"` or `"unknown"`
+* `model` ← `payload.model`
+* `tokens_*`:
+
+  * イベント単位の usage として `payload.info.last_token_usage.*` を利用
+  * 累積 usage (`total_token_usage`) は raw に残す
+
+---
+
+### 4.3 Gemini CLI
+
+Gemini CLI は 2 種類のログを統合して扱う:
+
+1. CLI イベント（`messageId`, `type`, `message`, `timestamp` 等）
+2. セッションスナップショット（`projectHash`, `sessionId`, `messages[]` など）
+
+#### 4.3.1 project / session / ID
+
+* `project_hash`:
+
+  * セッションスナップショット (`logs.json`) の `projectHash` を使う
+* `project_root`:
+
+  * ログからは復元できないため `null`
+* `session_id`:
+
+  * `sessionId`
+* `event_id`:
+
+  * CLI イベント: `String(messageId)`
+  * messages[]: `messages[].id`
+
+#### 4.3.2 CLI 1 行イベント
+
+* 条件: `messageId`, `type`, `message`, `timestamp` を持つ行
+* マッピング:
+
+  * `event_type`: `"user_message"`
+  * `role`: `"user"`
+  * `channel`: `"cli"`
+  * `text`: `message`（例: `/model`, `summary this repo`）
+  * `parent_event_id`: `null`
+
+#### 4.3.3 会話 messages[]
+
+セッションスナップショットには `messages[]` が含まれる。
+各 `messages[]` 要素を 1 AgentEvent として扱う。
+
+* `messages[].type`:
+
+  * `"user"` → user_message
+  * `"gemini"` → assistant_message
+  * `"info"` → system_message / meta
+
+* マッピング例:
+
+  * user_message:
+
+    * `event_type`: `"user_message"`
+    * `role`: `"user"`
+    * `channel`: `"chat"`
+    * `text`: `messages[].content`
+    * `parent_event_id`: `null`
+  * assistant_message:
+
+    * `event_type`: `"assistant_message"`
+    * `role`: `"assistant"`
+    * `channel`: `"chat"`
+    * `text`: `messages[].content`
+    * `parent_event_id`: **直近の user_message の event_id**
+  * system/info:
+
+    * `event_type`: `"meta"` または `"system_message"`
+    * `role`: `"system"`
+
+* reasoning（thoughts 配列）:
+
+  * `messages[].thoughts[]` の各要素は、それぞれ 1 つの `reasoning` イベントにする。
+
+    * `event_type`: `"reasoning"`
+    * `role`: `"assistant"`
+    * `channel`: `"chat"`
+    * `text`: `subject + ": " + description`
+    * `parent_event_id`: 対応する user_message の event_id
+      （もしくは `messages[].id` を `parent_event_id` とし、user_message への紐付けは 2段階で辿る設計も許容）
+
+* tool_call / tool_result:
+
+  * `messages[].toolCalls[]` の各要素について 1 `tool_call`（または tool_call+tool_result）イベントを生成:
+
+    * `event_type`: `"tool_call"` or `"tool_result"`（result が同じ要素に含まれている場合）
+    * `tool_name`: `name`
+    * `tool_call_id`: `id`
+    * `tool_status`: `status` を `"success"` / `"error"` / `"unknown"` にマップ
+    * `text`: `args` や `resultDisplay` のサマリ
+    * `parent_event_id`: 対応する user_message の event_id
+
+---
+
+## 5. バージョニングと拡張
+
+* 本仕様は `agtrace.event.v1` として固定する。
+* 互換性の壊れる変更（フィールド削除 / 意味の変化）は `v2` を定義して行う。
+* 互換性の保たれる拡張（フィールド追加 / enum 値追加）は、`v1` のまま拡張可能。
+
+---
+
+## 6. 現時点での割り切り / 注意点
+
+* `project_hash`:
+
+  * Gemini CLI の `getProjectHash(projectRoot)` 実装を参考に、「project_root の sha256(hex)」とするのが理想だが、
+  * Claude / Codex の `cwd` が必ず同じ project_root を指す保証はないため、
+  * あくまで「プロジェクト識別子」として扱う。
+* `raw`:
+
+  * 現時点では元レコード全体を格納してもよい（サイズは別問題として今は割り切る）。
+  * 将来的には「巨大な content をサマライズして格納する」などの方針を導入する余地あり。
+* `parent_event_id`:
+
+  * 明示的に「user_message へのポインタ」として用途を限定している。
+    tool_call → tool_result の因果関係は `tool_call_id` + `ts` で辿る。
+
+---
+
+以上が `AgentEventV1` の仕様および、Claude / Codex / Gemini 各ログからのマッピング仕様である。
+実装では、本仕様に沿って「1 ベンダーレコード → 0〜N AgentEventV1」を生成する正規化レイヤーを構築する。
