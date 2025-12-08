@@ -118,16 +118,33 @@ fn import_claude_directory(
 ) -> Result<Vec<AgentEventV1>> {
     let mut all_events = Vec::new();
 
-    // If all_projects is true, skip project filtering
-    let target_project_root = if all_projects {
-        None
+    // Determine the target project root and encoded directory name
+    let (target_project_root, project_dir_name) = if all_projects {
+        (None, None)
     } else if let Some(pr) = project_root_override {
-        Some(PathBuf::from(pr))
+        let root = PathBuf::from(pr);
+        let dir_name = crate::utils::encode_claude_project_dir(&root);
+        (Some(root), Some(dir_name))
     } else {
-        Some(discover_project_root(None)?)
+        let root = discover_project_root(None)?;
+        let dir_name = crate::utils::encode_claude_project_dir(&root);
+        (Some(root), Some(dir_name))
     };
 
-    for entry in WalkDir::new(root)
+    // Optimize search path: if not all_projects, only search the specific project directory
+    let search_root = if let Some(ref dir_name) = project_dir_name {
+        let project_specific_root = root.join(dir_name);
+        if project_specific_root.exists() && project_specific_root.is_dir() {
+            project_specific_root
+        } else {
+            // Project directory doesn't exist, return empty
+            return Ok(all_events);
+        }
+    } else {
+        root.clone()
+    };
+
+    for entry in WalkDir::new(&search_root)
         .into_iter()
         .filter_map(|e| e.ok())
     {
@@ -141,16 +158,20 @@ fn import_claude_directory(
 
         let _is_valid = is_valid_claude_file(entry.path());
 
-        // Skip project filtering if all_projects is true
-        if let Some(ref target_root) = target_project_root {
-            if let Some(session_cwd) = claude::extract_cwd_from_claude_file(entry.path()) {
-                let session_cwd_path = Path::new(&session_cwd);
-                if !paths_equal(target_root, session_cwd_path) {
+        // When searching specific project directory, we can skip cwd verification
+        // since the directory structure itself guarantees the project match.
+        // However, for --all-projects mode, we still need to verify.
+        if all_projects {
+            if let Some(ref target_root) = target_project_root {
+                if let Some(session_cwd) = claude::extract_cwd_from_claude_file(entry.path()) {
+                    let session_cwd_path = Path::new(&session_cwd);
+                    if !paths_equal(target_root, session_cwd_path) {
+                        continue;
+                    }
+                } else {
+                    eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
                     continue;
                 }
-            } else {
-                eprintln!("Warning: Could not extract cwd from {}, skipping", entry.path().display());
-                continue;
             }
         }
 
@@ -242,7 +263,7 @@ fn import_codex_directory(
 fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<AgentEventV1>> {
     let mut all_events = Vec::new();
 
-    // If all_projects is true, skip project filtering
+    // Determine target project hash
     let target_project_hash = if all_projects {
         None
     } else {
@@ -252,6 +273,21 @@ fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<Age
         ))
     };
 
+    // Optimize: if not all_projects, check only the specific project hash directory
+    if let Some(ref hash) = target_project_hash {
+        let project_specific_dir = root.join(hash);
+        if project_specific_dir.exists() && project_specific_dir.is_dir() {
+            // Process only this specific project directory
+            let logs_json_path = project_specific_dir.join("logs.json");
+            if logs_json_path.exists() {
+                process_gemini_project_directory(&project_specific_dir, &logs_json_path, &mut all_events)?;
+            }
+        }
+        // If directory doesn't exist, just return empty results (no warning needed)
+        return Ok(all_events);
+    }
+
+    // For --all-projects mode, iterate through all directories
     let entries = std::fs::read_dir(root)?;
 
     for entry in entries {
@@ -275,70 +311,47 @@ fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<Age
             continue;
         }
 
-        let mut session_project_hash = gemini::extract_project_hash_from_gemini_file(&logs_json_path);
+        process_gemini_project_directory(&path, &logs_json_path, &mut all_events)?;
+    }
 
-        if session_project_hash.is_none() {
-            let chats_dir = path.join("chats");
-            if chats_dir.is_dir() {
-                if let Ok(chat_entries) = std::fs::read_dir(&chats_dir) {
-                    for chat_entry in chat_entries {
-                        if let Ok(chat_entry) = chat_entry {
-                            let chat_path = chat_entry.path();
-                            if chat_path.is_file() && chat_path.extension().map_or(false, |e| e == "json") {
-                                session_project_hash = gemini::extract_project_hash_from_gemini_file(&chat_path);
-                                if session_project_hash.is_some() {
-                                    break;
-                                }
+    Ok(all_events)
+}
+
+fn process_gemini_project_directory(
+    project_dir: &Path,
+    logs_json_path: &Path,
+    all_events: &mut Vec<AgentEventV1>,
+) -> Result<()> {
+    match gemini::normalize_gemini_file(logs_json_path) {
+        Ok(events) => {
+            all_events.extend(events);
+        }
+        Err(e) => {
+            eprintln!("Warning: Failed to parse {}: {}", logs_json_path.display(), e);
+        }
+    }
+
+    let chats_dir = project_dir.join("chats");
+    if chats_dir.is_dir() {
+        if let Ok(chat_entries) = std::fs::read_dir(&chats_dir) {
+            for chat_entry in chat_entries {
+                if let Ok(chat_entry) = chat_entry {
+                    let chat_path = chat_entry.path();
+                    let chat_filename = chat_path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("");
+
+                    if chat_path.is_file()
+                        && chat_filename.starts_with("session-")
+                        && chat_filename.ends_with(".json")
+                    {
+                        match gemini::normalize_gemini_file(&chat_path) {
+                            Ok(events) => {
+                                all_events.extend(events);
                             }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Skip project filtering if all_projects is true
-        if let Some(ref target_hash) = target_project_hash {
-            if let Some(hash) = session_project_hash {
-                if &hash != target_hash {
-                    continue;
-                }
-            } else {
-                eprintln!("Warning: Could not extract projectHash from {}, skipping", path.display());
-                continue;
-            }
-        }
-
-        match gemini::normalize_gemini_file(&logs_json_path) {
-            Ok(events) => {
-                all_events.extend(events);
-            }
-            Err(e) => {
-                eprintln!("Warning: Failed to parse {}: {}", logs_json_path.display(), e);
-            }
-        }
-
-        let chats_dir = path.join("chats");
-        if chats_dir.is_dir() {
-            if let Ok(chat_entries) = std::fs::read_dir(&chats_dir) {
-                for chat_entry in chat_entries {
-                    if let Ok(chat_entry) = chat_entry {
-                        let chat_path = chat_entry.path();
-                        let chat_filename = chat_path.file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or("");
-
-                        if chat_path.is_file()
-                            && chat_filename.starts_with("session-")
-                            && chat_filename.ends_with(".json")
-                        {
-                            match gemini::normalize_gemini_file(&chat_path) {
-                                Ok(events) => {
-                                    all_events.extend(events);
-                                }
-                                Err(e) => {
-                                    eprintln!("Warning: Failed to parse {}: {}", chat_path.display(), e);
-                                    continue;
-                                }
+                            Err(e) => {
+                                eprintln!("Warning: Failed to parse {}: {}", chat_path.display(), e);
+                                continue;
                             }
                         }
                     }
@@ -347,7 +360,7 @@ fn import_gemini_directory(root: &PathBuf, all_projects: bool) -> Result<Vec<Age
         }
     }
 
-    Ok(all_events)
+    Ok(())
 }
 
 pub fn count_claude_sessions(log_root: &PathBuf, project_root: &PathBuf) -> (usize, usize) {

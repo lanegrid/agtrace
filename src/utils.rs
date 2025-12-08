@@ -80,3 +80,11 @@ pub fn normalize_path(path: &Path) -> PathBuf {
 pub fn paths_equal(path1: &Path, path2: &Path) -> bool {
     normalize_path(path1) == normalize_path(path2)
 }
+
+/// Encode project_root path to Claude Code directory name format
+/// Example: /Users/zawakin/go/src/github.com/lanegrid/agtrace
+///          -> -Users-zawakin-go-src-github-com-lanegrid-agtrace
+pub fn encode_claude_project_dir(project_root: &Path) -> String {
+    let path_str = project_root.to_string_lossy();
+    format!("-{}", path_str.replace('/', "-").trim_start_matches('-'))
+}
