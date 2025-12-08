@@ -133,18 +133,149 @@ agtrace import \
 
 * 入力:
 
-  * ベンダーログファイル
+  * ベンダーログファイル（後述の「2.5 生ログファイル検出仕様」参照）
 * 処理:
 
   * 各ファイルを vendor-specific パーサで読み込み
   * `normalize_*` 関数で `Vec<AgentEventV1>` に変換
   * `session_id` / `event_id` / `parent_event_id` を埋める
   * `data-dir` 配下に保存
-* 保存形式（例示。実装は以下の条件を満たせば良い）:
+* 保存形式:
 
-  * `data-dir/events/<project_hash>/<session_id>.jsonl`
+  * `data-dir/projects/<project_hash>/sessions/<session_id>.jsonl`
 
     * 中身は `AgentEventV1` の 1 行 1 イベント JSON
+
+### 2.5 生ログファイル検出仕様
+
+`--root` に指定されたパスから、各ベンダーの生ログファイルを検出する仕様を定義する。
+
+#### 2.5.1 共通ルール
+
+* `--root` にはファイルまたはディレクトリを指定可能:
+  * **ファイル**: その 1 ファイルのみを import 対象とする
+  * **ディレクトリ**: 以下のベンダー固有ルールに従って再帰的に探索する
+
+* 検出されたファイルごとに正規化処理を行い、結果を統合して保存する
+
+#### 2.5.2 Codex
+
+**ディレクトリ構造例:**
+```
+~/.codex/sessions/
+  2025/
+    11/
+      02/
+        rollout-2025-11-02T16-07-40-....jsonl
+        rollout-2025-11-02T21-38-13-....jsonl
+      03/
+        rollout-2025-11-03T00-00-31-....jsonl
+      ...
+      28/
+        rollout-2025-11-28T13-37-13-....jsonl
+        rollout-2025-11-28T16-21-36-....jsonl
+```
+
+**検出ルール:**
+* `--root` 配下を**再帰的に探索**する
+* 以下の条件を満たすファイルを Codex セッションログとして検出:
+  * 拡張子が `.jsonl`
+  * ファイル名が `rollout-` で始まる（例: `rollout-2025-11-28T13-37-13-....jsonl`）
+
+**session_id の決定:**
+* ファイル名から `.jsonl` 拡張子を除いた部分を `session_id` とする
+* 例: `rollout-2025-11-28T13-37-13-019ac8c0` → session_id = `"rollout-2025-11-28T13-37-13-019ac8c0"`
+* `--session-id-prefix` が指定されている場合は、その接頭辞を追加する
+
+#### 2.5.3 Claude Code
+
+**ディレクトリ構造例:**
+```
+~/.claude/projects/
+  -Users-zawakin-go-src-github-com-lanegrid-agtrace/
+    038c47b8-a1b2-4c3d-8e9f-0123456789ab.jsonl
+    1600ec8f-b2c3-4d5e-9f01-23456789abcd.jsonl
+    ...
+    eb5ce482-c14c-4de5-b2c1-1f6ad5839f0f.jsonl
+    agent-5937d6b1.jsonl
+```
+
+**検出ルール:**
+* `--root` 配下を**再帰的に探索**する
+* 以下の条件を満たすファイルを Claude Code セッションログとして検出:
+  * 拡張子が `.jsonl`
+  * （オプション）ファイルの 1 行目を読み、`type` および `sessionId` フィールドが存在することを確認
+    * これにより、Claude Code 以外の `.jsonl` ファイルを誤検出するリスクを減らす
+
+**session_id の決定:**
+* ファイル内の各レコードに含まれる `sessionId` フィールドを使用
+* 1 ファイル = 1 セッションを想定
+
+#### 2.5.4 Gemini CLI
+
+**ディレクトリ構造例:**
+```
+~/.gemini/tmp/
+  427e6b3fa23501d53ff9c385de38d0ebff0a269eb0bb116e3a715cdd8bf8dd16/
+    logs.json
+    chats/
+      session-2025-12-07T17-16-4cee1115.json
+      session-2025-12-07T17-25-34e4e339.json
+  5208fc97.../
+    logs.json
+    chats/
+      session-2025-12-07T17-13-3e64aa6f.json
+      session-2025-12-07T17-14-293439aa.json
+  a7e6a102.../
+    logs.json
+  bin/
+    rg
+```
+
+**検出ルール:**
+* `--root` 直下のディレクトリを探索
+* 以下の条件を満たすディレクトリを「プロジェクトディレクトリ」として検出:
+  * ディレクトリ名が **64 桁の 16 進数**（SHA256 ハッシュ値）
+  * ディレクトリ内に `logs.json` ファイルが存在する
+
+* 各プロジェクトディレクトリに対して:
+  1. `logs.json` をセッションメタデータおよび CLI イベントのソースとして読み込む
+  2. `chats/` ディレクトリが存在する場合:
+     * `chats/session-*.json` パターンに一致するファイルを会話ログとして読み込む
+     * ファイル名が `session-` で始まり、拡張子が `.json`
+
+**session_id の決定:**
+* `logs.json` または `chats/session-*.json` 内の `sessionId` フィールドを使用
+* 複数のチャットセッションが存在する場合、それぞれ個別のセッションとして扱う
+
+#### 2.5.5 検出例
+
+**Codex の場合:**
+```sh
+# 日付ディレクトリを指定
+$ agtrace import --source codex --root ~/.codex/sessions/2025/11
+
+# 検出: 02/, 03/, ..., 28/ 配下のすべての rollout-*.jsonl
+# 結果: 数十〜数百セッション
+```
+
+**Claude Code の場合:**
+```sh
+# プロジェクトディレクトリを指定
+$ agtrace import --source claude --root ~/.claude/projects/-Users-zawakin-go-src-github-com-lanegrid-agtrace
+
+# 検出: 配下のすべての *.jsonl（UUID名 + agent-*.jsonl など）
+# 結果: 10〜50セッション（プロジェクトによる）
+```
+
+**Gemini CLI の場合:**
+```sh
+# tmp ディレクトリを指定
+$ agtrace import --source gemini --root ~/.gemini/tmp
+
+# 検出: 64桁hexディレクトリごとの logs.json + chats/session-*.json
+# 結果: 複数プロジェクト × 複数セッション
+```
 
 ---
 
