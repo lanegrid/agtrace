@@ -50,8 +50,7 @@ log_root = "/Users/<user>/.gemini/tmp"
 
 1. `--project-root <PATH>` が指定されていればそれ
 2. `AGTRACE_PROJECT_ROOT` 環境変数があればそれ
-3. Git リポジトリであれば `git rev-parse --show-toplevel` の結果
-4. 上記がすべて無ければカレントディレクトリ (`cwd`)
+3. 上記がすべて無ければカレントディレクトリ (`cwd`)
 
 `project_hash` は `project_root` に対する `sha256(project_root).hex` とする。
 
@@ -115,7 +114,7 @@ log_root = "/Users/<user>/.gemini/tmp"
   * 説明: 対象とするプロジェクトルートを明示的に指定する。
   * 挙動:
     * 指定された場合、このパスを `project_root` とみなし、`project_hash = sha256(project_root)` を用いる。
-    * 指定されない場合は「Project Discovery」（`AGTRACE_PROJECT_ROOT` → git → `cwd`）で自動決定する。
+    * 指定されない場合は「Project Discovery」（`AGTRACE_PROJECT_ROOT` → `cwd`）で自動決定する。
   * 影響:
     * `import` / `list` / `find` / `stats` / `export` のデフォルトスコープ（「現在のプロジェクト」）に用いられる。
 
@@ -186,7 +185,7 @@ agtrace import \
   * 挙動:
 
     * 指定された場合、`project_root` として優先的に使用し、`project_hash = sha256(project_root)` とする。
-    * 指定されない場合は「Project Discovery」の優先順位（`AGTRACE_PROJECT_ROOT` → git → `cwd`）に従い決定する。
+    * 指定されない場合は「Project Discovery」の優先順位（`AGTRACE_PROJECT_ROOT` → `cwd`）に従い決定する。
   * 重要: プロジェクトに対応するセッション判定は、`project_root` / `project_hash` と生ログ側の `cwd` / `projectHash` を突き合わせることで行われる。
 
 * `--dry-run`
@@ -259,8 +258,7 @@ agtrace import \
 
 1. `--project-root <PATH>` が指定されていればそれ
 2. `AGTRACE_PROJECT_ROOT` 環境変数
-3. Git リポジトリであれば `git rev-parse --show-toplevel`
-4. 上記がすべて無ければカレントディレクトリ (`cwd`)
+3. 上記がすべて無ければカレントディレクトリ (`cwd`)
 
 `project_hash = sha256(project_root).hex` を計算し、全イベントに埋め込む。
 

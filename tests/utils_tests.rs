@@ -57,7 +57,7 @@ fn test_discover_project_root_falls_back_to_cwd() {
     // Make sure env var is not set
     env::remove_var("AGTRACE_PROJECT_ROOT");
 
-    // Without explicit root or env var, should fall back to git or cwd
+    // Without explicit root or env var, should fall back to cwd
     let result = discover_project_root(None).unwrap();
 
     // Result should be a valid path

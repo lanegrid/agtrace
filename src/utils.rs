@@ -1,7 +1,6 @@
 use anyhow::Result;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// Calculate project_hash from project_root using SHA256
 pub fn project_hash_from_root(project_root: &str) -> String {
@@ -22,8 +21,7 @@ pub fn truncate(s: &str, max: usize) -> String {
 /// Discover project root based on priority:
 /// 1. explicit_project_root (--project-root flag)
 /// 2. AGTRACE_PROJECT_ROOT environment variable
-/// 3. Git repository root (git rev-parse --show-toplevel)
-/// 4. Current working directory
+/// 3. Current working directory
 pub fn discover_project_root(explicit_project_root: Option<&str>) -> Result<PathBuf> {
     // Priority 1: Explicit --project-root flag
     if let Some(root) = explicit_project_root {
@@ -35,29 +33,9 @@ pub fn discover_project_root(explicit_project_root: Option<&str>) -> Result<Path
         return Ok(PathBuf::from(env_root));
     }
 
-    // Priority 3: Git repository root
-    if let Ok(git_root) = find_git_root() {
-        return Ok(git_root);
-    }
-
-    // Priority 4: Current working directory
+    // Priority 3: Current working directory
     let cwd = std::env::current_dir()?;
     Ok(cwd)
-}
-
-/// Find git repository root by running `git rev-parse --show-toplevel`
-fn find_git_root() -> Result<PathBuf> {
-    let output = Command::new("git")
-        .args(&["rev-parse", "--show-toplevel"])
-        .output()?;
-
-    if !output.status.success() {
-        anyhow::bail!("Not a git repository");
-    }
-
-    let stdout = String::from_utf8(output.stdout)?;
-    let path = stdout.trim();
-    Ok(PathBuf::from(path))
 }
 
 /// Normalize a path for comparison (resolve to absolute, canonicalize if possible)
