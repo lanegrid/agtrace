@@ -1,6 +1,6 @@
 use crate::model::*;
 use anyhow::{Context, Result};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use walkdir::WalkDir;
@@ -63,10 +63,29 @@ impl Storage {
                 Vec::new()
             };
 
-            // Append new events
+            // Collect existing event_ids for deduplication
+            let mut existing_ids: HashSet<String> = all_events
+                .iter()
+                .filter_map(|e| e.event_id.clone())
+                .collect();
+
+            // Append new events with deduplication
             for event in group {
+                if let Some(id) = &event.event_id {
+                    // Skip if already exists (ensures idempotency)
+                    if existing_ids.contains(id) {
+                        continue;
+                    }
+                    // Add to set to prevent duplicates within the same batch
+                    existing_ids.insert(id.clone());
+                }
+
+                // Add event if it has no ID or is a new ID
                 all_events.push((*event).clone());
             }
+
+            // Sort by timestamp to maintain chronological order
+            all_events.sort_by(|a, b| a.ts.cmp(&b.ts));
 
             // Write all events
             self.write_jsonl_file(&file_path, &all_events)?;
