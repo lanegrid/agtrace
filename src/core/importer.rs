@@ -1,6 +1,6 @@
 use crate::model::AgentEventV1;
 use crate::providers::{ImportContext, LogProvider};
-use crate::utils::{discover_project_root, paths_equal};
+use crate::utils::discover_project_root;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -44,7 +44,20 @@ impl ImportService {
                 (Some(discover_project_root(None)?), true)
             };
 
-            for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+            let search_root = if should_filter_by_project {
+                if let Some(ref target_root) = target_project_root {
+                    for provider in &self.providers {
+                        if let Some(optimized_root) = provider.get_search_root(path, target_root) {
+                            return self.import_from_directory(&optimized_root, context, Some(target_root), provider.as_ref());
+                        }
+                    }
+                }
+                path
+            } else {
+                path
+            };
+
+            for entry in WalkDir::new(search_root).into_iter().filter_map(|e| e.ok()) {
                 if !entry.file_type().is_file() {
                     continue;
                 }
@@ -53,10 +66,9 @@ impl ImportService {
 
                 for provider in &self.providers {
                     if provider.can_handle(entry_path) {
-                        // For project filtering, we need provider-specific CWD extraction
                         if should_filter_by_project {
                             if let Some(ref target_root) = target_project_root {
-                                if !self.should_process_file(entry_path, target_root)? {
+                                if !provider.belongs_to_project(entry_path, target_root) {
                                     continue;
                                 }
                             }
@@ -88,32 +100,46 @@ impl ImportService {
         Ok(all_events)
     }
 
-    fn should_process_file(&self, path: &Path, target_root: &Path) -> Result<bool> {
-        if let Some(session_cwd) = self.extract_cwd(path) {
-            let session_cwd_path = Path::new(&session_cwd);
-            Ok(paths_equal(target_root, session_cwd_path))
-        } else {
-            eprintln!(
-                "Warning: Could not extract cwd from {}, skipping",
-                path.display()
-            );
-            Ok(false)
-        }
-    }
+    fn import_from_directory(
+        &self,
+        search_root: &Path,
+        context: &ImportContext,
+        target_root: Option<&PathBuf>,
+        provider: &dyn LogProvider,
+    ) -> Result<Vec<AgentEventV1>> {
+        let mut all_events = Vec::new();
 
-    fn extract_cwd(&self, path: &Path) -> Option<String> {
-        use crate::providers::{claude, codex};
+        for entry in WalkDir::new(search_root).into_iter().filter_map(|e| e.ok()) {
+            if !entry.file_type().is_file() {
+                continue;
+            }
 
-        if path.extension().map_or(false, |e| e == "jsonl") {
-            let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+            let entry_path = entry.path();
 
-            if filename.starts_with("rollout-") {
-                return codex::extract_cwd_from_codex_file(path);
-            } else {
-                return claude::extract_cwd_from_claude_file(path);
+            if !provider.can_handle(entry_path) {
+                continue;
+            }
+
+            if let Some(target_root) = target_root {
+                if !provider.belongs_to_project(entry_path, target_root) {
+                    continue;
+                }
+            }
+
+            match provider.normalize_file(entry_path, context) {
+                Ok(events) => {
+                    all_events.extend(events);
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Warning: Failed to parse {}: {}",
+                        entry_path.display(),
+                        e
+                    );
+                }
             }
         }
 
-        None
+        Ok(all_events)
     }
 }

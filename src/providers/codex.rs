@@ -416,4 +416,15 @@ impl super::LogProvider for CodexProvider {
 
         normalize_codex_file(path, &session_id, context.project_root_override.as_deref())
     }
+
+    fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
+        use crate::utils::paths_equal;
+
+        if let Some(session_cwd) = extract_cwd_from_codex_file(path) {
+            let session_cwd_path = Path::new(&session_cwd);
+            paths_equal(target_project_root, session_cwd_path)
+        } else {
+            false
+        }
+    }
 }

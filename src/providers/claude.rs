@@ -757,4 +757,23 @@ impl super::LogProvider for ClaudeProvider {
     fn normalize_file(&self, path: &Path, context: &super::ImportContext) -> Result<Vec<AgentEventV1>> {
         normalize_claude_file(path, context.project_root_override.as_deref())
     }
+
+    fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
+        if let Some(session_cwd) = extract_cwd_from_claude_file(path) {
+            let session_cwd_path = Path::new(&session_cwd);
+            paths_equal(target_project_root, session_cwd_path)
+        } else {
+            false
+        }
+    }
+
+    fn get_search_root(&self, log_root: &Path, target_project_root: &Path) -> Option<std::path::PathBuf> {
+        let dir_name = encode_claude_project_dir(target_project_root);
+        let project_specific_root = log_root.join(dir_name);
+        if project_specific_root.exists() && project_specific_root.is_dir() {
+            Some(project_specific_root)
+        } else {
+            None
+        }
+    }
 }

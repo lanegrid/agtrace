@@ -264,4 +264,39 @@ impl super::LogProvider for GeminiProvider {
     fn normalize_file(&self, path: &Path, _context: &super::ImportContext) -> Result<Vec<AgentEventV1>> {
         normalize_gemini_file(path)
     }
+
+    fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
+        use crate::utils::project_hash_from_root;
+
+        let target_hash = project_hash_from_root(&target_project_root.to_string_lossy());
+
+        if let Some(file_hash) = extract_project_hash_from_gemini_file(path) {
+            file_hash == target_hash
+        } else {
+            if let Some(parent) = path.parent() {
+                if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
+                    if is_64_char_hex(dir_name) {
+                        return dir_name == target_hash;
+                    }
+                }
+            }
+            false
+        }
+    }
+
+    fn get_search_root(&self, log_root: &Path, target_project_root: &Path) -> Option<std::path::PathBuf> {
+        use crate::utils::project_hash_from_root;
+
+        let hash = project_hash_from_root(&target_project_root.to_string_lossy());
+        let project_specific_dir = log_root.join(&hash);
+        if project_specific_dir.exists() && project_specific_dir.is_dir() {
+            Some(project_specific_dir)
+        } else {
+            None
+        }
+    }
+}
+
+fn is_64_char_hex(s: &str) -> bool {
+    s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
 }
