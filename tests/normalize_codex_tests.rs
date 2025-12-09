@@ -1,5 +1,5 @@
 use agtrace::model::*;
-use agtrace::normalize::codex::*;
+use agtrace::providers::codex::*;
 use std::path::Path;
 
 #[test]

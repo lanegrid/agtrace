@@ -1,5 +1,5 @@
 use agtrace::model::*;
-use agtrace::normalize::gemini::*;
+use agtrace::providers::gemini::*;
 use std::path::Path;
 
 #[test]

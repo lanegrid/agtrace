@@ -1,5 +1,5 @@
 use agtrace::model::*;
-use agtrace::normalize::claude::*;
+use agtrace::providers::claude::*;
 use std::path::Path;
 
 #[test]

@@ -229,3 +229,39 @@ pub fn extract_project_hash_from_gemini_file(path: &Path) -> Option<String> {
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
 }
+
+pub struct GeminiProvider;
+
+impl GeminiProvider {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl super::LogProvider for GeminiProvider {
+    fn name(&self) -> &str {
+        "gemini"
+    }
+
+    fn can_handle(&self, path: &Path) -> bool {
+        if !path.is_file() {
+            return false;
+        }
+
+        let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+
+        if filename == "logs.json" {
+            return true;
+        }
+
+        if filename.starts_with("session-") && filename.ends_with(".json") {
+            return true;
+        }
+
+        false
+    }
+
+    fn normalize_file(&self, path: &Path, _context: &super::ImportContext) -> Result<Vec<AgentEventV1>> {
+        normalize_gemini_file(path)
+    }
+}

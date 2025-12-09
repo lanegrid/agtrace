@@ -728,3 +728,33 @@ pub fn extract_cwd_from_claude_file(path: &Path) -> Option<String> {
 
     None
 }
+
+pub struct ClaudeProvider;
+
+impl ClaudeProvider {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl super::LogProvider for ClaudeProvider {
+    fn name(&self) -> &str {
+        "claude"
+    }
+
+    fn can_handle(&self, path: &Path) -> bool {
+        if !path.is_file() {
+            return false;
+        }
+
+        if !path.extension().map_or(false, |e| e == "jsonl") {
+            return false;
+        }
+
+        true
+    }
+
+    fn normalize_file(&self, path: &Path, context: &super::ImportContext) -> Result<Vec<AgentEventV1>> {
+        normalize_claude_file(path, context.project_root_override.as_deref())
+    }
+}

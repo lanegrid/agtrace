@@ -361,3 +361,59 @@ pub fn is_empty_codex_session(path: &Path) -> bool {
     // If we only have 1-2 lines and no events, it's likely an empty session
     line_count <= 2 && !has_event
 }
+
+pub struct CodexProvider;
+
+impl CodexProvider {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl super::LogProvider for CodexProvider {
+    fn name(&self) -> &str {
+        "codex"
+    }
+
+    fn can_handle(&self, path: &Path) -> bool {
+        if !path.is_file() {
+            return false;
+        }
+
+        if !path.extension().map_or(false, |e| e == "jsonl") {
+            return false;
+        }
+
+        let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+        if !filename.starts_with("rollout-") {
+            return false;
+        }
+
+        if is_empty_codex_session(path) {
+            return false;
+        }
+
+        true
+    }
+
+    fn normalize_file(&self, path: &Path, context: &super::ImportContext) -> Result<Vec<AgentEventV1>> {
+        let filename = path
+            .file_name()
+            .ok_or_else(|| anyhow::anyhow!("Invalid file path"))?
+            .to_string_lossy();
+
+        let session_id_base = if filename.ends_with(".jsonl") {
+            &filename[..filename.len() - 6]
+        } else {
+            filename.as_ref()
+        };
+
+        let session_id = context
+            .session_id_prefix
+            .as_ref()
+            .map(|p| format!("{}{}", p, session_id_base))
+            .unwrap_or_else(|| session_id_base.to_string());
+
+        normalize_codex_file(path, &session_id, context.project_root_override.as_deref())
+    }
+}
