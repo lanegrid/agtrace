@@ -93,3 +93,24 @@ pub fn encode_claude_project_dir(project_root: &Path) -> String {
         .to_string();
     format!("-{}", encoded)
 }
+
+/// Resolve effective project hash based on explicit hash or all_projects flag
+pub fn resolve_effective_project_hash(
+    explicit_hash: Option<&str>,
+    all_projects: bool,
+) -> Result<(Option<String>, bool)> {
+    if let Some(hash) = explicit_hash {
+        Ok((Some(hash.to_string()), false))
+    } else if all_projects {
+        Ok((None, true))
+    } else {
+        let project_root_path = discover_project_root(None)?;
+        let current_project_hash = project_hash_from_root(&project_root_path.to_string_lossy());
+        Ok((Some(current_project_hash), false))
+    }
+}
+
+/// Check if string is 64-character hexadecimal
+pub fn is_64_char_hex(s: &str) -> bool {
+    s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
+}

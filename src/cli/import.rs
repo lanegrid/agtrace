@@ -190,7 +190,7 @@ pub fn count_gemini_sessions(log_root: &PathBuf, target_project_hash: &str) -> (
 
                 let dir_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-                if !is_64_char_hex(dir_name) {
+                if !crate::utils::is_64_char_hex(dir_name) {
                     continue;
                 }
 
@@ -257,8 +257,4 @@ pub fn count_unique_sessions(events: &[AgentEventV1]) -> usize {
         }
     }
     sessions.len()
-}
-
-fn is_64_char_hex(s: &str) -> bool {
-    s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
 }

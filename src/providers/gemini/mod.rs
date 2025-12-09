@@ -38,7 +38,7 @@ impl LogProvider for GeminiProvider {
         } else {
             if let Some(parent) = path.parent() {
                 if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
-                    if is_64_char_hex(dir_name) {
+                    if crate::utils::is_64_char_hex(dir_name) {
                         return dir_name == target_hash;
                     }
                 }
@@ -52,8 +52,4 @@ impl LogProvider for GeminiProvider {
         let dir = log_root.join(&hash);
         (dir.exists() && dir.is_dir()).then_some(dir)
     }
-}
-
-fn is_64_char_hex(s: &str) -> bool {
-    s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
 }

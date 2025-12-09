@@ -1,4 +1,6 @@
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 /// Source of the agent log
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -161,4 +163,33 @@ pub struct SessionSummary {
     pub user_message_count: usize,
     pub tokens_input_total: u64,
     pub tokens_output_total: u64,
+}
+
+impl FromStr for Source {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "claude" => Ok(Source::ClaudeCode),
+            "codex" => Ok(Source::Codex),
+            "gemini" => Ok(Source::Gemini),
+            _ => Err(anyhow!("Unknown source: {}", s)),
+        }
+    }
+}
+
+impl FromStr for EventType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "user_message" => Ok(EventType::UserMessage),
+            "assistant_message" => Ok(EventType::AssistantMessage),
+            "reasoning" => Ok(EventType::Reasoning),
+            "tool_call" => Ok(EventType::ToolCall),
+            "tool_result" => Ok(EventType::ToolResult),
+            "meta" => Ok(EventType::Meta),
+            _ => Err(anyhow!("Unknown event type: {}", s)),
+        }
+    }
 }
