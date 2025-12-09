@@ -165,6 +165,7 @@ fn test_claude_schema_version() {
 fn test_claude_tool_result_wrapped_in_user_role() {
     // v1.5: Test that tool_result in message.role="user" is correctly detected
     use serde_json::json;
+    use std::io::Write;
 
     let record = json!({
         "type": "message",
@@ -184,7 +185,11 @@ fn test_claude_tool_result_wrapped_in_user_role() {
         }
     });
 
-    let events = normalize_claude_stream(vec![record], None);
+    // Create temporary file
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(temp_file, "{}", serde_json::to_string(&record).unwrap()).unwrap();
+
+    let events = normalize_claude_file(temp_file.path(), None).unwrap();
 
     // Should produce a tool_result event, not a user_message
     assert_eq!(events.len(), 1, "Should produce exactly 1 event");
