@@ -14,6 +14,19 @@ impl Storage {
         Self { data_dir }
     }
 
+    /// Helper: iterate over all session files
+    fn iter_session_files(&self) -> impl Iterator<Item = PathBuf> {
+        let projects_dir = self.data_dir.join("projects");
+        WalkDir::new(projects_dir)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.file_type().is_file() && e.path().extension().map_or(false, |ext| ext == "jsonl")
+            })
+            .map(|e| e.path().to_path_buf())
+    }
+
     /// Save events to storage
     /// Events are grouped by project_hash and session_id
     /// Path: data_dir/projects/<project_hash>/sessions/<session_id>.jsonl
@@ -64,23 +77,12 @@ impl Storage {
 
     /// Load all events for a specific session
     pub fn load_session_events(&self, session_id: &str) -> Result<Vec<AgentEventV1>> {
-        let projects_dir = self.data_dir.join("projects");
+        let target_filename = format!("{}.jsonl", session_id);
 
-        if !projects_dir.exists() {
-            anyhow::bail!("Projects directory does not exist");
-        }
-
-        // Search for session file across all project_hash/sessions directories
-        for entry in WalkDir::new(&projects_dir)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            if entry.file_type().is_file() {
-                if let Some(filename) = entry.file_name().to_str() {
-                    if filename == format!("{}.jsonl", session_id) {
-                        return self.read_jsonl_file(entry.path());
-                    }
+        for path in self.iter_session_files() {
+            if let Some(filename) = path.file_name().and_then(|f| f.to_str()) {
+                if filename == target_filename {
+                    return self.read_jsonl_file(&path);
                 }
             }
         }
@@ -96,78 +98,64 @@ impl Storage {
         limit: Option<usize>,
         all_projects: bool,
     ) -> Result<Vec<SessionSummary>> {
-        let projects_dir = self.data_dir.join("projects");
-
-        if !projects_dir.exists() {
-            return Ok(Vec::new());
-        }
-
         let mut summaries = Vec::new();
 
-        for entry in WalkDir::new(&projects_dir)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            if entry.file_type().is_file()
-                && entry.path().extension().map_or(false, |e| e == "jsonl")
-            {
-                let events = self.read_jsonl_file(entry.path())?;
+        for path in self.iter_session_files() {
+            let events = self.read_jsonl_file(&path)?;
 
-                if events.is_empty() {
+            if events.is_empty() {
+                continue;
+            }
+
+            // Apply filters
+            // If --project-hash is specified, filter by it (takes precedence over --all-projects)
+            // If --all-projects is true and --project-hash is not specified, skip project filtering
+            // Otherwise, filter by current project_hash if provided
+            if let Some(ph) = project_hash {
+                if events[0].project_hash != ph {
                     continue;
                 }
-
-                // Apply filters
-                // If --project-hash is specified, filter by it (takes precedence over --all-projects)
-                // If --all-projects is true and --project-hash is not specified, skip project filtering
-                // Otherwise, filter by current project_hash if provided
-                if let Some(ph) = project_hash {
-                    if events[0].project_hash != ph {
-                        continue;
-                    }
-                } else if !all_projects {
-                    // If all_projects is false and no project_hash specified,
-                    // this would normally filter by current project, but we don't have that context here.
-                    // The caller should provide the project_hash if all_projects is false.
-                }
-
-                if let Some(src) = source {
-                    if events[0].source != src {
-                        continue;
-                    }
-                }
-
-                // Calculate summary
-                let session_id = events[0]
-                    .session_id
-                    .clone()
-                    .unwrap_or_else(|| "unknown".to_string());
-
-                let start_ts = events.first().map(|e| e.ts.clone()).unwrap_or_default();
-                let end_ts = events.last().map(|e| e.ts.clone()).unwrap_or_default();
-
-                let user_message_count = events
-                    .iter()
-                    .filter(|e| e.event_type == EventType::UserMessage)
-                    .count();
-
-                let tokens_input_total: u64 = events.iter().filter_map(|e| e.tokens_input).sum();
-
-                let tokens_output_total: u64 = events.iter().filter_map(|e| e.tokens_output).sum();
-
-                summaries.push(SessionSummary {
-                    session_id,
-                    source: events[0].source,
-                    project_hash: events[0].project_hash.clone(),
-                    start_ts,
-                    end_ts,
-                    event_count: events.len(),
-                    user_message_count,
-                    tokens_input_total,
-                    tokens_output_total,
-                });
+            } else if !all_projects {
+                // If all_projects is false and no project_hash specified,
+                // this would normally filter by current project, but we don't have that context here.
+                // The caller should provide the project_hash if all_projects is false.
             }
+
+            if let Some(src) = source {
+                if events[0].source != src {
+                    continue;
+                }
+            }
+
+            // Calculate summary
+            let session_id = events[0]
+                .session_id
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string());
+
+            let start_ts = events.first().map(|e| e.ts.clone()).unwrap_or_default();
+            let end_ts = events.last().map(|e| e.ts.clone()).unwrap_or_default();
+
+            let user_message_count = events
+                .iter()
+                .filter(|e| e.event_type == EventType::UserMessage)
+                .count();
+
+            let tokens_input_total: u64 = events.iter().filter_map(|e| e.tokens_input).sum();
+
+            let tokens_output_total: u64 = events.iter().filter_map(|e| e.tokens_output).sum();
+
+            summaries.push(SessionSummary {
+                session_id,
+                source: events[0].source,
+                project_hash: events[0].project_hash.clone(),
+                start_ts,
+                end_ts,
+                event_count: events.len(),
+                user_message_count,
+                tokens_input_total,
+                tokens_output_total,
+            });
         }
 
         // Sort by start_ts (most recent first)
@@ -191,66 +179,52 @@ impl Storage {
         limit: Option<usize>,
         all_projects: bool,
     ) -> Result<Vec<AgentEventV1>> {
-        let projects_dir = self.data_dir.join("projects");
-
-        if !projects_dir.exists() {
-            return Ok(Vec::new());
-        }
-
         let mut results = Vec::new();
 
-        for entry in WalkDir::new(&projects_dir)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            if entry.file_type().is_file()
-                && entry.path().extension().map_or(false, |e| e == "jsonl")
-            {
-                let events = self.read_jsonl_file(entry.path())?;
+        for path in self.iter_session_files() {
+            let events = self.read_jsonl_file(&path)?;
 
-                for event in events {
-                    // Apply filters
-                    if let Some(sid) = session_id {
-                        if event.session_id.as_deref() != Some(sid) {
+            for event in events {
+                // Apply filters
+                if let Some(sid) = session_id {
+                    if event.session_id.as_deref() != Some(sid) {
+                        continue;
+                    }
+                }
+
+                // If --project-hash is specified, filter by it (takes precedence)
+                // If --all-projects is true and --project-hash is not specified, skip project filtering
+                if let Some(ph) = project_hash {
+                    if event.project_hash != ph {
+                        continue;
+                    }
+                } else if !all_projects {
+                    // If all_projects is false and no project_hash specified,
+                    // this would normally filter by current project, but we don't have that context here.
+                    // The caller should provide the project_hash if all_projects is false.
+                }
+
+                if let Some(et) = event_type {
+                    if event.event_type != et {
+                        continue;
+                    }
+                }
+
+                if let Some(query) = text_query {
+                    if let Some(text) = &event.text {
+                        if !text.to_lowercase().contains(&query.to_lowercase()) {
                             continue;
                         }
+                    } else {
+                        continue;
                     }
+                }
 
-                    // If --project-hash is specified, filter by it (takes precedence)
-                    // If --all-projects is true and --project-hash is not specified, skip project filtering
-                    if let Some(ph) = project_hash {
-                        if event.project_hash != ph {
-                            continue;
-                        }
-                    } else if !all_projects {
-                        // If all_projects is false and no project_hash specified,
-                        // this would normally filter by current project, but we don't have that context here.
-                        // The caller should provide the project_hash if all_projects is false.
-                    }
+                results.push(event);
 
-                    if let Some(et) = event_type {
-                        if event.event_type != et {
-                            continue;
-                        }
-                    }
-
-                    if let Some(query) = text_query {
-                        if let Some(text) = &event.text {
-                            if !text.to_lowercase().contains(&query.to_lowercase()) {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    results.push(event);
-
-                    if let Some(lim) = limit {
-                        if results.len() >= lim {
-                            return Ok(results);
-                        }
+                if let Some(lim) = limit {
+                    if results.len() >= lim {
+                        return Ok(results);
                     }
                 }
             }
