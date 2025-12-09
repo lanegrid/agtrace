@@ -67,11 +67,17 @@ where
             .and_then(|m| m.get("status"))
             .and_then(|v| v.as_str());
 
-        if let Some(model) = payload_obj.and_then(|m| m.get("model")).and_then(|v| v.as_str()) {
+        if let Some(model) = payload_obj
+            .and_then(|m| m.get("model"))
+            .and_then(|v| v.as_str())
+        {
             ev.model = Some(model.to_string());
         }
 
-        if let Some(info) = payload_obj.and_then(|m| m.get("info")).and_then(|v| v.as_object()) {
+        if let Some(info) = payload_obj
+            .and_then(|m| m.get("info"))
+            .and_then(|v| v.as_object())
+        {
             if let Some(last) = info.get("last_token_usage").and_then(|v| v.as_object()) {
                 ev.tokens_input = last.get("input_tokens").and_then(|v| v.as_u64());
                 ev.tokens_output = last.get("output_tokens").and_then(|v| v.as_u64());
@@ -81,7 +87,10 @@ where
             }
         }
 
-        if let Some(call_id) = payload_obj.and_then(|m| m.get("call_id")).and_then(|v| v.as_str()) {
+        if let Some(call_id) = payload_obj
+            .and_then(|m| m.get("call_id"))
+            .and_then(|v| v.as_str())
+        {
             ev.tool_call_id = Some(call_id.to_string());
         }
 
@@ -119,7 +128,11 @@ where
                 if let Some(arr) = summary.as_array() {
                     let texts: Vec<String> = arr
                         .iter()
-                        .filter_map(|s| s.get("text").and_then(|v| v.as_str()).map(|t| t.to_string()))
+                        .filter_map(|s| {
+                            s.get("text")
+                                .and_then(|v| v.as_str())
+                                .map(|t| t.to_string())
+                        })
                         .collect();
                     if !texts.is_empty() {
                         ev.text = Some(texts.join("\n"));
@@ -127,23 +140,37 @@ where
                 }
             }
             if ev.text.is_none() {
-                ev.text = payload_obj.and_then(|m| m.get("text")).and_then(|v| v.as_str()).map(|s| s.to_string());
+                ev.text = payload_obj
+                    .and_then(|m| m.get("text"))
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
             }
         } else if p_type == "agent_reasoning" {
             ev.event_type = EventType::Reasoning;
             ev.role = Some(Role::Assistant);
             ev.channel = Some(Channel::Chat);
-            ev.text = payload_obj.and_then(|m| m.get("text")).and_then(|v| v.as_str()).map(|s| s.to_string());
+            ev.text = payload_obj
+                .and_then(|m| m.get("text"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
         } else if p_type == "function_call_output" {
             ev.event_type = EventType::ToolResult;
             ev.role = Some(Role::Tool);
             ev.channel = Some(Channel::Terminal);
-            ev.tool_status = Some(match payload_obj.and_then(|m| m.get("status")).and_then(|v| v.as_str()) {
-                Some("completed") => ToolStatus::Success,
-                Some("failed") | Some("error") => ToolStatus::Error,
-                _ => ToolStatus::Unknown,
-            });
-            ev.text = payload_obj.and_then(|m| m.get("output")).and_then(|v| v.as_str()).map(|s| truncate(s, 2000));
+            ev.tool_status = Some(
+                match payload_obj
+                    .and_then(|m| m.get("status"))
+                    .and_then(|v| v.as_str())
+                {
+                    Some("completed") => ToolStatus::Success,
+                    Some("failed") | Some("error") => ToolStatus::Error,
+                    _ => ToolStatus::Unknown,
+                },
+            );
+            ev.text = payload_obj
+                .and_then(|m| m.get("output"))
+                .and_then(|v| v.as_str())
+                .map(|s| truncate(s, 2000));
         } else if p_name.is_some() {
             ev.event_type = EventType::ToolCall;
             ev.role = Some(Role::Assistant);
@@ -153,7 +180,10 @@ where
                 _ => Some(Channel::Chat),
             };
             ev.tool_name = Some(p_name.unwrap().to_string());
-            ev.text = payload_obj.and_then(|m| m.get("arguments")).and_then(|v| v.as_str()).map(|s| truncate(s, 2000));
+            ev.text = payload_obj
+                .and_then(|m| m.get("arguments"))
+                .and_then(|v| v.as_str())
+                .map(|s| truncate(s, 2000));
         } else if p_status.is_some() {
             ev.event_type = EventType::ToolResult;
             ev.role = Some(Role::Tool);
@@ -163,12 +193,18 @@ where
                 "failed" | "error" => ToolStatus::Error,
                 _ => ToolStatus::Unknown,
             });
-            ev.text = payload_obj.and_then(|m| m.get("output")).and_then(|v| v.as_str()).map(|s| truncate(s, 2000));
+            ev.text = payload_obj
+                .and_then(|m| m.get("output"))
+                .and_then(|v| v.as_str())
+                .map(|s| truncate(s, 2000));
         } else {
             ev.event_type = EventType::Meta;
             ev.role = Some(Role::System);
             ev.channel = Some(Channel::System);
-            ev.text = payload_obj.and_then(|m| m.get("text")).and_then(|v| v.as_str()).map(|s| s.to_string());
+            ev.text = payload_obj
+                .and_then(|m| m.get("text"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
         }
 
         ev.raw = rec;
@@ -198,5 +234,7 @@ fn extract_codex_message_text(payload: &Value) -> Option<String> {
             }
         }
     }
-    obj.get("text").and_then(|v| v.as_str()).map(|s| truncate(s, 2000))
+    obj.get("text")
+        .and_then(|v| v.as_str())
+        .map(|s| truncate(s, 2000))
 }

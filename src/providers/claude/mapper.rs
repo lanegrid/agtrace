@@ -122,11 +122,14 @@ where
                                         ev.channel = match ev.tool_name.as_deref() {
                                             Some("Bash") => Some(Channel::Terminal),
                                             Some("Edit") | Some("Write") => Some(Channel::Editor),
-                                            Some("Read") | Some("Glob") => Some(Channel::Filesystem),
+                                            Some("Read") | Some("Glob") => {
+                                                Some(Channel::Filesystem)
+                                            }
                                             _ => Some(Channel::Chat),
                                         };
                                         if let Some(input) = item.get("input") {
-                                            let input_str = serde_json::to_string(input).unwrap_or_default();
+                                            let input_str =
+                                                serde_json::to_string(input).unwrap_or_default();
                                             ev.text = Some(truncate(&input_str, 500));
                                         }
                                         ev.model = message
@@ -294,7 +297,8 @@ where
                     if has_tool_result {
                         if let Some(arr) = content_array {
                             for item in arr {
-                                if item.get("type").and_then(|v| v.as_str()) == Some("tool_result") {
+                                if item.get("type").and_then(|v| v.as_str()) == Some("tool_result")
+                                {
                                     let mut ev = AgentEventV1::new(
                                         Source::ClaudeCode,
                                         project_hash_val.clone(),

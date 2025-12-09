@@ -48,7 +48,14 @@ pub fn run(cli: Cli) -> Result<()> {
             no_reasoning,
             no_tool,
             limit,
-        } => handlers::show::handle(&storage, session_id, no_reasoning, no_tool, limit, &cli.format),
+        } => handlers::show::handle(
+            &storage,
+            session_id,
+            no_reasoning,
+            no_tool,
+            limit,
+            &cli.format,
+        ),
 
         Commands::Find {
             session_id,

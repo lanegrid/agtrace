@@ -14,11 +14,7 @@ impl ImportService {
         Self { providers }
     }
 
-    pub fn import_path(
-        &self,
-        path: &Path,
-        context: &ImportContext,
-    ) -> Result<Vec<AgentEventV1>> {
+    pub fn import_path(&self, path: &Path, context: &ImportContext) -> Result<Vec<AgentEventV1>> {
         let mut all_events = Vec::new();
 
         if path.is_file() {
@@ -48,7 +44,12 @@ impl ImportService {
                 if let Some(ref target_root) = target_project_root {
                     for provider in &self.providers {
                         if let Some(optimized_root) = provider.get_search_root(path, target_root) {
-                            return self.import_from_directory(&optimized_root, context, Some(target_root), provider.as_ref());
+                            return self.import_from_directory(
+                                &optimized_root,
+                                context,
+                                Some(target_root),
+                                provider.as_ref(),
+                            );
                         }
                     }
                 }
@@ -131,11 +132,7 @@ impl ImportService {
                     all_events.extend(events);
                 }
                 Err(e) => {
-                    eprintln!(
-                        "Warning: Failed to parse {}: {}",
-                        entry_path.display(),
-                        e
-                    );
+                    eprintln!("Warning: Failed to parse {}: {}", entry_path.display(), e);
                 }
             }
         }

@@ -1,6 +1,9 @@
 use crate::core::importer::ImportService;
 use crate::model::*;
-use crate::providers::{claude, codex, gemini, ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider};
+use crate::providers::{
+    claude, codex, gemini, ClaudeProvider, CodexProvider, GeminiProvider, ImportContext,
+    LogProvider,
+};
 use anyhow::Result;
 use std::path::PathBuf;
 use walkdir::WalkDir;

@@ -25,7 +25,10 @@ pub fn normalize_claude_file(
         records.push(v);
     }
 
-    Ok(normalize_claude_stream(records.into_iter(), project_root_override))
+    Ok(normalize_claude_stream(
+        records.into_iter(),
+        project_root_override,
+    ))
 }
 
 /// Extract cwd from a Claude session file by reading the first few lines

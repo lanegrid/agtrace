@@ -20,5 +20,7 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
 pub fn extract_project_hash_from_gemini_file(path: &Path) -> Option<String> {
     let text = std::fs::read_to_string(path).ok()?;
     let json: Value = serde_json::from_str(&text).ok()?;
-    json.get("projectHash").and_then(|v| v.as_str()).map(|s| s.to_string())
+    json.get("projectHash")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }

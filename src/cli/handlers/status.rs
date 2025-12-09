@@ -4,8 +4,7 @@ use anyhow::Result;
 
 pub fn handle(project_root: Option<String>) -> Result<()> {
     let project_root_path = discover_project_root(project_root.as_deref())?;
-    let project_hash =
-        crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
+    let project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
 
     println!("Project root: {}", project_root_path.display());
     println!("Project hash: {}", project_hash);
@@ -23,9 +22,7 @@ pub fn handle(project_root: Option<String>) -> Result<()> {
         println!("    log_root: {}", provider_config.log_root.display());
 
         let (total, matching) = match name.as_str() {
-            "claude" => {
-                count_claude_sessions(&provider_config.log_root, &project_root_path)
-            }
+            "claude" => count_claude_sessions(&provider_config.log_root, &project_root_path),
             "codex" => count_codex_sessions(&provider_config.log_root, &project_root_path),
             "gemini" => count_gemini_sessions(&provider_config.log_root, &project_hash),
             _ => (0, 0),
