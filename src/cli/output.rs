@@ -2,41 +2,6 @@ use crate::model::*;
 use anyhow::Result;
 use std::path::PathBuf;
 
-pub fn print_sessions_table(sessions: &[SessionSummary]) {
-    println!(
-        "{:<40} {:<15} {:<20} {:<25} {:<8} {:<8} {:<20}",
-        "SESSION ID",
-        "SOURCE",
-        "PROJECT HASH",
-        "START TIME",
-        "EVENTS",
-        "USER MSG",
-        "TOKENS(in/out)"
-    );
-    println!("{}", "-".repeat(150));
-
-    for session in sessions {
-        let source_str = format!("{:?}", session.source).to_lowercase();
-        let project_short = if session.project_hash.len() > 20 {
-            format!("{}...", &session.project_hash[..17])
-        } else {
-            session.project_hash.clone()
-        };
-
-        println!(
-            "{:<40} {:<15} {:<20} {:<25} {:<8} {:<8} {:>9} / {:<9}",
-            session.session_id,
-            source_str,
-            project_short,
-            session.start_ts,
-            session.event_count,
-            session.user_message_count,
-            format_number(session.tokens_input_total),
-            format_number(session.tokens_output_total)
-        );
-    }
-}
-
 pub fn print_events_timeline(events: &[AgentEventV1]) {
     for event in events {
         let event_type_str = match event.event_type {
