@@ -1,10 +1,10 @@
 use crate::model::AgentEventV1;
 use anyhow::{Context, Result};
-use serde_json::Value;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use super::mapper::normalize_codex_stream;
+use super::schema::CodexRecord;
 
 /// Parse Codex JSONL file and normalize to AgentEventV1
 pub fn normalize_codex_file(
@@ -15,7 +15,7 @@ pub fn normalize_codex_file(
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Codex file: {}", path.display()))?;
 
-    let mut records: Vec<Value> = Vec::new();
+    let mut records: Vec<CodexRecord> = Vec::new();
     let mut session_id_from_meta: Option<String> = None;
 
     for line in text.lines() {
@@ -23,21 +23,15 @@ pub fn normalize_codex_file(
         if line.is_empty() {
             continue;
         }
-        let v: Value = serde_json::from_str(line)
+        let record: CodexRecord = serde_json::from_str(line)
             .with_context(|| format!("Failed to parse JSON line: {}", line))?;
 
         // Extract session_id from session_meta record (Spec 2.5.5)
-        if v.get("type").and_then(|t| t.as_str()) == Some("session_meta") {
-            if let Some(id) = v
-                .get("payload")
-                .and_then(|p| p.get("id"))
-                .and_then(|id| id.as_str())
-            {
-                session_id_from_meta = Some(id.to_string());
-            }
+        if let CodexRecord::SessionMeta(ref meta) = record {
+            session_id_from_meta = Some(meta.payload.id.clone());
         }
 
-        records.push(v);
+        records.push(record);
     }
 
     // Use session_meta.payload.id if available, otherwise fallback to filename-based ID
@@ -46,7 +40,7 @@ pub fn normalize_codex_file(
         .unwrap_or(fallback_session_id);
 
     Ok(normalize_codex_stream(
-        records.into_iter(),
+        records,
         session_id,
         project_root_override,
     ))
@@ -58,11 +52,15 @@ pub fn extract_cwd_from_codex_file(path: &Path) -> Option<String> {
     let reader = BufReader::new(file);
 
     for line in reader.lines().take(10).flatten() {
-        if let Ok(json) = serde_json::from_str::<Value>(&line) {
-            if let Some(payload) = json.get("payload") {
-                if let Some(cwd) = payload.get("cwd").and_then(|v| v.as_str()) {
-                    return Some(cwd.to_string());
+        if let Ok(record) = serde_json::from_str::<CodexRecord>(&line) {
+            match record {
+                CodexRecord::SessionMeta(meta) => {
+                    return Some(meta.payload.cwd.clone());
                 }
+                CodexRecord::TurnContext(turn) => {
+                    return Some(turn.payload.cwd.clone());
+                }
+                _ => continue,
             }
         }
     }
@@ -89,57 +87,50 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
     let mut snippet = None;
 
     for line in reader.lines().take(20).flatten() {
-        if let Ok(json) = serde_json::from_str::<Value>(&line) {
-            if json.get("type").and_then(|t| t.as_str()) == Some("session_meta") {
-                if let Some(payload) = json.get("payload") {
+        if let Ok(record) = serde_json::from_str::<CodexRecord>(&line) {
+            match &record {
+                CodexRecord::SessionMeta(meta) => {
                     if session_id.is_none() {
-                        session_id = payload.get("id").and_then(|v| v.as_str()).map(String::from);
+                        session_id = Some(meta.payload.id.clone());
                     }
                     if cwd.is_none() {
-                        cwd = payload.get("cwd").and_then(|v| v.as_str()).map(String::from);
+                        cwd = Some(meta.payload.cwd.clone());
+                    }
+                    if timestamp.is_none() {
+                        timestamp = Some(meta.timestamp.clone());
                     }
                 }
-            }
-
-            if let Some(payload) = json.get("payload") {
-                if cwd.is_none() {
-                    cwd = payload.get("cwd").and_then(|v| v.as_str()).map(String::from);
+                CodexRecord::TurnContext(turn) => {
+                    if cwd.is_none() {
+                        cwd = Some(turn.payload.cwd.clone());
+                    }
+                    if timestamp.is_none() {
+                        timestamp = Some(turn.timestamp.clone());
+                    }
                 }
-            }
-
-            if timestamp.is_none() {
-                timestamp = json.get("timestamp").and_then(|v| v.as_str()).map(String::from);
-            }
-
-            if snippet.is_none() {
-                // Try event_msg format first (cleaner message text)
-                if json.get("type").and_then(|t| t.as_str()) == Some("event_msg") {
-                    if json.get("payload").and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("user_message") {
-                        if let Some(msg) = json.get("payload").and_then(|p| p.get("message")).and_then(|m| m.as_str()) {
-                            snippet = Some(msg.to_string());
+                CodexRecord::EventMsg(event) => {
+                    if timestamp.is_none() {
+                        timestamp = Some(event.timestamp.clone());
+                    }
+                    if snippet.is_none() {
+                        if let super::schema::EventMsgPayload::UserMessage(msg) = &event.payload {
+                            snippet = Some(msg.message.clone());
                         }
                     }
                 }
-
-                // Fallback to response_item format
-                if snippet.is_none() {
-                    if json.get("type").and_then(|t| t.as_str()) == Some("response_item") {
-                        if json.get("payload").and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("message") {
-                            if json.get("payload").and_then(|p| p.get("role")).and_then(|r| r.as_str()) == Some("user") {
-                                let text = json.get("payload")
-                                    .and_then(|p| p.get("content"))
-                                    .and_then(|c| {
-                                        if let Some(s) = c.as_str() {
-                                            Some(s.to_string())
-                                        } else if let Some(arr) = c.as_array() {
-                                            arr.iter()
-                                                .find_map(|item| item.get("text").and_then(|t| t.as_str()))
-                                                .map(String::from)
-                                        } else {
-                                            None
-                                        }
+                CodexRecord::ResponseItem(response) => {
+                    if timestamp.is_none() {
+                        timestamp = Some(response.timestamp.clone());
+                    }
+                    if snippet.is_none() {
+                        if let super::schema::ResponseItemPayload::Message(msg) = &response.payload {
+                            if msg.role == "user" {
+                                let text = msg.content.iter()
+                                    .find_map(|c| match c {
+                                        super::schema::MessageContent::InputText { text } => Some(text.clone()),
+                                        super::schema::MessageContent::OutputText { text } => Some(text.clone()),
+                                        _ => None,
                                     });
-                                // Skip auto-sent environment context messages
                                 if let Some(t) = &text {
                                     if !t.contains("<environment_context>") {
                                         snippet = text;
@@ -149,6 +140,7 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                         }
                     }
                 }
+                _ => {}
             }
 
             if session_id.is_some() && cwd.is_some() && timestamp.is_some() && snippet.is_some() {
@@ -184,15 +176,17 @@ pub fn is_empty_codex_session(path: &Path) -> bool {
     for line in reader.lines().take(20) {
         if let Ok(line) = line {
             line_count += 1;
-            if let Ok(json) = serde_json::from_str::<Value>(&line) {
-                if let Some(payload) = json.get("payload") {
-                    if payload.get("cwd").is_some()
-                        || payload.get("text").is_some()
-                        || payload.get("content").is_some()
-                    {
+            if let Ok(record) = serde_json::from_str::<CodexRecord>(&line) {
+                match record {
+                    CodexRecord::SessionMeta(_) | CodexRecord::TurnContext(_) => {
                         has_event = true;
                         break;
                     }
+                    CodexRecord::EventMsg(_) | CodexRecord::ResponseItem(_) => {
+                        has_event = true;
+                        break;
+                    }
+                    _ => {}
                 }
             }
         }
