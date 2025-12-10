@@ -1,7 +1,8 @@
+use crate::db::Database;
 use crate::utils::discover_project_root;
 use anyhow::Result;
 
-pub fn handle(project_root: Option<String>) -> Result<()> {
+pub fn handle(db: &Database, project_root: Option<String>) -> Result<()> {
     let project_root_path = discover_project_root(project_root.as_deref())?;
     let project_hash = crate::utils::project_hash_from_root(&project_root_path.to_string_lossy());
 
@@ -9,18 +10,26 @@ pub fn handle(project_root: Option<String>) -> Result<()> {
     println!("Project hash: {}", project_hash);
     println!();
 
-    let config = crate::config::Config::load()?;
-    println!("Detected providers:");
-    for (name, provider_config) in &config.providers {
+    // List all projects from database
+    println!("Registered projects:");
+    println!("{:<20} {:<50} {:<10} {}", "HASH (short)", "ROOT PATH", "SESSIONS", "LAST SCANNED");
+    println!("{}", "-".repeat(120));
+
+    let projects = db.list_projects()?;
+    for project in projects {
+        let session_count = db.count_sessions_for_project(&project.hash)?;
+        let hash_short = if project.hash.len() > 16 {
+            format!("{}...", &project.hash[..16])
+        } else {
+            project.hash.clone()
+        };
+
         println!(
-            "  {}: {}, log_root = {}",
-            name,
-            if provider_config.enabled {
-                "enabled"
-            } else {
-                "disabled"
-            },
-            provider_config.log_root.display()
+            "{:<20} {:<50} {:<10} {}",
+            hash_short,
+            project.root_path.unwrap_or_else(|| "(unknown)".to_string()),
+            session_count,
+            project.last_scanned_at.unwrap_or_else(|| "(never)".to_string())
         );
     }
 

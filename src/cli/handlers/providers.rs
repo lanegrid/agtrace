@@ -1,10 +1,11 @@
 use crate::cli::args::ProvidersCommand;
 use anyhow::Result;
+use std::path::PathBuf;
 
-pub fn handle(command: Option<ProvidersCommand>) -> Result<()> {
+pub fn handle(command: Option<ProvidersCommand>, config_path: &PathBuf) -> Result<()> {
     match command {
         None | Some(ProvidersCommand::List) => {
-            let config = crate::config::Config::load()?;
+            let config = crate::config::Config::load_from(config_path)?;
 
             if config.providers.is_empty() {
                 println!("No providers configured. Run 'agtrace providers detect' to auto-detect.");
@@ -26,7 +27,7 @@ pub fn handle(command: Option<ProvidersCommand>) -> Result<()> {
 
         Some(ProvidersCommand::Detect) => {
             let config = crate::config::Config::detect_providers()?;
-            config.save()?;
+            config.save_to(config_path)?;
 
             println!("Detected {} provider(s):", config.providers.len());
             for (name, provider_config) in &config.providers {
@@ -44,7 +45,7 @@ pub fn handle(command: Option<ProvidersCommand>) -> Result<()> {
                 anyhow::bail!("Cannot specify both --enable and --disable");
             }
 
-            let mut config = crate::config::Config::load()?;
+            let mut config = crate::config::Config::load_from(config_path)?;
 
             let enabled = if enable {
                 true
@@ -62,7 +63,7 @@ pub fn handle(command: Option<ProvidersCommand>) -> Result<()> {
                 },
             );
 
-            config.save()?;
+            config.save_to(config_path)?;
 
             println!(
                 "Set provider '{}': enabled={}, log_root={}",

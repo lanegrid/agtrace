@@ -1,14 +1,37 @@
 use super::args::{Cli, Commands};
 use super::handlers;
+use crate::config::Config;
+use crate::db::Database;
 use crate::storage::Storage;
 use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
-    let storage = Storage::new(data_dir);
+    let storage = Storage::new(data_dir.clone());
 
     match cli.command {
+        Commands::Scan {
+            provider,
+            force,
+            verbose,
+        } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+            let config_path = data_dir.join("config.toml");
+            let config = Config::load_from(&config_path)?;
+
+            handlers::scan::handle(
+                &db,
+                &config,
+                provider,
+                cli.project_root,
+                cli.all_projects,
+                force,
+                verbose,
+            )
+        }
+
         Commands::Import {
             source,
             root,
@@ -29,18 +52,41 @@ pub fn run(cli: Cli) -> Result<()> {
 
         Commands::List {
             project_hash,
-            source,
+            source: _,
             limit,
             since: _,
             until: _,
-        } => handlers::list::handle(
-            &storage,
-            project_hash,
-            source,
-            limit,
-            cli.all_projects,
-            &cli.format,
-        ),
+        } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+
+            // If --project-root is specified but no explicit hash, compute hash from project_root
+            let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
+                Some(crate::utils::project_hash_from_root(cli.project_root.as_ref().unwrap()))
+            } else {
+                project_hash
+            };
+
+            handlers::list::handle(
+                &db,
+                effective_hash,
+                limit,
+                cli.all_projects,
+                &cli.format,
+            )
+        }
+
+        Commands::View {
+            session_id,
+            raw,
+            json,
+            timeline,
+        } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+
+            handlers::view::handle(&db, session_id, raw, json, timeline)
+        }
 
         Commands::Show {
             session_id,
@@ -102,9 +148,16 @@ pub fn run(cli: Cli) -> Result<()> {
             format,
         ),
 
-        Commands::Providers { command } => handlers::providers::handle(command),
+        Commands::Providers { command } => {
+            let config_path = data_dir.join("config.toml");
+            handlers::providers::handle(command, &config_path)
+        }
 
-        Commands::Project { project_root } => handlers::project::handle(project_root),
+        Commands::Project { project_root } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+            handlers::project::handle(&db, project_root)
+        }
 
         Commands::Status { project_root } => handlers::status::handle(project_root),
     }

@@ -69,6 +69,88 @@ pub fn extract_cwd_from_codex_file(path: &Path) -> Option<String> {
     None
 }
 
+#[derive(Debug)]
+pub struct CodexHeader {
+    pub session_id: Option<String>,
+    pub cwd: Option<String>,
+    pub timestamp: Option<String>,
+    pub snippet: Option<String>,
+}
+
+/// Extract header information from Codex file (for scanning)
+pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
+    let file = std::fs::File::open(path)
+        .with_context(|| format!("Failed to open file: {}", path.display()))?;
+    let reader = BufReader::new(file);
+
+    let mut session_id = None;
+    let mut cwd = None;
+    let mut timestamp = None;
+    let mut snippet = None;
+
+    for line in reader.lines().take(20).flatten() {
+        if let Ok(json) = serde_json::from_str::<Value>(&line) {
+            if json.get("type").and_then(|t| t.as_str()) == Some("session_meta") {
+                if let Some(payload) = json.get("payload") {
+                    if session_id.is_none() {
+                        session_id = payload.get("id").and_then(|v| v.as_str()).map(String::from);
+                    }
+                    if cwd.is_none() {
+                        cwd = payload.get("cwd").and_then(|v| v.as_str()).map(String::from);
+                    }
+                }
+            }
+
+            if let Some(payload) = json.get("payload") {
+                if cwd.is_none() {
+                    cwd = payload.get("cwd").and_then(|v| v.as_str()).map(String::from);
+                }
+            }
+
+            if timestamp.is_none() {
+                timestamp = json.get("timestamp").and_then(|v| v.as_str()).map(String::from);
+            }
+
+            if snippet.is_none() {
+                if json.get("payload").and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("message") {
+                    if json.get("payload").and_then(|p| p.get("role")).and_then(|r| r.as_str()) == Some("user") {
+                        snippet = json.get("payload")
+                            .and_then(|p| p.get("content"))
+                            .and_then(|c| {
+                                if let Some(s) = c.as_str() {
+                                    Some(s.to_string())
+                                } else if let Some(arr) = c.as_array() {
+                                    arr.iter()
+                                        .find_map(|item| item.get("text").and_then(|t| t.as_str()))
+                                        .map(String::from)
+                                } else {
+                                    None
+                                }
+                            });
+                    }
+                }
+            }
+
+            if session_id.is_some() && cwd.is_some() && timestamp.is_some() {
+                break;
+            }
+        }
+    }
+
+    if session_id.is_none() {
+        if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
+            session_id = Some(filename.to_string());
+        }
+    }
+
+    Ok(CodexHeader {
+        session_id,
+        cwd,
+        timestamp,
+        snippet,
+    })
+}
+
 /// Check if a Codex session file is empty or incomplete
 pub fn is_empty_codex_session(path: &Path) -> bool {
     let Ok(file) = std::fs::File::open(path) else {

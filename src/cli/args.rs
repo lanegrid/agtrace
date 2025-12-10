@@ -16,6 +16,9 @@ pub struct Cli {
     pub log_level: String,
 
     #[arg(long, global = true)]
+    pub project_root: Option<String>,
+
+    #[arg(long, global = true)]
     pub all_projects: bool,
 
     #[command(subcommand)]
@@ -24,6 +27,17 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    Scan {
+        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
+        provider: String,
+
+        #[arg(long)]
+        force: bool,
+
+        #[arg(long)]
+        verbose: bool,
+    },
+
     Import {
         #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
         source: String,
@@ -59,6 +73,19 @@ pub enum Commands {
 
         #[arg(long)]
         until: Option<String>,
+    },
+
+    View {
+        session_id: String,
+
+        #[arg(long)]
+        raw: bool,
+
+        #[arg(long)]
+        json: bool,
+
+        #[arg(long)]
+        timeline: bool,
     },
 
     Show {
