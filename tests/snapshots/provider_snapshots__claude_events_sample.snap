@@ -37,7 +37,12 @@ expression: sample_events
       "gitBranch": "claude",
       "isSidechain": false,
       "message": {
-        "content": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+        "content": [
+          {
+            "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+            "type": "text"
+          }
+        ],
         "role": "user"
       },
       "parentUuid": null,
@@ -48,7 +53,6 @@ expression: sample_events
         "triggers": []
       },
       "timestamp": "2025-12-09T19:47:42.930Z",
-      "type": "user",
       "userType": "external",
       "uuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
       "version": "2.0.28"
@@ -95,7 +99,7 @@ expression: sample_events
     "project_hash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde",
     "project_root": "/Users/zawakin/agent-sample",
     "session_id": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-    "event_id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
+    "event_id": "b817d4b2-f3c1-4323-a10d-721642560349",
     "parent_event_id": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
     "ts": "2025-12-09T19:47:55.174Z",
     "event_type": "assistant_message",
@@ -113,7 +117,7 @@ expression: sample_events
     "model": "claude-sonnet-4-5-20250929",
     "tokens_input": 10,
     "tokens_output": 8,
-    "tokens_total": null,
+    "tokens_total": 18,
     "tokens_cached": 12135,
     "tokens_thinking": null,
     "tokens_tool": null,
@@ -125,6 +129,7 @@ expression: sample_events
       "message": {
         "content": [
           {
+            "signature": null,
             "text": "I'll create the myapp directory and then create the hoge.py file with the print statement.",
             "type": "text"
           }
@@ -136,22 +141,16 @@ expression: sample_events
         "stop_sequence": null,
         "type": "message",
         "usage": {
-          "cache_creation": {
-            "ephemeral_1h_input_tokens": 0,
-            "ephemeral_5m_input_tokens": 3893
-          },
           "cache_creation_input_tokens": 3893,
           "cache_read_input_tokens": 12135,
           "input_tokens": 10,
-          "output_tokens": 8,
-          "service_tier": "standard"
+          "output_tokens": 8
         }
       },
       "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
       "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
       "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
       "timestamp": "2025-12-09T19:47:55.174Z",
-      "type": "assistant",
       "userType": "external",
       "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
       "version": "2.0.28"

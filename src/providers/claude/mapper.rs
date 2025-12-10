@@ -1,37 +1,28 @@
 use crate::model::*;
 use crate::utils::{project_hash_from_root, truncate};
-use serde_json::Value;
 
-pub fn normalize_claude_stream<I>(
-    records: I,
+use super::schema::*;
+
+pub fn normalize_claude_stream(
+    records: Vec<ClaudeRecord>,
     project_root_override: Option<&str>,
-) -> Vec<AgentEventV1>
-where
-    I: IntoIterator<Item = Value>,
-{
+) -> Vec<AgentEventV1> {
     let mut events = Vec::new();
     let mut last_user_event_id: Option<String> = None;
 
     let mut project_root_str: Option<String> = project_root_override.map(|s| s.to_string());
     let mut project_hash: Option<String> = project_root_str.as_deref().map(project_hash_from_root);
 
-    for rec in records {
-        // Extract common fields
-        let ts = rec
-            .get("timestamp")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let session_id = rec
-            .get("sessionId")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
+    for record in records {
         // Determine project_root from cwd if not overridden
         if project_root_str.is_none() {
-            if let Some(cwd) = rec.get("cwd").and_then(|v| v.as_str()) {
-                project_root_str = Some(cwd.to_string());
+            let cwd = match &record {
+                ClaudeRecord::User(ref user) => user.cwd.as_ref(),
+                ClaudeRecord::Assistant(ref asst) => asst.cwd.as_ref(),
+                _ => None,
+            };
+            if let Some(cwd) = cwd {
+                project_root_str = Some(cwd.clone());
                 project_hash = Some(project_hash_from_root(cwd));
             }
         }
@@ -40,541 +31,167 @@ where
             .clone()
             .unwrap_or_else(|| "unknown".to_string());
 
-        let record_type = rec.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        match record {
+            ClaudeRecord::FileHistorySnapshot(_) => {
+                // Skip file history snapshots
+                continue;
+            }
+            ClaudeRecord::User(user) => {
+                let has_tool_content = user.message.content.iter().any(|c| {
+                    !matches!(c, UserContent::Text { .. })
+                });
 
-        match record_type {
-            "message" => {
-                if let Some(message) = rec.get("message") {
-                    let role = message.get("role").and_then(|v| v.as_str());
-                    let message_id = message
-                        .get("id")
-                        .and_then(|v| v.as_str())
-                        .or_else(|| rec.get("uuid").and_then(|v| v.as_str()))
-                        .map(|s| s.to_string());
+                if has_tool_content {
+                    // TODO: Handle user content with images
+                    continue;
+                }
 
-                    let content = message.get("content");
-                    let content_array = content.and_then(|c| c.as_array());
+                let mut ev = AgentEventV1::new(
+                    Source::ClaudeCode,
+                    project_hash_val.clone(),
+                    user.timestamp.clone(),
+                    EventType::UserMessage,
+                );
+                ev.session_id = Some(user.session_id.clone());
+                ev.event_id = Some(user.uuid.clone());
+                ev.parent_event_id = None;
+                ev.role = Some(Role::User);
+                ev.channel = Some(Channel::Chat);
+                ev.project_root = project_root_str.clone();
 
-                    let has_tool_content = content_array
-                        .map(|arr| {
-                            arr.iter().any(|item| {
-                                let t = item.get("type").and_then(|v| v.as_str());
-                                t == Some("tool_use")
-                                    || t == Some("tool_result")
-                                    || t == Some("thinking")
-                            })
-                        })
-                        .unwrap_or(false);
+                let text_parts: Vec<String> = user.message.content.iter()
+                    .filter_map(|c| match c {
+                        UserContent::Text { text } => Some(text.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                ev.text = Some(text_parts.join("\n"));
 
-                    if has_tool_content {
-                        if let Some(arr) = content_array {
-                            for item in arr {
-                                let item_type = item.get("type").and_then(|v| v.as_str());
-                                match item_type {
-                                    Some("thinking") => {
-                                        let mut ev = AgentEventV1::new(
-                                            Source::ClaudeCode,
-                                            project_hash_val.clone(),
-                                            ts.clone(),
-                                            EventType::Reasoning,
-                                        );
-                                        ev.session_id = session_id.clone();
-                                        ev.event_id = Some(format!(
-                                            "{}#thinking",
-                                            message_id.as_ref().unwrap_or(&"".to_string())
-                                        ));
-                                        ev.parent_event_id = last_user_event_id.clone();
-                                        ev.role = Some(Role::Assistant);
-                                        ev.channel = Some(Channel::Chat);
-                                        ev.project_root = project_root_str.clone();
-                                        ev.text = item
-                                            .get("thinking")
-                                            .or_else(|| item.get("text"))
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| truncate(s, 2000));
-                                        ev.model = message
-                                            .get("model")
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| s.to_string());
-                                        ev.raw = item.clone();
-                                        events.push(ev);
-                                    }
-                                    Some("tool_use") => {
-                                        let mut ev = AgentEventV1::new(
-                                            Source::ClaudeCode,
-                                            project_hash_val.clone(),
-                                            ts.clone(),
-                                            EventType::ToolCall,
-                                        );
-                                        ev.session_id = session_id.clone();
-                                        ev.event_id = item
-                                            .get("id")
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| s.to_string());
-                                        ev.parent_event_id = last_user_event_id.clone();
-                                        ev.role = Some(Role::Assistant);
-                                        ev.project_root = project_root_str.clone();
-                                        ev.tool_name = item
-                                            .get("name")
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| s.to_string());
-                                        ev.tool_call_id = ev.event_id.clone();
-                                        ev.channel = match ev.tool_name.as_deref() {
-                                            Some("Bash") => Some(Channel::Terminal),
-                                            Some("Edit") | Some("Write") => Some(Channel::Editor),
-                                            Some("Read") | Some("Glob") => {
-                                                Some(Channel::Filesystem)
-                                            }
-                                            _ => Some(Channel::Chat),
-                                        };
-                                        if let Some(input) = item.get("input") {
-                                            let input_str =
-                                                serde_json::to_string(input).unwrap_or_default();
-                                            ev.text = Some(truncate(&input_str, 500));
-                                        }
-                                        ev.model = message
-                                            .get("model")
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| s.to_string());
-                                        ev.raw = item.clone();
-                                        events.push(ev);
-                                    }
-                                    Some("tool_result") => {
-                                        let mut ev = AgentEventV1::new(
-                                            Source::ClaudeCode,
-                                            project_hash_val.clone(),
-                                            ts.clone(),
-                                            EventType::ToolResult,
-                                        );
-                                        ev.session_id = session_id.clone();
-                                        ev.event_id = Some(format!(
-                                            "{}#result",
-                                            item.get("tool_use_id")
-                                                .and_then(|v| v.as_str())
-                                                .unwrap_or("")
-                                        ));
-                                        ev.parent_event_id = last_user_event_id.clone();
-                                        ev.role = Some(Role::Tool);
-                                        ev.channel = Some(Channel::Terminal);
-                                        ev.project_root = project_root_str.clone();
-                                        ev.tool_call_id = item
-                                            .get("tool_use_id")
-                                            .and_then(|v| v.as_str())
-                                            .map(|s| s.to_string());
-                                        if let Some(content) = item.get("content") {
-                                            if let Some(s) = content.as_str() {
-                                                ev.text = Some(truncate(s, 1000));
-                                            }
-                                        }
-                                        ev.raw = item.clone();
-                                        events.push(ev);
-                                    }
-                                    Some("text") => {
-                                        if role == Some("assistant") {
-                                            let mut ev = AgentEventV1::new(
-                                                Source::ClaudeCode,
-                                                project_hash_val.clone(),
-                                                ts.clone(),
-                                                EventType::AssistantMessage,
-                                            );
-                                            ev.session_id = session_id.clone();
-                                            ev.event_id = message_id.clone();
-                                            ev.parent_event_id = last_user_event_id.clone();
-                                            ev.role = Some(Role::Assistant);
-                                            ev.channel = Some(Channel::Chat);
-                                            ev.project_root = project_root_str.clone();
-                                            ev.text = item
-                                                .get("text")
-                                                .and_then(|v| v.as_str())
-                                                .map(|s| s.to_string());
-                                            ev.model = message
-                                                .get("model")
-                                                .and_then(|v| v.as_str())
-                                                .map(|s| s.to_string());
-                                            if let Some(usage) = message.get("usage") {
-                                                ev.tokens_input = usage
-                                                    .get("input_tokens")
-                                                    .and_then(|v| v.as_u64());
-                                                ev.tokens_output = usage
-                                                    .get("output_tokens")
-                                                    .and_then(|v| v.as_u64());
-                                                ev.tokens_cached = usage
-                                                    .get("cache_read_input_tokens")
-                                                    .and_then(|v| v.as_u64());
-                                            }
-                                            ev.raw = rec.clone();
-                                            events.push(ev);
-                                        }
-                                    }
-                                    _ => {}
+                last_user_event_id = ev.event_id.clone();
+                ev.raw = serde_json::to_value(&user).unwrap_or(serde_json::Value::Null);
+                events.push(ev);
+            }
+            ClaudeRecord::Assistant(asst) => {
+                let has_tool_content = asst.message.content.iter().any(|c| {
+                    matches!(c, AssistantContent::ToolUse { .. } | AssistantContent::Thinking { .. })
+                });
+
+                if has_tool_content {
+                    // Process each content item
+                    for item in &asst.message.content {
+                        match item {
+                            AssistantContent::Thinking { thinking, .. } => {
+                                let mut ev = AgentEventV1::new(
+                                    Source::ClaudeCode,
+                                    project_hash_val.clone(),
+                                    asst.timestamp.clone(),
+                                    EventType::Reasoning,
+                                );
+                                ev.session_id = Some(asst.session_id.clone());
+                                ev.event_id = Some(format!("{}#thinking", asst.message.id));
+                                ev.parent_event_id = last_user_event_id.clone();
+                                ev.role = Some(Role::Assistant);
+                                ev.channel = Some(Channel::Chat);
+                                ev.project_root = project_root_str.clone();
+                                ev.text = Some(truncate(thinking, 2000));
+                                ev.model = Some(asst.message.model.clone());
+                                ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                events.push(ev);
+                            }
+                            AssistantContent::ToolUse { id, name, input, .. } => {
+                                let mut ev = AgentEventV1::new(
+                                    Source::ClaudeCode,
+                                    project_hash_val.clone(),
+                                    asst.timestamp.clone(),
+                                    EventType::ToolCall,
+                                );
+                                ev.session_id = Some(asst.session_id.clone());
+                                ev.event_id = Some(id.clone());
+                                ev.parent_event_id = last_user_event_id.clone();
+                                ev.role = Some(Role::Assistant);
+                                ev.project_root = project_root_str.clone();
+                                ev.tool_name = Some(name.clone());
+                                ev.tool_call_id = Some(id.clone());
+                                ev.channel = match name.as_str() {
+                                    "Bash" => Some(Channel::Terminal),
+                                    "Edit" | "Write" => Some(Channel::Editor),
+                                    "Read" | "Glob" => Some(Channel::Filesystem),
+                                    _ => Some(Channel::Chat),
+                                };
+                                let input_str = serde_json::to_string(input).unwrap_or_default();
+                                ev.text = Some(truncate(&input_str, 500));
+                                ev.model = Some(asst.message.model.clone());
+                                ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                events.push(ev);
+                            }
+                            AssistantContent::Text { text, .. } => {
+                                let mut ev = AgentEventV1::new(
+                                    Source::ClaudeCode,
+                                    project_hash_val.clone(),
+                                    asst.timestamp.clone(),
+                                    EventType::AssistantMessage,
+                                );
+                                ev.session_id = Some(asst.session_id.clone());
+                                ev.event_id = Some(asst.uuid.clone());
+                                ev.parent_event_id = last_user_event_id.clone();
+                                ev.role = Some(Role::Assistant);
+                                ev.channel = Some(Channel::Chat);
+                                ev.project_root = project_root_str.clone();
+                                ev.text = Some(truncate(text, 2000));
+                                ev.model = Some(asst.message.model.clone());
+
+                                if let Some(usage) = &asst.message.usage {
+                                    ev.tokens_input = Some(usage.input_tokens as u64);
+                                    ev.tokens_output = Some(usage.output_tokens as u64);
+                                    ev.tokens_total = Some((usage.input_tokens + usage.output_tokens) as u64);
+                                    ev.tokens_cached = usage.cache_read_input_tokens.map(|t| t as u64);
                                 }
-                            }
-                        }
-                    } else if role == Some("user") {
-                        let mut ev = AgentEventV1::new(
-                            Source::ClaudeCode,
-                            project_hash_val.clone(),
-                            ts.clone(),
-                            EventType::UserMessage,
-                        );
-                        ev.session_id = session_id.clone();
-                        ev.event_id = message_id.clone();
-                        ev.parent_event_id = None;
-                        ev.role = Some(Role::User);
-                        ev.channel = Some(Channel::Chat);
-                        ev.project_root = project_root_str.clone();
 
-                        if let Some(content) = message.get("content") {
-                            if let Some(s) = content.as_str() {
-                                ev.text = Some(s.to_string());
-                            } else if let Some(arr) = content.as_array() {
-                                let texts: Vec<String> = arr
-                                    .iter()
-                                    .filter_map(|c| c.get("text").and_then(|v| v.as_str()))
-                                    .map(|s| s.to_string())
-                                    .collect();
-                                if !texts.is_empty() {
-                                    ev.text = Some(texts.join("\n"));
-                                }
+                                ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                events.push(ev);
                             }
-                        }
-
-                        ev.model = message
-                            .get("model")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
-                        ev.raw = rec.clone();
-                        last_user_event_id = ev.event_id.clone();
-                        events.push(ev);
-                    } else if role == Some("assistant") {
-                        let content = message.get("content");
-                        if let Some(text) = content.and_then(|c| c.as_str()) {
-                            let mut ev = AgentEventV1::new(
-                                Source::ClaudeCode,
-                                project_hash_val.clone(),
-                                ts.clone(),
-                                EventType::AssistantMessage,
-                            );
-                            ev.session_id = session_id.clone();
-                            ev.event_id = message_id.clone();
-                            ev.parent_event_id = last_user_event_id.clone();
-                            ev.role = Some(Role::Assistant);
-                            ev.channel = Some(Channel::Chat);
-                            ev.project_root = project_root_str.clone();
-                            ev.text = Some(text.to_string());
-                            ev.model = message
-                                .get("model")
-                                .and_then(|v| v.as_str())
-                                .map(|s| s.to_string());
-                            if let Some(usage) = message.get("usage") {
-                                ev.tokens_input =
-                                    usage.get("input_tokens").and_then(|v| v.as_u64());
-                                ev.tokens_output =
-                                    usage.get("output_tokens").and_then(|v| v.as_u64());
-                            }
-                            ev.raw = rec.clone();
-                            events.push(ev);
+                            _ => {}
                         }
                     }
-                }
-            }
-            "user" => {
-                if let Some(message) = rec.get("message") {
-                    let content = message.get("content");
-                    let content_array = content.and_then(|c| c.as_array());
-                    let has_tool_result = content_array
-                        .map(|arr| {
-                            arr.iter().any(|item| {
-                                item.get("type").and_then(|v| v.as_str()) == Some("tool_result")
-                            })
-                        })
-                        .unwrap_or(false);
-                    let message_id = rec
-                        .get("uuid")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-
-                    if has_tool_result {
-                        if let Some(arr) = content_array {
-                            for item in arr {
-                                if item.get("type").and_then(|v| v.as_str()) == Some("tool_result")
-                                {
-                                    let mut ev = AgentEventV1::new(
-                                        Source::ClaudeCode,
-                                        project_hash_val.clone(),
-                                        ts.clone(),
-                                        EventType::ToolResult,
-                                    );
-                                    ev.session_id = session_id.clone();
-                                    ev.event_id = Some(format!(
-                                        "{}#result",
-                                        item.get("tool_use_id")
-                                            .and_then(|v| v.as_str())
-                                            .unwrap_or("")
-                                    ));
-                                    ev.parent_event_id = last_user_event_id.clone();
-                                    ev.role = Some(Role::Tool);
-                                    ev.channel = Some(Channel::Terminal);
-                                    ev.project_root = project_root_str.clone();
-                                    ev.tool_call_id = item
-                                        .get("tool_use_id")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    if let Some(content) = item.get("content") {
-                                        if let Some(s) = content.as_str() {
-                                            ev.text = Some(truncate(s, 1000));
-                                        }
-                                    }
-                                    ev.raw = rec.clone();
-                                    events.push(ev);
-                                }
-                            }
-                        }
-                    } else {
-                        let mut ev = AgentEventV1::new(
-                            Source::ClaudeCode,
-                            project_hash_val.clone(),
-                            ts.clone(),
-                            EventType::UserMessage,
-                        );
-                        ev.session_id = session_id.clone();
-                        ev.event_id = message_id.clone();
-                        ev.parent_event_id = None;
-                        ev.role = Some(Role::User);
-                        ev.channel = Some(Channel::Chat);
-                        ev.project_root = project_root_str.clone();
-                        if let Some(content) = message.get("content") {
-                            if let Some(s) = content.as_str() {
-                                ev.text = Some(s.to_string());
-                            } else if let Some(arr) = content.as_array() {
-                                let texts: Vec<String> = arr
-                                    .iter()
-                                    .filter_map(|c| c.get("text").and_then(|v| v.as_str()))
-                                    .map(|s| s.to_string())
-                                    .collect();
-                                if !texts.is_empty() {
-                                    ev.text = Some(texts.join("\n"));
-                                }
-                            }
-                        }
-                        ev.raw = rec.clone();
-                        last_user_event_id = ev.event_id.clone();
-                        events.push(ev);
-                    }
-                }
-            }
-            "assistant" => {
-                if let Some(message) = rec.get("message") {
-                    let message_id = message
-                        .get("id")
-                        .and_then(|v| v.as_str())
-                        .or_else(|| rec.get("uuid").and_then(|v| v.as_str()))
-                        .map(|s| s.to_string());
-                    let content = message.get("content");
-
-                    if let Some(arr) = content.and_then(|c| c.as_array()) {
-                        for item in arr {
-                            let item_type = item.get("type").and_then(|v| v.as_str());
-                            match item_type {
-                                Some("thinking") => {
-                                    let mut ev = AgentEventV1::new(
-                                        Source::ClaudeCode,
-                                        project_hash_val.clone(),
-                                        ts.clone(),
-                                        EventType::Reasoning,
-                                    );
-                                    ev.session_id = session_id.clone();
-                                    ev.event_id = Some(format!(
-                                        "{}#thinking",
-                                        message_id.as_ref().unwrap_or(&"".to_string())
-                                    ));
-                                    ev.parent_event_id = last_user_event_id.clone();
-                                    ev.role = Some(Role::Assistant);
-                                    ev.channel = Some(Channel::Chat);
-                                    ev.project_root = project_root_str.clone();
-                                    ev.text = item
-                                        .get("thinking")
-                                        .or_else(|| item.get("text"))
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| truncate(s, 2000));
-                                    ev.model = message
-                                        .get("model")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    ev.raw = item.clone();
-                                    events.push(ev);
-                                }
-                                Some("tool_use") => {
-                                    let mut ev = AgentEventV1::new(
-                                        Source::ClaudeCode,
-                                        project_hash_val.clone(),
-                                        ts.clone(),
-                                        EventType::ToolCall,
-                                    );
-                                    ev.session_id = session_id.clone();
-                                    ev.event_id = item
-                                        .get("id")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    ev.parent_event_id = last_user_event_id.clone();
-                                    ev.role = Some(Role::Assistant);
-                                    ev.project_root = project_root_str.clone();
-                                    ev.tool_name = item
-                                        .get("name")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    ev.tool_call_id = ev.event_id.clone();
-                                    ev.channel = match ev.tool_name.as_deref() {
-                                        Some("Bash") => Some(Channel::Terminal),
-                                        Some("Edit") | Some("Write") => Some(Channel::Editor),
-                                        Some("Read") | Some("Glob") => Some(Channel::Filesystem),
-                                        _ => Some(Channel::Chat),
-                                    };
-                                    if let Some(input) = item.get("input") {
-                                        let input_str =
-                                            serde_json::to_string(input).unwrap_or_default();
-                                        ev.text = Some(truncate(&input_str, 500));
-                                    }
-                                    ev.model = message
-                                        .get("model")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    ev.raw = item.clone();
-                                    events.push(ev);
-                                }
-                                Some("tool_result") => {
-                                    let mut ev = AgentEventV1::new(
-                                        Source::ClaudeCode,
-                                        project_hash_val.clone(),
-                                        ts.clone(),
-                                        EventType::ToolResult,
-                                    );
-                                    ev.session_id = session_id.clone();
-                                    ev.event_id = Some(format!(
-                                        "{}#result",
-                                        item.get("tool_use_id")
-                                            .and_then(|v| v.as_str())
-                                            .unwrap_or("")
-                                    ));
-                                    ev.parent_event_id = last_user_event_id.clone();
-                                    ev.role = Some(Role::Tool);
-                                    ev.channel = Some(Channel::Terminal);
-                                    ev.project_root = project_root_str.clone();
-                                    ev.tool_call_id = item
-                                        .get("tool_use_id")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    if let Some(content) = item.get("content") {
-                                        if let Some(s) = content.as_str() {
-                                            ev.text = Some(truncate(s, 1000));
-                                        }
-                                    }
-                                    ev.raw = item.clone();
-                                    events.push(ev);
-                                }
-                                Some("text") => {
-                                    let mut ev = AgentEventV1::new(
-                                        Source::ClaudeCode,
-                                        project_hash_val.clone(),
-                                        ts.clone(),
-                                        EventType::AssistantMessage,
-                                    );
-                                    ev.session_id = session_id.clone();
-                                    ev.event_id = message_id.clone();
-                                    ev.parent_event_id = last_user_event_id.clone();
-                                    ev.role = Some(Role::Assistant);
-                                    ev.channel = Some(Channel::Chat);
-                                    ev.project_root = project_root_str.clone();
-                                    ev.text = item
-                                        .get("text")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    ev.model = message
-                                        .get("model")
-                                        .and_then(|v| v.as_str())
-                                        .map(|s| s.to_string());
-                                    if let Some(usage) = message.get("usage") {
-                                        ev.tokens_input =
-                                            usage.get("input_tokens").and_then(|v| v.as_u64());
-                                        ev.tokens_output =
-                                            usage.get("output_tokens").and_then(|v| v.as_u64());
-                                        ev.tokens_cached = usage
-                                            .get("cache_read_input_tokens")
-                                            .and_then(|v| v.as_u64());
-                                    }
-                                    ev.raw = rec.clone();
-                                    events.push(ev);
-                                }
-                                _ => {}
-                            }
-                        }
-                    } else if let Some(text) = content.and_then(|c| c.as_str()) {
-                        let mut ev = AgentEventV1::new(
-                            Source::ClaudeCode,
-                            project_hash_val.clone(),
-                            ts.clone(),
-                            EventType::AssistantMessage,
-                        );
-                        ev.session_id = session_id.clone();
-                        ev.event_id = message_id.clone();
-                        ev.parent_event_id = last_user_event_id.clone();
-                        ev.role = Some(Role::Assistant);
-                        ev.channel = Some(Channel::Chat);
-                        ev.project_root = project_root_str.clone();
-                        ev.text = Some(text.to_string());
-                        ev.model = message
-                            .get("model")
-                            .and_then(|v| v.as_str())
-                            .map(|s| s.to_string());
-                        if let Some(usage) = message.get("usage") {
-                            ev.tokens_input = usage.get("input_tokens").and_then(|v| v.as_u64());
-                            ev.tokens_output = usage.get("output_tokens").and_then(|v| v.as_u64());
-                        }
-                        ev.raw = rec.clone();
-                        events.push(ev);
-                    }
-                }
-            }
-            "tool_result" => {
-                if let Some(result) = rec.get("toolUseResult") {
+                } else {
+                    // Simple assistant message with no tools
                     let mut ev = AgentEventV1::new(
                         Source::ClaudeCode,
                         project_hash_val.clone(),
-                        ts.clone(),
-                        EventType::ToolResult,
+                        asst.timestamp.clone(),
+                        EventType::AssistantMessage,
                     );
-                    ev.session_id = session_id.clone();
+                    ev.session_id = Some(asst.session_id.clone());
+                    ev.event_id = Some(asst.uuid.clone());
                     ev.parent_event_id = last_user_event_id.clone();
-                    ev.role = Some(Role::Tool);
-                    ev.channel = Some(Channel::Terminal);
+                    ev.role = Some(Role::Assistant);
+                    ev.channel = Some(Channel::Chat);
                     ev.project_root = project_root_str.clone();
-                    ev.tool_call_id = result
-                        .get("tool_use_id")
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-                    ev.event_id = Some(format!(
-                        "{}#result",
-                        ev.tool_call_id.as_ref().unwrap_or(&"".to_string())
-                    ));
-                    if let Some(status) = result.get("status").and_then(|v| v.as_str()) {
-                        ev.tool_status = Some(match status {
-                            "completed" => ToolStatus::Success,
-                            _ => ToolStatus::Unknown,
-                        });
+
+                    let text_parts: Vec<String> = asst.message.content.iter()
+                        .filter_map(|c| match c {
+                            AssistantContent::Text { text, .. } => Some(text.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    ev.text = Some(truncate(&text_parts.join("\n"), 2000));
+                    ev.model = Some(asst.message.model.clone());
+
+                    if let Some(usage) = &asst.message.usage {
+                        ev.tokens_input = Some(usage.input_tokens as u64);
+                        ev.tokens_output = Some(usage.output_tokens as u64);
+                        ev.tokens_total = Some((usage.input_tokens + usage.output_tokens) as u64);
+                        ev.tokens_cached = usage.cache_read_input_tokens.map(|t| t as u64);
                     }
-                    if let Some(output) = result.get("output").and_then(|v| v.as_str()) {
-                        ev.text = Some(truncate(output, 1000));
-                    }
-                    ev.file_path = result
-                        .get("filePath")
-                        .or_else(|| result.get("file").and_then(|f| f.get("filePath")))
-                        .and_then(|v| v.as_str())
-                        .map(|s| s.to_string());
-                    ev.raw = rec.clone();
+
+                    ev.raw = serde_json::to_value(&asst).unwrap_or(serde_json::Value::Null);
                     events.push(ev);
                 }
             }
-            _ => {}
+            ClaudeRecord::Unknown => {
+                // Skip unknown records
+                continue;
+            }
         }
     }
 
