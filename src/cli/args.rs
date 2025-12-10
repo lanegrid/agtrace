@@ -38,26 +38,6 @@ pub enum Commands {
         verbose: bool,
     },
 
-    Import {
-        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
-        source: String,
-
-        #[arg(long)]
-        root: Option<PathBuf>,
-
-        #[arg(long)]
-        project_root: Option<String>,
-
-        #[arg(long)]
-        session_id_prefix: Option<String>,
-
-        #[arg(long)]
-        dry_run: bool,
-
-        #[arg(long)]
-        out_jsonl: Option<PathBuf>,
-    },
-
     List {
         #[arg(long)]
         project_hash: Option<String>,
@@ -173,11 +153,6 @@ pub enum Commands {
     },
 
     Project {
-        #[arg(long)]
-        project_root: Option<String>,
-    },
-
-    Status {
         #[arg(long)]
         project_root: Option<String>,
     },

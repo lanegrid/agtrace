@@ -32,24 +32,6 @@ pub fn run(cli: Cli) -> Result<()> {
             )
         }
 
-        Commands::Import {
-            source,
-            root,
-            project_root,
-            session_id_prefix,
-            dry_run,
-            out_jsonl,
-        } => handlers::import::handle(
-            &storage,
-            source,
-            root,
-            project_root,
-            session_id_prefix,
-            cli.all_projects,
-            dry_run,
-            out_jsonl,
-        ),
-
         Commands::List {
             project_hash,
             source: _,
@@ -158,8 +140,6 @@ pub fn run(cli: Cli) -> Result<()> {
             let db = Database::open(&db_path)?;
             handlers::project::handle(&db, project_root)
         }
-
-        Commands::Status { project_root } => handlers::status::handle(project_root),
     }
 }
 

@@ -61,7 +61,7 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 
 ### 1.1 Command List
 
-* **`agtrace scan`** (formerly `import`)
+* **`agtrace scan`**
   Scans provider log directories and registers metadata (pointers) in the database.
 
 * **`agtrace list`**
@@ -118,7 +118,7 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 
 ---
 
-## 2. `agtrace scan` (formerly `import`)
+## 2. `agtrace scan`
 
 ### 2.1 Overview
 
