@@ -113,9 +113,139 @@ fn print_events_timeline(events: &[AgentEventV1]) {
         }
 
         if let Some(tool_name) = &event.tool_name {
-            println!("  tool: {}", tool_name);
+            print!("  tool: {}", tool_name);
+            if let Some(file_path) = &event.file_path {
+                print!(" ({})", file_path);
+            }
+            if let Some(file_op) = &event.file_op {
+                print!(" [{}]", file_op);
+            }
+            if let Some(exit_code) = event.tool_exit_code {
+                print!(" exit={}", exit_code);
+            }
+            println!();
+        }
+
+        // Display token information for assistant messages
+        if matches!(event.event_type, crate::model::EventType::AssistantMessage) {
+            let mut token_parts = Vec::new();
+            if let Some(input) = event.tokens_input {
+                token_parts.push(format!("in:{}", input));
+            }
+            if let Some(output) = event.tokens_output {
+                token_parts.push(format!("out:{}", output));
+            }
+            if let Some(cached) = event.tokens_cached {
+                if cached > 0 {
+                    token_parts.push(format!("cached:{}", cached));
+                }
+            }
+            if let Some(thinking) = event.tokens_thinking {
+                if thinking > 0 {
+                    token_parts.push(format!("thinking:{}", thinking));
+                }
+            }
+            if let Some(tool) = event.tokens_tool {
+                if tool > 0 {
+                    token_parts.push(format!("tool:{}", tool));
+                }
+            }
+            if !token_parts.is_empty() {
+                println!("  tokens: {}", token_parts.join(", "));
+            }
         }
 
         println!();
+    }
+
+    // Print session summary
+    print_session_summary(events);
+}
+
+fn print_session_summary(events: &[AgentEventV1]) {
+    if events.is_empty() {
+        return;
+    }
+
+    println!("---");
+    println!("Session Summary:");
+
+    // Count events by type
+    let mut user_count = 0;
+    let mut assistant_count = 0;
+    let mut tool_call_count = 0;
+    let mut reasoning_count = 0;
+    let mut file_ops = std::collections::HashMap::new();
+
+    // Calculate total tokens
+    let mut total_input = 0u64;
+    let mut total_output = 0u64;
+    let mut total_cached = 0u64;
+    let mut total_thinking = 0u64;
+
+    for event in events {
+        match event.event_type {
+            crate::model::EventType::UserMessage => user_count += 1,
+            crate::model::EventType::AssistantMessage => assistant_count += 1,
+            crate::model::EventType::ToolCall => tool_call_count += 1,
+            crate::model::EventType::Reasoning => reasoning_count += 1,
+            _ => {}
+        }
+
+        if let Some(file_op) = &event.file_op {
+            *file_ops.entry(file_op.clone()).or_insert(0) += 1;
+        }
+
+        if let Some(t) = event.tokens_input {
+            total_input += t;
+        }
+        if let Some(t) = event.tokens_output {
+            total_output += t;
+        }
+        if let Some(t) = event.tokens_cached {
+            total_cached += t;
+        }
+        if let Some(t) = event.tokens_thinking {
+            total_thinking += t;
+        }
+    }
+
+    println!("  Events: {} total", events.len());
+    println!("    User messages: {}", user_count);
+    println!("    Assistant messages: {}", assistant_count);
+    println!("    Tool calls: {}", tool_call_count);
+    println!("    Reasoning blocks: {}", reasoning_count);
+
+    if !file_ops.is_empty() {
+        println!("  File operations:");
+        for (op, count) in file_ops.iter() {
+            println!("    {}: {}", op, count);
+        }
+    }
+
+    let total_tokens = total_input + total_output;
+    if total_tokens > 0 {
+        println!("  Tokens: {} total", total_tokens);
+        println!("    Input: {}", total_input);
+        println!("    Output: {}", total_output);
+        if total_cached > 0 {
+            println!("    Cached: {}", total_cached);
+        }
+        if total_thinking > 0 {
+            println!("    Thinking: {}", total_thinking);
+        }
+    }
+
+    // Calculate duration
+    if let (Some(first), Some(last)) = (events.first(), events.last()) {
+        if let (Ok(start), Ok(end)) = (
+            chrono::DateTime::parse_from_rfc3339(&first.ts),
+            chrono::DateTime::parse_from_rfc3339(&last.ts),
+        ) {
+            let duration = end.signed_duration_since(start);
+            let minutes = duration.num_minutes();
+            let seconds = duration.num_seconds() % 60;
+            println!("  Duration: {}m {}s", minutes, seconds);
+        }
     }
 }

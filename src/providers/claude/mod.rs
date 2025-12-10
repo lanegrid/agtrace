@@ -94,6 +94,9 @@ impl LogProvider for ClaudeProvider {
                 }
             };
 
+            // Filter by project root if specified (exact match required)
+            // Subdirectories are treated as completely separate projects to maintain
+            // consistency with project_hash-based providers (Gemini)
             if let Some(cwd) = &header.cwd {
                 if let Some(expected) = &context.project_root {
                     let cwd_normalized = cwd.trim_end_matches('/');

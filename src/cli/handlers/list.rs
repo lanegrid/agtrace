@@ -24,22 +24,33 @@ pub fn handle(
     Ok(())
 }
 
-/// Truncate string for display, respecting UTF-8 character boundaries
+/// Truncate and normalize string for display
+/// - Replaces newlines with spaces
+/// - Collapses multiple consecutive whitespace into single space
+/// - Respects UTF-8 character boundaries
 fn truncate_for_display(s: &str, max_chars: usize) -> String {
-    if s.chars().count() <= max_chars {
-        s.to_string()
+    // Replace newlines with spaces and collapse multiple spaces
+    let normalized = s
+        .replace('\n', " ")
+        .replace('\r', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if normalized.chars().count() <= max_chars {
+        normalized
     } else {
-        let truncated: String = s.chars().take(max_chars - 3).collect();
+        let truncated: String = normalized.chars().take(max_chars - 3).collect();
         format!("{}...", truncated)
     }
 }
 
 fn print_sessions_table(sessions: &[SessionSummary]) {
     println!(
-        "{:<25} {:<12} {:<12} {:<25} {:<30}",
+        "{:<25} {:<12} {:<12} {:<25} {}",
         "TIME", "PROVIDER", "ID (short)", "PROJECT", "SNIPPET"
     );
-    println!("{}", "-".repeat(120));
+    println!("{}", "-".repeat(140));
 
     for session in sessions {
         let id_short = if session.id.len() > 8 {
@@ -69,10 +80,11 @@ fn print_sessions_table(sessions: &[SessionSummary]) {
             .snippet
             .as_deref()
             .unwrap_or("");
-        let snippet_display = truncate_for_display(snippet, 30);
+        // Increased snippet length from 30 to 70 characters
+        let snippet_display = truncate_for_display(snippet, 70);
 
         println!(
-            "{:<25} {:<12} {:<12} {:<25} {:<30}",
+            "{:<25} {:<12} {:<12} {:<25} {}",
             time_display,
             session.provider,
             id_short,

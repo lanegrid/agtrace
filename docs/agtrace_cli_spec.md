@@ -51,6 +51,13 @@ A source code repository unit that agtrace targets.
 
 `project_hash` is `sha256(project_root).hex`
 
+**Important: Project Isolation**
+- Projects are identified by **exact matching** of `project_root` (for path-based providers like Claude/Codex) or `project_hash` (for hash-based providers like Gemini)
+- **Subdirectories are treated as completely separate projects**
+- **Parent directories are treated as completely separate projects**
+- Rationale: Consistency across providers. Hash-based providers generate different values for each directory level, making hierarchical relationships impractical to maintain
+- Example: `/project` and `/project/subdir` are separate projects with different hashes and should not be mixed
+
 ### Session
 
 A logical unit of work (conversation or execution). The primary unit for UI listing.
@@ -167,8 +174,17 @@ agtrace scan \
 4. Updates `last_scanned_at` timestamp for the project
 
 **Scope:**
-- Without `--all-projects`: Only registers sessions matching current `project_root`/`project_hash`
+- Without `--all-projects`: Only registers sessions matching current `project_root`/`project_hash` (**exact match**)
 - With `--all-projects`: Registers all detected sessions (useful for initial setup)
+
+**Project Matching (Important):**
+- Sessions are matched using **exact path matching** (for `cwd`-based providers like Claude) or **exact hash matching** (for `project_hash`-based providers like Gemini)
+- **Subdirectories are treated as completely separate projects**
+- **Parent directories are treated as completely separate projects**
+- Rationale: Since `project_hash`-based providers (Gemini) generate different hash values for subdirectories, maintaining path-based relationships would be inconsistent and difficult
+- Example:
+  - If `project_root` is `/Users/user/myproject`, sessions from `/Users/user/myproject/subdir` are **NOT** registered
+  - If you want to see sessions from subdirectories, use `--all-projects` and filter manually, or run scan with that subdirectory as the project root
 
 ### 2.5 Output Example
 
