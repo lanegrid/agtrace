@@ -14,9 +14,13 @@ fn test_gemini_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // Snapshot the first few events for verification
-    let sample_events: Vec<_> = events.iter().take(3).collect();
-    insta::assert_json_snapshot!("gemini_events_sample", sample_events);
+    // Snapshot all events in JSONL format (1 line per event)
+    let jsonl = events
+        .iter()
+        .map(|e| serde_json::to_string(e).unwrap())
+        .collect::<Vec<_>>()
+        .join("\n");
+    insta::assert_snapshot!("gemini_events_sample", jsonl);
 
     // Verify basic properties
     assert_eq!(events[0].source, agtrace::model::Source::Gemini);
@@ -37,8 +41,13 @@ fn test_codex_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    let sample_events: Vec<_> = events.iter().take(3).collect();
-    insta::assert_json_snapshot!("codex_events_sample", sample_events);
+    // Snapshot all events in JSONL format (1 line per event)
+    let jsonl = events
+        .iter()
+        .map(|e| serde_json::to_string(e).unwrap())
+        .collect::<Vec<_>>()
+        .join("\n");
+    insta::assert_snapshot!("codex_events_sample", jsonl);
 
     assert_eq!(events[0].source, agtrace::model::Source::Codex);
 }
@@ -57,8 +66,13 @@ fn test_claude_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    let sample_events: Vec<_> = events.iter().take(3).collect();
-    insta::assert_json_snapshot!("claude_events_sample", sample_events);
+    // Snapshot all events in JSONL format (1 line per event)
+    let jsonl = events
+        .iter()
+        .map(|e| serde_json::to_string(e).unwrap())
+        .collect::<Vec<_>>()
+        .join("\n");
+    insta::assert_snapshot!("claude_events_sample", jsonl);
 
     assert_eq!(events[0].source, agtrace::model::Source::ClaudeCode);
 }
