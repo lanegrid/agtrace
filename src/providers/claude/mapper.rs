@@ -9,6 +9,7 @@ pub fn normalize_claude_stream(
 ) -> Vec<AgentEventV1> {
     let mut events = Vec::new();
     let mut last_user_event_id: Option<String> = None;
+    let mut meta_message_ids = std::collections::HashSet::new();
 
     let mut project_root_str: Option<String> = project_root_override.map(|s| s.to_string());
     let mut project_hash: Option<String> = project_root_str.as_deref().map(project_hash_from_root);
@@ -33,10 +34,28 @@ pub fn normalize_claude_stream(
 
         match record {
             ClaudeRecord::FileHistorySnapshot(_) => {
-                // Skip file history snapshots
+                // File history snapshots mark the end of a meta message chain
+                meta_message_ids.clear();
                 continue;
             }
             ClaudeRecord::User(user) => {
+                // Track meta message IDs and their descendants
+                if user.is_meta {
+                    meta_message_ids.insert(user.uuid.clone());
+                    continue; // Skip meta messages
+                }
+
+                // Check if this message's parent is a meta message (or descendant)
+                let parent_is_meta = user.parent_uuid.as_ref()
+                    .map(|p| meta_message_ids.contains(p))
+                    .unwrap_or(false);
+
+                // If parent is meta, this message is also considered meta-related
+                if parent_is_meta {
+                    meta_message_ids.insert(user.uuid.clone());
+                    continue; // Skip meta descendants
+                }
+
                 let has_tool_content = user.message.content.iter().any(|c| {
                     !matches!(c, UserContent::Text { .. })
                 });

@@ -78,6 +78,10 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
     for line in reader.lines().take(200).flatten() {
         if let Ok(record) = serde_json::from_str::<ClaudeRecord>(&line) {
             match &record {
+                ClaudeRecord::FileHistorySnapshot(_) => {
+                    // File history snapshots mark the end of a meta message chain
+                    meta_message_ids.clear();
+                }
                 ClaudeRecord::User(user) => {
                     if session_id.is_none() {
                         session_id = Some(user.session_id.clone());
