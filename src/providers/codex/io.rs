@@ -112,26 +112,46 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
             }
 
             if snippet.is_none() {
-                if json.get("payload").and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("message") {
-                    if json.get("payload").and_then(|p| p.get("role")).and_then(|r| r.as_str()) == Some("user") {
-                        snippet = json.get("payload")
-                            .and_then(|p| p.get("content"))
-                            .and_then(|c| {
-                                if let Some(s) = c.as_str() {
-                                    Some(s.to_string())
-                                } else if let Some(arr) = c.as_array() {
-                                    arr.iter()
-                                        .find_map(|item| item.get("text").and_then(|t| t.as_str()))
-                                        .map(String::from)
-                                } else {
-                                    None
+                // Try event_msg format first (cleaner message text)
+                if json.get("type").and_then(|t| t.as_str()) == Some("event_msg") {
+                    if json.get("payload").and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("user_message") {
+                        if let Some(msg) = json.get("payload").and_then(|p| p.get("message")).and_then(|m| m.as_str()) {
+                            snippet = Some(msg.to_string());
+                        }
+                    }
+                }
+
+                // Fallback to response_item format
+                if snippet.is_none() {
+                    if json.get("type").and_then(|t| t.as_str()) == Some("response_item") {
+                        if json.get("payload").and_then(|p| p.get("type")).and_then(|t| t.as_str()) == Some("message") {
+                            if json.get("payload").and_then(|p| p.get("role")).and_then(|r| r.as_str()) == Some("user") {
+                                let text = json.get("payload")
+                                    .and_then(|p| p.get("content"))
+                                    .and_then(|c| {
+                                        if let Some(s) = c.as_str() {
+                                            Some(s.to_string())
+                                        } else if let Some(arr) = c.as_array() {
+                                            arr.iter()
+                                                .find_map(|item| item.get("text").and_then(|t| t.as_str()))
+                                                .map(String::from)
+                                        } else {
+                                            None
+                                        }
+                                    });
+                                // Skip auto-sent environment context messages
+                                if let Some(t) = &text {
+                                    if !t.contains("<environment_context>") {
+                                        snippet = text;
+                                    }
                                 }
-                            });
+                            }
+                        }
                     }
                 }
             }
 
-            if session_id.is_some() && cwd.is_some() && timestamp.is_some() {
+            if session_id.is_some() && cwd.is_some() && timestamp.is_some() && snippet.is_some() {
                 break;
             }
         }

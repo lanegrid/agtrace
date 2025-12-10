@@ -83,7 +83,12 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
             }
 
             if snippet.is_none() {
-                if json.get("type").and_then(|v| v.as_str()) == Some("message") {
+                // Skip sidechain (background/shadow) messages
+                let is_sidechain = json.get("isSidechain")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                if !is_sidechain && json.get("type").and_then(|v| v.as_str()) == Some("user") {
                     if json.get("message").and_then(|m| m.get("role")).and_then(|r| r.as_str()) == Some("user") {
                         snippet = json.get("message")
                             .and_then(|m| m.get("content"))
@@ -102,7 +107,7 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                 }
             }
 
-            if session_id.is_some() && cwd.is_some() && timestamp.is_some() {
+            if session_id.is_some() && cwd.is_some() && timestamp.is_some() && snippet.is_some() {
                 break;
             }
         }

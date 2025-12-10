@@ -47,6 +47,7 @@ pub fn extract_gemini_header(path: &Path) -> Result<GeminiHeader> {
     let timestamp = json.get("timestamp")
         .and_then(|v| v.as_str())
         .or_else(|| json.get("createdAt").and_then(|v| v.as_str()))
+        .or_else(|| json.get("startTime").and_then(|v| v.as_str()))
         .map(String::from);
 
     let snippet = json.get("messages")
