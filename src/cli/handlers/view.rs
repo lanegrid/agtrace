@@ -31,8 +31,18 @@ pub fn handle(
         anyhow::bail!("Session not found: {}", session_id);
     }
 
+    // Filter out sidechain files (e.g., Claude's agent-*.jsonl)
+    let main_files: Vec<_> = log_files
+        .into_iter()
+        .filter(|f| f.role != "sidechain")
+        .collect();
+
+    if main_files.is_empty() {
+        anyhow::bail!("No main log files found for session: {}", session_id);
+    }
+
     if raw {
-        for log_file in &log_files {
+        for log_file in &main_files {
             let content = fs::read_to_string(&log_file.path)
                 .with_context(|| format!("Failed to read file: {}", log_file.path))?;
             println!("{}", content);
@@ -42,7 +52,7 @@ pub fn handle(
 
     let mut all_events = Vec::new();
 
-    for log_file in &log_files {
+    for log_file in &main_files {
         let path = Path::new(&log_file.path);
         let provider: Box<dyn LogProvider> = if log_file.path.contains(".claude/") {
             Box::new(ClaudeProvider::new())

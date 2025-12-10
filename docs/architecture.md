@@ -150,12 +150,17 @@ agtrace v2.0 adopts a **Schema-on-Read** architecture, where raw log files remai
    SELECT path, role FROM log_files WHERE session_id = ?;
    ```
 
-2. **Open Raw Log Files**
-   - For each `path`:
+2. **Filter Sidechain Files**
+   - Exclude files with `role = "sidechain"` (e.g., Claude's `agent-*.jsonl`)
+   - Only process `role = "main"` files for display
+   - This prevents internal agent logs from cluttering the output
+
+3. **Open Raw Log Files**
+   - For each main `path`:
      - Open file with `BufReader`
      - Iterate line-by-line (JSONL) or parse full JSON
 
-3. **Dynamic Normalization**
+4. **Dynamic Normalization**
    - Apply provider-specific mapper:
      - `ClaudeMapper::normalize(raw) -> Vec<AgentEventV1>`
      - `CodexMapper::normalize(raw) -> Vec<AgentEventV1>`
@@ -164,12 +169,12 @@ agtrace v2.0 adopts a **Schema-on-Read** architecture, where raw log files remai
      - Emit `{ event_type: "meta", text: "parse_error: ..." }`
      - Continue (don't crash)
 
-4. **Merge & Sort**
+5. **Merge & Sort**
    - Collect events from all files
    - Sort by `ts` (timestamp)
    - Use k-way merge for multiple files (efficient streaming)
 
-5. **Display**
+6. **Display**
    - `--timeline` (default): Human-readable format
    - `--json`: JSON array of `AgentEventV1`
    - `--raw`: Raw file contents (no normalization)
