@@ -116,6 +116,18 @@ pub fn normalize_codex_stream(
                         };
                         ev.tool_name = Some(call.name.clone());
                         ev.tool_call_id = Some(call.call_id.clone());
+
+                        // Extract file_path from arguments
+                        if let Ok(args_json) = serde_json::from_str::<serde_json::Value>(&call.arguments) {
+                            if let Some(file_path) = args_json.get("file_path").or(args_json.get("path")).and_then(|v| v.as_str()) {
+                                ev.file_path = Some(file_path.to_string());
+                                ev.file_op = match call.name.as_str() {
+                                    "apply_patch" => Some("modify".to_string()),
+                                    _ => None,
+                                };
+                            }
+                        }
+
                         ev.text = Some(truncate(&call.arguments, 2000));
                     }
                     ResponseItemPayload::FunctionCallOutput(output) => {
@@ -124,6 +136,12 @@ pub fn normalize_codex_stream(
                         ev.channel = Some(Channel::Terminal);
                         ev.tool_call_id = Some(output.call_id.clone());
                         ev.tool_status = Some(ToolStatus::Success);
+
+                        // Try to extract exit code from output
+                        if let Some(exit_code) = extract_exit_code(&output.output) {
+                            ev.tool_exit_code = Some(exit_code);
+                        }
+
                         ev.text = Some(truncate(&output.output, 2000));
                     }
                     ResponseItemPayload::CustomToolCall(call) => {
@@ -136,6 +154,18 @@ pub fn normalize_codex_stream(
                         };
                         ev.tool_name = Some(call.name.clone());
                         ev.tool_call_id = Some(call.call_id.clone());
+
+                        // Extract file_path from input
+                        if let Ok(input_json) = serde_json::from_str::<serde_json::Value>(&call.input) {
+                            if let Some(file_path) = input_json.get("file_path").or(input_json.get("path")).and_then(|v| v.as_str()) {
+                                ev.file_path = Some(file_path.to_string());
+                                ev.file_op = match call.name.as_str() {
+                                    "apply_patch" => Some("modify".to_string()),
+                                    _ => None,
+                                };
+                            }
+                        }
+
                         ev.text = Some(truncate(&call.input, 2000));
                     }
                     ResponseItemPayload::CustomToolCallOutput(output) => {
@@ -144,6 +174,12 @@ pub fn normalize_codex_stream(
                         ev.channel = Some(Channel::Terminal);
                         ev.tool_call_id = Some(output.call_id.clone());
                         ev.tool_status = Some(ToolStatus::Success);
+
+                        // Try to extract exit code from output
+                        if let Some(exit_code) = extract_exit_code(&output.output) {
+                            ev.tool_exit_code = Some(exit_code);
+                        }
+
                         ev.text = Some(truncate(&output.output, 2000));
                     }
                     ResponseItemPayload::GhostSnapshot(_) => {
@@ -224,6 +260,18 @@ fn extract_message_text(msg: &MessagePayload) -> Option<String> {
         .collect();
     if !texts.is_empty() {
         Some(truncate(&texts.join("\n"), 2000))
+    } else {
+        None
+    }
+}
+
+/// Extract exit code from output string (e.g., "Exit Code: 0")
+fn extract_exit_code(output: &str) -> Option<i32> {
+    // Look for "Exit Code: N" pattern
+    if let Some(idx) = output.find("Exit Code:") {
+        let rest = &output[idx + 11..]; // Skip "Exit Code: "
+        let num_str: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
+        num_str.parse::<i32>().ok()
     } else {
         None
     }

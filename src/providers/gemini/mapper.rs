@@ -51,6 +51,15 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                 ev.channel = Some(Channel::Chat);
                 ev.model = model.cloned();
                 ev.text = Some(gemini_msg.content.clone());
+
+                // Extract token information
+                ev.tokens_input = Some(gemini_msg.tokens.input as u64);
+                ev.tokens_output = Some(gemini_msg.tokens.output as u64);
+                ev.tokens_total = Some(gemini_msg.tokens.total as u64);
+                ev.tokens_cached = Some(gemini_msg.tokens.cached as u64);
+                ev.tokens_thinking = Some(gemini_msg.tokens.thoughts as u64);
+                ev.tokens_tool = Some(gemini_msg.tokens.tool as u64);
+
                 ev.raw = serde_json::to_value(gemini_msg).unwrap_or(Value::Null);
                 events.push(ev);
 
@@ -98,6 +107,28 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                             _ => ToolStatus::Unknown,
                         });
                     }
+
+                    // Extract file_path from args
+                    if let Some(file_path) = tool_call.args.get("file_path").and_then(|v| v.as_str()) {
+                        tev.file_path = Some(file_path.to_string());
+                        // Infer file_op from tool name
+                        tev.file_op = match tool_call.name.as_str() {
+                            "write_file" => Some("write".to_string()),
+                            "read_file" => Some("read".to_string()),
+                            _ => None,
+                        };
+                    }
+
+                    // Extract exit_code from result
+                    if let Some(result) = tool_call.result.first() {
+                        if let Some(output) = result.function_response.response.get("output").and_then(|v| v.as_str()) {
+                            // Try to extract "Exit Code: N" from output
+                            if let Some(exit_code) = extract_exit_code(output) {
+                                tev.tool_exit_code = Some(exit_code);
+                            }
+                        }
+                    }
+
                     let args = serde_json::to_string(&tool_call.args).unwrap_or_default();
                     let result_display = tool_call.result_display.as_deref().unwrap_or("");
                     if !result_display.is_empty() {
@@ -131,4 +162,16 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
         }
     }
     events
+}
+
+/// Extract exit code from output string (e.g., "Exit Code: 0")
+fn extract_exit_code(output: &str) -> Option<i32> {
+    // Look for "Exit Code: N" pattern
+    if let Some(idx) = output.find("Exit Code:") {
+        let rest = &output[idx + 11..]; // Skip "Exit Code: "
+        let num_str: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
+        num_str.parse::<i32>().ok()
+    } else {
+        None
+    }
 }

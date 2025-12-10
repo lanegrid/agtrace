@@ -171,17 +171,39 @@ interface AgentEventV1 {
   /** ツール実行レイテンシ (ms)。取れる場合のみ埋める。 */
   tool_latency_ms: number | null;
 
-  /** ツールの exit code（Bash 等）。なければ null。 */
+  /**
+   * ツールの exit code（Bash / shell 等）。なければ null。
+   *
+   * 抽出方法:
+   * - Claude: toolUseResult からパース可能な場合
+   * - Codex: FunctionCallOutput の output から抽出
+   * - Gemini: result の output テキストから正規表現 `Exit Code: (\d+)` で抽出
+   */
   tool_exit_code: number | null;
 
   // --- ファイル / コード ---
-  /** 主に対象となったファイルパス。複数ある場合は代表 1 件。 */
+  /**
+   * 主に対象となったファイルパス。複数ある場合は代表 1 件。
+   *
+   * ツール呼び出しの場合、引数から抽出することを推奨:
+   * - Write / write_file / apply_patch: `input.file_path` または `args.file_path`
+   * - Read / Glob: `input.file_path` または `input.path`
+   * - Edit: `input.file_path`
+   */
   file_path: string | null;
 
   /** 主な言語（例: "rust", "typescript"）。推定できなければ null。 */
   file_language: string | null;
 
-  /** ファイル操作種別。必要に応じて Enum 化を検討。 */
+  /**
+   * ファイル操作種別。必要に応じて Enum 化を検討。
+   *
+   * ツール名から推論:
+   * - Write / write_file: "write"
+   * - Read: "read"
+   * - Edit: "modify"
+   * - apply_patch: "modify"
+   */
   file_op: "read" | "write" | "modify" | "delete" | "create" | "move" | null;
 
   // --- モデル / トークン ---
@@ -393,7 +415,17 @@ Claude Code では、tool_result が `message.role="user"` でラップされる
   * 不明 → `"unknown"`
 * `file_path`:
 
-  * `toolUseResult.filePath` / `toolUseResult.file.filePath` など
+  * tool_call イベント: `message.content[].input.file_path`（Write / Read / Edit の場合）
+  * tool_result イベント: `toolUseResult.filePath` / `toolUseResult.file.filePath` など
+* `file_op`:
+
+  * ツール名から推論:
+    * `Write` → `"write"`
+    * `Read` → `"read"`
+    * `Edit` → `"modify"`
+* `tool_exit_code`:
+
+  * Bash ツールの場合、`toolUseResult` から抽出可能なら設定
 * `model` ← `message.model`
 * `tokens_*` ← `message.usage.*`（単イベントの usage を優先）
 
@@ -488,6 +520,17 @@ Codex はすでに 1 レコード = 1 イベントの構造になっているの
 
   * `status == "completed"` → `"success"`
   * その他 → `"error"` or `"unknown"`
+* `file_path`:
+
+  * function_call / custom_tool_call の場合、`arguments` または `input` を JSON パースして `file_path` または `path` キーを探す
+  * apply_patch の場合は特に重要
+* `file_op`:
+
+  * `apply_patch` → `"modify"`
+  * 他のツールは引数から推測
+* `tool_exit_code`:
+
+  * function_call_output / custom_tool_call_output の `output` から正規表現で抽出を試みる
 * `model` ← `payload.model`
 * `tokens_*`:
 
@@ -556,6 +599,13 @@ Gemini CLI は 2 種類のログを統合して扱う:
     * `role`: `"assistant"`
     * `channel`: `"chat"`
     * `text`: `messages[].content`
+    * `model`: `messages[].model`
+    * `tokens_input`: `messages[].tokens.input`
+    * `tokens_output`: `messages[].tokens.output`
+    * `tokens_total`: `messages[].tokens.total`
+    * `tokens_cached`: `messages[].tokens.cached`
+    * `tokens_thinking`: `messages[].tokens.thoughts`
+    * `tokens_tool`: `messages[].tokens.tool`
     * `parent_event_id`: **直近の user_message の event_id**
   * system/info:
 
@@ -583,6 +633,8 @@ Gemini CLI は 2 種類のログを統合して扱う:
       * `tool_name`: `name`
       * `tool_call_id`: `id`
       * `text`: `args` のサマリ
+      * `file_path`: `args.file_path`（write_file 等の場合）
+      * `file_op`: ツール名から推論（write_file → "write"）
       * `parent_event_id`: 対応する user_message の event_id
     * tool_result イベント（result が含まれている場合）:
       * `event_type`: `"tool_result"`
@@ -590,6 +642,7 @@ Gemini CLI は 2 種類のログを統合して扱う:
       * `tool_call_id`: `id`
       * `tool_status`: `status` を `"success"` / `"error"` / `"unknown"` にマップ
       * `text`: `resultDisplay` のサマリ
+      * `tool_exit_code`: `result[].functionResponse.response.output` から正規表現で抽出（`Exit Code: (\d+)`）
       * `parent_event_id`: 対応する user_message の event_id
 
 ---
@@ -617,6 +670,12 @@ Gemini CLI は 2 種類のログを統合して扱う:
 
   * 明示的に「user_message へのポインタ」として用途を限定している。
     tool_call → tool_result の因果関係は `tool_call_id` + `ts` で辿る。
+* **Claude の `isSidechain` フラグ**:
+
+  * Claude Code のログには `isSidechain: true` というフラグがあり、ユーザーに見せる必要のない「準備運動」や「裏側の思考プロセス」を示す。
+  * v1 では専用フィールドを持たず、`raw.isSidechain` として保持する。
+  * UI / 分析側で `raw.isSidechain == true` をチェックしてフィルタリングすることを推奨。
+  * 将来的に v1.1 で `is_internal: bool` などのフィールド追加を検討。
 
 ---
 

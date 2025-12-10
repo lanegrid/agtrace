@@ -118,6 +118,26 @@ pub fn normalize_claude_stream(
                                     "Read" | "Glob" => Some(Channel::Filesystem),
                                     _ => Some(Channel::Chat),
                                 };
+
+                                // Extract file_path from input
+                                if let Some(file_path) = input.get("file_path").and_then(|v| v.as_str()) {
+                                    ev.file_path = Some(file_path.to_string());
+                                    // Infer file_op from tool name
+                                    ev.file_op = match name.as_str() {
+                                        "Write" => Some("write".to_string()),
+                                        "Read" => Some("read".to_string()),
+                                        "Edit" => Some("modify".to_string()),
+                                        _ => None,
+                                    };
+                                } else if let Some(path) = input.get("path").and_then(|v| v.as_str()) {
+                                    // For Glob and other tools that use "path"
+                                    ev.file_path = Some(path.to_string());
+                                    ev.file_op = match name.as_str() {
+                                        "Read" | "Glob" => Some("read".to_string()),
+                                        _ => None,
+                                    };
+                                }
+
                                 let input_str = serde_json::to_string(input).unwrap_or_default();
                                 ev.text = Some(truncate(&input_str, 500));
                                 ev.model = Some(asst.message.model.clone());
