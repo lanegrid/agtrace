@@ -5,8 +5,8 @@ use std::path::Path;
 #[test]
 fn test_parse_codex_simple_session() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let session_id = "codex-test-session";
-    let events = normalize_codex_file(path, session_id, None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
+    let session_id = events[0].session_id.as_ref().unwrap();
 
     // Should produce 5 events (user, reasoning, tool_call, tool_result, assistant)
     assert_eq!(events.len(), 5, "Expected 5 events from Codex fixture");
@@ -27,7 +27,7 @@ fn test_parse_codex_simple_session() {
 #[test]
 fn test_codex_reasoning_event() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let events = normalize_codex_file(path, "test-session", None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
 
     // Second event should be reasoning
     let reasoning_event = &events[1];
@@ -40,7 +40,7 @@ fn test_codex_reasoning_event() {
 #[test]
 fn test_codex_tool_call_and_result() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let events = normalize_codex_file(path, "test-session", None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
 
     // Find tool_call (should be 3rd event)
     let tool_call = &events[2];
@@ -84,7 +84,7 @@ fn test_codex_tool_call_and_result() {
 #[test]
 fn test_codex_project_hash() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let events = normalize_codex_file(path, "test-session", None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
 
     // All events should have same project_hash from cwd
     let first_hash = &events[0].project_hash;
@@ -97,7 +97,7 @@ fn test_codex_project_hash() {
 #[test]
 fn test_codex_parent_event_chain() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let events = normalize_codex_file(path, "test-session", None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
 
     let user_msg = &events[0];
     assert_eq!(user_msg.event_type, EventType::UserMessage);
@@ -112,7 +112,7 @@ fn test_codex_parent_event_chain() {
 #[test]
 fn test_codex_token_usage() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let events = normalize_codex_file(path, "test-session", None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
 
     // Tool result event should have token info from last_token_usage
     let tool_result = events
@@ -129,7 +129,7 @@ fn test_codex_token_usage() {
 #[test]
 fn test_codex_assistant_message() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let events = normalize_codex_file(path, "test-session", None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
 
     let assistant_msg = events
         .iter()
@@ -145,7 +145,7 @@ fn test_codex_assistant_message() {
 #[test]
 fn test_codex_schema_version() {
     let path = Path::new("tests/fixtures/codex/simple_session.jsonl");
-    let events = normalize_codex_file(path, "test-session", None).unwrap();
+    let events = normalize_codex_file(path, None).unwrap();
 
     for event in &events {
         assert_eq!(event.schema_version, AgentEventV1::SCHEMA_VERSION);

@@ -9,7 +9,6 @@ use super::schema::CodexRecord;
 /// Parse Codex JSONL file and normalize to AgentEventV1
 pub fn normalize_codex_file(
     path: &Path,
-    fallback_session_id: &str,
     project_root_override: Option<&str>,
 ) -> Result<Vec<AgentEventV1>> {
     let text = std::fs::read_to_string(path)
@@ -34,14 +33,13 @@ pub fn normalize_codex_file(
         records.push(record);
     }
 
-    // Use session_meta.payload.id if available, otherwise fallback to filename-based ID
+    // session_id should be extracted from file content, fallback to "unknown-session"
     let session_id = session_id_from_meta
-        .as_deref()
-        .unwrap_or(fallback_session_id);
+        .unwrap_or_else(|| "unknown-session".to_string());
 
     Ok(normalize_codex_stream(
         records,
-        session_id,
+        &session_id,
         project_root_override,
     ))
 }
@@ -146,12 +144,6 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
             if session_id.is_some() && cwd.is_some() && timestamp.is_some() && snippet.is_some() {
                 break;
             }
-        }
-    }
-
-    if session_id.is_none() {
-        if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
-            session_id = Some(filename.to_string());
         }
     }
 

@@ -111,11 +111,7 @@ impl LogProvider for ClaudeProvider {
 
             let log_file = LogFileMetadata {
                 path: path.display().to_string(),
-                role: if path.file_name().and_then(|n| n.to_str()).map_or(false, |n| n.starts_with("agent-")) {
-                    "sidechain".to_string()
-                } else {
-                    "main".to_string()
-                },
+                role: if header.is_sidechain { "sidechain" } else { "main" }.to_string(),
                 file_size,
                 mod_time,
             };

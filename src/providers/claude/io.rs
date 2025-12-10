@@ -59,6 +59,7 @@ pub struct ClaudeHeader {
     pub cwd: Option<String>,
     pub timestamp: Option<String>,
     pub snippet: Option<String>,
+    pub is_sidechain: bool,
 }
 
 /// Extract header information from Claude file (for scanning)
@@ -71,6 +72,7 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
     let mut cwd = None;
     let mut timestamp = None;
     let mut snippet = None;
+    let mut is_sidechain = false;
 
     for line in reader.lines().take(20).flatten() {
         if let Ok(record) = serde_json::from_str::<ClaudeRecord>(&line) {
@@ -92,6 +94,7 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                                 _ => None,
                             });
                     }
+                    is_sidechain = user.is_sidechain;
                 }
                 ClaudeRecord::Assistant(asst) => {
                     if session_id.is_none() {
@@ -118,5 +121,6 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
         cwd,
         timestamp,
         snippet,
+        is_sidechain,
     })
 }
