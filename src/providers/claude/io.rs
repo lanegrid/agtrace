@@ -73,8 +73,9 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
     let mut timestamp = None;
     let mut snippet = None;
     let mut is_sidechain = false;
+    let mut meta_message_ids = std::collections::HashSet::new();
 
-    for line in reader.lines().take(100).flatten() {
+    for line in reader.lines().take(200).flatten() {
         if let Ok(record) = serde_json::from_str::<ClaudeRecord>(&line) {
             match &record {
                 ClaudeRecord::User(user) => {
@@ -87,8 +88,25 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                     if timestamp.is_none() {
                         timestamp = Some(user.timestamp.clone());
                     }
+
+                    // Track meta message IDs and their descendants
+                    if user.is_meta {
+                        meta_message_ids.insert(user.uuid.clone());
+                    }
+
+                    // Check if this message's parent is a meta message (or descendant)
+                    let parent_is_meta = user.parent_uuid.as_ref()
+                        .map(|p| meta_message_ids.contains(p))
+                        .unwrap_or(false);
+
+                    // If parent is meta, this message is also considered meta-related
+                    if parent_is_meta {
+                        meta_message_ids.insert(user.uuid.clone());
+                    }
+
                     // Extract snippet from first non-sidechain, non-meta user message
-                    if snippet.is_none() && !user.is_sidechain && !user.is_meta {
+                    // Also skip messages whose parent is meta
+                    if snippet.is_none() && !user.is_sidechain && !user.is_meta && !parent_is_meta {
                         snippet = user.message.content.iter()
                             .find_map(|c| match c {
                                 super::schema::UserContent::Text { text } => Some(text.clone()),
