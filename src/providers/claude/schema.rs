@@ -38,6 +38,8 @@ pub struct UserRecord {
     #[serde(default)]
     pub is_sidechain: bool,
     #[serde(default)]
+    pub is_meta: bool,
+    #[serde(default)]
     pub cwd: Option<String>,
     #[serde(default)]
     pub git_branch: Option<String>,

@@ -74,7 +74,7 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
     let mut snippet = None;
     let mut is_sidechain = false;
 
-    for line in reader.lines().take(20).flatten() {
+    for line in reader.lines().take(100).flatten() {
         if let Ok(record) = serde_json::from_str::<ClaudeRecord>(&line) {
             match &record {
                 ClaudeRecord::User(user) => {
@@ -87,7 +87,8 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                     if timestamp.is_none() {
                         timestamp = Some(user.timestamp.clone());
                     }
-                    if snippet.is_none() && !user.is_sidechain {
+                    // Extract snippet from first non-sidechain, non-meta user message
+                    if snippet.is_none() && !user.is_sidechain && !user.is_meta {
                         snippet = user.message.content.iter()
                             .find_map(|c| match c {
                                 super::schema::UserContent::Text { text } => Some(text.clone()),

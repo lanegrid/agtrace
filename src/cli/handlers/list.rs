@@ -24,6 +24,16 @@ pub fn handle(
     Ok(())
 }
 
+/// Truncate string for display, respecting UTF-8 character boundaries
+fn truncate_for_display(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max_chars - 3).collect();
+        format!("{}...", truncated)
+    }
+}
+
 fn print_sessions_table(sessions: &[SessionSummary]) {
     println!(
         "{:<25} {:<12} {:<12} {:<25} {:<30}",
@@ -59,11 +69,7 @@ fn print_sessions_table(sessions: &[SessionSummary]) {
             .snippet
             .as_deref()
             .unwrap_or("");
-        let snippet_display = if snippet.len() > 30 {
-            format!("{}...", &snippet[..27])
-        } else {
-            snippet.to_string()
-        };
+        let snippet_display = truncate_for_display(snippet, 30);
 
         println!(
             "{:<25} {:<12} {:<12} {:<25} {:<30}",
