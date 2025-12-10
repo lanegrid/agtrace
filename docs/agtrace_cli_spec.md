@@ -1,32 +1,30 @@
-# agtrace CLI Specification (v1.x)
+# agtrace CLI Specification (v2.0 - Pointer Edition)
 
 ## 0. Overview
 
-`agtrace` は、Claude Code / Codex / Gemini CLI などのエージェント行動ログを:
+`agtrace` is a CLI tool for managing agent behavior logs from Claude Code / Codex / Gemini CLI through a lightweight indexing approach.
 
-1. 正規化スキーマ (`AgentEventV1`) に変換し
-2. ローカルストレージ（ファイル / DB）に格納し
-3. CLI からセッション一覧・詳細・統計・エクスポートを行う
+Instead of copying and converting logs, agtrace:
+1. Scans provider log directories and registers metadata (pointers) in SQLite
+2. Provides unified views by reading and normalizing raw logs on-demand (Schema-on-Read)
+3. Offers CLI commands for listing, viewing, and managing sessions
 
-ための CLI ツールである。
-
-本仕様では、CLI インターフェイス（コマンド・引数・出力）の要件を定義する。
+Key principle: **"Pointer-based architecture"** - physical files remain untouched, only metadata is stored.
 
 ---
 
 ## 0.1 Core Concepts
 
-### Provider（プロバイダ）
+### Provider
 
-Claude Code / Codex / Gemini CLI 等、エージェント行動ログを出力するツールをまとめて「プロバイダ」と呼ぶ。
+Claude Code / Codex / Gemini CLI - tools that generate agent behavior logs.
 
-各プロバイダは、ユーザのホームディレクトリ配下に既定のログルートを持つ:
-
+Default log roots:
 - Claude: `$HOME/.claude/projects`
 - Codex:  `$HOME/.codex/sessions`
 - Gemini: `$HOME/.gemini/tmp`
 
-これらの情報は `~/.agtrace/config.toml` に保存される。
+Configuration is stored in `<data-dir>/config.toml` (default: `~/.agtrace/config.toml`):
 
 ```toml
 [providers.claude]
@@ -42,532 +40,245 @@ enabled = true
 log_root = "/Users/<user>/.gemini/tmp"
 ```
 
-### Project（プロジェクト）
+### Project
 
-`agtrace` が対象とするソースコードリポジトリ単位を「プロジェクト」と呼ぶ。
+A source code repository unit that agtrace targets.
 
-`project_root` は次の優先順位で決定される:
+`project_root` is determined by:
+1. `--project-root <PATH>` if specified
+2. `AGTRACE_PROJECT_ROOT` environment variable
+3. Current directory (`cwd`) as fallback
 
-1. `--project-root <PATH>` が指定されていればそれ
-2. `AGTRACE_PROJECT_ROOT` 環境変数があればそれ
-3. 上記がすべて無ければカレントディレクトリ (`cwd`)
+`project_hash` is `sha256(project_root).hex`
 
-`project_hash` は `project_root` に対する `sha256(project_root).hex` とする。
+### Session
+
+A logical unit of work (conversation or execution). The primary unit for UI listing.
 
 ---
 
-## 1. 全体構成
+## 1. Command Overview
 
-### 1.1 コマンド一覧
+### 1.1 Command List
 
-`agtrace` は次のサブコマンドを持つ:
-
-* **`agtrace import`**
-  ベンダーログを読み込み、`AgentEventV1` に正規化してストレージに取り込む。
+* **`agtrace scan`** (formerly `import`)
+  Scans provider log directories and registers metadata (pointers) in the database.
 
 * **`agtrace list`**
-  セッション / 実行の一覧を表示する。
+  Lists sessions from the index.
 
-* **`agtrace show`**
-  特定セッションのイベントタイムラインを表示する。
-
-* **`agtrace find`**
-  イベント ID やテキストで検索する。
-
-* **`agtrace stats`**
-  トークン・ツール呼び出し・セッション数などの統計を集計する。
-
-* **`agtrace export`**
-  正規化済みイベントを JSONL / CSV などでエクスポートする。
-
-* **`agtrace providers`**
-  プロバイダ設定の確認・更新を行う。
+* **`agtrace view`** (formerly `show`)
+  Displays session events by dynamically reading and normalizing raw logs (Schema-on-Read).
 
 * **`agtrace project`**
-  プロジェクト情報の表示を行う。
+  Shows project information.
 
-* **`agtrace status`**
-  プロジェクトとセッションの診断を行う。
+* **`agtrace providers`**
+  Manages provider configuration.
 
-### 1.2 グローバルオプション
+**Removed in v2.0:**
+- `find`: Removed for MVP (can be re-added later)
+- `stats`: Removed for MVP (can be re-added later)
+- `export`: Removed for MVP (can be re-added later)
+- `status`: Merged into `project` command
 
-全サブコマンド共通で次のオプションを受け付ける:
+### 1.2 Global Options
 
 * `--data-dir <PATH>`
-
-  * 説明: agtrace がデータ（正規化済みイベント / インデックス / DB）を保存するルートディレクトリ。
-  * 既定値: `$HOME/.agtrace`
+  - Description: Root directory for agtrace data (SQLite DB and config file)
+  - Default: `$HOME/.agtrace`
+  - Contents:
+    - `<data-dir>/agtrace.db` - SQLite database
+    - `<data-dir>/config.toml` - Configuration file
 
 * `--format <plain|json>`
-
-  * 説明: CLI の標準出力フォーマット。
-  * `list` / `show` / `stats` などに適用される。
-  * 既定値: `plain`
+  - Description: CLI output format
+  - Applied to: `list`, `view`, etc.
+  - Default: `plain`
 
 * `--log-level <error|warn|info|debug|trace>`
-
-  * 説明: CLI 自身のログレベル。
-  * 既定値: `info`
+  - Description: CLI logging level
+  - Default: `info`
 
 * `--project-root <PATH>`
-
-  * 説明: 対象とするプロジェクトルートを明示的に指定する。
-  * 挙動:
-    * 指定された場合、このパスを `project_root` とみなし、`project_hash = sha256(project_root)` を用いる。
-    * 指定されない場合は「Project Discovery」（`AGTRACE_PROJECT_ROOT` → `cwd`）で自動決定する。
-  * 影響:
-    * `import` / `list` / `find` / `stats` / `export` のデフォルトスコープ（「現在のプロジェクト」）に用いられる。
+  - Description: Explicitly specify project root
+  - Behavior: Sets `project_root` and calculates `project_hash = sha256(project_root)`
+  - Impact: Default scope for `scan`, `list`, `view`
 
 * `--all-projects`
-
-  * 説明: プロジェクトスコープを無効化し、全ての `project_hash` を対象にする。
-  * 挙動:
-    * 通常は、各コマンドは現在の `project_hash` のみを対象にするが、
-      `--all-projects` が指定された場合は、`project_hash` によるフィルタリングを行わない。
-    * `--project-hash` オプションが同時に指定されている場合は、`--project-hash` が優先される（`--all-projects` は無視される）。
+  - Description: Disables project scope filtering
+  - Behavior: Operates across all `project_hash` values
+  - Note: `--project-hash` takes precedence if both are specified
 
 * `--version`
-
-  * 説明: agtrace のバージョンを表示する。
+  - Description: Display agtrace version
 
 * `--help`
-
-  * 説明: ヘルプを表示する。
+  - Description: Display help
 
 ---
 
-## 2. `agtrace import` — ベンダーログの取り込み
+## 2. `agtrace scan` (formerly `import`)
 
-### 2.1 概要
+### 2.1 Overview
 
-ベンダー固有のログ（Claude JSONL / Codex rollout JSONL / Gemini JSON）を走査し、
-`AgentEventV1` に正規化して `data-dir` 配下に保存する。
+Scans provider-specific log directories, reads header information only, and registers pointers in the SQLite database.
 
-デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_root`）に
-対応するセッションのみを import する。`--all-projects` を指定した場合のみ、
-全てのプロジェクトに属するセッションをまとめて import する。
+**Key behavior:** Does not normalize or copy logs. Only stores metadata:
+- File path (absolute)
+- Session ID
+- Project hash
+- Timestamps
+- File size / modification time
 
-### 2.2 シグネチャ
+**Fail-safe:** If parsing errors occur, still registers the pointer (can retry normalization later in `view`).
+
+### 2.2 Signature
 
 ```sh
-agtrace import \
-  [--source <claude|codex|gemini|all>] \
-  [--project-root <PATH>] \
-  [--root <PATH>] \
-  [--dry-run] \
-  [--out-jsonl <PATH>]
+agtrace scan \
+  [--provider <claude|codex|gemini|all>] \
+  [--force] \
+  [--verbose]
 ```
 
-### 2.3 オプション詳細
-
-* `--source <claude|codex|gemini|all>` (任意)
-
-  * 説明: 取り込み対象のベンダーを指定する。
-  * 既定値: `all`
-  * `all` の場合、config.toml で `enabled = true` となっている全プロバイダを対象にする。
-  * 対応:
-
-    * `claude`  → Claude Code JSONL (`~/.claude/projects/.../*.jsonl`)
-    * `codex`   → Codex rollout JSONL (`~/.codex/sessions/.../rollout-*.jsonl`)
-    * `gemini`  → Gemini CLI (`~/.gemini/tmp/**/logs.json` + `chats/*.json`)
-
-* `--root <PATH>` (任意)
-
-  * 説明: 生ログ探索のルートを明示的に上書きする（高度な override 用）。
-  * 挙動:
-
-    * 指定された場合、その PATH 配下だけを探索対象とする（`log_root` を無視）。
-    * 指定されない場合、config.toml の `providers.<name>.log_root` を探索起点とする。
-
-* `--project-root <PATH>` (任意)
-
-  * 説明: プロジェクトのルートパスを明示する。
-  * 挙動:
-
-    * 指定された場合、`project_root` として優先的に使用し、`project_hash = sha256(project_root)` とする。
-    * 指定されない場合は「Project Discovery」の優先順位（`AGTRACE_PROJECT_ROOT` → `cwd`）に従い決定する。
-  * 重要: プロジェクトに対応するセッション判定は、`project_root` / `project_hash` と生ログ側の `cwd` / `projectHash` を突き合わせることで行われる。
-
-* `--dry-run`
-
-  * 説明: 実際には `data-dir` に書き込まず、何件のセッション・イベントが生成されるかだけを表示する。
-
-* `--out-jsonl <PATH>` (任意)
-
-  * 説明: ストレージに書き込むと同時に、正規化済みイベントを JSONL ファイルとして書き出す。
-  * 利用用途: デバッグ / 他ツールへの連携。
-
-### 2.4 入出力・ストレージ
-
-* 入力:
-
-  * ベンダーログファイル（後述の「2.5 生ログファイル検出仕様」参照）
-* 処理:
-
-  * 各ファイルを vendor-specific パーサで読み込み
-  * `normalize_*` 関数で `Vec<AgentEventV1>` に変換
-  * `session_id` / `event_id` / `parent_event_id` を埋める
-  * `data-dir` 配下に保存
-
-* スコープ:
-
-  * `--all-projects` が指定されていない場合:
-    * Project Discovery で決定した `project_root` / `project_hash` に対応するセッション
-      （Session Matching で `cwd` / `projectHash` が一致したもの）のみを import 対象とする。
-  * `--all-projects` が指定された場合:
-    * Session Matching による `project_root` / `project_hash` の一致判定を行わず、
-      ログルート配下で検出された全セッションを import 対象とする。
-
-* 保存形式:
-
-  * `data-dir/projects/<project_hash>/sessions/<session_id>.jsonl`
-
-    * 中身は `AgentEventV1` の 1 行 1 イベント JSON
-
-### 2.5 ログ検出とマッチングの仕様
-
-`agtrace import` は次の 3 つのフェーズでログを検出・マッチングする:
-
-1. Provider Discovery（プロバイダのログルート検出）
-2. Project Discovery（プロジェクトルートと project_hash の決定）
-3. Session Matching（プロジェクトに紐づくセッションの選別）
-
-なお、`--all-projects` が指定されていない場合、実装は可能な限り
-「現在のプロジェクトに関係しないログファイルを最初から候補に含めない」ように
-最適化してよい（例: プロジェクトごとに分かれたディレクトリ名やハッシュを利用する）。
-ただし Codex のようにプロジェクト単位の分離構造を持たないプロバイダでは、
-初回の import 時に全セッションを一度走査してメタ情報を構築することを許容する。
-
-#### 2.5.1 Provider Discovery
-
-`agtrace` は起動時に `~/.agtrace/config.toml` を読み、各プロバイダごとのログルートを決定する。
-
-- デフォルト値:
-  - claude: `$HOME/.claude/projects`
-  - codex:  `$HOME/.codex/sessions`
-  - gemini: `$HOME/.gemini/tmp`
-
-- config に `providers.<name>.enabled = true` かつ `log_root` が存在する場合、
-  そのプロバイダは import 対象候補となる。
-
-`--root` が明示された場合、そのプロバイダについては `log_root` の代わりに `--root` を探索起点とする。
-
-#### 2.5.2 Project Discovery
-
-`agtrace import` は、対象プロジェクトを以下の優先順位で決定する:
-
-1. `--project-root <PATH>` が指定されていればそれ
-2. `AGTRACE_PROJECT_ROOT` 環境変数
-3. 上記がすべて無ければカレントディレクトリ (`cwd`)
-
-`project_hash = sha256(project_root).hex` を計算し、全イベントに埋め込む。
-
-#### 2.5.3 Session Matching
-
-各プロバイダごとに、log_root（または `--root`）配下の全セッション候補を列挙した上で、
-「このプロジェクトに紐づくセッション」だけを import 対象とする。
-
-- Claude:
-  - 各 `*.jsonl` ファイルの先頭数行から `cwd` を抽出する。
-  - `normalize_path(cwd) == normalize_path(project_root)` のファイルだけを「このプロジェクトのセッション」とみなす。
-
-- Codex:
-  - 各 `rollout-*.jsonl` のレコードから `payload.cwd` を抽出する。
-  - 1 ファイルの中で最初に出現した `cwd` をそのセッションの `cwd` とみなし、
-    `normalize_path(cwd) == normalize_path(project_root)` の場合だけ import する。
-
-- Gemini:
-  - 各 `<64hex>/logs.json` から `projectHash` を抽出する。
-  - `project_hash_from(project_root) == projectHash` のディレクトリ配下のセッションだけを import する。
-
-#### 2.5.4 生ログファイル検出の共通ルール
-
-* log_root（または `--root`）にはファイルまたはディレクトリを指定可能:
-  * **ファイル**: その 1 ファイルのみを import 対象とする
-  * **ディレクトリ**: 以下のベンダー固有ルールに従って再帰的に探索する
-
-* 検出されたファイルごとに正規化処理を行い、結果を統合して保存する
-
-#### 2.5.5 Codex
-
-**ディレクトリ構造例:**
-```
-~/.codex/sessions/
-  2025/
-    11/
-      02/
-        rollout-2025-11-02T16-07-40-....jsonl
-        rollout-2025-11-02T21-38-13-....jsonl
-      03/
-        rollout-2025-11-03T00-00-31-....jsonl
-      ...
-      28/
-        rollout-2025-11-28T13-37-13-....jsonl
-        rollout-2025-11-28T16-21-36-....jsonl
-```
-
-**検出ルール:**
-* Provider Discovery で決まった `log_root`（または `--root`）配下を**再帰的に探索**する
-* 以下の条件を満たすファイルを Codex セッションログとして検出:
-  * 拡張子が `.jsonl`
-  * ファイル名が `rollout-` で始まる（例: `rollout-2025-11-28T13-37-13-....jsonl`）
-
-**session_id の決定:**
-* 原則として、セッション内の `type == "session_meta"` レコードの `payload.id` を `session_id` とする
-  * 例: `"id": "019ac8c0-3e15-7082-947c-084528a26a26"` → session_id = `"019ac8c0-3e15-7082-947c-084528a26a26"`
-* セッションファイルの形式が古く `session_meta` が存在しない場合のみ、フォールバックとして
-  ファイル名から `.jsonl` 拡張子を除いた部分を暫定的な `session_id` として用いてよい
-* `--session-id-prefix` が指定されている場合は、その接頭辞を `session_id` の先頭に付与してもよい
-  （ただし `payload.id` の生値は `raw` 側に必ず保持すること）
-
-**プロジェクトスコープにおける走査について:**
-
-* Codex のログディレクトリ構造はプロジェクトごとに分割されておらず、
-  個々のセッションがどのプロジェクトに属するかは、セッション内の `cwd` 等を
-  解析しない限り判別できない。
-* このため、`--all-projects` が指定されていない場合でも、実装は以下を行ってよい:
-  * すべての候補セッションファイルを一度は開き、先頭のメタ情報から `cwd` を抽出する。
-  * 抽出した `cwd` が現在の `project_root` と一致する場合のみ、そのセッションを
-    現在のプロジェクトに属するものとして import する。
-* パフォーマンス最適化のため、実装はセッションファイルごとに
-  「path → {cwd, project_hash, 最終更新時刻}」のインデックスを `data-dir` 配下に保存し、
-  次回以降の import では変更がないファイルを再パースしないようにしてよい。
-
-#### 2.5.6 Claude Code
-
-**ディレクトリ構造例:**
-```
-~/.claude/projects/
-  -Users-username-projects-example-project/
-    038c47b8-a1b2-4c3d-8e9f-0123456789ab.jsonl
-    1600ec8f-b2c3-4d5e-9f01-23456789abcd.jsonl
-    ...
-    eb5ce482-c14c-4de5-b2c1-1f6ad5839f0f.jsonl
-    agent-5937d6b1.jsonl
-```
-
-**ディレクトリ名エンコーディング:**
-
-Claude Code は `project_root` をディレクトリ名にエンコードする際、以下のルールを使用する:
-* `/` (スラッシュ) を `-` (ハイフン) に置き換える
-* `.` (ドット) を `-` (ハイフン) に置き換える
-* 先頭に `-` を付加する
-
-例: `/Users/username/projects/example-project`
-     → `-Users-username-projects-example-project`
-
-**検出ルール:**
-
-* `--all-projects` が **指定されていない** 場合:
-  * Project Discovery で決定された `project_root` を上記ルールでエンコードしたディレクトリ名に
-    対応するディレクトリのみを探索対象とする。
-    例: `project_root = /Users/username/projects/example-project` の場合、
-         `~/.claude/projects/-Users-username-projects-example-project/` のみを探索する。
-  * 上記ディレクトリ配下で、拡張子が `.jsonl` のファイルを候補セッションとして検出する。
-
-* `--all-projects` が指定されている場合:
-  * `log_root`（例: `~/.claude/projects`）配下を**再帰的に探索**し、
-    すべてのプロジェクトディレクトリに対して同様に `.jsonl` を検出してよい。
-
-* 各 `.jsonl` ファイルについては、必要に応じて先頭行を読み `type` / `sessionId` 等
-  の存在を確認してもよいが、これはベストエフォートであり、失敗しても致命的ではない。
-
-**session_id の決定:**
-* ファイル内の各レコードに含まれる `sessionId` フィールドを使用
-* 1 ファイル = 1 セッションを想定
-
-#### 2.5.7 Gemini CLI
-
-**ディレクトリ構造例:**
-```
-~/.gemini/tmp/
-  427e6b3fa23501d53ff9c385de38d0ebff0a269eb0bb116e3a715cdd8bf8dd16/
-    logs.json
-    chats/
-      session-2025-12-07T17-16-4cee1115.json
-      session-2025-12-07T17-25-34e4e339.json
-  5208fc97.../
-    logs.json
-    chats/
-      session-2025-12-07T17-13-3e64aa6f.json
-      session-2025-12-07T17-14-293439aa.json
-  a7e6a102.../
-    logs.json
-  bin/
-    rg
-```
-
-**検出ルール:**
-
-* `--all-projects` が **指定されていない** 場合:
-  * Project Discovery で決定された `project_root` から `project_hash` を計算し、
-    `project_hash` と **一致するディレクトリ名** のみを探索対象とする。
-    例: `project_hash = 427e6b3f...` の場合、
-         `~/.gemini/tmp/427e6b3f.../` のみを見る。
-  * このディレクトリ内に `logs.json` が存在する場合のみ、そのプロジェクトのセッションを解析する。
-  * 他の 64桁 hex ディレクトリ（別プロジェクト）は、このモードでは走査しない。
-
-* `--all-projects` が指定されている場合:
-  * `log_root` 直下のディレクトリを探索し、ディレクトリ名が 64 桁 hex かつ `logs.json` を持つものを
-    すべてプロジェクトディレクトリとして検出する。
-
-* 各プロジェクトディレクトリに対して:
-  1. `logs.json` をセッションメタデータおよび CLI イベントのソースとして読み込む
-  2. `chats/` ディレクトリが存在する場合:
-     * `chats/session-*.json` パターンに一致するファイルを会話ログとして読み込む
-     * ファイル名が `session-` で始まり、拡張子が `.json`
-
-**session_id の決定:**
-* `logs.json` または `chats/session-*.json` 内の `sessionId` フィールドを使用
-* 複数のチャットセッションが存在する場合、それぞれ個別のセッションとして扱う
-
-#### 2.5.8 検出例
-
-**Codex の場合:**
-```sh
-# 日付ディレクトリを指定
-$ agtrace import --source codex --root ~/.codex/sessions/2025/11
-
-# 検出: 02/, 03/, ..., 28/ 配下のすべての rollout-*.jsonl
-# 結果: 数十〜数百セッション
-```
-
-**Claude Code の場合:**
-```sh
-# プロジェクトディレクトリを指定
-$ agtrace import --source claude --root ~/.claude/projects/-Users-username-projects-example-project
-
-# 検出: 配下のすべての *.jsonl（UUID名 + agent-*.jsonl など）
-# 結果: 10〜50セッション（プロジェクトによる）
-```
-
-**Gemini CLI の場合:**
-```sh
-# tmp ディレクトリを指定
-$ agtrace import --source gemini --root ~/.gemini/tmp
-
-# 検出: 64桁hexディレクトリごとの logs.json + chats/session-*.json
-# 結果: 複数プロジェクト × 複数セッション
+### 2.3 Options
+
+* `--provider <claude|codex|gemini|all>` (optional)
+  - Description: Target provider(s) to scan
+  - Default: `all`
+  - `all`: Scans all enabled providers in config.toml
+
+* `--force`
+  - Description: Force full re-scan (ignores modification time)
+
+* `--verbose`
+  - Description: Display scan details
+
+### 2.4 Behavior
+
+1. Reads `<data-dir>/config.toml` to determine provider `log_root`
+2. Determines current `project_root` (via `--project-root`, `AGTRACE_PROJECT_ROOT`, or `cwd`)
+3. For each provider:
+   - Scans `log_root` for session files
+   - Reads header information (session ID, timestamps, project info)
+   - Matches sessions to current project (by `project_root` or `project_hash`)
+   - Registers matching sessions in SQLite
+4. Updates `last_scanned_at` timestamp for the project
+
+**Scope:**
+- Without `--all-projects`: Only registers sessions matching current `project_root`/`project_hash`
+- With `--all-projects`: Registers all detected sessions (useful for initial setup)
+
+### 2.5 Output Example
+
+```text
+Scanning provider: claude
+  Found 3 sessions for project 427e6b3f...
+  Registered: 038c47b8-a1b2-4c3d-8e9f-0123456789ab
+  Registered: 1600ec8f-b2c3-4d5e-9f01-23456789abcd
+  Registered: eb5ce482-c14c-4de5-b2c1-1f6ad5839f0f
+
+Scanning provider: codex
+  Found 5 sessions for project 427e6b3f...
+  Registered: 019ac8c0-3e15-7082-947c-084528a26a26
+  ...
+
+Scan complete: 8 sessions registered
 ```
 
 ---
 
-## 3. `agtrace list` — セッション / 実行の一覧
+## 3. `agtrace list`
 
-### 3.1 概要
+### 3.1 Overview
 
-正規化済みデータから、セッション（= `session_id`）ごとの概要を一覧表示する。
+Lists sessions from the SQLite index.
 
-デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
-セッションのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` のセッションを対象とする。
+Default: Shows sessions for current project (determined by Project Discovery).
 
-### 3.2 シグネチャ
+### 3.2 Signature
 
 ```sh
 agtrace list \
-  [--project-hash <HASH>] \
-  [--all-projects] \
-  [--source <claude|codex|gemini>] \
-  [--limit <N>] \
-  [--since <RFC3339>] \
-  [--until <RFC3339>]
+  [--project <root_path>] \
+  [--hash <hash>] \
+  [--recent <n>] \
+  [--all]
 ```
 
-### 3.3 オプション詳細
+### 3.3 Options
 
-* `--project-hash <HASH>`
+* `--project <root_path>`
+  - Description: Filter by specific project path
 
-  * 説明: 特定プロジェクトのセッションだけに絞る。
+* `--hash <hash>`
+  - Description: Filter by specific project hash
 
-* `--all-projects`
+* `--recent <n>`
+  - Description: Show most recent N sessions
+  - Default: `20`
 
-  * 説明: プロジェクトによる絞り込みを無効化し、全ての `project_hash` のセッションを一覧表示する。
-  * 備考: `--project-hash` と同時に指定された場合、`--project-hash` が優先される。
+* `--all`
+  - Description: Show sessions from all projects
 
-* `--source <claude|codex|gemini>`
-
-  * 説明: 特定ベンダー由来のセッションだけに絞る。
-
-* `--limit <N>`
-
-  * 説明: 表示するセッション数の上限。
-  * 既定値: `50`
-
-* `--since <RFC3339>` / `--until <RFC3339>`
-
-  * 説明: `ts` の範囲でフィルタする（セッションの最初のイベント時刻基準）。
-
-### 3.4 出力イメージ（`--format=plain`）
+### 3.4 Output Example
 
 ```text
-SESSION ID                          SOURCE       PROJECT HASH                         START TIME                EVENTS  USER MSG  TOKENS(in/out)
-codex-2025-11-03T01-46-11-0        codex        2e4c1f...                             2025-11-03T01:46:11.987Z  123     8         12_345 /  9_876
-claude-2025-11-26T12-51-28-0       claude_code  9a7b3c...                             2025-11-26T12:51:28.093Z  256     15        34_567 / 21_234
-gemini-2025-12-07T17-17-16-876Z    gemini       427e6b3f...                           2025-12-07T17:17:16.876Z  42      4         7_200  /  2_000
-...
-```
-
-### 3.5 出力イメージ（`--format=json`）
-
-```json
-[
-  {
-    "session_id": "codex-2025-11-03T01-46-11-0",
-    "source": "codex",
-    "project_hash": "2e4c1f...",
-    "start_ts": "2025-11-03T01:46:11.987Z",
-    "end_ts": "2025-11-03T01:59:30.123Z",
-    "event_count": 123,
-    "user_message_count": 8,
-    "tokens_input_total": 12345,
-    "tokens_output_total": 9876
-  },
-  ...
-]
+TIME                 PROVIDER  ID (short)  PROJECT              SNIPPET
+2025-12-10 19:55:16  codex     019b04ae    agent-sample (hash)  add myapp dir...
+2025-12-09 19:50:00  gemini    f0a689a6    agent-sample (hash)  add myapp dir...
+2025-12-09 19:47:42  claude    7f2abd2d    agent-sample (hash)  add myapp dir...
 ```
 
 ---
 
-## 4. `agtrace show` — セッションの詳細タイムライン
+## 4. `agtrace view` (formerly `show`)
 
-### 4.1 概要
+### 4.1 Overview
 
-特定 `session_id` のイベントを、時系列に沿って表示する。
+Displays session events by reading raw log files and normalizing them on-demand (Schema-on-Read).
 
-### 4.2 シグネチャ
+**Key behavior:**
+1. Queries SQLite for file paths associated with `session_id`
+2. Opens raw log files
+3. Dynamically normalizes to `AgentEventV1`
+4. Sorts/merges by timestamp
+5. Displays in timeline format
+
+### 4.2 Signature
 
 ```sh
-agtrace show <SESSION_ID> \
-  [--event-type <TYPE,...>] \
-  [--no-reasoning] \
-  [--no-tool] \
-  [--limit <N>]
+agtrace view <SESSION_ID_OR_PREFIX> \
+  [--raw] \
+  [--json] \
+  [--timeline]
 ```
 
-### 4.3 オプション詳細
+### 4.3 Options
 
-* `<SESSION_ID>` (必須)
+* `<SESSION_ID_OR_PREFIX>` (required)
+  - Session ID from `agtrace list` (supports prefix matching)
 
-  * `agtrace list` で表示された `session_id`。
+* `--raw`
+  - Description: Display raw JSON/text without normalization (like `cat`)
 
-* `--event-type <TYPE,...>`
+* `--json`
+  - Description: Output normalized events as JSON array
 
-  * 表示するイベント種別をカンマ区切りで指定。
-  * 例: `user_message,assistant_message,tool_call,tool_result`
+* `--timeline`
+  - Description: (Default) Human-readable timeline format
 
-* `--no-reasoning`
+### 4.4 Behavior
 
-  * `event_type = "reasoning"` を非表示にする。
+1. Lookup `session_id` in SQLite → retrieve all associated `log_files.path`
+2. Open each file
+3. Attempt normalization to `AgentEventV1`
+4. If parsing fails, emit `{ type: "parse_error", raw: "..." }` and continue
+5. Sort/merge events by timestamp
+6. Display
 
-* `--no-tool`
-
-  * `event_type in {"tool_call","tool_result"}` を非表示にする。
-
-* `--limit <N>`
-
-  * 表示するイベント数の上限。
-
-### 4.4 出力イメージ（`--format=plain`）
+### 4.5 Output Example (--timeline)
 
 ```text
 [2025-11-03T01:49:22.517Z] user_message       U1   (role=user)
@@ -582,295 +293,80 @@ agtrace show <SESSION_ID> \
 [2025-11-03T01:49:26.836Z] tool_result        TR1  (shell, status=success)
   README.md:1: # agtrace
   ...
-
-[2025-11-03T01:49:30.519Z] assistant_message  A1   (role=assistant)
-  This repo is `agtrace`, a Rust CLI/library for unifying agent traces...
 ```
 
 ---
 
-## 5. `agtrace find` — イベント検索
+## 5. `agtrace project`
 
-### 5.1 概要
+### 5.1 Overview
 
-`event_id` やテキストをキーに、イベントを横断検索する。
+Displays project information and registered session counts.
 
-デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
-イベントのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` を横断して検索する。
-
-### 5.2 シグネチャ
+### 5.2 Signature
 
 ```sh
-agtrace find \
-  [--session-id <SESSION_ID>] \
-  [--project-hash <HASH>] \
-  [--all-projects] \
-  [--event-id <EVENT_ID>] \
-  [--text <QUERY>] \
-  [--event-type <TYPE,...>] \
-  [--limit <N>]
+agtrace project list
 ```
 
-### 5.3 オプション詳細
-
-* `--session-id <SESSION_ID>`
-
-  * 特定セッション内だけを対象に検索。
-
-* `--project-hash <HASH>`
-
-  * 特定プロジェクトだけを対象に検索。
-
-* `--all-projects`
-
-  * プロジェクトによる絞り込みを行わず、全ての `project_hash` を横断して検索する。
-  * 備考: `--project-hash` が指定されている場合は無視される。
-
-* `--event-id <EVENT_ID>`
-
-  * event_id を完全一致で検索。
-
-* `--text <QUERY>`
-
-  * `text` に対する部分一致検索。
-
-* `--event-type <TYPE,...>`
-
-  * 検索対象とする event_type の絞り込み。
-
-* `--limit <N>`
-
-  * 最大ヒット数。
-
-### 5.4 出力イメージ
+### 5.3 Output Example
 
 ```text
-SESSION                        TS                          TYPE              EVENT_ID
-codex-2025-11-03T01-46-11-0    2025-11-03T01:49:30.519Z   assistant_message  2025-11-03T01:49:30.519Z#5
-  text: This repo is `agtrace`, a Rust CLI/library...
+Registered projects:
 
-claude-2025-11-26T12-51-28-0   2025-11-26T15:49:10.000Z   tool_call         toolu_01PLVMXZk2vbmGF3GsDu3aGQ
-  tool_name: TodoWrite
-  text: { "todos": [...] }
+HASH              ROOT PATH                           SESSIONS  LAST SCANNED
+427e6b3f...       /Users/user/projects/agtrace        12        2025-12-10 19:55:16
+2e4c1f...         /Users/user/projects/transcene      5         2025-12-09 18:30:00
 ```
 
 ---
 
-## 6. `agtrace stats` — 統計・メトリクス
+## 6. `agtrace providers`
 
-### 6.1 概要
+### 6.1 Overview
 
-プロジェクト / セッション / ベンダーごとの統計情報を集計して表示する。
+Manages provider configuration (view/detect/update).
 
-デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
-セッションのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` を横断して統計を取る。
-
-### 6.2 シグネチャ
+### 6.2 Signature
 
 ```sh
-agtrace stats \
-  [--project-hash <HASH>] \
-  [--all-projects] \
-  [--source <claude|codex|gemini>] \
-  [--group-by <project|session|source>] \
-  [--since <RFC3339>] \
-  [--until <RFC3339>]
-```
-
-### 6.3 オプション詳細
-
-* `--project-hash <HASH>`
-
-  * 特定プロジェクトのみ集計。
-
-* `--all-projects`
-
-  * プロジェクトによる絞り込みを行わず、全ての `project_hash` を横断して統計を取る。
-  * 備考: `--project-hash` が指定されている場合は無視される。
-
-* `--source <claude|codex|gemini>`
-
-  * 特定ベンダーのみ集計。
-
-* `--group-by <project|session|source>`
-
-  * 集計の粒度を指定。
-  * 例:
-
-    * `project`: プロジェクトごとの合計トークン・セッション数
-    * `session`: セッションごとのトークン・ツール使用回数
-    * `source`: ベンダーごとの比較
-
-### 6.4 出力イメージ（`--group-by=project`）
-
-```text
-PROJECT HASH                         SESSIONS  EVENTS  USER MSG  TOOL CALLS  TOKENS(in/out)
-427e6b3f... (agtrace)               12        1_234   92        210         345_678 / 210_987
-2e4c1f...  (transcene)              5         456     30        88          120_000 /  80_000
-...
-```
-
----
-
-## 7. `agtrace export` — エクスポート
-
-### 7.1 概要
-
-正規化済み `AgentEventV1` を JSONL / CSV にエクスポートする。
-
-デフォルトでは「現在のプロジェクト」（Project Discovery で決定された `project_hash`）に属する
-イベントのみを対象とする。`--all-projects` が指定された場合は、全ての `project_hash` を横断してエクスポートする。
-
-### 7.2 シグネチャ
-
-```sh
-agtrace export \
-  [--project-hash <HASH>] \
-  [--all-projects] \
-  [--session-id <SESSION_ID>] \
-  [--source <claude|codex|gemini>] \
-  [--event-type <TYPE,...>] \
-  [--since <RFC3339>] \
-  [--until <RFC3339>] \
-  [--out <PATH>] \
-  [--format <jsonl|csv>]
-```
-
-### 7.3 オプション詳細
-
-* `--out <PATH>` (必須)
-
-  * 出力先ファイルパス。
-
-* `--format <jsonl|csv>`
-
-  * 既定値: `jsonl`
-
-* 他のフィルタオプションは `find` / `stats` と同様。
-
-  * `--all-projects`: 全ての `project_hash` を横断してエクスポートする。`--project-hash` が指定されている場合は無視される。
-
----
-
-## 8. `agtrace providers` — プロバイダ設定の確認・更新
-
-### 8.1 概要
-
-現在有効なプロバイダと、各プロバイダのログルート (`log_root`) を表示・設定する。
-
-### 8.2 シグネチャ
-
-```sh
-agtrace providers          # 一覧表示
-agtrace providers detect   # デフォルトディレクトリを検出して config に書き込む
+agtrace providers          # List current configuration
+agtrace providers detect   # Auto-detect and write to config
 agtrace providers set <PROVIDER> --log-root <PATH> [--enable|--disable]
 ```
 
-### 8.3 挙動
+### 6.3 Behavior
 
 * `agtrace providers`:
+  - Reads `<data-dir>/config.toml` and displays `providers.*` sections
 
-  * `config.toml` の `providers.*` セクションを読み取り、名前・enabled・log_root を表示する。
 * `agtrace providers detect`:
+  - Searches `$HOME/.claude`, `$HOME/.codex`, `$HOME/.gemini`
+  - Writes detected providers to config with `enabled = true`
 
-  * `$HOME/.claude`, `$HOME/.codex`, `$HOME/.gemini` などを探索し、存在するものを `enabled = true` として config に書き込む。
 * `agtrace providers set`:
-
-  * 指定されたプロバイダの `log_root` と `enabled` フラグを更新する。
-
----
-
-## 9. `agtrace project` — プロジェクト情報の表示
-
-### 9.1 概要
-
-`project_root` / `project_hash` および、現在のプロジェクトに紐づくセッション数を確認する。
-
-### 9.2 シグネチャ
-
-```sh
-agtrace project [--project-root <PATH>]
-```
-
-### 9.3 出力例
-
-```text
-Project root: /Users/username/projects/example-project
-Project hash: 623b4447...
-
-Detected providers:
-  claude:  enabled, log_root = /Users/username/.claude/projects
-  codex:   enabled, log_root = /Users/username/.codex/sessions
-  gemini:  enabled, log_root = /Users/username/.gemini/tmp
-```
+  - Updates `log_root` and `enabled` flag for specified provider
 
 ---
 
-## 10. `agtrace status` — プロジェクトとセッションの診断
+## 7. Error Codes
 
-### 10.1 概要
-
-現在のプロジェクトに対して、各プロバイダから検出されたセッション数・マッチしたセッション数を表示する。
-
-**セッション数のカウント方法:**
-* セッション数は、ユニークな `session_id` の数としてカウントする
-* 複数のファイルが同じ `session_id` を持つ場合（例: Claude Code の agent-*.jsonl）、それらは1つのセッションとしてカウントされる
-* ファイル数ではなく、実際のセッション数を表示することで、`import` コマンドと一貫性を保つ
-
-### 10.2 シグネチャ
-
-```sh
-agtrace status [--project-root <PATH>]
-```
-
-### 10.3 出力例
-
-```text
-Project root: /Users/username/projects/example-project
-Project hash: 623b4447...
-
-Providers:
-  claude:
-    log_root: /Users/username/.claude/projects
-    sessions detected: 21
-    sessions matching this project: 3
-
-  codex:
-    log_root: /Users/username/.codex/sessions
-    sessions detected: 58
-    sessions matching this project: 5
-
-  gemini:
-    log_root: /Users/username/.gemini/tmp
-    sessions detected: 4
-    sessions matching this project: 2
-```
+* `0` … Success
+* `1` … General error (parse failure / invalid input)
+* `2` … Input path does not exist / not readable
+* `3` … Storage write error
+* `4` … Internal error (bug)
 
 ---
 
-## 11. エラーコード・終了ステータス
+## 8. Future Extensions (Not in v2.0 MVP)
 
-* `0` … 正常終了
-* `1` … 一般的なエラー（パース失敗 / 入力不正など）
-* `2` … 入力パスが存在しない / 読み取り不能
-* `3` … ストレージ書き込みエラー
-* `4` … 内部エラー（バグ）
-
----
-
-## 12. 今後の拡張余地（非必須）
-
-* `agtrace graph`
-
-  * セッション中の user → reasoning → tool → result → assistant の DAG を Graphviz 等にエクスポート。
-* `agtrace diff`
-
-  * 2 つのセッションの行動差分を比較。
-* `agtrace serve`
-
-  * Web UI を立ち上げ、ブラウザから可視化。
+* `agtrace find` - Full-text search across events
+* `agtrace stats` - Token/tool usage statistics
+* `agtrace export` - Export to JSONL/CSV
+* `agtrace graph` - DAG visualization
+* `agtrace diff` - Session comparison
 
 ---
 
-以上が **agtrace CLI v1.x** の仕様である。
-この仕様に沿って CLI 実装を進めれば、正規化済みスキーマ `AgentEventV1` と自然に整合するはずである。
+This specification defines the **agtrace CLI v2.0 (Pointer Edition)** with a Schema-on-Read architecture.
