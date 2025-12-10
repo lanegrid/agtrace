@@ -1,5 +1,6 @@
 pub mod io;
 pub mod mapper;
+pub mod schema;
 
 use crate::model::AgentEventV1;
 use crate::providers::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};

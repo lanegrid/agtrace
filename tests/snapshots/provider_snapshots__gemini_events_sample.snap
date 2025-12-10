@@ -1,0 +1,159 @@
+---
+source: tests/provider_snapshots.rs
+expression: sample_events
+---
+[
+  {
+    "schema_version": "agtrace.event.v1",
+    "source": "gemini",
+    "project_hash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde",
+    "project_root": null,
+    "session_id": "f0a689a6-b0ac-407f-afcc-4fafa9e14e8a",
+    "event_id": "15a79f8b-41d7-4f21-98b0-ea93ac553897",
+    "parent_event_id": null,
+    "ts": "2025-12-09T19:51:29.418Z",
+    "event_type": "user_message",
+    "role": "user",
+    "channel": "chat",
+    "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+    "tool_name": null,
+    "tool_call_id": null,
+    "tool_status": null,
+    "tool_latency_ms": null,
+    "tool_exit_code": null,
+    "file_path": null,
+    "file_language": null,
+    "file_op": null,
+    "model": null,
+    "tokens_input": null,
+    "tokens_output": null,
+    "tokens_total": null,
+    "tokens_cached": null,
+    "tokens_thinking": null,
+    "tokens_tool": null,
+    "agent_id": null,
+    "raw": {
+      "content": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+      "id": "15a79f8b-41d7-4f21-98b0-ea93ac553897",
+      "timestamp": "2025-12-09T19:51:29.418Z"
+    }
+  },
+  {
+    "schema_version": "agtrace.event.v1",
+    "source": "gemini",
+    "project_hash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde",
+    "project_root": null,
+    "session_id": "f0a689a6-b0ac-407f-afcc-4fafa9e14e8a",
+    "event_id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
+    "parent_event_id": "15a79f8b-41d7-4f21-98b0-ea93ac553897",
+    "ts": "2025-12-09T19:51:50.106Z",
+    "event_type": "assistant_message",
+    "role": "assistant",
+    "channel": "chat",
+    "text": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
+    "tool_name": null,
+    "tool_call_id": null,
+    "tool_status": null,
+    "tool_latency_ms": null,
+    "tool_exit_code": null,
+    "file_path": null,
+    "file_language": null,
+    "file_op": null,
+    "model": "gemini-2.5-flash",
+    "tokens_input": null,
+    "tokens_output": null,
+    "tokens_total": null,
+    "tokens_cached": null,
+    "tokens_thinking": null,
+    "tokens_tool": null,
+    "agent_id": null,
+    "raw": {
+      "content": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
+      "id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
+      "model": "gemini-2.5-flash",
+      "thoughts": [
+        {
+          "description": "I'm currently focused on the specific steps the user wants to accomplish. Creating the directory `myapp` and then placing the `hoge.py` file with the specified Python code is straightforward. I'm considering the potential for edge cases or assumptions that may need to be addressed in the execution plan, such as file permissions or existing directory conflicts.",
+          "subject": "Analyzing the Task's Requirements",
+          "timestamp": "2025-12-09T19:51:49.324Z"
+        },
+        {
+          "description": "Now, I'm refining the steps to be as clear and concise as possible. Creating the file and writing the content seem like distinct sub-tasks, and I'm prioritizing directness. Thinking about how the Python code should be written.",
+          "subject": "Crafting the Execution Steps",
+          "timestamp": "2025-12-09T19:51:50.061Z"
+        }
+      ],
+      "timestamp": "2025-12-09T19:51:50.106Z",
+      "tokens": {
+        "cached": 6979,
+        "input": 13629,
+        "output": 52,
+        "thoughts": 86,
+        "tool": 0,
+        "total": 13767
+      },
+      "toolCalls": [
+        {
+          "args": {
+            "command": "mkdir myapp",
+            "description": "Create a directory named myapp."
+          },
+          "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
+          "displayName": "Shell",
+          "id": "run_shell_command-1765309910095-ad8431786e6368",
+          "name": "run_shell_command",
+          "renderOutputAsMarkdown": false,
+          "result": [
+            {
+              "functionResponse": {
+                "id": "run_shell_command-1765309910095-ad8431786e6368",
+                "name": "run_shell_command",
+                "response": {
+                  "output": "Command: mkdir myapp\nDirectory: (root)\nOutput: (empty)\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27175"
+                }
+              }
+            }
+          ],
+          "resultDisplay": "",
+          "status": "success",
+          "timestamp": "2025-12-09T19:52:14.515Z"
+        }
+      ]
+    }
+  },
+  {
+    "schema_version": "agtrace.event.v1",
+    "source": "gemini",
+    "project_hash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde",
+    "project_root": null,
+    "session_id": "f0a689a6-b0ac-407f-afcc-4fafa9e14e8a",
+    "event_id": "ab7c3686-068b-4c8a-9045-2055fd56a85d#thought0",
+    "parent_event_id": "15a79f8b-41d7-4f21-98b0-ea93ac553897",
+    "ts": "2025-12-09T19:51:50.106Z",
+    "event_type": "reasoning",
+    "role": "assistant",
+    "channel": "chat",
+    "text": "Analyzing the Task's Requirements: I'm currently focused on the specific steps the user wants to accomplish. Creating the directory `myapp` and then placing the `hoge.py` file with the specified Python code is straightforward. I'm considering the potential for edge cases or assumptions that may need to be addressed in the execution plan, such as file permissions or existing directory conflicts.",
+    "tool_name": null,
+    "tool_call_id": null,
+    "tool_status": null,
+    "tool_latency_ms": null,
+    "tool_exit_code": null,
+    "file_path": null,
+    "file_language": null,
+    "file_op": null,
+    "model": "gemini-2.5-flash",
+    "tokens_input": null,
+    "tokens_output": null,
+    "tokens_total": null,
+    "tokens_cached": null,
+    "tokens_thinking": null,
+    "tokens_tool": null,
+    "agent_id": null,
+    "raw": {
+      "description": "I'm currently focused on the specific steps the user wants to accomplish. Creating the directory `myapp` and then placing the `hoge.py` file with the specified Python code is straightforward. I'm considering the potential for edge cases or assumptions that may need to be addressed in the execution plan, such as file permissions or existing directory conflicts.",
+      "subject": "Analyzing the Task's Requirements",
+      "timestamp": "2025-12-09T19:51:49.324Z"
+    }
+  }
+]
