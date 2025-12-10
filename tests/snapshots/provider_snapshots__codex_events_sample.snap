@@ -1,0 +1,142 @@
+---
+source: tests/provider_snapshots.rs
+expression: sample_events
+---
+[
+  {
+    "schema_version": "agtrace.event.v1",
+    "source": "codex",
+    "project_hash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde",
+    "project_root": "/Users/zawakin/agent-sample",
+    "session_id": "019b04ae-b1c6-7c72-a134-a4c2de66058c",
+    "event_id": "2025-12-09T19:55:16.336Z#1",
+    "parent_event_id": null,
+    "ts": "2025-12-09T19:55:16.336Z",
+    "event_type": "meta",
+    "role": "system",
+    "channel": "system",
+    "text": null,
+    "tool_name": null,
+    "tool_call_id": null,
+    "tool_status": null,
+    "tool_latency_ms": null,
+    "tool_exit_code": null,
+    "file_path": null,
+    "file_language": null,
+    "file_op": null,
+    "model": null,
+    "tokens_input": null,
+    "tokens_output": null,
+    "tokens_total": null,
+    "tokens_cached": null,
+    "tokens_thinking": null,
+    "tokens_tool": null,
+    "agent_id": null,
+    "raw": {
+      "payload": {
+        "cli_version": "0.66.0",
+        "cwd": "/Users/zawakin/agent-sample",
+        "git": {
+          "branch": "codex",
+          "commit_hash": "1cea5ec49574a868eb98893e46bcb775539f798e"
+        },
+        "id": "019b04ae-b1c6-7c72-a134-a4c2de66058c",
+        "instructions": null,
+        "model_provider": "openai",
+        "originator": "codex_cli_rs",
+        "source": "cli",
+        "timestamp": "2025-12-09T19:55:16.295Z"
+      },
+      "timestamp": "2025-12-09T19:55:16.336Z",
+      "type": "session_meta"
+    }
+  },
+  {
+    "schema_version": "agtrace.event.v1",
+    "source": "codex",
+    "project_hash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde",
+    "project_root": "/Users/zawakin/agent-sample",
+    "session_id": "019b04ae-b1c6-7c72-a134-a4c2de66058c",
+    "event_id": "2025-12-09T19:55:16.336Z#2",
+    "parent_event_id": null,
+    "ts": "2025-12-09T19:55:16.336Z",
+    "event_type": "user_message",
+    "role": "user",
+    "channel": "chat",
+    "text": "<environment_context>\n  <cwd>/Users/zawakin/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>",
+    "tool_name": null,
+    "tool_call_id": null,
+    "tool_status": null,
+    "tool_latency_ms": null,
+    "tool_exit_code": null,
+    "file_path": null,
+    "file_language": null,
+    "file_op": null,
+    "model": null,
+    "tokens_input": null,
+    "tokens_output": null,
+    "tokens_total": null,
+    "tokens_cached": null,
+    "tokens_thinking": null,
+    "tokens_tool": null,
+    "agent_id": null,
+    "raw": {
+      "payload": {
+        "content": [
+          {
+            "text": "<environment_context>\n  <cwd>/Users/zawakin/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>",
+            "type": "input_text"
+          }
+        ],
+        "role": "user",
+        "type": "message"
+      },
+      "timestamp": "2025-12-09T19:55:16.336Z",
+      "type": "response_item"
+    }
+  },
+  {
+    "schema_version": "agtrace.event.v1",
+    "source": "codex",
+    "project_hash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde",
+    "project_root": "/Users/zawakin/agent-sample",
+    "session_id": "019b04ae-b1c6-7c72-a134-a4c2de66058c",
+    "event_id": "2025-12-09T19:55:18.143Z#3",
+    "parent_event_id": null,
+    "ts": "2025-12-09T19:55:18.143Z",
+    "event_type": "user_message",
+    "role": "user",
+    "channel": "chat",
+    "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+    "tool_name": null,
+    "tool_call_id": null,
+    "tool_status": null,
+    "tool_latency_ms": null,
+    "tool_exit_code": null,
+    "file_path": null,
+    "file_language": null,
+    "file_op": null,
+    "model": null,
+    "tokens_input": null,
+    "tokens_output": null,
+    "tokens_total": null,
+    "tokens_cached": null,
+    "tokens_thinking": null,
+    "tokens_tool": null,
+    "agent_id": null,
+    "raw": {
+      "payload": {
+        "content": [
+          {
+            "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+            "type": "input_text"
+          }
+        ],
+        "role": "user",
+        "type": "message"
+      },
+      "timestamp": "2025-12-09T19:55:18.143Z",
+      "type": "response_item"
+    }
+  }
+]
