@@ -1,6 +1,4 @@
 use crate::model::*;
-use anyhow::Result;
-use std::path::PathBuf;
 
 pub fn print_events_timeline(events: &[AgentEventV1]) {
     for event in events {
@@ -59,63 +57,6 @@ pub fn print_stats(sessions: &[SessionSummary]) {
         "Total Tokens:         {}",
         format_number(total_tokens_in + total_tokens_out)
     );
-}
-
-pub fn write_jsonl(path: &PathBuf, events: &[AgentEventV1]) -> Result<()> {
-    let mut lines = Vec::new();
-    for event in events {
-        lines.push(serde_json::to_string(event)?);
-    }
-    std::fs::write(path, lines.join("\n") + "\n")?;
-    Ok(())
-}
-
-pub fn write_csv(path: &PathBuf, events: &[AgentEventV1]) -> Result<()> {
-    let mut wtr = csv::Writer::from_path(path)?;
-
-    wtr.write_record([
-        "ts",
-        "source",
-        "session_id",
-        "event_id",
-        "event_type",
-        "role",
-        "text",
-        "tool_name",
-        "tokens_input",
-        "tokens_output",
-    ])?;
-
-    for event in events {
-        wtr.write_record([
-            &event.ts,
-            &format!("{:?}", event.source),
-            event.session_id.as_deref().unwrap_or(""),
-            event.event_id.as_deref().unwrap_or(""),
-            &format!("{:?}", event.event_type),
-            event
-                .role
-                .as_ref()
-                .map(|r| format!("{:?}", r))
-                .as_deref()
-                .unwrap_or(""),
-            event.text.as_deref().unwrap_or(""),
-            event.tool_name.as_deref().unwrap_or(""),
-            event
-                .tokens_input
-                .map(|t| t.to_string())
-                .as_deref()
-                .unwrap_or(""),
-            event
-                .tokens_output
-                .map(|t| t.to_string())
-                .as_deref()
-                .unwrap_or(""),
-        ])?;
-    }
-
-    wtr.flush()?;
-    Ok(())
 }
 
 fn format_number(n: u64) -> String {
