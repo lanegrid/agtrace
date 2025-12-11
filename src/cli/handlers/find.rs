@@ -5,6 +5,7 @@ use crate::utils::resolve_effective_project_hash;
 use anyhow::Result;
 use std::str::FromStr;
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle(
     storage: &Storage,
     session_id: Option<String>,

@@ -168,21 +168,19 @@ pub fn is_empty_codex_session(path: &Path) -> bool {
     let mut line_count = 0;
     let mut has_event = false;
 
-    for line in reader.lines().take(20) {
-        if let Ok(line) = line {
-            line_count += 1;
-            if let Ok(record) = serde_json::from_str::<CodexRecord>(&line) {
-                match record {
-                    CodexRecord::SessionMeta(_) | CodexRecord::TurnContext(_) => {
-                        has_event = true;
-                        break;
-                    }
-                    CodexRecord::EventMsg(_) | CodexRecord::ResponseItem(_) => {
-                        has_event = true;
-                        break;
-                    }
-                    _ => {}
+    for line in reader.lines().take(20).flatten() {
+        line_count += 1;
+        if let Ok(record) = serde_json::from_str::<CodexRecord>(&line) {
+            match record {
+                CodexRecord::SessionMeta(_) | CodexRecord::TurnContext(_) => {
+                    has_event = true;
+                    break;
                 }
+                CodexRecord::EventMsg(_) | CodexRecord::ResponseItem(_) => {
+                    has_event = true;
+                    break;
+                }
+                _ => {}
             }
         }
     }

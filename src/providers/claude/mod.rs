@@ -14,6 +14,12 @@ pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normaliz
 
 pub struct ClaudeProvider;
 
+impl Default for ClaudeProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ClaudeProvider {
     pub fn new() -> Self {
         Self
@@ -30,7 +36,7 @@ impl LogProvider for ClaudeProvider {
             return false;
         }
 
-        if !path.extension().map_or(false, |e| e == "jsonl") {
+        if path.extension().is_none_or(|e| e != "jsonl") {
             return false;
         }
 

@@ -34,8 +34,8 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
             }
             GeminiMessage::Gemini(gemini_msg) => {
                 let ts = &gemini_msg.timestamp;
-                let msg_id = Some(&gemini_msg.id);
-                let model = Some(&gemini_msg.model);
+                let msg_id = &gemini_msg.id;
+                let model = &gemini_msg.model;
 
                 let mut ev = AgentEventV1::new(
                     Source::Gemini,
@@ -44,11 +44,11 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                     EventType::AssistantMessage,
                 );
                 ev.session_id = session_id.cloned();
-                ev.event_id = msg_id.cloned();
+                ev.event_id = Some(msg_id.clone());
                 ev.parent_event_id = last_user_event_id.clone();
                 ev.role = Some(Role::Assistant);
                 ev.channel = Some(Channel::Chat);
-                ev.model = model.cloned();
+                ev.model = Some(model.clone());
                 ev.text = Some(gemini_msg.content.clone());
 
                 // Extract token information
@@ -70,15 +70,11 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                         EventType::Reasoning,
                     );
                     rev.session_id = session_id.cloned();
-                    rev.event_id = Some(format!(
-                        "{}#thought{}",
-                        msg_id.unwrap_or(&"".to_string()),
-                        idx
-                    ));
+                    rev.event_id = Some(format!("{}#thought{}", msg_id, idx));
                     rev.parent_event_id = last_user_event_id.clone();
                     rev.role = Some(Role::Assistant);
                     rev.channel = Some(Channel::Chat);
-                    rev.model = model.cloned();
+                    rev.model = Some(model.clone());
                     rev.text = Some(format!("{}: {}", thought.subject, thought.description));
                     rev.raw = serde_json::to_value(thought).unwrap_or(Value::Null);
                     events.push(rev);
@@ -97,7 +93,7 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                     tev.parent_event_id = last_user_event_id.clone();
                     tev.role = Some(Role::Assistant);
                     tev.channel = Some(Channel::Terminal);
-                    tev.model = model.cloned();
+                    tev.model = Some(model.clone());
                     tev.tool_name = Some(tool_call.name.clone());
                     if let Some(status) = &tool_call.status {
                         tev.tool_status = Some(match status.as_str() {

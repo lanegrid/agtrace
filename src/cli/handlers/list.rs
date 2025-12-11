@@ -34,8 +34,7 @@ pub fn handle(
 fn truncate_for_display(s: &str, max_chars: usize) -> String {
     // Replace newlines with spaces and collapse multiple spaces
     let normalized = s
-        .replace('\n', " ")
-        .replace('\r', " ")
+        .replace(['\n', '\r'], " ")
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");

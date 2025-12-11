@@ -14,6 +14,7 @@ pub struct ProviderConfig {
 
 /// Main configuration for agtrace
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct Config {
     /// Provider-specific configurations
     #[serde(default)]
@@ -128,13 +129,6 @@ impl Config {
     }
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            providers: HashMap::new(),
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

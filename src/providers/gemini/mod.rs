@@ -16,6 +16,12 @@ pub use self::io::{
 
 pub struct GeminiProvider;
 
+impl Default for GeminiProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GeminiProvider {
     pub fn new() -> Self {
         Self
@@ -108,11 +114,10 @@ impl LogProvider for GeminiProvider {
 
             if let Some(parent) = path.parent() {
                 if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
-                    if is_64_char_hex(dir_name) && context.project_root.is_some() {
-                        if dir_name != context.project_hash {
+                    if is_64_char_hex(dir_name) && context.project_root.is_some()
+                        && dir_name != context.project_hash {
                             continue;
                         }
-                    }
                 }
             }
 

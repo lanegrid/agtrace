@@ -65,8 +65,7 @@ pub fn paths_equal(path1: &Path, path2: &Path) -> bool {
 pub fn encode_claude_project_dir(project_root: &Path) -> String {
     let path_str = project_root.to_string_lossy();
     let encoded = path_str
-        .replace('/', "-")
-        .replace('.', "-")
+        .replace(['/', '.'], "-")
         .trim_start_matches('-')
         .to_string();
     format!("-{}", encoded)

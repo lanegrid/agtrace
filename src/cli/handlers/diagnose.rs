@@ -121,7 +121,7 @@ fn diagnose_provider(provider: &dyn LogProvider, log_root: &Path) -> Result<Diag
                 result
                     .failures
                     .entry(failure_type)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(FailureExample {
                         path: file_path.display().to_string(),
                         reason,

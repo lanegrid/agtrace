@@ -1,3 +1,5 @@
+#![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
+
 use crate::db::Database;
 use crate::model::{AgentEventV1, EventType};
 use crate::providers::{ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider};
@@ -9,6 +11,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle(
     db: &Database,
     session_id: String,

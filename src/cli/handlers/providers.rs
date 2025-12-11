@@ -12,7 +12,7 @@ pub fn handle(command: Option<ProvidersCommand>, config_path: &PathBuf) -> Resul
                 return Ok(());
             }
 
-            println!("{:<15} {:<10} {}", "PROVIDER", "ENABLED", "LOG_ROOT");
+            println!("{:<15} {:<10} LOG_ROOT", "PROVIDER", "ENABLED");
             println!("{}", "-".repeat(80));
 
             for (name, provider_config) in &config.providers {
@@ -49,11 +49,7 @@ pub fn handle(command: Option<ProvidersCommand>, config_path: &PathBuf) -> Resul
 
             let enabled = if enable {
                 true
-            } else if disable {
-                false
-            } else {
-                true
-            };
+            } else { !disable };
 
             config.set_provider(
                 provider.clone(),

@@ -73,7 +73,7 @@ pub fn write_jsonl(path: &PathBuf, events: &[AgentEventV1]) -> Result<()> {
 pub fn write_csv(path: &PathBuf, events: &[AgentEventV1]) -> Result<()> {
     let mut wtr = csv::Writer::from_path(path)?;
 
-    wtr.write_record(&[
+    wtr.write_record([
         "ts",
         "source",
         "session_id",
@@ -87,7 +87,7 @@ pub fn write_csv(path: &PathBuf, events: &[AgentEventV1]) -> Result<()> {
     ])?;
 
     for event in events {
-        wtr.write_record(&[
+        wtr.write_record([
             &event.ts,
             &format!("{:?}", event.source),
             event.session_id.as_deref().unwrap_or(""),

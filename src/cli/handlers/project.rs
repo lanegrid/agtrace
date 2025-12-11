@@ -13,8 +13,8 @@ pub fn handle(db: &Database, project_root: Option<String>) -> Result<()> {
     // List all projects from database
     println!("Registered projects:");
     println!(
-        "{:<20} {:<50} {:<10} {}",
-        "HASH (short)", "ROOT PATH", "SESSIONS", "LAST SCANNED"
+        "{:<20} {:<50} {:<10} LAST SCANNED",
+        "HASH (short)", "ROOT PATH", "SESSIONS"
     );
     println!("{}", "-".repeat(120));
 

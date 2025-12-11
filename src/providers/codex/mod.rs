@@ -15,6 +15,12 @@ pub use self::io::{
 
 pub struct CodexProvider;
 
+impl Default for CodexProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CodexProvider {
     pub fn new() -> Self {
         Self
@@ -38,7 +44,7 @@ impl LogProvider for CodexProvider {
             }
         }
 
-        let is_jsonl = path.extension().map_or(false, |e| e == "jsonl");
+        let is_jsonl = path.extension().is_some_and(|e| e == "jsonl");
         let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
 
         is_jsonl && filename.starts_with("rollout-") && !is_empty_codex_session(path)
