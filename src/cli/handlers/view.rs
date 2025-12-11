@@ -17,7 +17,8 @@ pub fn handle(
     _timeline: bool,
     hide: Option<Vec<String>>,
     only: Option<Vec<String>>,
-    full: bool,
+    _full: bool, // Kept for backwards compatibility, but now default
+    short: bool,
 ) -> Result<()> {
     // Detect if output is being piped (not a terminal)
     let is_tty = io::stdout().is_terminal();
@@ -99,7 +100,9 @@ pub fn handle(
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
     } else {
-        print_events_timeline(&filtered_events, full, enable_color);
+        // Default is full display, --short enables truncation
+        let truncate = short;
+        print_events_timeline(&filtered_events, truncate, enable_color);
     }
 
     Ok(())
@@ -146,7 +149,7 @@ fn filter_events(
     filtered
 }
 
-fn print_events_timeline(events: &[AgentEventV1], full: bool, enable_color: bool) {
+fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: bool) {
     if events.is_empty() {
         let msg = "No events to display";
         if enable_color {
@@ -232,11 +235,13 @@ fn print_events_timeline(events: &[AgentEventV1], full: bool, enable_color: bool
         println!("{} {:<20} {}", time_colored, event_type_str, role_str);
 
         if let Some(text) = &event.text {
-            let preview = if full || text.chars().count() <= 100 {
-                text.clone()
-            } else {
+            let preview = if truncate && text.chars().count() > 100 {
+                // Only truncate if --short flag is used AND text is long
                 let truncated: String = text.chars().take(97).collect();
                 format!("{}...", truncated)
+            } else {
+                // Default: show full text
+                text.clone()
             };
 
             let text_output = if enable_color {

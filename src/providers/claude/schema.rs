@@ -83,6 +83,10 @@ where
 pub enum UserContent {
     Text { text: String },
     Image { source: Value },
+    ToolResult {
+        tool_use_id: String,
+        content: Value,
+    },
     #[serde(other)]
     Unknown,
 }

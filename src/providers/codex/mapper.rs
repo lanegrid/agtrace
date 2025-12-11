@@ -1,5 +1,5 @@
 use crate::model::*;
-use crate::utils::{project_hash_from_root, truncate};
+use crate::utils::project_hash_from_root;
 
 use super::schema::*;
 
@@ -128,7 +128,7 @@ pub fn normalize_codex_stream(
                             }
                         }
 
-                        ev.text = Some(truncate(&call.arguments, 2000));
+                        ev.text = Some(call.arguments.clone());
                     }
                     ResponseItemPayload::FunctionCallOutput(output) => {
                         ev.event_type = EventType::ToolResult;
@@ -142,7 +142,7 @@ pub fn normalize_codex_stream(
                             ev.tool_exit_code = Some(exit_code);
                         }
 
-                        ev.text = Some(truncate(&output.output, 2000));
+                        ev.text = Some(output.output.clone());
                     }
                     ResponseItemPayload::CustomToolCall(call) => {
                         ev.event_type = EventType::ToolCall;
@@ -166,7 +166,7 @@ pub fn normalize_codex_stream(
                             }
                         }
 
-                        ev.text = Some(truncate(&call.input, 2000));
+                        ev.text = Some(call.input.clone());
                     }
                     ResponseItemPayload::CustomToolCallOutput(output) => {
                         ev.event_type = EventType::ToolResult;
@@ -180,7 +180,7 @@ pub fn normalize_codex_stream(
                             ev.tool_exit_code = Some(exit_code);
                         }
 
-                        ev.text = Some(truncate(&output.output, 2000));
+                        ev.text = Some(output.output.clone());
                     }
                     ResponseItemPayload::GhostSnapshot(_) => {
                         ev.event_type = EventType::Meta;
@@ -259,7 +259,7 @@ fn extract_message_text(msg: &MessagePayload) -> Option<String> {
         })
         .collect();
     if !texts.is_empty() {
-        Some(truncate(&texts.join("\n"), 2000))
+        Some(texts.join("\n"))
     } else {
         None
     }

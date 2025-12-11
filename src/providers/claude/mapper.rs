@@ -1,5 +1,5 @@
 use crate::model::*;
-use crate::utils::{project_hash_from_root, truncate};
+use crate::utils::project_hash_from_root;
 
 use super::schema::*;
 
@@ -56,15 +56,53 @@ pub fn normalize_claude_stream(
                     continue; // Skip meta descendants
                 }
 
-                let has_tool_content = user.message.content.iter().any(|c| {
-                    !matches!(c, UserContent::Text { .. })
+                // Check for tool_result content first (priority per spec v1.5)
+                let has_tool_result = user.message.content.iter().any(|c| {
+                    matches!(c, UserContent::ToolResult { .. })
                 });
 
-                if has_tool_content {
+                if has_tool_result {
+                    // Process tool results
+                    for item in &user.message.content {
+                        if let UserContent::ToolResult { tool_use_id, content } = item {
+                            let mut ev = AgentEventV1::new(
+                                Source::ClaudeCode,
+                                project_hash_val.clone(),
+                                user.timestamp.clone(),
+                                EventType::ToolResult,
+                            );
+                            ev.session_id = Some(user.session_id.clone());
+                            ev.event_id = Some(format!("{}#result", tool_use_id));
+                            ev.parent_event_id = last_user_event_id.clone();
+                            ev.role = Some(Role::Tool); // v1.5 spec: tool_result always role=tool
+                            ev.tool_call_id = Some(tool_use_id.clone());
+                            ev.project_root = project_root_str.clone();
+
+                            // Extract text from content (could be string or object)
+                            // No truncation - preserve full content for analysis
+                            ev.text = match content {
+                                serde_json::Value::String(s) => Some(s.clone()),
+                                _ => Some(content.to_string()),
+                            };
+
+                            ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                            events.push(ev);
+                        }
+                    }
+                    continue;
+                }
+
+                // Check for other non-text content (images, unknown)
+                let has_other_content = user.message.content.iter().any(|c| {
+                    matches!(c, UserContent::Image { .. } | UserContent::Unknown)
+                });
+
+                if has_other_content {
                     // TODO: Handle user content with images
                     continue;
                 }
 
+                // Regular user message (text only)
                 let mut ev = AgentEventV1::new(
                     Source::ClaudeCode,
                     project_hash_val.clone(),
@@ -112,7 +150,7 @@ pub fn normalize_claude_stream(
                                 ev.role = Some(Role::Assistant);
                                 ev.channel = Some(Channel::Chat);
                                 ev.project_root = project_root_str.clone();
-                                ev.text = Some(truncate(thinking, 2000));
+                                ev.text = Some(thinking.clone());
                                 ev.model = Some(asst.message.model.clone());
                                 ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                                 events.push(ev);
@@ -158,7 +196,7 @@ pub fn normalize_claude_stream(
                                 }
 
                                 let input_str = serde_json::to_string(input).unwrap_or_default();
-                                ev.text = Some(truncate(&input_str, 500));
+                                ev.text = Some(input_str);
                                 ev.model = Some(asst.message.model.clone());
                                 ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                                 events.push(ev);
@@ -176,7 +214,7 @@ pub fn normalize_claude_stream(
                                 ev.role = Some(Role::Assistant);
                                 ev.channel = Some(Channel::Chat);
                                 ev.project_root = project_root_str.clone();
-                                ev.text = Some(truncate(text, 2000));
+                                ev.text = Some(text.clone());
                                 ev.model = Some(asst.message.model.clone());
 
                                 if let Some(usage) = &asst.message.usage {
@@ -213,7 +251,7 @@ pub fn normalize_claude_stream(
                             _ => None,
                         })
                         .collect();
-                    ev.text = Some(truncate(&text_parts.join("\n"), 2000));
+                    ev.text = Some(text_parts.join("\n"));
                     ev.model = Some(asst.message.model.clone());
 
                     if let Some(usage) = &asst.message.usage {

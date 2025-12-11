@@ -66,11 +66,12 @@ pub fn run(cli: Cli) -> Result<()> {
             hide,
             only,
             full,
+            short,
         } => {
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
 
-            handlers::view::handle(&db, session_id, raw, json, timeline, hide, only, full)
+            handlers::view::handle(&db, session_id, raw, json, timeline, hide, only, full, short)
         }
 
         Commands::Show {

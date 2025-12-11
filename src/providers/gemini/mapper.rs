@@ -1,5 +1,4 @@
 use crate::model::*;
-use crate::utils::truncate;
 use serde_json::Value;
 
 use super::schema::{GeminiMessage, GeminiSession};
@@ -132,9 +131,9 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                     let args = serde_json::to_string(&tool_call.args).unwrap_or_default();
                     let result_display = tool_call.result_display.as_deref().unwrap_or("");
                     if !result_display.is_empty() {
-                        tev.text = Some(truncate(result_display, 1000));
+                        tev.text = Some(result_display.to_string());
                     } else if !args.is_empty() {
-                        tev.text = Some(truncate(&args, 500));
+                        tev.text = Some(args);
                     }
                     tev.raw = serde_json::to_value(tool_call).unwrap_or(Value::Null);
                     events.push(tev);
