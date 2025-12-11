@@ -345,7 +345,8 @@ fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: 
 
 struct ToolInfo {
     name: String,
-    target: Option<String>,
+    raw_target: Option<String>,      // Full string for comparison
+    display_target: Option<String>,  // Truncated string for display
 }
 
 struct ToolChainBuffer {
@@ -383,11 +384,12 @@ impl ToolChainBuffer {
         ts: &str,
     ) {
         if let Some(name) = tool_name {
-            let target = extract_target_summary(name, file_path, text);
+            let (raw_target, display_target) = extract_target_summary(name, file_path, text);
 
             self.tools.push(ToolInfo {
                 name: name.clone(),
-                target,
+                raw_target,
+                display_target,
             });
         }
         if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
@@ -414,14 +416,14 @@ impl ToolChainBuffer {
 
         while i < self.tools.len() {
             let current_tool = &self.tools[i].name;
-            let mut targets = Vec::new();
+            let mut tool_infos = Vec::new();
 
             while i < self.tools.len() && &self.tools[i].name == current_tool {
-                targets.push(self.tools[i].target.clone());
+                tool_infos.push(&self.tools[i]);
                 i += 1;
             }
 
-            let formatted = format_tool_with_targets(current_tool, &targets);
+            let formatted = format_tool_with_targets(current_tool, &tool_infos);
             parts.push(formatted);
         }
 
@@ -501,94 +503,116 @@ fn extract_target_summary(
     tool_name: &str,
     file_path: Option<&String>,
     text: Option<&String>,
-) -> Option<String> {
+) -> (Option<String>, Option<String>) {
     match tool_name {
         "Read" | "Edit" | "Write" => {
-            file_path.and_then(|p| {
+            let filename = file_path.and_then(|p| {
                 std::path::Path::new(p)
                     .file_name()
                     .and_then(|n| n.to_str())
                     .map(|s| s.to_string())
-            })
+            });
+            (filename.clone(), filename)
         }
         "Bash" => {
             text.and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
-                    json.get("command")
-                        .and_then(|v| v.as_str())
-                        .map(|cmd| {
-                            let cmd = cmd.trim();
-                            if cmd.len() > 30 {
-                                format!("{}...", &cmd[..27])
-                            } else {
-                                cmd.to_string()
-                            }
-                        })
+                    json.get("command").and_then(|v| v.as_str()).map(|cmd| {
+                        let cmd = cmd.trim();
+                        let sanitized = sanitize_bash_command(cmd);
+                        let display = if sanitized.len() > 30 {
+                            format!("{}...", &sanitized.chars().take(27).collect::<String>())
+                        } else {
+                            sanitized.clone()
+                        };
+                        (sanitized, display)
+                    })
                 } else {
                     let cmd = t.trim();
-                    if cmd.len() > 30 {
-                        Some(format!("{}...", &cmd[..27]))
+                    let sanitized = sanitize_bash_command(cmd);
+                    let display = if sanitized.len() > 30 {
+                        format!("{}...", &sanitized.chars().take(27).collect::<String>())
                     } else {
-                        Some(cmd.to_string())
-                    }
+                        sanitized.clone()
+                    };
+                    Some((sanitized, display))
                 }
             })
+            .map(|(raw, display)| (Some(raw), Some(display)))
+            .unwrap_or((None, None))
         }
         "Glob" => {
             text.and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
-                    json.get("pattern")
-                        .and_then(|v| v.as_str())
-                        .map(|p| {
-                            if p.len() > 20 {
-                                format!("\"{}...\"", &p[..17])
-                            } else {
-                                format!("\"{}\"", p)
-                            }
-                        })
+                    json.get("pattern").and_then(|v| v.as_str()).map(|p| {
+                        let raw = format!("\"{}\"", p);
+                        let display = if p.len() > 20 {
+                            format!("\"{}...\"", &p.chars().take(17).collect::<String>())
+                        } else {
+                            format!("\"{}\"", p)
+                        };
+                        (Some(raw), Some(display))
+                    })
                 } else {
                     None
                 }
             })
+            .unwrap_or((None, None))
         }
         "Grep" => {
             text.and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
-                    json.get("pattern")
-                        .and_then(|v| v.as_str())
-                        .map(|p| {
-                            if p.len() > 20 {
-                                format!("\"{}...\"", &p[..17])
-                            } else {
-                                format!("\"{}\"", p)
-                            }
-                        })
+                    json.get("pattern").and_then(|v| v.as_str()).map(|p| {
+                        let raw = format!("\"{}\"", p);
+                        let display = if p.len() > 20 {
+                            format!("\"{}...\"", &p.chars().take(17).collect::<String>())
+                        } else {
+                            format!("\"{}\"", p)
+                        };
+                        (Some(raw), Some(display))
+                    })
                 } else {
                     None
                 }
             })
+            .unwrap_or((None, None))
         }
-        _ => None,
+        _ => (None, None),
     }
 }
 
-fn format_tool_with_targets(tool_name: &str, targets: &[Option<String>]) -> String {
+fn sanitize_bash_command(cmd: &str) -> String {
+    // Simplify git commit with HereDoc to "git commit -m \"...\""
+    if cmd.contains("git commit") && cmd.contains("<<") {
+        if let Some(pos) = cmd.find("git commit") {
+            let prefix = &cmd[pos..];
+            if prefix.contains("-m") {
+                return "git commit -m \"...\"".to_string();
+            }
+        }
+    }
+    cmd.to_string()
+}
+
+fn format_tool_with_targets(tool_name: &str, tool_infos: &[&ToolInfo]) -> String {
     let mut target_groups = Vec::new();
     let mut i = 0;
 
-    while i < targets.len() {
-        let current_target = &targets[i];
+    while i < tool_infos.len() {
+        let current_raw = &tool_infos[i].raw_target;
         let mut count = 1;
 
-        while i + count < targets.len() && &targets[i + count] == current_target {
+        // Compare using raw_target (full string), not display_target
+        while i + count < tool_infos.len() && &tool_infos[i + count].raw_target == current_raw {
             count += 1;
         }
 
-        if let Some(target) = current_target {
+        // Display using display_target (truncated string)
+        if let Some(display) = &tool_infos[i].display_target {
             if count > 1 {
-                target_groups.push(format!("{} x{}", target, count));
+                target_groups.push(format!("{} x{}", display, count));
             } else {
-                target_groups.push(target.clone());
+                target_groups.push(display.clone());
             }
         } else if count > 1 {
             target_groups.push(format!("x{}", count));
