@@ -17,6 +17,3 @@ Cargo.lock
 /.claude
 
 /tmp/
-
-# Test/sample data
-samples-tmp/.agtrace/
