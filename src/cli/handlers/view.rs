@@ -520,21 +520,13 @@ fn extract_target_summary(
                     json.get("command").and_then(|v| v.as_str()).map(|cmd| {
                         let cmd = cmd.trim();
                         let sanitized = sanitize_bash_command(cmd);
-                        let display = if sanitized.len() > 30 {
-                            format!("{}...", &sanitized.chars().take(27).collect::<String>())
-                        } else {
-                            sanitized.clone()
-                        };
+                        let display = truncate_bash_display(&sanitized, 60);
                         (sanitized, display)
                     })
                 } else {
                     let cmd = t.trim();
                     let sanitized = sanitize_bash_command(cmd);
-                    let display = if sanitized.len() > 30 {
-                        format!("{}...", &sanitized.chars().take(27).collect::<String>())
-                    } else {
-                        sanitized.clone()
-                    };
+                    let display = truncate_bash_display(&sanitized, 60);
                     Some((sanitized, display))
                 }
             })
@@ -546,8 +538,8 @@ fn extract_target_summary(
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("pattern").and_then(|v| v.as_str()).map(|p| {
                         let raw = format!("\"{}\"", p);
-                        let display = if p.len() > 20 {
-                            format!("\"{}...\"", &p.chars().take(17).collect::<String>())
+                        let display = if p.len() > 30 {
+                            format!("\"{}...\"", &p.chars().take(27).collect::<String>())
                         } else {
                             format!("\"{}\"", p)
                         };
@@ -564,8 +556,8 @@ fn extract_target_summary(
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("pattern").and_then(|v| v.as_str()).map(|p| {
                         let raw = format!("\"{}\"", p);
-                        let display = if p.len() > 20 {
-                            format!("\"{}...\"", &p.chars().take(17).collect::<String>())
+                        let display = if p.len() > 30 {
+                            format!("\"{}...\"", &p.chars().take(27).collect::<String>())
                         } else {
                             format!("\"{}\"", p)
                         };
@@ -592,6 +584,75 @@ fn sanitize_bash_command(cmd: &str) -> String {
         }
     }
     cmd.to_string()
+}
+
+fn truncate_bash_display(cmd: &str, limit: usize) -> String {
+    if cmd.chars().count() <= limit {
+        return cmd.to_string();
+    }
+
+    // Smart truncation with path compression
+    let parts: Vec<&str> = cmd.split_whitespace().collect();
+    if parts.is_empty() {
+        return truncate_simple(cmd, limit);
+    }
+
+    let first_part = parts[0];
+
+    // Compress long paths: ./target/release/agtrace → .../agtrace
+    let compressed_first = if first_part.contains('/') {
+        compress_path_for_display(first_part)
+    } else {
+        first_part.to_string()
+    };
+
+    // Build result: compressed_cmd + remaining parts (up to limit)
+    let mut result = compressed_first;
+
+    for part in parts.iter().skip(1) {
+        let next_len = result.chars().count() + 1 + part.chars().count();
+        if next_len > limit - 3 {  // Reserve 3 chars for "..."
+            result.push_str(" ...");
+            break;
+        }
+        result.push(' ');
+        result.push_str(part);
+    }
+
+    // If still over limit, truncate simply
+    if result.chars().count() > limit {
+        truncate_simple(&result, limit)
+    } else {
+        result
+    }
+}
+
+fn compress_path_for_display(path: &str) -> String {
+    // ./target/release/agtrace → .../agtrace
+    // ./target/debug/foo → .../foo
+    if path.starts_with("./target/release/") || path.starts_with("./target/debug/") {
+        if let Some(filename) = path.split('/').last() {
+            return format!(".../{}", filename);
+        }
+    }
+
+    // Other long paths with multiple segments
+    if path.matches('/').count() >= 2 {
+        if let Some(filename) = path.split('/').last() {
+            return format!(".../{}", filename);
+        }
+    }
+
+    path.to_string()
+}
+
+fn truncate_simple(s: &str, limit: usize) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    if chars.len() <= limit {
+        s.to_string()
+    } else {
+        format!("{}...", chars[..limit - 3].iter().collect::<String>())
+    }
 }
 
 fn format_tool_with_targets(tool_name: &str, tool_infos: &[&ToolInfo]) -> String {
