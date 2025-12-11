@@ -1,4 +1,4 @@
 - Keep minimal comments and documents.
 - Write comments in English.
-- Make Commits with oneline message like `git commit -m "feat: ........."`
 - Read `docs`.
+- When you make a commit, the commit message must be oneline not multiline.
