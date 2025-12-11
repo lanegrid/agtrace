@@ -1,7 +1,7 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
 use crate::db::Database;
-use crate::model::{AgentEventV1, EventType};
+use crate::model::{AgentEventV1, EventType, ToolName};
 use crate::providers::{ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider};
 use anyhow::{Context, Result};
 use chrono::DateTime;
@@ -10,6 +10,7 @@ use owo_colors::OwoColorize;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::str::FromStr;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
@@ -504,8 +505,11 @@ fn extract_target_summary(
     file_path: Option<&String>,
     text: Option<&String>,
 ) -> (Option<String>, Option<String>) {
-    match tool_name {
-        "Read" | "Edit" | "Write" => {
+    // Parse tool name into ToolName enum for type-safe matching
+    let tool = ToolName::from_str(tool_name).unwrap_or(ToolName::Other(tool_name.to_string()));
+
+    match tool {
+        ToolName::Read | ToolName::Edit | ToolName::Write => {
             let filename = file_path.and_then(|p| {
                 std::path::Path::new(p)
                     .file_name()
@@ -514,7 +518,7 @@ fn extract_target_summary(
             });
             (filename.clone(), filename)
         }
-        "Bash" => {
+        ToolName::Bash => {
             text.and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("command").and_then(|v| v.as_str()).map(|cmd| {
@@ -533,7 +537,7 @@ fn extract_target_summary(
             .map(|(raw, display)| (Some(raw), Some(display)))
             .unwrap_or((None, None))
         }
-        "Glob" => {
+        ToolName::Glob => {
             text.and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("pattern").and_then(|v| v.as_str()).map(|p| {
@@ -551,7 +555,7 @@ fn extract_target_summary(
             })
             .unwrap_or((None, None))
         }
-        "Grep" => {
+        ToolName::Grep => {
             text.and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("pattern").and_then(|v| v.as_str()).map(|p| {
@@ -569,7 +573,7 @@ fn extract_target_summary(
             })
             .unwrap_or((None, None))
         }
-        _ => (None, None),
+        ToolName::Other(_) => (None, None),
     }
 }
 

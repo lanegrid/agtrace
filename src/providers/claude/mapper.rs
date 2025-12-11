@@ -186,14 +186,12 @@ pub fn normalize_claude_stream(
                                 ev.parent_event_id = last_user_event_id.clone();
                                 ev.role = Some(Role::Assistant);
                                 ev.project_root = project_root_str.clone();
-                                ev.tool_name = Some(name.clone());
+
+                                // Normalize tool name using ToolName enum
+                                let tool_name = ToolName::from_provider_name(Source::ClaudeCode, name);
+                                ev.tool_name = Some(tool_name.to_string());
+                                ev.channel = Some(tool_name.channel());
                                 ev.tool_call_id = Some(id.clone());
-                                ev.channel = match name.as_str() {
-                                    "Bash" => Some(Channel::Terminal),
-                                    "Edit" | "Write" => Some(Channel::Editor),
-                                    "Read" | "Glob" => Some(Channel::Filesystem),
-                                    _ => Some(Channel::Chat),
-                                };
 
                                 // Extract file_path from input
                                 if let Some(file_path) =
@@ -201,10 +199,10 @@ pub fn normalize_claude_stream(
                                 {
                                     ev.file_path = Some(file_path.to_string());
                                     // Infer file_op from tool name
-                                    ev.file_op = match name.as_str() {
-                                        "Write" => Some(FileOp::Write),
-                                        "Read" => Some(FileOp::Read),
-                                        "Edit" => Some(FileOp::Modify),
+                                    ev.file_op = match tool_name {
+                                        ToolName::Write => Some(FileOp::Write),
+                                        ToolName::Read => Some(FileOp::Read),
+                                        ToolName::Edit => Some(FileOp::Modify),
                                         _ => None,
                                     };
                                 } else if let Some(path) =
@@ -212,8 +210,8 @@ pub fn normalize_claude_stream(
                                 {
                                     // For Glob and other tools that use "path"
                                     ev.file_path = Some(path.to_string());
-                                    ev.file_op = match name.as_str() {
-                                        "Read" | "Glob" => Some(FileOp::Read),
+                                    ev.file_op = match tool_name {
+                                        ToolName::Read | ToolName::Glob => Some(FileOp::Read),
                                         _ => None,
                                     };
                                 }

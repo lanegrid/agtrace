@@ -112,12 +112,11 @@ pub fn normalize_codex_stream(
                     ResponseItemPayload::FunctionCall(call) => {
                         ev.event_type = EventType::ToolCall;
                         ev.role = Some(Role::Assistant);
-                        ev.channel = match call.name.as_str() {
-                            "shell" => Some(Channel::Terminal),
-                            "apply_patch" => Some(Channel::Editor),
-                            _ => Some(Channel::Chat),
-                        };
-                        ev.tool_name = Some(call.name.clone());
+
+                        // Normalize tool name using ToolName enum
+                        let tool_name = ToolName::from_provider_name(Source::Codex, &call.name);
+                        ev.tool_name = Some(tool_name.to_string());
+                        ev.channel = Some(tool_name.channel());
                         ev.tool_call_id = Some(call.call_id.clone());
 
                         // Extract file_path from arguments
@@ -130,10 +129,20 @@ pub fn normalize_codex_stream(
                                 .and_then(|v| v.as_str())
                             {
                                 ev.file_path = Some(file_path.to_string());
-                                ev.file_op = match call.name.as_str() {
-                                    "apply_patch" => Some(FileOp::Modify),
+                                ev.file_op = match tool_name {
+                                    ToolName::Edit => Some(FileOp::Modify),
+                                    ToolName::Write => Some(FileOp::Write),
+                                    ToolName::Read => Some(FileOp::Read),
                                     _ => None,
                                 };
+                            }
+                        }
+
+                        // For apply_patch (Edit), extract file path from patch text
+                        if matches!(tool_name, ToolName::Edit) && ev.file_path.is_none() {
+                            if let Some(file_path) = extract_file_path_from_patch(&call.arguments) {
+                                ev.file_path = Some(file_path);
+                                ev.file_op = Some(FileOp::Modify);
                             }
                         }
 
@@ -156,12 +165,11 @@ pub fn normalize_codex_stream(
                     ResponseItemPayload::CustomToolCall(call) => {
                         ev.event_type = EventType::ToolCall;
                         ev.role = Some(Role::Assistant);
-                        ev.channel = match call.name.as_str() {
-                            "shell" => Some(Channel::Terminal),
-                            "apply_patch" => Some(Channel::Editor),
-                            _ => Some(Channel::Chat),
-                        };
-                        ev.tool_name = Some(call.name.clone());
+
+                        // Normalize tool name using ToolName enum
+                        let tool_name = ToolName::from_provider_name(Source::Codex, &call.name);
+                        ev.tool_name = Some(tool_name.to_string());
+                        ev.channel = Some(tool_name.channel());
                         ev.tool_call_id = Some(call.call_id.clone());
 
                         // Extract file_path from input
@@ -174,10 +182,20 @@ pub fn normalize_codex_stream(
                                 .and_then(|v| v.as_str())
                             {
                                 ev.file_path = Some(file_path.to_string());
-                                ev.file_op = match call.name.as_str() {
-                                    "apply_patch" => Some(FileOp::Modify),
+                                ev.file_op = match tool_name {
+                                    ToolName::Edit => Some(FileOp::Modify),
+                                    ToolName::Write => Some(FileOp::Write),
+                                    ToolName::Read => Some(FileOp::Read),
                                     _ => None,
                                 };
+                            }
+                        }
+
+                        // For apply_patch (Edit), extract file path from patch text
+                        if matches!(tool_name, ToolName::Edit) && ev.file_path.is_none() {
+                            if let Some(file_path) = extract_file_path_from_patch(&call.input) {
+                                ev.file_path = Some(file_path);
+                                ev.file_op = Some(FileOp::Modify);
                             }
                         }
 
@@ -210,19 +228,15 @@ pub fn normalize_codex_stream(
                 }
             }
             CodexRecord::EventMsg(event) => match &event.payload {
-                EventMsgPayload::UserMessage(msg) => {
-                    ev.event_type = EventType::UserMessage;
-                    ev.role = Some(Role::User);
-                    ev.channel = Some(Channel::Chat);
-                    ev.parent_event_id = None;
-                    last_user_event_id = ev.event_id.clone();
-                    ev.text = Some(msg.message.clone());
+                EventMsgPayload::UserMessage(_) => {
+                    // Skip: UserMessage is already handled by ResponseItem
+                    // EventMsg is a simplified UI version, ResponseItem has complete structured data
+                    continue;
                 }
-                EventMsgPayload::AgentMessage(msg) => {
-                    ev.event_type = EventType::AssistantMessage;
-                    ev.role = Some(Role::Assistant);
-                    ev.channel = Some(Channel::Chat);
-                    ev.text = Some(msg.message.clone());
+                EventMsgPayload::AgentMessage(_) => {
+                    // Skip: AgentMessage is already handled by ResponseItem
+                    // EventMsg is a simplified UI version, ResponseItem has complete structured data
+                    continue;
                 }
                 EventMsgPayload::AgentReasoning(reasoning) => {
                     ev.event_type = EventType::Reasoning;
@@ -293,4 +307,28 @@ fn extract_exit_code(output: &str) -> Option<i32> {
     } else {
         None
     }
+}
+
+/// Extract file path from apply_patch text
+/// Format: "*** Add File: path/to/file" or "*** Edit File: path/to/file"
+fn extract_file_path_from_patch(patch_text: &str) -> Option<String> {
+    // Look for "*** Add File: " or "*** Edit File: " patterns
+    for prefix in ["*** Add File: ", "*** Edit File: ", "*** Modify File: "] {
+        if let Some(idx) = patch_text.find(prefix) {
+            let start = idx + prefix.len();
+            let rest = &patch_text[start..];
+
+            // Extract until newline or end of string
+            let file_path: String = rest
+                .chars()
+                .take_while(|c| *c != '\n' && *c != '\r')
+                .collect();
+
+            let trimmed = file_path.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+    None
 }

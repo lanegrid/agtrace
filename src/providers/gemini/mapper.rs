@@ -13,6 +13,13 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
     for msg in &session.messages {
         match msg {
             GeminiMessage::User(user_msg) => {
+                // Skip numeric IDs (legacy CLI events), keep UUID-style IDs (complete messages)
+                // Gemini logs contain both: simple CLI events (id: "0", "1", "2") and
+                // structured messages (id: UUID). UUID messages have more complete data.
+                if user_msg.id.parse::<u32>().is_ok() {
+                    continue;
+                }
+
                 let ts = &user_msg.timestamp;
                 let msg_id = Some(&user_msg.id);
                 let mut ev = AgentEventV1::new(
@@ -92,9 +99,13 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                     tev.tool_call_id = tev.event_id.clone();
                     tev.parent_event_id = last_user_event_id.clone();
                     tev.role = Some(Role::Assistant);
-                    tev.channel = Some(Channel::Terminal);
                     tev.model = Some(model.clone());
-                    tev.tool_name = Some(tool_call.name.clone());
+
+                    // Normalize tool name using ToolName enum
+                    let tool_name = ToolName::from_provider_name(Source::Gemini, &tool_call.name);
+                    tev.tool_name = Some(tool_name.to_string());
+                    tev.channel = Some(tool_name.channel());
+
                     if let Some(status) = &tool_call.status {
                         tev.tool_status = Some(match status.as_str() {
                             "success" => ToolStatus::Success,
@@ -108,10 +119,11 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                         tool_call.args.get("file_path").and_then(|v| v.as_str())
                     {
                         tev.file_path = Some(file_path.to_string());
-                        // Infer file_op from tool name
-                        tev.file_op = match tool_call.name.as_str() {
-                            "write_file" => Some(FileOp::Write),
-                            "read_file" => Some(FileOp::Read),
+                        // Infer file_op from normalized tool name
+                        tev.file_op = match tool_name {
+                            ToolName::Write => Some(FileOp::Write),
+                            ToolName::Read => Some(FileOp::Read),
+                            ToolName::Edit => Some(FileOp::Modify),
                             _ => None,
                         };
                     }
@@ -131,13 +143,10 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                         }
                     }
 
+                    // Store input args in text field (per spec: tool_call should show input, not output)
                     let args = serde_json::to_string(&tool_call.args).unwrap_or_default();
-                    let result_display = tool_call.result_display.as_deref().unwrap_or("");
-                    if !result_display.is_empty() {
-                        tev.text = Some(result_display.to_string());
-                    } else if !args.is_empty() {
-                        tev.text = Some(args);
-                    }
+                    tev.text = Some(args);
+
                     tev.raw = serde_json::to_value(tool_call).unwrap_or(Value::Null);
                     events.push(tev);
                 }

@@ -86,6 +86,98 @@ impl std::fmt::Display for FileOp {
     }
 }
 
+/// Normalized tool name (standardized across providers)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ToolName {
+    /// Shell command execution (bash, sh, zsh)
+    Bash,
+    /// File read operation
+    Read,
+    /// File write operation
+    Write,
+    /// File edit operation
+    Edit,
+    /// File pattern search (glob)
+    Glob,
+    /// Content search (grep)
+    Grep,
+    /// Other tools not in standard set
+    Other(String),
+}
+
+impl ToolName {
+    /// Normalize provider-specific tool name to standard ToolName
+    pub fn from_provider_name(provider: Source, name: &str) -> Self {
+        match provider {
+            Source::ClaudeCode => match name {
+                "Bash" => ToolName::Bash,
+                "Read" => ToolName::Read,
+                "Write" => ToolName::Write,
+                "Edit" => ToolName::Edit,
+                "Glob" => ToolName::Glob,
+                "Grep" => ToolName::Grep,
+                other => ToolName::Other(other.to_string()),
+            },
+            Source::Codex => match name {
+                "shell" | "shell_command" => ToolName::Bash,
+                "apply_patch" => ToolName::Edit,
+                other => ToolName::Other(other.to_string()),
+            },
+            Source::Gemini => match name {
+                "run_shell_command" => ToolName::Bash,
+                "write_file" => ToolName::Write,
+                "read_file" => ToolName::Read,
+                other => ToolName::Other(other.to_string()),
+            },
+        }
+    }
+
+    /// Convert to string representation
+    pub fn as_str(&self) -> &str {
+        match self {
+            ToolName::Bash => "Bash",
+            ToolName::Read => "Read",
+            ToolName::Write => "Write",
+            ToolName::Edit => "Edit",
+            ToolName::Glob => "Glob",
+            ToolName::Grep => "Grep",
+            ToolName::Other(s) => s.as_str(),
+        }
+    }
+
+    /// Get the channel for this tool
+    pub fn channel(&self) -> Channel {
+        match self {
+            ToolName::Bash => Channel::Terminal,
+            ToolName::Read | ToolName::Write | ToolName::Edit => Channel::Editor,
+            ToolName::Glob | ToolName::Grep => Channel::Filesystem,
+            ToolName::Other(_) => Channel::Chat,
+        }
+    }
+}
+
+impl std::fmt::Display for ToolName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl FromStr for ToolName {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Bash" => ToolName::Bash,
+            "Read" => ToolName::Read,
+            "Write" => ToolName::Write,
+            "Edit" => ToolName::Edit,
+            "Glob" => ToolName::Glob,
+            "Grep" => ToolName::Grep,
+            other => ToolName::Other(other.to_string()),
+        })
+    }
+}
+
 /// Normalized agent event (v1)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentEventV1 {
