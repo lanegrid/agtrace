@@ -20,7 +20,11 @@ pub fn handle(file_path: String, lines: usize, format: String) -> Result<()> {
         .count();
 
     println!("File: {}", file_path);
-    println!("Lines: 1-{} (total: {} lines)", lines.min(total_lines), total_lines);
+    println!(
+        "Lines: 1-{} (total: {} lines)",
+        lines.min(total_lines),
+        total_lines
+    );
     println!("{}", "─".repeat(40));
 
     match format.as_str() {

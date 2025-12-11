@@ -44,18 +44,14 @@ pub fn run(cli: Cli) -> Result<()> {
 
             // If --project-root is specified but no explicit hash, compute hash from project_root
             let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
-                Some(crate::utils::project_hash_from_root(cli.project_root.as_ref().unwrap()))
+                Some(crate::utils::project_hash_from_root(
+                    cli.project_root.as_ref().unwrap(),
+                ))
             } else {
                 project_hash
             };
 
-            handlers::list::handle(
-                &db,
-                effective_hash,
-                limit,
-                cli.all_projects,
-                &cli.format,
-            )
+            handlers::list::handle(&db, effective_hash, limit, cli.all_projects, &cli.format)
         }
 
         Commands::View {
@@ -71,7 +67,9 @@ pub fn run(cli: Cli) -> Result<()> {
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
 
-            handlers::view::handle(&db, session_id, raw, json, timeline, hide, only, full, short)
+            handlers::view::handle(
+                &db, session_id, raw, json, timeline, hide, only, full, short,
+            )
         }
 
         Commands::Show {
@@ -145,10 +143,7 @@ pub fn run(cli: Cli) -> Result<()> {
             handlers::project::handle(&db, project_root)
         }
 
-        Commands::Diagnose {
-            provider,
-            verbose,
-        } => {
+        Commands::Diagnose { provider, verbose } => {
             let config_path = data_dir.join("config.toml");
             let config = Config::load_from(&config_path)?;
             handlers::diagnose::handle(&config, provider, verbose)

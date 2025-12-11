@@ -76,8 +76,12 @@ pub struct MessagePayload {
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum MessageContent {
-    InputText { text: String },
-    OutputText { text: String },
+    InputText {
+        text: String,
+    },
+    OutputText {
+        text: String,
+    },
     #[serde(other)]
     Unknown,
 }
@@ -95,7 +99,9 @@ pub struct ReasoningPayload {
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum SummaryText {
-    SummaryText { text: String },
+    SummaryText {
+        text: String,
+    },
     #[serde(other)]
     Unknown,
 }

@@ -99,7 +99,9 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                     }
 
                     // Check if this message's parent is a meta message (or descendant)
-                    let parent_is_meta = user.parent_uuid.as_ref()
+                    let parent_is_meta = user
+                        .parent_uuid
+                        .as_ref()
                         .map(|p| meta_message_ids.contains(p))
                         .unwrap_or(false);
 
@@ -111,11 +113,10 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                     // Extract snippet from first non-sidechain, non-meta user message
                     // Also skip messages whose parent is meta
                     if snippet.is_none() && !user.is_sidechain && !user.is_meta && !parent_is_meta {
-                        snippet = user.message.content.iter()
-                            .find_map(|c| match c {
-                                super::schema::UserContent::Text { text } => Some(text.clone()),
-                                _ => None,
-                            });
+                        snippet = user.message.content.iter().find_map(|c| match c {
+                            super::schema::UserContent::Text { text } => Some(text.clone()),
+                            _ => None,
+                        });
                     }
                     is_sidechain = user.is_sidechain;
                 }

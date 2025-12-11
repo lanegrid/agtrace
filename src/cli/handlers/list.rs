@@ -144,7 +144,13 @@ fn print_sessions_table(sessions: &[SessionSummary]) {
             Cell::new(snippet_display).fg(Color::White)
         };
 
-        table.add_row(vec![time_cell, provider_cell, id_cell, project_cell, snippet_cell]);
+        table.add_row(vec![
+            time_cell,
+            provider_cell,
+            id_cell,
+            project_cell,
+            snippet_cell,
+        ]);
     }
 
     println!("{table}");

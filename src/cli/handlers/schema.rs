@@ -138,7 +138,10 @@ fn display_gemini_schema(format: &str) -> Result<()> {
             println!("{}", "Provider: Gemini".bright_blue().bold());
             println!("Schema version: unknown");
             println!();
-            println!("{}", "Root structure (JSON - single session object):".bold());
+            println!(
+                "{}",
+                "Root structure (JSON - single session object):".bold()
+            );
             println!("  GeminiSession:");
             println!("    sessionId: String");
             println!("    projectHash: String");

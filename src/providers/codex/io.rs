@@ -34,8 +34,7 @@ pub fn normalize_codex_file(
     }
 
     // session_id should be extracted from file content, fallback to "unknown-session"
-    let session_id = session_id_from_meta
-        .unwrap_or_else(|| "unknown-session".to_string());
+    let session_id = session_id_from_meta.unwrap_or_else(|| "unknown-session".to_string());
 
     Ok(normalize_codex_stream(
         records,
@@ -121,14 +120,18 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                         timestamp = Some(response.timestamp.clone());
                     }
                     if snippet.is_none() {
-                        if let super::schema::ResponseItemPayload::Message(msg) = &response.payload {
+                        if let super::schema::ResponseItemPayload::Message(msg) = &response.payload
+                        {
                             if msg.role == "user" {
-                                let text = msg.content.iter()
-                                    .find_map(|c| match c {
-                                        super::schema::MessageContent::InputText { text } => Some(text.clone()),
-                                        super::schema::MessageContent::OutputText { text } => Some(text.clone()),
-                                        _ => None,
-                                    });
+                                let text = msg.content.iter().find_map(|c| match c {
+                                    super::schema::MessageContent::InputText { text } => {
+                                        Some(text.clone())
+                                    }
+                                    super::schema::MessageContent::OutputText { text } => {
+                                        Some(text.clone())
+                                    }
+                                    _ => None,
+                                });
                                 if let Some(t) = &text {
                                     if !t.contains("<environment_context>") {
                                         snippet = text;

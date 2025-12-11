@@ -10,7 +10,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-pub use self::io::{extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file};
+pub use self::io::{
+    extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file,
+};
 
 pub struct GeminiProvider;
 
@@ -125,26 +127,35 @@ impl LogProvider for GeminiProvider {
             if let Some(session_id) = header.session_id {
                 let metadata = std::fs::metadata(path).ok();
                 let file_size = metadata.as_ref().map(|m| m.len() as i64);
-                let mod_time = metadata.and_then(|m| m.modified().ok())
+                let mod_time = metadata
+                    .and_then(|m| m.modified().ok())
                     .map(|t| format!("{:?}", t));
 
                 let log_file = LogFileMetadata {
                     path: path.display().to_string(),
-                    role: if filename == "logs.json" { "meta" } else { "main" }.to_string(),
+                    role: if filename == "logs.json" {
+                        "meta"
+                    } else {
+                        "main"
+                    }
+                    .to_string(),
                     file_size,
                     mod_time,
                 };
 
-                let session = sessions.entry(session_id.clone()).or_insert_with(|| SessionMetadata {
-                    session_id: session_id.clone(),
-                    project_hash: context.project_hash.clone(),
-                    project_root: None,
-                    provider: "gemini".to_string(),
-                    start_ts: header.timestamp.clone(),
-                    end_ts: None,
-                    snippet: header.snippet.clone(),
-                    log_files: Vec::new(),
-                });
+                let session =
+                    sessions
+                        .entry(session_id.clone())
+                        .or_insert_with(|| SessionMetadata {
+                            session_id: session_id.clone(),
+                            project_hash: context.project_hash.clone(),
+                            project_root: None,
+                            provider: "gemini".to_string(),
+                            start_ts: header.timestamp.clone(),
+                            end_ts: None,
+                            snippet: header.snippet.clone(),
+                            log_files: Vec::new(),
+                        });
 
                 session.log_files.push(log_file);
 

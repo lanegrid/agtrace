@@ -81,8 +81,12 @@ where
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum UserContent {
-    Text { text: String },
-    Image { source: Value },
+    Text {
+        text: String,
+    },
+    Image {
+        source: Value,
+    },
     ToolResult {
         tool_use_id: String,
         #[serde(default)]

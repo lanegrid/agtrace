@@ -73,7 +73,10 @@ pub enum Commands {
         #[arg(long, value_delimiter = ',')]
         only: Option<Vec<String>>,
 
-        #[arg(long, help = "Display full event text without truncation (default behavior, kept for backwards compatibility)")]
+        #[arg(
+            long,
+            help = "Display full event text without truncation (default behavior, kept for backwards compatibility)"
+        )]
         full: bool,
 
         #[arg(long, help = "Truncate long text to ~100 chars for compact display")]

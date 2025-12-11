@@ -9,7 +9,9 @@ use anyhow::Result;
 use std::path::Path;
 use walkdir::WalkDir;
 
-pub use self::io::{extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session, normalize_codex_file};
+pub use self::io::{
+    extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session, normalize_codex_file,
+};
 
 pub struct CodexProvider;
 
@@ -59,10 +61,7 @@ impl LogProvider for CodexProvider {
             return Ok(Vec::new());
         }
 
-        for entry in WalkDir::new(log_root)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
+        for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
 
             // Use can_handle for consistent filtering (filename pattern + empty files + empty sessions)
@@ -100,7 +99,8 @@ impl LogProvider for CodexProvider {
 
             let metadata = std::fs::metadata(path).ok();
             let file_size = metadata.as_ref().map(|m| m.len() as i64);
-            let mod_time = metadata.and_then(|m| m.modified().ok())
+            let mod_time = metadata
+                .and_then(|m| m.modified().ok())
                 .map(|t| format!("{:?}", t));
 
             let log_file = LogFileMetadata {

@@ -124,8 +124,11 @@ fn filter_events(
                 let pattern_lower = pattern.to_lowercase();
                 event_type.contains(&pattern_lower)
                     || pattern_lower == "user" && matches!(e.event_type, EventType::UserMessage)
-                    || pattern_lower == "assistant" && matches!(e.event_type, EventType::AssistantMessage)
-                    || pattern_lower == "tool" && (matches!(e.event_type, EventType::ToolCall) || matches!(e.event_type, EventType::ToolResult))
+                    || pattern_lower == "assistant"
+                        && matches!(e.event_type, EventType::AssistantMessage)
+                    || pattern_lower == "tool"
+                        && (matches!(e.event_type, EventType::ToolCall)
+                            || matches!(e.event_type, EventType::ToolResult))
                     || pattern_lower == "reasoning" && matches!(e.event_type, EventType::Reasoning)
             })
         });
@@ -139,8 +142,11 @@ fn filter_events(
                 let pattern_lower = pattern.to_lowercase();
                 event_type.contains(&pattern_lower)
                     || pattern_lower == "user" && matches!(e.event_type, EventType::UserMessage)
-                    || pattern_lower == "assistant" && matches!(e.event_type, EventType::AssistantMessage)
-                    || pattern_lower == "tool" && (matches!(e.event_type, EventType::ToolCall) || matches!(e.event_type, EventType::ToolResult))
+                    || pattern_lower == "assistant"
+                        && matches!(e.event_type, EventType::AssistantMessage)
+                    || pattern_lower == "tool"
+                        && (matches!(e.event_type, EventType::ToolCall)
+                            || matches!(e.event_type, EventType::ToolResult))
                     || pattern_lower == "reasoning" && matches!(e.event_type, EventType::Reasoning)
             })
         });
@@ -160,16 +166,15 @@ fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: 
         return;
     }
 
-    let session_start = events.first().and_then(|e| {
-        DateTime::parse_from_rfc3339(&e.ts).ok()
-    });
+    let session_start = events
+        .first()
+        .and_then(|e| DateTime::parse_from_rfc3339(&e.ts).ok());
 
     for event in events {
         // Calculate relative time from session start
-        let time_display = if let (Some(start), Ok(current)) = (
-            session_start,
-            DateTime::parse_from_rfc3339(&event.ts)
-        ) {
+        let time_display = if let (Some(start), Ok(current)) =
+            (session_start, DateTime::parse_from_rfc3339(&event.ts))
+        {
             let duration = current.signed_duration_since(start);
             let seconds = duration.num_seconds();
             if seconds < 60 {
@@ -339,7 +344,10 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
 
     if enable_color {
         println!("{}", format!("{}", "---".bright_black()));
-        println!("{}", format!("{}", "Session Summary:".bright_white().bold()));
+        println!(
+            "{}",
+            format!("{}", "Session Summary:".bright_white().bold())
+        );
     } else {
         println!("---");
         println!("Session Summary:");
@@ -386,11 +394,27 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
     }
 
     if enable_color {
-        println!("  {}: {}", format!("{}", "Events".cyan()), format!("{}", events.len().to_string().bright_white()));
-        println!("    User messages: {}", format!("{}", user_count.to_string().green()));
-        println!("    Assistant messages: {}", format!("{}", assistant_count.to_string().blue()));
-        println!("    Tool calls: {}", format!("{}", tool_call_count.to_string().yellow()));
-        println!("    Reasoning blocks: {}", format!("{}", reasoning_count.to_string().cyan()));
+        println!(
+            "  {}: {}",
+            format!("{}", "Events".cyan()),
+            format!("{}", events.len().to_string().bright_white())
+        );
+        println!(
+            "    User messages: {}",
+            format!("{}", user_count.to_string().green())
+        );
+        println!(
+            "    Assistant messages: {}",
+            format!("{}", assistant_count.to_string().blue())
+        );
+        println!(
+            "    Tool calls: {}",
+            format!("{}", tool_call_count.to_string().yellow())
+        );
+        println!(
+            "    Reasoning blocks: {}",
+            format!("{}", reasoning_count.to_string().cyan())
+        );
     } else {
         println!("  Events: {}", events.len());
         println!("    User messages: {}", user_count);
@@ -407,7 +431,11 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         }
         for (op, count) in file_ops.iter() {
             if enable_color {
-                println!("    {}: {}", op, format!("{}", count.to_string().bright_white()));
+                println!(
+                    "    {}: {}",
+                    op,
+                    format!("{}", count.to_string().bright_white())
+                );
             } else {
                 println!("    {}: {}", op, count);
             }
@@ -417,14 +445,30 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
     let total_tokens = total_input + total_output;
     if total_tokens > 0 {
         if enable_color {
-            println!("  {}: {}", format!("{}", "Tokens".cyan()), format!("{}", total_tokens.to_string().bright_white()));
-            println!("    Input: {}", format!("{}", total_input.to_string().bright_white()));
-            println!("    Output: {}", format!("{}", total_output.to_string().bright_white()));
+            println!(
+                "  {}: {}",
+                format!("{}", "Tokens".cyan()),
+                format!("{}", total_tokens.to_string().bright_white())
+            );
+            println!(
+                "    Input: {}",
+                format!("{}", total_input.to_string().bright_white())
+            );
+            println!(
+                "    Output: {}",
+                format!("{}", total_output.to_string().bright_white())
+            );
             if total_cached > 0 {
-                println!("    Cached: {}", format!("{}", total_cached.to_string().bright_yellow()));
+                println!(
+                    "    Cached: {}",
+                    format!("{}", total_cached.to_string().bright_yellow())
+                );
             }
             if total_thinking > 0 {
-                println!("    Thinking: {}", format!("{}", total_thinking.to_string().bright_cyan()));
+                println!(
+                    "    Thinking: {}",
+                    format!("{}", total_thinking.to_string().bright_cyan())
+                );
             }
         } else {
             println!("  Tokens: {}", total_tokens);
@@ -449,7 +493,12 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
             let minutes = duration.num_minutes();
             let seconds = duration.num_seconds() % 60;
             if enable_color {
-                println!("  {}: {}m {}s", format!("{}", "Duration".cyan()), minutes, seconds);
+                println!(
+                    "  {}: {}m {}s",
+                    format!("{}", "Duration".cyan()),
+                    minutes,
+                    seconds
+                );
             } else {
                 println!("  Duration: {}m {}s", minutes, seconds);
             }

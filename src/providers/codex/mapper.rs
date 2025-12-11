@@ -43,8 +43,12 @@ pub fn normalize_codex_stream(
             .clone()
             .unwrap_or_else(|| "unknown".to_string());
 
-        let mut ev =
-            AgentEventV1::new(Source::Codex, project_hash_val, ts.to_string(), EventType::Meta);
+        let mut ev = AgentEventV1::new(
+            Source::Codex,
+            project_hash_val,
+            ts.to_string(),
+            EventType::Meta,
+        );
 
         ev.session_id = Some(session_id.to_string());
         ev.project_root = project_root_str.clone();
@@ -64,35 +68,34 @@ pub fn normalize_codex_stream(
             }
             CodexRecord::ResponseItem(response) => {
                 match &response.payload {
-                    ResponseItemPayload::Message(msg) => {
-                        match msg.role.as_str() {
-                            "user" => {
-                                ev.event_type = EventType::UserMessage;
-                                ev.role = Some(Role::User);
-                                ev.channel = Some(Channel::Chat);
-                                ev.parent_event_id = None;
-                                last_user_event_id = ev.event_id.clone();
-                                ev.text = extract_message_text(msg);
-                            }
-                            "assistant" => {
-                                ev.event_type = EventType::AssistantMessage;
-                                ev.role = Some(Role::Assistant);
-                                ev.channel = Some(Channel::Chat);
-                                ev.text = extract_message_text(msg);
-                            }
-                            _ => {
-                                ev.event_type = EventType::SystemMessage;
-                                ev.role = Some(Role::System);
-                                ev.channel = Some(Channel::System);
-                                ev.text = extract_message_text(msg);
-                            }
+                    ResponseItemPayload::Message(msg) => match msg.role.as_str() {
+                        "user" => {
+                            ev.event_type = EventType::UserMessage;
+                            ev.role = Some(Role::User);
+                            ev.channel = Some(Channel::Chat);
+                            ev.parent_event_id = None;
+                            last_user_event_id = ev.event_id.clone();
+                            ev.text = extract_message_text(msg);
                         }
-                    }
+                        "assistant" => {
+                            ev.event_type = EventType::AssistantMessage;
+                            ev.role = Some(Role::Assistant);
+                            ev.channel = Some(Channel::Chat);
+                            ev.text = extract_message_text(msg);
+                        }
+                        _ => {
+                            ev.event_type = EventType::SystemMessage;
+                            ev.role = Some(Role::System);
+                            ev.channel = Some(Channel::System);
+                            ev.text = extract_message_text(msg);
+                        }
+                    },
                     ResponseItemPayload::Reasoning(reasoning) => {
                         ev.event_type = EventType::Reasoning;
                         ev.role = Some(Role::Assistant);
                         ev.channel = Some(Channel::Chat);
-                        let texts: Vec<String> = reasoning.summary
+                        let texts: Vec<String> = reasoning
+                            .summary
                             .iter()
                             .filter_map(|s| match s {
                                 SummaryText::SummaryText { text } => Some(text.clone()),
@@ -118,8 +121,14 @@ pub fn normalize_codex_stream(
                         ev.tool_call_id = Some(call.call_id.clone());
 
                         // Extract file_path from arguments
-                        if let Ok(args_json) = serde_json::from_str::<serde_json::Value>(&call.arguments) {
-                            if let Some(file_path) = args_json.get("file_path").or(args_json.get("path")).and_then(|v| v.as_str()) {
+                        if let Ok(args_json) =
+                            serde_json::from_str::<serde_json::Value>(&call.arguments)
+                        {
+                            if let Some(file_path) = args_json
+                                .get("file_path")
+                                .or(args_json.get("path"))
+                                .and_then(|v| v.as_str())
+                            {
                                 ev.file_path = Some(file_path.to_string());
                                 ev.file_op = match call.name.as_str() {
                                     "apply_patch" => Some("modify".to_string()),
@@ -156,8 +165,14 @@ pub fn normalize_codex_stream(
                         ev.tool_call_id = Some(call.call_id.clone());
 
                         // Extract file_path from input
-                        if let Ok(input_json) = serde_json::from_str::<serde_json::Value>(&call.input) {
-                            if let Some(file_path) = input_json.get("file_path").or(input_json.get("path")).and_then(|v| v.as_str()) {
+                        if let Ok(input_json) =
+                            serde_json::from_str::<serde_json::Value>(&call.input)
+                        {
+                            if let Some(file_path) = input_json
+                                .get("file_path")
+                                .or(input_json.get("path"))
+                                .and_then(|v| v.as_str())
+                            {
                                 ev.file_path = Some(file_path.to_string());
                                 ev.file_op = match call.name.as_str() {
                                     "apply_patch" => Some("modify".to_string()),
@@ -194,47 +209,46 @@ pub fn normalize_codex_stream(
                     }
                 }
             }
-            CodexRecord::EventMsg(event) => {
-                match &event.payload {
-                    EventMsgPayload::UserMessage(msg) => {
-                        ev.event_type = EventType::UserMessage;
-                        ev.role = Some(Role::User);
-                        ev.channel = Some(Channel::Chat);
-                        ev.parent_event_id = None;
-                        last_user_event_id = ev.event_id.clone();
-                        ev.text = Some(msg.message.clone());
-                    }
-                    EventMsgPayload::AgentMessage(msg) => {
-                        ev.event_type = EventType::AssistantMessage;
-                        ev.role = Some(Role::Assistant);
-                        ev.channel = Some(Channel::Chat);
-                        ev.text = Some(msg.message.clone());
-                    }
-                    EventMsgPayload::AgentReasoning(reasoning) => {
-                        ev.event_type = EventType::Reasoning;
-                        ev.role = Some(Role::Assistant);
-                        ev.channel = Some(Channel::Chat);
-                        ev.text = Some(reasoning.text.clone());
-                    }
-                    EventMsgPayload::TokenCount(token_count) => {
-                        ev.event_type = EventType::Meta;
-                        ev.role = Some(Role::System);
-                        ev.channel = Some(Channel::System);
-                        if let Some(info) = &token_count.info {
-                            ev.tokens_input = Some(info.last_token_usage.input_tokens as u64);
-                            ev.tokens_output = Some(info.last_token_usage.output_tokens as u64);
-                            ev.tokens_total = Some(info.last_token_usage.total_tokens as u64);
-                            ev.tokens_cached = Some(info.last_token_usage.cached_input_tokens as u64);
-                            ev.tokens_thinking = Some(info.last_token_usage.reasoning_output_tokens as u64);
-                        }
-                    }
-                    EventMsgPayload::Unknown => {
-                        ev.event_type = EventType::Meta;
-                        ev.role = Some(Role::System);
-                        ev.channel = Some(Channel::System);
+            CodexRecord::EventMsg(event) => match &event.payload {
+                EventMsgPayload::UserMessage(msg) => {
+                    ev.event_type = EventType::UserMessage;
+                    ev.role = Some(Role::User);
+                    ev.channel = Some(Channel::Chat);
+                    ev.parent_event_id = None;
+                    last_user_event_id = ev.event_id.clone();
+                    ev.text = Some(msg.message.clone());
+                }
+                EventMsgPayload::AgentMessage(msg) => {
+                    ev.event_type = EventType::AssistantMessage;
+                    ev.role = Some(Role::Assistant);
+                    ev.channel = Some(Channel::Chat);
+                    ev.text = Some(msg.message.clone());
+                }
+                EventMsgPayload::AgentReasoning(reasoning) => {
+                    ev.event_type = EventType::Reasoning;
+                    ev.role = Some(Role::Assistant);
+                    ev.channel = Some(Channel::Chat);
+                    ev.text = Some(reasoning.text.clone());
+                }
+                EventMsgPayload::TokenCount(token_count) => {
+                    ev.event_type = EventType::Meta;
+                    ev.role = Some(Role::System);
+                    ev.channel = Some(Channel::System);
+                    if let Some(info) = &token_count.info {
+                        ev.tokens_input = Some(info.last_token_usage.input_tokens as u64);
+                        ev.tokens_output = Some(info.last_token_usage.output_tokens as u64);
+                        ev.tokens_total = Some(info.last_token_usage.total_tokens as u64);
+                        ev.tokens_cached = Some(info.last_token_usage.cached_input_tokens as u64);
+                        ev.tokens_thinking =
+                            Some(info.last_token_usage.reasoning_output_tokens as u64);
                     }
                 }
-            }
+                EventMsgPayload::Unknown => {
+                    ev.event_type = EventType::Meta;
+                    ev.role = Some(Role::System);
+                    ev.channel = Some(Channel::System);
+                }
+            },
             CodexRecord::Unknown => {
                 ev.event_type = EventType::Meta;
                 ev.role = Some(Role::System);
@@ -250,7 +264,8 @@ pub fn normalize_codex_stream(
 }
 
 fn extract_message_text(msg: &MessagePayload) -> Option<String> {
-    let texts: Vec<String> = msg.content
+    let texts: Vec<String> = msg
+        .content
         .iter()
         .filter_map(|c| match c {
             MessageContent::InputText { text } => Some(text.clone()),
@@ -270,7 +285,10 @@ fn extract_exit_code(output: &str) -> Option<i32> {
     // Look for "Exit Code: N" pattern
     if let Some(idx) = output.find("Exit Code:") {
         let rest = &output[idx + 11..]; // Skip "Exit Code: "
-        let num_str: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
+        let num_str: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '-')
+            .collect();
         num_str.parse::<i32>().ok()
     } else {
         None

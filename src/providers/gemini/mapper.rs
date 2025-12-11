@@ -108,7 +108,9 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                     }
 
                     // Extract file_path from args
-                    if let Some(file_path) = tool_call.args.get("file_path").and_then(|v| v.as_str()) {
+                    if let Some(file_path) =
+                        tool_call.args.get("file_path").and_then(|v| v.as_str())
+                    {
                         tev.file_path = Some(file_path.to_string());
                         // Infer file_op from tool name
                         tev.file_op = match tool_call.name.as_str() {
@@ -120,7 +122,12 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
 
                     // Extract exit_code from result
                     if let Some(result) = tool_call.result.first() {
-                        if let Some(output) = result.function_response.response.get("output").and_then(|v| v.as_str()) {
+                        if let Some(output) = result
+                            .function_response
+                            .response
+                            .get("output")
+                            .and_then(|v| v.as_str())
+                        {
                             // Try to extract "Exit Code: N" from output
                             if let Some(exit_code) = extract_exit_code(output) {
                                 tev.tool_exit_code = Some(exit_code);
@@ -168,7 +175,10 @@ fn extract_exit_code(output: &str) -> Option<i32> {
     // Look for "Exit Code: N" pattern
     if let Some(idx) = output.find("Exit Code:") {
         let rest = &output[idx + 11..]; // Skip "Exit Code: "
-        let num_str: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '-').collect();
+        let num_str: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '-')
+            .collect();
         num_str.parse::<i32>().ok()
     } else {
         None

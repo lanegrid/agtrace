@@ -106,11 +106,7 @@ impl Database {
                 root_path = COALESCE(?2, root_path),
                 last_scanned_at = ?3
             "#,
-            params![
-                &project.hash,
-                &project.root_path,
-                &project.last_scanned_at
-            ],
+            params![&project.hash, &project.root_path, &project.last_scanned_at],
         )?;
 
         Ok(())

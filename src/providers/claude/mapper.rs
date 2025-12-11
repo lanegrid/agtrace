@@ -46,7 +46,9 @@ pub fn normalize_claude_stream(
                 }
 
                 // Check if this message's parent is a meta message (or descendant)
-                let parent_is_meta = user.parent_uuid.as_ref()
+                let parent_is_meta = user
+                    .parent_uuid
+                    .as_ref()
                     .map(|p| meta_message_ids.contains(p))
                     .unwrap_or(false);
 
@@ -57,14 +59,20 @@ pub fn normalize_claude_stream(
                 }
 
                 // Check for tool_result content first (priority per spec v1.5)
-                let has_tool_result = user.message.content.iter().any(|c| {
-                    matches!(c, UserContent::ToolResult { .. })
-                });
+                let has_tool_result = user
+                    .message
+                    .content
+                    .iter()
+                    .any(|c| matches!(c, UserContent::ToolResult { .. }));
 
                 if has_tool_result {
                     // Process tool results
                     for item in &user.message.content {
-                        if let UserContent::ToolResult { tool_use_id, content } = item {
+                        if let UserContent::ToolResult {
+                            tool_use_id,
+                            content,
+                        } = item
+                        {
                             let mut ev = AgentEventV1::new(
                                 Source::ClaudeCode,
                                 project_hash_val.clone(),
@@ -93,9 +101,11 @@ pub fn normalize_claude_stream(
                 }
 
                 // Check for other non-text content (images, unknown)
-                let has_other_content = user.message.content.iter().any(|c| {
-                    matches!(c, UserContent::Image { .. } | UserContent::Unknown)
-                });
+                let has_other_content = user
+                    .message
+                    .content
+                    .iter()
+                    .any(|c| matches!(c, UserContent::Image { .. } | UserContent::Unknown));
 
                 if has_other_content {
                     // TODO: Handle user content with images
@@ -116,7 +126,10 @@ pub fn normalize_claude_stream(
                 ev.channel = Some(Channel::Chat);
                 ev.project_root = project_root_str.clone();
 
-                let text_parts: Vec<String> = user.message.content.iter()
+                let text_parts: Vec<String> = user
+                    .message
+                    .content
+                    .iter()
                     .filter_map(|c| match c {
                         UserContent::Text { text } => Some(text.clone()),
                         _ => None,
@@ -130,7 +143,10 @@ pub fn normalize_claude_stream(
             }
             ClaudeRecord::Assistant(asst) => {
                 let has_tool_content = asst.message.content.iter().any(|c| {
-                    matches!(c, AssistantContent::ToolUse { .. } | AssistantContent::Thinking { .. })
+                    matches!(
+                        c,
+                        AssistantContent::ToolUse { .. } | AssistantContent::Thinking { .. }
+                    )
                 });
 
                 if has_tool_content {
@@ -152,10 +168,13 @@ pub fn normalize_claude_stream(
                                 ev.project_root = project_root_str.clone();
                                 ev.text = Some(thinking.clone());
                                 ev.model = Some(asst.message.model.clone());
-                                ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                ev.raw =
+                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                                 events.push(ev);
                             }
-                            AssistantContent::ToolUse { id, name, input, .. } => {
+                            AssistantContent::ToolUse {
+                                id, name, input, ..
+                            } => {
                                 let mut ev = AgentEventV1::new(
                                     Source::ClaudeCode,
                                     project_hash_val.clone(),
@@ -177,7 +196,9 @@ pub fn normalize_claude_stream(
                                 };
 
                                 // Extract file_path from input
-                                if let Some(file_path) = input.get("file_path").and_then(|v| v.as_str()) {
+                                if let Some(file_path) =
+                                    input.get("file_path").and_then(|v| v.as_str())
+                                {
                                     ev.file_path = Some(file_path.to_string());
                                     // Infer file_op from tool name
                                     ev.file_op = match name.as_str() {
@@ -186,7 +207,9 @@ pub fn normalize_claude_stream(
                                         "Edit" => Some("modify".to_string()),
                                         _ => None,
                                     };
-                                } else if let Some(path) = input.get("path").and_then(|v| v.as_str()) {
+                                } else if let Some(path) =
+                                    input.get("path").and_then(|v| v.as_str())
+                                {
                                     // For Glob and other tools that use "path"
                                     ev.file_path = Some(path.to_string());
                                     ev.file_op = match name.as_str() {
@@ -198,7 +221,8 @@ pub fn normalize_claude_stream(
                                 let input_str = serde_json::to_string(input).unwrap_or_default();
                                 ev.text = Some(input_str);
                                 ev.model = Some(asst.message.model.clone());
-                                ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                ev.raw =
+                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                                 events.push(ev);
                             }
                             AssistantContent::Text { text, .. } => {
@@ -220,11 +244,14 @@ pub fn normalize_claude_stream(
                                 if let Some(usage) = &asst.message.usage {
                                     ev.tokens_input = Some(usage.input_tokens as u64);
                                     ev.tokens_output = Some(usage.output_tokens as u64);
-                                    ev.tokens_total = Some((usage.input_tokens + usage.output_tokens) as u64);
-                                    ev.tokens_cached = usage.cache_read_input_tokens.map(|t| t as u64);
+                                    ev.tokens_total =
+                                        Some((usage.input_tokens + usage.output_tokens) as u64);
+                                    ev.tokens_cached =
+                                        usage.cache_read_input_tokens.map(|t| t as u64);
                                 }
 
-                                ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                ev.raw =
+                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                                 events.push(ev);
                             }
                             _ => {}
@@ -245,7 +272,10 @@ pub fn normalize_claude_stream(
                     ev.channel = Some(Channel::Chat);
                     ev.project_root = project_root_str.clone();
 
-                    let text_parts: Vec<String> = asst.message.content.iter()
+                    let text_parts: Vec<String> = asst
+                        .message
+                        .content
+                        .iter()
                         .filter_map(|c| match c {
                             AssistantContent::Text { text, .. } => Some(text.clone()),
                             _ => None,

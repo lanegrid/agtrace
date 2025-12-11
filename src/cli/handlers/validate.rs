@@ -11,25 +11,35 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
     }
 
     // Auto-detect or use specified provider
-    let (provider, provider_name): (Box<dyn LogProvider>, String) = if let Some(name) = provider_override {
-        match name.as_str() {
-            "claude" => (Box::new(ClaudeProvider::new()), "claude".to_string()),
-            "codex" => (Box::new(CodexProvider::new()), "codex".to_string()),
-            "gemini" => (Box::new(GeminiProvider::new()), "gemini".to_string()),
-            _ => anyhow::bail!("Unknown provider: {}", name),
-        }
-    } else {
-        // Auto-detect from path
-        if file_path.contains(".claude/") {
-            (Box::new(ClaudeProvider::new()), "claude (auto-detected)".to_string())
-        } else if file_path.contains(".codex/") {
-            (Box::new(CodexProvider::new()), "codex (auto-detected)".to_string())
-        } else if file_path.contains(".gemini/") {
-            (Box::new(GeminiProvider::new()), "gemini (auto-detected)".to_string())
+    let (provider, provider_name): (Box<dyn LogProvider>, String) =
+        if let Some(name) = provider_override {
+            match name.as_str() {
+                "claude" => (Box::new(ClaudeProvider::new()), "claude".to_string()),
+                "codex" => (Box::new(CodexProvider::new()), "codex".to_string()),
+                "gemini" => (Box::new(GeminiProvider::new()), "gemini".to_string()),
+                _ => anyhow::bail!("Unknown provider: {}", name),
+            }
         } else {
-            anyhow::bail!("Cannot auto-detect provider from path. Use --provider to specify.");
-        }
-    };
+            // Auto-detect from path
+            if file_path.contains(".claude/") {
+                (
+                    Box::new(ClaudeProvider::new()),
+                    "claude (auto-detected)".to_string(),
+                )
+            } else if file_path.contains(".codex/") {
+                (
+                    Box::new(CodexProvider::new()),
+                    "codex (auto-detected)".to_string(),
+                )
+            } else if file_path.contains(".gemini/") {
+                (
+                    Box::new(GeminiProvider::new()),
+                    "gemini (auto-detected)".to_string(),
+                )
+            } else {
+                anyhow::bail!("Cannot auto-detect provider from path. Use --provider to specify.");
+            }
+        };
 
     println!("File: {}", file_path);
     println!("Provider: {}", provider_name);
@@ -61,7 +71,9 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
             // Show event type breakdown
             let mut type_counts = std::collections::HashMap::new();
             for event in &events {
-                *type_counts.entry(format!("{:?}", event.event_type)).or_insert(0) += 1;
+                *type_counts
+                    .entry(format!("{:?}", event.event_type))
+                    .or_insert(0) += 1;
             }
 
             if !type_counts.is_empty() {
@@ -88,7 +100,10 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
             } else if error_msg.contains("invalid type") {
                 println!("{}", "Suggestion:".cyan().bold());
                 println!("  The field type in the schema may not match the actual data format.");
-                println!("  Use 'agtrace inspect {}' to examine the actual structure.", file_path);
+                println!(
+                    "  Use 'agtrace inspect {}' to examine the actual structure.",
+                    file_path
+                );
                 println!("  Use 'agtrace schema <provider>' to see the expected format.");
             } else if error_msg.contains("expected") {
                 println!("{}", "Suggestion:".cyan().bold());
@@ -101,7 +116,10 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
             println!("  1. Examine the actual data:");
             println!("       agtrace inspect {} --lines 20", file_path);
             println!("  2. Compare with expected schema:");
-            println!("       agtrace schema {}", provider_name.split_whitespace().next().unwrap_or(""));
+            println!(
+                "       agtrace schema {}",
+                provider_name.split_whitespace().next().unwrap_or("")
+            );
             println!("  3. Update schema definition if needed");
 
             anyhow::bail!("Validation failed");

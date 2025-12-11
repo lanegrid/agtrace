@@ -37,11 +37,7 @@ pub struct FailureExample {
     pub reason: String,
 }
 
-pub fn handle(
-    config: &Config,
-    provider_filter: String,
-    verbose: bool,
-) -> Result<()> {
+pub fn handle(config: &Config, provider_filter: String, verbose: bool) -> Result<()> {
     let providers: Vec<Box<dyn LogProvider>> = match provider_filter.as_str() {
         "claude" => vec![Box::new(ClaudeProvider::new())],
         "codex" => vec![Box::new(CodexProvider::new())],
@@ -90,17 +86,11 @@ pub fn handle(
     Ok(())
 }
 
-fn diagnose_provider(
-    provider: &dyn LogProvider,
-    log_root: &Path,
-) -> Result<DiagnoseResult> {
+fn diagnose_provider(provider: &dyn LogProvider, log_root: &Path) -> Result<DiagnoseResult> {
     let mut all_files = Vec::new();
 
     // Collect all files
-    for entry in WalkDir::new(log_root)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
+    for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if !path.is_file() {
             continue;
@@ -143,10 +133,7 @@ fn diagnose_provider(
     Ok(result)
 }
 
-fn test_parse_file(
-    provider: &dyn LogProvider,
-    path: &Path,
-) -> Result<(), (FailureType, String)> {
+fn test_parse_file(provider: &dyn LogProvider, path: &Path) -> Result<(), (FailureType, String)> {
     use crate::providers::ImportContext;
 
     let context = ImportContext {
@@ -233,7 +220,11 @@ fn print_results(results: &[DiagnoseResult], verbose: bool) {
             for (failure_type, examples) in &result.failures {
                 println!("  {} {}: {} files", "✗".red(), failure_type, examples.len());
 
-                let display_count = if verbose { examples.len() } else { 1.min(examples.len()) };
+                let display_count = if verbose {
+                    examples.len()
+                } else {
+                    1.min(examples.len())
+                };
 
                 for example in examples.iter().take(display_count) {
                     println!("    Example: {}", example.path.bright_black());
@@ -260,7 +251,10 @@ fn print_results(results: &[DiagnoseResult], verbose: bool) {
             total_failures.to_string().yellow()
         );
         if !verbose {
-            println!("Run with {} to see all problematic files", "--verbose".cyan());
+            println!(
+                "Run with {} to see all problematic files",
+                "--verbose".cyan()
+            );
         }
     } else {
         println!("{}", "All files parsed successfully!".green().bold());

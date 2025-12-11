@@ -12,7 +12,10 @@ pub fn handle(db: &Database, project_root: Option<String>) -> Result<()> {
 
     // List all projects from database
     println!("Registered projects:");
-    println!("{:<20} {:<50} {:<10} {}", "HASH (short)", "ROOT PATH", "SESSIONS", "LAST SCANNED");
+    println!(
+        "{:<20} {:<50} {:<10} {}",
+        "HASH (short)", "ROOT PATH", "SESSIONS", "LAST SCANNED"
+    );
     println!("{}", "-".repeat(120));
 
     let projects = db.list_projects()?;
@@ -29,7 +32,9 @@ pub fn handle(db: &Database, project_root: Option<String>) -> Result<()> {
             hash_short,
             project.root_path.unwrap_or_else(|| "(unknown)".to_string()),
             session_count,
-            project.last_scanned_at.unwrap_or_else(|| "(never)".to_string())
+            project
+                .last_scanned_at
+                .unwrap_or_else(|| "(never)".to_string())
         );
     }
 
