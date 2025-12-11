@@ -85,7 +85,8 @@ pub enum UserContent {
     Image { source: Value },
     ToolResult {
         tool_use_id: String,
-        content: Value,
+        #[serde(default)]
+        content: Option<Value>,
     },
     #[serde(other)]
     Unknown,

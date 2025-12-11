@@ -29,7 +29,8 @@ pub struct SessionMetaPayload {
     #[serde(default)]
     pub instructions: Option<String>,
     pub source: Value, // Can be string or object like {"subagent":"review"}
-    pub model_provider: String,
+    #[serde(default)]
+    pub model_provider: Option<String>,
     #[serde(default)]
     pub git: Option<GitInfo>,
 }
@@ -214,7 +215,8 @@ pub struct TurnContextPayload {
     pub approval_policy: String,
     pub sandbox_policy: SandboxPolicy,
     pub model: String,
-    pub effort: String,
+    #[serde(default)]
+    pub effort: Option<String>,
     pub summary: String,
 }
 

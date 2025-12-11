@@ -19,7 +19,6 @@ pub enum FailureType {
     MissingField(String),
     TypeMismatch(String),
     ParseError,
-    EmptyFile,
 }
 
 impl std::fmt::Display for FailureType {
@@ -28,7 +27,6 @@ impl std::fmt::Display for FailureType {
             FailureType::MissingField(field) => write!(f, "missing_field ({})", field),
             FailureType::TypeMismatch(field) => write!(f, "type_mismatch ({})", field),
             FailureType::ParseError => write!(f, "parse_error"),
-            FailureType::EmptyFile => write!(f, "empty_file"),
         }
     }
 }
@@ -158,16 +156,7 @@ fn test_parse_file(
     };
 
     match provider.normalize_file(path, &context) {
-        Ok(events) => {
-            if events.is_empty() {
-                Err((
-                    FailureType::EmptyFile,
-                    "No events extracted from file".to_string(),
-                ))
-            } else {
-                Ok(())
-            }
-        }
+        Ok(_events) => Ok(()),
         Err(e) => {
             let error_msg = format!("{:?}", e);
 

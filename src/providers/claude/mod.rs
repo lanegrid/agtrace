@@ -26,7 +26,22 @@ impl LogProvider for ClaudeProvider {
     }
 
     fn can_handle(&self, path: &Path) -> bool {
-        path.is_file() && path.extension().map_or(false, |e| e == "jsonl")
+        if !path.is_file() {
+            return false;
+        }
+
+        if !path.extension().map_or(false, |e| e == "jsonl") {
+            return false;
+        }
+
+        // Skip empty files
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if metadata.len() == 0 {
+                return false;
+            }
+        }
+
+        true
     }
 
     fn normalize_file(&self, path: &Path, context: &ImportContext) -> Result<Vec<AgentEventV1>> {
@@ -66,22 +81,16 @@ impl LogProvider for ClaudeProvider {
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
-            if !path.is_file() {
-                continue;
-            }
 
-            if let Some(ext) = path.extension() {
-                if ext != "jsonl" {
-                    continue;
-                }
-            } else {
+            // Use can_handle for consistent filtering (extension + empty files)
+            if !self.can_handle(path) {
                 continue;
             }
 
             let header = match extract_claude_header(path) {
                 Ok(h) => h,
-                Err(e) => {
-                    eprintln!("Warning: Failed to parse header from {}: {}", path.display(), e);
+                Err(_) => {
+                    // Skip files that can't be parsed (e.g., corrupted files)
                     continue;
                 }
             };
@@ -89,7 +98,7 @@ impl LogProvider for ClaudeProvider {
             let session_id = match header.session_id {
                 Some(id) => id,
                 None => {
-                    eprintln!("Warning: No session_id found in {}", path.display());
+                    // Skip files without session_id (e.g., metadata-only files)
                     continue;
                 }
             };

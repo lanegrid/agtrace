@@ -26,6 +26,17 @@ impl LogProvider for GeminiProvider {
     }
 
     fn can_handle(&self, path: &Path) -> bool {
+        if !path.is_file() {
+            return false;
+        }
+
+        // Skip empty files
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if metadata.len() == 0 {
+                return false;
+            }
+        }
+
         let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
         filename == "logs.json" || (filename.starts_with("session-") && filename.ends_with(".json"))
     }
@@ -85,14 +96,13 @@ impl LogProvider for GeminiProvider {
             .filter_map(|e| e.ok())
         {
             let path = entry.path();
-            if !path.is_file() {
+
+            // Use can_handle for consistent filtering (filename pattern + empty files)
+            if !self.can_handle(path) {
                 continue;
             }
 
             let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
-            if filename != "logs.json" && !(filename.starts_with("session-") && filename.ends_with(".json")) {
-                continue;
-            }
 
             if let Some(parent) = path.parent() {
                 if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
@@ -106,8 +116,8 @@ impl LogProvider for GeminiProvider {
 
             let header = match extract_gemini_header(path) {
                 Ok(h) => h,
-                Err(e) => {
-                    eprintln!("Warning: Failed to parse header from {}: {}", path.display(), e);
+                Err(_) => {
+                    // Skip files that can't be parsed (e.g., corrupted files)
                     continue;
                 }
             };

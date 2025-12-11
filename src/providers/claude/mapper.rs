@@ -80,10 +80,10 @@ pub fn normalize_claude_stream(
 
                             // Extract text from content (could be string or object)
                             // No truncation - preserve full content for analysis
-                            ev.text = match content {
-                                serde_json::Value::String(s) => Some(s.clone()),
-                                _ => Some(content.to_string()),
-                            };
+                            ev.text = content.as_ref().map(|c| match c {
+                                serde_json::Value::String(s) => s.clone(),
+                                _ => c.to_string(),
+                            });
 
                             ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                             events.push(ev);
