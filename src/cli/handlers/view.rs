@@ -520,13 +520,13 @@ fn extract_target_summary(
                     json.get("command").and_then(|v| v.as_str()).map(|cmd| {
                         let cmd = cmd.trim();
                         let sanitized = sanitize_bash_command(cmd);
-                        let display = truncate_bash_display(&sanitized, 60);
+                        let display = truncate_bash_display(&sanitized, 80);
                         (sanitized, display)
                     })
                 } else {
                     let cmd = t.trim();
                     let sanitized = sanitize_bash_command(cmd);
-                    let display = truncate_bash_display(&sanitized, 60);
+                    let display = truncate_bash_display(&sanitized, 80);
                     Some((sanitized, display))
                 }
             })
@@ -591,40 +591,89 @@ fn truncate_bash_display(cmd: &str, limit: usize) -> String {
         return cmd.to_string();
     }
 
-    // Smart truncation with path compression
-    let parts: Vec<&str> = cmd.split_whitespace().collect();
-    if parts.is_empty() {
+    // Parse command intelligently to preserve quoted strings
+    let tokens = tokenize_bash_command(cmd);
+    if tokens.is_empty() {
         return truncate_simple(cmd, limit);
     }
 
-    let first_part = parts[0];
-
-    // Compress long paths: ./target/release/agtrace → .../agtrace
-    let compressed_first = if first_part.contains('/') {
-        compress_path_for_display(first_part)
+    // Compress path in first token if it's a path
+    let first_token = &tokens[0];
+    let compressed_first = if first_token.contains('/') {
+        compress_path_for_display(first_token)
     } else {
-        first_part.to_string()
+        first_token.to_string()
     };
 
-    // Build result: compressed_cmd + remaining parts (up to limit)
     let mut result = compressed_first;
+    let mut added_all = true;
 
-    for part in parts.iter().skip(1) {
-        let next_len = result.chars().count() + 1 + part.chars().count();
-        if next_len > limit - 3 {  // Reserve 3 chars for "..."
-            result.push_str(" ...");
+    // Add remaining tokens, preserving as many as possible
+    for token in tokens.iter().skip(1) {
+        let next_len = result.chars().count() + 1 + token.chars().count();
+
+        // If adding this token would exceed limit
+        if next_len > limit {
+            // If we've added at least some args, add "..." and stop
+            if tokens.len() > 1 {
+                // Check if we can fit "..." without exceeding limit
+                if result.chars().count() + 4 <= limit {
+                    result.push_str(" ...");
+                }
+                added_all = false;
+            }
             break;
         }
+
         result.push(' ');
-        result.push_str(part);
+        result.push_str(token);
     }
 
-    // If still over limit, truncate simply
-    if result.chars().count() > limit {
+    // If we couldn't add everything and result is still too long, truncate
+    if !added_all && result.chars().count() > limit {
         truncate_simple(&result, limit)
     } else {
         result
     }
+}
+
+fn tokenize_bash_command(cmd: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    let mut quote_char = ' ';
+    let chars: Vec<char> = cmd.chars().collect();
+    let mut i = 0;
+
+    while i < chars.len() {
+        let ch = chars[i];
+
+        if in_quotes {
+            current.push(ch);
+            if ch == quote_char && (i == 0 || chars[i - 1] != '\\') {
+                in_quotes = false;
+            }
+        } else if ch == '"' || ch == '\'' {
+            in_quotes = true;
+            quote_char = ch;
+            current.push(ch);
+        } else if ch.is_whitespace() {
+            if !current.is_empty() {
+                tokens.push(current.clone());
+                current.clear();
+            }
+        } else {
+            current.push(ch);
+        }
+
+        i += 1;
+    }
+
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+
+    tokens
 }
 
 fn compress_path_for_display(path: &str) -> String {
