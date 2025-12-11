@@ -63,12 +63,13 @@ pub fn run(cli: Cli) -> Result<()> {
             only,
             full,
             short,
+            style,
         } => {
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
 
             handlers::view::handle(
-                &db, session_id, raw, json, timeline, hide, only, full, short,
+                &db, session_id, raw, json, timeline, hide, only, full, short, style,
             )
         }
 
@@ -114,23 +115,25 @@ pub fn run(cli: Cli) -> Result<()> {
         } => handlers::stats::handle(&storage, project_hash, source, cli.all_projects),
 
         Commands::Export {
-            project_hash,
             session_id,
-            source: _,
-            event_type,
-            since: _,
-            until: _,
-            out,
+            output,
             format,
-        } => handlers::export::handle(
-            &storage,
-            project_hash,
+            strategy,
+        } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+            handlers::export::handle(&db, session_id, output, format, strategy)
+        }
+
+        Commands::Analyze {
             session_id,
-            event_type,
-            cli.all_projects,
-            out,
+            detect,
             format,
-        ),
+        } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+            handlers::analyze::handle(&db, session_id, detect, format)
+        }
 
         Commands::Providers { command } => {
             let config_path = data_dir.join("config.toml");

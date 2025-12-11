@@ -1,3 +1,4 @@
+pub mod analyze;
 pub mod diagnose;
 pub mod export;
 pub mod find;

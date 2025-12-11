@@ -1,4 +1,4 @@
-# agtrace CLI Specification (v2.0 - Pointer Edition)
+# agtrace CLI Specification (v2.2 - Compact View Enhancement)
 
 ## 0. Overview
 
@@ -95,10 +95,15 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 * **`agtrace schema`**
   Displays expected schema structure for a provider.
 
+* **`agtrace analyze`** (New in v2.1)
+  Detects anti-patterns and extracts insights using heuristic rules (e.g., loops, ignored errors).
+
+* **`agtrace export`** (New in v2.1)
+  Exports sessions with distillation strategies (e.g., "clean paths only", "reasoning pairs") for AI analysis or fine-tuning.
+
 **Removed in v2.0:**
 - `find`: Removed for MVP (can be re-added later)
 - `stats`: Removed for MVP (can be re-added later)
-- `export`: Removed for MVP (can be re-added later)
 - `status`: Merged into `project` command
 
 ### 1.2 Global Options
@@ -341,6 +346,11 @@ agtrace view <SESSION_ID_OR_PREFIX> \
   - Description: Display full event text without truncation (useful for LLM consumption)
   - Default: Text is truncated at 100 characters
 
+* `--style <timeline|compact>` (New in v2.1)
+  - Description: Visualization style.
+  - `timeline`: (Default) Standard vertical timeline with full event details.
+  - `compact`: High-density one-line mode. Collapses repeated tool calls, highlights errors/latency, and visualizes flow.
+
 ### 4.4 Behavior
 
 1. Lookup `session_id` in SQLite → retrieve all associated `log_files.path`
@@ -403,6 +413,82 @@ This outputs complete event text without truncation and without ANSI color codes
 ```sh
 agtrace view <session_id> --hide reasoning
 ```
+
+#### Compact view (`--style compact`)
+
+Designed for quick scanning of long sessions to identify bottlenecks and loops using a **buffering state machine** that merges `Thinking → Tool` cycles into single lines.
+
+**Format:** `[TIMESTAMP] [DURATION] [FLOW/CONTENT]`
+
+  * **Timestamp:** Relative to session start, shows when the **action cycle started** (first Reasoning or ToolCall).
+  * **Duration:**
+      * Tool Chains: Total wall-clock time from cycle start to last ToolResult (e.g., `19s`, `201s`).
+      * Messages: `-` placeholder.
+  * **Flow/Content:**
+      * **User/Assistant:** `Role: "Content start..."` (Truncated to 60 chars, newlines removed).
+      * **Tool Chain:** `ToolA → ToolB(xN) → ToolC` (Sequential tools collapsed, `Thinking` absorbed).
+      * **Status:** Color-coded duration (Yellow >10s, Red >30s).
+
+**Key Behavior:**
+
+  * **Thinking Absorption:** `Reasoning` events are merged into the following tool chain, not displayed separately. The timestamp shows when thinking started.
+  * **Chain Buffering:** `Thinking → Tool1 → Tool2 → Tool3` becomes a single line, even if interleaved with `ToolResult` events.
+  * **Flush Points:** Buffer is flushed (output printed) when `UserMessage` or `AssistantMessage` arrives.
+  * **Input Summary:** Tool calls show **input** (command, pattern, file), not **output** (result). Examples:
+    - `Bash(cargo build)` - shows the command
+    - `Grep("error")` - shows the search pattern
+    - `Edit(main.rs)` - shows the target file
+
+```text
+$ agtrace view 6dae8df5 --style compact
+
+[+00:00]    -    User: "新しいワークフローでスキーマ検証をしてみたい..."
+[+00:06]    -    Asst: "docsディレクトリを読んで、新しいスキーマ検証..."
+[+00:05]  7s     Glob("docs/**/*.md") → Read(troubleshooting_schema_issues.md, agtrace_cli_spec.md)
+[+00:36]    -    Asst: "docsを読みました。新しいスキーマ検証ワークフロ..."
+[+01:27]    -    Asst: "わかりました。段階的に進めます..."
+[+01:25]  4s     Bash(cargo build)
+[+01:35]    -    Asst: "ビルド成功しました..."
+[+01:36] 999ms   Bash(./target/debug/agtrace diagnose)
+[+02:14]  5s     Glob("src/**/*.rs") → Read(schema.rs)
+[+02:54]    -    Asst: "3ファイル全て同じエラーです..."
+[+07:08] 10s     Edit(schema.rs)
+[+07:37] 149ms   Edit(io.rs)
+[+07:49] 111ms   Edit(io.rs)
+```
+
+**Real-world compression examples** demonstrating fact-based folding with input summary:
+
+```text
+# Same file, repeated attempts
+[+01:44] 23s   TodoWrite → Edit(schema.rs) → TodoWrite → Edit(schema.rs) → TodoWrite → Edit(schema.rs)
+
+# Multiple files in sequence with commands
+[+12:38] 44s   Glob("src/**/*.rs") → Grep("sample_size") → Read(args.rs) → Edit(args.rs) → Read(commands.rs) → Edit(commands.rs, diagnose.rs x2)
+
+# Complex 201-second workflow with full context
+[+06:38] 201s  Glob("src/cli/handlers/...") → Grep("fn can_handle") → Read(mod.rs x2) → TodoWrite(x2) → Edit(mod.rs) → Read(mod.rs) → Grep("fn is_empty_codex...") → TodoWrite → Edit(mod.rs) → Read(mod.rs) → TodoWrite → Edit(mod.rs) → TodoWrite → Edit(diagnose.rs x3) → TodoWrite → Bash(cargo build --release, ./target/release/agtrace di...) → TodoWrite
+
+# Build and diagnostic commands
+[+00:06]  8s   Bash(cargo build --release, ./target/release/agtrace di...)
+[+02:15]  3s   TodoWrite → Bash(cargo build --release)
+[+05:31]  5s   Grep("empty_file") → Read(diagnose.rs)
+```
+
+**Key Features (Fact-Based Folding + Input Summary):**
+
+  * **Input Summary, Not Output:** Shows what was **asked** (command, pattern, file), not the **result**:
+    - `Bash(cargo build)` - not the compiler output
+    - `Grep("error")` - not the search results
+    - `Edit(schema.rs)` - not the file contents
+  * **Target Transparency:** File names are preserved (e.g., `Edit(schema.rs)`, `Read(mod.rs x2)`)
+  * **Command Visibility:** `Bash` shows actual commands: `Bash(cargo build --release)`, `Bash(git status)`
+  * **Pattern Visibility:** Search tools show patterns: `Grep("empty_file")`, `Glob("src/**/*.rs")`
+  * **Contextual Compression:** `schema.rs x4` means "same file, 4 times in a row"
+  * **Multi-Target Display:** `Edit(commands.rs, diagnose.rs x2)` shows multiple files in order
+  * **No Interpretation:** Tool doesn't judge "沼" vs "deliberate work" - user decides based on context
+  * **Extreme Density:** 201s workflow with 20+ operations fits in one line
+  * **Execution Order Preserved:** `Edit(a) → Read(b) → Edit(a)` keeps sequence, doesn't merge to `Edit(a x2)`
 
 ---
 
@@ -805,14 +891,134 @@ pub enum CodexRecord {
 
 ---
 
-## 12. Future Extensions (Not in v2.0 MVP)
+## 12. `agtrace analyze`
 
-* `agtrace find` - Full-text search across events
-* `agtrace stats` - Token/tool usage statistics
-* `agtrace export` - Export to JSONL/CSV
-* `agtrace graph` - DAG visualization
-* `agtrace diff` - Session comparison
+### 12.1 Overview
+
+Applies deterministic heuristics to `AgentEventV1` streams to detect behavioral anti-patterns and extract "Rule of Thumb" insights without using an LLM.
+
+### 12.2 Signature
+
+```sh
+agtrace analyze <SESSION_ID_OR_PREFIX> \
+  [--detect <patterns>] \
+  [--format <plain|json>]
+```
+
+### 12.3 Options
+
+  * `--detect <patterns>`
+      * Description: Comma-separated list of detectors to run.
+      * Default: `all`
+      * Available detectors:
+          * `loops`: Detects repeated tool sequences (e.g., Edit -> Fail -> Edit -> Fail).
+          * `apology`: Detects excessive apologies ("I apologize", "My mistake").
+          * `lazy_tool`: Detects tool calls that ignore previous errors without reasoning.
+          * `zombie`: Detects long chains of tool calls (>20) without user interaction.
+          * `lint_ping_pong`: Detects oscillation between coding and linting errors.
+
+### 12.4 Output Example
+
+```text
+$ agtrace analyze f0a689
+
+Analysis Report for Session: f0a689...
+Score: 85/100 (1 Warning)
+
+[WARN] Loop Detected (Count: 3)
+  Span: +00:17 to +01:45
+  Pattern: Edit(auth.ts) → Test(fail)
+  Insight: Agent is struggling to fix the test. Consider reverting or creating a reproduction script.
+
+[INFO] Tool Usage
+  - Read: 12 times (Avg 150ms)
+  - Edit: 4 times
+  - Test: 4 times (Avg 15s) ← High Latency
+```
 
 ---
 
-This specification defines the **agtrace CLI v2.0 (Pointer Edition)** with a Schema-on-Read architecture.
+## 13. `agtrace export`
+
+### 13.1 Overview
+
+Exports normalized session data for external use (training, analysis, or archiving).
+Includes **"Distillation Strategies"** to produce higher-quality data than raw logs.
+
+### 13.2 Signature
+
+```sh
+agtrace export <SESSION_ID_OR_PREFIX> \
+  [--output <path>] \
+  [--format <jsonl|text>] \
+  [--strategy <raw|clean|reasoning>]
+```
+
+### 13.3 Options
+
+  * `--format <jsonl|text>`
+
+      * `jsonl`: Standard JSONL (one `AgentEventV1` per line).
+      * `text`: Human-readable transcript.
+
+  * `--strategy <raw|clean|reasoning>`
+
+      * Description: Transformation strategy applied before export.
+      * `raw`: (Default) Exports all events as-is.
+      * `clean`: **"Gold Mining" mode.** Removes failed tool calls, error corrections, and apology turns. Keeps only the "happy path" (if reachable). Useful for SFT (Supervised Fine-Tuning) datasets.
+      * `reasoning`: Extracts only `Thinking (Reasoning)` → `Tool Call` pairs. Useful for analyzing "Thought-Action" correlation.
+
+### 13.4 Behavior (Strategy Details)
+
+**Strategy: `clean` (The "Happy Path" Filter)**
+
+1.  Identify the final state of the session.
+2.  Backtrack and remove "dead ends" (e.g., tool calls that resulted in Error and were immediately followed by an Apology/Correction).
+3.  Remove `tool_result` contents that are excessively long, replacing them with `<truncated_output_for_training>`.
+
+### 13.5 Output Example
+
+```bash
+# Export a clean dataset for training
+agtrace export f0a689 --strategy clean --output ./training_data/session_f0a689.jsonl
+
+# Export reasoning traces for analysis
+agtrace export f0a689 --strategy reasoning --output ./analysis/thoughts.jsonl
+```
+
+---
+
+## 14. Future Extensions
+
+  * `agtrace graph` - DAG visualization of session branches.
+  * `agtrace diff` - Compare two sessions side-by-side (e.g., same prompt, different models).
+  * `agtrace config` - Interactive configuration wizard.
+
+---
+
+This specification defines the **agtrace CLI v2.2 (Compact View Enhancement)** with improved compact view formatting, advanced analysis, and export capabilities.
+
+## Value Proposition of Compact View
+
+### Fact-Based, Not Interpretive
+
+The compact view delivers **compressed facts**, not judgments:
+
+1.  **Context-Aware Transparency:**
+    - `Edit(schema.rs x3)` = Same file, 3 consecutive edits
+    - `Edit(a.rs, b.rs, c.rs)` = 3 different files in sequence
+    - `Edit(a.rs) → Read(b.rs) → Edit(a.rs)` = Interleaved, NOT merged
+
+2.  **User Decides Intent:**
+    - `Edit(schema.rs x4)` could be:
+      - ✓ Deliberate: "4 staged refinements of schema design"
+      - ✗ 沼 (Stuck): "Failed 3 times, finally got it on 4th attempt"
+    - Tool shows the fact; **you** know the code, so **you** interpret.
+
+3.  **Cost & Bottleneck Awareness:**
+    - `[+06:38] 201s` (red highlight) = Immediate visual cue for expensive operations
+    - `Glob → Grep → Read(x2)` taking 48s → Consider search tool optimization
+
+4.  **Rhythm Understanding:**
+    - User ↔ Assistant dialogue is cleanly separated from tool execution chains
+    - Long tool chains (201s, 20+ tools) indicate deep work cycles vs quick interactions

@@ -81,6 +81,9 @@ pub enum Commands {
 
         #[arg(long, help = "Truncate long text to ~100 chars for compact display")]
         short: bool,
+
+        #[arg(long, value_parser = ["timeline", "compact"], default_value = "timeline")]
+        style: String,
     },
 
     Show {
@@ -137,28 +140,25 @@ pub enum Commands {
     },
 
     Export {
-        #[arg(long)]
-        project_hash: Option<String>,
+        session_id: String,
 
         #[arg(long)]
-        session_id: Option<String>,
+        output: Option<PathBuf>,
 
-        #[arg(long, value_parser = ["claude", "codex", "gemini"])]
-        source: Option<String>,
+        #[arg(long, value_parser = ["jsonl", "text"], default_value = "jsonl")]
+        format: String,
 
-        #[arg(long)]
-        event_type: Option<String>,
+        #[arg(long, value_parser = ["raw", "clean", "reasoning"], default_value = "raw")]
+        strategy: String,
+    },
 
-        #[arg(long)]
-        since: Option<String>,
+    Analyze {
+        session_id: String,
 
-        #[arg(long)]
-        until: Option<String>,
+        #[arg(long, default_value = "all")]
+        detect: String,
 
-        #[arg(long)]
-        out: PathBuf,
-
-        #[arg(long, value_parser = ["jsonl", "csv"], default_value = "jsonl")]
+        #[arg(long, value_parser = ["plain", "json"], default_value = "plain")]
         format: String,
     },
 

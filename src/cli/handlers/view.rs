@@ -22,6 +22,7 @@ pub fn handle(
     only: Option<Vec<String>>,
     _full: bool, // Kept for backwards compatibility, but now default
     short: bool,
+    style: String,
 ) -> Result<()> {
     // Detect if output is being piped (not a terminal)
     let is_tty = io::stdout().is_terminal();
@@ -102,6 +103,8 @@ pub fn handle(
 
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
+    } else if style == "compact" {
+        print_events_compact(&filtered_events, enable_color);
     } else {
         // Default is full display, --short enables truncation
         let truncate = short;
@@ -339,6 +342,372 @@ fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: 
     // Print session summary
     print_session_summary(events, enable_color);
 }
+
+struct ToolInfo {
+    name: String,
+    target: Option<String>,
+}
+
+struct ToolChainBuffer {
+    tools: Vec<ToolInfo>,
+    start_ts: Option<DateTime<chrono::FixedOffset>>,
+    end_ts: Option<DateTime<chrono::FixedOffset>>,
+}
+
+impl ToolChainBuffer {
+    fn new() -> Self {
+        Self {
+            tools: Vec::new(),
+            start_ts: None,
+            end_ts: None,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.tools.is_empty()
+    }
+
+    fn mark_start(&mut self, ts: &str) {
+        if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
+            if self.start_ts.is_none() {
+                self.start_ts = Some(parsed_ts);
+            }
+        }
+    }
+
+    fn push_tool(
+        &mut self,
+        tool_name: Option<&String>,
+        file_path: Option<&String>,
+        text: Option<&String>,
+        ts: &str,
+    ) {
+        if let Some(name) = tool_name {
+            let target = extract_target_summary(name, file_path, text);
+
+            self.tools.push(ToolInfo {
+                name: name.clone(),
+                target,
+            });
+        }
+        if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
+            if self.start_ts.is_none() {
+                self.start_ts = Some(parsed_ts);
+            }
+            self.end_ts = Some(parsed_ts);
+        }
+    }
+
+    fn mark_end(&mut self, ts: &str) {
+        if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
+            self.end_ts = Some(parsed_ts);
+        }
+    }
+
+    fn format_flow(&self) -> String {
+        if self.tools.is_empty() {
+            return String::new();
+        }
+
+        let mut parts = Vec::new();
+        let mut i = 0;
+
+        while i < self.tools.len() {
+            let current_tool = &self.tools[i].name;
+            let mut targets = Vec::new();
+
+            while i < self.tools.len() && &self.tools[i].name == current_tool {
+                targets.push(self.tools[i].target.clone());
+                i += 1;
+            }
+
+            let formatted = format_tool_with_targets(current_tool, &targets);
+            parts.push(formatted);
+        }
+
+        parts.join(" → ")
+    }
+
+    fn flush_and_print(
+        &mut self,
+        session_start: Option<DateTime<chrono::FixedOffset>>,
+        enable_color: bool,
+    ) {
+        if self.is_empty() {
+            return;
+        }
+
+        let flow = self.format_flow();
+
+        let duration_ms = if let (Some(start), Some(end)) = (self.start_ts, self.end_ts) {
+            end.signed_duration_since(start).num_milliseconds() as u64
+        } else {
+            0
+        };
+
+        let time_display = if let (Some(session_start), Some(chain_start)) = (session_start, self.start_ts) {
+            let duration = chain_start.signed_duration_since(session_start);
+            let seconds = duration.num_seconds();
+            if seconds < 60 {
+                format!("[+{:02}:{:02}]", 0, seconds)
+            } else {
+                let minutes = seconds / 60;
+                let secs = seconds % 60;
+                format!("[+{:02}:{:02}]", minutes, secs)
+            }
+        } else {
+            "[+00:00]".to_string()
+        };
+
+        let time_colored = if enable_color {
+            format!("{}", time_display.bright_black())
+        } else {
+            time_display.clone()
+        };
+
+        let dur_str = if duration_ms >= 1000 {
+            format!("{:2}s    ", duration_ms / 1000)
+        } else if duration_ms > 0 {
+            format!("{:3}ms  ", duration_ms)
+        } else {
+            "       ".to_string()
+        };
+
+        let dur_colored = if enable_color {
+            if duration_ms > 30000 {
+                format!("{}", dur_str.red())
+            } else if duration_ms > 10000 {
+                format!("{}", dur_str.yellow())
+            } else {
+                format!("{}", dur_str.bright_black())
+            }
+        } else {
+            dur_str.clone()
+        };
+
+        if enable_color {
+            println!("{} {} {}", time_colored, dur_colored, flow.cyan());
+        } else {
+            println!("{} {} {}", time_display, dur_str, flow);
+        }
+
+        self.tools.clear();
+        self.start_ts = None;
+        self.end_ts = None;
+    }
+}
+
+fn extract_target_summary(
+    tool_name: &str,
+    file_path: Option<&String>,
+    text: Option<&String>,
+) -> Option<String> {
+    match tool_name {
+        "Read" | "Edit" | "Write" => {
+            file_path.and_then(|p| {
+                std::path::Path::new(p)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_string())
+            })
+        }
+        "Bash" => {
+            text.and_then(|t| {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
+                    json.get("command")
+                        .and_then(|v| v.as_str())
+                        .map(|cmd| {
+                            let cmd = cmd.trim();
+                            if cmd.len() > 30 {
+                                format!("{}...", &cmd[..27])
+                            } else {
+                                cmd.to_string()
+                            }
+                        })
+                } else {
+                    let cmd = t.trim();
+                    if cmd.len() > 30 {
+                        Some(format!("{}...", &cmd[..27]))
+                    } else {
+                        Some(cmd.to_string())
+                    }
+                }
+            })
+        }
+        "Glob" => {
+            text.and_then(|t| {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
+                    json.get("pattern")
+                        .and_then(|v| v.as_str())
+                        .map(|p| {
+                            if p.len() > 20 {
+                                format!("\"{}...\"", &p[..17])
+                            } else {
+                                format!("\"{}\"", p)
+                            }
+                        })
+                } else {
+                    None
+                }
+            })
+        }
+        "Grep" => {
+            text.and_then(|t| {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
+                    json.get("pattern")
+                        .and_then(|v| v.as_str())
+                        .map(|p| {
+                            if p.len() > 20 {
+                                format!("\"{}...\"", &p[..17])
+                            } else {
+                                format!("\"{}\"", p)
+                            }
+                        })
+                } else {
+                    None
+                }
+            })
+        }
+        _ => None,
+    }
+}
+
+fn format_tool_with_targets(tool_name: &str, targets: &[Option<String>]) -> String {
+    let mut target_groups = Vec::new();
+    let mut i = 0;
+
+    while i < targets.len() {
+        let current_target = &targets[i];
+        let mut count = 1;
+
+        while i + count < targets.len() && &targets[i + count] == current_target {
+            count += 1;
+        }
+
+        if let Some(target) = current_target {
+            if count > 1 {
+                target_groups.push(format!("{} x{}", target, count));
+            } else {
+                target_groups.push(target.clone());
+            }
+        } else if count > 1 {
+            target_groups.push(format!("x{}", count));
+        }
+
+        i += count;
+    }
+
+    if target_groups.is_empty() {
+        tool_name.to_string()
+    } else if target_groups.len() == 1 && target_groups[0].starts_with('x') {
+        format!("{}({})", tool_name, target_groups[0])
+    } else {
+        format!("{}({})", tool_name, target_groups.join(", "))
+    }
+}
+
+fn print_events_compact(events: &[AgentEventV1], enable_color: bool) {
+    if events.is_empty() {
+        let msg = "No events to display";
+        if enable_color {
+            println!("{}", format!("{}", msg.bright_black()));
+        } else {
+            println!("{}", msg);
+        }
+        return;
+    }
+
+    let session_start = events
+        .first()
+        .and_then(|e| DateTime::parse_from_rfc3339(&e.ts).ok());
+
+    let mut buffer = ToolChainBuffer::new();
+
+    for event in events {
+        match event.event_type {
+            EventType::UserMessage | EventType::AssistantMessage => {
+                buffer.flush_and_print(session_start, enable_color);
+
+                let time_display = if let (Some(start), Ok(current)) =
+                    (session_start, DateTime::parse_from_rfc3339(&event.ts))
+                {
+                    let duration = current.signed_duration_since(start);
+                    let seconds = duration.num_seconds();
+                    if seconds < 60 {
+                        format!("[+{:02}:{:02}]", 0, seconds)
+                    } else {
+                        let minutes = seconds / 60;
+                        let secs = seconds % 60;
+                        format!("[+{:02}:{:02}]", minutes, secs)
+                    }
+                } else {
+                    format!("[{}]", &event.ts[11..19])
+                };
+
+                let time_colored = if enable_color {
+                    format!("{}", time_display.bright_black())
+                } else {
+                    time_display.clone()
+                };
+
+                let text = event.text.as_deref().unwrap_or("");
+                let text_normalized = text.replace('\n', " ");
+                let preview: String = text_normalized.chars().take(60).collect();
+                let text_display = if text_normalized.len() > 60 {
+                    format!("{}...", preview)
+                } else {
+                    preview
+                };
+
+                let dur_placeholder = "   -   ";
+                let dur_colored = if enable_color {
+                    format!("{}", dur_placeholder.bright_black())
+                } else {
+                    dur_placeholder.to_string()
+                };
+
+                let role = if matches!(event.event_type, EventType::UserMessage) {
+                    "User"
+                } else {
+                    "Asst"
+                };
+
+                if enable_color {
+                    let colored_text = if matches!(event.event_type, EventType::UserMessage) {
+                        format!("{}", text_display.green())
+                    } else {
+                        format!("{}", text_display.blue())
+                    };
+                    println!("{} {} {}: \"{}\"", time_colored, dur_colored, role, colored_text);
+                } else {
+                    println!("{} {} {}: \"{}\"", time_display, dur_placeholder, role, text_display);
+                }
+            }
+
+            EventType::Reasoning => {
+                buffer.mark_start(&event.ts);
+            }
+
+            EventType::ToolCall => {
+                buffer.push_tool(
+                    event.tool_name.as_ref(),
+                    event.file_path.as_ref(),
+                    event.text.as_ref(),
+                    &event.ts,
+                );
+            }
+
+            EventType::ToolResult => {
+                buffer.mark_end(&event.ts);
+            }
+
+            _ => {}
+        }
+    }
+
+    buffer.flush_and_print(session_start, enable_color);
+}
+
 
 fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
     if events.is_empty() {
