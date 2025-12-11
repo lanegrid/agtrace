@@ -1,7 +1,8 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
+use crate::core::{aggregate_activities, Activity};
 use crate::db::Database;
-use crate::model::{AgentEventV1, EventType, ToolName};
+use crate::model::{AgentEventV1, EventType, Role};
 use crate::providers::{ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider};
 use anyhow::{Context, Result};
 use chrono::DateTime;
@@ -10,7 +11,6 @@ use owo_colors::OwoColorize;
 use std::fs;
 use std::io;
 use std::path::Path;
-use std::str::FromStr;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
@@ -105,7 +105,8 @@ pub fn handle(
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
     } else if style == "compact" {
-        print_events_compact(&filtered_events, enable_color);
+        let activities = aggregate_activities(&filtered_events);
+        print_activities_compact(&activities, enable_color);
     } else {
         // Default is full display, --short enables truncation
         let truncate = short;
@@ -402,468 +403,8 @@ fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: 
     print_session_summary(events, enable_color);
 }
 
-struct ToolInfo {
-    name: String,
-    raw_target: Option<String>,      // Full string for comparison
-    display_target: Option<String>,  // Truncated string for display
-    call_id: Option<String>,         // tool_call_id to match with results
-    status: Option<crate::model::ToolStatus>, // Success/Error/Unknown
-}
-
-struct ToolChainBuffer {
-    tools: Vec<ToolInfo>,
-    start_ts: Option<DateTime<chrono::FixedOffset>>,
-    end_ts: Option<DateTime<chrono::FixedOffset>>,
-}
-
-impl ToolChainBuffer {
-    fn new() -> Self {
-        Self {
-            tools: Vec::new(),
-            start_ts: None,
-            end_ts: None,
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.tools.is_empty()
-    }
-
-    fn mark_start(&mut self, ts: &str) {
-        if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
-            if self.start_ts.is_none() {
-                self.start_ts = Some(parsed_ts);
-            }
-        }
-    }
-
-    fn push_tool(
-        &mut self,
-        tool_name: Option<&String>,
-        file_path: Option<&String>,
-        text: Option<&String>,
-        call_id: Option<&String>,
-        status: Option<crate::model::ToolStatus>,
-        ts: &str,
-    ) {
-        if let Some(name) = tool_name {
-            let (raw_target, display_target) = extract_target_summary(name, file_path, text);
-
-            self.tools.push(ToolInfo {
-                name: name.clone(),
-                raw_target,
-                display_target,
-                call_id: call_id.cloned(),
-                status, // Can be set immediately (Gemini) or updated later (others)
-            });
-        }
-        if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
-            if self.start_ts.is_none() {
-                self.start_ts = Some(parsed_ts);
-            }
-            self.end_ts = Some(parsed_ts);
-        }
-    }
-
-    fn update_status(
-        &mut self,
-        call_id: Option<&String>,
-        status: Option<crate::model::ToolStatus>,
-    ) {
-        if let Some(id) = call_id {
-            // Find the tool with matching call_id and update its status
-            for tool in self.tools.iter_mut().rev() {
-                if tool.call_id.as_ref() == Some(id) {
-                    tool.status = status;
-                    break;
-                }
-            }
-        }
-    }
-
-    fn mark_end(&mut self, ts: &str) {
-        if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
-            self.end_ts = Some(parsed_ts);
-        }
-    }
-
-    fn format_flow(&self, enable_color: bool) -> String {
-        if self.tools.is_empty() {
-            return String::new();
-        }
-
-        let mut parts = Vec::new();
-        let mut i = 0;
-
-        while i < self.tools.len() {
-            let current_tool = &self.tools[i].name;
-            let mut tool_infos = Vec::new();
-
-            while i < self.tools.len() && &self.tools[i].name == current_tool {
-                tool_infos.push(&self.tools[i]);
-                i += 1;
-            }
-
-            let formatted = format_tool_with_targets(current_tool, &tool_infos, enable_color);
-            parts.push(formatted);
-        }
-
-        parts.join(" → ")
-    }
-
-    fn flush_and_print(
-        &mut self,
-        session_start: Option<DateTime<chrono::FixedOffset>>,
-        enable_color: bool,
-    ) {
-        if self.is_empty() {
-            return;
-        }
-
-        let flow = self.format_flow(enable_color);
-
-        let duration_ms = if let (Some(start), Some(end)) = (self.start_ts, self.end_ts) {
-            end.signed_duration_since(start).num_milliseconds() as u64
-        } else {
-            0
-        };
-
-        let time_display = if let (Some(session_start), Some(chain_start)) = (session_start, self.start_ts) {
-            let duration = chain_start.signed_duration_since(session_start);
-            let seconds = duration.num_seconds();
-            if seconds < 60 {
-                format!("[+{:02}:{:02}]", 0, seconds)
-            } else {
-                let minutes = seconds / 60;
-                let secs = seconds % 60;
-                format!("[+{:02}:{:02}]", minutes, secs)
-            }
-        } else {
-            "[+00:00]".to_string()
-        };
-
-        let time_colored = if enable_color {
-            format!("{}", time_display.bright_black())
-        } else {
-            time_display.clone()
-        };
-
-        let dur_str = if duration_ms >= 1000 {
-            format!("{:2}s    ", duration_ms / 1000)
-        } else if duration_ms > 0 {
-            format!("{:3}ms  ", duration_ms)
-        } else {
-            "       ".to_string()
-        };
-
-        let dur_colored = if enable_color {
-            if duration_ms > 30000 {
-                format!("{}", dur_str.red())
-            } else if duration_ms > 10000 {
-                format!("{}", dur_str.yellow())
-            } else {
-                format!("{}", dur_str.bright_black())
-            }
-        } else {
-            dur_str.clone()
-        };
-
-        if enable_color {
-            println!("{} {} {}", time_colored, dur_colored, flow.cyan());
-        } else {
-            println!("{} {} {}", time_display, dur_str, flow);
-        }
-
-        self.tools.clear();
-        self.start_ts = None;
-        self.end_ts = None;
-    }
-}
-
-fn extract_target_summary(
-    tool_name: &str,
-    file_path: Option<&String>,
-    text: Option<&String>,
-) -> (Option<String>, Option<String>) {
-    // Parse tool name into ToolName enum for type-safe matching
-    let tool = ToolName::from_str(tool_name).unwrap_or(ToolName::Other(tool_name.to_string()));
-
-    match tool {
-        ToolName::Read | ToolName::Edit | ToolName::Write => {
-            let filename = file_path.and_then(|p| {
-                std::path::Path::new(p)
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|s| s.to_string())
-            });
-            (filename.clone(), filename)
-        }
-        ToolName::Bash => {
-            text.and_then(|t| {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
-                    json.get("command").and_then(|v| v.as_str()).map(|cmd| {
-                        let cmd = cmd.trim();
-                        let sanitized = sanitize_bash_command(cmd);
-                        let display = truncate_bash_display(&sanitized, 80);
-                        (sanitized, display)
-                    })
-                } else {
-                    let cmd = t.trim();
-                    let sanitized = sanitize_bash_command(cmd);
-                    let display = truncate_bash_display(&sanitized, 80);
-                    Some((sanitized, display))
-                }
-            })
-            .map(|(raw, display)| (Some(raw), Some(display)))
-            .unwrap_or((None, None))
-        }
-        ToolName::Glob => {
-            text.and_then(|t| {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
-                    json.get("pattern").and_then(|v| v.as_str()).map(|p| {
-                        let raw = format!("\"{}\"", p);
-                        let display = if p.len() > 30 {
-                            format!("\"{}...\"", &p.chars().take(27).collect::<String>())
-                        } else {
-                            format!("\"{}\"", p)
-                        };
-                        (Some(raw), Some(display))
-                    })
-                } else {
-                    None
-                }
-            })
-            .unwrap_or((None, None))
-        }
-        ToolName::Grep => {
-            text.and_then(|t| {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
-                    json.get("pattern").and_then(|v| v.as_str()).map(|p| {
-                        let raw = format!("\"{}\"", p);
-                        let display = if p.len() > 30 {
-                            format!("\"{}...\"", &p.chars().take(27).collect::<String>())
-                        } else {
-                            format!("\"{}\"", p)
-                        };
-                        (Some(raw), Some(display))
-                    })
-                } else {
-                    None
-                }
-            })
-            .unwrap_or((None, None))
-        }
-        ToolName::Other(_) => (None, None),
-    }
-}
-
-fn sanitize_bash_command(cmd: &str) -> String {
-    // Simplify git commit with HereDoc to "git commit -m \"...\""
-    if cmd.contains("git commit") && cmd.contains("<<") {
-        if let Some(pos) = cmd.find("git commit") {
-            let prefix = &cmd[pos..];
-            if prefix.contains("-m") {
-                return "git commit -m \"...\"".to_string();
-            }
-        }
-    }
-    cmd.to_string()
-}
-
-fn truncate_bash_display(cmd: &str, limit: usize) -> String {
-    if cmd.chars().count() <= limit {
-        return cmd.to_string();
-    }
-
-    // Parse command intelligently to preserve quoted strings
-    let tokens = tokenize_bash_command(cmd);
-    if tokens.is_empty() {
-        return truncate_simple(cmd, limit);
-    }
-
-    // Compress path in first token if it's a path
-    let first_token = &tokens[0];
-    let compressed_first = if first_token.contains('/') {
-        compress_path_for_display(first_token)
-    } else {
-        first_token.to_string()
-    };
-
-    let mut result = compressed_first;
-    let mut added_all = true;
-
-    // Add remaining tokens, preserving as many as possible
-    for token in tokens.iter().skip(1) {
-        let next_len = result.chars().count() + 1 + token.chars().count();
-
-        // If adding this token would exceed limit
-        if next_len > limit {
-            // If we've added at least some args, add "..." and stop
-            if tokens.len() > 1 {
-                // Check if we can fit "..." without exceeding limit
-                if result.chars().count() + 4 <= limit {
-                    result.push_str(" ...");
-                }
-                added_all = false;
-            }
-            break;
-        }
-
-        result.push(' ');
-        result.push_str(token);
-    }
-
-    // If we couldn't add everything and result is still too long, truncate
-    if !added_all && result.chars().count() > limit {
-        truncate_simple(&result, limit)
-    } else {
-        result
-    }
-}
-
-fn tokenize_bash_command(cmd: &str) -> Vec<String> {
-    let mut tokens = Vec::new();
-    let mut current = String::new();
-    let mut in_quotes = false;
-    let mut quote_char = ' ';
-    let chars: Vec<char> = cmd.chars().collect();
-    let mut i = 0;
-
-    while i < chars.len() {
-        let ch = chars[i];
-
-        if in_quotes {
-            current.push(ch);
-            if ch == quote_char && (i == 0 || chars[i - 1] != '\\') {
-                in_quotes = false;
-            }
-        } else if ch == '"' || ch == '\'' {
-            in_quotes = true;
-            quote_char = ch;
-            current.push(ch);
-        } else if ch.is_whitespace() {
-            if !current.is_empty() {
-                tokens.push(current.clone());
-                current.clear();
-            }
-        } else {
-            current.push(ch);
-        }
-
-        i += 1;
-    }
-
-    if !current.is_empty() {
-        tokens.push(current);
-    }
-
-    tokens
-}
-
-fn compress_path_for_display(path: &str) -> String {
-    // ./target/release/agtrace → .../agtrace
-    // ./target/debug/foo → .../foo
-    if path.starts_with("./target/release/") || path.starts_with("./target/debug/") {
-        if let Some(filename) = path.split('/').last() {
-            return format!(".../{}", filename);
-        }
-    }
-
-    // Other long paths with multiple segments
-    if path.matches('/').count() >= 2 {
-        if let Some(filename) = path.split('/').last() {
-            return format!(".../{}", filename);
-        }
-    }
-
-    path.to_string()
-}
-
-fn truncate_simple(s: &str, limit: usize) -> String {
-    let chars: Vec<char> = s.chars().collect();
-    if chars.len() <= limit {
-        s.to_string()
-    } else {
-        format!("{}...", chars[..limit - 3].iter().collect::<String>())
-    }
-}
-
-fn format_tool_with_targets(tool_name: &str, tool_infos: &[&ToolInfo], enable_color: bool) -> String {
-    let mut target_groups = Vec::new();
-    let mut i = 0;
-
-    while i < tool_infos.len() {
-        let current_raw = &tool_infos[i].raw_target;
-        let current_status = &tool_infos[i].status;
-        let mut count = 1;
-
-        // Compare using raw_target (full string), not display_target
-        while i + count < tool_infos.len()
-            && &tool_infos[i + count].raw_target == current_raw
-            && &tool_infos[i + count].status == current_status {
-            count += 1;
-        }
-
-        // Create status indicator
-        let status_indicator = match current_status {
-            Some(crate::model::ToolStatus::Success) => {
-                if enable_color {
-                    format!("{} ", "✓".green())
-                } else {
-                    "✓ ".to_string()
-                }
-            }
-            Some(crate::model::ToolStatus::Error) => {
-                if enable_color {
-                    format!("{} ", "✗".red())
-                } else {
-                    "✗ ".to_string()
-                }
-            }
-            _ => String::new(),
-        };
-
-        // Display using display_target (truncated string)
-        if let Some(display) = &tool_infos[i].display_target {
-            let formatted = if count > 1 {
-                format!("{} x{}", display, count)
-            } else {
-                display.clone()
-            };
-            if !status_indicator.is_empty() {
-                target_groups.push(format!("{}{}", status_indicator, formatted));
-            } else {
-                target_groups.push(formatted);
-            }
-        } else {
-            let formatted = if count > 1 {
-                format!("x{}", count)
-            } else {
-                String::new()
-            };
-            if !formatted.is_empty() {
-                if !status_indicator.is_empty() {
-                    target_groups.push(format!("{}{}", status_indicator, formatted));
-                } else {
-                    target_groups.push(formatted);
-                }
-            }
-        }
-
-        i += count;
-    }
-
-    if target_groups.is_empty() {
-        tool_name.to_string()
-    } else if target_groups.len() == 1 && target_groups[0].starts_with('x') {
-        format!("{}({})", tool_name, target_groups[0])
-    } else {
-        format!("{}({})", tool_name, target_groups.join(", "))
-    }
-}
-
-fn print_events_compact(events: &[AgentEventV1], enable_color: bool) {
-    if events.is_empty() {
+fn print_activities_compact(activities: &[Activity], enable_color: bool) {
+    if activities.is_empty() {
         let msg = "No events to display";
         if enable_color {
             println!("{}", format!("{}", msg.bright_black()));
@@ -873,19 +414,15 @@ fn print_events_compact(events: &[AgentEventV1], enable_color: bool) {
         return;
     }
 
-    let session_start = events
+    let session_start = activities
         .first()
-        .and_then(|e| DateTime::parse_from_rfc3339(&e.ts).ok());
+        .and_then(|a| DateTime::parse_from_rfc3339(a.timestamp()).ok());
 
-    let mut buffer = ToolChainBuffer::new();
-
-    for event in events {
-        match event.event_type {
-            EventType::UserMessage | EventType::AssistantMessage => {
-                buffer.flush_and_print(session_start, enable_color);
-
+    for activity in activities {
+        match activity {
+            Activity::Message { role, text, timestamp, .. } => {
                 let time_display = if let (Some(start), Ok(current)) =
-                    (session_start, DateTime::parse_from_rfc3339(&event.ts))
+                    (session_start, DateTime::parse_from_rfc3339(timestamp))
                 {
                     let duration = current.signed_duration_since(start);
                     let seconds = duration.num_seconds();
@@ -897,27 +434,13 @@ fn print_events_compact(events: &[AgentEventV1], enable_color: bool) {
                         format!("[+{:02}:{:02}]", minutes, secs)
                     }
                 } else {
-                    format!("[{}]", &event.ts[11..19])
+                    format!("[{}]", &timestamp[11..19])
                 };
 
                 let time_colored = if enable_color {
                     format!("{}", time_display.bright_black())
                 } else {
                     time_display.clone()
-                };
-
-                let text = event.text.as_deref().unwrap_or("");
-                // Flatten: replace newlines with spaces and normalize consecutive spaces
-                let text_normalized = text.replace('\n', " ");
-                let clean_text: String = text_normalized.split_whitespace().collect::<Vec<_>>().join(" ");
-
-                // Display up to 100 chars to show concrete details beyond filler phrases
-                let limit = 100;
-                let preview: String = clean_text.chars().take(limit).collect();
-                let text_display = if clean_text.len() > limit {
-                    format!("{}...", preview)
-                } else {
-                    preview
                 };
 
                 let dur_placeholder = "   -   ";
@@ -927,49 +450,124 @@ fn print_events_compact(events: &[AgentEventV1], enable_color: bool) {
                     dur_placeholder.to_string()
                 };
 
-                let role = if matches!(event.event_type, EventType::UserMessage) {
+                let role_str = if matches!(role, Role::User) {
                     "User"
                 } else {
                     "Asst"
                 };
 
                 if enable_color {
-                    let colored_text = if matches!(event.event_type, EventType::UserMessage) {
-                        format!("{}", text_display.green())
+                    let colored_text = if matches!(role, Role::User) {
+                        format!("{}", text.green())
                     } else {
-                        format!("{}", text_display.blue())
+                        format!("{}", text.blue())
                     };
-                    println!("{} {} {}: \"{}\"", time_colored, dur_colored, role, colored_text);
+                    println!("{} {} {}: \"{}\"", time_colored, dur_colored, role_str, colored_text);
                 } else {
-                    println!("{} {} {}: \"{}\"", time_display, dur_placeholder, role, text_display);
+                    println!("{} {} {}: \"{}\"", time_display, dur_placeholder, role_str, text);
                 }
             }
 
-            EventType::Reasoning => {
-                buffer.mark_start(&event.ts);
-            }
+            Activity::Execution { timestamp, duration_ms, tools, .. } => {
+                let time_display = if let (Some(start), Ok(current)) =
+                    (session_start, DateTime::parse_from_rfc3339(timestamp))
+                {
+                    let duration = current.signed_duration_since(start);
+                    let seconds = duration.num_seconds();
+                    if seconds < 60 {
+                        format!("[+{:02}:{:02}]", 0, seconds)
+                    } else {
+                        let minutes = seconds / 60;
+                        let secs = seconds % 60;
+                        format!("[+{:02}:{:02}]", minutes, secs)
+                    }
+                } else {
+                    "[+00:00]".to_string()
+                };
 
-            EventType::ToolCall => {
-                buffer.push_tool(
-                    event.tool_name.as_ref(),
-                    event.file_path.as_ref(),
-                    event.text.as_ref(),
-                    event.tool_call_id.as_ref(),
-                    event.tool_status,
-                    &event.ts,
-                );
-            }
+                let time_colored = if enable_color {
+                    format!("{}", time_display.bright_black())
+                } else {
+                    time_display.clone()
+                };
 
-            EventType::ToolResult => {
-                buffer.update_status(event.tool_call_id.as_ref(), event.tool_status);
-                buffer.mark_end(&event.ts);
-            }
+                let dur_str = if *duration_ms >= 1000 {
+                    format!("{:2}s    ", duration_ms / 1000)
+                } else if *duration_ms > 0 {
+                    format!("{:3}ms  ", duration_ms)
+                } else {
+                    "       ".to_string()
+                };
 
-            _ => {}
+                let dur_colored = if enable_color {
+                    if *duration_ms > 30000 {
+                        format!("{}", dur_str.red())
+                    } else if *duration_ms > 10000 {
+                        format!("{}", dur_str.yellow())
+                    } else {
+                        format!("{}", dur_str.bright_black())
+                    }
+                } else {
+                    dur_str.clone()
+                };
+
+                let flow = format_tool_flow(tools, enable_color);
+
+                if enable_color {
+                    println!("{} {} {}", time_colored, dur_colored, flow.cyan());
+                } else {
+                    println!("{} {} {}", time_display, dur_str, flow);
+                }
+            }
         }
     }
+}
 
-    buffer.flush_and_print(session_start, enable_color);
+fn format_tool_flow(tools: &[crate::core::ToolSummary], enable_color: bool) -> String {
+    let parts: Vec<String> = tools
+        .iter()
+        .map(|tool| {
+            let status_indicator = if tool.is_error {
+                if enable_color {
+                    format!("{} ", "✗".red())
+                } else {
+                    "✗ ".to_string()
+                }
+            } else {
+                if enable_color {
+                    format!("{} ", "✓".green())
+                } else {
+                    "✓ ".to_string()
+                }
+            };
+
+            let formatted = if !tool.input_summary.is_empty() {
+                if tool.count > 1 {
+                    format!("{} x{}", tool.input_summary, tool.count)
+                } else {
+                    tool.input_summary.clone()
+                }
+            } else {
+                if tool.count > 1 {
+                    format!("x{}", tool.count)
+                } else {
+                    String::new()
+                }
+            };
+
+            let tool_display = if formatted.is_empty() {
+                tool.name.clone()
+            } else if formatted.starts_with('x') {
+                format!("{}({})", tool.name, formatted)
+            } else {
+                format!("{}({})", tool.name, formatted)
+            };
+
+            format!("{}{}", status_indicator, tool_display)
+        })
+        .collect();
+
+    parts.join(" → ")
 }
 
 
