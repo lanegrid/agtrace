@@ -1,6 +1,6 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
-use crate::core::{aggregate_activities, Activity};
+use crate::activity::{interpret_events, Activity};
 use crate::db::Database;
 use crate::model::{AgentEventV1, EventType, Role};
 use crate::providers::{ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider};
@@ -105,7 +105,7 @@ pub fn handle(
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
     } else if style == "compact" {
-        let activities = aggregate_activities(&filtered_events);
+        let activities = interpret_events(&filtered_events);
         print_activities_compact(&activities, enable_color);
     } else {
         // Default is full display, --short enables truncation
@@ -539,7 +539,7 @@ fn print_activities_compact(activities: &[Activity], enable_color: bool) {
     }
 }
 
-fn format_tool_flow(tools: &[crate::core::ToolSummary], enable_color: bool) -> String {
+fn format_tool_flow(tools: &[crate::activity::ToolSummary], enable_color: bool) -> String {
     let parts: Vec<String> = tools
         .iter()
         .map(|tool| {

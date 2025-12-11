@@ -1,4 +1,4 @@
-use agtrace::core::aggregate_activities;
+use agtrace::activity::interpret_events;
 use std::path::Path;
 
 #[test]
@@ -13,7 +13,7 @@ fn test_claude_activity_aggregation() {
     let events = agtrace::providers::claude::io::normalize_claude_file(path, None)
         .expect("Failed to parse Claude file");
 
-    let activities = aggregate_activities(&events);
+    let activities = interpret_events(&events);
 
     assert!(!activities.is_empty(), "Expected at least one activity");
 
@@ -33,7 +33,7 @@ fn test_codex_activity_aggregation() {
     let events = agtrace::providers::codex::io::normalize_codex_file(path, None)
         .expect("Failed to parse Codex file");
 
-    let activities = aggregate_activities(&events);
+    let activities = interpret_events(&events);
 
     assert!(!activities.is_empty(), "Expected at least one activity");
 
@@ -53,7 +53,7 @@ fn test_gemini_activity_aggregation() {
     let events = agtrace::providers::gemini::normalize_gemini_file(path)
         .expect("Failed to parse Gemini file");
 
-    let activities = aggregate_activities(&events);
+    let activities = interpret_events(&events);
 
     assert!(!activities.is_empty(), "Expected at least one activity");
 
