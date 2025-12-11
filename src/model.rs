@@ -61,6 +61,31 @@ pub enum ToolStatus {
     Unknown,
 }
 
+/// File operation type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FileOp {
+    Read,
+    Write,
+    Modify,
+    Delete,
+    Create,
+    Move,
+}
+
+impl std::fmt::Display for FileOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FileOp::Read => write!(f, "read"),
+            FileOp::Write => write!(f, "write"),
+            FileOp::Modify => write!(f, "modify"),
+            FileOp::Delete => write!(f, "delete"),
+            FileOp::Create => write!(f, "create"),
+            FileOp::Move => write!(f, "move"),
+        }
+    }
+}
+
 /// Normalized agent event (v1)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentEventV1 {
@@ -91,7 +116,7 @@ pub struct AgentEventV1 {
     // File / Code
     pub file_path: Option<String>,
     pub file_language: Option<String>,
-    pub file_op: Option<String>,
+    pub file_op: Option<FileOp>,
 
     // Model / Tokens
     pub model: Option<String>,

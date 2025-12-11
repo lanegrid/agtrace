@@ -131,7 +131,7 @@ pub fn normalize_codex_stream(
                             {
                                 ev.file_path = Some(file_path.to_string());
                                 ev.file_op = match call.name.as_str() {
-                                    "apply_patch" => Some("modify".to_string()),
+                                    "apply_patch" => Some(FileOp::Modify),
                                     _ => None,
                                 };
                             }
@@ -175,7 +175,7 @@ pub fn normalize_codex_stream(
                             {
                                 ev.file_path = Some(file_path.to_string());
                                 ev.file_op = match call.name.as_str() {
-                                    "apply_patch" => Some("modify".to_string()),
+                                    "apply_patch" => Some(FileOp::Modify),
                                     _ => None,
                                 };
                             }

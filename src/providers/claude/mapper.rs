@@ -202,9 +202,9 @@ pub fn normalize_claude_stream(
                                     ev.file_path = Some(file_path.to_string());
                                     // Infer file_op from tool name
                                     ev.file_op = match name.as_str() {
-                                        "Write" => Some("write".to_string()),
-                                        "Read" => Some("read".to_string()),
-                                        "Edit" => Some("modify".to_string()),
+                                        "Write" => Some(FileOp::Write),
+                                        "Read" => Some(FileOp::Read),
+                                        "Edit" => Some(FileOp::Modify),
                                         _ => None,
                                     };
                                 } else if let Some(path) =
@@ -213,7 +213,7 @@ pub fn normalize_claude_stream(
                                     // For Glob and other tools that use "path"
                                     ev.file_path = Some(path.to_string());
                                     ev.file_op = match name.as_str() {
-                                        "Read" | "Glob" => Some("read".to_string()),
+                                        "Read" | "Glob" => Some(FileOp::Read),
                                         _ => None,
                                     };
                                 }

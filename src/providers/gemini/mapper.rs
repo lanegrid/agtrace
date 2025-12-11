@@ -110,8 +110,8 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                         tev.file_path = Some(file_path.to_string());
                         // Infer file_op from tool name
                         tev.file_op = match tool_call.name.as_str() {
-                            "write_file" => Some("write".to_string()),
-                            "read_file" => Some("read".to_string()),
+                            "write_file" => Some(FileOp::Write),
+                            "read_file" => Some(FileOp::Read),
                             _ => None,
                         };
                     }
