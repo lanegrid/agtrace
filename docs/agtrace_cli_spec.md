@@ -209,7 +209,13 @@ Scan complete: 8 sessions registered
 
 ### 3.1 Overview
 
-Lists sessions from the SQLite index.
+Lists sessions from the SQLite index with enhanced UI.
+
+**Features:**
+- Color-coded providers (Claude=blue, Codex=green, Gemini=red)
+- Relative time display ("2 hours ago", "yesterday")
+- UTF-8 table formatting with proper borders
+- Smart snippet truncation (removes noise, 70 char limit)
 
 Default: Shows sessions for current project (determined by Project Discovery).
 
@@ -217,35 +223,47 @@ Default: Shows sessions for current project (determined by Project Discovery).
 
 ```sh
 agtrace list \
-  [--project <root_path>] \
-  [--hash <hash>] \
-  [--recent <n>] \
-  [--all]
+  [--project-hash <hash>] \
+  [--source <claude|codex|gemini>] \
+  [--limit <n>] \
+  [--since <timestamp>] \
+  [--until <timestamp>]
 ```
 
 ### 3.3 Options
 
-* `--project <root_path>`
-  - Description: Filter by specific project path
-
-* `--hash <hash>`
+* `--project-hash <hash>`
   - Description: Filter by specific project hash
+  - Note: Use global `--project-root` or `--all-projects` for flexible filtering
 
-* `--recent <n>`
+* `--source <claude|codex|gemini>`
+  - Description: Filter by specific provider
+
+* `--limit <n>`
   - Description: Show most recent N sessions
-  - Default: `20`
+  - Default: `50`
 
-* `--all`
-  - Description: Show sessions from all projects
+* `--since <timestamp>`
+  - Description: Filter sessions after this timestamp
+
+* `--until <timestamp>`
+  - Description: Filter sessions before this timestamp
 
 ### 3.4 Output Example
 
 ```text
-TIME                 PROVIDER  ID (short)  PROJECT              SNIPPET
-2025-12-10 19:55:16  codex     019b04ae    agent-sample (hash)  add myapp dir...
-2025-12-09 19:50:00  gemini    f0a689a6    agent-sample (hash)  add myapp dir...
-2025-12-09 19:47:42  claude    7f2abd2d    agent-sample (hash)  add myapp dir...
+┌──────────────┬──────────┬──────────┬──────────────┬──────────────────────────────────────────┐
+│ TIME         ┆ PROVIDER ┆ ID       ┆ PROJECT      ┆ SNIPPET                                  │
+╞══════════════╪══════════╪══════════╪══════════════╪══════════════════════════════════════════╡
+│ 2 hours ago  ┆ claude   ┆ 98176240 ┆ 427e6b3fa... ┆ read docs and evaluate sessions          │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ yesterday    ┆ codex    ┆ 019b04ae ┆ 427e6b3fa... ┆ add myapp directory                      │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ 3 days ago   ┆ gemini   ┆ f0a689a6 ┆ 427e6b3fa... ┆ [empty]                                  │
+└──────────────┴──────────┴──────────┴──────────────┴──────────────────────────────────────────┘
 ```
+
+**Note:** Colors are automatically disabled when output is piped.
 
 ---
 
@@ -255,12 +273,21 @@ TIME                 PROVIDER  ID (short)  PROJECT              SNIPPET
 
 Displays session events by reading raw log files and normalizing them on-demand (Schema-on-Read).
 
+**Features:**
+- Color-coded event types (UserMessage=green, AssistantMessage=blue, ToolCall=yellow, etc.)
+- Relative time from session start (`[+3s]`, `[+1m 23s]`)
+- Smart text truncation (default 100 chars, disable with `--full`)
+- Event filtering with `--hide` and `--only`
+- Automatic color disable when piped (for LLM consumption)
+- Session summary with token counts and duration
+
 **Key behavior:**
 1. Queries SQLite for file paths associated with `session_id`
 2. Opens raw log files
 3. Dynamically normalizes to `AgentEventV1`
-4. Sorts/merges by timestamp
-5. Displays in timeline format
+4. Filters events based on `--hide`/`--only` options
+5. Sorts/merges by timestamp
+6. Displays in timeline format with optional colors
 
 ### 4.2 Signature
 
@@ -268,7 +295,10 @@ Displays session events by reading raw log files and normalizing them on-demand 
 agtrace view <SESSION_ID_OR_PREFIX> \
   [--raw] \
   [--json] \
-  [--timeline]
+  [--timeline] \
+  [--hide <event_types>] \
+  [--only <event_types>] \
+  [--full]
 ```
 
 ### 4.3 Options
@@ -285,30 +315,81 @@ agtrace view <SESSION_ID_OR_PREFIX> \
 * `--timeline`
   - Description: (Default) Human-readable timeline format
 
+* `--hide <event_types>`
+  - Description: Comma-separated list of event types to hide
+  - Examples: `reasoning`, `tool`, `user,assistant`
+  - Supported: `user`, `assistant`, `reasoning`, `tool` (matches both ToolCall and ToolResult)
+
+* `--only <event_types>`
+  - Description: Comma-separated list of event types to show (whitelist)
+  - Examples: `user,assistant` (conversation only), `tool` (tool calls only)
+  - Takes precedence over `--hide`
+
+* `--full`
+  - Description: Display full event text without truncation (useful for LLM consumption)
+  - Default: Text is truncated at 100 characters
+
 ### 4.4 Behavior
 
 1. Lookup `session_id` in SQLite → retrieve all associated `log_files.path`
 2. Open each file
 3. Attempt normalization to `AgentEventV1`
 4. If parsing fails, emit `{ type: "parse_error", raw: "..." }` and continue
-5. Sort/merge events by timestamp
-6. Display
+5. Filter events based on `--hide` or `--only` options
+6. Sort/merge events by timestamp
+7. Detect if output is piped → disable colors if true
+8. Display with appropriate formatting
 
-### 4.5 Output Example (--timeline)
+**Auto color detection:**
+- Terminal output → Colors enabled
+- Piped output → Colors disabled (for LLM consumption)
+
+### 4.5 Output Examples
+
+#### Default timeline view (terminal)
 
 ```text
-[2025-11-03T01:49:22.517Z] user_message       U1   (role=user)
-  summary this repo
+[+0s    ] UserMessage          (role=User)
+  just say hi
+  hi
 
-[2025-11-03T01:49:23.073Z] reasoning          R1   (role=assistant)
-  Plan: read README, scan src/, then propose a summary...
+[+3s    ] AssistantMessage     (role=Assistant)
+  Hi! How can I help you today?
+  tokens: in:1, out:12
 
-[2025-11-03T01:49:25.212Z] tool_call          T1   (shell)
-  rg "agtrace" -n
+---
+Session Summary:
+  Events: 2
+    User messages: 1
+    Assistant messages: 1
+    Tool calls: 0
+    Reasoning blocks: 0
+  Tokens: 13
+    Input: 1
+    Output: 12
+  Duration: 0m 3s
+```
 
-[2025-11-03T01:49:26.836Z] tool_result        TR1  (shell, status=success)
-  README.md:1: # agtrace
-  ...
+**Note:** In actual terminal output, event types are color-coded.
+
+#### Conversation only (--only user,assistant)
+
+```sh
+agtrace view <session_id> --only user,assistant
+```
+
+#### Full text for LLM (--full + pipe)
+
+```sh
+agtrace view <session_id> --full --only user,assistant | pbcopy
+```
+
+This outputs complete event text without truncation and without ANSI color codes, perfect for pasting into LLM context.
+
+#### Hide reasoning
+
+```sh
+agtrace view <session_id> --hide reasoning
 ```
 
 ---

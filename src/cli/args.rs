@@ -66,6 +66,15 @@ pub enum Commands {
 
         #[arg(long)]
         timeline: bool,
+
+        #[arg(long, value_delimiter = ',')]
+        hide: Option<Vec<String>>,
+
+        #[arg(long, value_delimiter = ',')]
+        only: Option<Vec<String>>,
+
+        #[arg(long, help = "Display full event text without truncation (useful for LLM consumption)")]
+        full: bool,
     },
 
     Show {
