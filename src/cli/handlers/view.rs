@@ -651,9 +651,14 @@ fn print_events_compact(events: &[AgentEventV1], enable_color: bool) {
                 };
 
                 let text = event.text.as_deref().unwrap_or("");
+                // Flatten: replace newlines with spaces and normalize consecutive spaces
                 let text_normalized = text.replace('\n', " ");
-                let preview: String = text_normalized.chars().take(60).collect();
-                let text_display = if text_normalized.len() > 60 {
+                let clean_text: String = text_normalized.split_whitespace().collect::<Vec<_>>().join(" ");
+
+                // Display up to 100 chars to show concrete details beyond filler phrases
+                let limit = 100;
+                let preview: String = clean_text.chars().take(limit).collect();
+                let text_display = if clean_text.len() > limit {
                     format!("{}...", preview)
                 } else {
                     preview

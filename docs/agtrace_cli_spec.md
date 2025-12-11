@@ -425,7 +425,7 @@ Designed for quick scanning of long sessions to identify bottlenecks and loops u
       * Tool Chains: Total wall-clock time from cycle start to last ToolResult (e.g., `19s`, `201s`).
       * Messages: `-` placeholder.
   * **Flow/Content:**
-      * **User/Assistant:** `Role: "Content start..."` (Truncated to 60 chars, newlines removed).
+      * **User/Assistant:** `Role: "Content start..."` (Truncated to 100 chars, newlines flattened to spaces, consecutive spaces normalized).
       * **Tool Chain:** `ToolA → ToolB(xN) → ToolC` (Sequential tools collapsed, `Thinking` absorbed).
       * **Status:** Color-coded duration (Yellow >10s, Red >30s).
 
@@ -442,16 +442,16 @@ Designed for quick scanning of long sessions to identify bottlenecks and loops u
 ```text
 $ agtrace view 6dae8df5 --style compact
 
-[+00:00]    -    User: "新しいワークフローでスキーマ検証をしてみたい..."
-[+00:06]    -    Asst: "docsディレクトリを読んで、新しいスキーマ検証..."
+[+00:00]    -    User: "新しいワークフローでスキーマ検証をしてみたい。docs を読んでもらって。 --- これで、UNIXコマンドを使わずに完全にagtrace内で問題解決できます： # 1. 問題発見 agtrace d..."
+[+00:06]    -    Asst: "docsディレクトリを読んで、新しいスキーマ検証ワークフローを理解します。..."
 [+00:05]  7s     Glob("docs/**/*.md") → Read(troubleshooting_schema_issues.md, agtrace_cli_spec.md)
-[+00:36]    -    Asst: "docsを読みました。新しいスキーマ検証ワークフロ..."
-[+01:27]    -    Asst: "わかりました。段階的に進めます..."
-[+01:25]  4s     Bash(cargo build)
-[+01:35]    -    Asst: "ビルド成功しました..."
-[+01:36] 999ms   Bash(./target/debug/agtrace diagnose)
+[+00:36]    -    Asst: "docsを読みました。新しいスキーマ検証ワークフローを理解しました。 ## ワークフローの概要 `agtrace`内で完全に問題解決できる統合された診断フローです： ### 1. **問題発見** -..."
+[+01:19]    -    User: "段階的に進めてください。遠回りしても良い"
+[+01:27]    -    Asst: "わかりました。段階的に進めます。 まずは現在の状態を確認するところから始めましょう。 ## Step 1: ビルドして現在の状態を確認 最初にビルドして、`diagnose`コマンドがどんな問題を検出..."
+[+01:25]  4s     Bash(cargo build --release)
+[+01:35]    -    Asst: "ビルド成功しました。次に現在の問題を診断します："
+[+01:36] 999ms   Bash(./target/release/agtrace di...)
 [+02:14]  5s     Glob("src/**/*.rs") → Read(schema.rs)
-[+02:54]    -    Asst: "3ファイル全て同じエラーです..."
 [+07:08] 10s     Edit(schema.rs)
 [+07:37] 149ms   Edit(io.rs)
 [+07:49] 111ms   Edit(io.rs)
