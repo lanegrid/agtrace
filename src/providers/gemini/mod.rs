@@ -114,10 +114,12 @@ impl LogProvider for GeminiProvider {
 
             if let Some(parent) = path.parent() {
                 if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
-                    if is_64_char_hex(dir_name) && context.project_root.is_some()
-                        && dir_name != context.project_hash {
-                            continue;
-                        }
+                    if is_64_char_hex(dir_name)
+                        && context.project_root.is_some()
+                        && dir_name != context.project_hash
+                    {
+                        continue;
+                    }
                 }
             }
 

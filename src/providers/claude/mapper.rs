@@ -209,7 +209,8 @@ pub fn normalize_claude_stream(
                                 ev.project_root = project_root_str.clone();
 
                                 // Normalize tool name using ToolName enum
-                                let tool_name = ToolName::from_provider_name(Source::ClaudeCode, name);
+                                let tool_name =
+                                    ToolName::from_provider_name(Source::ClaudeCode, name);
                                 ev.tool_name = Some(tool_name.to_string());
                                 ev.channel = Some(tool_name.channel());
                                 ev.tool_call_id = Some(id.clone());

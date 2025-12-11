@@ -13,8 +13,7 @@ pub struct ProviderConfig {
 }
 
 /// Main configuration for agtrace
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     /// Provider-specific configurations
     #[serde(default)]
@@ -128,7 +127,6 @@ impl Config {
         self.providers.insert(name, config);
     }
 }
-
 
 #[cfg(test)]
 mod tests {

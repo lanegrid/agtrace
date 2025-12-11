@@ -47,9 +47,7 @@ pub fn handle(command: Option<ProvidersCommand>, config_path: &PathBuf) -> Resul
 
             let mut config = crate::config::Config::load_from(config_path)?;
 
-            let enabled = if enable {
-                true
-            } else { !disable };
+            let enabled = if enable { true } else { !disable };
 
             config.set_provider(
                 provider.clone(),

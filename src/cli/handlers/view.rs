@@ -420,7 +420,12 @@ fn print_activities_compact(activities: &[Activity], enable_color: bool) {
 
     for activity in activities {
         match activity {
-            Activity::Message { role, text, timestamp, .. } => {
+            Activity::Message {
+                role,
+                text,
+                timestamp,
+                ..
+            } => {
                 let time_display = if let (Some(start), Ok(current)) =
                     (session_start, DateTime::parse_from_rfc3339(timestamp))
                 {
@@ -462,13 +467,24 @@ fn print_activities_compact(activities: &[Activity], enable_color: bool) {
                     } else {
                         format!("{}", text.blue())
                     };
-                    println!("{} {} {}: \"{}\"", time_colored, dur_colored, role_str, colored_text);
+                    println!(
+                        "{} {} {}: \"{}\"",
+                        time_colored, dur_colored, role_str, colored_text
+                    );
                 } else {
-                    println!("{} {} {}: \"{}\"", time_display, dur_placeholder, role_str, text);
+                    println!(
+                        "{} {} {}: \"{}\"",
+                        time_display, dur_placeholder, role_str, text
+                    );
                 }
             }
 
-            Activity::Execution { timestamp, duration_ms, tools, .. } => {
+            Activity::Execution {
+                timestamp,
+                duration_ms,
+                tools,
+                ..
+            } => {
                 let time_display = if let (Some(start), Ok(current)) =
                     (session_start, DateTime::parse_from_rfc3339(timestamp))
                 {
@@ -533,12 +549,10 @@ fn format_tool_flow(tools: &[crate::core::ToolSummary], enable_color: bool) -> S
                 } else {
                     "✗ ".to_string()
                 }
+            } else if enable_color {
+                format!("{} ", "✓".green())
             } else {
-                if enable_color {
-                    format!("{} ", "✓".green())
-                } else {
-                    "✓ ".to_string()
-                }
+                "✓ ".to_string()
             };
 
             let formatted = if !tool.input_summary.is_empty() {
@@ -547,18 +561,14 @@ fn format_tool_flow(tools: &[crate::core::ToolSummary], enable_color: bool) -> S
                 } else {
                     tool.input_summary.clone()
                 }
+            } else if tool.count > 1 {
+                format!("x{}", tool.count)
             } else {
-                if tool.count > 1 {
-                    format!("x{}", tool.count)
-                } else {
-                    String::new()
-                }
+                String::new()
             };
 
             let tool_display = if formatted.is_empty() {
                 tool.name.clone()
-            } else if formatted.starts_with('x') {
-                format!("{}({})", tool.name, formatted)
             } else {
                 format!("{}({})", tool.name, formatted)
             };
@@ -569,7 +579,6 @@ fn format_tool_flow(tools: &[crate::core::ToolSummary], enable_color: bool) -> S
 
     parts.join(" → ")
 }
-
 
 fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
     if events.is_empty() {
@@ -610,7 +619,7 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         }
 
         if let Some(file_op) = &event.file_op {
-            *file_ops.entry(file_op.clone()).or_insert(0) += 1;
+            *file_ops.entry(*file_op).or_insert(0) += 1;
         }
 
         if let Some(t) = event.tokens_input {

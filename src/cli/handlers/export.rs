@@ -80,7 +80,11 @@ pub fn handle(
     };
 
     let output_path = output.unwrap_or_else(|| {
-        PathBuf::from(format!("session_{}.{}", &resolved_id[..8], if format == "jsonl" { "jsonl" } else { "txt" }))
+        PathBuf::from(format!(
+            "session_{}.{}",
+            &resolved_id[..8],
+            if format == "jsonl" { "jsonl" } else { "txt" }
+        ))
     });
 
     match format.as_str() {
@@ -89,7 +93,11 @@ pub fn handle(
         _ => anyhow::bail!("Unsupported format: {}", format),
     }
 
-    println!("Exported {} events to {}", processed_events.len(), output_path.display());
+    println!(
+        "Exported {} events to {}",
+        processed_events.len(),
+        output_path.display()
+    );
 
     Ok(())
 }
@@ -98,7 +106,7 @@ fn apply_clean_strategy(events: &[AgentEventV1]) -> Vec<AgentEventV1> {
     let mut cleaned = Vec::new();
     let mut skip_until_next_success = false;
 
-    for (_i, event) in events.iter().enumerate() {
+    for event in events.iter() {
         match event.event_type {
             EventType::ToolResult => {
                 if let Some(exit_code) = event.tool_exit_code {

@@ -29,12 +29,7 @@ struct PatternInfo {
     details: Vec<String>,
 }
 
-pub fn handle(
-    db: &Database,
-    session_id: String,
-    detect: String,
-    format: String,
-) -> Result<()> {
+pub fn handle(db: &Database, session_id: String, detect: String, format: String) -> Result<()> {
     let resolved_id = match db.find_session_by_prefix(&session_id)? {
         Some(full_id) => full_id,
         None => {
@@ -220,7 +215,8 @@ fn detect_apologies(events: &[AgentEventV1], warnings: &mut Vec<PatternWarning>)
             pattern: "Excessive Apologies".to_string(),
             count: apology_count,
             span: "Throughout session".to_string(),
-            insight: "Agent is frequently apologizing, indicating uncertainty or repeated errors.".to_string(),
+            insight: "Agent is frequently apologizing, indicating uncertainty or repeated errors."
+                .to_string(),
         });
     }
 }
@@ -231,16 +227,15 @@ fn detect_lazy_tools(events: &[AgentEventV1], warnings: &mut Vec<PatternWarning>
     for i in 0..events.len().saturating_sub(1) {
         if matches!(events[i].event_type, EventType::ToolResult)
             && events[i].tool_exit_code.unwrap_or(0) != 0
+            && matches!(events[i + 1].event_type, EventType::ToolCall)
         {
-            if matches!(events[i + 1].event_type, EventType::ToolCall) {
-                let has_reasoning = events[i + 1..]
-                    .iter()
-                    .take(5)
-                    .any(|e| matches!(e.event_type, EventType::Reasoning));
+            let has_reasoning = events[i + 1..]
+                .iter()
+                .take(5)
+                .any(|e| matches!(e.event_type, EventType::Reasoning));
 
-                if !has_reasoning {
-                    lazy_count += 1;
-                }
+            if !has_reasoning {
+                lazy_count += 1;
             }
         }
     }
@@ -322,7 +317,9 @@ fn detect_lint_ping_pong(events: &[AgentEventV1], warnings: &mut Vec<PatternWarn
                                         .iter()
                                         .position(|e| matches!(e.event_type, EventType::ToolResult))
                                     {
-                                        if events[j + 1 + result_idx].tool_exit_code.unwrap_or(0) != 0 {
+                                        if events[j + 1 + result_idx].tool_exit_code.unwrap_or(0)
+                                            != 0
+                                        {
                                             edit_lint_cycles += 1;
                                         }
                                     }
@@ -351,7 +348,8 @@ fn detect_lint_ping_pong(events: &[AgentEventV1], warnings: &mut Vec<PatternWarn
 }
 
 fn analyze_tool_usage(events: &[AgentEventV1], info_items: &mut Vec<PatternInfo>) {
-    let mut tool_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut tool_counts: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     let mut tool_durations: std::collections::HashMap<String, Vec<u64>> =
         std::collections::HashMap::new();
 
@@ -361,7 +359,7 @@ fn analyze_tool_usage(events: &[AgentEventV1], info_items: &mut Vec<PatternInfo>
             if let Some(latency) = event.tool_latency_ms {
                 tool_durations
                     .entry(tool_name.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(latency);
             }
         }
@@ -420,7 +418,10 @@ fn format_time_span(start: &str, end: &str) -> String {
 }
 
 fn print_report(report: &AnalysisReport) {
-    println!("Analysis Report for Session: {}", report.session_id.bright_blue());
+    println!(
+        "Analysis Report for Session: {}",
+        report.session_id.bright_blue()
+    );
 
     let score_colored = if report.score >= 90 {
         format!("{}", report.score.to_string().green())
@@ -440,7 +441,12 @@ fn print_report(report: &AnalysisReport) {
     println!();
 
     for warning in &report.warnings {
-        println!("{} {} (Count: {})", "[WARN]".yellow(), warning.pattern.bold(), warning.count);
+        println!(
+            "{} {} (Count: {})",
+            "[WARN]".yellow(),
+            warning.pattern.bold(),
+            warning.count
+        );
         println!("  Span: {}", warning.span);
         println!("  Insight: {}", warning.insight);
         println!();

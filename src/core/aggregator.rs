@@ -17,11 +17,14 @@ pub fn aggregate_activities(events: &[AgentEventV1]) -> Vec<Activity> {
                     buffer = ExecutionBuffer::new();
                 }
 
-                let role = event.role.unwrap_or(if matches!(event.event_type, EventType::UserMessage) {
-                    Role::User
-                } else {
-                    Role::Assistant
-                });
+                let role =
+                    event
+                        .role
+                        .unwrap_or(if matches!(event.event_type, EventType::UserMessage) {
+                            Role::User
+                        } else {
+                            Role::Assistant
+                        });
 
                 let text = event.text.clone().unwrap_or_default();
                 let text = normalize_text(&text);
@@ -32,12 +35,11 @@ pub fn aggregate_activities(events: &[AgentEventV1]) -> Vec<Activity> {
                     timestamp: event.ts.clone(),
                     duration_ms: None,
                     stats: ActivityStats {
-                        total_tokens: event.tokens_total
-                            .or_else(|| {
-                                event.tokens_input.and_then(|input| {
-                                    event.tokens_output.map(|output| input + output)
-                                })
-                            }),
+                        total_tokens: event.tokens_total.or_else(|| {
+                            event
+                                .tokens_input
+                                .and_then(|input| event.tokens_output.map(|output| input + output))
+                        }),
                         event_count: 1,
                     },
                 });
@@ -111,7 +113,8 @@ impl ExecutionBuffer {
 
     fn push_tool(&mut self, event: &AgentEventV1) {
         if let Some(name) = &event.tool_name {
-            let (raw_target, display_target) = extract_target_summary(name, &event.file_path, &event.text);
+            let (raw_target, display_target) =
+                extract_target_summary(name, &event.file_path, &event.text);
 
             self.tools.push(ToolInfo {
                 name: name.clone(),
@@ -161,9 +164,10 @@ impl ExecutionBuffer {
         let status = self.calculate_status(duration_ms);
 
         Some(Activity::Execution {
-            timestamp: self.start_ts
+            timestamp: self
+                .start_ts
                 .map(|ts| ts.to_rfc3339())
-                .unwrap_or_else(|| String::new()),
+                .unwrap_or_default(),
             duration_ms,
             status,
             tools,
@@ -193,10 +197,7 @@ impl ExecutionBuffer {
             }
 
             let is_error = matches!(current_status, Some(ToolStatus::Error));
-            let input_summary = self.tools[i]
-                .display_target
-                .clone()
-                .unwrap_or_default();
+            let input_summary = self.tools[i].display_target.clone().unwrap_or_default();
 
             summaries.push(ToolSummary {
                 name: current_tool.clone(),
@@ -212,7 +213,10 @@ impl ExecutionBuffer {
     }
 
     fn calculate_status(&self, duration_ms: u64) -> ActivityStatus {
-        let has_error = self.tools.iter().any(|t| matches!(t.status, Some(ToolStatus::Error)));
+        let has_error = self
+            .tools
+            .iter()
+            .any(|t| matches!(t.status, Some(ToolStatus::Error)));
 
         if has_error {
             ActivityStatus::Failure
@@ -258,8 +262,9 @@ fn extract_target_summary(
             });
             (filename.clone(), filename)
         }
-        ToolName::Bash => {
-            text.as_ref().and_then(|t| {
+        ToolName::Bash => text
+            .as_ref()
+            .and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("command").and_then(|v| v.as_str()).map(|cmd| {
                         let cmd = cmd.trim();
@@ -275,10 +280,10 @@ fn extract_target_summary(
                 }
             })
             .map(|(raw, display)| (Some(raw), Some(display)))
-            .unwrap_or((None, None))
-        }
-        ToolName::Glob | ToolName::Grep => {
-            text.as_ref().and_then(|t| {
+            .unwrap_or((None, None)),
+        ToolName::Glob | ToolName::Grep => text
+            .as_ref()
+            .and_then(|t| {
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("pattern").and_then(|v| v.as_str()).map(|p| {
                         let raw = format!("\"{}\"", p);
@@ -293,8 +298,7 @@ fn extract_target_summary(
                     None
                 }
             })
-            .unwrap_or((None, None))
-        }
+            .unwrap_or((None, None)),
         ToolName::Other(_) => (None, None),
     }
 }
@@ -394,13 +398,13 @@ fn tokenize_bash_command(cmd: &str) -> Vec<String> {
 
 fn compress_path_for_display(path: &str) -> String {
     if path.starts_with("./target/release/") || path.starts_with("./target/debug/") {
-        if let Some(filename) = path.split('/').last() {
+        if let Some(filename) = path.split('/').next_back() {
             return format!(".../{}", filename);
         }
     }
 
     if path.matches('/').count() >= 2 {
-        if let Some(filename) = path.split('/').last() {
+        if let Some(filename) = path.split('/').next_back() {
             return format!(".../{}", filename);
         }
     }
