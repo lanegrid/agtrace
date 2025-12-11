@@ -154,6 +154,19 @@ pub fn run(cli: Cli) -> Result<()> {
             let config = Config::load_from(&config_path)?;
             handlers::diagnose::handle(&config, provider, sample_size, verbose)
         }
+
+        Commands::Inspect {
+            file_path,
+            lines,
+            format,
+        } => handlers::inspect::handle(file_path, lines, format),
+
+        Commands::Validate {
+            file_path,
+            provider,
+        } => handlers::validate::handle(file_path, provider),
+
+        Commands::Schema { provider, format } => handlers::schema::handle(provider, format),
     }
 }
 

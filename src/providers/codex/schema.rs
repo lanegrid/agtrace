@@ -219,12 +219,21 @@ pub struct TurnContextPayload {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct SandboxPolicy {
-    #[serde(rename = "type")]
-    pub policy_type: String,
-    pub network_access: bool,
-    #[serde(default)]
-    pub exclude_tmpdir_env_var: bool,
-    #[serde(default)]
-    pub exclude_slash_tmp: bool,
+#[serde(untagged)]
+pub enum SandboxPolicy {
+    // New format (v0.63+): {"type": "read-only"}
+    Simple {
+        #[serde(rename = "type")]
+        policy_type: String,
+    },
+    // Old format (v0.53): {"mode": "workspace-write", "network_access": false, ...}
+    Detailed {
+        mode: String,
+        #[serde(default)]
+        network_access: Option<bool>,
+        #[serde(default)]
+        exclude_tmpdir_env_var: bool,
+        #[serde(default)]
+        exclude_slash_tmp: bool,
+    },
 }

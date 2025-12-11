@@ -179,6 +179,30 @@ pub enum Commands {
         #[arg(long)]
         verbose: bool,
     },
+
+    Inspect {
+        file_path: String,
+
+        #[arg(long, default_value = "50")]
+        lines: usize,
+
+        #[arg(long, value_parser = ["raw", "json"], default_value = "raw")]
+        format: String,
+    },
+
+    Validate {
+        file_path: String,
+
+        #[arg(long, value_parser = ["claude", "codex", "gemini"])]
+        provider: Option<String>,
+    },
+
+    Schema {
+        provider: String,
+
+        #[arg(long, value_parser = ["text", "json", "rust"], default_value = "text")]
+        format: String,
+    },
 }
 
 #[derive(Subcommand)]

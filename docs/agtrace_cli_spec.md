@@ -86,6 +86,15 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 * **`agtrace diagnose`**
   Diagnoses schema compatibility issues by sampling log files.
 
+* **`agtrace inspect`**
+  Displays raw content of a log file with line numbers.
+
+* **`agtrace validate`**
+  Validates a single log file against provider schema.
+
+* **`agtrace schema`**
+  Displays expected schema structure for a provider.
+
 **Removed in v2.0:**
 - `find`: Removed for MVP (can be re-added later)
 - `stats`: Removed for MVP (can be re-added later)
@@ -567,7 +576,222 @@ agtrace diagnose --sample-size 5
 
 ---
 
-## 8. Error Codes
+## 8. `agtrace inspect`
+
+### 8.1 Overview
+
+Displays the raw content of a log file with line numbers for manual inspection. Useful for examining actual data structure when debugging schema issues.
+
+### 8.2 Signature
+
+```sh
+agtrace inspect <FILE_PATH> \
+  [--lines <n>] \
+  [--format <raw|json>]
+```
+
+### 8.3 Options
+
+* `<FILE_PATH>` (required)
+  - Path to the log file to inspect
+
+* `--lines <n>` (optional)
+  - Number of lines to display from the beginning
+  - Default: `50`
+
+* `--format <raw|json>` (optional)
+  - `raw`: Display as-is with line numbers
+  - `json`: Pretty-print JSON if valid
+  - Default: `raw`
+
+### 8.4 Output Example
+
+```text
+$ agtrace inspect /Users/.../rollout-2025-12-04...jsonl --lines 5
+
+File: /Users/.../rollout-2025-12-04...jsonl
+Lines: 1-5 (total: 150 lines)
+───────────────────────────────────────
+     1  {"timestamp":"2025-12-04T13:23:36.135Z","type":"session_meta","payload":{"id":"019ae988...
+     2  {"timestamp":"2025-12-04T13:23:36.136Z","type":"response_item","payload":{"type":"message...
+     3  {"timestamp":"2025-12-04T13:23:36.148Z","type":"response_item","payload":{"type":"message...
+     4  {"timestamp":"2025-12-04T13:23:36.148Z","type":"event_msg","payload":{"type":"user_messag...
+     5  {"timestamp":"2025-12-04T13:23:36.153Z","type":"turn_context","payload":{"cwd":"/Users/za...
+───────────────────────────────────────
+```
+
+---
+
+## 9. `agtrace validate`
+
+### 9.1 Overview
+
+Validates a single log file against the provider's schema. Shows detailed parse errors and suggests fixes.
+
+### 9.2 Signature
+
+```sh
+agtrace validate <FILE_PATH> \
+  [--provider <claude|codex|gemini>]
+```
+
+### 9.3 Options
+
+* `<FILE_PATH>` (required)
+  - Path to the log file to validate
+
+* `--provider <claude|codex|gemini>` (optional)
+  - Explicitly specify provider (auto-detected from path if not provided)
+
+### 9.4 Behavior
+
+1. Auto-detect provider from file path if not specified
+2. Attempt to parse file with provider's schema
+3. Display detailed error information if parsing fails
+4. Show expected schema structure vs. actual data
+
+### 9.5 Output Examples
+
+#### Success case:
+```text
+$ agtrace validate /Users/.../rollout-2025-12-04...jsonl
+
+File: /Users/.../rollout-2025-12-04...jsonl
+Provider: codex (auto-detected)
+Status: ✓ Valid
+
+Parsed successfully:
+  - Session ID: 019ae988-502c-7533-a763-5c796e30804c
+  - Events extracted: 45
+  - Project: /Users/zawakin/go/src/github.com/lanegrid/pdna
+```
+
+#### Failure case:
+```text
+$ agtrace validate /Users/.../logs.json --provider gemini
+
+File: /Users/.../logs.json
+Provider: gemini
+Status: ✗ Invalid
+
+Parse error at line 2, column 2:
+  invalid type: map, expected a string
+
+Expected schema:
+  GeminiSession {
+    session_id: String,
+    project_hash: String,
+    start_time: String,
+    last_updated: String,
+    messages: [GeminiMessage]
+  }
+
+Actual structure (first record):
+  {
+    "sessionId": "f0a689a6...",  // ← Found in array, not root object
+    "messageId": 0,
+    "type": "user",
+    ...
+  }
+
+Suggestion:
+  File contains an array of messages, but expected a session object with metadata.
+  This format may be from an older version of Gemini CLI.
+```
+
+---
+
+## 10. `agtrace schema`
+
+### 10.1 Overview
+
+Displays the expected schema structure for a provider. Useful reference when fixing schema compatibility issues.
+
+### 10.2 Signature
+
+```sh
+agtrace schema <PROVIDER> \
+  [--format <text|json|rust>]
+```
+
+### 10.3 Options
+
+* `<PROVIDER>` (required)
+  - Provider name: `claude`, `codex`, or `gemini`
+
+* `--format <text|json|rust>` (optional)
+  - `text`: Human-readable description (default)
+  - `json`: JSON Schema format
+  - `rust`: Rust struct definitions
+
+### 10.4 Output Examples
+
+#### Text format (default):
+```text
+$ agtrace schema codex
+
+Provider: Codex
+Schema version: v0.53-v0.63
+
+Root structure (JSONL - one record per line):
+  CodexRecord (enum):
+    - SessionMeta
+    - ResponseItem
+    - EventMsg
+    - TurnContext
+
+SessionMeta:
+  timestamp: String
+  payload:
+    id: String (session_id)
+    cwd: String
+    originator: String
+    cli_version: String
+    source: String | Object
+    model_provider: String
+    git: GitInfo (optional)
+
+TurnContext:
+  timestamp: String
+  payload:
+    cwd: String
+    approval_policy: String
+    sandbox_policy: SandboxPolicy (see below)
+    model: String
+    effort: String
+    summary: String
+
+SandboxPolicy (untagged enum):
+  New format (v0.63+):
+    { "type": "read-only" | "workspace-write" }
+  Old format (v0.53):
+    { "mode": "...", "network_access": bool, ... }
+```
+
+#### Rust format:
+```text
+$ agtrace schema codex --format rust
+
+// src/providers/codex/schema.rs
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum CodexRecord {
+    SessionMeta(SessionMetaRecord),
+    ResponseItem(ResponseItemRecord),
+    EventMsg(EventMsgRecord),
+    TurnContext(TurnContextRecord),
+    #[serde(other)]
+    Unknown,
+}
+
+...
+```
+
+---
+
+## 11. Error Codes
 
 * `0` … Success
 * `1` … General error (parse failure / invalid input)
@@ -577,7 +801,7 @@ agtrace diagnose --sample-size 5
 
 ---
 
-## 9. Future Extensions (Not in v2.0 MVP)
+## 12. Future Extensions (Not in v2.0 MVP)
 
 * `agtrace find` - Full-text search across events
 * `agtrace stats` - Token/tool usage statistics
