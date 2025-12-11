@@ -15,39 +15,55 @@ When provider log formats change between versions, agtrace may fail to parse the
 
 ### Step 1: Discover Problems
 
-Run `agtrace diagnose` to identify files with parsing errors:
+Run `agtrace diagnose` to identify files with parsing errors across **all files**:
 
 ```bash
 $ agtrace diagnose
 
 === Diagnose Results ===
 
-Provider: Codex
-  Total files scanned: 10
-  Successfully parsed: 5 (50.0%)
-  Parse failures: 5 (50.0%)
+Provider: Claude
+  Total files scanned: 329
+  Successfully parsed: 312 (94.8%)
+  Parse failures: 17 (5.2%)
 
   Failure breakdown:
-  ✗ missing_field (network_access): 2 files
-    Example: /Users/.../rollout-2025-12-04T22-23-36-019ae988-502c-7533-a763-5c796e30804c.jsonl
-    Reason: Missing required field: network_access
+  ✗ empty_file: 16 files
+    Example: /Users/.../a50cd2c1-d8df-4ae7-ae5d-887009d66940.jsonl
+    Reason: No events extracted from file
+
+    ... and 15 more files
+
+Provider: Codex
+  Total files scanned: 81
+  Successfully parsed: 48 (59.3%)
+  Parse failures: 33 (40.7%)
+
+  Failure breakdown:
+  ✗ missing_field (model_provider): 19 files
+    Example: /Users/.../rollout-2025-10-28T16-24-01-019a29b3-d031-7b31-9f2d-8970fd673604.jsonl
+    Reason: Missing required field: model_provider
+
+    ... and 18 more files
 
 Provider: Gemini
-  Total files scanned: 10
-  Successfully parsed: 7 (70.0%)
-  Parse failures: 3 (30.0%)
+  Total files scanned: 12
+  Successfully parsed: 11 (91.7%)
+  Parse failures: 1 (8.3%)
 
   Failure breakdown:
-  ✗ parse_error: 3 files
-    Example: /Users/.../9126edde.../logs.json
-    Reason: invalid type: map, expected a string at line 2 column 2
+  ✗ empty_file: 1 files
+    Example: /Users/.../a7e6a102cb8d98a9665a366914d81fc84cb6e3264be0970c66e14288b15761d7/logs.json
+    Reason: No events extracted from file
 ```
 
 **Key Information:**
 - Which providers have problems
-- How many files are affected
+- Total number of files checked (comprehensive, not sampled)
 - Error types and examples
 - File paths for investigation
+
+**Note:** `diagnose` checks **all files** to ensure no issues are missed. This is critical for catching version-specific format changes across your entire log history.
 
 ### Step 2: Inspect Actual Data
 
@@ -137,52 +153,76 @@ Next steps:
 
 ### Step 5: Fix the Schema
 
-Based on the investigation, update the schema definition in `src/providers/gemini/schema.rs`:
+Based on the investigation, update the schema definition in `src/providers/gemini/schema.rs` and `src/providers/gemini/io.rs`:
 
-**Before:**
+**Step 5.1: Add legacy format schema**
+
+In `src/providers/gemini/schema.rs`, add a struct for the legacy format:
+
 ```rust
-pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
-    let text = std::fs::read_to_string(path)?;
-
-    // Expects single session object
-    let session: GeminiSession = serde_json::from_str(&text)?;
-
-    Ok(normalize_gemini_session(&session))
+// Legacy format: array of simple messages
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyGeminiMessage {
+    pub session_id: String,
+    pub message_id: u32,
+    #[serde(rename = "type")]
+    pub message_type: String,
+    pub message: String,
+    pub timestamp: String,
 }
 ```
 
-**After:**
+**Step 5.2: Update parser to handle both formats**
+
+In `src/providers/gemini/io.rs`, update `normalize_gemini_file`:
+
 ```rust
 pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
-    let text = std::fs::read_to_string(path)?;
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
 
-    // Try parsing as session object first
+    // Try new format (session object) first
     if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
         return Ok(normalize_gemini_session(&session));
     }
 
-    // Fallback: Try parsing as array of messages (older format)
-    if let Ok(messages) = serde_json::from_str::<Vec<GeminiMessage>>(&text) {
-        // Extract project hash from file path
-        let project_hash = extract_project_hash_from_path(path)?;
-
-        // Create synthetic session
-        let session = GeminiSession {
-            session_id: "unknown".to_string(),
-            project_hash,
-            start_time: messages.first()
-                .map(|m| m.timestamp().to_string())
-                .unwrap_or_default(),
-            last_updated: messages.last()
-                .map(|m| m.timestamp().to_string())
-                .unwrap_or_default(),
-            messages,
-        };
-
-        return Ok(normalize_gemini_session(&session));
+    // Fallback: Try legacy format (array of messages)
+    if let Ok(legacy_messages) = serde_json::from_str::<Vec<LegacyGeminiMessage>>(&text) {
+        return normalize_legacy_format(path, legacy_messages);
     }
 
-    anyhow::bail!("Failed to parse Gemini file in any known format")
+    anyhow::bail!("Failed to parse Gemini file in any known format: {}", path.display())
+}
+
+fn normalize_legacy_format(path: &Path, messages: Vec<LegacyGeminiMessage>) -> Result<Vec<AgentEventV1>> {
+    // Extract session_id from first message
+    let session_id = messages.first()
+        .map(|m| m.session_id.clone())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    // Extract project_hash from file path
+    let project_hash = extract_project_hash_from_path(path)?;
+
+    // Convert legacy messages to new format
+    let converted_messages: Vec<GeminiMessage> = messages.iter().map(|msg| {
+        GeminiMessage::User(UserMessage {
+            id: msg.message_id.to_string(),
+            timestamp: msg.timestamp.clone(),
+            content: msg.message.clone(),
+        })
+    }).collect();
+
+    // Create synthetic session
+    let session = GeminiSession {
+        session_id,
+        project_hash,
+        start_time: messages.first().map(|m| m.timestamp.clone()).unwrap_or_default(),
+        last_updated: messages.last().map(|m| m.timestamp.clone()).unwrap_or_default(),
+        messages: converted_messages,
+    };
+
+    Ok(normalize_gemini_session(&session))
 }
 ```
 
@@ -195,25 +235,32 @@ After updating the schema, rebuild and test:
 $ cargo build --release
 
 # Test the specific file
-$ agtrace validate /Users/.../logs.json
+$ agtrace validate /Users/.../9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde/logs.json
 
-File: /Users/.../logs.json
+File: /Users/.../9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde/logs.json
 Provider: gemini (auto-detected)
 Status: ✓ Valid
 
 Parsed successfully:
   - Session ID: f0a689a6-b0ac-407f-afcc-4fafa9e14e8a
-  - Events extracted: 15
-  - Project: /Users/zawakin/...
+  - Events extracted: 3
+  - Event breakdown:
+      UserMessage: 3
 
 # Re-run full diagnosis
 $ agtrace diagnose --provider gemini
 
 Provider: Gemini
-  Total files scanned: 10
-  Successfully parsed: 10 (100.0%)
+  Total files scanned: 12
+  Successfully parsed: 11 (91.7%)
+  Parse failures: 1 (8.3%)
 
-All files parsed successfully!
+  Failure breakdown:
+  ✗ empty_file: 1 files
+    Example: /Users/.../a7e6a102cb8d98a9665a366914d81fc84cb6e3264be0970c66e14288b15761d7/logs.json
+    Reason: No events extracted from file
+
+# The remaining failure is a legitimately empty file, not a schema issue
 ```
 
 ## Common Patterns
@@ -323,7 +370,7 @@ When you encounter a schema issue, ask:
 
 ```bash
 # Full workflow in order
-agtrace diagnose                    # 1. Find problems
+agtrace diagnose                    # 1. Find problems (checks ALL files)
 agtrace inspect <file> --lines 30   # 2. See actual data
 agtrace schema <provider>           # 3. See expected format
 agtrace validate <file>             # 4. Get detailed error
@@ -331,6 +378,9 @@ agtrace validate <file>             # 4. Get detailed error
 cargo build --release               # 6. Rebuild
 agtrace validate <file>             # 7. Test fix
 agtrace diagnose --provider <name>  # 8. Verify all files
+
+# For verbose output showing all problematic files:
+agtrace diagnose --verbose
 ```
 
 ## Example: Fixing Codex SandboxPolicy
@@ -401,10 +451,15 @@ All files parsed successfully!
 
 The diagnostic workflow eliminates the need for manual file inspection with UNIX tools:
 
-1. **`diagnose`** finds all problems deterministically
+1. **`diagnose`** finds all problems deterministically by checking **every file** (no sampling)
 2. **`inspect`** shows raw file content with line numbers
 3. **`schema`** displays expected format
 4. **`validate`** gives detailed errors with suggestions
 5. Fix code, rebuild, validate
+
+**Key principle:** `diagnose` checks **all files comprehensively** to ensure no issues are missed. This is critical because:
+- Schema changes can occur at any point in log history
+- Sampling might miss older format versions
+- Complete coverage ensures production-ready schema definitions
 
 This creates a reproducible, deterministic debugging loop that's easy to follow and document.

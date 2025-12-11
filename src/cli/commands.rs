@@ -147,12 +147,11 @@ pub fn run(cli: Cli) -> Result<()> {
 
         Commands::Diagnose {
             provider,
-            sample_size,
             verbose,
         } => {
             let config_path = data_dir.join("config.toml");
             let config = Config::load_from(&config_path)?;
-            handlers::diagnose::handle(&config, provider, sample_size, verbose)
+            handlers::diagnose::handle(&config, provider, verbose)
         }
 
         Commands::Inspect {

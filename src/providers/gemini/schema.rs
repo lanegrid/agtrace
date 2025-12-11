@@ -11,6 +11,18 @@ pub struct GeminiSession {
     pub messages: Vec<GeminiMessage>,
 }
 
+// Legacy format: array of simple messages
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct LegacyGeminiMessage {
+    pub session_id: String,
+    pub message_id: u32,
+    #[serde(rename = "type")]
+    pub message_type: String,
+    pub message: String,
+    pub timestamp: String,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "lowercase")]

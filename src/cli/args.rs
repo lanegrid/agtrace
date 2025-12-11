@@ -173,9 +173,6 @@ pub enum Commands {
         #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
         provider: String,
 
-        #[arg(long, default_value = "10")]
-        sample_size: usize,
-
         #[arg(long)]
         verbose: bool,
     },

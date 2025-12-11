@@ -42,7 +42,6 @@ pub struct FailureExample {
 pub fn handle(
     config: &Config,
     provider_filter: String,
-    sample_size: usize,
     verbose: bool,
 ) -> Result<()> {
     let providers: Vec<Box<dyn LogProvider>> = match provider_filter.as_str() {
@@ -84,7 +83,7 @@ pub fn handle(
             continue;
         }
 
-        let result = diagnose_provider(provider.as_ref(), log_root, sample_size)?;
+        let result = diagnose_provider(provider.as_ref(), log_root)?;
         results.push(result);
     }
 
@@ -96,7 +95,6 @@ pub fn handle(
 fn diagnose_provider(
     provider: &dyn LogProvider,
     log_root: &Path,
-    sample_size: usize,
 ) -> Result<DiagnoseResult> {
     let mut all_files = Vec::new();
 
@@ -115,29 +113,18 @@ fn diagnose_provider(
         }
     }
 
-    // Sample files
-    let sampled_files = if all_files.len() <= sample_size {
-        all_files
-    } else {
-        // Take most recent files
-        all_files.sort_by_key(|p| {
-            std::fs::metadata(p)
-                .and_then(|m| m.modified())
-                .ok()
-        });
-        all_files.reverse();
-        all_files.into_iter().take(sample_size).collect()
-    };
+    // Process all files (no sampling)
+    let files_to_check = all_files;
 
     let mut result = DiagnoseResult {
         provider_name: provider.name().to_string(),
-        total_files: sampled_files.len(),
+        total_files: files_to_check.len(),
         successful: 0,
         failures: HashMap::new(),
     };
 
     // Test each file
-    for file_path in sampled_files {
+    for file_path in files_to_check {
         match test_parse_file(provider, &file_path) {
             Ok(_) => {
                 result.successful += 1;

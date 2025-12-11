@@ -10,10 +10,64 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
 
-    let session: GeminiSession = serde_json::from_str(&text)
-        .with_context(|| format!("Failed to parse Gemini JSON: {}", path.display()))?;
+    // Try new format (session object) first
+    if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
+        return Ok(normalize_gemini_session(&session));
+    }
+
+    // Fallback: Try legacy format (array of messages)
+    if let Ok(legacy_messages) = serde_json::from_str::<Vec<super::schema::LegacyGeminiMessage>>(&text) {
+        return normalize_legacy_format(path, legacy_messages);
+    }
+
+    anyhow::bail!("Failed to parse Gemini file in any known format: {}", path.display())
+}
+
+/// Convert legacy format to session
+fn normalize_legacy_format(path: &Path, messages: Vec<super::schema::LegacyGeminiMessage>) -> Result<Vec<AgentEventV1>> {
+    use super::schema::{GeminiMessage, UserMessage};
+
+    // Extract session_id from first message
+    let session_id = messages.first()
+        .map(|m| m.session_id.clone())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    // Extract project_hash from file path
+    let project_hash = extract_project_hash_from_path(path)?;
+
+    // Convert legacy messages to new format
+    let converted_messages: Vec<GeminiMessage> = messages.iter().map(|msg| {
+        GeminiMessage::User(UserMessage {
+            id: msg.message_id.to_string(),
+            timestamp: msg.timestamp.clone(),
+            content: msg.message.clone(),
+        })
+    }).collect();
+
+    // Create synthetic session
+    let session = GeminiSession {
+        session_id,
+        project_hash,
+        start_time: messages.first().map(|m| m.timestamp.clone()).unwrap_or_default(),
+        last_updated: messages.last().map(|m| m.timestamp.clone()).unwrap_or_default(),
+        messages: converted_messages,
+    };
 
     Ok(normalize_gemini_session(&session))
+}
+
+/// Extract project hash from Gemini file path
+fn extract_project_hash_from_path(path: &Path) -> Result<String> {
+    // Path format: ~/.gemini/tmp/<project_hash>/logs.json
+    let components: Vec<_> = path.components().collect();
+    for i in 0..components.len() {
+        if components[i].as_os_str() == "tmp" && i + 1 < components.len() {
+            if let Some(hash) = components[i + 1].as_os_str().to_str() {
+                return Ok(hash.to_string());
+            }
+        }
+    }
+    anyhow::bail!("Could not extract project hash from path: {}", path.display())
 }
 
 /// Extract projectHash from a Gemini logs.json file
@@ -35,21 +89,36 @@ pub fn extract_gemini_header(path: &Path) -> Result<GeminiHeader> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
 
-    let session: GeminiSession = serde_json::from_str(&text)
-        .with_context(|| format!("Failed to parse Gemini JSON: {}", path.display()))?;
+    // Try new format first
+    if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
+        let snippet = session.messages.iter()
+            .find_map(|msg| {
+                use super::schema::GeminiMessage;
+                match msg {
+                    GeminiMessage::User(user_msg) => Some(user_msg.content.clone()),
+                    _ => None,
+                }
+            });
 
-    let snippet = session.messages.iter()
-        .find_map(|msg| {
-            use super::schema::GeminiMessage;
-            match msg {
-                GeminiMessage::User(user_msg) => Some(user_msg.content.clone()),
-                _ => None,
-            }
+        return Ok(GeminiHeader {
+            session_id: Some(session.session_id),
+            timestamp: Some(session.start_time),
+            snippet,
         });
+    }
 
-    Ok(GeminiHeader {
-        session_id: Some(session.session_id),
-        timestamp: Some(session.start_time),
-        snippet,
-    })
+    // Try legacy format
+    if let Ok(legacy_messages) = serde_json::from_str::<Vec<super::schema::LegacyGeminiMessage>>(&text) {
+        let session_id = legacy_messages.first().map(|m| m.session_id.clone());
+        let timestamp = legacy_messages.first().map(|m| m.timestamp.clone());
+        let snippet = legacy_messages.first().map(|m| m.message.clone());
+
+        return Ok(GeminiHeader {
+            session_id,
+            timestamp,
+            snippet,
+        });
+    }
+
+    anyhow::bail!("Failed to parse Gemini file in any known format: {}", path.display())
 }

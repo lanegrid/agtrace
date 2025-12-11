@@ -475,7 +475,6 @@ Diagnoses schema compatibility issues by sampling log files from each provider. 
 ```sh
 agtrace diagnose \
   [--provider <claude|codex|gemini|all>] \
-  [--sample-size <n>] \
   [--verbose]
 ```
 
@@ -485,17 +484,13 @@ agtrace diagnose \
   - Description: Target provider(s) to diagnose
   - Default: `all`
 
-* `--sample-size <n>` (optional)
-  - Description: Number of files to sample per provider
-  - Default: `10`
-
 * `--verbose`
-  - Description: Show all problematic files (not just samples)
+  - Description: Show all problematic files (not just examples)
 
 ### 7.4 Behavior
 
 1. Scans provider log directories (using config.toml)
-2. Samples N files per provider (random or recent)
+2. Collects **all files** for each provider (no sampling)
 3. Attempts to parse each file with current schema
 4. Categorizes failures by error type:
    - `missing_field`: Required field not present
@@ -504,6 +499,8 @@ agtrace diagnose \
    - `empty_file`: File has no meaningful content
 5. Aggregates results and displays summary with examples
 
+**Note:** This command processes all files comprehensively to ensure no issues are missed. For large log directories with hundreds of files, this may take a few seconds.
+
 ### 7.5 Output Format
 
 #### Default output (aggregated):
@@ -511,45 +508,52 @@ agtrace diagnose \
 ```text
 === Diagnose Results ===
 
-Provider: Codex
-  Total files scanned: 150
-  Successfully parsed: 120 (80.0%)
-  Parse failures: 30 (20.0%)
-
-  Failure breakdown:
-  ✗ missing_field (source): 15 files
-    Example: /Users/.../rollout-2025-11-11T00-49-22-019a6e75-2585-7540-9982-9dced67f1132.jsonl
-    Reason: Field 'source' expected string, found object {"subagent":"review"}
-
-  ✗ missing_field (session_id): 10 files
-    Example: /Users/.../rollout-2025-10-28T16-24-01-019a29b3-d031-7b31-9f2d-8970fd673604.jsonl
-    Reason: No SessionMeta record found in first 20 lines
-
-  ✗ empty_file: 5 files
-    Example: /Users/.../rollout-2025-09-15T02-36-25-58f46532-3eee-42e9-8060-d5152c6f66da.jsonl
-
 Provider: Claude
-  Total files scanned: 80
-  Successfully parsed: 79 (98.8%)
-  Parse failures: 1 (1.2%)
+  Total files scanned: 329
+  Successfully parsed: 312 (94.8%)
+  Parse failures: 17 (5.2%)
 
   Failure breakdown:
-  ✗ missing_field (session_id): 1 file
-    Example: /Users/.../81ef0c4f-d76a-415b-a6f6-e51fa6bc7d96.jsonl
-    Reason: File contains only 'summary' and 'file-history-snapshot' records
+  ✗ empty_file: 16 files
+    Example: /Users/.../a50cd2c1-d8df-4ae7-ae5d-887009d66940.jsonl
+    Reason: No events extracted from file
+
+    ... and 15 more files
+
+  ✗ parse_error: 1 files
+    Example: /Users/.../374bc3d8-9eaf-4419-897c-dd84881047a9.jsonl
+    Reason: Failed to parse JSON line: ...
+
+Provider: Codex
+  Total files scanned: 81
+  Successfully parsed: 48 (59.3%)
+  Parse failures: 33 (40.7%)
+
+  Failure breakdown:
+  ✗ missing_field (model_provider): 19 files
+    Example: /Users/.../rollout-2025-10-28T16-24-01-019a29b3-d031-7b31-9f2d-8970fd673604.jsonl
+    Reason: Missing required field: model_provider
+
+    ... and 18 more files
+
+  ✗ missing_field (effort): 14 files
+    Example: /Users/.../rollout-2025-11-03T10-46-11-019a4764-ae62-7042-9514-01a47b61b8e5.jsonl
+    Reason: Missing required field: effort
+
+    ... and 13 more files
 
 Provider: Gemini
-  Total files scanned: 4
-  Successfully parsed: 3 (75.0%)
-  Parse failures: 1 (25.0%)
+  Total files scanned: 12
+  Successfully parsed: 11 (91.7%)
+  Parse failures: 1 (8.3%)
 
   Failure breakdown:
-  ✗ parse_error: 1 file
-    Example: /Users/.../427e6b3f.../logs.json
-    Reason: Array format instead of expected session object
+  ✗ empty_file: 1 files
+    Example: /Users/.../a7e6a102cb8d98a9665a366914d81fc84cb6e3264be0970c66e14288b15761d7/logs.json
+    Reason: No events extracted from file
 
 ---
-Summary: 34 files need schema updates to parse correctly
+Summary: 51 files need schema updates to parse correctly
 Run with --verbose to see all problematic files
 ```
 
@@ -559,19 +563,19 @@ Shows all files in each category (not just examples)
 
 ### 7.6 Use Cases
 
-**Regular health check:**
+**Regular health check (all providers):**
 ```sh
 agtrace diagnose
 ```
 
-**Debug specific provider:**
+**Debug specific provider with full details:**
 ```sh
 agtrace diagnose --provider codex --verbose
 ```
 
-**Quick sampling (faster):**
+**Quick check for a single provider:**
 ```sh
-agtrace diagnose --sample-size 5
+agtrace diagnose --provider gemini
 ```
 
 ---
