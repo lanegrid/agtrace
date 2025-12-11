@@ -83,6 +83,9 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 * **`agtrace providers`**
   Manages provider configuration.
 
+* **`agtrace diagnose`**
+  Diagnoses schema compatibility issues by sampling log files.
+
 **Removed in v2.0:**
 - `find`: Removed for MVP (can be re-added later)
 - `stats`: Removed for MVP (can be re-added later)
@@ -446,7 +449,125 @@ agtrace providers set <PROVIDER> --log-root <PATH> [--enable|--disable]
 
 ---
 
-## 7. Error Codes
+## 7. `agtrace diagnose`
+
+### 7.1 Overview
+
+Diagnoses schema compatibility issues by sampling log files from each provider. This command helps identify:
+- Files that fail to parse due to schema mismatches
+- Missing required fields
+- Type mismatches
+- Version-specific format changes
+
+**Purpose:** Make debugging schema issues trivial - run once to understand all parsing problems across providers.
+
+### 7.2 Signature
+
+```sh
+agtrace diagnose \
+  [--provider <claude|codex|gemini|all>] \
+  [--sample-size <n>] \
+  [--verbose]
+```
+
+### 7.3 Options
+
+* `--provider <claude|codex|gemini|all>` (optional)
+  - Description: Target provider(s) to diagnose
+  - Default: `all`
+
+* `--sample-size <n>` (optional)
+  - Description: Number of files to sample per provider
+  - Default: `10`
+
+* `--verbose`
+  - Description: Show all problematic files (not just samples)
+
+### 7.4 Behavior
+
+1. Scans provider log directories (using config.toml)
+2. Samples N files per provider (random or recent)
+3. Attempts to parse each file with current schema
+4. Categorizes failures by error type:
+   - `missing_field`: Required field not present
+   - `type_mismatch`: Field type doesn't match schema
+   - `parse_error`: JSON syntax error or unknown structure
+   - `empty_file`: File has no meaningful content
+5. Aggregates results and displays summary with examples
+
+### 7.5 Output Format
+
+#### Default output (aggregated):
+
+```text
+=== Diagnose Results ===
+
+Provider: Codex
+  Total files scanned: 150
+  Successfully parsed: 120 (80.0%)
+  Parse failures: 30 (20.0%)
+
+  Failure breakdown:
+  ✗ missing_field (source): 15 files
+    Example: /Users/.../rollout-2025-11-11T00-49-22-019a6e75-2585-7540-9982-9dced67f1132.jsonl
+    Reason: Field 'source' expected string, found object {"subagent":"review"}
+
+  ✗ missing_field (session_id): 10 files
+    Example: /Users/.../rollout-2025-10-28T16-24-01-019a29b3-d031-7b31-9f2d-8970fd673604.jsonl
+    Reason: No SessionMeta record found in first 20 lines
+
+  ✗ empty_file: 5 files
+    Example: /Users/.../rollout-2025-09-15T02-36-25-58f46532-3eee-42e9-8060-d5152c6f66da.jsonl
+
+Provider: Claude
+  Total files scanned: 80
+  Successfully parsed: 79 (98.8%)
+  Parse failures: 1 (1.2%)
+
+  Failure breakdown:
+  ✗ missing_field (session_id): 1 file
+    Example: /Users/.../81ef0c4f-d76a-415b-a6f6-e51fa6bc7d96.jsonl
+    Reason: File contains only 'summary' and 'file-history-snapshot' records
+
+Provider: Gemini
+  Total files scanned: 4
+  Successfully parsed: 3 (75.0%)
+  Parse failures: 1 (25.0%)
+
+  Failure breakdown:
+  ✗ parse_error: 1 file
+    Example: /Users/.../427e6b3f.../logs.json
+    Reason: Array format instead of expected session object
+
+---
+Summary: 34 files need schema updates to parse correctly
+Run with --verbose to see all problematic files
+```
+
+#### Verbose output:
+
+Shows all files in each category (not just examples)
+
+### 7.6 Use Cases
+
+**Regular health check:**
+```sh
+agtrace diagnose
+```
+
+**Debug specific provider:**
+```sh
+agtrace diagnose --provider codex --verbose
+```
+
+**Quick sampling (faster):**
+```sh
+agtrace diagnose --sample-size 5
+```
+
+---
+
+## 8. Error Codes
 
 * `0` … Success
 * `1` … General error (parse failure / invalid input)
@@ -456,7 +577,7 @@ agtrace providers set <PROVIDER> --log-root <PATH> [--enable|--disable]
 
 ---
 
-## 8. Future Extensions (Not in v2.0 MVP)
+## 9. Future Extensions (Not in v2.0 MVP)
 
 * `agtrace find` - Full-text search across events
 * `agtrace stats` - Token/tool usage statistics

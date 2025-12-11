@@ -28,7 +28,7 @@ pub struct SessionMetaPayload {
     pub cli_version: String,
     #[serde(default)]
     pub instructions: Option<String>,
-    pub source: String,
+    pub source: Value, // Can be string or object like {"subagent":"review"}
     pub model_provider: String,
     #[serde(default)]
     pub git: Option<GitInfo>,
@@ -36,8 +36,12 @@ pub struct SessionMetaPayload {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GitInfo {
-    pub commit_hash: String,
-    pub branch: String,
+    #[serde(default)]
+    pub commit_hash: Option<String>,
+    #[serde(default)]
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub repository_url: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

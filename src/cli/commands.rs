@@ -144,6 +144,16 @@ pub fn run(cli: Cli) -> Result<()> {
             let db = Database::open(&db_path)?;
             handlers::project::handle(&db, project_root)
         }
+
+        Commands::Diagnose {
+            provider,
+            sample_size,
+            verbose,
+        } => {
+            let config_path = data_dir.join("config.toml");
+            let config = Config::load_from(&config_path)?;
+            handlers::diagnose::handle(&config, provider, sample_size, verbose)
+        }
     }
 }
 
