@@ -139,6 +139,11 @@ pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
                             // Try to extract "Exit Code: N" from output
                             if let Some(exit_code) = extract_exit_code(output) {
                                 tev.tool_exit_code = Some(exit_code);
+                                // Override status based on exit code
+                                // Non-zero exit code = error, regardless of reported status
+                                if exit_code != 0 {
+                                    tev.tool_status = Some(ToolStatus::Error);
+                                }
                             }
                         }
                     }

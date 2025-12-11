@@ -91,6 +91,8 @@ pub enum UserContent {
         tool_use_id: String,
         #[serde(default)]
         content: Option<Value>,
+        #[serde(default)]
+        is_error: bool,
     },
     #[serde(other)]
     Unknown,

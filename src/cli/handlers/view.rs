@@ -209,13 +209,47 @@ fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: 
             EventType::Log => "Log",
         };
 
+        // Add status indicator for ToolResult events
+        let status_indicator = if matches!(event.event_type, EventType::ToolResult) {
+            match event.tool_status {
+                Some(crate::model::ToolStatus::Success) => {
+                    if enable_color {
+                        format!("{} ", "✓".green())
+                    } else {
+                        "✓ ".to_string()
+                    }
+                }
+                Some(crate::model::ToolStatus::Error) => {
+                    if enable_color {
+                        format!("{} ", "✗".red())
+                    } else {
+                        "✗ ".to_string()
+                    }
+                }
+                _ => String::new(),
+            }
+        } else {
+            String::new()
+        };
+
         let event_type_str = if enable_color {
             match event.event_type {
                 EventType::UserMessage => format!("{}", event_type_name.green()),
                 EventType::AssistantMessage => format!("{}", event_type_name.blue()),
                 EventType::Reasoning => format!("{}", event_type_name.cyan()),
                 EventType::ToolCall => format!("{}", event_type_name.yellow()),
-                EventType::ToolResult => format!("{}", event_type_name.magenta()),
+                EventType::ToolResult => {
+                    // Color ToolResult based on status
+                    match event.tool_status {
+                        Some(crate::model::ToolStatus::Success) => {
+                            format!("{}", event_type_name.green())
+                        }
+                        Some(crate::model::ToolStatus::Error) => {
+                            format!("{}", event_type_name.red())
+                        }
+                        _ => format!("{}", event_type_name.magenta()),
+                    }
+                }
                 EventType::SystemMessage => format!("{}", event_type_name.white()),
                 EventType::FileSnapshot => format!("{}", event_type_name.bright_black()),
                 EventType::SessionSummary => format!("{}", event_type_name.bright_blue()),
@@ -244,7 +278,10 @@ fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: 
             time_display
         };
 
-        println!("{} {:<20} {}", time_colored, event_type_str, role_str);
+        println!(
+            "{} {}{:<20} {}",
+            time_colored, status_indicator, event_type_str, role_str
+        );
 
         if let Some(text) = &event.text {
             let preview = if truncate && text.chars().count() > 100 {
@@ -284,6 +321,27 @@ fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: 
                     print!(" [{}]", format!("{}", file_op.bright_cyan()));
                 } else {
                     print!(" [{}]", file_op);
+                }
+            }
+
+            // Show status for ToolResult events
+            if matches!(event.event_type, EventType::ToolResult) {
+                if let Some(status) = &event.tool_status {
+                    let status_str = format!("{:?}", status).to_lowercase();
+                    if enable_color {
+                        let status_colored = match status {
+                            crate::model::ToolStatus::Success => {
+                                format!("{}", status_str.green().bold())
+                            }
+                            crate::model::ToolStatus::Error => {
+                                format!("{}", status_str.red().bold())
+                            }
+                            _ => format!("{}", status_str.yellow()),
+                        };
+                        print!(" {}", status_colored);
+                    } else {
+                        print!(" {}", status_str);
+                    }
                 }
             }
 
@@ -348,6 +406,8 @@ struct ToolInfo {
     name: String,
     raw_target: Option<String>,      // Full string for comparison
     display_target: Option<String>,  // Truncated string for display
+    call_id: Option<String>,         // tool_call_id to match with results
+    status: Option<crate::model::ToolStatus>, // Success/Error/Unknown
 }
 
 struct ToolChainBuffer {
@@ -382,6 +442,8 @@ impl ToolChainBuffer {
         tool_name: Option<&String>,
         file_path: Option<&String>,
         text: Option<&String>,
+        call_id: Option<&String>,
+        status: Option<crate::model::ToolStatus>,
         ts: &str,
     ) {
         if let Some(name) = tool_name {
@@ -391,6 +453,8 @@ impl ToolChainBuffer {
                 name: name.clone(),
                 raw_target,
                 display_target,
+                call_id: call_id.cloned(),
+                status, // Can be set immediately (Gemini) or updated later (others)
             });
         }
         if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
@@ -401,13 +465,29 @@ impl ToolChainBuffer {
         }
     }
 
+    fn update_status(
+        &mut self,
+        call_id: Option<&String>,
+        status: Option<crate::model::ToolStatus>,
+    ) {
+        if let Some(id) = call_id {
+            // Find the tool with matching call_id and update its status
+            for tool in self.tools.iter_mut().rev() {
+                if tool.call_id.as_ref() == Some(id) {
+                    tool.status = status;
+                    break;
+                }
+            }
+        }
+    }
+
     fn mark_end(&mut self, ts: &str) {
         if let Ok(parsed_ts) = DateTime::parse_from_rfc3339(ts) {
             self.end_ts = Some(parsed_ts);
         }
     }
 
-    fn format_flow(&self) -> String {
+    fn format_flow(&self, enable_color: bool) -> String {
         if self.tools.is_empty() {
             return String::new();
         }
@@ -424,7 +504,7 @@ impl ToolChainBuffer {
                 i += 1;
             }
 
-            let formatted = format_tool_with_targets(current_tool, &tool_infos);
+            let formatted = format_tool_with_targets(current_tool, &tool_infos, enable_color);
             parts.push(formatted);
         }
 
@@ -440,7 +520,7 @@ impl ToolChainBuffer {
             return;
         }
 
-        let flow = self.format_flow();
+        let flow = self.format_flow(enable_color);
 
         let duration_ms = if let (Some(start), Some(end)) = (self.start_ts, self.end_ts) {
             end.signed_duration_since(start).num_milliseconds() as u64
@@ -708,28 +788,66 @@ fn truncate_simple(s: &str, limit: usize) -> String {
     }
 }
 
-fn format_tool_with_targets(tool_name: &str, tool_infos: &[&ToolInfo]) -> String {
+fn format_tool_with_targets(tool_name: &str, tool_infos: &[&ToolInfo], enable_color: bool) -> String {
     let mut target_groups = Vec::new();
     let mut i = 0;
 
     while i < tool_infos.len() {
         let current_raw = &tool_infos[i].raw_target;
+        let current_status = &tool_infos[i].status;
         let mut count = 1;
 
         // Compare using raw_target (full string), not display_target
-        while i + count < tool_infos.len() && &tool_infos[i + count].raw_target == current_raw {
+        while i + count < tool_infos.len()
+            && &tool_infos[i + count].raw_target == current_raw
+            && &tool_infos[i + count].status == current_status {
             count += 1;
         }
 
+        // Create status indicator
+        let status_indicator = match current_status {
+            Some(crate::model::ToolStatus::Success) => {
+                if enable_color {
+                    format!("{} ", "✓".green())
+                } else {
+                    "✓ ".to_string()
+                }
+            }
+            Some(crate::model::ToolStatus::Error) => {
+                if enable_color {
+                    format!("{} ", "✗".red())
+                } else {
+                    "✗ ".to_string()
+                }
+            }
+            _ => String::new(),
+        };
+
         // Display using display_target (truncated string)
         if let Some(display) = &tool_infos[i].display_target {
-            if count > 1 {
-                target_groups.push(format!("{} x{}", display, count));
+            let formatted = if count > 1 {
+                format!("{} x{}", display, count)
             } else {
-                target_groups.push(display.clone());
+                display.clone()
+            };
+            if !status_indicator.is_empty() {
+                target_groups.push(format!("{}{}", status_indicator, formatted));
+            } else {
+                target_groups.push(formatted);
             }
-        } else if count > 1 {
-            target_groups.push(format!("x{}", count));
+        } else {
+            let formatted = if count > 1 {
+                format!("x{}", count)
+            } else {
+                String::new()
+            };
+            if !formatted.is_empty() {
+                if !status_indicator.is_empty() {
+                    target_groups.push(format!("{}{}", status_indicator, formatted));
+                } else {
+                    target_groups.push(formatted);
+                }
+            }
         }
 
         i += count;
@@ -836,11 +954,14 @@ fn print_events_compact(events: &[AgentEventV1], enable_color: bool) {
                     event.tool_name.as_ref(),
                     event.file_path.as_ref(),
                     event.text.as_ref(),
+                    event.tool_call_id.as_ref(),
+                    event.tool_status,
                     &event.ts,
                 );
             }
 
             EventType::ToolResult => {
+                buffer.update_status(event.tool_call_id.as_ref(), event.tool_status);
                 buffer.mark_end(&event.ts);
             }
 

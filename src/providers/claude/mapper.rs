@@ -71,6 +71,7 @@ pub fn normalize_claude_stream(
                         if let UserContent::ToolResult {
                             tool_use_id,
                             content,
+                            is_error,
                         } = item
                         {
                             let mut ev = AgentEventV1::new(
@@ -88,10 +89,30 @@ pub fn normalize_claude_stream(
 
                             // Extract text from content (could be string or object)
                             // No truncation - preserve full content for analysis
-                            ev.text = content.as_ref().map(|c| match c {
+                            let text_content = content.as_ref().map(|c| match c {
                                 serde_json::Value::String(s) => s.clone(),
                                 _ => c.to_string(),
                             });
+                            ev.text = text_content.clone();
+
+                            // Set tool_status based on is_error flag
+                            ev.tool_status = Some(if *is_error {
+                                ToolStatus::Error
+                            } else {
+                                ToolStatus::Success
+                            });
+
+                            // For Bash tool results, try to extract exit code
+                            // Claude Code's Bash tool returns structured output with "Exit code: N"
+                            if let Some(text) = &text_content {
+                                if let Some(exit_code) = extract_exit_code_from_bash_output(text) {
+                                    ev.tool_exit_code = Some(exit_code);
+                                    // Non-zero exit code = error (override is_error if needed)
+                                    if exit_code != 0 {
+                                        ev.tool_status = Some(ToolStatus::Error);
+                                    }
+                                }
+                            }
 
                             ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
                             events.push(ev);
@@ -301,4 +322,24 @@ pub fn normalize_claude_stream(
     }
 
     events
+}
+
+/// Extract exit code from Claude Code's Bash tool output
+/// Claude Code Bash tool returns output in format: "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n..."
+fn extract_exit_code_from_bash_output(output: &str) -> Option<i32> {
+    // Look for "Exit code: N" pattern (case insensitive)
+    for line in output.lines() {
+        let line_lower = line.to_lowercase();
+        if line_lower.starts_with("exit code:") {
+            // Extract the number after "Exit code:"
+            let parts: Vec<&str> = line.split(':').collect();
+            if parts.len() >= 2 {
+                let num_part = parts[1].trim();
+                if let Ok(code) = num_part.parse::<i32>() {
+                    return Some(code);
+                }
+            }
+        }
+    }
+    None
 }
