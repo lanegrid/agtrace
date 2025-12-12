@@ -1,4 +1,5 @@
 use agtrace_types::{AgentEventV1, EventType};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ExportStrategy {
@@ -7,13 +8,15 @@ pub enum ExportStrategy {
     Reasoning,
 }
 
-impl ExportStrategy {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for ExportStrategy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "raw" => Some(ExportStrategy::Raw),
-            "clean" => Some(ExportStrategy::Clean),
-            "reasoning" => Some(ExportStrategy::Reasoning),
-            _ => None,
+            "raw" => Ok(ExportStrategy::Raw),
+            "clean" => Ok(ExportStrategy::Clean),
+            "reasoning" => Ok(ExportStrategy::Reasoning),
+            _ => Err(format!("Unknown export strategy: {}", s)),
         }
     }
 }

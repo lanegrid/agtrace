@@ -2,6 +2,7 @@ use agtrace_types::{AgentEventV1, EventType};
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AnalysisReport {
@@ -34,18 +35,22 @@ pub enum Detector {
     LintPingPong,
 }
 
-impl Detector {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl FromStr for Detector {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "loops" => Some(Detector::Loops),
-            "apology" => Some(Detector::Apology),
-            "lazy_tool" => Some(Detector::LazyTool),
-            "zombie" => Some(Detector::Zombie),
-            "lint_ping_pong" => Some(Detector::LintPingPong),
-            _ => None,
+            "loops" => Ok(Detector::Loops),
+            "apology" => Ok(Detector::Apology),
+            "lazy_tool" => Ok(Detector::LazyTool),
+            "zombie" => Ok(Detector::Zombie),
+            "lint_ping_pong" => Ok(Detector::LintPingPong),
+            _ => Err(format!("Unknown detector: {}", s)),
         }
     }
+}
 
+impl Detector {
     pub fn all() -> Vec<Self> {
         vec![
             Detector::Loops,

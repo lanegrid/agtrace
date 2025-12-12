@@ -19,8 +19,7 @@ pub fn handle(
     let all_events = loader.load_events(&session_id, &options)?;
     let resolved_id = session_id.clone();
 
-    let export_strategy = ExportStrategy::from_str(&strategy)
-        .ok_or_else(|| anyhow::anyhow!("Unknown strategy: {}", strategy))?;
+    let export_strategy: ExportStrategy = strategy.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let processed_events = export::transform(&all_events, export_strategy);
 

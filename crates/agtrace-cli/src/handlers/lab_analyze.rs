@@ -14,12 +14,12 @@ pub fn handle(db: &Database, session_id: String, detect: String, format: String)
     } else {
         detect
             .split(',')
-            .filter_map(|d| {
-                let detector = Detector::from_str(d.trim());
-                if detector.is_none() {
-                    eprintln!("Warning: Unknown detector: {}", d);
+            .filter_map(|d| match d.trim().parse() {
+                Ok(detector) => Some(detector),
+                Err(e) => {
+                    eprintln!("Warning: {}", e);
+                    None
                 }
-                detector
             })
             .collect()
     };
