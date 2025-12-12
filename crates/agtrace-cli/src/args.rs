@@ -57,7 +57,10 @@ pub enum Commands {
         command: LabCommand,
     },
 
-    Init,
+    Init {
+        #[arg(long)]
+        refresh: bool,
+    },
 
     // Legacy commands (kept for backwards compatibility)
     #[command(hide = true)]

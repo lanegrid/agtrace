@@ -32,7 +32,9 @@ pub fn run(cli: Cli) -> Result<()> {
     };
 
     match command {
-        Commands::Init => handlers::init::handle(&data_dir, cli.project_root, cli.all_projects),
+        Commands::Init { refresh } => {
+            handlers::init::handle(&data_dir, cli.project_root, cli.all_projects, refresh)
+        }
 
         Commands::Index { command } => {
             let db_path = data_dir.join("agtrace.db");
@@ -365,11 +367,22 @@ fn show_guidance(data_dir: &PathBuf) -> Result<()> {
         println!("  3. Scan for sessions");
         println!("  4. Show your recent sessions\n");
     } else {
-        println!("Quick commands:");
-        println!("  agtrace session list              # View recent sessions");
-        println!("  agtrace index update              # Scan for new sessions");
-        println!("  agtrace session show <ID>         # View a session");
-        println!("  agtrace doctor run                # Diagnose issues\n");
+        let db = Database::open(&db_path)?;
+        let session_count = db.list_sessions(None, 1)?.len();
+
+        if session_count > 0 {
+            println!("Quick commands:");
+            println!("  agtrace session list              # View recent sessions");
+            println!("  agtrace session show <ID>         # View a session");
+            println!("  agtrace index update              # Scan for new sessions");
+            println!("  agtrace doctor run                # Diagnose issues\n");
+        } else {
+            println!("No sessions found yet.");
+            println!("\nNext steps:");
+            println!("  agtrace index update              # Scan for sessions");
+            println!("  agtrace index update --all-projects  # Scan all projects");
+            println!("  agtrace provider list             # Check provider configuration\n");
+        }
     }
 
     println!("For more commands:");
