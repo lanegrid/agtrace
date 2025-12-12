@@ -64,9 +64,17 @@ The new hierarchical structure:
 - Follows common CLI patterns (like `git`, `docker`, `kubectl`)
 - Keeps backwards compatibility through deprecation warnings
 
+### Removed Commands
+
+The following legacy commands have been completely removed:
+- `find` - Used deprecated file-based storage (no replacement yet)
+- `stats` - Used deprecated file-based storage (no replacement yet)
+
+These commands relied on the v1 file-based storage system. Future versions may add equivalent functionality using the new SQLite-based pointer index.
+
 ### Migration Timeline
 
-- **Now**: Both old and new commands work
+- **Now**: Both old and new commands work (except removed ones above)
 - **Warnings**: Legacy commands show deprecation messages to stderr
 - **Future**: Legacy commands may be removed in a major version update
 

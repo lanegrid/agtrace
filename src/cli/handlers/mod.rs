@@ -1,14 +1,11 @@
 pub mod analyze;
 pub mod diagnose;
 pub mod export;
-pub mod find;
 pub mod inspect;
 pub mod list;
 pub mod project;
 pub mod providers;
 pub mod scan;
 pub mod schema;
-pub mod show;
-pub mod stats;
 pub mod validate;
 pub mod view;

@@ -111,10 +111,13 @@ The following commands are still available for backwards compatibility but are d
 - `analyze` → Use `lab analyze` instead
 - `export` → Use `lab export` instead
 
-**Removed in v2.0:**
-- `find`: Removed for MVP (can be re-added later)
-- `stats`: Removed for MVP (can be re-added later)
+**Removed (No longer available):**
+- `find`: Legacy search command removed (used deprecated file-based storage)
+- `show`: Legacy display command removed (different from `session show`, used deprecated storage)
+- `stats`: Legacy statistics command removed (used deprecated file-based storage)
 - `status`: Merged into `project` command
+
+**Note:** These legacy commands relied on the deprecated v1 file-based storage system. Use the new hierarchical commands (`session show`, `lab analyze`, etc.) which use the SQLite-based pointer index.
 
 ### 1.2 Global Options
 

@@ -5,7 +5,6 @@ use super::args::{
 use super::handlers;
 use crate::config::Config;
 use crate::db::Database;
-use crate::storage::Storage;
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -26,7 +25,6 @@ fn print_deprecation_warning(old_cmd: &str, new_cmd: &str, format: &str) {
 
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
-    let storage = Storage::new(data_dir.clone());
 
     match cli.command {
         Commands::Index { command } => {
@@ -254,57 +252,16 @@ pub fn run(cli: Cli) -> Result<()> {
             )
         }
 
-        Commands::Show {
-            session_id,
-            event_type: _,
-            no_reasoning,
-            no_tool,
-            limit,
-        } => {
-            print_deprecation_warning("show", "session show", &cli.format);
-
-            handlers::show::handle(
-                &storage,
-                session_id,
-                no_reasoning,
-                no_tool,
-                limit,
-                &cli.format,
-            )
+        Commands::Show { .. } => {
+            anyhow::bail!("'show' command has been removed. Use 'session show <session-id>' instead.")
         }
 
-        Commands::Find {
-            session_id,
-            project_hash,
-            event_id: _,
-            text,
-            event_type,
-            limit,
-        } => {
-            print_deprecation_warning("find", "lab find", &cli.format);
-
-            handlers::find::handle(
-                &storage,
-                session_id,
-                project_hash,
-                text,
-                event_type,
-                limit,
-                cli.all_projects,
-                &cli.format,
-            )
+        Commands::Find { .. } => {
+            anyhow::bail!("'find' command has been removed. Search functionality will be available in future releases.")
         }
 
-        Commands::Stats {
-            project_hash,
-            source,
-            group_by: _,
-            since: _,
-            until: _,
-        } => {
-            print_deprecation_warning("stats", "lab stats", &cli.format);
-
-            handlers::stats::handle(&storage, project_hash, source, cli.all_projects)
+        Commands::Stats { .. } => {
+            anyhow::bail!("'stats' command has been removed. Statistics functionality will be available in future releases.")
         }
 
         Commands::Export {
