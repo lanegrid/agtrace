@@ -5,12 +5,16 @@ mod activity;
 pub mod analysis;
 pub mod export;
 pub mod summary;
+mod turn;
 
 pub use activity::{
     interpret_events, interpret_events_with_options, Activity, ActivityStats, ActivityStatus,
     InterpretOptions, ToolSummary,
 };
 pub use summary::SessionSummary;
+pub use turn::{
+    interpret_turns, ActionResult, ChainItem, SystemMessageKind, Turn, TurnOutcome, TurnStats,
+};
 
 use agtrace_types::AgentEventV1;
 
@@ -20,6 +24,11 @@ use agtrace_types::AgentEventV1;
 /// Build activities from events with options for display control
 pub fn build_activities(events: &[AgentEventV1], opts: &InterpretOptions) -> Vec<Activity> {
     interpret_events_with_options(events, opts)
+}
+
+/// Build turns from events - newer, more structured representation
+pub fn build_turns(events: &[AgentEventV1]) -> Vec<Turn> {
+    interpret_turns(events)
 }
 
 /// Summarize session statistics from events
