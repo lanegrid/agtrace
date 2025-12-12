@@ -1,12 +1,12 @@
 ---
-source: tests/activity_snapshots.rs
+source: crates/agtrace-engine/tests/activity_snapshots.rs
 expression: json
 ---
 [
   {
     "type": "message",
     "role": "user",
-    "text": "<environment_context> <cwd>/Users/zawakin/agent-sample</cwd> <approval_policy>on-request</approval_p...",
+    "text": "<environment_context> <cwd>/Users/zawakin/agent-sample</cwd> <approval_policy>on-request</approval_policy> <sandbox_mode>workspace-write</sandbox_mode> <network_access>restricted</network_access> <shell>zsh</shell> </environment_context>",
     "timestamp": "2025-12-09T19:55:16.336Z",
     "duration_ms": null,
     "stats": {
@@ -98,7 +98,7 @@ expression: json
   {
     "type": "message",
     "role": "assistant",
-    "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py...",
+    "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`: - 2",
     "timestamp": "2025-12-09T19:56:06.171Z",
     "duration_ms": null,
     "stats": {

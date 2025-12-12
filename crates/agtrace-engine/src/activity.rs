@@ -6,12 +6,18 @@ use std::str::FromStr;
 #[derive(Debug, Clone)]
 pub struct InterpretOptions {
     pub truncate_text: Option<usize>,
+    pub bash_display_limit: usize,
+    pub pattern_display_limit: usize,
+    pub compress_paths: bool,
 }
 
 impl Default for InterpretOptions {
     fn default() -> Self {
         Self {
-            truncate_text: Some(100),
+            truncate_text: None,
+            bash_display_limit: 80,
+            pattern_display_limit: 30,
+            compress_paths: true,
         }
     }
 }
@@ -136,7 +142,7 @@ pub fn interpret_events_with_options(
             }
 
             EventType::ToolCall => {
-                buffer.push_tool(event);
+                buffer.push_tool(event, options);
                 buffer.event_count += 1;
             }
 
@@ -198,10 +204,10 @@ impl ExecutionBuffer {
         }
     }
 
-    fn push_tool(&mut self, event: &AgentEventV1) {
+    fn push_tool(&mut self, event: &AgentEventV1, options: &InterpretOptions) {
         if let Some(name) = &event.tool_name {
             let (raw_target, display_target) =
-                extract_target_summary(name, &event.file_path, &event.text);
+                extract_target_summary(name, &event.file_path, &event.text, options);
 
             self.tools.push(ToolInfo {
                 name: name.clone(),
@@ -334,6 +340,7 @@ fn extract_target_summary(
     tool_name: &str,
     file_path: &Option<String>,
     text: &Option<String>,
+    options: &InterpretOptions,
 ) -> (Option<String>, Option<String>) {
     let tool = ToolName::from_str(tool_name).unwrap_or(ToolName::Other(tool_name.to_string()));
 
@@ -354,13 +361,13 @@ fn extract_target_summary(
                     json.get("command").and_then(|v| v.as_str()).map(|cmd| {
                         let cmd = cmd.trim();
                         let sanitized = sanitize_bash_command(cmd);
-                        let display = truncate_bash_display(&sanitized, 80);
+                        let display = truncate_bash_display(&sanitized, options.bash_display_limit);
                         (sanitized, display)
                     })
                 } else {
                     let cmd = t.trim();
                     let sanitized = sanitize_bash_command(cmd);
-                    let display = truncate_bash_display(&sanitized, 80);
+                    let display = truncate_bash_display(&sanitized, options.bash_display_limit);
                     Some((sanitized, display))
                 }
             })
@@ -372,8 +379,9 @@ fn extract_target_summary(
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(t) {
                     json.get("pattern").and_then(|v| v.as_str()).map(|p| {
                         let raw = format!("\"{}\"", p);
-                        let display = if p.len() > 30 {
-                            format!("\"{}...\"", &p.chars().take(27).collect::<String>())
+                        let display = if p.len() > options.pattern_display_limit {
+                            let take_count = options.pattern_display_limit.saturating_sub(3);
+                            format!("\"{}...\"", &p.chars().take(take_count).collect::<String>())
                         } else {
                             format!("\"{}\"", p)
                         };

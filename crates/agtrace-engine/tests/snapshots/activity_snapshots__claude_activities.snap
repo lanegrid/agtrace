@@ -63,7 +63,7 @@ expression: json
   {
     "type": "message",
     "role": "assistant",
-    "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(...",
+    "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed. You can run it with: ```bash python myapp/hoge.py ```",
     "timestamp": "2025-12-09T19:48:14.040Z",
     "duration_ms": null,
     "stats": {
