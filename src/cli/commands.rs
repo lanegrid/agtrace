@@ -1,4 +1,7 @@
-use super::args::{Cli, Commands};
+use super::args::{
+    Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
+    SessionCommand,
+};
 use super::handlers;
 use crate::config::Config;
 use crate::db::Database;
@@ -6,16 +9,183 @@ use crate::storage::Storage;
 use anyhow::Result;
 use std::path::PathBuf;
 
+fn print_deprecation_warning(old_cmd: &str, new_cmd: &str) {
+    eprintln!(
+        "Warning: '{}' is deprecated; use '{}' instead",
+        old_cmd, new_cmd
+    );
+}
+
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
     let storage = Storage::new(data_dir.clone());
 
     match cli.command {
+        Commands::Index { command } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+            let config_path = data_dir.join("config.toml");
+            let config = Config::load_from(&config_path)?;
+
+            match command {
+                IndexCommand::Update { provider, verbose } => handlers::scan::handle(
+                    &db,
+                    &config,
+                    provider,
+                    cli.project_root,
+                    cli.all_projects,
+                    false,
+                    verbose,
+                ),
+                IndexCommand::Rebuild { provider, verbose } => handlers::scan::handle(
+                    &db,
+                    &config,
+                    provider,
+                    cli.project_root,
+                    cli.all_projects,
+                    true,
+                    verbose,
+                ),
+                IndexCommand::Vacuum => {
+                    let db_path = data_dir.join("agtrace.db");
+                    let db = Database::open(&db_path)?;
+                    db.vacuum()
+                }
+            }
+        }
+
+        Commands::Session { command } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+
+            match command {
+                SessionCommand::List {
+                    project_hash,
+                    source: _,
+                    limit,
+                    since: _,
+                    until: _,
+                } => {
+                    let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
+                        Some(crate::utils::project_hash_from_root(
+                            cli.project_root.as_ref().unwrap(),
+                        ))
+                    } else {
+                        project_hash
+                    };
+
+                    handlers::list::handle(
+                        &db,
+                        effective_hash,
+                        limit,
+                        cli.all_projects,
+                        &cli.format,
+                    )
+                }
+                SessionCommand::Show {
+                    session_id,
+                    raw,
+                    json,
+                    timeline,
+                    hide,
+                    only,
+                    full,
+                    short,
+                    style,
+                } => handlers::view::handle(
+                    &db, session_id, raw, json, timeline, hide, only, full, short, style,
+                ),
+            }
+        }
+
+        Commands::Provider { command } => {
+            let config_path = data_dir.join("config.toml");
+
+            match command {
+                ProviderCommand::List => handlers::providers::handle(None, &config_path),
+                ProviderCommand::Detect => handlers::providers::handle(
+                    Some(super::args::ProvidersCommand::Detect),
+                    &config_path,
+                ),
+                ProviderCommand::Set {
+                    provider,
+                    log_root,
+                    enable,
+                    disable,
+                } => handlers::providers::handle(
+                    Some(super::args::ProvidersCommand::Set {
+                        provider,
+                        log_root,
+                        enable,
+                        disable,
+                    }),
+                    &config_path,
+                ),
+                ProviderCommand::Schema { provider, format } => {
+                    handlers::schema::handle(provider, format)
+                }
+            }
+        }
+
+        Commands::Doctor { command } => match command {
+            DoctorCommand::Run { provider, verbose } => {
+                let config_path = data_dir.join("config.toml");
+                let config = Config::load_from(&config_path)?;
+                handlers::diagnose::handle(&config, provider, verbose)
+            }
+            DoctorCommand::Inspect {
+                file_path,
+                lines,
+                format,
+            } => handlers::inspect::handle(file_path, lines, format),
+            DoctorCommand::Check {
+                file_path,
+                provider,
+            } => handlers::validate::handle(file_path, provider),
+        },
+
+        Commands::Project { command } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+
+            match command {
+                ProjectCommand::List { project_root } => {
+                    handlers::project::handle(&db, project_root)
+                }
+            }
+        }
+
+        Commands::Lab { command } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+
+            match command {
+                LabCommand::Analyze {
+                    session_id,
+                    detect,
+                    format,
+                } => handlers::analyze::handle(&db, session_id, detect, format),
+                LabCommand::Export {
+                    session_id,
+                    output,
+                    format,
+                    strategy,
+                } => handlers::export::handle(&db, session_id, output, format, strategy),
+            }
+        }
+
+        // Legacy commands (with deprecation warnings)
         Commands::Scan {
             provider,
             force,
             verbose,
         } => {
+            if force {
+                print_deprecation_warning("scan --force", "index rebuild");
+            } else {
+                print_deprecation_warning("scan", "index update");
+            }
+
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
             let config_path = data_dir.join("config.toml");
@@ -39,10 +209,11 @@ pub fn run(cli: Cli) -> Result<()> {
             since: _,
             until: _,
         } => {
+            print_deprecation_warning("list", "session list");
+
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
 
-            // If --project-root is specified but no explicit hash, compute hash from project_root
             let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
                 Some(crate::utils::project_hash_from_root(
                     cli.project_root.as_ref().unwrap(),
@@ -65,6 +236,8 @@ pub fn run(cli: Cli) -> Result<()> {
             short,
             style,
         } => {
+            print_deprecation_warning("view", "session show");
+
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
 
@@ -79,14 +252,18 @@ pub fn run(cli: Cli) -> Result<()> {
             no_reasoning,
             no_tool,
             limit,
-        } => handlers::show::handle(
-            &storage,
-            session_id,
-            no_reasoning,
-            no_tool,
-            limit,
-            &cli.format,
-        ),
+        } => {
+            print_deprecation_warning("show", "session show");
+
+            handlers::show::handle(
+                &storage,
+                session_id,
+                no_reasoning,
+                no_tool,
+                limit,
+                &cli.format,
+            )
+        }
 
         Commands::Find {
             session_id,
@@ -95,16 +272,20 @@ pub fn run(cli: Cli) -> Result<()> {
             text,
             event_type,
             limit,
-        } => handlers::find::handle(
-            &storage,
-            session_id,
-            project_hash,
-            text,
-            event_type,
-            limit,
-            cli.all_projects,
-            &cli.format,
-        ),
+        } => {
+            print_deprecation_warning("find", "lab find");
+
+            handlers::find::handle(
+                &storage,
+                session_id,
+                project_hash,
+                text,
+                event_type,
+                limit,
+                cli.all_projects,
+                &cli.format,
+            )
+        }
 
         Commands::Stats {
             project_hash,
@@ -112,7 +293,11 @@ pub fn run(cli: Cli) -> Result<()> {
             group_by: _,
             since: _,
             until: _,
-        } => handlers::stats::handle(&storage, project_hash, source, cli.all_projects),
+        } => {
+            print_deprecation_warning("stats", "lab stats");
+
+            handlers::stats::handle(&storage, project_hash, source, cli.all_projects)
+        }
 
         Commands::Export {
             session_id,
@@ -120,6 +305,8 @@ pub fn run(cli: Cli) -> Result<()> {
             format,
             strategy,
         } => {
+            print_deprecation_warning("export", "lab export");
+
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
             handlers::export::handle(&db, session_id, output, format, strategy)
@@ -130,23 +317,23 @@ pub fn run(cli: Cli) -> Result<()> {
             detect,
             format,
         } => {
+            print_deprecation_warning("analyze", "lab analyze");
+
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
             handlers::analyze::handle(&db, session_id, detect, format)
         }
 
         Commands::Providers { command } => {
+            print_deprecation_warning("providers", "provider");
+
             let config_path = data_dir.join("config.toml");
             handlers::providers::handle(command, &config_path)
         }
 
-        Commands::Project { project_root } => {
-            let db_path = data_dir.join("agtrace.db");
-            let db = Database::open(&db_path)?;
-            handlers::project::handle(&db, project_root)
-        }
-
         Commands::Diagnose { provider, verbose } => {
+            print_deprecation_warning("diagnose", "doctor run");
+
             let config_path = data_dir.join("config.toml");
             let config = Config::load_from(&config_path)?;
             handlers::diagnose::handle(&config, provider, verbose)
@@ -156,14 +343,26 @@ pub fn run(cli: Cli) -> Result<()> {
             file_path,
             lines,
             format,
-        } => handlers::inspect::handle(file_path, lines, format),
+        } => {
+            print_deprecation_warning("inspect", "doctor inspect");
+
+            handlers::inspect::handle(file_path, lines, format)
+        }
 
         Commands::Validate {
             file_path,
             provider,
-        } => handlers::validate::handle(file_path, provider),
+        } => {
+            print_deprecation_warning("validate", "doctor check");
 
-        Commands::Schema { provider, format } => handlers::schema::handle(provider, format),
+            handlers::validate::handle(file_path, provider)
+        }
+
+        Commands::Schema { provider, format } => {
+            print_deprecation_warning("schema", "provider schema");
+
+            handlers::schema::handle(provider, format)
+        }
     }
 }
 

@@ -66,40 +66,50 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 
 ## 1. Command Overview
 
-### 1.1 Command List
+### 1.1 Command Hierarchy
 
-* **`agtrace scan`**
-  Scans provider log directories and registers metadata (pointers) in the database.
+Commands are organized into namespaces for better discoverability:
 
-* **`agtrace list`**
-  Lists sessions from the index.
+* **`agtrace index`** - Database indexing operations
+  - `update` - Scan and register new sessions
+  - `rebuild` - Force full re-scan
+  - `vacuum` - Optimize database
 
-* **`agtrace view`** (formerly `show`)
-  Displays session events by dynamically reading and normalizing raw logs (Schema-on-Read).
+* **`agtrace session`** - Session management
+  - `list` - List sessions
+  - `show` - Display session timeline
 
-* **`agtrace project`**
-  Shows project information.
+* **`agtrace provider`** - Provider configuration
+  - `list` - Show current configuration
+  - `detect` - Auto-detect providers
+  - `set` - Update provider settings
+  - `schema` - Display provider schema
 
-* **`agtrace providers`**
-  Manages provider configuration.
+* **`agtrace doctor`** - Diagnostics and troubleshooting
+  - `run` - Diagnose schema issues
+  - `inspect` - View raw log files
+  - `check` - Validate specific files
 
-* **`agtrace diagnose`**
-  Diagnoses schema compatibility issues by sampling log files.
+* **`agtrace project`** - Project information
+  - `list` - Show registered projects
 
-* **`agtrace inspect`**
-  Displays raw content of a log file with line numbers.
+* **`agtrace lab`** - Experimental analysis features
+  - `analyze` - Detect anti-patterns
+  - `export` - Export sessions for analysis
 
-* **`agtrace validate`**
-  Validates a single log file against provider schema.
+**Legacy Commands (Deprecated):**
 
-* **`agtrace schema`**
-  Displays expected schema structure for a provider.
-
-* **`agtrace analyze`** (New in v2.1)
-  Detects anti-patterns and extracts insights using heuristic rules (e.g., loops, ignored errors).
-
-* **`agtrace export`** (New in v2.1)
-  Exports sessions with distillation strategies (e.g., "clean paths only", "reasoning pairs") for AI analysis or fine-tuning.
+The following commands are still available for backwards compatibility but are deprecated. They will show a warning when used:
+- `scan` → Use `index update` or `index rebuild` instead
+- `list` → Use `session list` instead
+- `view` / `show` → Use `session show` instead
+- `providers` → Use `provider ...` instead
+- `schema` → Use `provider schema` instead
+- `diagnose` → Use `doctor run` instead
+- `inspect` → Use `doctor inspect` instead
+- `validate` → Use `doctor check` instead
+- `analyze` → Use `lab analyze` instead
+- `export` → Use `lab export` instead
 
 **Removed in v2.0:**
 - `find`: Removed for MVP (can be re-added later)
@@ -142,11 +152,11 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 
 ---
 
-## 2. `agtrace scan`
+## 2. `agtrace index`
 
 ### 2.1 Overview
 
-Scans provider-specific log directories, reads header information only, and registers pointers in the SQLite database.
+Manages the session index database through scanning and optimization operations.
 
 **Key behavior:** Does not normalize or copy logs. Only stores metadata:
 - File path (absolute)
@@ -155,29 +165,48 @@ Scans provider-specific log directories, reads header information only, and regi
 - Timestamps
 - File size / modification time
 
-**Fail-safe:** If parsing errors occur, still registers the pointer (can retry normalization later in `view`).
+**Fail-safe:** If parsing errors occur, still registers the pointer (can retry normalization later in `session show`).
 
-### 2.2 Signature
+### 2.2 Subcommands
+
+#### `agtrace index update`
+
+Scans provider-specific log directories and registers new/modified sessions.
 
 ```sh
-agtrace scan \
+agtrace index update \
   [--provider <claude|codex|gemini|all>] \
-  [--force] \
   [--verbose]
 ```
 
-### 2.3 Options
-
+**Options:**
 * `--provider <claude|codex|gemini|all>` (optional)
   - Description: Target provider(s) to scan
   - Default: `all`
   - `all`: Scans all enabled providers in config.toml
 
-* `--force`
-  - Description: Force full re-scan (ignores modification time)
-
 * `--verbose`
   - Description: Display scan details
+
+#### `agtrace index rebuild`
+
+Force full re-scan of all sessions, ignoring modification times.
+
+```sh
+agtrace index rebuild \
+  [--provider <claude|codex|gemini|all>] \
+  [--verbose]
+```
+
+**Options:** Same as `update`
+
+#### `agtrace index vacuum`
+
+Optimize the SQLite database by reclaiming unused space.
+
+```sh
+agtrace index vacuum
+```
 
 ### 2.4 Behavior
 
@@ -222,9 +251,9 @@ Scan complete: 8 sessions registered
 
 ---
 
-## 3. `agtrace list`
+## 3. `agtrace session`
 
-### 3.1 Overview
+### 3.1 `agtrace session list`
 
 Lists sessions from the SQLite index with enhanced UI.
 
@@ -239,7 +268,7 @@ Default: Shows sessions for current project (determined by Project Discovery).
 ### 3.2 Signature
 
 ```sh
-agtrace list \
+agtrace session list \
   [--project-hash <hash>] \
   [--source <claude|codex|gemini>] \
   [--limit <n>] \
@@ -284,9 +313,7 @@ agtrace list \
 
 ---
 
-## 4. `agtrace view` (formerly `show`)
-
-### 4.1 Overview
+### 3.3 `agtrace session show`
 
 Displays session events by reading raw log files and normalizing them on-demand (Schema-on-Read).
 
@@ -306,22 +333,23 @@ Displays session events by reading raw log files and normalizing them on-demand 
 5. Sorts/merges by timestamp
 6. Displays in timeline format with optional colors
 
-### 4.2 Signature
+#### Signature
 
 ```sh
-agtrace view <SESSION_ID_OR_PREFIX> \
+agtrace session show <SESSION_ID_OR_PREFIX> \
   [--raw] \
   [--json] \
   [--timeline] \
   [--hide <event_types>] \
   [--only <event_types>] \
-  [--full]
+  [--full] \
+  [--style <timeline|compact>]
 ```
 
-### 4.3 Options
+#### Options
 
 * `<SESSION_ID_OR_PREFIX>` (required)
-  - Session ID from `agtrace list` (supports prefix matching)
+  - Session ID from `agtrace session list` (supports prefix matching)
 
 * `--raw`
   - Description: Display raw JSON/text without normalization (like `cat`)
@@ -351,7 +379,7 @@ agtrace view <SESSION_ID_OR_PREFIX> \
   - `timeline`: (Default) Standard vertical timeline with full event details.
   - `compact`: High-density one-line mode. Collapses repeated tool calls, highlights errors/latency, and visualizes flow.
 
-### 4.4 Behavior
+#### Behavior
 
 1. Lookup `session_id` in SQLite → retrieve all associated `log_files.path`
 2. Open each file
@@ -366,7 +394,7 @@ agtrace view <SESSION_ID_OR_PREFIX> \
 - Terminal output → Colors enabled
 - Piped output → Colors disabled (for LLM consumption)
 
-### 4.5 Output Examples
+#### Output Examples
 
 #### Default timeline view (terminal)
 
@@ -397,13 +425,13 @@ Session Summary:
 #### Conversation only (--only user,assistant)
 
 ```sh
-agtrace view <session_id> --only user,assistant
+agtrace session show <session_id> --only user,assistant
 ```
 
 #### Full text for LLM (--full + pipe)
 
 ```sh
-agtrace view <session_id> --full --only user,assistant | pbcopy
+agtrace session show <session_id> --full --only user,assistant | pbcopy
 ```
 
 This outputs complete event text without truncation and without ANSI color codes, perfect for pasting into LLM context.
@@ -411,7 +439,7 @@ This outputs complete event text without truncation and without ANSI color codes
 #### Hide reasoning
 
 ```sh
-agtrace view <session_id> --hide reasoning
+agtrace session show <session_id> --hide reasoning
 ```
 
 #### Compact view (`--style compact`)
@@ -440,7 +468,7 @@ Designed for quick scanning of long sessions to identify bottlenecks and loops u
     - `Edit(main.rs)` - shows the target file
 
 ```text
-$ agtrace view 6dae8df5 --style compact
+$ agtrace session show 6dae8df5 --style compact
 
 [+00:00]    -    User: "新しいワークフローでスキーマ検証をしてみたい。docs を読んでもらって。 --- これで、UNIXコマンドを使わずに完全にagtrace内で問題解決できます： # 1. 問題発見 agtrace d..."
 [+00:06]    -    Asst: "docsディレクトリを読んで、新しいスキーマ検証ワークフローを理解します。..."
@@ -492,19 +520,19 @@ $ agtrace view 6dae8df5 --style compact
 
 ---
 
-## 5. `agtrace project`
+## 4. `agtrace project`
 
-### 5.1 Overview
+### 4.1 `agtrace project list`
 
 Displays project information and registered session counts.
 
-### 5.2 Signature
+#### Signature
 
 ```sh
 agtrace project list
 ```
 
-### 5.3 Output Example
+#### Output Example
 
 ```text
 Registered projects:
@@ -516,37 +544,145 @@ HASH              ROOT PATH                           SESSIONS  LAST SCANNED
 
 ---
 
-## 6. `agtrace providers`
+## 5. `agtrace provider`
 
-### 6.1 Overview
+### 5.1 Overview
 
 Manages provider configuration (view/detect/update).
 
-### 6.2 Signature
+### 5.2 Subcommands
+
+#### `agtrace provider list`
+
+List current provider configuration.
 
 ```sh
-agtrace providers          # List current configuration
-agtrace providers detect   # Auto-detect and write to config
-agtrace providers set <PROVIDER> --log-root <PATH> [--enable|--disable]
+agtrace provider list
 ```
 
-### 6.3 Behavior
+Reads `<data-dir>/config.toml` and displays `providers.*` sections.
 
-* `agtrace providers`:
-  - Reads `<data-dir>/config.toml` and displays `providers.*` sections
+#### `agtrace provider detect`
 
-* `agtrace providers detect`:
-  - Searches `$HOME/.claude`, `$HOME/.codex`, `$HOME/.gemini`
-  - Writes detected providers to config with `enabled = true`
+Auto-detect providers and write to config.
 
-* `agtrace providers set`:
-  - Updates `log_root` and `enabled` flag for specified provider
+```sh
+agtrace provider detect
+```
+
+Searches `$HOME/.claude`, `$HOME/.codex`, `$HOME/.gemini` and writes detected providers to config with `enabled = true`.
+
+#### `agtrace provider set`
+
+Update provider settings.
+
+```sh
+agtrace provider set <PROVIDER> --log-root <PATH> [--enable|--disable]
+```
+
+Updates `log_root` and `enabled` flag for specified provider.
+
+#### `agtrace provider schema`
+
+Display provider schema structure.
+
+```sh
+agtrace provider schema <PROVIDER> [--format <text|json|rust>]
+```
+
+See section 5.3 for details.
+
+### 5.3 `agtrace provider schema`
+
+Displays the expected schema structure for a provider. Useful reference when fixing schema compatibility issues.
+
+#### Signature
+
+```sh
+agtrace provider schema <PROVIDER> \
+  [--format <text|json|rust>]
+```
+
+#### Options
+
+* `<PROVIDER>` (required)
+  - Provider name: `claude`, `codex`, or `gemini`
+
+* `--format <text|json|rust>` (optional)
+  - `text`: Human-readable description (default)
+  - `json`: JSON Schema format
+  - `rust`: Rust struct definitions
+
+#### Output Examples
+
+**Text format (default):**
+```text
+$ agtrace provider schema codex
+
+Provider: Codex
+Schema version: v0.53-v0.63
+
+Root structure (JSONL - one record per line):
+  CodexRecord (enum):
+    - SessionMeta
+    - ResponseItem
+    - EventMsg
+    - TurnContext
+
+SessionMeta:
+  timestamp: String
+  payload:
+    id: String (session_id)
+    cwd: String
+    originator: String
+    cli_version: String
+    source: String | Object
+    model_provider: String
+    git: GitInfo (optional)
+
+TurnContext:
+  timestamp: String
+  payload:
+    cwd: String
+    approval_policy: String
+    sandbox_policy: SandboxPolicy (see below)
+    model: String
+    effort: String
+    summary: String
+
+SandboxPolicy (untagged enum):
+  New format (v0.63+):
+    { "type": "read-only" | "workspace-write" }
+  Old format (v0.53):
+    { "mode": "...", "network_access": bool, ... }
+```
+
+**Rust format:**
+```text
+$ agtrace provider schema codex --format rust
+
+// src/providers/codex/schema.rs
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum CodexRecord {
+    SessionMeta(SessionMetaRecord),
+    ResponseItem(ResponseItemRecord),
+    EventMsg(EventMsgRecord),
+    TurnContext(TurnContextRecord),
+    #[serde(other)]
+    Unknown,
+}
+
+...
+```
 
 ---
 
-## 7. `agtrace diagnose`
+## 6. `agtrace doctor`
 
-### 7.1 Overview
+### 6.1 `agtrace doctor run`
 
 Diagnoses schema compatibility issues by sampling log files from each provider. This command helps identify:
 - Files that fail to parse due to schema mismatches
@@ -556,15 +692,15 @@ Diagnoses schema compatibility issues by sampling log files from each provider. 
 
 **Purpose:** Make debugging schema issues trivial - run once to understand all parsing problems across providers.
 
-### 7.2 Signature
+#### Signature
 
 ```sh
-agtrace diagnose \
+agtrace doctor run \
   [--provider <claude|codex|gemini|all>] \
   [--verbose]
 ```
 
-### 7.3 Options
+#### Options
 
 * `--provider <claude|codex|gemini|all>` (optional)
   - Description: Target provider(s) to diagnose
@@ -573,7 +709,7 @@ agtrace diagnose \
 * `--verbose`
   - Description: Show all problematic files (not just examples)
 
-### 7.4 Behavior
+#### Behavior
 
 1. Scans provider log directories (using config.toml)
 2. Collects **all files** for each provider (no sampling)
@@ -587,9 +723,9 @@ agtrace diagnose \
 
 **Note:** This command processes all files comprehensively to ensure no issues are missed. For large log directories with hundreds of files, this may take a few seconds.
 
-### 7.5 Output Format
+#### Output Format
 
-#### Default output (aggregated):
+**Default output (aggregated):**
 
 ```text
 === Diagnose Results ===
@@ -643,44 +779,42 @@ Summary: 51 files need schema updates to parse correctly
 Run with --verbose to see all problematic files
 ```
 
-#### Verbose output:
+**Verbose output:**
 
 Shows all files in each category (not just examples)
 
-### 7.6 Use Cases
+#### Use Cases
 
 **Regular health check (all providers):**
 ```sh
-agtrace diagnose
+agtrace doctor run
 ```
 
 **Debug specific provider with full details:**
 ```sh
-agtrace diagnose --provider codex --verbose
+agtrace doctor run --provider codex --verbose
 ```
 
 **Quick check for a single provider:**
 ```sh
-agtrace diagnose --provider gemini
+agtrace doctor run --provider gemini
 ```
 
 ---
 
-## 8. `agtrace inspect`
-
-### 8.1 Overview
+### 6.2 `agtrace doctor inspect`
 
 Displays the raw content of a log file with line numbers for manual inspection. Useful for examining actual data structure when debugging schema issues.
 
-### 8.2 Signature
+#### Signature
 
 ```sh
-agtrace inspect <FILE_PATH> \
+agtrace doctor inspect <FILE_PATH> \
   [--lines <n>] \
   [--format <raw|json>]
 ```
 
-### 8.3 Options
+#### Options
 
 * `<FILE_PATH>` (required)
   - Path to the log file to inspect
@@ -694,10 +828,10 @@ agtrace inspect <FILE_PATH> \
   - `json`: Pretty-print JSON if valid
   - Default: `raw`
 
-### 8.4 Output Example
+#### Output Example
 
 ```text
-$ agtrace inspect /Users/.../rollout-2025-12-04...jsonl --lines 5
+$ agtrace doctor inspect /Users/.../rollout-2025-12-04...jsonl --lines 5
 
 File: /Users/.../rollout-2025-12-04...jsonl
 Lines: 1-5 (total: 150 lines)
@@ -712,20 +846,18 @@ Lines: 1-5 (total: 150 lines)
 
 ---
 
-## 9. `agtrace validate`
-
-### 9.1 Overview
+### 6.3 `agtrace doctor check`
 
 Validates a single log file against the provider's schema. Shows detailed parse errors and suggests fixes.
 
-### 9.2 Signature
+#### Signature
 
 ```sh
-agtrace validate <FILE_PATH> \
+agtrace doctor check <FILE_PATH> \
   [--provider <claude|codex|gemini>]
 ```
 
-### 9.3 Options
+#### Options
 
 * `<FILE_PATH>` (required)
   - Path to the log file to validate
@@ -733,18 +865,18 @@ agtrace validate <FILE_PATH> \
 * `--provider <claude|codex|gemini>` (optional)
   - Explicitly specify provider (auto-detected from path if not provided)
 
-### 9.4 Behavior
+#### Behavior
 
 1. Auto-detect provider from file path if not specified
 2. Attempt to parse file with provider's schema
 3. Display detailed error information if parsing fails
 4. Show expected schema structure vs. actual data
 
-### 9.5 Output Examples
+#### Output Examples
 
-#### Success case:
+**Success case:**
 ```text
-$ agtrace validate /Users/.../rollout-2025-12-04...jsonl
+$ agtrace doctor check /Users/.../rollout-2025-12-04...jsonl
 
 File: /Users/.../rollout-2025-12-04...jsonl
 Provider: codex (auto-detected)
@@ -756,9 +888,9 @@ Parsed successfully:
   - Project: /Users/zawakin/go/src/github.com/lanegrid/pdna
 ```
 
-#### Failure case:
+**Failure case:**
 ```text
-$ agtrace validate /Users/.../logs.json --provider gemini
+$ agtrace doctor check /Users/.../logs.json --provider gemini
 
 File: /Users/.../logs.json
 Provider: gemini
@@ -791,97 +923,7 @@ Suggestion:
 
 ---
 
-## 10. `agtrace schema`
-
-### 10.1 Overview
-
-Displays the expected schema structure for a provider. Useful reference when fixing schema compatibility issues.
-
-### 10.2 Signature
-
-```sh
-agtrace schema <PROVIDER> \
-  [--format <text|json|rust>]
-```
-
-### 10.3 Options
-
-* `<PROVIDER>` (required)
-  - Provider name: `claude`, `codex`, or `gemini`
-
-* `--format <text|json|rust>` (optional)
-  - `text`: Human-readable description (default)
-  - `json`: JSON Schema format
-  - `rust`: Rust struct definitions
-
-### 10.4 Output Examples
-
-#### Text format (default):
-```text
-$ agtrace schema codex
-
-Provider: Codex
-Schema version: v0.53-v0.63
-
-Root structure (JSONL - one record per line):
-  CodexRecord (enum):
-    - SessionMeta
-    - ResponseItem
-    - EventMsg
-    - TurnContext
-
-SessionMeta:
-  timestamp: String
-  payload:
-    id: String (session_id)
-    cwd: String
-    originator: String
-    cli_version: String
-    source: String | Object
-    model_provider: String
-    git: GitInfo (optional)
-
-TurnContext:
-  timestamp: String
-  payload:
-    cwd: String
-    approval_policy: String
-    sandbox_policy: SandboxPolicy (see below)
-    model: String
-    effort: String
-    summary: String
-
-SandboxPolicy (untagged enum):
-  New format (v0.63+):
-    { "type": "read-only" | "workspace-write" }
-  Old format (v0.53):
-    { "mode": "...", "network_access": bool, ... }
-```
-
-#### Rust format:
-```text
-$ agtrace schema codex --format rust
-
-// src/providers/codex/schema.rs
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
-pub enum CodexRecord {
-    SessionMeta(SessionMetaRecord),
-    ResponseItem(ResponseItemRecord),
-    EventMsg(EventMsgRecord),
-    TurnContext(TurnContextRecord),
-    #[serde(other)]
-    Unknown,
-}
-
-...
-```
-
----
-
-## 11. Error Codes
+## 7. Error Codes
 
 * `0` … Success
 * `1` … General error (parse failure / invalid input)
@@ -891,21 +933,21 @@ pub enum CodexRecord {
 
 ---
 
-## 12. `agtrace analyze`
+## 8. `agtrace lab`
 
-### 12.1 Overview
+### 8.1 `agtrace lab analyze`
 
 Applies deterministic heuristics to `AgentEventV1` streams to detect behavioral anti-patterns and extract "Rule of Thumb" insights without using an LLM.
 
-### 12.2 Signature
+#### Signature
 
 ```sh
-agtrace analyze <SESSION_ID_OR_PREFIX> \
+agtrace lab analyze <SESSION_ID_OR_PREFIX> \
   [--detect <patterns>] \
   [--format <plain|json>]
 ```
 
-### 12.3 Options
+#### Options
 
   * `--detect <patterns>`
       * Description: Comma-separated list of detectors to run.
@@ -917,10 +959,10 @@ agtrace analyze <SESSION_ID_OR_PREFIX> \
           * `zombie`: Detects long chains of tool calls (>20) without user interaction.
           * `lint_ping_pong`: Detects oscillation between coding and linting errors.
 
-### 12.4 Output Example
+#### Output Example
 
 ```text
-$ agtrace analyze f0a689
+$ agtrace lab analyze f0a689
 
 Analysis Report for Session: f0a689...
 Score: 85/100 (1 Warning)
@@ -938,23 +980,21 @@ Score: 85/100 (1 Warning)
 
 ---
 
-## 13. `agtrace export`
-
-### 13.1 Overview
+### 8.2 `agtrace lab export`
 
 Exports normalized session data for external use (training, analysis, or archiving).
 Includes **"Distillation Strategies"** to produce higher-quality data than raw logs.
 
-### 13.2 Signature
+#### Signature
 
 ```sh
-agtrace export <SESSION_ID_OR_PREFIX> \
+agtrace lab export <SESSION_ID_OR_PREFIX> \
   [--output <path>] \
   [--format <jsonl|text>] \
   [--strategy <raw|clean|reasoning>]
 ```
 
-### 13.3 Options
+#### Options
 
   * `--format <jsonl|text>`
 
@@ -968,7 +1008,7 @@ agtrace export <SESSION_ID_OR_PREFIX> \
       * `clean`: **"Gold Mining" mode.** Removes failed tool calls, error corrections, and apology turns. Keeps only the "happy path" (if reachable). Useful for SFT (Supervised Fine-Tuning) datasets.
       * `reasoning`: Extracts only `Thinking (Reasoning)` → `Tool Call` pairs. Useful for analyzing "Thought-Action" correlation.
 
-### 13.4 Behavior (Strategy Details)
+#### Behavior (Strategy Details)
 
 **Strategy: `clean` (The "Happy Path" Filter)**
 
@@ -976,19 +1016,19 @@ agtrace export <SESSION_ID_OR_PREFIX> \
 2.  Backtrack and remove "dead ends" (e.g., tool calls that resulted in Error and were immediately followed by an Apology/Correction).
 3.  Remove `tool_result` contents that are excessively long, replacing them with `<truncated_output_for_training>`.
 
-### 13.5 Output Example
+#### Output Example
 
 ```bash
 # Export a clean dataset for training
-agtrace export f0a689 --strategy clean --output ./training_data/session_f0a689.jsonl
+agtrace lab export f0a689 --strategy clean --output ./training_data/session_f0a689.jsonl
 
 # Export reasoning traces for analysis
-agtrace export f0a689 --strategy reasoning --output ./analysis/thoughts.jsonl
+agtrace lab export f0a689 --strategy reasoning --output ./analysis/thoughts.jsonl
 ```
 
 ---
 
-## 14. Future Extensions
+## 9. Future Extensions
 
   * `agtrace graph` - DAG visualization of session branches.
   * `agtrace diff` - Compare two sessions side-by-side (e.g., same prompt, different models).

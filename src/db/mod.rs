@@ -316,6 +316,12 @@ impl Database {
 
         Ok(count as usize)
     }
+
+    pub fn vacuum(&self) -> Result<()> {
+        self.conn.execute("VACUUM", [])?;
+        println!("Database vacuumed successfully");
+        Ok(())
+    }
 }
 
 #[cfg(test)]

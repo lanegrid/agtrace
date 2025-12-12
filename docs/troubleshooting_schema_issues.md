@@ -15,10 +15,10 @@ When provider log formats change between versions, agtrace may fail to parse the
 
 ### Step 1: Discover Problems
 
-Run `agtrace diagnose` to identify files with parsing errors across **all files**:
+Run `agtrace doctor run` to identify files with parsing errors across **all files**:
 
 ```bash
-$ agtrace diagnose
+$ agtrace doctor run
 
 === Diagnose Results ===
 
@@ -67,10 +67,10 @@ Provider: Gemini
 
 ### Step 2: Inspect Actual Data
 
-Use `agtrace inspect` to view the raw content of problematic files:
+Use `agtrace doctor inspect` to view the raw content of problematic files:
 
 ```bash
-$ agtrace inspect /Users/.../logs.json --lines 20
+$ agtrace doctor inspect /Users/.../logs.json --lines 20
 
 File: /Users/.../logs.json
 Lines: 1-20 (total: 23 lines)
@@ -96,10 +96,10 @@ Lines: 1-20 (total: 23 lines)
 
 ### Step 3: Compare with Expected Schema
 
-Use `agtrace schema` to see what structure agtrace expects:
+Use `agtrace provider schema` to see what structure agtrace expects:
 
 ```bash
-$ agtrace schema gemini
+$ agtrace provider schema gemini
 
 Provider: Gemini
 Schema version: unknown
@@ -126,10 +126,10 @@ GeminiMessage (enum):
 
 ### Step 4: Validate Specific Files
 
-Use `agtrace validate` to get detailed error information and suggestions:
+Use `agtrace doctor check` to get detailed error information and suggestions:
 
 ```bash
-$ agtrace validate /Users/.../logs.json
+$ agtrace doctor check /Users/.../logs.json
 
 File: /Users/.../logs.json
 Provider: gemini (auto-detected)
@@ -140,14 +140,14 @@ Parse error:
 
 Suggestion:
   The field type in the schema may not match the actual data format.
-  Use 'agtrace inspect /Users/.../logs.json' to examine the actual structure.
-  Use 'agtrace schema gemini' to see the expected format.
+  Use 'agtrace doctor inspect /Users/.../logs.json' to examine the actual structure.
+  Use 'agtrace provider schema gemini' to see the expected format.
 
 Next steps:
   1. Examine the actual data:
-       agtrace inspect /Users/.../logs.json --lines 20
+       agtrace doctor inspect /Users/.../logs.json --lines 20
   2. Compare with expected schema:
-       agtrace schema gemini
+       agtrace provider schema gemini
   3. Update schema definition if needed
 ```
 
@@ -235,7 +235,7 @@ After updating the schema, rebuild and test:
 $ cargo build --release
 
 # Test the specific file
-$ agtrace validate /Users/.../9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde/logs.json
+$ agtrace doctor check /Users/.../9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde/logs.json
 
 File: /Users/.../9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde/logs.json
 Provider: gemini (auto-detected)
@@ -248,7 +248,7 @@ Parsed successfully:
       UserMessage: 3
 
 # Re-run full diagnosis
-$ agtrace diagnose --provider gemini
+$ agtrace doctor run --provider gemini
 
 Provider: Gemini
   Total files scanned: 12
@@ -370,17 +370,17 @@ When you encounter a schema issue, ask:
 
 ```bash
 # Full workflow in order
-agtrace diagnose                    # 1. Find problems (checks ALL files)
-agtrace inspect <file> --lines 30   # 2. See actual data
-agtrace schema <provider>           # 3. See expected format
-agtrace validate <file>             # 4. Get detailed error
-# (edit schema code)                # 5. Fix the schema
-cargo build --release               # 6. Rebuild
-agtrace validate <file>             # 7. Test fix
-agtrace diagnose --provider <name>  # 8. Verify all files
+agtrace doctor run                           # 1. Find problems (checks ALL files)
+agtrace doctor inspect <file> --lines 30     # 2. See actual data
+agtrace provider schema <provider>           # 3. See expected format
+agtrace doctor check <file>                  # 4. Get detailed error
+# (edit schema code)                         # 5. Fix the schema
+cargo build --release                        # 6. Rebuild
+agtrace doctor check <file>                  # 7. Test fix
+agtrace doctor run --provider <name>         # 8. Verify all files
 
 # For verbose output showing all problematic files:
-agtrace diagnose --verbose
+agtrace doctor run --verbose
 ```
 
 ## Example: Fixing Codex SandboxPolicy
@@ -389,7 +389,7 @@ This example shows the complete process of fixing a real schema issue.
 
 ### Problem Discovery
 ```bash
-$ agtrace diagnose --provider codex
+$ agtrace doctor run --provider codex
 
 Provider: Codex
   Parse failures: 5 (50.0%)
@@ -400,11 +400,11 @@ Provider: Codex
 
 ### Investigation
 ```bash
-$ agtrace inspect /Users/.../rollout-2025-12-04...jsonl --lines 10
+$ agtrace doctor inspect /Users/.../rollout-2025-12-04...jsonl --lines 10
 
      5  ...{"type":"turn_context","payload":{..,"sandbox_policy":{"type":"read-only"},...
 
-$ agtrace inspect /Users/.../rollout-2025-11-03...jsonl --lines 10
+$ agtrace doctor inspect /Users/.../rollout-2025-11-03...jsonl --lines 10
 
      5  ...{"type":"turn_context","payload":{..,"sandbox_policy":{"mode":"workspace-write","network_access":false},...
 ```
@@ -439,7 +439,7 @@ pub enum SandboxPolicy {
 ### Verification
 ```bash
 $ cargo build --release
-$ agtrace diagnose --provider codex
+$ agtrace doctor run --provider codex
 
 Provider: Codex
   Successfully parsed: 10 (100.0%)
@@ -451,13 +451,13 @@ All files parsed successfully!
 
 The diagnostic workflow eliminates the need for manual file inspection with UNIX tools:
 
-1. **`diagnose`** finds all problems deterministically by checking **every file** (no sampling)
-2. **`inspect`** shows raw file content with line numbers
-3. **`schema`** displays expected format
-4. **`validate`** gives detailed errors with suggestions
+1. **`doctor run`** finds all problems deterministically by checking **every file** (no sampling)
+2. **`doctor inspect`** shows raw file content with line numbers
+3. **`provider schema`** displays expected format
+4. **`doctor check`** gives detailed errors with suggestions
 5. Fix code, rebuild, validate
 
-**Key principle:** `diagnose` checks **all files comprehensively** to ensure no issues are missed. This is critical because:
+**Key principle:** `doctor run` checks **all files comprehensively** to ensure no issues are missed. This is critical because:
 - Schema changes can occur at any point in log history
 - Sampling might miss older format versions
 - Complete coverage ensures production-ready schema definitions

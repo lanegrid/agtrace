@@ -27,6 +27,38 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    Index {
+        #[command(subcommand)]
+        command: IndexCommand,
+    },
+
+    Session {
+        #[command(subcommand)]
+        command: SessionCommand,
+    },
+
+    Provider {
+        #[command(subcommand)]
+        command: ProviderCommand,
+    },
+
+    Doctor {
+        #[command(subcommand)]
+        command: DoctorCommand,
+    },
+
+    Project {
+        #[command(subcommand)]
+        command: ProjectCommand,
+    },
+
+    Lab {
+        #[command(subcommand)]
+        command: LabCommand,
+    },
+
+    // Legacy commands (kept for backwards compatibility)
+    #[command(hide = true)]
     Scan {
         #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
         provider: String,
@@ -38,6 +70,7 @@ pub enum Commands {
         verbose: bool,
     },
 
+    #[command(hide = true)]
     List {
         #[arg(long)]
         project_hash: Option<String>,
@@ -55,6 +88,7 @@ pub enum Commands {
         until: Option<String>,
     },
 
+    #[command(hide = true)]
     View {
         session_id: String,
 
@@ -86,6 +120,7 @@ pub enum Commands {
         style: String,
     },
 
+    #[command(hide = true)]
     Show {
         session_id: String,
 
@@ -102,6 +137,7 @@ pub enum Commands {
         limit: Option<usize>,
     },
 
+    #[command(hide = true)]
     Find {
         #[arg(long)]
         session_id: Option<String>,
@@ -122,6 +158,7 @@ pub enum Commands {
         limit: usize,
     },
 
+    #[command(hide = true)]
     Stats {
         #[arg(long)]
         project_hash: Option<String>,
@@ -139,6 +176,7 @@ pub enum Commands {
         until: Option<String>,
     },
 
+    #[command(hide = true)]
     Export {
         session_id: String,
 
@@ -152,6 +190,7 @@ pub enum Commands {
         strategy: String,
     },
 
+    #[command(hide = true)]
     Analyze {
         session_id: String,
 
@@ -162,17 +201,148 @@ pub enum Commands {
         format: String,
     },
 
+    #[command(hide = true)]
     Providers {
         #[command(subcommand)]
         command: Option<ProvidersCommand>,
     },
 
-    Project {
+    #[command(hide = true)]
+    Diagnose {
+        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
+        provider: String,
+
         #[arg(long)]
-        project_root: Option<String>,
+        verbose: bool,
     },
 
-    Diagnose {
+    #[command(hide = true)]
+    Inspect {
+        file_path: String,
+
+        #[arg(long, default_value = "50")]
+        lines: usize,
+
+        #[arg(long, value_parser = ["raw", "json"], default_value = "raw")]
+        format: String,
+    },
+
+    #[command(hide = true)]
+    Validate {
+        file_path: String,
+
+        #[arg(long, value_parser = ["claude", "codex", "gemini"])]
+        provider: Option<String>,
+    },
+
+    #[command(hide = true)]
+    Schema {
+        provider: String,
+
+        #[arg(long, value_parser = ["text", "json", "rust"], default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum IndexCommand {
+    Update {
+        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
+        provider: String,
+
+        #[arg(long)]
+        verbose: bool,
+    },
+
+    Rebuild {
+        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
+        provider: String,
+
+        #[arg(long)]
+        verbose: bool,
+    },
+
+    Vacuum,
+}
+
+#[derive(Subcommand)]
+pub enum SessionCommand {
+    List {
+        #[arg(long)]
+        project_hash: Option<String>,
+
+        #[arg(long, value_parser = ["claude", "codex", "gemini"])]
+        source: Option<String>,
+
+        #[arg(long, default_value = "50")]
+        limit: usize,
+
+        #[arg(long)]
+        since: Option<String>,
+
+        #[arg(long)]
+        until: Option<String>,
+    },
+
+    Show {
+        session_id: String,
+
+        #[arg(long)]
+        raw: bool,
+
+        #[arg(long)]
+        json: bool,
+
+        #[arg(long)]
+        timeline: bool,
+
+        #[arg(long, value_delimiter = ',')]
+        hide: Option<Vec<String>>,
+
+        #[arg(long, value_delimiter = ',')]
+        only: Option<Vec<String>>,
+
+        #[arg(
+            long,
+            help = "Display full event text without truncation (default behavior, kept for backwards compatibility)"
+        )]
+        full: bool,
+
+        #[arg(long, help = "Truncate long text to ~100 chars for compact display")]
+        short: bool,
+
+        #[arg(long, value_parser = ["timeline", "compact"], default_value = "timeline")]
+        style: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ProviderCommand {
+    List,
+    Detect,
+    Set {
+        provider: String,
+
+        #[arg(long)]
+        log_root: PathBuf,
+
+        #[arg(long)]
+        enable: bool,
+
+        #[arg(long)]
+        disable: bool,
+    },
+    Schema {
+        provider: String,
+
+        #[arg(long, value_parser = ["text", "json", "rust"], default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DoctorCommand {
+    Run {
         #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
         provider: String,
 
@@ -190,18 +360,45 @@ pub enum Commands {
         format: String,
     },
 
-    Validate {
+    Check {
         file_path: String,
 
         #[arg(long, value_parser = ["claude", "codex", "gemini"])]
         provider: Option<String>,
     },
+}
 
-    Schema {
-        provider: String,
+#[derive(Subcommand)]
+pub enum ProjectCommand {
+    List {
+        #[arg(long)]
+        project_root: Option<String>,
+    },
+}
 
-        #[arg(long, value_parser = ["text", "json", "rust"], default_value = "text")]
+#[derive(Subcommand)]
+pub enum LabCommand {
+    Analyze {
+        session_id: String,
+
+        #[arg(long, default_value = "all")]
+        detect: String,
+
+        #[arg(long, value_parser = ["plain", "json"], default_value = "plain")]
         format: String,
+    },
+
+    Export {
+        session_id: String,
+
+        #[arg(long)]
+        output: Option<PathBuf>,
+
+        #[arg(long, value_parser = ["jsonl", "text"], default_value = "jsonl")]
+        format: String,
+
+        #[arg(long, value_parser = ["raw", "clean", "reasoning"], default_value = "raw")]
+        strategy: String,
     },
 }
 
