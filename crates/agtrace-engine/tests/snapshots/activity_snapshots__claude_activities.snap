@@ -1,5 +1,5 @@
 ---
-source: tests/activity_snapshots.rs
+source: crates/agtrace-engine/tests/activity_snapshots.rs
 expression: json
 ---
 [
@@ -9,6 +9,17 @@ expression: json
     "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
     "timestamp": "2025-12-09T19:47:42.930Z",
     "duration_ms": null,
+    "stats": {
+      "total_tokens": null,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "execution",
+    "timestamp": "2025-12-09T19:47:54.563+00:00",
+    "duration_ms": 0,
+    "status": "success",
+    "tools": [],
     "stats": {
       "total_tokens": null,
       "event_count": 1
@@ -27,8 +38,8 @@ expression: json
   },
   {
     "type": "execution",
-    "timestamp": "2025-12-09T19:47:54.563+00:00",
-    "duration_ms": 13458,
+    "timestamp": "2025-12-09T19:47:55.793+00:00",
+    "duration_ms": 12228,
     "status": "success",
     "tools": [
       {
@@ -46,7 +57,7 @@ expression: json
     ],
     "stats": {
       "total_tokens": null,
-      "event_count": 7
+      "event_count": 6
     }
   },
   {
