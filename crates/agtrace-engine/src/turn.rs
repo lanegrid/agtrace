@@ -26,7 +26,9 @@ pub enum Turn {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ChainItem {
-    Thought { content: String },
+    Thought {
+        content: String,
+    },
 
     Action {
         tool_name: String,

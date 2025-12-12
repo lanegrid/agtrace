@@ -32,10 +32,7 @@ pub fn print_turns_compact(turns: &[Turn], enable_color: bool) {
                         content.green()
                     );
                 } else {
-                    println!(
-                        "{} {} User: \"{}\"",
-                        time_display, dur_placeholder, content
-                    );
+                    println!("{} {} User: \"{}\"", time_display, dur_placeholder, content);
                 }
             }
 
@@ -126,7 +123,6 @@ fn format_duration(duration_ms: u64) -> String {
         "   -   ".to_string()
     }
 }
-
 
 fn format_chain(chain: &[ChainItem], enable_color: bool) -> String {
     let parts: Vec<String> = chain
