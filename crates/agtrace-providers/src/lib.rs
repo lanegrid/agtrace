@@ -2,14 +2,20 @@ use agtrace_types::AgentEventV1;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-pub mod claude;
-pub mod codex;
-pub mod gemini;
+// Provider implementations (internal modules)
+mod claude;
+mod codex;
+mod gemini;
 
 // Re-export provider types
 pub use claude::ClaudeProvider;
 pub use codex::CodexProvider;
 pub use gemini::GeminiProvider;
+
+// Re-export normalize functions (for tests and external use)
+pub use claude::normalize_claude_file;
+pub use codex::normalize_codex_file;
+pub use gemini::normalize_gemini_file;
 
 #[derive(Debug, Clone)]
 pub struct LogFileMetadata {

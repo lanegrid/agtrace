@@ -6,6 +6,7 @@ members = [
     "crates/agtrace-engine",
     "crates/agtrace-cli",
 ]
+default-members = ["crates/agtrace-cli"]
 resolver = "2"
 
 [workspace.package]
