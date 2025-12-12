@@ -81,7 +81,10 @@ pub fn handle(
                 let elapsed = Utc::now().signed_duration_since(last_time.with_timezone(&Utc));
                 if elapsed < Duration::minutes(5) {
                     println!("\nStep 3/4: Scanning for sessions...");
-                    println!("  Recently scanned ({}). Skipping.", format_duration(elapsed));
+                    println!(
+                        "  Recently scanned ({}). Skipping.",
+                        format_duration(elapsed)
+                    );
                     println!("  Use `agtrace init --refresh` to force re-scan.");
                     false
                 } else {
@@ -155,7 +158,10 @@ pub fn handle(
 
         println!("\nNext steps:");
         println!("  View session in compact style (see bottlenecks and tool chains):");
-        println!("    agtrace session show {} --style compact", session_prefix);
+        println!(
+            "    agtrace session show {} --style compact",
+            session_prefix
+        );
         println!("\n  View conversation only (for LLM consumption):");
         println!(
             "    agtrace session show {} --only user,assistant --full",

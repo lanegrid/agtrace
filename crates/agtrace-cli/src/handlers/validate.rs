@@ -1,4 +1,6 @@
-use agtrace_providers::{ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider};
+use agtrace_providers::{
+    ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider,
+};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;

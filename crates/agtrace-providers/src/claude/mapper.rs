@@ -1,5 +1,5 @@
-use agtrace_types::*;
 use agtrace_types::project_hash_from_root;
+use agtrace_types::*;
 
 use super::schema::*;
 

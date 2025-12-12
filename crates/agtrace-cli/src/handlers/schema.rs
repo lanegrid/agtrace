@@ -13,7 +13,10 @@ pub fn handle(provider: String, format: String) -> Result<()> {
 fn display_codex_schema(format: &str) -> Result<()> {
     match format {
         "rust" => {
-            println!("{}", include_str!("../../../agtrace-providers/src/codex/schema.rs"));
+            println!(
+                "{}",
+                include_str!("../../../agtrace-providers/src/codex/schema.rs")
+            );
         }
         "json" => {
             // TODO: Generate JSON Schema
@@ -76,7 +79,10 @@ fn display_codex_schema(format: &str) -> Result<()> {
 fn display_claude_schema(format: &str) -> Result<()> {
     match format {
         "rust" => {
-            println!("{}", include_str!("../../../agtrace-providers/src/claude/schema.rs"));
+            println!(
+                "{}",
+                include_str!("../../../agtrace-providers/src/claude/schema.rs")
+            );
         }
         "json" => {
             println!("JSON Schema output not yet implemented");
@@ -129,7 +135,10 @@ fn display_claude_schema(format: &str) -> Result<()> {
 fn display_gemini_schema(format: &str) -> Result<()> {
     match format {
         "rust" => {
-            println!("{}", include_str!("../../../agtrace-providers/src/gemini/schema.rs"));
+            println!(
+                "{}",
+                include_str!("../../../agtrace-providers/src/gemini/schema.rs")
+            );
         }
         "json" => {
             println!("JSON Schema output not yet implemented");

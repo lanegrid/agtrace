@@ -2,9 +2,9 @@ pub mod io;
 pub mod mapper;
 pub mod schema;
 
-use agtrace_types::AgentEventV1;
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::paths_equal;
+use agtrace_types::AgentEventV1;
 use anyhow::Result;
 use std::path::Path;
 use walkdir::WalkDir;

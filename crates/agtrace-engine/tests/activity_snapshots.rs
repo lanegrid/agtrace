@@ -10,8 +10,8 @@ fn test_claude_activity_aggregation() {
         return;
     }
 
-    let events = agtrace_providers::normalize_claude_file(path, None)
-        .expect("Failed to parse Claude file");
+    let events =
+        agtrace_providers::normalize_claude_file(path, None).expect("Failed to parse Claude file");
 
     let activities = interpret_events(&events);
 
@@ -30,8 +30,8 @@ fn test_codex_activity_aggregation() {
         return;
     }
 
-    let events = agtrace_providers::normalize_codex_file(path, None)
-        .expect("Failed to parse Codex file");
+    let events =
+        agtrace_providers::normalize_codex_file(path, None).expect("Failed to parse Codex file");
 
     let activities = interpret_events(&events);
 
@@ -50,8 +50,8 @@ fn test_gemini_activity_aggregation() {
         return;
     }
 
-    let events = agtrace_providers::normalize_gemini_file(path)
-        .expect("Failed to parse Gemini file");
+    let events =
+        agtrace_providers::normalize_gemini_file(path).expect("Failed to parse Gemini file");
 
     let activities = interpret_events(&events);
 

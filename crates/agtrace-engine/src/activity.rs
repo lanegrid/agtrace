@@ -3,6 +3,19 @@ use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+#[derive(Debug, Clone)]
+pub struct InterpretOptions {
+    pub truncate_text: Option<usize>,
+}
+
+impl Default for InterpretOptions {
+    fn default() -> Self {
+        Self {
+            truncate_text: Some(100),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Activity {
@@ -68,6 +81,13 @@ impl Activity {
 }
 
 pub fn interpret_events(events: &[AgentEventV1]) -> Vec<Activity> {
+    interpret_events_with_options(events, &InterpretOptions::default())
+}
+
+pub fn interpret_events_with_options(
+    events: &[AgentEventV1],
+    options: &InterpretOptions,
+) -> Vec<Activity> {
     let mut activities = Vec::new();
     let mut buffer = ExecutionBuffer::new();
 
@@ -91,7 +111,7 @@ pub fn interpret_events(events: &[AgentEventV1]) -> Vec<Activity> {
                         });
 
                 let text = event.text.clone().unwrap_or_default();
-                let text = normalize_text(&text);
+                let text = normalize_text(&text, options.truncate_text);
 
                 activities.push(Activity::Message {
                     role,
@@ -111,6 +131,7 @@ pub fn interpret_events(events: &[AgentEventV1]) -> Vec<Activity> {
 
             EventType::Reasoning => {
                 buffer.mark_start(&event.ts);
+                buffer.had_reasoning = true;
                 buffer.event_count += 1;
             }
 
@@ -143,6 +164,7 @@ struct ExecutionBuffer {
     start_ts: Option<DateTime<chrono::FixedOffset>>,
     end_ts: Option<DateTime<chrono::FixedOffset>>,
     event_count: usize,
+    had_reasoning: bool,
 }
 
 struct ToolInfo {
@@ -160,11 +182,12 @@ impl ExecutionBuffer {
             start_ts: None,
             end_ts: None,
             event_count: 0,
+            had_reasoning: false,
         }
     }
 
     fn is_empty(&self) -> bool {
-        self.tools.is_empty()
+        self.event_count == 0
     }
 
     fn mark_start(&mut self, ts: &str) {
@@ -289,21 +312,22 @@ impl ExecutionBuffer {
     }
 }
 
-fn normalize_text(text: &str) -> String {
+fn normalize_text(text: &str, truncate_limit: Option<usize>) -> String {
     let text_normalized = text.replace('\n', " ");
     let clean_text: String = text_normalized
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
 
-    let limit = 100;
-    let chars: Vec<char> = clean_text.chars().collect();
-    if chars.len() > limit {
-        let preview: String = chars.iter().take(limit).collect();
-        format!("{}...", preview)
-    } else {
-        clean_text
+    if let Some(limit) = truncate_limit {
+        let chars: Vec<char> = clean_text.chars().collect();
+        if chars.len() > limit {
+            let preview: String = chars.iter().take(limit).collect();
+            return format!("{}...", preview);
+        }
     }
+
+    clean_text
 }
 
 fn extract_target_summary(

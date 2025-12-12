@@ -262,7 +262,9 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Show { .. } => {
-            anyhow::bail!("'show' command has been removed. Use 'session show <session-id>' instead.")
+            anyhow::bail!(
+                "'show' command has been removed. Use 'session show <session-id>' instead."
+            )
         }
 
         Commands::Find { .. } => {

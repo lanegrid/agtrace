@@ -9,12 +9,23 @@ fn test_scan_maps_to_index_update() {
     let new = Cli::try_parse_from(["agtrace", "index", "update"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::Scan { provider, force, verbose }, Commands::Index { command }) => {
+        (
+            Commands::Scan {
+                provider,
+                force,
+                verbose,
+            },
+            Commands::Index { command },
+        ) => {
             assert_eq!(*provider, "all");
             assert!(!force);
             assert!(!verbose);
 
-            if let IndexCommand::Update { provider: new_provider, verbose: new_verbose } = command {
+            if let IndexCommand::Update {
+                provider: new_provider,
+                verbose: new_verbose,
+            } = command
+            {
                 assert_eq!(new_provider, "all");
                 assert!(!new_verbose);
             } else {
@@ -31,12 +42,23 @@ fn test_scan_force_maps_to_index_rebuild() {
     let new = Cli::try_parse_from(["agtrace", "index", "rebuild"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::Scan { provider, force, verbose }, Commands::Index { command }) => {
+        (
+            Commands::Scan {
+                provider,
+                force,
+                verbose,
+            },
+            Commands::Index { command },
+        ) => {
             assert_eq!(*provider, "all");
             assert!(*force);
             assert!(!verbose);
 
-            if let IndexCommand::Rebuild { provider: new_provider, verbose: new_verbose } = command {
+            if let IndexCommand::Rebuild {
+                provider: new_provider,
+                verbose: new_verbose,
+            } = command
+            {
                 assert_eq!(new_provider, "all");
                 assert!(!new_verbose);
             } else {
@@ -53,7 +75,16 @@ fn test_list_maps_to_session_list() {
     let new = Cli::try_parse_from(["agtrace", "session", "list", "--limit", "10"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::List { project_hash, source, limit, since, until }, Commands::Session { command }) => {
+        (
+            Commands::List {
+                project_hash,
+                source,
+                limit,
+                since,
+                until,
+            },
+            Commands::Session { command },
+        ) => {
             assert!(project_hash.is_none());
             assert!(source.is_none());
             assert_eq!(*limit, 10);
@@ -66,7 +97,8 @@ fn test_list_maps_to_session_list() {
                 limit: new_limit,
                 since: new_since,
                 until: new_until,
-            } = command {
+            } = command
+            {
                 assert!(new_project_hash.is_none());
                 assert!(new_source.is_none());
                 assert_eq!(new_limit, &10);
@@ -86,8 +118,20 @@ fn test_view_maps_to_session_show() {
     let new = Cli::try_parse_from(["agtrace", "session", "show", "abc123"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::View { session_id, raw, json, timeline, hide, only, full, short, style },
-         Commands::Session { command }) => {
+        (
+            Commands::View {
+                session_id,
+                raw,
+                json,
+                timeline,
+                hide,
+                only,
+                full,
+                short,
+                style,
+            },
+            Commands::Session { command },
+        ) => {
             assert_eq!(session_id, "abc123");
             assert!(!raw);
             assert!(!json);
@@ -108,7 +152,8 @@ fn test_view_maps_to_session_show() {
                 full: new_full,
                 short: new_short,
                 style: new_style,
-            } = command {
+            } = command
+            {
                 assert_eq!(new_session_id, "abc123");
                 assert!(!new_raw);
                 assert!(!new_json);
@@ -138,8 +183,9 @@ fn test_schema_maps_to_provider_schema() {
 
             if let ProviderCommand::Schema {
                 provider: new_provider,
-                format: new_format
-            } = command {
+                format: new_format,
+            } = command
+            {
                 assert_eq!(new_provider, "claude");
                 assert_eq!(new_format, "text");
             } else {
@@ -162,8 +208,9 @@ fn test_diagnose_maps_to_doctor_run() {
 
             if let DoctorCommand::Run {
                 provider: new_provider,
-                verbose: new_verbose
-            } = command {
+                verbose: new_verbose,
+            } = command
+            {
                 assert_eq!(new_provider, "claude");
                 assert!(!new_verbose);
             } else {
@@ -180,7 +227,14 @@ fn test_inspect_maps_to_doctor_inspect() {
     let new = Cli::try_parse_from(["agtrace", "doctor", "inspect", "/path/to/file.jsonl"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::Inspect { file_path, lines, format }, Commands::Doctor { command }) => {
+        (
+            Commands::Inspect {
+                file_path,
+                lines,
+                format,
+            },
+            Commands::Doctor { command },
+        ) => {
             assert_eq!(file_path, "/path/to/file.jsonl");
             assert_eq!(*lines, 50);
             assert_eq!(format, "raw");
@@ -188,8 +242,9 @@ fn test_inspect_maps_to_doctor_inspect() {
             if let DoctorCommand::Inspect {
                 file_path: new_file_path,
                 lines: new_lines,
-                format: new_format
-            } = command {
+                format: new_format,
+            } = command
+            {
                 assert_eq!(new_file_path, "/path/to/file.jsonl");
                 assert_eq!(new_lines, &50);
                 assert_eq!(new_format, "raw");
@@ -207,14 +262,21 @@ fn test_validate_maps_to_doctor_check() {
     let new = Cli::try_parse_from(["agtrace", "doctor", "check", "/path/to/file.jsonl"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::Validate { file_path, provider }, Commands::Doctor { command }) => {
+        (
+            Commands::Validate {
+                file_path,
+                provider,
+            },
+            Commands::Doctor { command },
+        ) => {
             assert_eq!(file_path, "/path/to/file.jsonl");
             assert!(provider.is_none());
 
             if let DoctorCommand::Check {
                 file_path: new_file_path,
-                provider: new_provider
-            } = command {
+                provider: new_provider,
+            } = command
+            {
                 assert_eq!(new_file_path, "/path/to/file.jsonl");
                 assert!(new_provider.is_none());
             } else {
@@ -231,7 +293,14 @@ fn test_analyze_maps_to_lab_analyze() {
     let new = Cli::try_parse_from(["agtrace", "lab", "analyze", "abc123"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::Analyze { session_id, detect, format }, Commands::Lab { command }) => {
+        (
+            Commands::Analyze {
+                session_id,
+                detect,
+                format,
+            },
+            Commands::Lab { command },
+        ) => {
             assert_eq!(session_id, "abc123");
             assert_eq!(detect, "all");
             assert_eq!(format, "plain");
@@ -239,8 +308,9 @@ fn test_analyze_maps_to_lab_analyze() {
             if let LabCommand::Analyze {
                 session_id: new_session_id,
                 detect: new_detect,
-                format: new_format
-            } = command {
+                format: new_format,
+            } = command
+            {
                 assert_eq!(new_session_id, "abc123");
                 assert_eq!(new_detect, "all");
                 assert_eq!(new_format, "plain");
@@ -258,7 +328,15 @@ fn test_export_maps_to_lab_export() {
     let new = Cli::try_parse_from(["agtrace", "lab", "export", "abc123"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::Export { session_id, output, format, strategy }, Commands::Lab { command }) => {
+        (
+            Commands::Export {
+                session_id,
+                output,
+                format,
+                strategy,
+            },
+            Commands::Lab { command },
+        ) => {
             assert_eq!(session_id, "abc123");
             assert!(output.is_none());
             assert_eq!(format, "jsonl");
@@ -268,8 +346,9 @@ fn test_export_maps_to_lab_export() {
                 session_id: new_session_id,
                 output: new_output,
                 format: new_format,
-                strategy: new_strategy
-            } = command {
+                strategy: new_strategy,
+            } = command
+            {
                 assert_eq!(new_session_id, "abc123");
                 assert!(new_output.is_none());
                 assert_eq!(new_format, "jsonl");
@@ -288,7 +367,12 @@ fn test_providers_maps_to_provider_list() {
     let new = Cli::try_parse_from(["agtrace", "provider", "list"]).unwrap();
 
     match (&legacy.command, &new.command) {
-        (Commands::Providers { command: legacy_cmd }, Commands::Provider { command: new_cmd }) => {
+        (
+            Commands::Providers {
+                command: legacy_cmd,
+            },
+            Commands::Provider { command: new_cmd },
+        ) => {
             assert!(legacy_cmd.is_none());
 
             if let ProviderCommand::List = new_cmd {
@@ -305,21 +389,30 @@ fn test_providers_maps_to_provider_list() {
 fn test_global_options_preserved() {
     let legacy = Cli::try_parse_from([
         "agtrace",
-        "--data-dir", "/custom/path",
-        "--format", "json",
-        "--project-root", "/project",
+        "--data-dir",
+        "/custom/path",
+        "--format",
+        "json",
+        "--project-root",
+        "/project",
         "--all-projects",
-        "list"
-    ]).unwrap();
+        "list",
+    ])
+    .unwrap();
 
     let new = Cli::try_parse_from([
         "agtrace",
-        "--data-dir", "/custom/path",
-        "--format", "json",
-        "--project-root", "/project",
+        "--data-dir",
+        "/custom/path",
+        "--format",
+        "json",
+        "--project-root",
+        "/project",
         "--all-projects",
-        "session", "list"
-    ]).unwrap();
+        "session",
+        "list",
+    ])
+    .unwrap();
 
     assert_eq!(legacy.data_dir, "/custom/path");
     assert_eq!(legacy.format, "json");
@@ -335,11 +428,7 @@ fn test_global_options_preserved() {
 #[test]
 fn test_deprecation_warning_with_json_format() {
     // When --format json is used, deprecation warnings should be suppressed
-    let cli = Cli::try_parse_from([
-        "agtrace",
-        "--format", "json",
-        "list"
-    ]).unwrap();
+    let cli = Cli::try_parse_from(["agtrace", "--format", "json", "list"]).unwrap();
 
     assert_eq!(cli.format, "json");
 
@@ -358,10 +447,7 @@ fn test_deprecation_warning_suppressed_by_env_var() {
     // Set environment variable
     std::env::set_var("AGTRACE_NO_DEPRECATION_WARN", "1");
 
-    let cli = Cli::try_parse_from([
-        "agtrace",
-        "list"
-    ]).unwrap();
+    let cli = Cli::try_parse_from(["agtrace", "list"]).unwrap();
 
     // This test verifies the CLI parses correctly
     // The actual suppression is tested through integration tests

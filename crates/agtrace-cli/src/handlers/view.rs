@@ -1,17 +1,16 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
-use agtrace_engine::interpret_events;
 use crate::output::print_activities_compact;
+use crate::session_loader::{LoadOptions, SessionLoader};
+use agtrace_engine::{interpret_events, summary};
 use agtrace_index::Database;
 use agtrace_types::{AgentEventV1, EventType};
-use agtrace_providers::{ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider};
 use anyhow::{Context, Result};
 use chrono::DateTime;
 use is_terminal::IsTerminal;
 use owo_colors::OwoColorize;
 use std::fs;
 use std::io;
-use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
@@ -29,36 +28,15 @@ pub fn handle(
     // Detect if output is being piped (not a terminal)
     let is_tty = io::stdout().is_terminal();
     let enable_color = is_tty;
-    // Try to resolve session ID (supports prefix matching)
-    let resolved_id = match db.find_session_by_prefix(&session_id)? {
-        Some(full_id) => full_id,
-        None => {
-            // If prefix matching fails, try exact match
-            let files = db.get_session_files(&session_id)?;
-            if files.is_empty() {
-                anyhow::bail!("Session not found: {}", session_id);
-            }
-            session_id.clone()
-        }
-    };
 
-    let log_files = db.get_session_files(&resolved_id)?;
-
-    if log_files.is_empty() {
-        anyhow::bail!("Session not found: {}", session_id);
-    }
-
-    // Filter out sidechain files (e.g., Claude's agent-*.jsonl)
-    let main_files: Vec<_> = log_files
-        .into_iter()
-        .filter(|f| f.role != "sidechain")
-        .collect();
-
-    if main_files.is_empty() {
-        anyhow::bail!("No main log files found for session: {}", session_id);
-    }
-
+    // Handle raw mode (display raw files without normalization)
     if raw {
+        let log_files = db.get_session_files(&session_id)?;
+        let main_files: Vec<_> = log_files
+            .into_iter()
+            .filter(|f| f.role != "sidechain")
+            .collect();
+
         for log_file in &main_files {
             let content = fs::read_to_string(&log_file.path)
                 .with_context(|| format!("Failed to read file: {}", log_file.path))?;
@@ -67,38 +45,10 @@ pub fn handle(
         return Ok(());
     }
 
-    let mut all_events = Vec::new();
-
-    for log_file in &main_files {
-        let path = Path::new(&log_file.path);
-        let provider: Box<dyn LogProvider> = if log_file.path.contains(".claude/") {
-            Box::new(ClaudeProvider::new())
-        } else if log_file.path.contains(".codex/") {
-            Box::new(CodexProvider::new())
-        } else if log_file.path.contains(".gemini/") {
-            Box::new(GeminiProvider::new())
-        } else {
-            eprintln!("Warning: Unknown provider for file: {}", log_file.path);
-            continue;
-        };
-
-        let context = ImportContext {
-            project_root_override: None,
-            session_id_prefix: None,
-            all_projects: false,
-        };
-
-        match provider.normalize_file(path, &context) {
-            Ok(mut events) => {
-                all_events.append(&mut events);
-            }
-            Err(e) => {
-                eprintln!("Warning: Failed to normalize {}: {}", log_file.path, e);
-            }
-        }
-    }
-
-    all_events.sort_by(|a, b| a.ts.cmp(&b.ts));
+    // Load and normalize events
+    let loader = SessionLoader::new(db);
+    let options = LoadOptions::default();
+    let all_events = loader.load_events(&session_id, &options)?;
 
     // Filter events based on --hide and --only options
     let filtered_events = filter_events(&all_events, hide.as_ref(), only.as_ref());
@@ -409,6 +359,8 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         return;
     }
 
+    let session_summary = summary::summarize(events);
+
     if enable_color {
         println!("{}", format!("{}", "---".bright_black()));
         println!(
@@ -420,83 +372,86 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         println!("Session Summary:");
     }
 
-    // Count events by type
-    let mut user_count = 0;
-    let mut assistant_count = 0;
-    let mut tool_call_count = 0;
-    let mut reasoning_count = 0;
-    let mut file_ops = std::collections::HashMap::new();
-
-    // Calculate total tokens
-    let mut total_input = 0u64;
-    let mut total_output = 0u64;
-    let mut total_cached = 0u64;
-    let mut total_thinking = 0u64;
-
-    for event in events {
-        match event.event_type {
-            EventType::UserMessage => user_count += 1,
-            EventType::AssistantMessage => assistant_count += 1,
-            EventType::ToolCall => tool_call_count += 1,
-            EventType::Reasoning => reasoning_count += 1,
-            _ => {}
-        }
-
-        if let Some(file_op) = &event.file_op {
-            *file_ops.entry(*file_op).or_insert(0) += 1;
-        }
-
-        if let Some(t) = event.tokens_input {
-            total_input += t;
-        }
-        if let Some(t) = event.tokens_output {
-            total_output += t;
-        }
-        if let Some(t) = event.tokens_cached {
-            total_cached += t;
-        }
-        if let Some(t) = event.tokens_thinking {
-            total_thinking += t;
-        }
-    }
-
     if enable_color {
         println!(
             "  {}: {}",
             format!("{}", "Events".cyan()),
-            format!("{}", events.len().to_string().bright_white())
+            format!(
+                "{}",
+                session_summary
+                    .event_counts
+                    .total
+                    .to_string()
+                    .bright_white()
+            )
         );
         println!(
             "    User messages: {}",
-            format!("{}", user_count.to_string().green())
+            format!(
+                "{}",
+                session_summary
+                    .event_counts
+                    .user_messages
+                    .to_string()
+                    .green()
+            )
         );
         println!(
             "    Assistant messages: {}",
-            format!("{}", assistant_count.to_string().blue())
+            format!(
+                "{}",
+                session_summary
+                    .event_counts
+                    .assistant_messages
+                    .to_string()
+                    .blue()
+            )
         );
         println!(
             "    Tool calls: {}",
-            format!("{}", tool_call_count.to_string().yellow())
+            format!(
+                "{}",
+                session_summary.event_counts.tool_calls.to_string().yellow()
+            )
         );
         println!(
             "    Reasoning blocks: {}",
-            format!("{}", reasoning_count.to_string().cyan())
+            format!(
+                "{}",
+                session_summary
+                    .event_counts
+                    .reasoning_blocks
+                    .to_string()
+                    .cyan()
+            )
         );
     } else {
-        println!("  Events: {}", events.len());
-        println!("    User messages: {}", user_count);
-        println!("    Assistant messages: {}", assistant_count);
-        println!("    Tool calls: {}", tool_call_count);
-        println!("    Reasoning blocks: {}", reasoning_count);
+        println!("  Events: {}", session_summary.event_counts.total);
+        println!(
+            "    User messages: {}",
+            session_summary.event_counts.user_messages
+        );
+        println!(
+            "    Assistant messages: {}",
+            session_summary.event_counts.assistant_messages
+        );
+        println!(
+            "    Tool calls: {}",
+            session_summary.event_counts.tool_calls
+        );
+        println!(
+            "    Reasoning blocks: {}",
+            session_summary.event_counts.reasoning_blocks
+        );
     }
 
-    if !file_ops.is_empty() {
+    if !session_summary.file_operations.is_empty() {
         if enable_color {
             println!("  {}:", format!("{}", "File operations".cyan()));
         } else {
             println!("  File operations:");
         }
-        for (op, count) in file_ops.iter() {
+        for (op, count) in session_summary.file_operations.iter() {
             if enable_color {
                 println!(
                     "    {}: {}",
@@ -509,66 +464,83 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         }
     }
 
-    let total_tokens = total_input + total_output;
-    if total_tokens > 0 {
+    if session_summary.token_stats.total > 0 {
         if enable_color {
             println!(
                 "  {}: {}",
                 format!("{}", "Tokens".cyan()),
-                format!("{}", total_tokens.to_string().bright_white())
+                format!(
+                    "{}",
+                    session_summary.token_stats.total.to_string().bright_white()
+                )
             );
             println!(
                 "    Input: {}",
-                format!("{}", total_input.to_string().bright_white())
+                format!(
+                    "{}",
+                    session_summary.token_stats.input.to_string().bright_white()
+                )
             );
             println!(
                 "    Output: {}",
-                format!("{}", total_output.to_string().bright_white())
+                format!(
+                    "{}",
+                    session_summary
+                        .token_stats
+                        .output
+                        .to_string()
+                        .bright_white()
+                )
             );
-            if total_cached > 0 {
+            if session_summary.token_stats.cached > 0 {
                 println!(
                     "    Cached: {}",
-                    format!("{}", total_cached.to_string().bright_yellow())
+                    format!(
+                        "{}",
+                        session_summary
+                            .token_stats
+                            .cached
+                            .to_string()
+                            .bright_yellow()
+                    )
                 );
             }
-            if total_thinking > 0 {
+            if session_summary.token_stats.thinking > 0 {
                 println!(
                     "    Thinking: {}",
-                    format!("{}", total_thinking.to_string().bright_cyan())
+                    format!(
+                        "{}",
+                        session_summary
+                            .token_stats
+                            .thinking
+                            .to_string()
+                            .bright_cyan()
+                    )
                 );
             }
         } else {
-            println!("  Tokens: {}", total_tokens);
-            println!("    Input: {}", total_input);
-            println!("    Output: {}", total_output);
-            if total_cached > 0 {
-                println!("    Cached: {}", total_cached);
+            println!("  Tokens: {}", session_summary.token_stats.total);
+            println!("    Input: {}", session_summary.token_stats.input);
+            println!("    Output: {}", session_summary.token_stats.output);
+            if session_summary.token_stats.cached > 0 {
+                println!("    Cached: {}", session_summary.token_stats.cached);
             }
-            if total_thinking > 0 {
-                println!("    Thinking: {}", total_thinking);
+            if session_summary.token_stats.thinking > 0 {
+                println!("    Thinking: {}", session_summary.token_stats.thinking);
             }
         }
     }
 
-    // Calculate duration
-    if let (Some(first), Some(last)) = (events.first(), events.last()) {
-        if let (Ok(start), Ok(end)) = (
-            DateTime::parse_from_rfc3339(&first.ts),
-            DateTime::parse_from_rfc3339(&last.ts),
-        ) {
-            let duration = end.signed_duration_since(start);
-            let minutes = duration.num_minutes();
-            let seconds = duration.num_seconds() % 60;
-            if enable_color {
-                println!(
-                    "  {}: {}m {}s",
-                    format!("{}", "Duration".cyan()),
-                    minutes,
-                    seconds
-                );
-            } else {
-                println!("  Duration: {}m {}s", minutes, seconds);
-            }
+    if let Some(duration) = session_summary.duration {
+        if enable_color {
+            println!(
+                "  {}: {}m {}s",
+                format!("{}", "Duration".cyan()),
+                duration.minutes,
+                duration.seconds
+            );
+        } else {
+            println!("  Duration: {}m {}s", duration.minutes, duration.seconds);
         }
     }
 }

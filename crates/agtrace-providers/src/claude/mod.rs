@@ -2,8 +2,8 @@ pub mod io;
 pub mod mapper;
 pub mod schema;
 
-use agtrace_types::AgentEventV1;
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
+use agtrace_types::AgentEventV1;
 use agtrace_types::{encode_claude_project_dir, paths_equal};
 use anyhow::Result;
 use std::collections::HashMap;

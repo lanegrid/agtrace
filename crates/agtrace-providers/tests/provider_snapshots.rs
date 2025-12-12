@@ -9,8 +9,8 @@ fn test_gemini_parse_snapshot() {
         return;
     }
 
-    let events = agtrace_providers::normalize_gemini_file(path)
-        .expect("Failed to parse Gemini file");
+    let events =
+        agtrace_providers::normalize_gemini_file(path).expect("Failed to parse Gemini file");
 
     assert!(!events.is_empty(), "Expected at least one event");
 
@@ -36,8 +36,8 @@ fn test_codex_parse_snapshot() {
         return;
     }
 
-    let events = agtrace_providers::normalize_codex_file(path, None)
-        .expect("Failed to parse Codex file");
+    let events =
+        agtrace_providers::normalize_codex_file(path, None).expect("Failed to parse Codex file");
 
     assert!(!events.is_empty(), "Expected at least one event");
 
@@ -61,8 +61,8 @@ fn test_claude_parse_snapshot() {
         return;
     }
 
-    let events = agtrace_providers::normalize_claude_file(path, None)
-        .expect("Failed to parse Claude file");
+    let events =
+        agtrace_providers::normalize_claude_file(path, None).expect("Failed to parse Claude file");
 
     assert!(!events.is_empty(), "Expected at least one event");
 
