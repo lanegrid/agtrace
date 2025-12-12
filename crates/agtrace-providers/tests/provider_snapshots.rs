@@ -14,13 +14,13 @@ fn test_gemini_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // Snapshot all events in JSONL format (1 line per event)
-    let jsonl = events
+    // Snapshot all events in pretty JSON format with blank lines between events
+    let json_pretty = events
         .iter()
-        .map(|e| serde_json::to_string(e).unwrap())
+        .map(|e| serde_json::to_string_pretty(e).unwrap())
         .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!("gemini_events_sample", jsonl);
+        .join("\n\n");
+    insta::assert_snapshot!("gemini_events_sample", json_pretty);
 
     // Verify basic properties
     assert_eq!(events[0].source, agtrace_types::Source::Gemini);
@@ -41,13 +41,13 @@ fn test_codex_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // Snapshot all events in JSONL format (1 line per event)
-    let jsonl = events
+    // Snapshot all events in pretty JSON format with blank lines between events
+    let json_pretty = events
         .iter()
-        .map(|e| serde_json::to_string(e).unwrap())
+        .map(|e| serde_json::to_string_pretty(e).unwrap())
         .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!("codex_events_sample", jsonl);
+        .join("\n\n");
+    insta::assert_snapshot!("codex_events_sample", json_pretty);
 
     assert_eq!(events[0].source, agtrace_types::Source::Codex);
 }
@@ -66,13 +66,13 @@ fn test_claude_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // Snapshot all events in JSONL format (1 line per event)
-    let jsonl = events
+    // Snapshot all events in pretty JSON format with blank lines between events
+    let json_pretty = events
         .iter()
-        .map(|e| serde_json::to_string(e).unwrap())
+        .map(|e| serde_json::to_string_pretty(e).unwrap())
         .collect::<Vec<_>>()
-        .join("\n");
-    insta::assert_snapshot!("claude_events_sample", jsonl);
+        .join("\n\n");
+    insta::assert_snapshot!("claude_events_sample", json_pretty);
 
     assert_eq!(events[0].source, agtrace_types::Source::ClaudeCode);
 }
