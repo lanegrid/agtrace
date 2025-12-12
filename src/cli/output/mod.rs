@@ -1,4 +1,8 @@
+mod compact;
+
 use crate::model::*;
+
+pub use compact::print_activities_compact;
 
 pub fn print_events_timeline(events: &[AgentEventV1]) {
     for event in events {

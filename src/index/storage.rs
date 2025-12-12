@@ -1,3 +1,9 @@
+// DEPRECATED: This module is deprecated in favor of the SQLite-based index.
+// Migration path: Use crate::index::Database instead.
+// This file will be removed in Phase 4 (workspace split).
+
+#![allow(deprecated)]
+
 use crate::model::*;
 use anyhow::{Context, Result};
 use std::collections::{HashMap, HashSet};
@@ -5,6 +11,10 @@ use std::fs;
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
+#[deprecated(
+    since = "2.0.0",
+    note = "Use crate::index::Database instead. This v1 file-based storage is replaced by SQLite pointer index."
+)]
 pub struct Storage {
     data_dir: PathBuf,
 }

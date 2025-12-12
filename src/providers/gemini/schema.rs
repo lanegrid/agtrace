@@ -3,7 +3,7 @@ use serde_json::Value;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct GeminiSession {
+pub(crate) struct GeminiSession {
     pub session_id: String,
     pub project_hash: String,
     pub start_time: String,
@@ -14,7 +14,7 @@ pub struct GeminiSession {
 // Legacy format: array of simple messages
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct LegacyGeminiMessage {
+pub(crate) struct LegacyGeminiMessage {
     pub session_id: String,
     pub message_id: u32,
     #[serde(rename = "type")]
@@ -26,14 +26,14 @@ pub struct LegacyGeminiMessage {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "lowercase")]
-pub enum GeminiMessage {
+pub(crate) enum GeminiMessage {
     User(UserMessage),
     Gemini(GeminiAssistantMessage),
     Info(InfoMessage),
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct UserMessage {
+pub(crate) struct UserMessage {
     pub id: String,
     pub timestamp: String,
     pub content: String,
@@ -41,7 +41,7 @@ pub struct UserMessage {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct GeminiAssistantMessage {
+pub(crate) struct GeminiAssistantMessage {
     pub id: String,
     pub timestamp: String,
     pub content: String,
@@ -54,14 +54,14 @@ pub struct GeminiAssistantMessage {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct InfoMessage {
+pub(crate) struct InfoMessage {
     pub id: String,
     pub timestamp: String,
     pub content: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Thought {
+pub(crate) struct Thought {
     pub subject: String,
     pub description: String,
     pub timestamp: String,
@@ -69,7 +69,7 @@ pub struct Thought {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ToolCall {
+pub(crate) struct ToolCall {
     pub id: String,
     pub name: String,
     pub args: Value,
@@ -91,19 +91,19 @@ pub struct ToolCall {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct FunctionResponse {
+pub(crate) struct FunctionResponse {
     pub function_response: FunctionResponseInner,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct FunctionResponseInner {
+pub(crate) struct FunctionResponseInner {
     pub id: String,
     pub name: String,
     pub response: Value,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenUsage {
+pub(crate) struct TokenUsage {
     pub input: u32,
     pub output: u32,
     pub cached: u32,

@@ -3,7 +3,7 @@ use crate::utils::project_hash_from_root;
 
 use super::schema::*;
 
-pub fn normalize_claude_stream(
+pub(crate) fn normalize_claude_stream(
     records: Vec<ClaudeRecord>,
     project_root_override: Option<&str>,
 ) -> Vec<AgentEventV1> {

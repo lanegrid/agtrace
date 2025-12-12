@@ -4,7 +4,7 @@ use serde_json::Value;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "kebab-case")]
-pub enum ClaudeRecord {
+pub(crate) enum ClaudeRecord {
     FileHistorySnapshot(FileHistorySnapshotRecord),
     User(UserRecord),
     Assistant(AssistantRecord),
@@ -14,7 +14,7 @@ pub enum ClaudeRecord {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct FileHistorySnapshotRecord {
+pub(crate) struct FileHistorySnapshotRecord {
     pub message_id: String,
     pub snapshot: FileHistorySnapshot,
     #[serde(default)]
@@ -22,14 +22,14 @@ pub struct FileHistorySnapshotRecord {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct FileHistorySnapshot {
+pub(crate) struct FileHistorySnapshot {
     #[serde(default)]
     pub files: Vec<Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct UserRecord {
+pub(crate) struct UserRecord {
     pub uuid: String,
     pub parent_uuid: Option<String>,
     pub session_id: String,
@@ -52,7 +52,7 @@ pub struct UserRecord {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct UserMessage {
+pub(crate) struct UserMessage {
     pub role: String,
     #[serde(deserialize_with = "deserialize_user_content")]
     pub content: Vec<UserContent>,
@@ -80,7 +80,7 @@ where
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum UserContent {
+pub(crate) enum UserContent {
     Text {
         text: String,
     },
@@ -100,7 +100,7 @@ pub enum UserContent {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct AssistantRecord {
+pub(crate) struct AssistantRecord {
     pub uuid: String,
     pub parent_uuid: Option<String>,
     pub session_id: String,
@@ -121,7 +121,7 @@ pub struct AssistantRecord {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct AssistantMessage {
+pub(crate) struct AssistantMessage {
     #[serde(rename = "type")]
     pub message_type: String,
     pub id: String,
@@ -139,7 +139,7 @@ pub struct AssistantMessage {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum AssistantContent {
+pub(crate) enum AssistantContent {
     Text {
         text: String,
         #[serde(default)]
@@ -168,7 +168,7 @@ pub enum AssistantContent {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenUsage {
+pub(crate) struct TokenUsage {
     pub input_tokens: u32,
     pub output_tokens: u32,
     #[serde(default)]

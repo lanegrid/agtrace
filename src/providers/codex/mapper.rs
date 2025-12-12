@@ -3,7 +3,7 @@ use crate::utils::project_hash_from_root;
 
 use super::schema::*;
 
-pub fn normalize_codex_stream(
+pub(crate) fn normalize_codex_stream(
     records: Vec<CodexRecord>,
     session_id: &str,
     project_root_override: Option<&str>,

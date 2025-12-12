@@ -4,7 +4,7 @@ use serde_json::Value;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum CodexRecord {
+pub(crate) enum CodexRecord {
     SessionMeta(SessionMetaRecord),
     ResponseItem(ResponseItemRecord),
     EventMsg(EventMsgRecord),
@@ -14,13 +14,13 @@ pub enum CodexRecord {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct SessionMetaRecord {
+pub(crate) struct SessionMetaRecord {
     pub timestamp: String,
     pub payload: SessionMetaPayload,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct SessionMetaPayload {
+pub(crate) struct SessionMetaPayload {
     pub id: String,
     pub timestamp: String,
     pub cwd: String,
@@ -36,7 +36,7 @@ pub struct SessionMetaPayload {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct GitInfo {
+pub(crate) struct GitInfo {
     #[serde(default)]
     pub commit_hash: Option<String>,
     #[serde(default)]
@@ -46,7 +46,7 @@ pub struct GitInfo {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ResponseItemRecord {
+pub(crate) struct ResponseItemRecord {
     pub timestamp: String,
     pub payload: ResponseItemPayload,
 }
@@ -54,7 +54,7 @@ pub struct ResponseItemRecord {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum ResponseItemPayload {
+pub(crate) enum ResponseItemPayload {
     Message(MessagePayload),
     Reasoning(ReasoningPayload),
     FunctionCall(FunctionCallPayload),
@@ -67,7 +67,7 @@ pub enum ResponseItemPayload {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MessagePayload {
+pub(crate) struct MessagePayload {
     pub role: String,
     pub content: Vec<MessageContent>,
 }
@@ -75,7 +75,7 @@ pub struct MessagePayload {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum MessageContent {
+pub(crate) enum MessageContent {
     InputText {
         text: String,
     },
@@ -87,7 +87,7 @@ pub enum MessageContent {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct ReasoningPayload {
+pub(crate) struct ReasoningPayload {
     pub summary: Vec<SummaryText>,
     #[serde(default)]
     pub content: Option<String>,
@@ -98,7 +98,7 @@ pub struct ReasoningPayload {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum SummaryText {
+pub(crate) enum SummaryText {
     SummaryText {
         text: String,
     },
@@ -107,20 +107,20 @@ pub enum SummaryText {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct FunctionCallPayload {
+pub(crate) struct FunctionCallPayload {
     pub name: String,
     pub arguments: String,
     pub call_id: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct FunctionCallOutputPayload {
+pub(crate) struct FunctionCallOutputPayload {
     pub call_id: String,
     pub output: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct CustomToolCallPayload {
+pub(crate) struct CustomToolCallPayload {
     pub status: String,
     pub call_id: String,
     pub name: String,
@@ -128,18 +128,18 @@ pub struct CustomToolCallPayload {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct CustomToolCallOutputPayload {
+pub(crate) struct CustomToolCallOutputPayload {
     pub call_id: String,
     pub output: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct GhostSnapshotPayload {
+pub(crate) struct GhostSnapshotPayload {
     pub ghost_commit: GhostCommit,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct GhostCommit {
+pub(crate) struct GhostCommit {
     pub id: String,
     pub parent: String,
     #[serde(default)]
@@ -149,7 +149,7 @@ pub struct GhostCommit {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct EventMsgRecord {
+pub(crate) struct EventMsgRecord {
     pub timestamp: String,
     pub payload: EventMsgPayload,
 }
@@ -157,7 +157,7 @@ pub struct EventMsgRecord {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum EventMsgPayload {
+pub(crate) enum EventMsgPayload {
     UserMessage(UserMessagePayload),
     AgentMessage(AgentMessagePayload),
     AgentReasoning(AgentReasoningPayload),
@@ -167,24 +167,24 @@ pub enum EventMsgPayload {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct UserMessagePayload {
+pub(crate) struct UserMessagePayload {
     pub message: String,
     #[serde(default)]
     pub images: Vec<Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct AgentMessagePayload {
+pub(crate) struct AgentMessagePayload {
     pub message: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct AgentReasoningPayload {
+pub(crate) struct AgentReasoningPayload {
     pub text: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenCountPayload {
+pub(crate) struct TokenCountPayload {
     #[serde(default)]
     pub info: Option<TokenInfo>,
     #[serde(default)]
@@ -192,14 +192,14 @@ pub struct TokenCountPayload {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenInfo {
+pub(crate) struct TokenInfo {
     pub total_token_usage: TokenUsage,
     pub last_token_usage: TokenUsage,
     pub model_context_window: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TokenUsage {
+pub(crate) struct TokenUsage {
     pub input_tokens: u32,
     #[serde(default)]
     pub cached_input_tokens: u32,
@@ -210,13 +210,13 @@ pub struct TokenUsage {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TurnContextRecord {
+pub(crate) struct TurnContextRecord {
     pub timestamp: String,
     pub payload: TurnContextPayload,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct TurnContextPayload {
+pub(crate) struct TurnContextPayload {
     pub cwd: String,
     pub approval_policy: String,
     pub sandbox_policy: SandboxPolicy,
@@ -228,7 +228,7 @@ pub struct TurnContextPayload {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
-pub enum SandboxPolicy {
+pub(crate) enum SandboxPolicy {
     // New format (v0.63+): {"type": "read-only"}
     Simple {
         #[serde(rename = "type")]

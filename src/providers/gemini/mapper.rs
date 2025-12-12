@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use super::schema::{GeminiMessage, GeminiSession};
 
-pub fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
+pub(crate) fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
     let mut events = Vec::new();
     let mut last_user_event_id: Option<String> = None;
 
