@@ -1,0 +1,24 @@
+---
+source: crates/agtrace-cli/tests/help_snapshots.rs
+expression: help
+---
+Usage: agtrace session show [OPTIONS] <SESSION_ID>
+
+Arguments:
+  <SESSION_ID>  
+
+Options:
+      --data-dir <DATA_DIR>          [default: ~/.agtrace]
+      --raw                          
+      --format <FORMAT>              [default: plain] [possible values: plain, json]
+      --json                         
+      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --timeline                     
+      --hide <HIDE>                  
+      --project-root <PROJECT_ROOT>  
+      --all-projects                 
+      --only <ONLY>                  
+      --full                         Display full event text without truncation (default behavior, kept for backwards compatibility)
+      --short                        Truncate long text to ~100 chars for compact display
+      --style <STYLE>                [default: timeline] [possible values: timeline, compact]
+  -h, --help                         Print help

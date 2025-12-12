@@ -1,0 +1,13 @@
+---
+source: crates/agtrace-cli/tests/help_snapshots.rs
+expression: help
+---
+Usage: agtrace provider detect [OPTIONS]
+
+Options:
+      --data-dir <DATA_DIR>          [default: ~/.agtrace]
+      --format <FORMAT>              [default: plain] [possible values: plain, json]
+      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --project-root <PROJECT_ROOT>  
+      --all-projects                 
+  -h, --help                         Print help

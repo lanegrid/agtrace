@@ -1,0 +1,15 @@
+---
+source: crates/agtrace-cli/tests/help_snapshots.rs
+expression: help
+---
+Usage: agtrace doctor run [OPTIONS]
+
+Options:
+      --data-dir <DATA_DIR>          [default: ~/.agtrace]
+      --provider <PROVIDER>          [default: all] [possible values: claude, codex, gemini, all]
+      --format <FORMAT>              [default: plain] [possible values: plain, json]
+      --verbose                      
+      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --project-root <PROJECT_ROOT>  
+      --all-projects                 
+  -h, --help                         Print help

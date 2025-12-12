@@ -1,0 +1,18 @@
+---
+source: crates/agtrace-cli/tests/help_snapshots.rs
+expression: help
+---
+Usage: agtrace session list [OPTIONS]
+
+Options:
+      --data-dir <DATA_DIR>          [default: ~/.agtrace]
+      --project-hash <PROJECT_HASH>  
+      --format <FORMAT>              [default: plain] [possible values: plain, json]
+      --source <SOURCE>              [possible values: claude, codex, gemini]
+      --limit <LIMIT>                [default: 50]
+      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --project-root <PROJECT_ROOT>  
+      --since <SINCE>                
+      --all-projects                 
+      --until <UNTIL>                
+  -h, --help                         Print help
