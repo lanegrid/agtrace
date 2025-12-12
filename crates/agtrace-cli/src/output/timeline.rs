@@ -7,7 +7,7 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
     if events.is_empty() {
         let msg = "No events to display";
         if enable_color {
-            println!("{}", format!("{}", msg.bright_black()));
+            println!("{}", msg.bright_black());
         } else {
             println!("{}", msg);
         }
@@ -144,14 +144,14 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
 
         if let Some(tool_name) = &event.tool_name {
             if enable_color {
-                print!("  tool: {}", format!("{}", tool_name.yellow()));
+                print!("  tool: {}", tool_name.yellow());
             } else {
                 print!("  tool: {}", tool_name);
             }
 
             if let Some(file_path) = &event.file_path {
                 if enable_color {
-                    print!(" ({})", format!("{}", file_path.bright_blue()));
+                    print!(" ({})", file_path.bright_blue());
                 } else {
                     print!(" ({})", file_path);
                 }
@@ -159,7 +159,7 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
 
             if let Some(file_op) = &event.file_op {
                 if enable_color {
-                    print!(" [{}]", format!("{}", file_op.bright_cyan()));
+                    print!(" [{}]", file_op.bright_cyan());
                 } else {
                     print!(" [{}]", file_op);
                 }
@@ -229,7 +229,7 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
             if !token_parts.is_empty() {
                 let tokens_str = token_parts.join(", ");
                 if enable_color {
-                    println!("  tokens: {}", format!("{}", tokens_str.bright_black()));
+                    println!("  tokens: {}", tokens_str.bright_black());
                 } else {
                     println!("  tokens: {}", tokens_str);
                 }
@@ -251,10 +251,10 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
     let session_summary = summarize_session(events);
 
     if enable_color {
-        println!("{}", format!("{}", "---".bright_black()));
+        println!("{}", "---".bright_black());
         println!(
             "{}",
-            format!("{}", "Session Summary:".bright_white().bold())
+            "Session Summary:".bright_white().bold()
         );
     } else {
         println!("---");
@@ -264,55 +264,40 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
     if enable_color {
         println!(
             "  {}: {}",
-            format!("{}", "Events".cyan()),
-            format!(
-                "{}",
-                session_summary
-                    .event_counts
-                    .total
-                    .to_string()
-                    .bright_white()
-            )
+            "Events".cyan(),
+            session_summary
+                .event_counts
+                .total
+                .to_string()
+                .bright_white()
         );
         println!(
             "    User messages: {}",
-            format!(
-                "{}",
-                session_summary
-                    .event_counts
-                    .user_messages
-                    .to_string()
-                    .green()
-            )
+            session_summary
+                .event_counts
+                .user_messages
+                .to_string()
+                .green()
         );
         println!(
             "    Assistant messages: {}",
-            format!(
-                "{}",
-                session_summary
-                    .event_counts
-                    .assistant_messages
-                    .to_string()
-                    .blue()
-            )
+            session_summary
+                .event_counts
+                .assistant_messages
+                .to_string()
+                .blue()
         );
         println!(
             "    Tool calls: {}",
-            format!(
-                "{}",
-                session_summary.event_counts.tool_calls.to_string().yellow()
-            )
+            session_summary.event_counts.tool_calls.to_string().yellow()
         );
         println!(
             "    Reasoning blocks: {}",
-            format!(
-                "{}",
-                session_summary
-                    .event_counts
-                    .reasoning_blocks
-                    .to_string()
-                    .cyan()
-            )
+            session_summary
+                .event_counts
+                .reasoning_blocks
+                .to_string()
+                .cyan()
         );
     } else {
         println!("  Events: {}", session_summary.event_counts.total);
@@ -336,7 +321,7 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
 
     if !session_summary.file_operations.is_empty() {
         if enable_color {
-            println!("  {}:", format!("{}", "File operations".cyan()));
+            println!("  {}:", "File operations".cyan());
         } else {
             println!("  File operations:");
         }
@@ -345,7 +330,7 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
                 println!(
                     "    {}: {}",
                     op,
-                    format!("{}", count.to_string().bright_white())
+                    count.to_string().bright_white()
                 );
             } else {
                 println!("    {}: {}", op, count);
@@ -357,54 +342,39 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         if enable_color {
             println!(
                 "  {}: {}",
-                format!("{}", "Tokens".cyan()),
-                format!(
-                    "{}",
-                    session_summary.token_stats.total.to_string().bright_white()
-                )
+                "Tokens".cyan(),
+                session_summary.token_stats.total.to_string().bright_white()
             );
             println!(
                 "    Input: {}",
-                format!(
-                    "{}",
-                    session_summary.token_stats.input.to_string().bright_white()
-                )
+                session_summary.token_stats.input.to_string().bright_white()
             );
             println!(
                 "    Output: {}",
-                format!(
-                    "{}",
-                    session_summary
-                        .token_stats
-                        .output
-                        .to_string()
-                        .bright_white()
-                )
+                session_summary
+                    .token_stats
+                    .output
+                    .to_string()
+                    .bright_white()
             );
             if session_summary.token_stats.cached > 0 {
                 println!(
                     "    Cached: {}",
-                    format!(
-                        "{}",
-                        session_summary
-                            .token_stats
-                            .cached
-                            .to_string()
-                            .bright_yellow()
-                    )
+                    session_summary
+                        .token_stats
+                        .cached
+                        .to_string()
+                        .bright_yellow()
                 );
             }
             if session_summary.token_stats.thinking > 0 {
                 println!(
                     "    Thinking: {}",
-                    format!(
-                        "{}",
-                        session_summary
-                            .token_stats
-                            .thinking
-                            .to_string()
-                            .bright_cyan()
-                    )
+                    session_summary
+                        .token_stats
+                        .thinking
+                        .to_string()
+                        .bright_cyan()
                 );
             }
         } else {
@@ -424,7 +394,7 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         if enable_color {
             println!(
                 "  {}: {}m {}s",
-                format!("{}", "Duration".cyan()),
+                "Duration".cyan(),
                 duration.minutes,
                 duration.seconds
             );

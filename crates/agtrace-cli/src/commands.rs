@@ -6,7 +6,7 @@ use super::handlers;
 use crate::config::Config;
 use agtrace_index::Database;
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
@@ -174,7 +174,7 @@ fn expand_tilde(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
-fn show_guidance(data_dir: &PathBuf) -> Result<()> {
+fn show_guidance(data_dir: &Path) -> Result<()> {
     let config_path = data_dir.join("config.toml");
     let db_path = data_dir.join("agtrace.db");
 

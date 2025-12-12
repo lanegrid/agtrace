@@ -3,7 +3,7 @@ use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use std::path::PathBuf;
+use std::path::Path;
 
 fn format_duration(d: Duration) -> String {
     let seconds = d.num_seconds();
@@ -19,7 +19,7 @@ fn format_duration(d: Duration) -> String {
 }
 
 pub fn handle(
-    data_dir: &PathBuf,
+    data_dir: &Path,
     project_root: Option<String>,
     all_projects: bool,
     refresh: bool,

@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 
+#[allow(deprecated)]
 fn run_help(args: &[&str]) -> String {
     let mut cmd = Command::cargo_bin("agtrace").unwrap();
     let output = cmd.args(args).arg("--help").output().unwrap();

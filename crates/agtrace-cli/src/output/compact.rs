@@ -25,10 +25,9 @@ pub fn print_turns_compact(turns: &[Turn], enable_color: bool) {
 
                 if enable_color {
                     println!(
-                        "{} {} {}: \"{}\"",
+                        "{} {} User: \"{}\"",
                         time_display.bright_black(),
                         dur_placeholder.bright_black(),
-                        "User",
                         content.green()
                     );
                 } else {
@@ -105,12 +104,10 @@ fn format_time(session_start: Option<DateTime<chrono::FixedOffset>>, timestamp: 
             let secs = seconds % 60;
             format!("[+{:02}:{:02}]", minutes, secs)
         }
+    } else if timestamp.len() >= 19 {
+        format!("[{}]", &timestamp[11..19])
     } else {
-        if timestamp.len() >= 19 {
-            format!("[{}]", &timestamp[11..19])
-        } else {
-            "[+00:00]".to_string()
-        }
+        "[+00:00]".to_string()
     }
 }
 

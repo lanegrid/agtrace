@@ -10,16 +10,9 @@ pub struct SessionLoader<'a> {
     db: &'a Database,
 }
 
+#[derive(Default)]
 pub struct LoadOptions {
     pub include_sidechain: bool,
-}
-
-impl Default for LoadOptions {
-    fn default() -> Self {
-        Self {
-            include_sidechain: false,
-        }
-    }
 }
 
 impl<'a> SessionLoader<'a> {
