@@ -1,6 +1,5 @@
 ---
 source: crates/agtrace-engine/tests/turn_snapshots.rs
-assertion_line: 41
 expression: json
 ---
 [
@@ -16,12 +15,8 @@ expression: json
   },
   {
     "type": "agent",
-    "timestamp": "2025-12-09T19:55:28.078Z",
+    "timestamp": "2025-12-09T19:55:28.079Z",
     "chain": [
-      {
-        "type": "thought",
-        "content": "**Creating directory and file using shell and patch**"
-      },
       {
         "type": "thought",
         "content": "**Creating directory and file using shell and patch**"
@@ -34,10 +29,6 @@ expression: json
           "status": "success",
           "summary": ""
         }
-      },
-      {
-        "type": "thought",
-        "content": "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding."
       },
       {
         "type": "thought",
@@ -58,8 +49,8 @@ expression: json
     },
     "stats": {
       "total_tokens": null,
-      "event_count": 8,
-      "duration_ms": 7126
+      "event_count": 6,
+      "duration_ms": 7125
     }
   },
   {
@@ -76,10 +67,6 @@ expression: json
         "content": "**Running Python script in workspace**"
       },
       {
-        "type": "thought",
-        "content": "**Running Python script in workspace**"
-      },
-      {
         "type": "action",
         "tool_name": "Bash",
         "input_summary": "python hoge.py",
@@ -93,10 +80,6 @@ expression: json
         "content": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification."
       },
       {
-        "type": "thought",
-        "content": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification."
-      },
-      {
         "type": "action",
         "tool_name": "Bash",
         "input_summary": "python hoge.py",
@@ -104,10 +87,6 @@ expression: json
           "status": "success",
           "summary": ""
         }
-      },
-      {
-        "type": "thought",
-        "content": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative."
       },
       {
         "type": "thought",
@@ -125,10 +104,6 @@ expression: json
       {
         "type": "thought",
         "content": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
-      },
-      {
-        "type": "thought",
-        "content": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
       }
     ],
     "outcome": {
@@ -136,7 +111,7 @@ expression: json
     },
     "stats": {
       "total_tokens": null,
-      "event_count": 14,
+      "event_count": 10,
       "duration_ms": 13192
     }
   }

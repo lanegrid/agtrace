@@ -230,19 +230,15 @@ pub(crate) fn normalize_codex_stream(
             CodexRecord::EventMsg(event) => match &event.payload {
                 EventMsgPayload::UserMessage(_) => {
                     // Skip: UserMessage is already handled by ResponseItem
-                    // EventMsg is a simplified UI version, ResponseItem has complete structured data
                     continue;
                 }
                 EventMsgPayload::AgentMessage(_) => {
                     // Skip: AgentMessage is already handled by ResponseItem
-                    // EventMsg is a simplified UI version, ResponseItem has complete structured data
                     continue;
                 }
-                EventMsgPayload::AgentReasoning(reasoning) => {
-                    ev.event_type = EventType::Reasoning;
-                    ev.role = Some(Role::Assistant);
-                    ev.channel = Some(Channel::Chat);
-                    ev.text = Some(reasoning.text.clone());
+                EventMsgPayload::AgentReasoning(_) => {
+                    // Skip: AgentReasoning is already handled by ResponseItem reasoning
+                    continue;
                 }
                 EventMsgPayload::TokenCount(token_count) => {
                     ev.event_type = EventType::Meta;
