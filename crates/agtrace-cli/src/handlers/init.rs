@@ -102,7 +102,7 @@ pub fn handle(
 
     if should_scan {
         println!("\nStep 3/4: Scanning for sessions...");
-        let scan_result = super::scan::handle(
+        let scan_result = super::index::handle(
             &db,
             &config,
             "all".to_string(),
@@ -147,7 +147,7 @@ pub fn handle(
         return Ok(());
     }
 
-    super::list::handle(&db, effective_hash, 10, all_projects, "plain")?;
+    super::session_list::handle(&db, effective_hash, 10, all_projects, "plain")?;
 
     if let Some(first_session) = sessions.first() {
         let session_prefix = if first_session.id.len() > 8 {

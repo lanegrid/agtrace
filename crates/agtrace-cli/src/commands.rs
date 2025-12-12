@@ -28,7 +28,7 @@ pub fn run(cli: Cli) -> Result<()> {
             let config = Config::load_from(&config_path)?;
 
             match command {
-                IndexCommand::Update { provider, verbose } => handlers::scan::handle(
+                IndexCommand::Update { provider, verbose } => handlers::index::handle(
                     &db,
                     &config,
                     provider,
@@ -37,7 +37,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     false,
                     verbose,
                 ),
-                IndexCommand::Rebuild { provider, verbose } => handlers::scan::handle(
+                IndexCommand::Rebuild { provider, verbose } => handlers::index::handle(
                     &db,
                     &config,
                     provider,
@@ -74,7 +74,7 @@ pub fn run(cli: Cli) -> Result<()> {
                         project_hash
                     };
 
-                    handlers::list::handle(
+                    handlers::session_list::handle(
                         &db,
                         effective_hash,
                         limit,
@@ -92,7 +92,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     full,
                     short,
                     style,
-                } => handlers::view::handle(
+                } => handlers::session_show::handle(
                     &db, session_id, raw, json, timeline, hide, only, full, short, style,
                 ),
             }
@@ -102,16 +102,16 @@ pub fn run(cli: Cli) -> Result<()> {
             let config_path = data_dir.join("config.toml");
 
             match command {
-                ProviderCommand::List => handlers::providers::list(&config_path),
-                ProviderCommand::Detect => handlers::providers::detect(&config_path),
+                ProviderCommand::List => handlers::provider::list(&config_path),
+                ProviderCommand::Detect => handlers::provider::detect(&config_path),
                 ProviderCommand::Set {
                     provider,
                     log_root,
                     enable,
                     disable,
-                } => handlers::providers::set(provider, log_root, enable, disable, &config_path),
+                } => handlers::provider::set(provider, log_root, enable, disable, &config_path),
                 ProviderCommand::Schema { provider, format } => {
-                    handlers::schema::handle(provider, format)
+                    handlers::provider_schema::handle(provider, format)
                 }
             }
         }
@@ -120,17 +120,17 @@ pub fn run(cli: Cli) -> Result<()> {
             DoctorCommand::Run { provider, verbose } => {
                 let config_path = data_dir.join("config.toml");
                 let config = Config::load_from(&config_path)?;
-                handlers::diagnose::handle(&config, provider, verbose)
+                handlers::doctor_run::handle(&config, provider, verbose)
             }
             DoctorCommand::Inspect {
                 file_path,
                 lines,
                 format,
-            } => handlers::inspect::handle(file_path, lines, format),
+            } => handlers::doctor_inspect::handle(file_path, lines, format),
             DoctorCommand::Check {
                 file_path,
                 provider,
-            } => handlers::validate::handle(file_path, provider),
+            } => handlers::doctor_check::handle(file_path, provider),
         },
 
         Commands::Project { command } => {
@@ -153,13 +153,13 @@ pub fn run(cli: Cli) -> Result<()> {
                     session_id,
                     detect,
                     format,
-                } => handlers::analyze::handle(&db, session_id, detect, format),
+                } => handlers::lab_analyze::handle(&db, session_id, detect, format),
                 LabCommand::Export {
                     session_id,
                     output,
                     format,
                     strategy,
-                } => handlers::export::handle(&db, session_id, output, format, strategy),
+                } => handlers::lab_export::handle(&db, session_id, output, format, strategy),
             }
         }
     }
