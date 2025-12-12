@@ -9,7 +9,15 @@ use crate::storage::Storage;
 use anyhow::Result;
 use std::path::PathBuf;
 
-fn print_deprecation_warning(old_cmd: &str, new_cmd: &str) {
+fn print_deprecation_warning(old_cmd: &str, new_cmd: &str, format: &str) {
+    if std::env::var("AGTRACE_NO_DEPRECATION_WARN").is_ok() {
+        return;
+    }
+
+    if format == "json" {
+        return;
+    }
+
     eprintln!(
         "Warning: '{}' is deprecated; use '{}' instead",
         old_cmd, new_cmd
@@ -181,9 +189,9 @@ pub fn run(cli: Cli) -> Result<()> {
             verbose,
         } => {
             if force {
-                print_deprecation_warning("scan --force", "index rebuild");
+                print_deprecation_warning("scan --force", "index rebuild", &cli.format);
             } else {
-                print_deprecation_warning("scan", "index update");
+                print_deprecation_warning("scan", "index update", &cli.format);
             }
 
             let db_path = data_dir.join("agtrace.db");
@@ -209,7 +217,7 @@ pub fn run(cli: Cli) -> Result<()> {
             since: _,
             until: _,
         } => {
-            print_deprecation_warning("list", "session list");
+            print_deprecation_warning("list", "session list", &cli.format);
 
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
@@ -236,7 +244,7 @@ pub fn run(cli: Cli) -> Result<()> {
             short,
             style,
         } => {
-            print_deprecation_warning("view", "session show");
+            print_deprecation_warning("view", "session show", &cli.format);
 
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
@@ -253,7 +261,7 @@ pub fn run(cli: Cli) -> Result<()> {
             no_tool,
             limit,
         } => {
-            print_deprecation_warning("show", "session show");
+            print_deprecation_warning("show", "session show", &cli.format);
 
             handlers::show::handle(
                 &storage,
@@ -273,7 +281,7 @@ pub fn run(cli: Cli) -> Result<()> {
             event_type,
             limit,
         } => {
-            print_deprecation_warning("find", "lab find");
+            print_deprecation_warning("find", "lab find", &cli.format);
 
             handlers::find::handle(
                 &storage,
@@ -294,7 +302,7 @@ pub fn run(cli: Cli) -> Result<()> {
             since: _,
             until: _,
         } => {
-            print_deprecation_warning("stats", "lab stats");
+            print_deprecation_warning("stats", "lab stats", &cli.format);
 
             handlers::stats::handle(&storage, project_hash, source, cli.all_projects)
         }
@@ -305,7 +313,7 @@ pub fn run(cli: Cli) -> Result<()> {
             format,
             strategy,
         } => {
-            print_deprecation_warning("export", "lab export");
+            print_deprecation_warning("export", "lab export", &cli.format);
 
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
@@ -317,7 +325,7 @@ pub fn run(cli: Cli) -> Result<()> {
             detect,
             format,
         } => {
-            print_deprecation_warning("analyze", "lab analyze");
+            print_deprecation_warning("analyze", "lab analyze", &cli.format);
 
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
@@ -325,14 +333,14 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Providers { command } => {
-            print_deprecation_warning("providers", "provider");
+            print_deprecation_warning("providers", "provider", &cli.format);
 
             let config_path = data_dir.join("config.toml");
             handlers::providers::handle(command, &config_path)
         }
 
         Commands::Diagnose { provider, verbose } => {
-            print_deprecation_warning("diagnose", "doctor run");
+            print_deprecation_warning("diagnose", "doctor run", &cli.format);
 
             let config_path = data_dir.join("config.toml");
             let config = Config::load_from(&config_path)?;
@@ -344,7 +352,7 @@ pub fn run(cli: Cli) -> Result<()> {
             lines,
             format,
         } => {
-            print_deprecation_warning("inspect", "doctor inspect");
+            print_deprecation_warning("inspect", "doctor inspect", &cli.format);
 
             handlers::inspect::handle(file_path, lines, format)
         }
@@ -353,13 +361,13 @@ pub fn run(cli: Cli) -> Result<()> {
             file_path,
             provider,
         } => {
-            print_deprecation_warning("validate", "doctor check");
+            print_deprecation_warning("validate", "doctor check", &cli.format);
 
             handlers::validate::handle(file_path, provider)
         }
 
         Commands::Schema { provider, format } => {
-            print_deprecation_warning("schema", "provider schema");
+            print_deprecation_warning("schema", "provider schema", &cli.format);
 
             handlers::schema::handle(provider, format)
         }
