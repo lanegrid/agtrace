@@ -1,4 +1,4 @@
-use agtrace::cli::{run, Cli};
+use agtrace_cli::{run, Cli};
 use clap::Parser;
 
 fn main() {

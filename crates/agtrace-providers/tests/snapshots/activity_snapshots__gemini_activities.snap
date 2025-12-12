@@ -1,0 +1,195 @@
+---
+source: tests/activity_snapshots.rs
+expression: json
+---
+[
+  {
+    "type": "message",
+    "role": "user",
+    "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+    "timestamp": "2025-12-09T19:51:29.418Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": null,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "message",
+    "role": "assistant",
+    "text": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the co...",
+    "timestamp": "2025-12-09T19:51:50.106Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": 13767,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "execution",
+    "timestamp": "2025-12-09T19:51:50.106+00:00",
+    "duration_ms": 0,
+    "status": "success",
+    "tools": [
+      {
+        "name": "Bash",
+        "input_summary": "mkdir myapp",
+        "count": 1,
+        "is_error": false
+      }
+    ],
+    "stats": {
+      "total_tokens": null,
+      "event_count": 3
+    }
+  },
+  {
+    "type": "message",
+    "role": "assistant",
+    "text": "Directory `myapp` created. Next, create `hoge.py` within `myapp`.",
+    "timestamp": "2025-12-09T19:52:16.623Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": 6290,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "execution",
+    "timestamp": "2025-12-09T19:52:16.623+00:00",
+    "duration_ms": 0,
+    "status": "success",
+    "tools": [
+      {
+        "name": "Write",
+        "input_summary": "hoge.py",
+        "count": 1,
+        "is_error": false
+      }
+    ],
+    "stats": {
+      "total_tokens": null,
+      "event_count": 2
+    }
+  },
+  {
+    "type": "message",
+    "role": "assistant",
+    "text": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified con...",
+    "timestamp": "2025-12-09T19:52:21.382Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": 6373,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "execution",
+    "timestamp": "2025-12-09T19:52:21.382+00:00",
+    "duration_ms": 0,
+    "status": "success",
+    "tools": [
+      {
+        "name": "Bash",
+        "input_summary": "ls -F",
+        "count": 1,
+        "is_error": false
+      }
+    ],
+    "stats": {
+      "total_tokens": null,
+      "event_count": 2
+    }
+  },
+  {
+    "type": "message",
+    "role": "assistant",
+    "text": "`myapp` directory and `hoge.py` within it are confirmed. Request complete.",
+    "timestamp": "2025-12-09T19:52:26.013Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": 6460,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "message",
+    "role": "user",
+    "text": "cd to myapp and run python hoge.py",
+    "timestamp": "2025-12-09T19:52:58.592Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": null,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "message",
+    "role": "assistant",
+    "text": "Okay, I'll `cd myapp` and then `python hoge.py`.",
+    "timestamp": "2025-12-09T19:53:16.156Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": 21579,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "execution",
+    "timestamp": "2025-12-09T19:52:26.013+00:00",
+    "duration_ms": 50143,
+    "status": "failure",
+    "tools": [
+      {
+        "name": "Bash",
+        "input_summary": "cd myapp && python hoge.py",
+        "count": 1,
+        "is_error": true
+      }
+    ],
+    "stats": {
+      "total_tokens": null,
+      "event_count": 3
+    }
+  },
+  {
+    "type": "message",
+    "role": "assistant",
+    "text": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fa...",
+    "timestamp": "2025-12-09T19:54:17.694Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": 6748,
+      "event_count": 1
+    }
+  },
+  {
+    "type": "execution",
+    "timestamp": "2025-12-09T19:54:17.694+00:00",
+    "duration_ms": 0,
+    "status": "success",
+    "tools": [
+      {
+        "name": "Bash",
+        "input_summary": "cd myapp && python3 hoge.py",
+        "count": 1,
+        "is_error": false
+      }
+    ],
+    "stats": {
+      "total_tokens": null,
+      "event_count": 3
+    }
+  },
+  {
+    "type": "message",
+    "role": "assistant",
+    "text": "`python3 hoge.py` executed, outputting \"2\". Request complete.",
+    "timestamp": "2025-12-09T19:54:21.715Z",
+    "duration_ms": null,
+    "stats": {
+      "total_tokens": 6733,
+      "event_count": 1
+    }
+  }
+]
