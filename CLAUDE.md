@@ -2,3 +2,10 @@
 - Write comments in English.
 - Read `docs`.
 - When you make a commit, the commit message must be oneline not multiline.
+- For tests:
+  - Do NOT run cargo insta review or accept snapshots interactively.
+  - Always run tests with INSTA_UPDATE=no.
+  - If tests fail due to snapshot mismatches, print snapshot diffs to stdout using git diff (or git diff --no-index if needed).
+  - Do not modify .snap, .snap.new, or inline snapshots unless ALLOW_SNAPSHOT_UPDATE=1 is explicitly set.
+  - When snapshot diffs exist, produce a short report: number of snapshot files changed, which tests/providers affected, and a brief summary of the semantic change.
+  - Stop and request approval when snapshot updates are required.
