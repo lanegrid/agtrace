@@ -1,6 +1,7 @@
 pub mod analyze;
 pub mod diagnose;
 pub mod export;
+pub mod init;
 pub mod inspect;
 pub mod list;
 pub mod project;

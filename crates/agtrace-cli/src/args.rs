@@ -22,7 +22,7 @@ pub struct Cli {
     pub all_projects: bool,
 
     #[command(subcommand)]
-    pub command: Commands,
+    pub command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -56,6 +56,8 @@ pub enum Commands {
         #[command(subcommand)]
         command: LabCommand,
     },
+
+    Init,
 
     // Legacy commands (kept for backwards compatibility)
     #[command(hide = true)]

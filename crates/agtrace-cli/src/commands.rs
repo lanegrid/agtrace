@@ -26,7 +26,14 @@ fn print_deprecation_warning(old_cmd: &str, new_cmd: &str, format: &str) {
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
 
-    match cli.command {
+    let Some(command) = cli.command else {
+        show_guidance(&data_dir)?;
+        return Ok(());
+    };
+
+    match command {
+        Commands::Init => handlers::init::handle(&data_dir, cli.project_root, cli.all_projects),
+
         Commands::Index { command } => {
             let db_path = data_dir.join("agtrace.db");
             let db = Database::open(&db_path)?;
@@ -338,4 +345,35 @@ fn expand_tilde(path: &str) -> PathBuf {
         }
     }
     PathBuf::from(path)
+}
+
+fn show_guidance(data_dir: &PathBuf) -> Result<()> {
+    let config_path = data_dir.join("config.toml");
+    let db_path = data_dir.join("agtrace.db");
+
+    let config_exists = config_path.exists();
+    let db_exists = db_path.exists();
+
+    println!("agtrace - Agent behavior log analyzer\n");
+
+    if !config_exists || !db_exists {
+        println!("Get started:");
+        println!("  agtrace init\n");
+        println!("The init command will:");
+        println!("  1. Detect and configure providers (Claude, Codex, Gemini)");
+        println!("  2. Set up the database");
+        println!("  3. Scan for sessions");
+        println!("  4. Show your recent sessions\n");
+    } else {
+        println!("Quick commands:");
+        println!("  agtrace session list              # View recent sessions");
+        println!("  agtrace index update              # Scan for new sessions");
+        println!("  agtrace session show <ID>         # View a session");
+        println!("  agtrace doctor run                # Diagnose issues\n");
+    }
+
+    println!("For more commands:");
+    println!("  agtrace --help");
+
+    Ok(())
 }
