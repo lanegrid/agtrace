@@ -1,0 +1,33 @@
+[package]
+name = "agtrace-cli"
+version = "0.1.0"
+edition = "2021"
+authors = ["lanegrid team"]
+description = "CLI interface for agtrace"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "agtrace"
+path = "src/main.rs"
+
+[dependencies]
+agtrace-types = { path = "../agtrace-types" }
+agtrace-providers = { path = "../agtrace-providers" }
+agtrace-index = { path = "../agtrace-index" }
+agtrace-engine = { path = "../agtrace-engine" }
+agtrace = { path = "../.." }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.5", features = ["derive"] }
+anyhow = "1.0"
+owo-colors = "4.0"
+comfy-table = "7.1"
+is-terminal = "0.4"
+csv = "1.3"
+toml = "0.8"
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
+tempfile = "3.10"
+insta = { version = "1.34", features = ["json"] }

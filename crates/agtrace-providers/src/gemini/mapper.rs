@@ -1,4 +1,4 @@
-use crate::model::*;
+use agtrace_types::*;
 use serde_json::Value;
 
 use super::schema::{GeminiMessage, GeminiSession};

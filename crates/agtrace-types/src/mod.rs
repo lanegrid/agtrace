@@ -1,0 +1,316 @@
+mod util;
+
+use anyhow::anyhow;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+pub use util::*;
+
+/// Source of the agent log
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Source {
+    ClaudeCode,
+    Codex,
+    Gemini,
+}
+
+/// Type of agent event
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EventType {
+    UserMessage,
+    AssistantMessage,
+    SystemMessage,
+    Reasoning,
+    ToolCall,
+    ToolResult,
+    FileSnapshot,
+    SessionSummary,
+    Meta,
+    Log,
+}
+
+/// Role of the event actor
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Role {
+    User,
+    Assistant,
+    System,
+    Tool,
+    Cli,
+    Other,
+}
+
+/// Communication channel
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Channel {
+    Chat,
+    Editor,
+    Terminal,
+    Filesystem,
+    System,
+    Other,
+}
+
+/// Tool execution status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolStatus {
+    Success,
+    Error,
+    InProgress,
+    Unknown,
+}
+
+/// File operation type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FileOp {
+    Read,
+    Write,
+    Modify,
+    Delete,
+    Create,
+    Move,
+}
+
+impl std::fmt::Display for FileOp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FileOp::Read => write!(f, "read"),
+            FileOp::Write => write!(f, "write"),
+            FileOp::Modify => write!(f, "modify"),
+            FileOp::Delete => write!(f, "delete"),
+            FileOp::Create => write!(f, "create"),
+            FileOp::Move => write!(f, "move"),
+        }
+    }
+}
+
+/// Normalized tool name (standardized across providers)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ToolName {
+    /// Shell command execution (bash, sh, zsh)
+    Bash,
+    /// File read operation
+    Read,
+    /// File write operation
+    Write,
+    /// File edit operation
+    Edit,
+    /// File pattern search (glob)
+    Glob,
+    /// Content search (grep)
+    Grep,
+    /// Other tools not in standard set
+    Other(String),
+}
+
+impl ToolName {
+    /// Normalize provider-specific tool name to standard ToolName
+    pub fn from_provider_name(provider: Source, name: &str) -> Self {
+        match provider {
+            Source::ClaudeCode => match name {
+                "Bash" => ToolName::Bash,
+                "Read" => ToolName::Read,
+                "Write" => ToolName::Write,
+                "Edit" => ToolName::Edit,
+                "Glob" => ToolName::Glob,
+                "Grep" => ToolName::Grep,
+                other => ToolName::Other(other.to_string()),
+            },
+            Source::Codex => match name {
+                "shell" | "shell_command" => ToolName::Bash,
+                "apply_patch" => ToolName::Edit,
+                other => ToolName::Other(other.to_string()),
+            },
+            Source::Gemini => match name {
+                "run_shell_command" => ToolName::Bash,
+                "write_file" => ToolName::Write,
+                "read_file" => ToolName::Read,
+                other => ToolName::Other(other.to_string()),
+            },
+        }
+    }
+
+    /// Convert to string representation
+    pub fn as_str(&self) -> &str {
+        match self {
+            ToolName::Bash => "Bash",
+            ToolName::Read => "Read",
+            ToolName::Write => "Write",
+            ToolName::Edit => "Edit",
+            ToolName::Glob => "Glob",
+            ToolName::Grep => "Grep",
+            ToolName::Other(s) => s.as_str(),
+        }
+    }
+
+    /// Get the channel for this tool
+    pub fn channel(&self) -> Channel {
+        match self {
+            ToolName::Bash => Channel::Terminal,
+            ToolName::Read | ToolName::Write | ToolName::Edit => Channel::Editor,
+            ToolName::Glob | ToolName::Grep => Channel::Filesystem,
+            ToolName::Other(_) => Channel::Chat,
+        }
+    }
+}
+
+impl std::fmt::Display for ToolName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl FromStr for ToolName {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "Bash" => ToolName::Bash,
+            "Read" => ToolName::Read,
+            "Write" => ToolName::Write,
+            "Edit" => ToolName::Edit,
+            "Glob" => ToolName::Glob,
+            "Grep" => ToolName::Grep,
+            other => ToolName::Other(other.to_string()),
+        })
+    }
+}
+
+/// Normalized agent event (v1)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentEventV1 {
+    pub schema_version: String,
+    pub source: Source,
+
+    // Project / Session / ID
+    pub project_hash: String,
+    pub project_root: Option<String>,
+    pub session_id: Option<String>,
+    pub event_id: Option<String>,
+    pub parent_event_id: Option<String>,
+    pub ts: String,
+
+    // Event properties
+    pub event_type: EventType,
+    pub role: Option<Role>,
+    pub channel: Option<Channel>,
+    pub text: Option<String>,
+
+    // Tool / Command
+    pub tool_name: Option<String>,
+    pub tool_call_id: Option<String>,
+    pub tool_status: Option<ToolStatus>,
+    pub tool_latency_ms: Option<u64>,
+    pub tool_exit_code: Option<i32>,
+
+    // File / Code
+    pub file_path: Option<String>,
+    pub file_language: Option<String>,
+    pub file_op: Option<FileOp>,
+
+    // Model / Tokens
+    pub model: Option<String>,
+    pub tokens_input: Option<u64>,
+    pub tokens_output: Option<u64>,
+    pub tokens_total: Option<u64>,
+    pub tokens_cached: Option<u64>,
+    pub tokens_thinking: Option<u64>,
+    pub tokens_tool: Option<u64>,
+
+    pub agent_id: Option<String>,
+
+    // Raw vendor data
+    pub raw: serde_json::Value,
+}
+
+impl AgentEventV1 {
+    pub const SCHEMA_VERSION: &'static str = "agtrace.event.v1";
+
+    pub fn new(source: Source, project_hash: String, ts: String, event_type: EventType) -> Self {
+        Self {
+            schema_version: Self::SCHEMA_VERSION.to_string(),
+            source,
+            project_hash,
+            project_root: None,
+            session_id: None,
+            event_id: None,
+            parent_event_id: None,
+            ts,
+
+            event_type,
+            role: None,
+            channel: None,
+            text: None,
+
+            tool_name: None,
+            tool_call_id: None,
+            tool_status: None,
+            tool_latency_ms: None,
+            tool_exit_code: None,
+
+            file_path: None,
+            file_language: None,
+            file_op: None,
+
+            model: None,
+            tokens_input: None,
+            tokens_output: None,
+            tokens_total: None,
+            tokens_cached: None,
+            tokens_thinking: None,
+            tokens_tool: None,
+
+            agent_id: None,
+            raw: serde_json::Value::Null,
+        }
+    }
+}
+
+/// Session summary for listing
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionSummary {
+    pub session_id: String,
+    pub source: Source,
+    pub project_hash: String,
+    pub start_ts: String,
+    pub end_ts: String,
+    pub event_count: usize,
+    pub user_message_count: usize,
+    pub tokens_input_total: u64,
+    pub tokens_output_total: u64,
+}
+
+impl FromStr for Source {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "claude" => Ok(Source::ClaudeCode),
+            "codex" => Ok(Source::Codex),
+            "gemini" => Ok(Source::Gemini),
+            _ => Err(anyhow!("Unknown source: {}", s)),
+        }
+    }
+}
+
+impl FromStr for EventType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "user_message" => Ok(EventType::UserMessage),
+            "assistant_message" => Ok(EventType::AssistantMessage),
+            "reasoning" => Ok(EventType::Reasoning),
+            "tool_call" => Ok(EventType::ToolCall),
+            "tool_result" => Ok(EventType::ToolResult),
+            "meta" => Ok(EventType::Meta),
+            _ => Err(anyhow!("Unknown event type: {}", s)),
+        }
+    }
+}

@@ -7,7 +7,7 @@ pub fn print_activities_compact(activities: &[Activity], enable_color: bool) {
     if activities.is_empty() {
         let msg = "No events to display";
         if enable_color {
-            println!("{}", format!("{}", msg.bright_black()));
+            println!("{}", msg.bright_black());
         } else {
             println!("{}", msg);
         }

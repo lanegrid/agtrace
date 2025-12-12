@@ -1,0 +1,13 @@
+[package]
+name = "agtrace-engine"
+version = "0.1.0"
+edition = "2021"
+authors = ["lanegrid team"]
+description = "Core processing engine for agtrace"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+agtrace-types = { path = "../agtrace-types" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"

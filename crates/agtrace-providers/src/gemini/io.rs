@@ -1,4 +1,4 @@
-use crate::model::AgentEventV1;
+use agtrace_types::AgentEventV1;
 use anyhow::{Context, Result};
 use std::path::Path;
 

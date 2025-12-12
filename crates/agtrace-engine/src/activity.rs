@@ -1,4 +1,4 @@
-use crate::model::{AgentEventV1, EventType, Role, ToolName, ToolStatus};
+use agtrace_types::{AgentEventV1, EventType, Role, ToolName, ToolStatus};
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

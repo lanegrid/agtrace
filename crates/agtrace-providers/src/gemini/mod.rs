@@ -2,9 +2,9 @@ pub mod io;
 pub mod mapper;
 pub mod schema;
 
-use crate::model::AgentEventV1;
-use crate::providers::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
-use crate::utils::{is_64_char_hex, project_hash_from_root};
+use agtrace_types::AgentEventV1;
+use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
+use agtrace_types::{is_64_char_hex, project_hash_from_root};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

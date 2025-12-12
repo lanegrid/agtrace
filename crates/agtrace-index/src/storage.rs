@@ -4,7 +4,7 @@
 
 #![allow(deprecated)]
 
-use crate::model::*;
+use agtrace_types::*;
 use anyhow::{Context, Result};
 use std::collections::{HashMap, HashSet};
 use std::fs;
