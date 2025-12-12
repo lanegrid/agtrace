@@ -1,4 +1,4 @@
-# agtrace CLI Specification (v2.2 - Compact View Enhancement)
+# agtrace CLI Specification (v2.3 - Init Command & Smart Onboarding)
 
 ## 0. Overview
 
@@ -69,6 +69,12 @@ A logical unit of work (conversation or execution). The primary unit for UI list
 ### 1.1 Command Hierarchy
 
 Commands are organized into namespaces for better discoverability:
+
+* **`agtrace init`** - First-time setup (recommended starting point)
+  - Auto-detect providers
+  - Set up database
+  - Scan for sessions
+  - Show quick-start commands
 
 * **`agtrace index`** - Database indexing operations
   - `update` - Scan and register new sessions
@@ -153,11 +159,238 @@ The following commands are still available for backwards compatibility but are d
 * `--help`
   - Description: Display help
 
+### 1.3 Getting Started
+
+#### Running `agtrace` without arguments
+
+When you run `agtrace` without any subcommand, it displays context-aware guidance:
+
+**First-time use (no config/database):**
+```sh
+$ agtrace
+
+agtrace - Agent behavior log analyzer
+
+Get started:
+  agtrace init
+
+The init command will:
+  1. Detect and configure providers (Claude, Codex, Gemini)
+  2. Set up the database
+  3. Scan for sessions
+  4. Show your recent sessions
+
+For more commands:
+  agtrace --help
+```
+
+**With sessions:**
+```sh
+$ agtrace
+
+agtrace - Agent behavior log analyzer
+
+Quick commands:
+  agtrace session list              # View recent sessions
+  agtrace session show <ID>         # View a session
+  agtrace index update              # Scan for new sessions
+  agtrace doctor run                # Diagnose issues
+
+For more commands:
+  agtrace --help
+```
+
+**No sessions found:**
+```sh
+$ agtrace
+
+agtrace - Agent behavior log analyzer
+
+No sessions found yet.
+
+Next steps:
+  agtrace index update              # Scan for sessions
+  agtrace index update --all-projects  # Scan all projects
+  agtrace provider list             # Check provider configuration
+
+For more commands:
+  agtrace --help
+```
+
 ---
 
-## 2. `agtrace index`
+## 2. `agtrace init`
 
 ### 2.1 Overview
+
+First-time setup command that streamlines the initial configuration and provides immediate value.
+
+**Purpose:** Get from zero to viewing sessions in one command.
+
+**What it does:**
+1. Detects providers automatically (Claude, Codex, Gemini)
+2. Creates `~/.agtrace/config.toml` if it doesn't exist
+3. Sets up `~/.agtrace/agtrace.db` database
+4. Scans for sessions (smart skip on subsequent runs)
+5. Displays 10 most recent sessions
+6. Shows next-step commands with actual session IDs
+
+### 2.2 Signature
+
+```sh
+agtrace init \
+  [--refresh] \
+  [--all-projects]
+```
+
+### 2.3 Options
+
+* `--refresh` (optional)
+  - Description: Force re-scan even if recently scanned
+  - Default: Skip scan if last scan was within 5 minutes
+  - Use case: When you know new sessions were created
+
+* `--all-projects` (optional, from global flags)
+  - Description: Scan all projects instead of current project only
+  - Default: Only scan current project (determined by `cwd`)
+  - Use case: Initial setup when you want to see all your sessions
+
+### 2.4 Behavior
+
+**Smart Scan Skip:**
+- On first run: Always scans
+- On subsequent runs: Skips scan if `last_scanned_at` < 5 minutes ago
+- With `--refresh`: Always scans regardless of `last_scanned_at`
+
+**Project Scope:**
+- Default: Only registers sessions for current project (`project_hash` from `cwd`)
+- With `--all-projects`: Registers sessions for all detected projects
+- Rationale: Focused experience by default, explicit flag for broad discovery
+
+**No sessions found:**
+- Without `--all-projects`: Suggests `agtrace init --all-projects`
+- With `--all-projects`: Suggests checking provider config and running diagnostics
+
+### 2.5 Output Example
+
+**First run (current project only, no sessions):**
+```sh
+$ agtrace init
+
+Initializing agtrace...
+
+Step 1/4: Detecting providers...
+  Detected 3 provider(s):
+    claude -> /Users/user/.claude/projects
+    codex -> /Users/user/.codex/sessions
+    gemini -> /Users/user/.gemini/tmp
+  Configuration saved to /Users/user/.agtrace/config.toml
+
+Step 2/4: Setting up database...
+  Database ready at /Users/user/.agtrace/agtrace.db
+
+Step 3/4: Scanning for sessions...
+Scan complete: 0 sessions registered
+
+Step 4/4: Recent sessions...
+
+No sessions found for the current project.
+
+Tips:
+  - Scan all projects: agtrace init --all-projects
+  - Or: agtrace index update --all-projects
+```
+
+**First run with --all-projects:**
+```sh
+$ agtrace init --all-projects
+
+Initializing agtrace...
+
+Step 1/4: Detecting providers...
+  Detected 3 provider(s):
+    claude -> /Users/user/.claude/projects
+    codex -> /Users/user/.codex/sessions
+    gemini -> /Users/user/.gemini/tmp
+  Configuration saved to /Users/user/.agtrace/config.toml
+
+Step 2/4: Setting up database...
+  Database ready at /Users/user/.agtrace/agtrace.db
+
+Step 3/4: Scanning for sessions...
+Scan complete: 276 sessions registered
+
+Step 4/4: Recent sessions...
+
+┌──────────────┬──────────┬──────────┬──────────────┬────────────────────┐
+│ TIME         ┆ PROVIDER ┆ ID       ┆ PROJECT      ┆ SNIPPET            │
+╞══════════════╪══════════╪══════════╪══════════════╪════════════════════╡
+│ 5 min ago    ┆ claude   ┆ 25a42b97 ┆ 427e6b3fa... ┆ implement feature  │
+│ 2 hours ago  ┆ codex    ┆ 019b04ae ┆ 88061af6f... ┆ refactor handlers  │
+│ yesterday    ┆ gemini   ┆ f0a689a6 ┆ 2e4c1f...    ┆ add tests          │
+└──────────────┴──────────┴──────────┴──────────────┴────────────────────┘
+
+Next steps:
+  View session in compact style (see bottlenecks and tool chains):
+    agtrace session show 25a42b97 --style compact
+
+  View conversation only (for LLM consumption):
+    agtrace session show 25a42b97 --only user,assistant --full
+```
+
+**Second run (smart skip):**
+```sh
+$ agtrace init --all-projects
+
+Initializing agtrace...
+
+Step 1/4: Loading configuration...
+  Configuration loaded from /Users/user/.agtrace/config.toml
+
+Step 2/4: Setting up database...
+  Database ready at /Users/user/.agtrace/agtrace.db
+
+Step 3/4: Scanning for sessions...
+  Recently scanned (2m ago). Skipping.
+  Use `agtrace init --refresh` to force re-scan.
+
+Step 4/4: Recent sessions...
+
+┌──────────────┬──────────┬──────────┬──────────────┬────────────────────┐
+│ TIME         ┆ PROVIDER ┆ ID       ┆ PROJECT      ┆ SNIPPET            │
+...
+```
+
+### 2.6 Use Cases
+
+**First-time installation:**
+```sh
+# Install agtrace, then:
+agtrace init --all-projects
+```
+
+**Daily use (check for new sessions):**
+```sh
+# Runs quickly (skips scan if recent):
+agtrace init
+```
+
+**Force refresh after long coding session:**
+```sh
+agtrace init --refresh
+```
+
+**Working in a specific project:**
+```sh
+cd /path/to/myproject
+agtrace init  # Only shows sessions for this project
+```
+
+---
+
+## 3. `agtrace index`
+
+### 3.1 Overview
 
 Manages the session index database through scanning and optimization operations.
 
@@ -170,7 +403,7 @@ Manages the session index database through scanning and optimization operations.
 
 **Fail-safe:** If parsing errors occur, still registers the pointer (can retry normalization later in `session show`).
 
-### 2.2 Subcommands
+### 3.2 Subcommands
 
 #### `agtrace index update`
 
@@ -211,7 +444,7 @@ Optimize the SQLite database by reclaiming unused space.
 agtrace index vacuum
 ```
 
-### 2.4 Behavior
+### 3.3 Behavior
 
 1. Reads `<data-dir>/config.toml` to determine provider `log_root`
 2. Determines current `project_root` (via `--project-root`, `AGTRACE_PROJECT_ROOT`, or `cwd`)
@@ -235,7 +468,7 @@ agtrace index vacuum
   - If `project_root` is `/Users/user/myproject`, sessions from `/Users/user/myproject/subdir` are **NOT** registered
   - If you want to see sessions from subdirectories, use `--all-projects` and filter manually, or run scan with that subdirectory as the project root
 
-### 2.5 Output Example
+### 3.4 Output Example
 
 ```text
 Scanning provider: claude
@@ -254,9 +487,9 @@ Scan complete: 8 sessions registered
 
 ---
 
-## 3. `agtrace session`
+## 4. `agtrace session`
 
-### 3.1 `agtrace session list`
+### 4.1 `agtrace session list`
 
 Lists sessions from the SQLite index with enhanced UI.
 
@@ -268,7 +501,7 @@ Lists sessions from the SQLite index with enhanced UI.
 
 Default: Shows sessions for current project (determined by Project Discovery).
 
-### 3.2 Signature
+### 4.2 Signature
 
 ```sh
 agtrace session list \
@@ -279,7 +512,7 @@ agtrace session list \
   [--until <timestamp>]
 ```
 
-### 3.3 Options
+### 4.3 Options
 
 * `--project-hash <hash>`
   - Description: Filter by specific project hash
@@ -298,7 +531,7 @@ agtrace session list \
 * `--until <timestamp>`
   - Description: Filter sessions before this timestamp
 
-### 3.4 Output Example
+### 4.4 Output Example
 
 ```text
 ┌──────────────┬──────────┬──────────┬──────────────┬──────────────────────────────────────────┐
@@ -316,7 +549,7 @@ agtrace session list \
 
 ---
 
-### 3.3 `agtrace session show`
+### 4.5 `agtrace session show`
 
 Displays session events by reading raw log files and normalizing them on-demand (Schema-on-Read).
 
@@ -523,9 +756,9 @@ $ agtrace session show 6dae8df5 --style compact
 
 ---
 
-## 4. `agtrace project`
+## 5. `agtrace project`
 
-### 4.1 `agtrace project list`
+### 5.1 `agtrace project list`
 
 Displays project information and registered session counts.
 
@@ -547,13 +780,13 @@ HASH              ROOT PATH                           SESSIONS  LAST SCANNED
 
 ---
 
-## 5. `agtrace provider`
+## 6. `agtrace provider`
 
-### 5.1 Overview
+### 6.1 Overview
 
 Manages provider configuration (view/detect/update).
 
-### 5.2 Subcommands
+### 6.2 Subcommands
 
 #### `agtrace provider list`
 
@@ -595,7 +828,7 @@ agtrace provider schema <PROVIDER> [--format <text|json|rust>]
 
 See section 5.3 for details.
 
-### 5.3 `agtrace provider schema`
+### 6.3 `agtrace provider schema`
 
 Displays the expected schema structure for a provider. Useful reference when fixing schema compatibility issues.
 
@@ -683,9 +916,9 @@ pub enum CodexRecord {
 
 ---
 
-## 6. `agtrace doctor`
+## 7. `agtrace doctor`
 
-### 6.1 `agtrace doctor run`
+### 7.1 `agtrace doctor run`
 
 Diagnoses schema compatibility issues by sampling log files from each provider. This command helps identify:
 - Files that fail to parse due to schema mismatches
@@ -805,7 +1038,7 @@ agtrace doctor run --provider gemini
 
 ---
 
-### 6.2 `agtrace doctor inspect`
+### 7.2 `agtrace doctor inspect`
 
 Displays the raw content of a log file with line numbers for manual inspection. Useful for examining actual data structure when debugging schema issues.
 
@@ -849,7 +1082,7 @@ Lines: 1-5 (total: 150 lines)
 
 ---
 
-### 6.3 `agtrace doctor check`
+### 7.3 `agtrace doctor check`
 
 Validates a single log file against the provider's schema. Shows detailed parse errors and suggests fixes.
 
@@ -926,7 +1159,7 @@ Suggestion:
 
 ---
 
-## 7. Error Codes
+## 8. Error Codes
 
 * `0` … Success
 * `1` … General error (parse failure / invalid input)
@@ -936,9 +1169,9 @@ Suggestion:
 
 ---
 
-## 8. `agtrace lab`
+## 9. `agtrace lab`
 
-### 8.1 `agtrace lab analyze`
+### 9.1 `agtrace lab analyze`
 
 Applies deterministic heuristics to `AgentEventV1` streams to detect behavioral anti-patterns and extract "Rule of Thumb" insights without using an LLM.
 
@@ -983,7 +1216,7 @@ Score: 85/100 (1 Warning)
 
 ---
 
-### 8.2 `agtrace lab export`
+### 9.2 `agtrace lab export`
 
 Exports normalized session data for external use (training, analysis, or archiving).
 Includes **"Distillation Strategies"** to produce higher-quality data than raw logs.
@@ -1031,7 +1264,7 @@ agtrace lab export f0a689 --strategy reasoning --output ./analysis/thoughts.json
 
 ---
 
-## 9. Future Extensions
+## 10. Future Extensions
 
   * `agtrace graph` - DAG visualization of session branches.
   * `agtrace diff` - Compare two sessions side-by-side (e.g., same prompt, different models).
@@ -1039,7 +1272,7 @@ agtrace lab export f0a689 --strategy reasoning --output ./analysis/thoughts.json
 
 ---
 
-This specification defines the **agtrace CLI v2.2 (Compact View Enhancement)** with improved compact view formatting, advanced analysis, and export capabilities.
+This specification defines the **agtrace CLI v2.3 (Init Command & Smart Onboarding)** with streamlined first-time setup, smart scan skip, and context-aware guidance.
 
 ## Value Proposition of Compact View
 
