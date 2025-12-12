@@ -1,8 +1,8 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
-use crate::output::{print_activities_compact, print_events_timeline};
+use crate::output::{print_events_timeline, print_turns_compact};
 use crate::session_loader::{LoadOptions, SessionLoader};
-use agtrace_engine::{build_activities, InterpretOptions};
+use agtrace_engine::build_turns;
 use agtrace_index::Database;
 use agtrace_types::{AgentEventV1, EventType};
 use anyhow::{Context, Result};
@@ -54,14 +54,8 @@ pub fn handle(
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
     } else if style == "compact" {
-        let opts = InterpretOptions {
-            truncate_text: Some(100),
-            bash_display_limit: 80,
-            pattern_display_limit: 30,
-            compress_paths: true,
-        };
-        let activities = build_activities(&filtered_events, &opts);
-        print_activities_compact(&activities, enable_color);
+        let turns = build_turns(&filtered_events);
+        print_turns_compact(&turns, enable_color);
     } else {
         // Default is full display, --short enables truncation
         let truncate = short;

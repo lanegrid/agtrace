@@ -1,16 +1,11 @@
 // Engine module - Core processing logic (interpretation, analysis, export)
 // This layer sits between normalized events (types) and CLI presentation
 
-mod activity;
 pub mod analysis;
 pub mod export;
 pub mod summary;
 mod turn;
 
-pub use activity::{
-    interpret_events, interpret_events_with_options, Activity, ActivityStats, ActivityStatus,
-    InterpretOptions, ToolSummary,
-};
 pub use summary::SessionSummary;
 pub use turn::{
     interpret_turns, ActionResult, ChainItem, SystemMessageKind, Turn, TurnOutcome, TurnStats,
@@ -21,12 +16,7 @@ use agtrace_types::AgentEventV1;
 // Façade API - Stable public interface for CLI layer
 // CLI should use these functions instead of directly accessing internal modules
 
-/// Build activities from events with options for display control
-pub fn build_activities(events: &[AgentEventV1], opts: &InterpretOptions) -> Vec<Activity> {
-    interpret_events_with_options(events, opts)
-}
-
-/// Build turns from events - newer, more structured representation
+/// Build turns from events - structured conversation representation
 pub fn build_turns(events: &[AgentEventV1]) -> Vec<Turn> {
     interpret_turns(events)
 }

@@ -1,10 +1,9 @@
-use agtrace_engine::{Activity, ToolSummary};
-use agtrace_types::Role;
+use agtrace_engine::{ActionResult, ChainItem, Turn};
 use chrono::DateTime;
 use owo_colors::OwoColorize;
 
-pub fn print_activities_compact(activities: &[Activity], enable_color: bool) {
-    if activities.is_empty() {
+pub fn print_turns_compact(turns: &[Turn], enable_color: bool) {
+    if turns.is_empty() {
         let msg = "No events to display";
         if enable_color {
             println!("{}", msg.bright_black());
@@ -14,168 +13,185 @@ pub fn print_activities_compact(activities: &[Activity], enable_color: bool) {
         return;
     }
 
-    let session_start = activities
+    let session_start = turns
         .first()
-        .and_then(|a| DateTime::parse_from_rfc3339(a.timestamp()).ok());
+        .and_then(|t| DateTime::parse_from_rfc3339(t.timestamp()).ok());
 
-    for activity in activities {
-        match activity {
-            Activity::Message {
-                role,
-                text,
-                timestamp,
-                ..
-            } => {
-                let time_display = if let (Some(start), Ok(current)) =
-                    (session_start, DateTime::parse_from_rfc3339(timestamp))
-                {
-                    let duration = current.signed_duration_since(start);
-                    let seconds = duration.num_seconds();
-                    if seconds < 60 {
-                        format!("[+{:02}:{:02}]", 0, seconds)
-                    } else {
-                        let minutes = seconds / 60;
-                        let secs = seconds % 60;
-                        format!("[+{:02}:{:02}]", minutes, secs)
-                    }
-                } else {
-                    format!("[{}]", &timestamp[11..19])
-                };
-
-                let time_colored = if enable_color {
-                    format!("{}", time_display.bright_black())
-                } else {
-                    time_display.clone()
-                };
-
+    for turn in turns {
+        match turn {
+            Turn::User { timestamp, content } => {
+                let time_display = format_time(session_start, timestamp);
                 let dur_placeholder = "   -   ";
-                let dur_colored = if enable_color {
-                    format!("{}", dur_placeholder.bright_black())
-                } else {
-                    dur_placeholder.to_string()
-                };
-
-                let role_str = if matches!(role, Role::User) {
-                    "User"
-                } else {
-                    "Asst"
-                };
 
                 if enable_color {
-                    let colored_text = if matches!(role, Role::User) {
-                        format!("{}", text.green())
-                    } else {
-                        format!("{}", text.blue())
-                    };
                     println!(
                         "{} {} {}: \"{}\"",
-                        time_colored, dur_colored, role_str, colored_text
+                        time_display.bright_black(),
+                        dur_placeholder.bright_black(),
+                        "User",
+                        content.green()
                     );
                 } else {
                     println!(
-                        "{} {} {}: \"{}\"",
-                        time_display, dur_placeholder, role_str, text
+                        "{} {} User: \"{}\"",
+                        time_display, dur_placeholder, content
                     );
                 }
             }
 
-            Activity::Execution {
+            Turn::Agent {
                 timestamp,
-                duration_ms,
-                tools,
+                chain,
+                stats,
                 ..
             } => {
-                let time_display = if let (Some(start), Ok(current)) =
-                    (session_start, DateTime::parse_from_rfc3339(timestamp))
-                {
-                    let duration = current.signed_duration_since(start);
-                    let seconds = duration.num_seconds();
-                    if seconds < 60 {
-                        format!("[+{:02}:{:02}]", 0, seconds)
-                    } else {
-                        let minutes = seconds / 60;
-                        let secs = seconds % 60;
-                        format!("[+{:02}:{:02}]", minutes, secs)
-                    }
-                } else {
-                    "[+00:00]".to_string()
-                };
+                let time_display = format_time(session_start, timestamp);
+                let duration_ms = stats.duration_ms.unwrap_or(0);
+                let dur_str = format_duration(duration_ms);
+                let chain_display = format_chain(chain, enable_color);
 
-                let time_colored = if enable_color {
-                    format!("{}", time_display.bright_black())
-                } else {
-                    time_display.clone()
-                };
-
-                let dur_str = if *duration_ms >= 1000 {
-                    format!("{:2}s    ", duration_ms / 1000)
-                } else if *duration_ms > 0 {
-                    format!("{:3}ms  ", duration_ms)
-                } else {
-                    "       ".to_string()
-                };
-
-                let dur_colored = if enable_color {
-                    if *duration_ms > 30000 {
+                if enable_color {
+                    let dur_colored = if duration_ms > 30000 {
                         format!("{}", dur_str.red())
-                    } else if *duration_ms > 10000 {
+                    } else if duration_ms > 10000 {
                         format!("{}", dur_str.yellow())
                     } else {
                         format!("{}", dur_str.bright_black())
-                    }
+                    };
+                    println!(
+                        "{} {} {}",
+                        time_display.bright_black(),
+                        dur_colored,
+                        chain_display.cyan()
+                    );
                 } else {
-                    dur_str.clone()
-                };
+                    println!("{} {} {}", time_display, dur_str, chain_display);
+                }
+            }
 
-                let flow = format_tool_flow(tools, enable_color);
+            Turn::System {
+                timestamp,
+                message,
+                kind,
+            } => {
+                let time_display = format_time(session_start, timestamp);
+                let dur_placeholder = "   -   ";
+                let kind_str = format!("{:?}", kind);
 
                 if enable_color {
-                    println!("{} {} {}", time_colored, dur_colored, flow.cyan());
+                    println!(
+                        "{} {} {}: \"{}\"",
+                        time_display.bright_black(),
+                        dur_placeholder.bright_black(),
+                        kind_str.yellow(),
+                        message.white()
+                    );
                 } else {
-                    println!("{} {} {}", time_display, dur_str, flow);
+                    println!(
+                        "{} {} {}: \"{}\"",
+                        time_display, dur_placeholder, kind_str, message
+                    );
                 }
             }
         }
     }
 }
 
-fn format_tool_flow(tools: &[ToolSummary], enable_color: bool) -> String {
-    let parts: Vec<String> = tools
+fn format_time(session_start: Option<DateTime<chrono::FixedOffset>>, timestamp: &str) -> String {
+    if let (Some(start), Ok(current)) = (session_start, DateTime::parse_from_rfc3339(timestamp)) {
+        let duration = current.signed_duration_since(start);
+        let seconds = duration.num_seconds();
+        if seconds < 60 {
+            format!("[+{:02}:{:02}]", 0, seconds)
+        } else {
+            let minutes = seconds / 60;
+            let secs = seconds % 60;
+            format!("[+{:02}:{:02}]", minutes, secs)
+        }
+    } else {
+        if timestamp.len() >= 19 {
+            format!("[{}]", &timestamp[11..19])
+        } else {
+            "[+00:00]".to_string()
+        }
+    }
+}
+
+fn format_duration(duration_ms: u64) -> String {
+    if duration_ms >= 1000 {
+        format!("{:2}s    ", duration_ms / 1000)
+    } else if duration_ms > 0 {
+        format!("{:3}ms  ", duration_ms)
+    } else {
+        "   -   ".to_string()
+    }
+}
+
+
+fn format_chain(chain: &[ChainItem], enable_color: bool) -> String {
+    let parts: Vec<String> = chain
         .iter()
-        .map(|tool| {
-            let status_indicator = if tool.is_error {
-                if enable_color {
-                    format!("{} ", "✗".red())
+        .filter_map(|item| match item {
+            ChainItem::Thought { .. } => None,
+            ChainItem::Action {
+                tool_name,
+                input_summary,
+                result,
+            } => {
+                let status_indicator = format_action_result(result, enable_color);
+                let tool_display = if !input_summary.is_empty() {
+                    format!("{}({})", tool_name, input_summary)
                 } else {
-                    "✗ ".to_string()
-                }
-            } else if enable_color {
-                format!("{} ", "✓".green())
-            } else {
-                "✓ ".to_string()
-            };
-
-            let formatted = if !tool.input_summary.is_empty() {
-                if tool.count > 1 {
-                    format!("{} x{}", tool.input_summary, tool.count)
-                } else {
-                    tool.input_summary.clone()
-                }
-            } else if tool.count > 1 {
-                format!("x{}", tool.count)
-            } else {
-                String::new()
-            };
-
-            let tool_display = if formatted.is_empty() {
-                tool.name.clone()
-            } else {
-                format!("{}({})", tool.name, formatted)
-            };
-
-            format!("{}{}", status_indicator, tool_display)
+                    tool_name.clone()
+                };
+                Some(format!("{}{}", status_indicator, tool_display))
+            }
         })
         .collect();
 
-    parts.join(" → ")
+    if parts.is_empty() {
+        "thinking...".to_string()
+    } else {
+        parts.join(" → ")
+    }
+}
+
+fn format_action_result(result: &ActionResult, enable_color: bool) -> String {
+    match result {
+        ActionResult::Success { .. } => {
+            if enable_color {
+                format!("{} ", "✓".green())
+            } else {
+                "✓ ".to_string()
+            }
+        }
+        ActionResult::Failure { .. } => {
+            if enable_color {
+                format!("{} ", "✗".red())
+            } else {
+                "✗ ".to_string()
+            }
+        }
+        ActionResult::Denied { .. } => {
+            if enable_color {
+                format!("{} ", "⊘".yellow())
+            } else {
+                "⊘ ".to_string()
+            }
+        }
+        ActionResult::Interrupted => {
+            if enable_color {
+                format!("{} ", "⏸".yellow())
+            } else {
+                "⏸ ".to_string()
+            }
+        }
+        ActionResult::Missing => {
+            if enable_color {
+                format!("{} ", "?".bright_black())
+            } else {
+                "? ".to_string()
+            }
+        }
+    }
 }
