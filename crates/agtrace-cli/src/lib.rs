@@ -7,6 +7,6 @@ mod session_loader;
 
 pub use args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
-    ProvidersCommand, SessionCommand,
+    SessionCommand,
 };
 pub use commands::run;
