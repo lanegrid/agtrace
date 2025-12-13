@@ -220,20 +220,40 @@ Next steps:
 - [x] Update init.rs to pass None for optional filters
 - [ ] Test filters work correctly (pending - needs real data)
 
-### 7.6 Analysis Detector追加
+### 7.6 Analysis Detector追加 (P2 - Deferred)
 - [ ] Add ToolPairing detector to analysis module
 - [ ] Detect missing tool_call_id / unmatched ToolResult
 - [ ] Add to lab analyze output
 - [ ] Test detector with problematic sessions
 
 ### 7.7 品質確認
-- [ ] Run cargo clippy and fix warnings
-- [ ] Run cargo fmt
-- [ ] Run cargo test
-- [ ] Manual test: verify lens examples differ across categories
-- [ ] Manual test: verify provider balance in pack output
-- [ ] Manual test: verify Gemini tool pairing works
-- [ ] Commit changes with oneline messages
+- [x] Run cargo clippy (2 warnings accepted: unused spans field, too_many_arguments)
+- [x] Run cargo fmt
+- [x] Run cargo test (all tests passing)
+- [ ] Manual test: verify lens examples differ across categories (pending - needs real data)
+- [ ] Manual test: verify provider balance in pack output (pending - needs real data)
+- [ ] Manual test: verify Gemini tool pairing works (pending - needs real data)
+- [x] Commit changes with oneline messages (3 commits created)
+
+## Phase 7 Summary
+
+**Status: P0 and P1 Complete ✅**
+
+Completed implementations:
+- ✅ SessionMetrics with lens-specific predicate/score functions
+- ✅ Lens-based session selection with deduplication
+- ✅ Provider balance in corpus collection (per-provider limits)
+- ✅ Tool pairing LIFO fallback in turn.rs and span.rs
+- ✅ Session list --source/--since/--until filters
+
+Commits created in Phase 7:
+1. feat: implement lens-specific selection and provider balance for corpus/pack
+2. feat: add LIFO fallback for tool result matching in turn and span
+3. feat: add source/since/until filters for session list command
+
+Deferred to later:
+- P2: ToolPairing detector in analysis module (can be added when needed)
+- Manual testing with real codex/gemini sessions (requires actual session data)
 
 ## Notes
 
