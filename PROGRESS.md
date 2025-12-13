@@ -205,10 +205,12 @@ Next steps:
 - [ ] Test with codex/gemini sessions (pending - needs real data)
 
 ### 7.4 Tool Pairing強化（Engine側）
-- [ ] Read engine turn.rs and chain.rs to understand current pairing logic
-- [ ] Implement LIFO fallback for ToolResult without matching tool_call_id
-- [ ] Prefer matching by tool_name if available
-- [ ] Test with Gemini sessions (verify `?` disappears)
+- [x] Read engine turn.rs and span.rs to understand current pairing logic
+- [x] Implement LIFO fallback for ToolResult without matching tool_call_id in turn.rs
+- [x] Implement LIFO fallback for ToolResult without matching tool_call_id in span.rs
+- [x] Prefer matching by tool_name if available (turn.rs)
+- [x] Handle missing tool_call_id with fallback logic
+- [ ] Test with Gemini sessions (verify `?` disappears) (pending - needs real data)
 
 ### 7.5 Session List Filters実装
 - [ ] Implement --source filter in session list command

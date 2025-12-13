@@ -228,6 +228,9 @@ impl AgentTurnBuffer {
     }
 
     fn update_tool_result(&mut self, event: &AgentEventV1) {
+        let mut matched = false;
+
+        // First try to match by tool_call_id
         if let Some(call_id) = &event.tool_call_id {
             for (i, pending) in self.pending_actions.iter().enumerate().rev() {
                 if pending.call_id.as_ref() == Some(call_id) {
@@ -239,8 +242,47 @@ impl AgentTurnBuffer {
                         *r = result;
                     }
                     self.pending_actions.remove(i);
+                    matched = true;
                     break;
                 }
+            }
+        }
+
+        // Fallback: LIFO matching if no match by tool_call_id
+        if !matched && !self.pending_actions.is_empty() {
+            // Try to match by tool_name if available
+            let mut fallback_idx = None;
+
+            if let Some(tool_name) = &event.tool_name {
+                for (i, pending) in self.pending_actions.iter().enumerate().rev() {
+                    if let Some(ChainItem::Action {
+                        tool_name: ref name,
+                        ..
+                    }) = self.chain.get(pending.index_in_chain)
+                    {
+                        if name == tool_name {
+                            fallback_idx = Some(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // If no tool_name match, use last pending (LIFO)
+            if fallback_idx.is_none() {
+                fallback_idx = Some(self.pending_actions.len() - 1);
+            }
+
+            if let Some(i) = fallback_idx {
+                let pending = &self.pending_actions[i];
+                let result = build_action_result(event);
+                if let Some(ChainItem::Action {
+                    result: ref mut r, ..
+                }) = self.chain.get_mut(pending.index_in_chain)
+                {
+                    *r = result;
+                }
+                self.pending_actions.remove(i);
             }
         }
     }

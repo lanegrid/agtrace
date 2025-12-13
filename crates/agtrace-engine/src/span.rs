@@ -147,6 +147,8 @@ pub fn build_spans(events: &[AgentEventV1]) -> Vec<Span> {
 
             EventType::ToolResult => {
                 // Match with pending tool call
+                let mut matched = false;
+
                 if let Some(call_id) = &event.tool_call_id {
                     if let Some(pos) = pending_tools
                         .iter()
@@ -167,26 +169,29 @@ pub fn build_spans(events: &[AgentEventV1]) -> Vec<Span> {
                                     event.text.as_ref().map(|t| truncate_string(t, 100));
                             }
                         }
-                    } else {
-                        // No matching call_id, try to match with the most recent uncompleted tool
-                        if let Some(tool) = current_span
-                            .tools
-                            .iter_mut()
-                            .rev()
-                            .find(|t| t.ts_result.is_none())
-                        {
-                            tool.ts_result = Some(event.ts.clone());
-                            tool.status = event.tool_status;
-                            tool.exit_code = event.tool_exit_code;
-                            tool.latency_ms = event.tool_latency_ms;
+                        matched = true;
+                    }
+                }
 
-                            if matches!(event.tool_status, Some(ToolStatus::Error))
-                                || event.tool_exit_code.is_some_and(|c| c != 0)
-                            {
-                                current_span.stats.tool_failures += 1;
-                                tool.error_summary =
-                                    event.text.as_ref().map(|t| truncate_string(t, 100));
-                            }
+                // Fallback: if no match by call_id or call_id is missing, use most recent uncompleted tool
+                if !matched {
+                    if let Some(tool) = current_span
+                        .tools
+                        .iter_mut()
+                        .rev()
+                        .find(|t| t.ts_result.is_none())
+                    {
+                        tool.ts_result = Some(event.ts.clone());
+                        tool.status = event.tool_status;
+                        tool.exit_code = event.tool_exit_code;
+                        tool.latency_ms = event.tool_latency_ms;
+
+                        if matches!(event.tool_status, Some(ToolStatus::Error))
+                            || event.tool_exit_code.is_some_and(|c| c != 0)
+                        {
+                            current_span.stats.tool_failures += 1;
+                            tool.error_summary =
+                                event.text.as_ref().map(|t| truncate_string(t, 100));
                         }
                     }
                 }
