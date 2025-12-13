@@ -137,12 +137,16 @@ Note: diagnose and tools templates were already implemented in Phase 2.
 - [ ] Manual regression test: `cargo run -- session show <id> --style compact` (deferred - needs real sessions)
 - [x] Verify no breaking changes via cargo build/clippy
 
-## Phase 6: Session Show Spanベース移行 (任意)
+## Phase 6: Session Show Spanベース移行 ✅
 
-- [ ] Evaluate if needed for v0
-- [ ] If proceeding: update `session show --style compact` to use `build_spans`
-- [ ] Ensure consistency between pack and session compact output
-- [ ] Run tests and verify
+- [x] Evaluated and decided to proceed for UX consistency
+- [x] Update `session show --style compact` to use `build_spans`
+- [x] Replace Turn-based compact with Span-based compact
+- [x] Remove unused Turn-based functions (format_turns_compact, print_turns_compact, format_chain, format_action_result)
+- [x] Ensure consistency between pack and session compact output
+- [x] Run cargo build - no errors
+- [x] Run cargo clippy - no warnings
+- [x] Run cargo fmt
 
 ## Final Quality Checks ✅
 
