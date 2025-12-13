@@ -2,3 +2,4 @@
 - Write comments in English.
 - Read `docs`.
 - When you make a commit, the commit message must be oneline not multiline.
+- Rather than rushing to complete tasks, please focus on a quality-driven approach: reviewing implementations, running lint and fmt checks, and committing with concise, one-line messages (messages like “Claude's co-author” are unnecessary—keep them one-line).
