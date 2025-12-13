@@ -64,33 +64,34 @@
 - [ ] Manual test: `cargo run -- pack` (deferred - needs real sessions)
 - [ ] Update help snapshots if needed
 
-## Phase 3: CLI - Corpus Overview (デフォルト変更)
+## Phase 3: CLI - Corpus Overview (デフォルト変更) ✅
 
 ### 3.1 Overview Handler作成
-- [ ] Create `crates/agtrace-cli/src/handlers/corpus_overview.rs`
-- [ ] Add `pub mod corpus_overview;` to `handlers/mod.rs`
-- [ ] Implement `handle()` function
+- [x] Create `crates/agtrace-cli/src/handlers/corpus_overview.rs`
+- [x] Add `pub mod corpus_overview;` to `handlers/mod.rs`
+- [x] Implement `handle()` function
 
 ### 3.2 Overview表示ロジック
-- [ ] Implement scope determination (project_hash/all_projects)
-- [ ] Load sessions (limit ~50 for overview)
-- [ ] Build spans and digests for each session
-- [ ] Group by lens (Failures/Bottlenecks/Toolchains/etc.)
-- [ ] Display count + 1 representative example per lens
-- [ ] Run `cargo build` and fix errors
-- [ ] Run `cargo clippy` and fix warnings
-- [ ] Run `cargo fmt`
+- [x] Implement scope determination (project_hash/all_projects)
+- [x] Load sessions (limit ~50 for overview)
+- [x] Build spans and digests for each session
+- [x] Group by lens (Failures/Bottlenecks/Toolchains/Loops)
+- [x] Display count + 1 representative example per lens
+- [x] Run `cargo build` and fix errors
+- [x] Run `cargo clippy` and fix warnings
+- [x] Run `cargo fmt`
+- [x] Fix truncate_string for multibyte characters
 
 ### 3.3 デフォルト動作変更
-- [ ] Modify `commands.rs` to call `corpus_overview::handle()` when no subcommand
-- [ ] Check if DB exists and has sessions before showing overview
-- [ ] Fall back to guidance if no sessions
-- [ ] Run `cargo build` and verify
-- [ ] Manual test: `cargo run --` (no subcommand)
+- [x] Modify `commands.rs` to call `corpus_overview::handle()` when no subcommand
+- [x] Check if DB exists and has sessions before showing overview
+- [x] Fall back to guidance if no sessions
+- [x] Run `cargo build` and verify
+- [x] Manual test: `cargo run --` (no subcommand)
 
 ### 3.4 テスト
-- [ ] Manual test with existing sessions
-- [ ] Manual test with empty DB
+- [x] Manual test with existing sessions
+- [ ] Manual test with empty DB (skipped - would require DB reset)
 - [ ] Update help snapshots if needed
 
 ## Phase 4: Pack Template拡張

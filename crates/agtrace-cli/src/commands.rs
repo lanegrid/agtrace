@@ -12,6 +12,22 @@ pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
 
     let Some(command) = cli.command else {
+        // Check if we should show corpus overview or guidance
+        let db_path = data_dir.join("agtrace.db");
+        if db_path.exists() {
+            if let Ok(db) = Database::open(&db_path) {
+                if let Ok(sessions) = db.list_sessions(None, 1) {
+                    if !sessions.is_empty() {
+                        // Show corpus overview instead of guidance
+                        return handlers::corpus_overview::handle(
+                            &db,
+                            cli.project_root,
+                            cli.all_projects,
+                        );
+                    }
+                }
+            }
+        }
         show_guidance(&data_dir)?;
         return Ok(());
     };
