@@ -255,6 +255,51 @@ Deferred to later:
 - P2: ToolPairing detector in analysis module (can be added when needed)
 - Manual testing with real codex/gemini sessions (requires actual session data)
 
+## Phase 8: Advanced Pack Improvements (Dynamic Thresholds & Noise Filtering)
+
+### 8.1 Dynamic Thresholds (P90-based)
+- [x] Create Thresholds struct with p90_e2e_ms, p90_tool_ms, p90_tool_calls
+- [x] Implement Thresholds::compute() to calculate P90 from digests
+- [x] Update Lens predicates to use dynamic thresholds instead of hardcoded values
+- [x] Update pack.rs to compute thresholds and pass to selection logic
+
+### 8.2 Snippet Noise Filtering
+- [x] Implement clean_snippet() to remove XML tags (environment_context, command_output, changed_files)
+- [x] Update SessionDigest::new() to apply clean_snippet to opening text
+- [x] Update find_activation() to apply clean_snippet to activation text
+- [ ] Test with sessions containing XML noise (deferred - needs real data)
+
+### 8.3 Selection Reason Tracking
+- [x] Add selection_reason: Option<String> field to SessionDigest
+- [x] Update Lens to be struct with predicate/score/reason Box<dyn Fn> fields
+- [x] Implement Lens::failures(), Lens::bottlenecks(), Lens::toolchains(), Lens::loops()
+- [x] Update select_sessions_by_lenses to populate selection_reason
+- [x] Update output functions to display selection_reason
+
+### 8.4 Missing Tool Pairs Detection
+- [x] Update compute_metrics to accurately count missing_tool_pairs from spans
+- [x] Count tools in span.tools where ts_result.is_none()
+- [x] Update Lens::Failures predicate to use missing_tool_pairs
+
+### 8.5 Pack Handler Refactor
+- [x] Replace select_sessions_for_template with select_sessions_by_lenses
+- [x] Update output_diagnose to group by selection_reason
+- [x] Update print_digest_summary to show lens and reason
+- [x] Simplify activation extraction (sliding window of 5 spans, >=3 tool calls)
+
+### 8.6 Corpus Overview Simplification
+- [x] Update corpus_overview to show simple aggregate metrics
+- [x] Remove lens grouping display
+- [x] Add guidance to use 'agtrace pack --template diagnose'
+- [x] Test output format (verified via build)
+
+### 8.7 品質確認
+- [x] Run cargo build and fix compilation errors
+- [x] Run cargo clippy and fix warnings (added type aliases for Lens fields)
+- [x] Run cargo fmt
+- [x] Review all changes
+- [ ] Create commit with oneline message
+
 ## Notes
 
 - Commit frequently with oneline messages (no co-author, no multiline)
