@@ -298,7 +298,33 @@ Deferred to later:
 - [x] Run cargo clippy and fix warnings (added type aliases for Lens fields)
 - [x] Run cargo fmt
 - [x] Review all changes
-- [ ] Create commit with oneline message
+- [x] Create commit with oneline message
+
+## Phase 8 Summary
+
+**Status: COMPLETE ✅**
+
+All Phase 8 improvements successfully implemented:
+- ✅ Dynamic P90-based thresholds for bottleneck detection
+- ✅ XML noise filtering in snippets (clean_snippet function)
+- ✅ Selection reason tracking for transparency
+- ✅ Accurate missing tool pairs detection from spans
+- ✅ Lens struct refactor with predicate/score/reason functions
+- ✅ Simplified corpus overview with aggregate metrics
+- ✅ Session deduplication across lenses
+
+Commit created:
+1. feat: add dynamic thresholds and noise filtering to pack command
+
+Key improvements:
+- pack command now uses P90 thresholds instead of hardcoded values
+- Lenses prioritized: Failures > Loops > Bottlenecks > Toolchains
+- Each session shows why it was selected (e.g., "Failures (fails=3 missing=2)")
+- XML noise like <environment_context> removed from snippets
+- Corpus overview simplified to show totals and guide users to pack diagnose
+
+Deferred to later:
+- Manual testing with sessions containing XML noise (requires real data)
 
 ## Notes
 
