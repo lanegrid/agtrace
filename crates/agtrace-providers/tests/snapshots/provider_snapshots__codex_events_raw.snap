@@ -1,0 +1,1041 @@
+---
+source: crates/agtrace-providers/tests/provider_snapshots.rs
+expression: raw_json_pretty
+---
+{
+  "payload": {
+    "cli_version": "0.66.0",
+    "cwd": "/Users/zawakin/agent-sample",
+    "git": {
+      "branch": "codex",
+      "commit_hash": "1cea5ec49574a868eb98893e46bcb775539f798e"
+    },
+    "id": "019b04ae-b1c6-7c72-a134-a4c2de66058c",
+    "instructions": null,
+    "model_provider": "openai",
+    "originator": "codex_cli_rs",
+    "source": "cli",
+    "timestamp": "2025-12-09T19:55:16.295Z"
+  },
+  "timestamp": "2025-12-09T19:55:16.336Z",
+  "type": "session_meta"
+}
+
+{
+  "payload": {
+    "content": [
+      {
+        "text": "<environment_context>\n  <cwd>/Users/zawakin/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>",
+        "type": "input_text"
+      }
+    ],
+    "role": "user",
+    "type": "message"
+  },
+  "timestamp": "2025-12-09T19:55:16.336Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "content": [
+      {
+        "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+        "type": "input_text"
+      }
+    ],
+    "role": "user",
+    "type": "message"
+  },
+  "timestamp": "2025-12-09T19:55:18.143Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "approval_policy": "on-request",
+    "cwd": "/Users/zawakin/agent-sample",
+    "effort": "medium",
+    "model": "gpt-5.1-codex-max",
+    "sandbox_policy": {
+      "exclude_slash_tmp": false,
+      "exclude_tmpdir_env_var": false,
+      "network_access": false,
+      "type": "workspace-write"
+    },
+    "summary": "auto"
+  },
+  "timestamp": "2025-12-09T19:55:18.161Z",
+  "type": "turn_context"
+}
+
+{
+  "payload": {
+    "ghost_commit": {
+      "id": "2b41b8fe6963ea7c75ede66991c20fa20ead1838",
+      "parent": "1cea5ec49574a868eb98893e46bcb775539f798e",
+      "preexisting_untracked_dirs": [],
+      "preexisting_untracked_files": []
+    },
+    "type": "ghost_snapshot"
+  },
+  "timestamp": "2025-12-09T19:55:18.278Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": null,
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328124,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:24.726Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": null,
+    "encrypted_content": "gAAAAABpOH6wd5zv7ckwzUE7fjqQRFIW0mZWuFRMi91uGtECYj9-cYJXMGUAL4mUVrkImbDPeLeV2dxAIKSPb24RA4mrRtmGT0RUUfQJdsyKkpZJI7WOn8DiypUo6W3uacK19tM8-H91UWovOe9OTjKrzNIYGx9AbCLBBcMjk-r64FdRKINvaejg2lWlg9Pe4XVDyNIHCkrtKALJNDL5Q8I0ebtErpluw6lTalWFGWCXILe6rwwGO8Y8P9DU6MA8VqTCcPK-J_ocEgkBxiJ-P36gf0uj-X91IGj2L6pWaS4OWG1rAw3eRsQbDE4YXibSm21Qv6cC7jlGmZwPevnRp8NR9iAdeNrXfwmIVTQjB_OpZncuZu3LaNIMjK8mKeft5cfe87fNjapLuu_D9pWcjqjqR4qxa_J-4wBoxA-kSAUPtCiwFis6XueyRDZMeUfxGX0McbqEzfr9QEMX9VMtrcR2XzZCgv5EaWHZIAXjePbqQDhwV41uCOAQYuCiq06iFlfcRQxp5Zd4_lugYC9KKWYsV-Jl783fdh4lCNipm1n8r6vQuxUZCHWLtWFi5zGyYS96VweVf7Z9KqpRMx0Ins-DfT0uk1e-MsjStk3ettfgjPcQe3kC8aIRR7ABMZ9UdVWiNCDjyo5UoQf6dYzvVjVzYmNuahh5h8UdsYlhi8U2f5hzOK9nJkknEsNl559GjYCpMB_Uxxdq_sGwF965E68xhUCN8gT2vcTTBkioew3Lc8uhMhCI-5_9dCRe8llY1G8k5SawUFFhuG28dgQL0-4mevDRfsuY3S2KT2SKZDMGyvjDRSYkT6UCGCxWSREea4j2XaUjbZ5N5NSgEtlDVEFPsWniwrWUZC50sZgcEKewcdYBH3fxSH4SGtdgPL3RYLXsKNGFEgJHndobCeAv79UdCWBC5b0DiVWeiT2SuTH9okChZx34gkJ0J6qrw9lMXLdq_P09MKxQ3a92w4F5NB1tV1oxaB1_VYWS0qCEC4la8whvj9w2qNsJV5sBgIGyD-9CZhklE3DWK084sPoqMNC5NPdmJm_y_u30Azsz8uH34QHVLNd7OE1nwujj-c12-SAgL3iDqoJTR6oShZDzF-eBG71yAfn39lQ5FLoWUnRJgOnI74--6JQPQlDvj4sxCtU003jlUqGL-ORnsjDLjYGt1dP1s8MPjCQD6rsXU622iXafsyj19zb3WfTxs5O4tllFutkqB8PlkRrZykf_NNZv60Q9dX9bFNjATLWKb-bqRlqFIfgcgkmYI21F8TZrQzzcJKkCCOf1_tSI_5FdxOMIeLyJ0OtmgsysuuSKpuiJrm6ObBKwBArbm0lB3jTcAwHZveKTP9FMbUiQYRQcGH7g3LVP_gbRvM9Q5W0OJfroqHn0HSiwnuMjFn1Whoue58c-YYG2W9iksrMf34bDrL_bIW-FGa4w2ixkAPUiNarIgMvOrbwboa3On3PdUqX9QpO4zwnL7RPlktyqFNeAjDm0plUsTsmrsA==",
+    "summary": [
+      {
+        "text": "**Creating directory and file using shell and patch**",
+        "type": "summary_text"
+      }
+    ],
+    "type": "reasoning"
+  },
+  "timestamp": "2025-12-09T19:55:28.079Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "arguments": "{\"command\":\"mkdir -p myapp\",\"workdir\":\"/Users/zawakin/agent-sample\"}",
+    "call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG",
+    "name": "shell_command",
+    "type": "function_call"
+  },
+  "timestamp": "2025-12-09T19:55:30.116Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3505,
+        "output_tokens": 101,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 3606
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3505,
+        "output_tokens": 101,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 3606
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328124,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:30.125Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG",
+    "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n",
+    "type": "function_call_output"
+  },
+  "timestamp": "2025-12-09T19:55:30.257Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "approval_policy": "on-request",
+    "cwd": "/Users/zawakin/agent-sample",
+    "effort": "medium",
+    "model": "gpt-5.1-codex-max",
+    "sandbox_policy": {
+      "exclude_slash_tmp": false,
+      "exclude_tmpdir_env_var": false,
+      "network_access": false,
+      "type": "workspace-write"
+    },
+    "summary": "auto"
+  },
+  "timestamp": "2025-12-09T19:55:30.257Z",
+  "type": "turn_context"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3505,
+        "output_tokens": 101,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 3606
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3505,
+        "output_tokens": 101,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 3606
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:31.006Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": null,
+    "encrypted_content": "gAAAAABpOH61r3HQ8ornbFh73nk-rQQ-W_wEqQwqKfEHK2M2bKBFddSp2HoTKuVygk2KTma4FBA7hLtBy6Tm7ls5taV9-3wAwCZ2qlaBImu4AGVegewvk0r8EttQ28-LdpckIV6c_IRnjiOvrk4mNbCCSvMKIFF90JtiEEruLEKu6PWusMc2-tzsuZwXJKRdMsogp3aFqhKdFjiovu0ridaU2cLVocW7BnELYlwUKrLSnz5ehkSQGVsGrQQAbbrWKbaOyUgBRFEEeLfZo_e4bUY-zdsqhO8rh6nHUi7eKZfijVdV_Q96OzftOCZ9JP2Gmr0a_NksifqUEtCMHbivPC_aPbkj_8-TzQQmEviO7Zl7AYsKt3VU9qmZupjjTHM3tlpDyas3n--yX6GaKe1AlH-XTeh7b4Al64d04ualXAzCrgf6pvZCCYaR0cC-7uGEfa0OTcVhS8wUMkO1hXBx0qavKJlNclyOxPGhGJbBvVfXQagMB52z7C5fljFX7Q9FwWim6Mq3iMFO7Q2I3L_1lu2oqUPqRj1DVE_1aQSpFwebfCZbB3XAK3Iu9OvDTH73h2bjkNPhVDlejHGea8WLetZLbU9jMkBOF8oAPjUsEG-_Uk6ysGczr0bPb5h5pTVHEFPg0wMjru0ZcZjOBjzusV4E4O7JkSWKk58ZNoYLpqKXJElCXg2VeM4-PmGrS_ZcAmBxuVHXCxaRZ8aAP6tB-t_B9cTmzpUIvZhstwlMzN4mNxdViE-KpUuf6tLtA-lxOgH2hCx4vjMoJadHuLI8dtl4NMY6lATlV0pKVoNuG4C6yii_8mvXM4STiTWjzRmXep9leT2z2w3aacdpQGS0L0YhRxbcL-GrOPVdUNSKyuIyDNToQ9xp-vGFbETgilU6PCY-Yrla49m7URjVE0VyLQ8lOq0Udy5KlMg1aWju4ScEcKFC-ysBJV8GALnXrKx5xC33UrRT6v9qYO1F6Yf7IB-6OV0IUoGWSw==",
+    "summary": [
+      {
+        "text": "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding.",
+        "type": "summary_text"
+      }
+    ],
+    "type": "reasoning"
+  },
+  "timestamp": "2025-12-09T19:55:33.501Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA",
+    "input": "*** Begin Patch\n*** Add File: myapp/hoge.py\n+print(1 + 1)\n*** End Patch",
+    "name": "apply_patch",
+    "status": "completed",
+    "type": "custom_tool_call"
+  },
+  "timestamp": "2025-12-09T19:55:34.147Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3711,
+        "output_tokens": 40,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 3751
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 6144,
+        "input_tokens": 7216,
+        "output_tokens": 141,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 7357
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:34.147Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA",
+    "output": "{\"output\":\"Success. Updated the following files:\\nA myapp/hoge.py\\n\",\"metadata\":{\"exit_code\":0,\"duration_seconds\":1.0}}",
+    "type": "custom_tool_call_output"
+  },
+  "timestamp": "2025-12-09T19:55:35.204Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "approval_policy": "on-request",
+    "cwd": "/Users/zawakin/agent-sample",
+    "effort": "medium",
+    "model": "gpt-5.1-codex-max",
+    "sandbox_policy": {
+      "exclude_slash_tmp": false,
+      "exclude_tmpdir_env_var": false,
+      "network_access": false,
+      "type": "workspace-write"
+    },
+    "summary": "auto"
+  },
+  "timestamp": "2025-12-09T19:55:35.210Z",
+  "type": "turn_context"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3711,
+        "output_tokens": 40,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 3751
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 6144,
+        "input_tokens": 7216,
+        "output_tokens": 141,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 7357
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:35.989Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": [
+      {
+        "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`.",
+        "type": "output_text"
+      }
+    ],
+    "role": "assistant",
+    "type": "message"
+  },
+  "timestamp": "2025-12-09T19:55:37.424Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3584,
+        "input_tokens": 3815,
+        "output_tokens": 26,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 3841
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 9728,
+        "input_tokens": 11031,
+        "output_tokens": 167,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 11198
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:37.981Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": [
+      {
+        "text": "cd to myapp and run python hoge.py",
+        "type": "input_text"
+      }
+    ],
+    "role": "user",
+    "type": "message"
+  },
+  "timestamp": "2025-12-09T19:55:45.472Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "approval_policy": "on-request",
+    "cwd": "/Users/zawakin/agent-sample",
+    "effort": "medium",
+    "model": "gpt-5.1-codex-max",
+    "sandbox_policy": {
+      "exclude_slash_tmp": false,
+      "exclude_tmpdir_env_var": false,
+      "network_access": false,
+      "type": "workspace-write"
+    },
+    "summary": "auto"
+  },
+  "timestamp": "2025-12-09T19:55:45.473Z",
+  "type": "turn_context"
+}
+
+{
+  "payload": {
+    "ghost_commit": {
+      "id": "724fd5846eb24c32c1f76f871a9d7e7e7c23e88a",
+      "parent": "1cea5ec49574a868eb98893e46bcb775539f798e",
+      "preexisting_untracked_dirs": [],
+      "preexisting_untracked_files": [
+        "myapp/hoge.py"
+      ]
+    },
+    "type": "ghost_snapshot"
+  },
+  "timestamp": "2025-12-09T19:55:45.619Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3584,
+        "input_tokens": 3815,
+        "output_tokens": 26,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 3841
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 9728,
+        "input_tokens": 11031,
+        "output_tokens": 167,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 11198
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:46.392Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": null,
+    "encrypted_content": "gAAAAABpOH7FbZNa9UglqNqyKfXwcOLiiknhSx6nkoxlTXfwtP2fUC64nV5fqzma-cGZWhlf6ti0rDDkAqKEKnvI6A7CcNyuCR2866V8C0tOwgDCMICGo-DSBut9GxJDoeJ2zEx_bGO5ZcooEyeuD2vbD9h6rPhwgwjeg60BUrdGlqph0Fg1nu9IBVh9O74RegSqjHL2RyFdGsiUO5wMoE4eErrDe3wQfxQuf-0_cfYaftlxHt2lEYPvUXYuvvTuvu8I5A48syamOoVriobrXTTpOVn36Oo-vYPo_FhSCNcVzrx-05Ped4n97HfL3G_MkpBYEE87aug_QCEDAI3mMMy9EROOcT2ifOds_SHOu4eDy9m-Fiz8WoTyiavCotScfaX6fsZIZJ635tzwGgCCWqNZlj0JGRj-QvsiFksZ4PiNuZSUJWTY6chsm0fDu3ILDBXetUQ0h6FEt2P_vMP4jNIpUw59ZW08_Uk9PL9-C3CqAzsS4wBVfnQ4raBrOnz8ZDnH5juT7LaRHvtfPeKGkP1_n1JvMmP7dHYcFC1CWQIxyBMVllhzFjMVLeD1zVv42gwCyl-EuJvcOtUJS9npJuawP6Px3GdItZK3gFxTp3dM8RZoH2gLXOCR_-SaLlEeOiPDpLB9dl0SuMSIcECn6blPkz0PHeuWxgZmjFpt7AvXw_qOUpUNU4Se3ZjJdM1f2V2XU8_qQ59zR4hd8msWihr-bLlfz57F1MdcAzNedd0qzYRAjALeKMwV4UW0Y3nzj-E0tA-Yo3U5NwjlXwnlfpocsWfO8kICG89fHP2R38LQeYgpZ_WUBPNnSx5tWoNWgg1XZj7bZ1LXN1vBdwxb46SmvODmaDB-Z48xEVonEt4bsL8TU8-vz7BKY-hdlE9mneC_mQzIuXeotUU5n4bBa9jRh3VaHP95A4rWE8a6meWv78dAoEEfy2gfwQTqZEBmosvUx_40uTuE3tbK9i_SKdPp30sEWzf1HH5SYNT5oI7YK31zl14qk-Jh5SotuqlL6R_p8S9i7KcxEgdfqTnTKdl3WKpCH6TpMin44mzhm7wsEbPvaAw858SaTA5thEflRitC0WXQnTu-",
+    "summary": [
+      {
+        "text": "**Running Python script in workspace**",
+        "type": "summary_text"
+      }
+    ],
+    "type": "reasoning"
+  },
+  "timestamp": "2025-12-09T19:55:49.552Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "arguments": "{\"command\":\"python hoge.py\",\"workdir\":\"/Users/zawakin/agent-sample/myapp\"}",
+    "call_id": "call_5j2yJgrbOClvto1R8nvfSoJS",
+    "name": "shell_command",
+    "type": "function_call"
+  },
+  "timestamp": "2025-12-09T19:55:50.553Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3708,
+        "output_tokens": 37,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 3745
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 12800,
+        "input_tokens": 14739,
+        "output_tokens": 204,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 14943
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:50.568Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "call_id": "call_5j2yJgrbOClvto1R8nvfSoJS",
+    "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\nerror: target shim binary not found\n",
+    "type": "function_call_output"
+  },
+  "timestamp": "2025-12-09T19:55:50.681Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "approval_policy": "on-request",
+    "cwd": "/Users/zawakin/agent-sample",
+    "effort": "medium",
+    "model": "gpt-5.1-codex-max",
+    "sandbox_policy": {
+      "exclude_slash_tmp": false,
+      "exclude_tmpdir_env_var": false,
+      "network_access": false,
+      "type": "workspace-write"
+    },
+    "summary": "auto"
+  },
+  "timestamp": "2025-12-09T19:55:50.690Z",
+  "type": "turn_context"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3708,
+        "output_tokens": 37,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 3745
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 12800,
+        "input_tokens": 14739,
+        "output_tokens": 204,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 14943
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:51.375Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": null,
+    "encrypted_content": "gAAAAABpOH7K1yOxVOY5-IF9Twj08PofXsKfB5A6r3hUx_fqGBLCTg_phz3F6uc6wFE2t8VosW3l-HR0FxWcrxj71UPeTUgJyeDH4XDbc9DMIOICwvcAvuzF3fIqBtwOs_0tFPfSZkJ3jNIa71592f11WP-n20Yno4JiAQtktfFdBloJMyyQ_w3D1NjnJwMYeuEas-QOkN4H39-gtLOnvh4XbqjmPMaPGXmux5mlbax_o9POFB2sSIO9vlCZUbzL8gMTcIcXwbpjRqQsh7UvdncCPpETbNzMWjFo_vWL1uX83F3EccHobcq9jAeimHfKjPQx3iGUesKW98N92wsSSusY6PISJvNbjeJcddjeu7P7_2HqGSN1oUYAGY7TeeXP5e56DxXVaZVVcrCIeQNaHZ4942juLXcbAWZ0x2Qr3js3YSr3xZkj86v9HoVlZLVvYADtYsLO2HGHK_tk6VhbQ4Zc1hFI0Yxp6tC67QRIqOKuzGPwiM_wc1N8Imu0XpUaBQOcy_Ni2CoUqyfHKkkjQJy5WU_HAw8SxCDJCS5Cw5DHaDa-TQgUc_LwWzpK9vKalN1waW5Lzfg22IKa0J2ljSxqm_Xt_pgtxDCweiLO7pvApV5az55rmzLf-zkS_QRRdi8fheBBal7u6oOz3SGyESv8vtPz3rU8UMIpizrH6NgHqPQiaudPqhbcWxQxcwL6LmA_S1hTioxgKCxNFBTkGgvZpV06cYTOkaHMYGbYr3uYOEP-OfvIV74Bqfhbq9r1e8j6W8asNCYnrdi6zfPqbLVbwXAJnBHyQep-XjVVnX-evbTeBWVn9QaDxHCgYF3dwWSjmlJJGryel7wcyc7y-aKJ8GuHH8k45iEOBqfBvrvm-VAYrJgi03AB2AUPHlEH3PPqp3li03mh-IDdwzrNSI5cL0OiMGQztEdkoI6glWqHi5_UjV4daEZC09y4ETJqEq3H-d25S51CqSZLBTylYFNAePaMyy800cEXvL9w6Us6n0RNdJgyAgp7lqTwk41EopNi3_P9TzCaRvTnCAlyJTIguKSh9qzCUtFYitnsmIdjAWU76xU_EX2n1k0DvXmLbKF0QnGNlbBs0NifEkuwApUtGNS5tunaa2lzWIuL2_ydZtETlI_LFAfHIK2R37lHrohv5hnZrnAZZ1Tu6qjQ_cxiPBctZLfrx7Nqx_sugQV1eahLJx_O4cA48YRf_KvTwGswZehgEWRIpIWQ3ypWeAQYG8gOqd_f5EmieAvoRpzdTV43tWcuMLncIpmm45Ry2CTovMCo0m0Zq4smCfcv6SMJXzHmDxrKeUzFuuNL1lwdAnFFzix3jMk=",
+    "summary": [
+      {
+        "text": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification.",
+        "type": "summary_text"
+      }
+    ],
+    "type": "reasoning"
+  },
+  "timestamp": "2025-12-09T19:55:54.600Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "arguments": "{\"command\":\"python hoge.py\",\"workdir\":\"/Users/zawakin/agent-sample/myapp\",\"with_escalated_permissions\":true,\"justification\":\"Need to run python script outside sandbox because default sandbox fails to locate python shim\"}",
+    "call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x",
+    "name": "shell_command",
+    "type": "function_call"
+  },
+  "timestamp": "2025-12-09T19:55:55.447Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3845,
+        "output_tokens": 128,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 3973
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 15872,
+        "input_tokens": 18584,
+        "output_tokens": 332,
+        "reasoning_output_tokens": 128,
+        "total_tokens": 18916
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:55:55.448Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x",
+    "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\nerror: target shim binary not found\n",
+    "type": "function_call_output"
+  },
+  "timestamp": "2025-12-09T19:55:59.497Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "approval_policy": "on-request",
+    "cwd": "/Users/zawakin/agent-sample",
+    "effort": "medium",
+    "model": "gpt-5.1-codex-max",
+    "sandbox_policy": {
+      "exclude_slash_tmp": false,
+      "exclude_tmpdir_env_var": false,
+      "network_access": false,
+      "type": "workspace-write"
+    },
+    "summary": "auto"
+  },
+  "timestamp": "2025-12-09T19:55:59.497Z",
+  "type": "turn_context"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 3845,
+        "output_tokens": 128,
+        "reasoning_output_tokens": 64,
+        "total_tokens": 3973
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 15872,
+        "input_tokens": 18584,
+        "output_tokens": 332,
+        "reasoning_output_tokens": 128,
+        "total_tokens": 18916
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:56:00.261Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": null,
+    "encrypted_content": "gAAAAABpOH7SAUlDKZJEaBWSBclAB03eW8-JeGV6AGBu-TSyDx9QY7gAHOl7q3xnqe2S2tL7um-KYvUEZWRVByqFTQhMzc1DBxaKDLBQsCBvIU95WQAHVDZrGgYaAGble7Jg6Qkp6hBjRPuf29jML_Pn4dMchosOaejb2NNw3wVFT_KkmZAJ8bH5XdLvNPtaaSflhujN3DoMDFPUByu8e5sjIsnb3CrMSRuKuJFH5SbK_R3gXVfNPi201XMmglr0iu_bNVip7tiHqSO51De7qrJ5aV3SVtJqLdFzRmI1OJzcGG5TxUlG6rhDDoHCClxS48Ej_haRh8gSojzBmBmiUCqfRPv1JSvkiBo8UXh4kki4jznKSlWmEeJcnGPVsur92-MQJOBWsO0y9PA5xM5ijI2_k8te_sqsz1ZpPQQHP0P2N9Q-GyfMkRWI-hEb1V0RfITWWfIW-2xydkE_RzlxKCbpYrpM4g0R9oiaalD9PEWEZySbayNQmZ33MQj6acoCyvVpJu4DZH-oyPwp_4ZktBoTUOaowFTye7ynRaVAY_IEDtXA48VvT3baevzQPMSZXEHaPJ3tzmUk1PNFXAORb-mT4tWC7XEz6EC3Ak8ULAwohoyrYaOP3x-zht_GcZmDLZ3fQQJ0pdMroo7vMwqowQjcxtiMbpbfwnE359-UuFxBq2MCy1cXttM_5l79z-dXGNShq8B4egks7xW4NL4jmi109vaMK8VKfwKA77b8E9LH1n1inZkZKhoX8jVUcnlkg7_HqROereBjK3NRJT5z7T2-8GctoAuIwsLPymd93YkTdURGUQ5_ebEKdoUngduepb_tEntz_XreMvB51UPHk6yGG-LR8ml-CHVi-GmxbOUG2myKiqmpNB3uydYHM7GEci4RIfNaNRA7tjVPsD3KXKFdDma7UA1eeDzM_JAMj36FRQ36H7RXpsxR_VFask7NqCm9IyNgxoM-92bLtyS9CmNHyYZKdyiOwYDdNq2hR6ryeP6rxktg9qc=",
+    "summary": [
+      {
+        "text": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative.",
+        "type": "summary_text"
+      }
+    ],
+    "type": "reasoning"
+  },
+  "timestamp": "2025-12-09T19:56:02.412Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "arguments": "{\"command\":\"python3 hoge.py\",\"workdir\":\"/Users/zawakin/agent-sample/myapp\"}",
+    "call_id": "call_mI2n5JLETgVMNGApYPPAjEwD",
+    "name": "shell_command",
+    "type": "function_call"
+  },
+  "timestamp": "2025-12-09T19:56:02.618Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 4017,
+        "output_tokens": 38,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 4055
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 18944,
+        "input_tokens": 22601,
+        "output_tokens": 370,
+        "reasoning_output_tokens": 128,
+        "total_tokens": 22971
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:56:02.634Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "call_id": "call_mI2n5JLETgVMNGApYPPAjEwD",
+    "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n2\n",
+    "type": "function_call_output"
+  },
+  "timestamp": "2025-12-09T19:56:02.744Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "approval_policy": "on-request",
+    "cwd": "/Users/zawakin/agent-sample",
+    "effort": "medium",
+    "model": "gpt-5.1-codex-max",
+    "sandbox_policy": {
+      "exclude_slash_tmp": false,
+      "exclude_tmpdir_env_var": false,
+      "network_access": false,
+      "type": "workspace-write"
+    },
+    "summary": "auto"
+  },
+  "timestamp": "2025-12-09T19:56:02.753Z",
+  "type": "turn_context"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3072,
+        "input_tokens": 4017,
+        "output_tokens": 38,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 4055
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 18944,
+        "input_tokens": 22601,
+        "output_tokens": 370,
+        "reasoning_output_tokens": 128,
+        "total_tokens": 22971
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:56:03.675Z",
+  "type": "event_msg"
+}
+
+{
+  "payload": {
+    "content": null,
+    "encrypted_content": "gAAAAABpOH7VJIl2T70oiSKCoYKoJcCOFTqAFeFglu7yWrun6wuf6JJmYCjk4L_UZbgoy1Mnaf-c0Y_U5T5NGJZvU8QhmWNW_Pm7upRCR2ny76W3NXGFa4pl19XbtOFIgvgK9fclkklnUVyr0-4BoUSW-NA91_YdMO_2jxfoMAvqVNnJSYpx7iQ3Ed1fqNmoStj-U00sUVMh7oceigoe2p0eP3MFwLBoDFM0z-cwYWRW6abjSWH1v1avnAJaBMLxqmruga7HCmekeo5I8foTqAzsQtKwhfyfS52PeKRlQS-W5ZDAMfhDJc1zMp10ZtCemmrKjmZbnJufxwy5-JfCaXWBohsVq12d-VrBaedaXsF5VVxoTsnEvDmChRXAvggoGSPfUyf2ZmSJDSPiAzQ5p_e0XGbDq9o4oBBx3OxNb91RS4dlMWvBY838kocaTKwBbqrfc_chbywJFXqcUPxK6xW1BrNJZiu4sdasUevShf7QEoD6fEiVg7F69q_aVxRXPSuPj1MnNCitXunYHzZAl_HKW2GwaaI8kvK4jaIEmqcJM79V8nTFiKuAV1HCUCbnbAds-1B3xMXxJ2PULK63Lt8Xt2hbBD8ono6rjdBTXPoB-Ih7FkMfSiGDh-7P2IoDOnYtVb4O1HLbNiD9FAwjmSZQGpUQlcljNyfdfQT5xq6VbzW5DXQQpeHFoK_0Ews9LR2MvATlNojO4QbSFZTwIMHyKfH2L0_4_4-c76T1_SsOKVSHxpblr1IpYtW_RRkidcxy85fET5sJLZzBo4i3lfTJb7RCJo_f37nWKDMRnfn2omtpcWUKDcu3LQvPYkwqG2U5jo04agillZtZIB4Ad52jYm_yCzuDcYpHYepzHVA9PZ7rjUuvsECu8xpeR0E2zfIA4zHXWzffw9iLFLr3WReZVg1wM1UB3sfyDySOXFesHqnrkFmaxPlF249h-Tt3yBlhezM6uWVkBKGaZ2-jmxvKNNpIi6LlUxDboXsgLYKk-kgR0PswkkwL80cnBJRvkgw2tgP6NYVr",
+    "summary": [
+      {
+        "text": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing.",
+        "type": "summary_text"
+      }
+    ],
+    "type": "reasoning"
+  },
+  "timestamp": "2025-12-09T19:56:05.955Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "content": [
+      {
+        "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2",
+        "type": "output_text"
+      }
+    ],
+    "role": "assistant",
+    "type": "message"
+  },
+  "timestamp": "2025-12-09T19:56:06.171Z",
+  "type": "response_item"
+}
+
+{
+  "payload": {
+    "info": {
+      "last_token_usage": {
+        "cached_input_tokens": 3968,
+        "input_tokens": 4139,
+        "output_tokens": 38,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 4177
+      },
+      "model_context_window": 258400,
+      "total_token_usage": {
+        "cached_input_tokens": 22912,
+        "input_tokens": 26740,
+        "output_tokens": 408,
+        "reasoning_output_tokens": 128,
+        "total_tokens": 27148
+      }
+    },
+    "rate_limits": {
+      "credits": {
+        "balance": null,
+        "has_credits": false,
+        "unlimited": false
+      },
+      "plan_type": null,
+      "primary": {
+        "resets_at": 1765328130,
+        "used_percent": 0.0,
+        "window_minutes": 300
+      },
+      "secondary": {
+        "resets_at": 1765459426,
+        "used_percent": 0.0,
+        "window_minutes": 10080
+      }
+    },
+    "type": "token_count"
+  },
+  "timestamp": "2025-12-09T19:56:06.181Z",
+  "type": "event_msg"
+}
