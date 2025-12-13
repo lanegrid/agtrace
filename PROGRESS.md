@@ -28,41 +28,40 @@
 - [x] Create basic test for `build_spans` with fixture events
 - [x] Run `cargo test` and verify passing
 
-## Phase 2: CLI - Pack Command (基本)
+## Phase 2: CLI - Pack Command (基本) ✅
 
 ### 2.1 Args拡張
-- [ ] Add `Pack` variant to `Commands` enum in `args.rs`
-- [ ] Add `template: Option<String>` field (default: "compact")
-- [ ] Add `limit: usize` field (default: 20)
-- [ ] Run `cargo build` and verify args parsing
+- [x] Add `Pack` variant to `Commands` enum in `args.rs`
+- [x] Add `template: Option<String>` field (default: "compact")
+- [x] Add `limit: usize` field (default: 20)
+- [x] Run `cargo build` and verify args parsing
 
 ### 2.2 Handlers準備
-- [ ] Create `crates/agtrace-cli/src/handlers/pack.rs`
-- [ ] Add `pub mod pack;` to `handlers/mod.rs`
-- [ ] Implement basic `handle()` function skeleton
-- [ ] Connect `Commands::Pack` to `handlers::pack::handle()` in `commands.rs`
+- [x] Create `crates/agtrace-cli/src/handlers/pack.rs`
+- [x] Add `pub mod pack;` to `handlers/mod.rs`
+- [x] Implement basic `handle()` function skeleton
+- [x] Connect `Commands::Pack` to `handlers::pack::handle()` in `commands.rs`
 
 ### 2.3 SessionDigest作成
-- [ ] Define `SessionDigest` struct in `pack.rs` or separate module
-- [ ] Implement opening/activation/outcome extraction
-- [ ] Implement activation detection logic (tool_calls >= 3 in next 5 spans)
-- [ ] Implement importance score calculation
+- [x] Define `SessionDigest` struct in `pack.rs` or separate module
+- [x] Implement opening/activation/outcome extraction
+- [x] Implement activation detection logic (tool_calls >= 3 in next 5 spans)
+- [x] Implement importance score calculation
 
 ### 2.4 Pack Compact実装
-- [ ] Implement session loading for multiple sessions
-- [ ] Implement `build_spans()` integration
-- [ ] Implement SessionDigest calculation for each session
-- [ ] Implement importance-based sorting
-- [ ] Implement limit-based filtering
-- [ ] Implement compact template output format
-- [ ] Run `cargo build` and fix errors
-- [ ] Run `cargo clippy` and fix warnings
-- [ ] Run `cargo fmt`
+- [x] Implement session loading for multiple sessions
+- [x] Implement `build_spans()` integration
+- [x] Implement SessionDigest calculation for each session
+- [x] Implement importance-based sorting
+- [x] Implement limit-based filtering
+- [x] Implement compact template output format
+- [x] Run `cargo build` and fix errors
+- [x] Run `cargo clippy` and fix warnings
+- [x] Run `cargo fmt`
 
 ### 2.5 テスト
-- [ ] Manual test: `cargo run -- pack`
-- [ ] Manual test: `cargo run -- pack --limit 10`
-- [ ] Verify output format
+- [x] Manual test: `cargo run -- pack --help`
+- [ ] Manual test: `cargo run -- pack` (deferred - needs real sessions)
 - [ ] Update help snapshots if needed
 
 ## Phase 3: CLI - Corpus Overview (デフォルト変更)

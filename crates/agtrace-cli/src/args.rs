@@ -57,6 +57,14 @@ pub enum Commands {
         command: LabCommand,
     },
 
+    Pack {
+        #[arg(long, value_parser = ["compact", "diagnose", "tools"], default_value = "compact")]
+        template: String,
+
+        #[arg(long, default_value = "20")]
+        limit: usize,
+    },
+
     Init {
         #[arg(long)]
         refresh: bool,

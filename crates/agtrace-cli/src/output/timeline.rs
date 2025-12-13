@@ -252,10 +252,7 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
 
     if enable_color {
         println!("{}", "---".bright_black());
-        println!(
-            "{}",
-            "Session Summary:".bright_white().bold()
-        );
+        println!("{}", "Session Summary:".bright_white().bold());
     } else {
         println!("---");
         println!("Session Summary:");
@@ -327,11 +324,7 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         }
         for (op, count) in session_summary.file_operations.iter() {
             if enable_color {
-                println!(
-                    "    {}: {}",
-                    op,
-                    count.to_string().bright_white()
-                );
+                println!("    {}: {}", op, count.to_string().bright_white());
             } else {
                 println!("    {}: {}", op, count);
             }

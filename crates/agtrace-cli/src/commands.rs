@@ -162,6 +162,13 @@ pub fn run(cli: Cli) -> Result<()> {
                 } => handlers::lab_export::handle(&db, session_id, output, format, strategy),
             }
         }
+
+        Commands::Pack { template, limit } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+
+            handlers::pack::handle(&db, &template, limit, cli.project_root, cli.all_projects)
+        }
     }
 }
 

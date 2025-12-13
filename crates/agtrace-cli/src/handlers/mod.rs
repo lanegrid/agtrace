@@ -5,6 +5,7 @@ pub mod index;
 pub mod init;
 pub mod lab_analyze;
 pub mod lab_export;
+pub mod pack;
 pub mod project;
 pub mod provider;
 pub mod provider_schema;
