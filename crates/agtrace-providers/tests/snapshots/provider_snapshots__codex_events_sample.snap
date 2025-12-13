@@ -15,6 +15,14 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample",
+    "git": {
+      "branch": "codex",
+      "commit": "1cea5ec49574a868eb98893e46bcb775539f798e"
+    },
+    "runtime": "codex 0.66.0"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,
@@ -154,6 +162,13 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample"
+  },
+  "policy": {
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,
@@ -503,6 +518,13 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample"
+  },
+  "policy": {
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,
@@ -825,6 +847,13 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample"
+  },
+  "policy": {
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,
@@ -1109,6 +1138,13 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample"
+  },
+  "policy": {
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,
@@ -1476,6 +1512,13 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample"
+  },
+  "policy": {
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,
@@ -1797,6 +1840,13 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample"
+  },
+  "policy": {
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,
@@ -2118,6 +2168,13 @@ expression: json_pretty
   "role": "system",
   "channel": "system",
   "text": null,
+  "context": {
+    "cwd": "/Users/zawakin/agent-sample"
+  },
+  "policy": {
+    "sandbox_mode": "workspace-write",
+    "approval_policy": "on-request"
+  },
   "tool_name": null,
   "tool_call_id": null,
   "tool_status": null,

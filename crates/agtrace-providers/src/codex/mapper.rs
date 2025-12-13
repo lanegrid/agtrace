@@ -67,15 +67,60 @@ pub(crate) fn normalize_codex_stream(
         ev.parent_event_id = last_user_event_id.clone();
 
         match &record {
-            CodexRecord::SessionMeta(_) => {
+            CodexRecord::SessionMeta(meta) => {
                 ev.event_type = EventType::Meta;
                 ev.role = Some(Role::System);
                 ev.channel = Some(Channel::System);
+
+                // Extract context from session metadata
+                let git = meta.payload.git.as_ref().map(|git| GitContext {
+                    branch: git.branch.clone(),
+                    commit: git.commit_hash.clone(),
+                    is_dirty: None,
+                });
+
+                ev.context = Some(RunContext {
+                    cwd: Some(meta.payload.cwd.clone()),
+                    git,
+                    runtime: Some(format!("codex {}", meta.payload.cli_version)),
+                });
             }
-            CodexRecord::TurnContext(_) => {
+            CodexRecord::TurnContext(turn) => {
                 ev.event_type = EventType::Meta;
                 ev.role = Some(Role::System);
                 ev.channel = Some(Channel::System);
+
+                // Extract context (cwd might have changed)
+                ev.context = Some(RunContext {
+                    cwd: Some(turn.payload.cwd.clone()),
+                    git: None,
+                    runtime: None,
+                });
+
+                // Extract policy from turn context
+                let (sandbox_mode, network_access) = match &turn.payload.sandbox_policy {
+                    SandboxPolicy::Simple { policy_type } => (Some(policy_type.clone()), None),
+                    SandboxPolicy::Detailed {
+                        mode,
+                        network_access,
+                        ..
+                    } => {
+                        let net = network_access.map(|access| {
+                            if access {
+                                "allowed".to_string()
+                            } else {
+                                "restricted".to_string()
+                            }
+                        });
+                        (Some(mode.clone()), net)
+                    }
+                };
+
+                ev.policy = Some(AgentPolicy {
+                    sandbox_mode,
+                    network_access,
+                    approval_policy: Some(turn.payload.approval_policy.clone()),
+                });
             }
             CodexRecord::ResponseItem(response) => {
                 match &response.payload {

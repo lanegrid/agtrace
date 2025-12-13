@@ -4,6 +4,39 @@ use serde::{Deserialize, Serialize};
 
 pub use util::*;
 
+/// Git repository context
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GitContext {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_dirty: Option<bool>,
+}
+
+/// Execution environment context
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RunContext {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub git: Option<GitContext>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runtime: Option<String>,
+}
+
+/// Agent control policy and constraints
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AgentPolicy {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sandbox_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network_access: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approval_policy: Option<String>,
+}
+
 /// Source of the agent log (provider-agnostic identifier)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -141,6 +174,12 @@ pub struct AgentEventV1 {
     pub channel: Option<Channel>,
     pub text: Option<String>,
 
+    // Context & Policy
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context: Option<RunContext>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub policy: Option<AgentPolicy>,
+
     // Tool / Command
     pub tool_name: Option<String>,
     pub tool_call_id: Option<String>,
@@ -186,6 +225,9 @@ impl AgentEventV1 {
             role: None,
             channel: None,
             text: None,
+
+            context: None,
+            policy: None,
 
             tool_name: None,
             tool_call_id: None,

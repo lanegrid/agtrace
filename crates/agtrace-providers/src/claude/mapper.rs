@@ -5,6 +5,30 @@ use super::schema::*;
 
 const PROVIDER_NAME: &str = "claude_code";
 
+/// Build RunContext from cwd, git_branch, and version
+fn build_run_context(
+    cwd: Option<&String>,
+    git_branch: Option<&String>,
+    version: Option<&String>,
+) -> Option<RunContext> {
+    if cwd.is_none() && git_branch.is_none() && version.is_none() {
+        return None;
+    }
+
+    let git = git_branch.map(|branch| GitContext {
+        branch: Some(branch.clone()),
+        ..Default::default()
+    });
+
+    let runtime = version.map(|ver| format!("{} {}", PROVIDER_NAME, ver));
+
+    Some(RunContext {
+        cwd: cwd.cloned(),
+        git,
+        runtime,
+    })
+}
+
 /// Normalize Claude tool name to standard ToolName
 fn normalize_tool_name(name: &str) -> ToolName {
     match name {
@@ -101,6 +125,11 @@ pub(crate) fn normalize_claude_stream(
                             ev.role = Some(Role::Tool); // v1.5 spec: tool_result always role=tool
                             ev.tool_call_id = Some(tool_use_id.clone());
                             ev.project_root = project_root_str.clone();
+                            ev.context = build_run_context(
+                                user.cwd.as_ref(),
+                                user.git_branch.as_ref(),
+                                user.version.as_ref(),
+                            );
 
                             // Extract text from content (could be string or object)
                             // No truncation - preserve full content for analysis
@@ -161,6 +190,11 @@ pub(crate) fn normalize_claude_stream(
                 ev.role = Some(Role::User);
                 ev.channel = Some(Channel::Chat);
                 ev.project_root = project_root_str.clone();
+                ev.context = build_run_context(
+                    user.cwd.as_ref(),
+                    user.git_branch.as_ref(),
+                    user.version.as_ref(),
+                );
 
                 let text_parts: Vec<String> = user
                     .message
@@ -202,6 +236,11 @@ pub(crate) fn normalize_claude_stream(
                                 ev.role = Some(Role::Assistant);
                                 ev.channel = Some(Channel::Chat);
                                 ev.project_root = project_root_str.clone();
+                                ev.context = build_run_context(
+                                    asst.cwd.as_ref(),
+                                    asst.git_branch.as_ref(),
+                                    asst.version.as_ref(),
+                                );
                                 ev.text = Some(thinking.clone());
                                 ev.model = Some(asst.message.model.clone());
                                 ev.raw = raw_value.clone();
@@ -221,6 +260,11 @@ pub(crate) fn normalize_claude_stream(
                                 ev.parent_event_id = last_user_event_id.clone();
                                 ev.role = Some(Role::Assistant);
                                 ev.project_root = project_root_str.clone();
+                                ev.context = build_run_context(
+                                    asst.cwd.as_ref(),
+                                    asst.git_branch.as_ref(),
+                                    asst.version.as_ref(),
+                                );
 
                                 // Normalize tool name using provider-specific logic
                                 let tool_name = normalize_tool_name(name);
@@ -270,6 +314,11 @@ pub(crate) fn normalize_claude_stream(
                                 ev.role = Some(Role::Assistant);
                                 ev.channel = Some(Channel::Chat);
                                 ev.project_root = project_root_str.clone();
+                                ev.context = build_run_context(
+                                    asst.cwd.as_ref(),
+                                    asst.git_branch.as_ref(),
+                                    asst.version.as_ref(),
+                                );
                                 ev.text = Some(text.clone());
                                 ev.model = Some(asst.message.model.clone());
 
@@ -302,6 +351,11 @@ pub(crate) fn normalize_claude_stream(
                     ev.role = Some(Role::Assistant);
                     ev.channel = Some(Channel::Chat);
                     ev.project_root = project_root_str.clone();
+                    ev.context = build_run_context(
+                        asst.cwd.as_ref(),
+                        asst.git_branch.as_ref(),
+                        asst.version.as_ref(),
+                    );
 
                     let text_parts: Vec<String> = asst
                         .message
