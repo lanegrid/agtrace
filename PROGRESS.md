@@ -178,6 +178,59 @@ Next steps:
 - Ready to push commits to origin/main
 - Documentation updates deferred (out of v0 scope)
 
+## Phase 7: v0.1 Improvements (Lens Differentiation & Provider Balance)
+
+### 7.1 SessionMetrics導入
+- [x] Create SessionMetrics struct in pack.rs or separate module
+- [x] Add fields: tool_calls_total, tool_failures_total, max_e2e_ms, max_tool_ms, missing_tool_pairs, loop_signals
+- [x] Implement metrics calculation from spans
+- [x] Update SessionDigest to use metrics
+- [x] Update output functions to use metrics instead of spans directly
+
+### 7.2 Lens選定ロジック分離
+- [x] Implement lens-specific predicate functions (Failures, Bottlenecks, Toolchains, Loops)
+- [x] Implement lens-specific score functions with recency boost
+- [x] Update corpus_overview to use lens predicate/score for representative examples
+- [x] Update pack to select sessions per-lens (not global importance)
+- [x] Implement example deduplication across lenses (avoid showing same session)
+- [x] Add SessionDigest Clone derive and recency_boost field
+- [x] Implement select_sessions_for_template and select_per_lens functions
+
+### 7.3 Provider偏り補正
+- [x] Modify Collect phase to gather sessions per-provider (e.g., 200 each)
+- [x] Implement provider-aware session loading in pack.rs and corpus_overview.rs
+- [x] Implement balance_sessions_by_provider function
+- [x] Update pack.rs to fetch limit*10 and balance by provider
+- [x] Update corpus_overview.rs to fetch 300 and balance by provider
+- [ ] Test with codex/gemini sessions (pending - needs real data)
+
+### 7.4 Tool Pairing強化（Engine側）
+- [ ] Read engine turn.rs and chain.rs to understand current pairing logic
+- [ ] Implement LIFO fallback for ToolResult without matching tool_call_id
+- [ ] Prefer matching by tool_name if available
+- [ ] Test with Gemini sessions (verify `?` disappears)
+
+### 7.5 Session List Filters実装
+- [ ] Implement --source filter in session list command
+- [ ] Implement --since/--until filters (RFC3339 format)
+- [ ] Update commands.rs to pass filters to handler
+- [ ] Test filters work correctly
+
+### 7.6 Analysis Detector追加
+- [ ] Add ToolPairing detector to analysis module
+- [ ] Detect missing tool_call_id / unmatched ToolResult
+- [ ] Add to lab analyze output
+- [ ] Test detector with problematic sessions
+
+### 7.7 品質確認
+- [ ] Run cargo clippy and fix warnings
+- [ ] Run cargo fmt
+- [ ] Run cargo test
+- [ ] Manual test: verify lens examples differ across categories
+- [ ] Manual test: verify provider balance in pack output
+- [ ] Manual test: verify Gemini tool pairing works
+- [ ] Commit changes with oneline messages
+
 ## Notes
 
 - Commit frequently with oneline messages (no co-author, no multiline)
