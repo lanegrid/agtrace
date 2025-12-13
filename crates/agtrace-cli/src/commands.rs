@@ -77,10 +77,10 @@ pub fn run(cli: Cli) -> Result<()> {
             match command {
                 SessionCommand::List {
                     project_hash,
-                    source: _,
+                    source,
                     limit,
-                    since: _,
-                    until: _,
+                    since,
+                    until,
                 } => {
                     let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
                         Some(agtrace_types::project_hash_from_root(
@@ -96,6 +96,9 @@ pub fn run(cli: Cli) -> Result<()> {
                         limit,
                         cli.all_projects,
                         &cli.format,
+                        source.clone(),
+                        since.clone(),
+                        until.clone(),
                     )
                 }
                 SessionCommand::Show {

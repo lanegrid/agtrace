@@ -213,10 +213,12 @@ Next steps:
 - [ ] Test with Gemini sessions (verify `?` disappears) (pending - needs real data)
 
 ### 7.5 Session List Filters実装
-- [ ] Implement --source filter in session list command
-- [ ] Implement --since/--until filters (RFC3339 format)
-- [ ] Update commands.rs to pass filters to handler
-- [ ] Test filters work correctly
+- [x] Implement --source filter in session list command
+- [x] Implement --since/--until filters (RFC3339 format)
+- [x] Update commands.rs to pass filters to handler
+- [x] Update session_list.rs handle function with filter parameters
+- [x] Update init.rs to pass None for optional filters
+- [ ] Test filters work correctly (pending - needs real data)
 
 ### 7.6 Analysis Detector追加
 - [ ] Add ToolPairing detector to analysis module

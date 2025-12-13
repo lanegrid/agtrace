@@ -147,7 +147,16 @@ pub fn handle(
         return Ok(());
     }
 
-    super::session_list::handle(&db, effective_hash, 10, all_projects, "plain")?;
+    super::session_list::handle(
+        &db,
+        effective_hash,
+        10,
+        all_projects,
+        "plain",
+        None,
+        None,
+        None,
+    )?;
 
     if let Some(first_session) = sessions.first() {
         let session_prefix = if first_session.id.len() > 8 {

@@ -10,12 +10,53 @@ pub fn handle(
     limit: usize,
     all_projects: bool,
     format: &str,
+    source: Option<String>,
+    since: Option<String>,
+    until: Option<String>,
 ) -> Result<()> {
     let (effective_hash_string, _all_projects) =
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();
 
-    let sessions = db.list_sessions(effective_project_hash, limit)?;
+    // Fetch more sessions to allow filtering
+    let fetch_limit = limit * 3;
+    let mut sessions = db.list_sessions(effective_project_hash, fetch_limit)?;
+
+    // Filter by source (provider)
+    if let Some(src) = source {
+        sessions.retain(|s| s.provider == src);
+    }
+
+    // Filter by since (start_ts >= since)
+    if let Some(since_str) = since {
+        if let Ok(since_dt) = DateTime::parse_from_rfc3339(&since_str) {
+            sessions.retain(|s| {
+                if let Some(ts) = &s.start_ts {
+                    if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
+                        return dt >= since_dt;
+                    }
+                }
+                false
+            });
+        }
+    }
+
+    // Filter by until (start_ts <= until)
+    if let Some(until_str) = until {
+        if let Ok(until_dt) = DateTime::parse_from_rfc3339(&until_str) {
+            sessions.retain(|s| {
+                if let Some(ts) = &s.start_ts {
+                    if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
+                        return dt <= until_dt;
+                    }
+                }
+                false
+            });
+        }
+    }
+
+    // Apply limit after filtering
+    sessions.truncate(limit);
 
     if format == "json" {
         println!("{}", serde_json::to_string_pretty(&sessions)?);
