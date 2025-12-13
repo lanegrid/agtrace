@@ -23,7 +23,7 @@ fn test_gemini_parse_snapshot() {
     insta::assert_snapshot!("gemini_events_sample", json_pretty);
 
     // Verify basic properties
-    assert_eq!(events[0].source, agtrace_types::Source::Gemini);
+    assert_eq!(events[0].source, agtrace_types::Source::new("gemini"));
     assert!(events[0].session_id.is_some());
 }
 
@@ -49,7 +49,7 @@ fn test_codex_parse_snapshot() {
         .join("\n\n");
     insta::assert_snapshot!("codex_events_sample", json_pretty);
 
-    assert_eq!(events[0].source, agtrace_types::Source::Codex);
+    assert_eq!(events[0].source, agtrace_types::Source::new("codex"));
 }
 
 #[test]
@@ -74,5 +74,5 @@ fn test_claude_parse_snapshot() {
         .join("\n\n");
     insta::assert_snapshot!("claude_events_sample", json_pretty);
 
-    assert_eq!(events[0].source, agtrace_types::Source::ClaudeCode);
+    assert_eq!(events[0].source, agtrace_types::Source::new("claude_code"));
 }

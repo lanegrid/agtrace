@@ -2,6 +2,18 @@ use agtrace_types::*;
 
 use super::schema::{GeminiMessage, GeminiSession};
 
+const PROVIDER_NAME: &str = "gemini";
+
+/// Normalize Gemini tool name to standard ToolName
+fn normalize_tool_name(name: &str) -> ToolName {
+    match name {
+        "run_shell_command" => ToolName::Bash,
+        "write_file" => ToolName::Write,
+        "read_file" => ToolName::Read,
+        other => ToolName::Other(other.to_string()),
+    }
+}
+
 pub(crate) fn normalize_gemini_session(
     session: &GeminiSession,
     raw_messages: Vec<serde_json::Value>,
@@ -13,7 +25,10 @@ pub(crate) fn normalize_gemini_session(
     let session_id = Some(&session.session_id);
 
     for (idx, msg) in session.messages.iter().enumerate() {
-        let raw_value = raw_messages.get(idx).cloned().unwrap_or(serde_json::Value::Null);
+        let raw_value = raw_messages
+            .get(idx)
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
         match msg {
             GeminiMessage::User(user_msg) => {
                 // Skip numeric IDs (legacy CLI events), keep UUID-style IDs (complete messages)
@@ -26,7 +41,7 @@ pub(crate) fn normalize_gemini_session(
                 let ts = &user_msg.timestamp;
                 let msg_id = Some(&user_msg.id);
                 let mut ev = AgentEventV1::new(
-                    Source::Gemini,
+                    Source::new(PROVIDER_NAME),
                     project_hash.clone(),
                     ts.clone(),
                     EventType::UserMessage,
@@ -48,7 +63,7 @@ pub(crate) fn normalize_gemini_session(
                 let model = &gemini_msg.model;
 
                 let mut ev = AgentEventV1::new(
-                    Source::Gemini,
+                    Source::new(PROVIDER_NAME),
                     project_hash.clone(),
                     ts.clone(),
                     EventType::AssistantMessage,
@@ -74,7 +89,7 @@ pub(crate) fn normalize_gemini_session(
 
                 for (idx, thought) in gemini_msg.thoughts.iter().enumerate() {
                     let mut rev = AgentEventV1::new(
-                        Source::Gemini,
+                        Source::new(PROVIDER_NAME),
                         project_hash.clone(),
                         ts.clone(),
                         EventType::Reasoning,
@@ -92,7 +107,7 @@ pub(crate) fn normalize_gemini_session(
 
                 for tool_call in &gemini_msg.tool_calls {
                     let mut tev = AgentEventV1::new(
-                        Source::Gemini,
+                        Source::new(PROVIDER_NAME),
                         project_hash.clone(),
                         ts.clone(),
                         EventType::ToolCall,
@@ -104,8 +119,8 @@ pub(crate) fn normalize_gemini_session(
                     tev.role = Some(Role::Assistant);
                     tev.model = Some(model.clone());
 
-                    // Normalize tool name using ToolName enum
-                    let tool_name = ToolName::from_provider_name(Source::Gemini, &tool_call.name);
+                    // Normalize tool name using provider-specific logic
+                    let tool_name = normalize_tool_name(&tool_call.name);
                     tev.tool_name = Some(tool_name.to_string());
                     tev.channel = Some(tool_name.channel());
 
@@ -164,7 +179,7 @@ pub(crate) fn normalize_gemini_session(
                 let msg_id = Some(&info_msg.id);
 
                 let mut ev = AgentEventV1::new(
-                    Source::Gemini,
+                    Source::new(PROVIDER_NAME),
                     project_hash.clone(),
                     ts.clone(),
                     EventType::SystemMessage,

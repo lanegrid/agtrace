@@ -3,6 +3,21 @@ use agtrace_types::*;
 
 use super::schema::*;
 
+const PROVIDER_NAME: &str = "claude_code";
+
+/// Normalize Claude tool name to standard ToolName
+fn normalize_tool_name(name: &str) -> ToolName {
+    match name {
+        "Bash" => ToolName::Bash,
+        "Read" => ToolName::Read,
+        "Write" => ToolName::Write,
+        "Edit" => ToolName::Edit,
+        "Glob" => ToolName::Glob,
+        "Grep" => ToolName::Grep,
+        other => ToolName::Other(other.to_string()),
+    }
+}
+
 pub(crate) fn normalize_claude_stream(
     records: Vec<(ClaudeRecord, serde_json::Value)>,
     project_root_override: Option<&str>,
@@ -75,7 +90,7 @@ pub(crate) fn normalize_claude_stream(
                         } = item
                         {
                             let mut ev = AgentEventV1::new(
-                                Source::ClaudeCode,
+                                Source::new(PROVIDER_NAME),
                                 project_hash_val.clone(),
                                 user.timestamp.clone(),
                                 EventType::ToolResult,
@@ -135,7 +150,7 @@ pub(crate) fn normalize_claude_stream(
 
                 // Regular user message (text only)
                 let mut ev = AgentEventV1::new(
-                    Source::ClaudeCode,
+                    Source::new(PROVIDER_NAME),
                     project_hash_val.clone(),
                     user.timestamp.clone(),
                     EventType::UserMessage,
@@ -176,7 +191,7 @@ pub(crate) fn normalize_claude_stream(
                         match item {
                             AssistantContent::Thinking { thinking, .. } => {
                                 let mut ev = AgentEventV1::new(
-                                    Source::ClaudeCode,
+                                    Source::new(PROVIDER_NAME),
                                     project_hash_val.clone(),
                                     asst.timestamp.clone(),
                                     EventType::Reasoning,
@@ -196,7 +211,7 @@ pub(crate) fn normalize_claude_stream(
                                 id, name, input, ..
                             } => {
                                 let mut ev = AgentEventV1::new(
-                                    Source::ClaudeCode,
+                                    Source::new(PROVIDER_NAME),
                                     project_hash_val.clone(),
                                     asst.timestamp.clone(),
                                     EventType::ToolCall,
@@ -207,9 +222,8 @@ pub(crate) fn normalize_claude_stream(
                                 ev.role = Some(Role::Assistant);
                                 ev.project_root = project_root_str.clone();
 
-                                // Normalize tool name using ToolName enum
-                                let tool_name =
-                                    ToolName::from_provider_name(Source::ClaudeCode, name);
+                                // Normalize tool name using provider-specific logic
+                                let tool_name = normalize_tool_name(name);
                                 ev.tool_name = Some(tool_name.to_string());
                                 ev.channel = Some(tool_name.channel());
                                 ev.tool_call_id = Some(id.clone());
@@ -245,7 +259,7 @@ pub(crate) fn normalize_claude_stream(
                             }
                             AssistantContent::Text { text, .. } => {
                                 let mut ev = AgentEventV1::new(
-                                    Source::ClaudeCode,
+                                    Source::new(PROVIDER_NAME),
                                     project_hash_val.clone(),
                                     asst.timestamp.clone(),
                                     EventType::AssistantMessage,
@@ -277,7 +291,7 @@ pub(crate) fn normalize_claude_stream(
                 } else {
                     // Simple assistant message with no tools
                     let mut ev = AgentEventV1::new(
-                        Source::ClaudeCode,
+                        Source::new(PROVIDER_NAME),
                         project_hash_val.clone(),
                         asst.timestamp.clone(),
                         EventType::AssistantMessage,

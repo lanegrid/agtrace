@@ -20,7 +20,7 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
         let raw_messages = raw_value
             .get("messages")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.clone())
+            .cloned()
             .unwrap_or_default();
 
         return Ok(normalize_gemini_session(&session, raw_messages));

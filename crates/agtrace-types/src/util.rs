@@ -73,14 +73,3 @@ pub fn truncate(s: &str, max: usize) -> String {
         s.chars().take(max).collect::<String>() + "...(truncated)"
     }
 }
-
-/// Encode project_root path to Claude Code directory name format
-/// Claude Code replaces both '/' and '.' with '-'
-pub fn encode_claude_project_dir(project_root: &Path) -> String {
-    let path_str = project_root.to_string_lossy();
-    let encoded = path_str
-        .replace(['/', '.'], "-")
-        .trim_start_matches('-')
-        .to_string();
-    format!("-{}", encoded)
-}

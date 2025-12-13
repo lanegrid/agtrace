@@ -150,8 +150,8 @@ impl Storage {
                 // The caller should provide the project_hash if all_projects is false.
             }
 
-            if let Some(src) = source {
-                if events[0].source != src {
+            if let Some(ref src) = source {
+                if events[0].source != *src {
                     continue;
                 }
             }
@@ -176,7 +176,7 @@ impl Storage {
 
             summaries.push(SessionSummary {
                 session_id,
-                source: events[0].source,
+                source: events[0].source.clone(),
                 project_hash: events[0].project_hash.clone(),
                 start_ts,
                 end_ts,
@@ -302,7 +302,7 @@ mod tests {
 
     fn create_test_event(session_id: &str, event_type: EventType, ts: &str) -> AgentEventV1 {
         let mut event = AgentEventV1::new(
-            Source::ClaudeCode,
+            Source::new("claude_code"),
             "test-hash-123".to_string(),
             ts.to_string(),
             event_type,
@@ -402,7 +402,7 @@ mod tests {
             .find(|s| s.session_id == "session-1")
             .expect("Should find session-1");
         assert_eq!(session1.event_count, 2);
-        assert_eq!(session1.source, Source::ClaudeCode);
+        assert_eq!(session1.source, Source::new("claude_code"));
     }
 
     #[test]
@@ -415,29 +415,29 @@ mod tests {
             EventType::UserMessage,
             "2025-11-26T12:51:28.000Z",
         );
-        event1.source = Source::ClaudeCode;
+        event1.source = Source::new("claude_code");
 
         let mut event2 = create_test_event(
             "session-2",
             EventType::UserMessage,
             "2025-11-26T13:00:00.000Z",
         );
-        event2.source = Source::Codex;
+        event2.source = Source::new("codex");
 
         storage.save_events(&vec![event1]).unwrap();
         storage.save_events(&vec![event2]).unwrap();
 
         let claude_sessions = storage
-            .list_sessions(None, Some(Source::ClaudeCode), None, true)
+            .list_sessions(None, Some(Source::new("claude_code")), None, true)
             .unwrap();
         assert_eq!(claude_sessions.len(), 1);
-        assert_eq!(claude_sessions[0].source, Source::ClaudeCode);
+        assert_eq!(claude_sessions[0].source, Source::new("claude_code"));
 
         let codex_sessions = storage
-            .list_sessions(None, Some(Source::Codex), None, true)
+            .list_sessions(None, Some(Source::new("codex")), None, true)
             .unwrap();
         assert_eq!(codex_sessions.len(), 1);
-        assert_eq!(codex_sessions[0].source, Source::Codex);
+        assert_eq!(codex_sessions[0].source, Source::new("codex"));
     }
 
     #[test]

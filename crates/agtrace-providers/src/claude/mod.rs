@@ -3,14 +3,25 @@ pub mod mapper;
 pub mod schema;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
+use agtrace_types::paths_equal;
 use agtrace_types::AgentEventV1;
-use agtrace_types::{encode_claude_project_dir, paths_equal};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file};
+
+/// Encode project_root path to Claude Code directory name format
+/// Claude Code replaces both '/' and '.' with '-'
+fn encode_claude_project_dir(project_root: &Path) -> String {
+    let path_str = project_root.to_string_lossy();
+    let encoded = path_str
+        .replace(['/', '.'], "-")
+        .trim_start_matches('-')
+        .to_string();
+    format!("-{}", encoded)
+}
 
 pub struct ClaudeProvider;
 
@@ -28,7 +39,7 @@ impl ClaudeProvider {
 
 impl LogProvider for ClaudeProvider {
     fn name(&self) -> &str {
-        "claude"
+        "claude_code"
     }
 
     fn can_handle(&self, path: &Path) -> bool {

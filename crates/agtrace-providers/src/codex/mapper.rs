@@ -3,6 +3,17 @@ use agtrace_types::*;
 
 use super::schema::*;
 
+const PROVIDER_NAME: &str = "codex";
+
+/// Normalize Codex tool name to standard ToolName
+fn normalize_tool_name(name: &str) -> ToolName {
+    match name {
+        "shell" | "shell_command" => ToolName::Bash,
+        "apply_patch" => ToolName::Edit,
+        other => ToolName::Other(other.to_string()),
+    }
+}
+
 pub(crate) fn normalize_codex_stream(
     records: Vec<(CodexRecord, serde_json::Value)>,
     session_id: &str,
@@ -44,7 +55,7 @@ pub(crate) fn normalize_codex_stream(
             .unwrap_or_else(|| "unknown".to_string());
 
         let mut ev = AgentEventV1::new(
-            Source::Codex,
+            Source::new(PROVIDER_NAME),
             project_hash_val,
             ts.to_string(),
             EventType::Meta,
@@ -113,8 +124,8 @@ pub(crate) fn normalize_codex_stream(
                         ev.event_type = EventType::ToolCall;
                         ev.role = Some(Role::Assistant);
 
-                        // Normalize tool name using ToolName enum
-                        let tool_name = ToolName::from_provider_name(Source::Codex, &call.name);
+                        // Normalize tool name using provider-specific logic
+                        let tool_name = normalize_tool_name(&call.name);
                         ev.tool_name = Some(tool_name.to_string());
                         ev.channel = Some(tool_name.channel());
                         ev.tool_call_id = Some(call.call_id.clone());
@@ -166,8 +177,8 @@ pub(crate) fn normalize_codex_stream(
                         ev.event_type = EventType::ToolCall;
                         ev.role = Some(Role::Assistant);
 
-                        // Normalize tool name using ToolName enum
-                        let tool_name = ToolName::from_provider_name(Source::Codex, &call.name);
+                        // Normalize tool name using provider-specific logic
+                        let tool_name = normalize_tool_name(&call.name);
                         ev.tool_name = Some(tool_name.to_string());
                         ev.channel = Some(tool_name.channel());
                         ev.tool_call_id = Some(call.call_id.clone());

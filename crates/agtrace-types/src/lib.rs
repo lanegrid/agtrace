@@ -6,13 +6,19 @@ use std::str::FromStr;
 
 pub use util::*;
 
-/// Source of the agent log
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Source {
-    ClaudeCode,
-    Codex,
-    Gemini,
+/// Source of the agent log (provider-agnostic identifier)
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Source(String);
+
+impl Source {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 /// Type of agent event
@@ -110,32 +116,6 @@ pub enum ToolName {
 }
 
 impl ToolName {
-    /// Normalize provider-specific tool name to standard ToolName
-    pub fn from_provider_name(provider: Source, name: &str) -> Self {
-        match provider {
-            Source::ClaudeCode => match name {
-                "Bash" => ToolName::Bash,
-                "Read" => ToolName::Read,
-                "Write" => ToolName::Write,
-                "Edit" => ToolName::Edit,
-                "Glob" => ToolName::Glob,
-                "Grep" => ToolName::Grep,
-                other => ToolName::Other(other.to_string()),
-            },
-            Source::Codex => match name {
-                "shell" | "shell_command" => ToolName::Bash,
-                "apply_patch" => ToolName::Edit,
-                other => ToolName::Other(other.to_string()),
-            },
-            Source::Gemini => match name {
-                "run_shell_command" => ToolName::Bash,
-                "write_file" => ToolName::Write,
-                "read_file" => ToolName::Read,
-                other => ToolName::Other(other.to_string()),
-            },
-        }
-    }
-
     /// Convert to string representation
     pub fn as_str(&self) -> &str {
         match self {
@@ -290,12 +270,7 @@ impl FromStr for Source {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "claude" => Ok(Source::ClaudeCode),
-            "codex" => Ok(Source::Codex),
-            "gemini" => Ok(Source::Gemini),
-            _ => Err(anyhow!("Unknown source: {}", s)),
-        }
+        Ok(Source::new(s))
     }
 }
 
