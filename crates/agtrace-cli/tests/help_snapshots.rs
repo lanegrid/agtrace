@@ -144,3 +144,9 @@ fn test_init_help() {
     let help = run_help(&["init"]);
     insta::assert_snapshot!("init_help", help);
 }
+
+#[test]
+fn test_pack_help() {
+    let help = run_help(&["pack"]);
+    insta::assert_snapshot!("pack_help", help);
+}
