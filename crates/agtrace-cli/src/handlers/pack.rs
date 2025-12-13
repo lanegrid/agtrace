@@ -64,11 +64,9 @@ struct SessionDigest {
 
 impl SessionDigest {
     fn new(session_id: &str, provider: &str, spans: Vec<Span>) -> Self {
-        let opening = spans.first().and_then(|s| {
-            s.user
-                .as_ref()
-                .map(|u| truncate_string(&u.text, 100).to_string())
-        });
+        let opening = spans
+            .first()
+            .and_then(|s| s.user.as_ref().map(|u| truncate_string(&u.text, 100)));
 
         let activation = find_activation(&spans);
         let outcome = compute_outcome(&spans);
@@ -95,15 +93,13 @@ fn find_activation(spans: &[Span]) -> Option<String> {
             return spans[i]
                 .user
                 .as_ref()
-                .map(|u| truncate_string(&u.text, 100).to_string());
+                .map(|u| truncate_string(&u.text, 100));
         }
     }
 
-    spans.first().and_then(|s| {
-        s.user
-            .as_ref()
-            .map(|u| truncate_string(&u.text, 100).to_string())
-    })
+    spans
+        .first()
+        .and_then(|s| s.user.as_ref().map(|u| truncate_string(&u.text, 100)))
 }
 
 fn compute_outcome(spans: &[Span]) -> String {
@@ -271,10 +267,11 @@ fn output_tools(digests: &[SessionDigest]) {
     }
 }
 
-fn truncate_string(s: &str, max_len: usize) -> &str {
-    if s.len() <= max_len {
-        s
+fn truncate_string(s: &str, max_len: usize) -> String {
+    if s.chars().count() <= max_len {
+        s.to_string()
     } else {
-        &s[..max_len.min(s.len())]
+        let chars: Vec<char> = s.chars().take(max_len).collect();
+        chars.iter().collect::<String>() + "..."
     }
 }

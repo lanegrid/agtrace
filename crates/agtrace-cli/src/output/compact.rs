@@ -128,8 +128,9 @@ pub fn format_spans_compact(spans: &[Span], opts: &CompactFormatOpts) -> Vec<Str
             if !assistant.text.trim().is_empty() {
                 let time_display = format_time(session_start, &assistant.ts);
                 let dur_placeholder = "   -   ";
-                let text_preview = if assistant.text.len() > 100 {
-                    format!("{}...", &assistant.text[..100])
+                let text_preview = if assistant.text.chars().count() > 100 {
+                    let chars: Vec<char> = assistant.text.chars().take(100).collect();
+                    chars.iter().collect::<String>() + "..."
                 } else {
                     assistant.text.clone()
                 };
