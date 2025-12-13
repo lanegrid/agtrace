@@ -3,9 +3,11 @@
 
 pub mod analysis;
 pub mod export;
+pub mod span;
 pub mod summary;
 mod turn;
 
+pub use span::{build_spans, Message, Span, SpanStats, SystemEvent, TokenBundle, ToolAction};
 pub use summary::SessionSummary;
 pub use turn::{
     interpret_turns, ActionResult, ChainItem, SystemMessageKind, Turn, TurnOutcome, TurnStats,

@@ -1,0 +1,148 @@
+---
+source: crates/agtrace-engine/tests/span_snapshots.rs
+expression: json
+---
+[
+  {
+    "user": {
+      "ts": "2025-12-09T19:55:16.336Z",
+      "role": "user",
+      "text": "<environment_context>\n  <cwd>/Users/zawakin/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>",
+      "tokens": null
+    },
+    "assistant": [],
+    "tools": [],
+    "reasoning": [],
+    "system": [],
+    "stats": {
+      "tool_calls": 0,
+      "tool_failures": 0,
+      "e2e_ms": null,
+      "pre_tool_ms": null,
+      "tool_ms": null,
+      "post_tool_ms": null,
+      "tokens_total": null
+    }
+  },
+  {
+    "user": {
+      "ts": "2025-12-09T19:55:18.143Z",
+      "role": "user",
+      "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+      "tokens": null
+    },
+    "assistant": [
+      {
+        "ts": "2025-12-09T19:55:37.424Z",
+        "role": "assistant",
+        "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`.",
+        "tokens": null
+      }
+    ],
+    "tools": [
+      {
+        "call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG",
+        "ts_call": "2025-12-09T19:55:30.116Z",
+        "tool_name": "Bash",
+        "input_summary": "mkdir -p myapp",
+        "ts_result": "2025-12-09T19:55:30.257Z",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": null,
+        "error_summary": null
+      },
+      {
+        "call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA",
+        "ts_call": "2025-12-09T19:55:34.147Z",
+        "tool_name": "Edit",
+        "input_summary": "hoge.py",
+        "ts_result": "2025-12-09T19:55:35.204Z",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": null,
+        "error_summary": null
+      }
+    ],
+    "reasoning": [
+      "**Creating directory and file using shell and patch**",
+      "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding."
+    ],
+    "system": [],
+    "stats": {
+      "tool_calls": 2,
+      "tool_failures": 0,
+      "e2e_ms": 19281,
+      "pre_tool_ms": 11973,
+      "tool_ms": 5088,
+      "post_tool_ms": 2220,
+      "tokens_total": null
+    }
+  },
+  {
+    "user": {
+      "ts": "2025-12-09T19:55:45.472Z",
+      "role": "user",
+      "text": "cd to myapp and run python hoge.py",
+      "tokens": null
+    },
+    "assistant": [
+      {
+        "ts": "2025-12-09T19:56:06.171Z",
+        "role": "assistant",
+        "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2",
+        "tokens": null
+      }
+    ],
+    "tools": [
+      {
+        "call_id": "call_5j2yJgrbOClvto1R8nvfSoJS",
+        "ts_call": "2025-12-09T19:55:50.553Z",
+        "tool_name": "Bash",
+        "input_summary": "python hoge.py",
+        "ts_result": "2025-12-09T19:55:50.681Z",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": null,
+        "error_summary": null
+      },
+      {
+        "call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x",
+        "ts_call": "2025-12-09T19:55:55.447Z",
+        "tool_name": "Bash",
+        "input_summary": "python hoge.py",
+        "ts_result": "2025-12-09T19:55:59.497Z",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": null,
+        "error_summary": null
+      },
+      {
+        "call_id": "call_mI2n5JLETgVMNGApYPPAjEwD",
+        "ts_call": "2025-12-09T19:56:02.618Z",
+        "tool_name": "Bash",
+        "input_summary": "python3 hoge.py",
+        "ts_result": "2025-12-09T19:56:02.744Z",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": null,
+        "error_summary": null
+      }
+    ],
+    "reasoning": [
+      "**Running Python script in workspace**",
+      "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification.",
+      "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative.",
+      "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
+    ],
+    "system": [],
+    "stats": {
+      "tool_calls": 3,
+      "tool_failures": 0,
+      "e2e_ms": 20699,
+      "pre_tool_ms": 5081,
+      "tool_ms": 12191,
+      "post_tool_ms": 3427,
+      "tokens_total": null
+    }
+  }
+]
