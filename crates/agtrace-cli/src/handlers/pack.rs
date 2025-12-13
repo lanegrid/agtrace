@@ -1,3 +1,4 @@
+use crate::output::{format_spans_compact, CompactFormatOpts};
 use crate::session_loader::{LoadOptions, SessionLoader};
 use agtrace_engine::{build_spans, Span};
 use agtrace_index::Database;
@@ -150,6 +151,11 @@ fn compute_importance_score(spans: &[Span]) -> u32 {
 }
 
 fn output_compact(digests: &[SessionDigest]) {
+    let opts = CompactFormatOpts {
+        enable_color: false,
+        relative_time: false,
+    };
+
     for digest in digests {
         let id_short = &digest.session_id[..8.min(digest.session_id.len())];
         println!("## Session {} ({})", id_short, digest.source);
@@ -162,8 +168,9 @@ fn output_compact(digests: &[SessionDigest]) {
         }
 
         println!("Work:");
-        for span in &digest.spans {
-            print_span_compact(span);
+        let lines = format_spans_compact(&digest.spans, &opts);
+        for line in lines.iter().take(30) {
+            println!("  {}", line);
         }
 
         println!("Outcome: {}", digest.outcome);
@@ -261,23 +268,6 @@ fn output_tools(digests: &[SessionDigest]) {
             println!("{}", opening);
         }
         println!();
-    }
-}
-
-fn print_span_compact(span: &Span) {
-    if let Some(user) = &span.user {
-        println!("  User: {}", truncate_string(&user.text, 80));
-    }
-
-    for tool in &span.tools {
-        let status = match &tool.status {
-            Some(s) => format!("{:?}", s),
-            None => "unknown".to_string(),
-        };
-        println!(
-            "    Tool {}: {} ({})",
-            tool.tool_name, tool.input_summary, status
-        );
     }
 }
 

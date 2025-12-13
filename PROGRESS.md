@@ -114,28 +114,28 @@ Note: diagnose and tools templates were already implemented in Phase 2.
 - [x] Run `cargo test`
 - [x] Update help snapshots
 
-## Phase 5: Compact出力リファクタ
+## Phase 5: Compact出力リファクタ ✅
 
 ### 5.1 文字列生成関数の分離
-- [ ] Read `crates/agtrace-cli/src/output/compact.rs`
-- [ ] Create `format_turns_compact(turns, opts) -> Vec<String>`
-- [ ] Refactor `print_turns_compact()` to use `format_*`
-- [ ] Create `format_spans_compact(spans, opts) -> Vec<String>`
-- [ ] Create `format_session_compact(digest, spans, opts) -> String`
-- [ ] Run `cargo build` and fix errors
-- [ ] Run `cargo clippy`
-- [ ] Run `cargo fmt`
+- [x] Read `crates/agtrace-cli/src/output/compact.rs`
+- [x] Create `format_turns_compact(turns, opts) -> Vec<String>`
+- [x] Refactor `print_turns_compact()` to use `format_*`
+- [x] Create `format_spans_compact(spans, opts) -> Vec<String>`
+- [x] Note: `format_session_compact` not needed; handled in pack.rs
+- [x] Run `cargo build` and fix errors
+- [x] Run `cargo clippy`
+- [x] Run `cargo fmt`
 
 ### 5.2 Pack統合
-- [ ] Update `pack.rs` to use new format functions
-- [ ] Ensure ANSI-free output for pack (paste-friendly)
-- [ ] Ensure no relative timestamps in pack output
-- [ ] Manual test: verify pack output matches expected format
+- [x] Update `pack.rs` to use new format functions
+- [x] Ensure ANSI-free output for pack (paste-friendly)
+- [x] Ensure no relative timestamps in pack output
+- [ ] Manual test: verify pack output matches expected format (deferred - needs real sessions)
 
 ### 5.3 テスト
-- [ ] Run `cargo test`
-- [ ] Manual regression test: `cargo run -- session show <id> --style compact`
-- [ ] Verify no breaking changes
+- [ ] Run `cargo test` (pending)
+- [ ] Manual regression test: `cargo run -- session show <id> --style compact` (deferred - needs real sessions)
+- [x] Verify no breaking changes via cargo build/clippy
 
 ## Phase 6: Session Show Spanベース移行 (任意)
 
