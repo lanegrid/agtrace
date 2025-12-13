@@ -14,7 +14,7 @@ pub fn normalize_claude_file(
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Claude file: {}", path.display()))?;
 
-    let mut records: Vec<ClaudeRecord> = Vec::new();
+    let mut records: Vec<(ClaudeRecord, serde_json::Value)> = Vec::new();
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() {
@@ -22,7 +22,9 @@ pub fn normalize_claude_file(
         }
         let record: ClaudeRecord = serde_json::from_str(line)
             .with_context(|| format!("Failed to parse JSON line: {}", line))?;
-        records.push(record);
+        let raw_value: serde_json::Value = serde_json::from_str(line)
+            .with_context(|| format!("Failed to parse JSON line as Value: {}", line))?;
+        records.push((record, raw_value));
     }
 
     Ok(normalize_claude_stream(records, project_root_override))

@@ -37,8 +37,7 @@ expression: json_pretty
       "cwd": "/Users/zawakin/agent-sample",
       "git": {
         "branch": "codex",
-        "commit_hash": "1cea5ec49574a868eb98893e46bcb775539f798e",
-        "repository_url": null
+        "commit_hash": "1cea5ec49574a868eb98893e46bcb775539f798e"
       },
       "id": "019b04ae-b1c6-7c72-a134-a4c2de66058c",
       "instructions": null,
@@ -178,6 +177,9 @@ expression: json_pretty
       "effort": "medium",
       "model": "gpt-5.1-codex-max",
       "sandbox_policy": {
+        "exclude_slash_tmp": false,
+        "exclude_tmpdir_env_var": false,
+        "network_access": false,
         "type": "workspace-write"
       },
       "summary": "auto"
@@ -524,6 +526,9 @@ expression: json_pretty
       "effort": "medium",
       "model": "gpt-5.1-codex-max",
       "sandbox_policy": {
+        "exclude_slash_tmp": false,
+        "exclude_tmpdir_env_var": false,
+        "network_access": false,
         "type": "workspace-write"
       },
       "summary": "auto"
@@ -843,6 +848,9 @@ expression: json_pretty
       "effort": "medium",
       "model": "gpt-5.1-codex-max",
       "sandbox_policy": {
+        "exclude_slash_tmp": false,
+        "exclude_tmpdir_env_var": false,
+        "network_access": false,
         "type": "workspace-write"
       },
       "summary": "auto"
@@ -1124,6 +1132,9 @@ expression: json_pretty
       "effort": "medium",
       "model": "gpt-5.1-codex-max",
       "sandbox_policy": {
+        "exclude_slash_tmp": false,
+        "exclude_tmpdir_env_var": false,
+        "network_access": false,
         "type": "workspace-write"
       },
       "summary": "auto"
@@ -1488,6 +1499,9 @@ expression: json_pretty
       "effort": "medium",
       "model": "gpt-5.1-codex-max",
       "sandbox_policy": {
+        "exclude_slash_tmp": false,
+        "exclude_tmpdir_env_var": false,
+        "network_access": false,
         "type": "workspace-write"
       },
       "summary": "auto"
@@ -1806,6 +1820,9 @@ expression: json_pretty
       "effort": "medium",
       "model": "gpt-5.1-codex-max",
       "sandbox_policy": {
+        "exclude_slash_tmp": false,
+        "exclude_tmpdir_env_var": false,
+        "network_access": false,
         "type": "workspace-write"
       },
       "summary": "auto"
@@ -2124,6 +2141,9 @@ expression: json_pretty
       "effort": "medium",
       "model": "gpt-5.1-codex-max",
       "sandbox_policy": {
+        "exclude_slash_tmp": false,
+        "exclude_tmpdir_env_var": false,
+        "network_access": false,
         "type": "workspace-write"
       },
       "summary": "auto"

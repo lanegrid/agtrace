@@ -10,16 +10,27 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
 
+    // Parse as Value to preserve original JSON
+    let raw_value: serde_json::Value = serde_json::from_str(&text)
+        .with_context(|| format!("Failed to parse Gemini file as JSON: {}", path.display()))?;
+
     // Try new format (session object) first
     if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
-        return Ok(normalize_gemini_session(&session));
+        // Extract raw messages array
+        let raw_messages = raw_value
+            .get("messages")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.clone())
+            .unwrap_or_default();
+
+        return Ok(normalize_gemini_session(&session, raw_messages));
     }
 
     // Fallback: Try legacy format (array of messages)
     if let Ok(legacy_messages) =
         serde_json::from_str::<Vec<super::schema::LegacyGeminiMessage>>(&text)
     {
-        return normalize_legacy_format(path, legacy_messages);
+        return normalize_legacy_format(path, legacy_messages, raw_value);
     }
 
     anyhow::bail!(
@@ -32,6 +43,7 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
 fn normalize_legacy_format(
     path: &Path,
     messages: Vec<super::schema::LegacyGeminiMessage>,
+    raw_value: serde_json::Value,
 ) -> Result<Vec<AgentEventV1>> {
     use super::schema::{GeminiMessage, UserMessage};
 
@@ -71,7 +83,14 @@ fn normalize_legacy_format(
         messages: converted_messages,
     };
 
-    Ok(normalize_gemini_session(&session))
+    // For legacy format, raw_value is an array of messages
+    let raw_messages = if let Some(arr) = raw_value.as_array() {
+        arr.clone()
+    } else {
+        vec![]
+    };
+
+    Ok(normalize_gemini_session(&session, raw_messages))
 }
 
 /// Extract project hash from Gemini file path

@@ -4,7 +4,7 @@ use agtrace_types::*;
 use super::schema::*;
 
 pub(crate) fn normalize_codex_stream(
-    records: Vec<CodexRecord>,
+    records: Vec<(CodexRecord, serde_json::Value)>,
     session_id: &str,
     project_root_override: Option<&str>,
 ) -> Vec<AgentEventV1> {
@@ -15,7 +15,7 @@ pub(crate) fn normalize_codex_stream(
     let mut project_root_str: Option<String> = project_root_override.map(|s| s.to_string());
     let mut project_hash: Option<String> = project_root_str.as_deref().map(project_hash_from_root);
 
-    for record in records {
+    for (record, raw_value) in records {
         seq += 1;
 
         let ts = match &record {
@@ -266,7 +266,7 @@ pub(crate) fn normalize_codex_stream(
             }
         }
 
-        ev.raw = serde_json::to_value(&record).unwrap_or(serde_json::Value::Null);
+        ev.raw = raw_value;
         events.push(ev);
     }
 

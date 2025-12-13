@@ -4,7 +4,7 @@ use agtrace_types::*;
 use super::schema::*;
 
 pub(crate) fn normalize_claude_stream(
-    records: Vec<ClaudeRecord>,
+    records: Vec<(ClaudeRecord, serde_json::Value)>,
     project_root_override: Option<&str>,
 ) -> Vec<AgentEventV1> {
     let mut events = Vec::new();
@@ -14,7 +14,7 @@ pub(crate) fn normalize_claude_stream(
     let mut project_root_str: Option<String> = project_root_override.map(|s| s.to_string());
     let mut project_hash: Option<String> = project_root_str.as_deref().map(project_hash_from_root);
 
-    for record in records {
+    for (record, raw_value) in records {
         // Determine project_root from cwd if not overridden
         if project_root_str.is_none() {
             let cwd = match &record {
@@ -114,7 +114,7 @@ pub(crate) fn normalize_claude_stream(
                                 }
                             }
 
-                            ev.raw = serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                            ev.raw = raw_value.clone();
                             events.push(ev);
                         }
                     }
@@ -159,7 +159,7 @@ pub(crate) fn normalize_claude_stream(
                 ev.text = Some(text_parts.join("\n"));
 
                 last_user_event_id = ev.event_id.clone();
-                ev.raw = serde_json::to_value(&user).unwrap_or(serde_json::Value::Null);
+                ev.raw = raw_value.clone();
                 events.push(ev);
             }
             ClaudeRecord::Assistant(asst) => {
@@ -189,8 +189,7 @@ pub(crate) fn normalize_claude_stream(
                                 ev.project_root = project_root_str.clone();
                                 ev.text = Some(thinking.clone());
                                 ev.model = Some(asst.message.model.clone());
-                                ev.raw =
-                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                ev.raw = raw_value.clone();
                                 events.push(ev);
                             }
                             AssistantContent::ToolUse {
@@ -241,8 +240,7 @@ pub(crate) fn normalize_claude_stream(
                                 let input_str = serde_json::to_string(input).unwrap_or_default();
                                 ev.text = Some(input_str);
                                 ev.model = Some(asst.message.model.clone());
-                                ev.raw =
-                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                ev.raw = raw_value.clone();
                                 events.push(ev);
                             }
                             AssistantContent::Text { text, .. } => {
@@ -270,8 +268,7 @@ pub(crate) fn normalize_claude_stream(
                                         usage.cache_read_input_tokens.map(|t| t as u64);
                                 }
 
-                                ev.raw =
-                                    serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
+                                ev.raw = raw_value.clone();
                                 events.push(ev);
                             }
                             _ => {}
@@ -311,7 +308,7 @@ pub(crate) fn normalize_claude_stream(
                         ev.tokens_cached = usage.cache_read_input_tokens.map(|t| t as u64);
                     }
 
-                    ev.raw = serde_json::to_value(&asst).unwrap_or(serde_json::Value::Null);
+                    ev.raw = raw_value.clone();
                     events.push(ev);
                 }
             }

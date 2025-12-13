@@ -1,16 +1,19 @@
 use agtrace_types::*;
-use serde_json::Value;
 
 use super::schema::{GeminiMessage, GeminiSession};
 
-pub(crate) fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEventV1> {
+pub(crate) fn normalize_gemini_session(
+    session: &GeminiSession,
+    raw_messages: Vec<serde_json::Value>,
+) -> Vec<AgentEventV1> {
     let mut events = Vec::new();
     let mut last_user_event_id: Option<String> = None;
 
     let project_hash = &session.project_hash;
     let session_id = Some(&session.session_id);
 
-    for msg in &session.messages {
+    for (idx, msg) in session.messages.iter().enumerate() {
+        let raw_value = raw_messages.get(idx).cloned().unwrap_or(serde_json::Value::Null);
         match msg {
             GeminiMessage::User(user_msg) => {
                 // Skip numeric IDs (legacy CLI events), keep UUID-style IDs (complete messages)
@@ -36,7 +39,7 @@ pub(crate) fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEven
                 ev.model = None;
                 ev.text = Some(user_msg.content.clone());
                 last_user_event_id = ev.event_id.clone();
-                ev.raw = serde_json::to_value(user_msg).unwrap_or(Value::Null);
+                ev.raw = raw_value.clone();
                 events.push(ev);
             }
             GeminiMessage::Gemini(gemini_msg) => {
@@ -66,7 +69,7 @@ pub(crate) fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEven
                 ev.tokens_thinking = Some(gemini_msg.tokens.thoughts as u64);
                 ev.tokens_tool = Some(gemini_msg.tokens.tool as u64);
 
-                ev.raw = serde_json::to_value(gemini_msg).unwrap_or(Value::Null);
+                ev.raw = raw_value.clone();
                 events.push(ev);
 
                 for (idx, thought) in gemini_msg.thoughts.iter().enumerate() {
@@ -83,7 +86,7 @@ pub(crate) fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEven
                     rev.channel = Some(Channel::Chat);
                     rev.model = Some(model.clone());
                     rev.text = Some(format!("{}: {}", thought.subject, thought.description));
-                    rev.raw = serde_json::to_value(thought).unwrap_or(Value::Null);
+                    rev.raw = raw_value.clone();
                     events.push(rev);
                 }
 
@@ -152,7 +155,7 @@ pub(crate) fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEven
                     let args = serde_json::to_string(&tool_call.args).unwrap_or_default();
                     tev.text = Some(args);
 
-                    tev.raw = serde_json::to_value(tool_call).unwrap_or(Value::Null);
+                    tev.raw = raw_value.clone();
                     events.push(tev);
                 }
             }
@@ -172,7 +175,7 @@ pub(crate) fn normalize_gemini_session(session: &GeminiSession) -> Vec<AgentEven
                 ev.role = Some(Role::System);
                 ev.channel = Some(Channel::System);
                 ev.text = Some(info_msg.content.clone());
-                ev.raw = serde_json::to_value(info_msg).unwrap_or(Value::Null);
+                ev.raw = raw_value.clone();
                 events.push(ev);
             }
         }
