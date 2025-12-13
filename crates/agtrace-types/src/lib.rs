@@ -1,8 +1,6 @@
 mod util;
 
-use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 pub use util::*;
 
@@ -14,10 +12,6 @@ pub struct Source(String);
 impl Source {
     pub fn new(name: impl Into<String>) -> Self {
         Self(name.into())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
     }
 }
 
@@ -83,19 +77,6 @@ pub enum FileOp {
     Move,
 }
 
-impl std::fmt::Display for FileOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FileOp::Read => write!(f, "read"),
-            FileOp::Write => write!(f, "write"),
-            FileOp::Modify => write!(f, "modify"),
-            FileOp::Delete => write!(f, "delete"),
-            FileOp::Create => write!(f, "create"),
-            FileOp::Move => write!(f, "move"),
-        }
-    }
-}
-
 /// Normalized tool name (standardized across providers)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ToolName {
@@ -137,28 +118,6 @@ impl ToolName {
             ToolName::Glob | ToolName::Grep => Channel::Filesystem,
             ToolName::Other(_) => Channel::Chat,
         }
-    }
-}
-
-impl std::fmt::Display for ToolName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-impl FromStr for ToolName {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "Bash" => ToolName::Bash,
-            "Read" => ToolName::Read,
-            "Write" => ToolName::Write,
-            "Edit" => ToolName::Edit,
-            "Glob" => ToolName::Glob,
-            "Grep" => ToolName::Grep,
-            other => ToolName::Other(other.to_string()),
-        })
     }
 }
 
@@ -264,28 +223,4 @@ pub struct SessionSummary {
     pub user_message_count: usize,
     pub tokens_input_total: u64,
     pub tokens_output_total: u64,
-}
-
-impl FromStr for Source {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Source::new(s))
-    }
-}
-
-impl FromStr for EventType {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "user_message" => Ok(EventType::UserMessage),
-            "assistant_message" => Ok(EventType::AssistantMessage),
-            "reasoning" => Ok(EventType::Reasoning),
-            "tool_call" => Ok(EventType::ToolCall),
-            "tool_result" => Ok(EventType::ToolResult),
-            "meta" => Ok(EventType::Meta),
-            _ => Err(anyhow!("Unknown event type: {}", s)),
-        }
-    }
 }

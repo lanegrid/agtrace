@@ -121,7 +121,7 @@ pub(crate) fn normalize_gemini_session(
 
                     // Normalize tool name using provider-specific logic
                     let tool_name = normalize_tool_name(&tool_call.name);
-                    tev.tool_name = Some(tool_name.to_string());
+                    tev.tool_name = Some(tool_name.as_str().to_string());
                     tev.channel = Some(tool_name.channel());
 
                     if let Some(status) = &tool_call.status {

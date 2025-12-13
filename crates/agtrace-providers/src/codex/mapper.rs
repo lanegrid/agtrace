@@ -126,7 +126,7 @@ pub(crate) fn normalize_codex_stream(
 
                         // Normalize tool name using provider-specific logic
                         let tool_name = normalize_tool_name(&call.name);
-                        ev.tool_name = Some(tool_name.to_string());
+                        ev.tool_name = Some(tool_name.as_str().to_string());
                         ev.channel = Some(tool_name.channel());
                         ev.tool_call_id = Some(call.call_id.clone());
 
@@ -179,7 +179,7 @@ pub(crate) fn normalize_codex_stream(
 
                         // Normalize tool name using provider-specific logic
                         let tool_name = normalize_tool_name(&call.name);
-                        ev.tool_name = Some(tool_name.to_string());
+                        ev.tool_name = Some(tool_name.as_str().to_string());
                         ev.channel = Some(tool_name.channel());
                         ev.tool_call_id = Some(call.call_id.clone());
 

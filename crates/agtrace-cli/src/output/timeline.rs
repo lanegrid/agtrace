@@ -1,7 +1,18 @@
 use agtrace_engine::summarize_session;
-use agtrace_types::{AgentEventV1, EventType};
+use agtrace_types::{AgentEventV1, EventType, FileOp};
 use chrono::DateTime;
 use owo_colors::OwoColorize;
+
+fn file_op_to_str(op: &FileOp) -> &'static str {
+    match op {
+        FileOp::Read => "read",
+        FileOp::Write => "write",
+        FileOp::Modify => "modify",
+        FileOp::Delete => "delete",
+        FileOp::Create => "create",
+        FileOp::Move => "move",
+    }
+}
 
 pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: bool) {
     if events.is_empty() {
@@ -158,10 +169,11 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
             }
 
             if let Some(file_op) = &event.file_op {
+                let op_str = file_op_to_str(file_op);
                 if enable_color {
-                    print!(" [{}]", file_op.bright_cyan());
+                    print!(" [{}]", op_str.bright_cyan());
                 } else {
-                    print!(" [{}]", file_op);
+                    print!(" [{}]", op_str);
                 }
             }
 
@@ -323,10 +335,11 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
             println!("  File operations:");
         }
         for (op, count) in session_summary.file_operations.iter() {
+            let op_str = file_op_to_str(op);
             if enable_color {
-                println!("    {}: {}", op, count.to_string().bright_white());
+                println!("    {}: {}", op_str, count.to_string().bright_white());
             } else {
-                println!("    {}: {}", op, count);
+                println!("    {}: {}", op_str, count);
             }
         }
     }
