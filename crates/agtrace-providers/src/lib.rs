@@ -7,6 +7,9 @@ mod claude;
 mod codex;
 mod gemini;
 
+// Provider registry
+pub mod registry;
+
 // Re-export provider types
 pub use claude::ClaudeProvider;
 pub use codex::CodexProvider;
@@ -16,6 +19,12 @@ pub use gemini::GeminiProvider;
 pub use claude::normalize_claude_file;
 pub use codex::normalize_codex_file;
 pub use gemini::normalize_gemini_file;
+
+// Re-export registry functions for convenience
+pub use registry::{
+    create_all_providers, create_provider, detect_provider_from_path, get_all_providers,
+    get_default_log_paths, get_provider_metadata, get_provider_names,
+};
 
 #[derive(Debug, Clone)]
 pub struct LogFileMetadata {

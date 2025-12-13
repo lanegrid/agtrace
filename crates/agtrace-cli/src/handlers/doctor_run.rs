@@ -1,5 +1,5 @@
 use crate::config::Config;
-use agtrace_providers::{ClaudeProvider, CodexProvider, GeminiProvider, LogProvider};
+use agtrace_providers::{create_all_providers, create_provider, LogProvider};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::collections::HashMap;
@@ -38,16 +38,10 @@ pub struct FailureExample {
 }
 
 pub fn handle(config: &Config, provider_filter: String, verbose: bool) -> Result<()> {
-    let providers: Vec<Box<dyn LogProvider>> = match provider_filter.as_str() {
-        "claude" => vec![Box::new(ClaudeProvider::new())],
-        "codex" => vec![Box::new(CodexProvider::new())],
-        "gemini" => vec![Box::new(GeminiProvider::new())],
-        "all" => vec![
-            Box::new(ClaudeProvider::new()),
-            Box::new(CodexProvider::new()),
-            Box::new(GeminiProvider::new()),
-        ],
-        _ => anyhow::bail!("Unknown provider: {}", provider_filter),
+    let providers: Vec<Box<dyn LogProvider>> = if provider_filter == "all" {
+        create_all_providers()
+    } else {
+        vec![create_provider(&provider_filter)?]
     };
 
     let mut results = Vec::new();

@@ -68,47 +68,18 @@ impl Config {
 
     /// Detect providers by checking default directories
     pub fn detect_providers() -> Result<Self> {
-        let home = std::env::var("HOME")
-            .or_else(|_| std::env::var("USERPROFILE"))
-            .map_err(|_| anyhow::anyhow!("Could not determine home directory"))?;
-
-        let home_path = PathBuf::from(home);
         let mut providers = HashMap::new();
 
-        // Check for Claude
-        let claude_path = home_path.join(".claude").join("projects");
-        if claude_path.exists() {
-            providers.insert(
-                "claude".to_string(),
-                ProviderConfig {
-                    enabled: true,
-                    log_root: claude_path,
-                },
-            );
-        }
-
-        // Check for Codex
-        let codex_path = home_path.join(".codex").join("sessions");
-        if codex_path.exists() {
-            providers.insert(
-                "codex".to_string(),
-                ProviderConfig {
-                    enabled: true,
-                    log_root: codex_path,
-                },
-            );
-        }
-
-        // Check for Gemini
-        let gemini_path = home_path.join(".gemini").join("tmp");
-        if gemini_path.exists() {
-            providers.insert(
-                "gemini".to_string(),
-                ProviderConfig {
-                    enabled: true,
-                    log_root: gemini_path,
-                },
-            );
+        for (name, path) in agtrace_providers::get_default_log_paths() {
+            if path.exists() {
+                providers.insert(
+                    name,
+                    ProviderConfig {
+                        enabled: true,
+                        log_root: path,
+                    },
+                );
+            }
         }
 
         Ok(Config { providers })

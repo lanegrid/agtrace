@@ -38,9 +38,12 @@ pub fn handle(
             println!("\n  To manually configure a provider:");
             println!("    agtrace provider set <name> --log-root <PATH> --enable");
             println!("\n  Supported providers:");
-            println!("    - claude  (default: ~/.claude/projects)");
-            println!("    - codex   (default: ~/.codex/sessions)");
-            println!("    - gemini  (default: ~/.gemini/tmp)");
+            for provider in agtrace_providers::get_all_providers() {
+                println!(
+                    "    - {}  (default: {})",
+                    provider.name, provider.default_log_path
+                );
+            }
             return Ok(());
         }
 

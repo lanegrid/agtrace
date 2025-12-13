@@ -1,7 +1,5 @@
 use agtrace_index::Database;
-use agtrace_providers::{
-    ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider,
-};
+use agtrace_providers::{detect_provider_from_path, ImportContext, LogProvider};
 use agtrace_types::AgentEventV1;
 use anyhow::Result;
 use std::path::Path;
@@ -86,14 +84,6 @@ impl<'a> SessionLoader<'a> {
     }
 
     fn detect_provider(&self, path: &str) -> Result<Box<dyn LogProvider>> {
-        if path.contains(".claude/") {
-            Ok(Box::new(ClaudeProvider::new()))
-        } else if path.contains(".codex/") {
-            Ok(Box::new(CodexProvider::new()))
-        } else if path.contains(".gemini/") {
-            Ok(Box::new(GeminiProvider::new()))
-        } else {
-            anyhow::bail!("Unknown provider for file: {}", path)
-        }
+        detect_provider_from_path(path)
     }
 }

@@ -1,6 +1,4 @@
-use agtrace_providers::{
-    ClaudeProvider, CodexProvider, GeminiProvider, ImportContext, LogProvider,
-};
+use agtrace_providers::{create_provider, detect_provider_from_path, ImportContext, LogProvider};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;
@@ -15,32 +13,12 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
     // Auto-detect or use specified provider
     let (provider, provider_name): (Box<dyn LogProvider>, String) =
         if let Some(name) = provider_override {
-            match name.as_str() {
-                "claude" => (Box::new(ClaudeProvider::new()), "claude".to_string()),
-                "codex" => (Box::new(CodexProvider::new()), "codex".to_string()),
-                "gemini" => (Box::new(GeminiProvider::new()), "gemini".to_string()),
-                _ => anyhow::bail!("Unknown provider: {}", name),
-            }
+            let provider = create_provider(&name)?;
+            (provider, name)
         } else {
-            // Auto-detect from path
-            if file_path.contains(".claude/") {
-                (
-                    Box::new(ClaudeProvider::new()),
-                    "claude (auto-detected)".to_string(),
-                )
-            } else if file_path.contains(".codex/") {
-                (
-                    Box::new(CodexProvider::new()),
-                    "codex (auto-detected)".to_string(),
-                )
-            } else if file_path.contains(".gemini/") {
-                (
-                    Box::new(GeminiProvider::new()),
-                    "gemini (auto-detected)".to_string(),
-                )
-            } else {
-                anyhow::bail!("Cannot auto-detect provider from path. Use --provider to specify.");
-            }
+            let provider = detect_provider_from_path(&file_path)?;
+            let name = format!("{} (auto-detected)", provider.name());
+            (provider, name)
         };
 
     println!("File: {}", file_path);

@@ -1,6 +1,6 @@
 use crate::config::Config;
 use agtrace_index::{Database, LogFileRecord, ProjectRecord, SessionRecord};
-use agtrace_providers::{ClaudeProvider, CodexProvider, GeminiProvider, LogProvider, ScanContext};
+use agtrace_providers::{create_all_providers, create_provider, LogProvider, ScanContext};
 use agtrace_types::project_hash_from_root;
 use anyhow::{Context, Result};
 
@@ -21,16 +21,10 @@ pub fn handle(
         None
     };
 
-    let providers: Vec<Box<dyn LogProvider>> = match provider.as_str() {
-        "claude" => vec![Box::new(ClaudeProvider::new())],
-        "codex" => vec![Box::new(CodexProvider::new())],
-        "gemini" => vec![Box::new(GeminiProvider::new())],
-        "all" => vec![
-            Box::new(ClaudeProvider::new()),
-            Box::new(CodexProvider::new()),
-            Box::new(GeminiProvider::new()),
-        ],
-        _ => anyhow::bail!("Unknown provider: {}", provider),
+    let providers: Vec<Box<dyn LogProvider>> = if provider == "all" {
+        create_all_providers()
+    } else {
+        vec![create_provider(&provider)?]
     };
 
     let mut total_sessions = 0;

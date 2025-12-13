@@ -1,6 +1,11 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+// NOTE: Provider names are hardcoded in value_parser attributes for CLI help/autocomplete.
+// The actual validation and instantiation is done via agtrace_providers::registry.
+// Valid providers: "claude_code", "codex", "gemini", "all" (for commands that support it)
+// See agtrace-providers/src/registry.rs for the source of truth.
+
 #[derive(Parser)]
 #[command(name = "agtrace")]
 #[command(about = "Normalize and analyze agent behavior logs", long_about = None)]
@@ -74,7 +79,7 @@ pub enum Commands {
 #[derive(Subcommand)]
 pub enum IndexCommand {
     Update {
-        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
+        #[arg(long, value_parser = ["claude_code", "codex", "gemini", "all"], default_value = "all")]
         provider: String,
 
         #[arg(long)]
@@ -82,7 +87,7 @@ pub enum IndexCommand {
     },
 
     Rebuild {
-        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
+        #[arg(long, value_parser = ["claude_code", "codex", "gemini", "all"], default_value = "all")]
         provider: String,
 
         #[arg(long)]
@@ -98,7 +103,7 @@ pub enum SessionCommand {
         #[arg(long)]
         project_hash: Option<String>,
 
-        #[arg(long, value_parser = ["claude", "codex", "gemini"])]
+        #[arg(long, value_parser = ["claude_code", "codex", "gemini"])]
         source: Option<String>,
 
         #[arg(long, default_value = "50")]
@@ -170,7 +175,7 @@ pub enum ProviderCommand {
 #[derive(Subcommand)]
 pub enum DoctorCommand {
     Run {
-        #[arg(long, value_parser = ["claude", "codex", "gemini", "all"], default_value = "all")]
+        #[arg(long, value_parser = ["claude_code", "codex", "gemini", "all"], default_value = "all")]
         provider: String,
 
         #[arg(long)]
@@ -190,7 +195,7 @@ pub enum DoctorCommand {
     Check {
         file_path: String,
 
-        #[arg(long, value_parser = ["claude", "codex", "gemini"])]
+        #[arg(long, value_parser = ["claude_code", "codex", "gemini"])]
         provider: Option<String>,
     },
 }
