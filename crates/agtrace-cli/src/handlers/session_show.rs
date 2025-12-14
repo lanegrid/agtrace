@@ -2,8 +2,9 @@
 
 use crate::output::{format_spans_compact, print_events_timeline, CompactFormatOpts};
 use crate::session_loader::{LoadOptions, SessionLoader};
-use agtrace_engine::build_spans;
+use agtrace_engine::build_spans_from_v2;
 use agtrace_index::Database;
+use agtrace_types::v2::{AgentEvent, EventPayload};
 use agtrace_types::{AgentEventV1, EventType};
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
@@ -43,18 +44,18 @@ pub fn handle(
         return Ok(());
     }
 
-    // Load and normalize events
+    // Load and normalize events (using v2 pipeline)
     let loader = SessionLoader::new(db);
     let options = LoadOptions::default();
-    let all_events = loader.load_events(&session_id, &options)?;
+    let all_events_v2 = loader.load_events_v2(&session_id, &options)?;
 
     // Filter events based on --hide and --only options
-    let filtered_events = filter_events(&all_events, hide.as_ref(), only.as_ref());
+    let filtered_events = filter_events_v2(&all_events_v2, hide.as_ref(), only.as_ref());
 
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
     } else if style == "compact" {
-        let spans = build_spans(&filtered_events);
+        let spans = build_spans_from_v2(&filtered_events);
         let opts = CompactFormatOpts {
             enable_color,
             relative_time: true,
@@ -64,36 +65,42 @@ pub fn handle(
             println!("{}", line);
         }
     } else {
-        // Default is full display, --short enables truncation
+        // For timeline view, convert v2 events to v1 format for now
+        // TODO: Update print_events_timeline to work with v2 events
+        let v1_events = convert_v2_to_v1(&filtered_events);
         let truncate = short;
-        print_events_timeline(&filtered_events, truncate, enable_color);
+        print_events_timeline(&v1_events, truncate, enable_color);
     }
 
     Ok(())
 }
 
-/// Filter events based on hide/only patterns
-fn filter_events(
-    events: &[AgentEventV1],
+/// Filter v2 events based on hide/only patterns
+fn filter_events_v2(
+    events: &[AgentEvent],
     hide: Option<&Vec<String>>,
     only: Option<&Vec<String>>,
-) -> Vec<AgentEventV1> {
+) -> Vec<AgentEvent> {
     let mut filtered = events.to_vec();
 
     // Apply --only filter (whitelist)
     if let Some(only_patterns) = only {
         filtered.retain(|e| {
-            let event_type = format!("{:?}", e.event_type).to_lowercase();
             only_patterns.iter().any(|pattern| {
                 let pattern_lower = pattern.to_lowercase();
-                event_type.contains(&pattern_lower)
-                    || pattern_lower == "user" && matches!(e.event_type, EventType::UserMessage)
-                    || pattern_lower == "assistant"
-                        && matches!(e.event_type, EventType::AssistantMessage)
-                    || pattern_lower == "tool"
-                        && (matches!(e.event_type, EventType::ToolCall)
-                            || matches!(e.event_type, EventType::ToolResult))
-                    || pattern_lower == "reasoning" && matches!(e.event_type, EventType::Reasoning)
+                match &e.payload {
+                    EventPayload::User(_) => pattern_lower == "user",
+                    EventPayload::Message(_) => {
+                        pattern_lower == "assistant" || pattern_lower == "message"
+                    }
+                    EventPayload::ToolCall(_) | EventPayload::ToolResult(_) => {
+                        pattern_lower == "tool"
+                    }
+                    EventPayload::Reasoning(_) => pattern_lower == "reasoning",
+                    EventPayload::TokenUsage(_) => {
+                        pattern_lower == "token" || pattern_lower == "tokenusage"
+                    }
+                }
             })
         });
     }
@@ -101,20 +108,96 @@ fn filter_events(
     // Apply --hide filter (blacklist)
     if let Some(hide_patterns) = hide {
         filtered.retain(|e| {
-            let event_type = format!("{:?}", e.event_type).to_lowercase();
             !hide_patterns.iter().any(|pattern| {
                 let pattern_lower = pattern.to_lowercase();
-                event_type.contains(&pattern_lower)
-                    || pattern_lower == "user" && matches!(e.event_type, EventType::UserMessage)
-                    || pattern_lower == "assistant"
-                        && matches!(e.event_type, EventType::AssistantMessage)
-                    || pattern_lower == "tool"
-                        && (matches!(e.event_type, EventType::ToolCall)
-                            || matches!(e.event_type, EventType::ToolResult))
-                    || pattern_lower == "reasoning" && matches!(e.event_type, EventType::Reasoning)
+                match &e.payload {
+                    EventPayload::User(_) => pattern_lower == "user",
+                    EventPayload::Message(_) => {
+                        pattern_lower == "assistant" || pattern_lower == "message"
+                    }
+                    EventPayload::ToolCall(_) | EventPayload::ToolResult(_) => {
+                        pattern_lower == "tool"
+                    }
+                    EventPayload::Reasoning(_) => pattern_lower == "reasoning",
+                    EventPayload::TokenUsage(_) => {
+                        pattern_lower == "token" || pattern_lower == "tokenusage"
+                    }
+                }
             })
         });
     }
 
     filtered
+}
+
+/// Convert v2 events to v1 format for compatibility with legacy output functions
+fn convert_v2_to_v1(events: &[AgentEvent]) -> Vec<AgentEventV1> {
+    use agtrace_types::Source;
+
+    events
+        .iter()
+        .filter_map(|e| {
+            // Skip TokenUsage events in v1 representation
+            if matches!(e.payload, EventPayload::TokenUsage(_)) {
+                return None;
+            }
+
+            let event_type = match &e.payload {
+                EventPayload::User(_) => EventType::UserMessage,
+                EventPayload::Message(_) => EventType::AssistantMessage,
+                EventPayload::ToolCall(_) => EventType::ToolCall,
+                EventPayload::ToolResult(_) => EventType::ToolResult,
+                EventPayload::Reasoning(_) => EventType::Reasoning,
+                EventPayload::TokenUsage(_) => return None,
+            };
+
+            let text = match &e.payload {
+                EventPayload::User(p) => Some(p.text.clone()),
+                EventPayload::Message(p) => Some(p.text.clone()),
+                EventPayload::Reasoning(p) => Some(p.text.clone()),
+                EventPayload::ToolResult(p) => Some(p.output.clone()),
+                EventPayload::ToolCall(p) => Some(format!("{}: {}", p.name, p.arguments)),
+                _ => None,
+            };
+
+            let tool_name = match &e.payload {
+                EventPayload::ToolCall(p) => Some(p.name.clone()),
+                _ => None,
+            };
+
+            Some(AgentEventV1 {
+                schema_version: AgentEventV1::SCHEMA_VERSION.to_string(),
+                source: Source::new("unknown"),
+                project_hash: String::new(),
+                project_root: None,
+                session_id: Some(e.trace_id.to_string()),
+                event_id: Some(e.id.to_string()),
+                parent_event_id: e.parent_id.map(|id| id.to_string()),
+                ts: e.timestamp.to_rfc3339(),
+                event_type,
+                role: None,
+                channel: None,
+                text,
+                context: None,
+                policy: None,
+                tool_name,
+                tool_call_id: None,
+                tool_status: None,
+                tool_latency_ms: None,
+                tool_exit_code: None,
+                file_path: None,
+                file_language: None,
+                file_op: None,
+                model: None,
+                tokens_input: None,
+                tokens_output: None,
+                tokens_total: None,
+                tokens_cached: None,
+                tokens_thinking: None,
+                tokens_tool: None,
+                agent_id: None,
+                raw: serde_json::Value::Null,
+            })
+        })
+        .collect()
 }

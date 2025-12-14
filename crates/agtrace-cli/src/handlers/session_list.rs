@@ -4,6 +4,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use comfy_table::{presets::UTF8_FULL, Cell, Color, ContentArrangement, Table};
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle(
     db: &Database,
     project_hash: Option<String>,

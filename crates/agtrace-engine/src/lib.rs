@@ -10,7 +10,7 @@ mod turn;
 
 pub use span::{build_spans, Message, Span, SpanStats, SystemEvent, TokenBundle, ToolAction};
 pub use span_v2::build_spans_v2;
-pub use summary::SessionSummary;
+pub use summary::{summarize_v2, SessionSummary};
 pub use turn::{
     interpret_turns, ActionResult, ChainItem, SystemMessageKind, Turn, TurnOutcome, TurnStats,
 };
@@ -35,4 +35,9 @@ pub fn summarize_session(events: &[AgentEventV1]) -> SessionSummary {
 /// Build spans from v2 events - improved tool matching and token tracking
 pub fn build_spans_from_v2(events: &[agtrace_types::v2::AgentEvent]) -> Vec<Span> {
     span_v2::build_spans_v2(events)
+}
+
+/// Summarize session statistics from v2 events
+pub fn summarize_session_v2(events: &[agtrace_types::v2::AgentEvent]) -> SessionSummary {
+    summary::summarize_v2(events)
 }
