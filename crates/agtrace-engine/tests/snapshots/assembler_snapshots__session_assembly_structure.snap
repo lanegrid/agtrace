@@ -1,0 +1,83 @@
+---
+source: crates/agtrace-engine/tests/assembler_snapshots.rs
+expression: value
+---
+{
+  "end_time": "2025-12-14T00:00:00Z",
+  "session_id": "<UUID_REDACTED>",
+  "start_time": "2025-12-14T00:00:00Z",
+  "stats": {
+    "duration_seconds": 0,
+    "total_tokens": 150,
+    "total_turns": 1
+  },
+  "turns": [
+    {
+      "id": "<UUID_REDACTED>",
+      "stats": {
+        "duration_ms": 0,
+        "step_count": 1,
+        "total_tokens": 150
+      },
+      "steps": [
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "Done!"
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "I should respond"
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-14T00:00:00Z",
+          "tools": [
+            {
+              "call": {
+                "content": {
+                  "arguments": {
+                    "command": "echo hello"
+                  },
+                  "name": "bash",
+                  "provider_call_id": "call_1"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "provider_call_id": "call_1",
+                "timestamp": "2025-12-14T00:00:00Z"
+              },
+              "duration_ms": 0,
+              "is_error": false,
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "hello",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-14T00:00:00Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
+            }
+          ],
+          "usage": {
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "total_tokens": 150
+          }
+        }
+      ],
+      "timestamp": "2025-12-14T00:00:00Z",
+      "user": {
+        "content": {
+          "text": "Hello"
+        },
+        "event_id": "<UUID_REDACTED>"
+      }
+    }
+  ]
+}

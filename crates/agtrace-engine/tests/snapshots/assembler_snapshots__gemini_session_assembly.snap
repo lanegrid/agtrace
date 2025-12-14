@@ -1,0 +1,393 @@
+---
+source: crates/agtrace-engine/tests/assembler_snapshots.rs
+expression: value
+---
+{
+  "end_time": "2025-12-09T19:54:21.715Z",
+  "session_id": "<UUID_REDACTED>",
+  "start_time": "2025-12-09T19:51:29.418Z",
+  "stats": {
+    "duration_seconds": 172,
+    "total_tokens": 67950,
+    "total_turns": 2
+  },
+  "turns": [
+    {
+      "id": "<UUID_REDACTED>",
+      "stats": {
+        "duration_ms": 51964,
+        "step_count": 4,
+        "total_tokens": 32890
+      },
+      "steps": [
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "Crafting the Execution Steps: Now, I'm refining the steps to be as clear and concise as possible. Creating the file and writing the content seem like distinct sub-tasks, and I'm prioritizing directness. Thinking about how the Python code should be written."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-09T19:51:29.418Z",
+          "tools": [
+            {
+              "call": {
+                "content": {
+                  "arguments": {
+                    "command": "mkdir myapp",
+                    "description": "Create a directory named myapp."
+                  },
+                  "name": "run_shell_command",
+                  "provider_call_id": "run_shell_command-1765309910095-ad8431786e6368"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "provider_call_id": "run_shell_command-1765309910095-ad8431786e6368",
+                "timestamp": "2025-12-09T19:51:50.106Z"
+              },
+              "duration_ms": 0,
+              "is_error": false,
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:51:50.106Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
+            }
+          ],
+          "usage": {
+            "details": {
+              "audio_input_tokens": null,
+              "audio_output_tokens": null,
+              "cache_read_input_tokens": 6979,
+              "reasoning_output_tokens": 86
+            },
+            "input_tokens": 13629,
+            "output_tokens": 52,
+            "total_tokens": 13767
+          }
+        },
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "Directory `myapp` created. Next, create `hoge.py` within `myapp`."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "Creating the file structure: I've got the `myapp` directory set up, just as intended. The next logical step is to create the `hoge.py` file within it, and populate it with the required initial content."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-09T19:51:50.106Z",
+          "tools": [
+            {
+              "call": {
+                "content": {
+                  "arguments": {
+                    "content": "print(1+1)",
+                    "file_path": "myapp/hoge.py"
+                  },
+                  "name": "write_file",
+                  "provider_call_id": "write_file-1765309936615-3e48006f9d7538"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "provider_call_id": "write_file-1765309936615-3e48006f9d7538",
+                "timestamp": "2025-12-09T19:52:16.623Z"
+              },
+              "duration_ms": 0,
+              "is_error": false,
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "[FunctionResponse { function_response: FunctionResponseInner { id: \"write_file-1765309936615-3e48006f9d7538\", name: \"write_file\", response: Object {\"output\": String(\"Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py.\")} } }]",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:52:16.623Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
+            }
+          ],
+          "usage": {
+            "details": {
+              "audio_input_tokens": null,
+              "audio_output_tokens": null,
+              "cache_read_input_tokens": 5864,
+              "reasoning_output_tokens": 33
+            },
+            "input_tokens": 6219,
+            "output_tokens": 38,
+            "total_tokens": 6290
+          }
+        },
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "Delivering on Requests: I've successfully created the `myapp` directory and the `hoge.py` file within, as requested. The file now contains the exact content specified, a straightforward outcome. I'm satisfied with the completion of this task."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-09T19:52:16.623Z",
+          "tools": [
+            {
+              "call": {
+                "content": {
+                  "arguments": {
+                    "command": "ls -F",
+                    "description": "List all files and folders in the current directory, indicating folders with a slash."
+                  },
+                  "name": "run_shell_command",
+                  "provider_call_id": "run_shell_command-1765309941376-a3b382f7de6c78"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "provider_call_id": "run_shell_command-1765309941376-a3b382f7de6c78",
+                "timestamp": "2025-12-09T19:52:21.382Z"
+              },
+              "duration_ms": 0,
+              "is_error": false,
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "hello.text      myapp/",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:52:21.382Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
+            }
+          ],
+          "usage": {
+            "details": {
+              "audio_input_tokens": null,
+              "audio_output_tokens": null,
+              "cache_read_input_tokens": 5844,
+              "reasoning_output_tokens": 34
+            },
+            "input_tokens": 6286,
+            "output_tokens": 53,
+            "total_tokens": 6373
+          }
+        },
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "`myapp` directory and `hoge.py` within it are confirmed. Request complete."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "Analyzing File Structure Creation: I can confirm the creation of the `myapp` directory and the `hoge.py` file within it. It appears the initial setup requested by the user is now complete, and the base structure is in place. I have successfully fulfilled the immediate requirements."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-09T19:52:21.382Z",
+          "tools": [],
+          "usage": {
+            "details": {
+              "audio_input_tokens": null,
+              "audio_output_tokens": null,
+              "cache_read_input_tokens": 5836,
+              "reasoning_output_tokens": 39
+            },
+            "input_tokens": 6402,
+            "output_tokens": 19,
+            "total_tokens": 6460
+          }
+        }
+      ],
+      "timestamp": "2025-12-09T19:51:29.418Z",
+      "user": {
+        "content": {
+          "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
+        },
+        "event_id": "<UUID_REDACTED>"
+      }
+    },
+    {
+      "id": "<UUID_REDACTED>",
+      "stats": {
+        "duration_ms": 79102,
+        "step_count": 3,
+        "total_tokens": 35060
+      },
+      "steps": [
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "Okay, I'll `cd myapp` and then `python hoge.py`."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "Planning the Execution: I'm focusing now on the exact steps needed. It seems simple: I need to change the current directory to `myapp` first, and *then* run `hoge.py` with Python. Thinking about the best way to represent this sequence concisely."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-09T19:52:58.592Z",
+          "tools": [
+            {
+              "call": {
+                "content": {
+                  "arguments": {
+                    "command": "cd myapp && python hoge.py",
+                    "description": "Change directory to 'myapp' and execute 'hoge.py' using python."
+                  },
+                  "name": "run_shell_command",
+                  "provider_call_id": "run_shell_command-1765309996151-96a3b98446867"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "provider_call_id": "run_shell_command-1765309996151-96a3b98446867",
+                "timestamp": "2025-12-09T19:53:16.156Z"
+              },
+              "duration_ms": 0,
+              "is_error": false,
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "error: target shim binary not found",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:53:16.156Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
+            }
+          ],
+          "usage": {
+            "details": {
+              "audio_input_tokens": null,
+              "audio_output_tokens": null,
+              "cache_read_input_tokens": 7294,
+              "reasoning_output_tokens": 28
+            },
+            "input_tokens": 21501,
+            "output_tokens": 50,
+            "total_tokens": 21579
+          }
+        },
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "Testing Python Execution Paths: I'm now investigating potential path problems. I'll explicitly call `python3` instead of relying on the default `python` alias, to sidestep any potential environment issues. If this resolves the \"target shim binary not found\" error, the path configuration is the culprit. Otherwise, a deeper dive into the shell environment is needed."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-09T19:53:16.156Z",
+          "tools": [
+            {
+              "call": {
+                "content": {
+                  "arguments": {
+                    "command": "cd myapp && python3 hoge.py",
+                    "description": "Change directory to 'myapp' and execute 'hoge.py' using python3."
+                  },
+                  "name": "run_shell_command",
+                  "provider_call_id": "run_shell_command-1765310057688-05817d34470d1"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "provider_call_id": "run_shell_command-1765310057688-05817d34470d1",
+                "timestamp": "2025-12-09T19:54:17.694Z"
+              },
+              "duration_ms": 0,
+              "is_error": false,
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "2",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:54:17.694Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
+            }
+          ],
+          "usage": {
+            "details": {
+              "audio_input_tokens": null,
+              "audio_output_tokens": null,
+              "cache_read_input_tokens": 5809,
+              "reasoning_output_tokens": 127
+            },
+            "input_tokens": 6550,
+            "output_tokens": 71,
+            "total_tokens": 6748
+          }
+        },
+        {
+          "id": "<UUID_REDACTED>",
+          "is_failed": false,
+          "message": {
+            "content": {
+              "text": "`python3 hoge.py` executed, outputting \"2\". Request complete."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "reasoning": {
+            "content": {
+              "text": "Evaluating the Result: I've verified the output; the `python3 hoge.py` script produced the anticipated result, printing \"2.\" This confirms that the user's initial objective was achieved without issue. I'm satisfied with the outcome."
+            },
+            "event_id": "<UUID_REDACTED>"
+          },
+          "timestamp": "2025-12-09T19:54:17.694Z",
+          "tools": [],
+          "usage": {
+            "details": {
+              "audio_input_tokens": null,
+              "audio_output_tokens": null,
+              "cache_read_input_tokens": 5751,
+              "reasoning_output_tokens": 30
+            },
+            "input_tokens": 6686,
+            "output_tokens": 17,
+            "total_tokens": 6733
+          }
+        }
+      ],
+      "timestamp": "2025-12-09T19:52:58.592Z",
+      "user": {
+        "content": {
+          "text": "cd to myapp and run python hoge.py"
+        },
+        "event_id": "<UUID_REDACTED>"
+      }
+    }
+  ]
+}
