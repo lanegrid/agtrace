@@ -3,9 +3,14 @@
 
 pub mod analysis;
 pub mod export;
+pub mod session;
 pub mod span;
 pub mod summary;
 
+pub use session::{
+    AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionStats, ToolCallBlock,
+    ToolExecution, ToolResultBlock, TurnStats, UserMessage,
+};
 pub use span::{build_spans, Message, Span, SpanStats, SystemEvent, TokenBundle, ToolAction};
 pub use summary::{summarize, SessionSummary};
 
