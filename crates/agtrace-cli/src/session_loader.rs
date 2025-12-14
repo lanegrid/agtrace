@@ -107,7 +107,7 @@ impl<'a> SessionLoader<'a> {
 
             // Call provider-specific v2 normalization functions
             let result = match provider.name() {
-                "claude" => normalize_claude_file_v2(path),
+                "claude" | "claude_code" => normalize_claude_file_v2(path),
                 "codex" => normalize_codex_file_v2(path),
                 "gemini" => normalize_gemini_file_v2(path),
                 name => anyhow::bail!("Provider {} does not support v2 normalization yet", name),
