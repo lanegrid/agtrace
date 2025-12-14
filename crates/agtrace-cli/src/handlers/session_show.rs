@@ -2,7 +2,7 @@
 
 use crate::output::{format_spans_compact, print_events_timeline, CompactFormatOpts};
 use crate::session_loader::{LoadOptions, SessionLoader};
-use agtrace_engine::build_spans_from_v2;
+use agtrace_engine::build_spans_from_events;
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use agtrace_types::{AgentEventV1, EventType};
@@ -55,7 +55,7 @@ pub fn handle(
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
     } else if style == "compact" {
-        let spans = build_spans_from_v2(&filtered_events);
+        let spans = build_spans_from_events(&filtered_events);
         let opts = CompactFormatOpts {
             enable_color,
             relative_time: true,

@@ -4,14 +4,14 @@ pub mod schema;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::paths_equal;
-use agtrace_types::AgentEventV1;
+use agtrace_types::v2::AgentEvent;
 use anyhow::Result;
 use std::path::Path;
 use walkdir::WalkDir;
 
 pub use self::io::{
     extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session,
-    normalize_codex_file, normalize_codex_file_v2,
+    normalize_codex_file_v2,
 };
 
 pub struct CodexProvider;
@@ -51,8 +51,8 @@ impl LogProvider for CodexProvider {
         is_jsonl && filename.starts_with("rollout-") && !is_empty_codex_session(path)
     }
 
-    fn normalize_file(&self, path: &Path, context: &ImportContext) -> Result<Vec<AgentEventV1>> {
-        normalize_codex_file(path, context.project_root_override.as_deref())
+    fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
+        normalize_codex_file_v2(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {

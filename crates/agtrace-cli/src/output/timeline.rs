@@ -1,7 +1,117 @@
-use agtrace_engine::summarize_session;
 use agtrace_types::{AgentEventV1, EventType, FileOp};
 use chrono::DateTime;
 use owo_colors::OwoColorize;
+use std::collections::HashMap;
+
+// Local summary structures for v1 timeline display
+#[derive(Debug, Clone)]
+struct TimelineSessionSummary {
+    event_counts: TimelineEventCounts,
+    token_stats: TimelineTokenStats,
+    file_operations: HashMap<FileOp, usize>,
+    duration: Option<TimelineDuration>,
+}
+
+#[derive(Debug, Clone)]
+struct TimelineDuration {
+    minutes: i64,
+    seconds: i64,
+}
+
+#[derive(Debug, Clone)]
+struct TimelineEventCounts {
+    total: usize,
+    user_messages: usize,
+    assistant_messages: usize,
+    tool_calls: usize,
+    reasoning_blocks: usize,
+}
+
+#[derive(Debug, Clone)]
+struct TimelineTokenStats {
+    total: u64,
+    input: u64,
+    output: u64,
+    cached: u64,
+    thinking: u64,
+}
+
+fn summarize_v1_events(events: &[AgentEventV1]) -> TimelineSessionSummary {
+    let mut user_count = 0;
+    let mut assistant_count = 0;
+    let mut tool_call_count = 0;
+    let mut reasoning_count = 0;
+
+    let mut total_input = 0u64;
+    let mut total_output = 0u64;
+    let mut total_cached = 0u64;
+    let mut total_thinking = 0u64;
+
+    let mut file_ops: HashMap<FileOp, usize> = HashMap::new();
+
+    for event in events {
+        match event.event_type {
+            EventType::UserMessage => user_count += 1,
+            EventType::AssistantMessage => assistant_count += 1,
+            EventType::ToolCall => tool_call_count += 1,
+            EventType::Reasoning => reasoning_count += 1,
+            _ => {}
+        }
+
+        if let Some(tokens_in) = event.tokens_input {
+            total_input += tokens_in;
+        }
+        if let Some(tokens_out) = event.tokens_output {
+            total_output += tokens_out;
+        }
+        if let Some(tokens_cached) = event.tokens_cached {
+            total_cached += tokens_cached;
+        }
+        if let Some(tokens_thinking) = event.tokens_thinking {
+            total_thinking += tokens_thinking;
+        }
+
+        if let Some(file_op) = event.file_op {
+            *file_ops.entry(file_op).or_insert(0) += 1;
+        }
+    }
+
+    let duration = if let (Some(first), Some(last)) = (events.first(), events.last()) {
+        if let (Ok(first_ts), Ok(last_ts)) = (
+            DateTime::parse_from_rfc3339(&first.ts),
+            DateTime::parse_from_rfc3339(&last.ts),
+        ) {
+            let duration = last_ts.signed_duration_since(first_ts);
+            Some(TimelineDuration {
+                minutes: duration.num_minutes(),
+                seconds: duration.num_seconds() % 60,
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    TimelineSessionSummary {
+        event_counts: TimelineEventCounts {
+            total: events.len(),
+            user_messages: user_count,
+            assistant_messages: assistant_count,
+            tool_calls: tool_call_count,
+            reasoning_blocks: reasoning_count,
+        },
+        token_stats: TimelineTokenStats {
+            total: total_input + total_output,
+            input: total_input,
+            output: total_output,
+            cached: total_cached,
+            thinking: total_thinking,
+        },
+        file_operations: file_ops,
+        duration,
+    }
+}
 
 fn file_op_to_str(op: &FileOp) -> &'static str {
     match op {
@@ -260,7 +370,7 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
         return;
     }
 
-    let session_summary = summarize_session(events);
+    let session_summary = summarize_v1_events(events);
 
     if enable_color {
         println!("{}", "---".bright_black());

@@ -4,16 +4,13 @@ pub mod schema;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::paths_equal;
-use agtrace_types::AgentEventV1;
+use agtrace_types::v2::AgentEvent;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-pub use self::io::{
-    extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file,
-    normalize_claude_file_v2,
-};
+pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file_v2};
 
 /// Encode project_root path to Claude Code directory name format
 /// Claude Code replaces both '/' and '.' with '-'
@@ -64,8 +61,8 @@ impl LogProvider for ClaudeProvider {
         true
     }
 
-    fn normalize_file(&self, path: &Path, context: &ImportContext) -> Result<Vec<AgentEventV1>> {
-        normalize_claude_file(path, context.project_root_override.as_deref())
+    fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
+        normalize_claude_file_v2(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {

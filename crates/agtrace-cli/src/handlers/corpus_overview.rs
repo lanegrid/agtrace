@@ -31,7 +31,7 @@ pub fn handle(db: &Database, project_hash: Option<String>, all_projects: bool) -
 
     // Simple one-pass metrics
     for session in &raw_sessions {
-        if let Ok(events) = loader.load_events(&session.id, &options) {
+        if let Ok(events) = loader.load_events_v2(&session.id, &options) {
             // Just quick aggregations for the header
             let spans = build_spans(&events);
             for span in spans {

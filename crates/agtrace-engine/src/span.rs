@@ -1,5 +1,8 @@
-use agtrace_types::{AgentEventV1, EventType, ToolStatus};
+use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::ToolStatus;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use uuid::Uuid;
 
 /// A Span represents a unit of user-initiated work, starting from a user message
 /// and including all assistant responses, tool calls, and reasoning until the next user message.
@@ -79,56 +82,59 @@ impl Default for Span {
     }
 }
 
-/// Build spans from a sequence of events.
-/// Each span starts with a UserMessage and continues until the next UserMessage.
-pub fn build_spans(events: &[AgentEventV1]) -> Vec<Span> {
+/// Build spans from events.
+/// Each span starts with a User event and continues until the next User event.
+///
+/// Key features:
+/// - O(1) tool call/result matching using tool_call_id
+/// - TokenUsage as sidecar events (not embedded)
+/// - No fallback guessing logic - all references are explicit
+pub fn build_spans(events: &[AgentEvent]) -> Vec<Span> {
     let mut spans = Vec::new();
     let mut current_span = Span::new();
-    let mut pending_tools: Vec<PendingTool> = Vec::new();
+
+    // Map: tool_call event id -> index in current_span.tools
+    let mut tool_call_map: HashMap<Uuid, usize> = HashMap::new();
+
+    // Map: generation event id -> accumulated tokens
+    let mut token_map: HashMap<Uuid, TokenBundle> = HashMap::new();
+
+    // Map: message event id -> index in current_span.assistant
+    let mut message_map: HashMap<Uuid, usize> = HashMap::new();
 
     for event in events {
-        match event.event_type {
-            EventType::UserMessage => {
+        match &event.payload {
+            EventPayload::User(payload) => {
                 // Start new span
                 if has_content(&current_span) {
-                    finalize_span(&mut current_span);
+                    finalize_span(&mut current_span, &token_map, &message_map);
                     spans.push(std::mem::take(&mut current_span));
+                    tool_call_map.clear();
+                    token_map.clear();
+                    message_map.clear();
                 }
 
                 current_span.user = Some(Message {
-                    ts: event.ts.clone(),
+                    ts: event.timestamp.to_rfc3339(),
                     role: "user".to_string(),
-                    text: event.text.clone().unwrap_or_default(),
+                    text: payload.text.clone(),
                     tokens: None,
                 });
             }
 
-            EventType::AssistantMessage => {
-                if let Some(text) = &event.text {
-                    current_span.assistant.push(Message {
-                        ts: event.ts.clone(),
-                        role: "assistant".to_string(),
-                        text: text.clone(),
-                        tokens: extract_token_bundle(event),
-                    });
-                }
+            EventPayload::Reasoning(payload) => {
+                current_span.reasoning.push(payload.text.clone());
             }
 
-            EventType::Reasoning => {
-                if let Some(text) = &event.text {
-                    current_span.reasoning.push(text.clone());
-                }
-            }
-
-            EventType::ToolCall => {
-                let tool_name = event.tool_name.clone().unwrap_or_default();
-                let input_summary = extract_input_summary(event);
-
+            EventPayload::ToolCall(payload) => {
                 let tool_index = current_span.tools.len();
+
+                let input_summary = extract_input_summary(payload);
+
                 current_span.tools.push(ToolAction {
-                    call_id: event.tool_call_id.clone(),
-                    ts_call: event.ts.clone(),
-                    tool_name,
+                    call_id: payload.provider_call_id.clone(),
+                    ts_call: event.timestamp.to_rfc3339(),
+                    tool_name: payload.name.clone(),
                     input_summary,
                     ts_result: None,
                     status: None,
@@ -137,91 +143,94 @@ pub fn build_spans(events: &[AgentEventV1]) -> Vec<Span> {
                     error_summary: None,
                 });
 
-                pending_tools.push(PendingTool {
-                    call_id: event.tool_call_id.clone(),
-                    tool_index,
-                });
+                // Register this tool call for O(1) lookup
+                tool_call_map.insert(event.id, tool_index);
 
                 current_span.stats.tool_calls += 1;
             }
 
-            EventType::ToolResult => {
-                // Match with pending tool call
-                let mut matched = false;
+            EventPayload::ToolResult(payload) => {
+                // O(1) lookup using tool_call_id
+                if let Some(&tool_index) = tool_call_map.get(&payload.tool_call_id) {
+                    if let Some(tool) = current_span.tools.get_mut(tool_index) {
+                        tool.ts_result = Some(event.timestamp.to_rfc3339());
 
-                if let Some(call_id) = &event.tool_call_id {
-                    if let Some(pos) = pending_tools
-                        .iter()
-                        .position(|p| p.call_id.as_ref() == Some(call_id))
-                    {
-                        let pending = pending_tools.remove(pos);
-                        if let Some(tool) = current_span.tools.get_mut(pending.tool_index) {
-                            tool.ts_result = Some(event.ts.clone());
-                            tool.status = event.tool_status;
-                            tool.exit_code = event.tool_exit_code;
-                            tool.latency_ms = event.tool_latency_ms;
+                        if payload.is_error {
+                            tool.status = Some(agtrace_types::ToolStatus::Error);
+                            tool.error_summary = Some(truncate_string(&payload.output, 100));
+                            current_span.stats.tool_failures += 1;
+                        } else {
+                            tool.status = Some(agtrace_types::ToolStatus::Success);
 
-                            if matches!(event.tool_status, Some(ToolStatus::Error))
-                                || event.tool_exit_code.is_some_and(|c| c != 0)
-                            {
+                            // Try to extract exit code from output
+                            tool.exit_code = extract_exit_code(&payload.output);
+                            if tool.exit_code.is_some_and(|c| c != 0) {
                                 current_span.stats.tool_failures += 1;
-                                tool.error_summary =
-                                    event.text.as_ref().map(|t| truncate_string(t, 100));
+                                tool.error_summary = Some(truncate_string(&payload.output, 100));
                             }
                         }
-                        matched = true;
-                    }
-                }
 
-                // Fallback: if no match by call_id or call_id is missing, use most recent uncompleted tool
-                if !matched {
-                    if let Some(tool) = current_span
-                        .tools
-                        .iter_mut()
-                        .rev()
-                        .find(|t| t.ts_result.is_none())
-                    {
-                        tool.ts_result = Some(event.ts.clone());
-                        tool.status = event.tool_status;
-                        tool.exit_code = event.tool_exit_code;
-                        tool.latency_ms = event.tool_latency_ms;
-
-                        if matches!(event.tool_status, Some(ToolStatus::Error))
-                            || event.tool_exit_code.is_some_and(|c| c != 0)
-                        {
-                            current_span.stats.tool_failures += 1;
-                            tool.error_summary =
-                                event.text.as_ref().map(|t| truncate_string(t, 100));
+                        // Calculate latency
+                        if let Ok(call_dt) = chrono::DateTime::parse_from_rfc3339(&tool.ts_call) {
+                            if let Ok(result_dt) =
+                                chrono::DateTime::parse_from_rfc3339(&event.timestamp.to_rfc3339())
+                            {
+                                let duration = result_dt.signed_duration_since(call_dt);
+                                tool.latency_ms = Some(duration.num_milliseconds().max(0) as u64);
+                            }
                         }
                     }
                 }
             }
 
-            EventType::SystemMessage => {
-                if let Some(message) = &event.text {
-                    current_span.system.push(SystemEvent {
-                        ts: event.ts.clone(),
-                        message: message.clone(),
-                    });
-                }
+            EventPayload::Message(payload) => {
+                let message_index = current_span.assistant.len();
+                current_span.assistant.push(Message {
+                    ts: event.timestamp.to_rfc3339(),
+                    role: "assistant".to_string(),
+                    text: payload.text.clone(),
+                    tokens: None, // Will be filled in finalize_span
+                });
+                message_map.insert(event.id, message_index);
             }
 
-            _ => {}
+            EventPayload::TokenUsage(payload) => {
+                // TokenUsage is a sidecar event
+                // parent_id points to the generation event (ToolCall or Message)
+                if let Some(parent_id) = event.parent_id {
+                    let bundle = token_map.entry(parent_id).or_insert(TokenBundle {
+                        input: None,
+                        output: None,
+                        total: None,
+                        cached: None,
+                        thinking: None,
+                    });
+
+                    // Accumulate tokens (support incremental updates)
+                    bundle.input = Some(bundle.input.unwrap_or(0) + payload.input_tokens as u64);
+                    bundle.output = Some(bundle.output.unwrap_or(0) + payload.output_tokens as u64);
+                    bundle.total = Some(bundle.total.unwrap_or(0) + payload.total_tokens as u64);
+
+                    if let Some(details) = &payload.details {
+                        if let Some(cached) = details.cache_read_input_tokens {
+                            bundle.cached = Some(bundle.cached.unwrap_or(0) + cached as u64);
+                        }
+                        if let Some(thinking) = details.reasoning_output_tokens {
+                            bundle.thinking = Some(bundle.thinking.unwrap_or(0) + thinking as u64);
+                        }
+                    }
+                }
+            }
         }
     }
 
     // Finalize last span
     if has_content(&current_span) {
-        finalize_span(&mut current_span);
+        finalize_span(&mut current_span, &token_map, &message_map);
         spans.push(current_span);
     }
 
     spans
-}
-
-struct PendingTool {
-    call_id: Option<String>,
-    tool_index: usize,
 }
 
 fn has_content(span: &Span) -> bool {
@@ -232,11 +241,24 @@ fn has_content(span: &Span) -> bool {
         || !span.system.is_empty()
 }
 
-fn finalize_span(span: &mut Span) {
-    calculate_stats(span);
+fn finalize_span(
+    span: &mut Span,
+    token_map: &HashMap<Uuid, TokenBundle>,
+    message_map: &HashMap<Uuid, usize>,
+) {
+    // Attach tokens to messages
+    for (msg_id, msg_idx) in message_map {
+        if let Some(tokens) = token_map.get(msg_id) {
+            if let Some(msg) = span.assistant.get_mut(*msg_idx) {
+                msg.tokens = Some(tokens.clone());
+            }
+        }
+    }
+
+    calculate_stats(span, token_map);
 }
 
-fn calculate_stats(span: &mut Span) {
+fn calculate_stats(span: &mut Span, _token_map: &HashMap<Uuid, TokenBundle>) {
     use chrono::DateTime;
 
     // Calculate tokens_total from assistant messages
@@ -308,24 +330,9 @@ fn calculate_stats(span: &mut Span) {
     }
 }
 
-fn extract_token_bundle(event: &AgentEventV1) -> Option<TokenBundle> {
-    if event.tokens_input.is_some() || event.tokens_output.is_some() || event.tokens_total.is_some()
-    {
-        Some(TokenBundle {
-            input: event.tokens_input,
-            output: event.tokens_output,
-            total: event.tokens_total,
-            cached: event.tokens_cached,
-            thinking: event.tokens_thinking,
-        })
-    } else {
-        None
-    }
-}
-
-fn extract_input_summary(event: &AgentEventV1) -> String {
-    // Try file path first
-    if let Some(file_path) = &event.file_path {
+fn extract_input_summary(payload: &agtrace_types::v2::ToolCallPayload) -> String {
+    // Try to extract meaningful summary from arguments
+    if let Some(file_path) = payload.arguments.get("file_path").and_then(|v| v.as_str()) {
         if let Some(filename) = std::path::Path::new(file_path)
             .file_name()
             .and_then(|n| n.to_str())
@@ -334,19 +341,24 @@ fn extract_input_summary(event: &AgentEventV1) -> String {
         }
     }
 
-    // Try parsing JSON from text field
-    if let Some(text) = &event.text {
-        if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
-            if let Some(cmd) = json.get("command").and_then(|v| v.as_str()) {
-                return truncate_string(cmd, 50);
-            }
-            if let Some(pattern) = json.get("pattern").and_then(|v| v.as_str()) {
-                return format!("\"{}\"", truncate_string(pattern, 30));
-            }
-        }
+    if let Some(cmd) = payload.arguments.get("command").and_then(|v| v.as_str()) {
+        return truncate_string(cmd, 50);
+    }
+
+    if let Some(pattern) = payload.arguments.get("pattern").and_then(|v| v.as_str()) {
+        return format!("\"{}\"", truncate_string(pattern, 30));
     }
 
     String::new()
+}
+
+fn extract_exit_code(output: &str) -> Option<i32> {
+    // Try to extract exit code from common patterns
+    // e.g., "exit code: 1" or "Exit code 1"
+    let re = regex::Regex::new(r"(?i)exit\s+code:?\s*(\d+)").ok()?;
+    re.captures(output)
+        .and_then(|cap| cap.get(1))
+        .and_then(|m| m.as_str().parse::<i32>().ok())
 }
 
 fn truncate_string(s: &str, max_len: usize) -> String {
@@ -355,5 +367,217 @@ fn truncate_string(s: &str, max_len: usize) -> String {
     } else {
         let chars: Vec<char> = s.chars().take(max_len - 3).collect();
         format!("{}...", chars.iter().collect::<String>())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use agtrace_types::v2::*;
+    use chrono::Utc;
+
+    #[test]
+    fn test_build_spans_basic() {
+        let trace_id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let tool_call_id = Uuid::new_v4();
+        let tool_result_id = Uuid::new_v4();
+        let message_id = Uuid::new_v4();
+
+        let events = vec![
+            AgentEvent {
+                id: user_id,
+                trace_id,
+                parent_id: None,
+                timestamp: Utc::now(),
+                payload: EventPayload::User(UserPayload {
+                    text: "Calculate 1+1".to_string(),
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: tool_call_id,
+                trace_id,
+                parent_id: Some(user_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::ToolCall(ToolCallPayload {
+                    name: "python".to_string(),
+                    arguments: serde_json::json!({"command": "print(1+1)"}),
+                    provider_call_id: Some("call_123".to_string()),
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: tool_result_id,
+                trace_id,
+                parent_id: Some(tool_call_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::ToolResult(ToolResultPayload {
+                    output: "2".to_string(),
+                    tool_call_id,
+                    is_error: false,
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: message_id,
+                trace_id,
+                parent_id: Some(tool_result_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::Message(MessagePayload {
+                    text: "The answer is 2".to_string(),
+                }),
+                metadata: None,
+            },
+        ];
+
+        let spans = build_spans(&events);
+        assert_eq!(spans.len(), 1);
+
+        let span = &spans[0];
+        assert!(span.user.is_some());
+        assert_eq!(span.tools.len(), 1);
+        assert_eq!(span.assistant.len(), 1);
+
+        let tool = &span.tools[0];
+        assert_eq!(tool.tool_name, "python");
+        assert!(tool.ts_result.is_some());
+        assert_eq!(tool.status, Some(agtrace_types::ToolStatus::Success));
+    }
+
+    #[test]
+    fn test_tool_call_result_matching() {
+        let trace_id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let tool1_id = Uuid::new_v4();
+        let tool2_id = Uuid::new_v4();
+        let result1_id = Uuid::new_v4();
+        let result2_id = Uuid::new_v4();
+
+        let events = vec![
+            AgentEvent {
+                id: user_id,
+                trace_id,
+                parent_id: None,
+                timestamp: Utc::now(),
+                payload: EventPayload::User(UserPayload {
+                    text: "test".to_string(),
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: tool1_id,
+                trace_id,
+                parent_id: Some(user_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::ToolCall(ToolCallPayload {
+                    name: "bash".to_string(),
+                    arguments: serde_json::json!({"command": "ls"}),
+                    provider_call_id: None,
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: tool2_id,
+                trace_id,
+                parent_id: Some(tool1_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::ToolCall(ToolCallPayload {
+                    name: "grep".to_string(),
+                    arguments: serde_json::json!({"pattern": "test"}),
+                    provider_call_id: None,
+                }),
+                metadata: None,
+            },
+            // Results arrive in reverse order
+            AgentEvent {
+                id: result2_id,
+                trace_id,
+                parent_id: Some(tool2_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::ToolResult(ToolResultPayload {
+                    output: "match found".to_string(),
+                    tool_call_id: tool2_id,
+                    is_error: false,
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: result1_id,
+                trace_id,
+                parent_id: Some(result2_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::ToolResult(ToolResultPayload {
+                    output: "file1.txt\nfile2.txt".to_string(),
+                    tool_call_id: tool1_id,
+                    is_error: false,
+                }),
+                metadata: None,
+            },
+        ];
+
+        let spans = build_spans(&events);
+        assert_eq!(spans.len(), 1);
+
+        let span = &spans[0];
+        assert_eq!(span.tools.len(), 2);
+
+        // Both tools should have results
+        assert!(span.tools[0].ts_result.is_some());
+        assert!(span.tools[1].ts_result.is_some());
+    }
+
+    #[test]
+    fn test_token_usage_sidecar() {
+        let trace_id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let message_id = Uuid::new_v4();
+        let token_id = Uuid::new_v4();
+
+        let events = vec![
+            AgentEvent {
+                id: user_id,
+                trace_id,
+                parent_id: None,
+                timestamp: Utc::now(),
+                payload: EventPayload::User(UserPayload {
+                    text: "hello".to_string(),
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: message_id,
+                trace_id,
+                parent_id: Some(user_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::Message(MessagePayload {
+                    text: "hi".to_string(),
+                }),
+                metadata: None,
+            },
+            AgentEvent {
+                id: token_id,
+                trace_id,
+                parent_id: Some(message_id),
+                timestamp: Utc::now(),
+                payload: EventPayload::TokenUsage(TokenUsagePayload {
+                    input_tokens: 100,
+                    output_tokens: 50,
+                    total_tokens: 150,
+                    details: None,
+                }),
+                metadata: None,
+            },
+        ];
+
+        let spans = build_spans(&events);
+        assert_eq!(spans.len(), 1);
+
+        let span = &spans[0];
+        assert_eq!(span.assistant.len(), 1);
+
+        let msg = &span.assistant[0];
+        assert!(msg.tokens.is_some());
+        assert_eq!(msg.tokens.as_ref().unwrap().total, Some(150));
     }
 }

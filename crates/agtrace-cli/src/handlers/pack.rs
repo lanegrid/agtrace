@@ -34,7 +34,7 @@ pub fn handle(
     let options = LoadOptions::default();
 
     for (i, session) in balanced_sessions.iter().enumerate() {
-        if let Ok(events) = loader.load_events(&session.id, &options) {
+        if let Ok(events) = loader.load_events_v2(&session.id, &options) {
             let spans = build_spans(&events);
             if !spans.is_empty() {
                 // Newer sessions get a small boost in scoring

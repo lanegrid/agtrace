@@ -38,28 +38,30 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
 
             // Extract session info
             if let Some(first_event) = events.first() {
-                if let Some(session_id) = &first_event.session_id {
-                    println!("  - Session ID: {}", session_id);
-                }
-                if let Some(project_root) = &first_event.project_root {
-                    println!("  - Project: {}", project_root);
-                }
+                println!("  - Trace ID: {}", first_event.trace_id);
+                println!("  - Timestamp: {}", first_event.timestamp);
             }
 
             println!("  - Events extracted: {}", events.len());
 
-            // Show event type breakdown
+            // Show event payload type breakdown
             let mut type_counts = std::collections::HashMap::new();
             for event in &events {
-                *type_counts
-                    .entry(format!("{:?}", event.event_type))
-                    .or_insert(0) += 1;
+                let payload_type = match &event.payload {
+                    agtrace_types::v2::EventPayload::User(_) => "User",
+                    agtrace_types::v2::EventPayload::Message(_) => "Message",
+                    agtrace_types::v2::EventPayload::ToolCall(_) => "ToolCall",
+                    agtrace_types::v2::EventPayload::ToolResult(_) => "ToolResult",
+                    agtrace_types::v2::EventPayload::Reasoning(_) => "Reasoning",
+                    agtrace_types::v2::EventPayload::TokenUsage(_) => "TokenUsage",
+                };
+                *type_counts.entry(payload_type).or_insert(0) += 1;
             }
 
             if !type_counts.is_empty() {
                 println!("  - Event breakdown:");
-                for (event_type, count) in type_counts {
-                    println!("      {}: {}", event_type, count);
+                for (payload_type, count) in type_counts {
+                    println!("      {}: {}", payload_type, count);
                 }
             }
         }

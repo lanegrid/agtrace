@@ -1,4 +1,4 @@
-use agtrace_types::AgentEventV1;
+use agtrace_types::v2::AgentEvent;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -18,10 +18,10 @@ pub use claude::ClaudeProvider;
 pub use codex::CodexProvider;
 pub use gemini::GeminiProvider;
 
-// Re-export normalize functions (for tests and external use)
-pub use claude::{normalize_claude_file, normalize_claude_file_v2};
-pub use codex::{normalize_codex_file, normalize_codex_file_v2};
-pub use gemini::{normalize_gemini_file, normalize_gemini_file_v2};
+// Re-export v2 normalize functions (for tests and external use)
+pub use claude::normalize_claude_file_v2;
+pub use codex::normalize_codex_file_v2;
+pub use gemini::normalize_gemini_file_v2;
 
 // Re-export registry functions for convenience
 pub use registry::{
@@ -65,7 +65,7 @@ pub trait LogProvider: Send + Sync {
 
     fn can_handle(&self, path: &Path) -> bool;
 
-    fn normalize_file(&self, path: &Path, context: &ImportContext) -> Result<Vec<AgentEventV1>>;
+    fn normalize_file(&self, path: &Path, context: &ImportContext) -> Result<Vec<AgentEvent>>;
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool;
 

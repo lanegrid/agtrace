@@ -3,7 +3,7 @@ pub mod mapper;
 pub mod schema;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
-use agtrace_types::AgentEventV1;
+use agtrace_types::v2::AgentEvent;
 use agtrace_types::{is_64_char_hex, project_hash_from_root};
 use anyhow::Result;
 use std::collections::HashMap;
@@ -11,8 +11,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub use self::io::{
-    extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file,
-    normalize_gemini_file_v2,
+    extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file_v2,
 };
 
 pub struct GeminiProvider;
@@ -50,8 +49,8 @@ impl LogProvider for GeminiProvider {
         filename == "logs.json" || (filename.starts_with("session-") && filename.ends_with(".json"))
     }
 
-    fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEventV1>> {
-        normalize_gemini_file(path)
+    fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
+        normalize_gemini_file_v2(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
