@@ -1,7 +1,6 @@
 // Engine module - Core processing logic (interpretation, analysis, export)
 // This layer sits between normalized events (types) and CLI presentation
 
-pub mod analysis;
 pub mod assembler;
 pub mod export;
 pub mod session;

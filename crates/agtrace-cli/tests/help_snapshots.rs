@@ -128,12 +128,6 @@ fn test_lab_help() {
 }
 
 #[test]
-fn test_lab_analyze_help() {
-    let help = run_help(&["lab", "analyze"]);
-    insta::assert_snapshot!("lab_analyze_help", help);
-}
-
-#[test]
 fn test_lab_export_help() {
     let help = run_help(&["lab", "export"]);
     insta::assert_snapshot!("lab_export_help", help);

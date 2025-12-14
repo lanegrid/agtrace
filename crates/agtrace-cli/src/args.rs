@@ -210,16 +210,6 @@ pub enum ProjectCommand {
 
 #[derive(Subcommand)]
 pub enum LabCommand {
-    Analyze {
-        session_id: String,
-
-        #[arg(long, default_value = "all")]
-        detect: String,
-
-        #[arg(long, value_parser = ["plain", "json"], default_value = "plain")]
-        format: String,
-    },
-
     Export {
         session_id: String,
 

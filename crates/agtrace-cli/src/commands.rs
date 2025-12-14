@@ -168,11 +168,6 @@ pub fn run(cli: Cli) -> Result<()> {
             let db = Database::open(&db_path)?;
 
             match command {
-                LabCommand::Analyze {
-                    session_id,
-                    detect,
-                    format,
-                } => handlers::lab_analyze::handle(&db, session_id, detect, format),
                 LabCommand::Export {
                     session_id,
                     output,
