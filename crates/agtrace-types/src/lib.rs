@@ -49,47 +49,7 @@ impl Source {
     }
 }
 
-/// Type of agent event
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum EventType {
-    UserMessage,
-    AssistantMessage,
-    SystemMessage,
-    Reasoning,
-    ToolCall,
-    ToolResult,
-    FileSnapshot,
-    SessionSummary,
-    Meta,
-    Log,
-}
-
-/// Role of the event actor
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Role {
-    User,
-    Assistant,
-    System,
-    Tool,
-    Cli,
-    Other,
-}
-
-/// Communication channel
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Channel {
-    Chat,
-    Editor,
-    Terminal,
-    Filesystem,
-    System,
-    Other,
-}
-
-/// Tool execution status
+/// Tool execution status (used in Span API)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolStatus {
@@ -97,62 +57,6 @@ pub enum ToolStatus {
     Error,
     InProgress,
     Unknown,
-}
-
-/// File operation type
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FileOp {
-    Read,
-    Write,
-    Modify,
-    Delete,
-    Create,
-    Move,
-}
-
-/// Normalized tool name (standardized across providers)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ToolName {
-    /// Shell command execution (bash, sh, zsh)
-    Bash,
-    /// File read operation
-    Read,
-    /// File write operation
-    Write,
-    /// File edit operation
-    Edit,
-    /// File pattern search (glob)
-    Glob,
-    /// Content search (grep)
-    Grep,
-    /// Other tools not in standard set
-    Other(String),
-}
-
-impl ToolName {
-    /// Convert to string representation
-    pub fn as_str(&self) -> &str {
-        match self {
-            ToolName::Bash => "Bash",
-            ToolName::Read => "Read",
-            ToolName::Write => "Write",
-            ToolName::Edit => "Edit",
-            ToolName::Glob => "Glob",
-            ToolName::Grep => "Grep",
-            ToolName::Other(s) => s.as_str(),
-        }
-    }
-
-    /// Get the channel for this tool
-    pub fn channel(&self) -> Channel {
-        match self {
-            ToolName::Bash => Channel::Terminal,
-            ToolName::Read | ToolName::Write | ToolName::Edit => Channel::Editor,
-            ToolName::Glob | ToolName::Grep => Channel::Filesystem,
-            ToolName::Other(_) => Channel::Chat,
-        }
-    }
 }
 
 /// Session summary for listing
