@@ -44,21 +44,22 @@ Following docs/schema_v2/migration_v1_to_v2.md, we will implement parallel adopt
 
 **Success Criteria**: ✅ Code compiles with both v1 and v2 types available, all tests pass
 
-### Phase 2: Normalization Layer ⏳ NOT STARTED
+### Phase 2: Normalization Layer 🚧 IN PROGRESS (Started 2025-12-14)
 **Goal**: Implement provider raw data -> v2 conversion
 
 **Critical Design Decision**:
 Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses information.
 
 **Tasks**:
-- [ ] Create conversion infrastructure:
-  - [ ] EventBuilder with trace_id, parent_id tracking
-  - [ ] tool_map for provider tool_id -> UUID mapping
-- [ ] Implement provider converters:
-  - [ ] Gemini: Unfold nested structure into event stream
-    - [ ] Handle thoughts[] -> multiple Reasoning events
-    - [ ] Handle toolCalls[] -> ToolCall + ToolResult pairs
-    - [ ] Handle token attribution (last generation event of turn)
+- [x] Create conversion infrastructure:
+  - [x] EventBuilder with trace_id, parent_id tracking
+  - [x] tool_map for provider tool_id -> UUID mapping
+- [x] Implement provider converters:
+  - [x] Gemini: Unfold nested structure into event stream ✅
+    - [x] Handle thoughts[] -> multiple Reasoning events
+    - [x] Handle toolCalls[] -> ToolCall + ToolResult pairs
+    - [x] Handle token attribution (last generation event of turn)
+    - [x] Tests pass (4 tests)
   - [ ] Codex: Handle async token notifications
     - [ ] Deduplicate echoed events
     - [ ] Attach TokenUsage as sidecar events
@@ -68,6 +69,8 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
 - [ ] Write conversion tests with snapshot data
 
 **Success Criteria**: Can convert all provider snapshots to Vec<v2::AgentEvent>
+
+**Commit**: `0f912f3` - feat: add v2 schema types and Gemini normalization layer
 
 ### Phase 3: Parallel Engine Implementation ⏳ NOT STARTED
 **Goal**: Implement v2-based analysis alongside v1 engine
