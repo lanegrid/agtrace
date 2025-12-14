@@ -24,6 +24,10 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
     // Track last generation event for attaching TokenUsage (future use)
     let mut _last_generation_event_id: Option<Uuid> = None;
 
+    // Track last seen token usage to deduplicate
+    // Codex sends duplicate token_count events with same last_token_usage values
+    let mut last_seen_token_usage: Option<(i32, i32, i32)> = None;
+
     for record in records {
         match record {
             CodexRecord::SessionMeta(_meta) => {
@@ -35,44 +39,38 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                 let timestamp = parse_timestamp(&event_msg.timestamp);
 
                 match &event_msg.payload {
-                    schema::EventMsgPayload::UserMessage(user_msg) => {
-                        let event = builder.create_event(
-                            timestamp,
-                            EventPayload::User(UserPayload {
-                                text: user_msg.message.clone(),
-                            }),
-                            serde_json::to_value(&event_msg).ok(),
-                        );
-                        events.push(event);
+                    // Skip user_message, agent_message, agent_reasoning
+                    // These are duplicated in ResponseItem with richer data (encrypted_content, etc.)
+                    schema::EventMsgPayload::UserMessage(_) => {
+                        // Skip: duplicated in ResponseItem::Message(user)
                     }
 
-                    schema::EventMsgPayload::AgentMessage(agent_msg) => {
-                        let event = builder.create_event(
-                            timestamp,
-                            EventPayload::Message(v2::MessagePayload {
-                                text: agent_msg.message.clone(),
-                            }),
-                            serde_json::to_value(&event_msg).ok(),
-                        );
-                        _last_generation_event_id = Some(event.id);
-                        events.push(event);
+                    schema::EventMsgPayload::AgentMessage(_) => {
+                        // Skip: duplicated in ResponseItem::Message(assistant)
                     }
 
-                    schema::EventMsgPayload::AgentReasoning(reasoning) => {
-                        let event = builder.create_event(
-                            timestamp,
-                            EventPayload::Reasoning(v2::ReasoningPayload {
-                                text: reasoning.text.clone(),
-                            }),
-                            serde_json::to_value(&event_msg).ok(),
-                        );
-                        events.push(event);
+                    schema::EventMsgPayload::AgentReasoning(_) => {
+                        // Skip: duplicated in ResponseItem::Reasoning
                     }
 
                     schema::EventMsgPayload::TokenCount(token_count) => {
                         // TokenUsage sidecar event
+                        // IMPORTANT: Keep this - token_count only exists in event_msg, not in response_item
                         if let Some(info) = &token_count.info {
                             let usage = &info.last_token_usage;
+                            let usage_triple = (
+                                usage.input_tokens as i32,
+                                usage.output_tokens as i32,
+                                usage.total_tokens as i32,
+                            );
+
+                            // Deduplicate: Codex often sends duplicate token_count with same last_token_usage
+                            if last_seen_token_usage == Some(usage_triple) {
+                                // Skip duplicate
+                                continue;
+                            }
+                            last_seen_token_usage = Some(usage_triple);
+
                             let event = builder.create_event(
                                 timestamp,
                                 EventPayload::TokenUsage(TokenUsagePayload {

@@ -169,12 +169,21 @@ impl TurnBuilder {
             }
 
             EventPayload::TokenUsage(usage) => {
-                if let Some(current) = &mut self.current_step.usage {
-                    current.input_tokens += usage.input_tokens;
-                    current.output_tokens += usage.output_tokens;
-                    current.total_tokens += usage.total_tokens;
+                // Strategy:
+                // 1. If current_step has content, merge usage there
+                // 2. If current_step is empty but previous step exists, retroactively merge to last step
+                // 3. Otherwise, set usage on current_step
+
+                if !self.current_step.is_empty() {
+                    // Case 1: Active step has content -> merge there
+                    merge_usage(&mut self.current_step.usage, usage);
+                } else if let Some(last_step) = self.steps.last_mut() {
+                    // Case 2: Active step is empty but previous step exists -> retroactively merge
+                    // This prevents "usage-only ghost steps"
+                    merge_usage(&mut last_step.usage, usage);
                 } else {
-                    self.current_step.usage = Some(usage.clone());
+                    // Case 3: Beginning of turn -> set on current step
+                    merge_usage(&mut self.current_step.usage, usage);
                 }
             }
 
@@ -299,5 +308,31 @@ fn calculate_turn_stats(steps: &[AgentStep], turn_start: DateTime<Utc>) -> TurnS
         duration_ms,
         step_count,
         total_tokens,
+    }
+}
+
+fn merge_usage(
+    target: &mut Option<agtrace_types::v2::TokenUsagePayload>,
+    source: &agtrace_types::v2::TokenUsagePayload,
+) {
+    if let Some(current) = target {
+        current.input_tokens += source.input_tokens;
+        current.output_tokens += source.output_tokens;
+        current.total_tokens += source.total_tokens;
+
+        // Merge details if both exist
+        if let (Some(d1), Some(d2)) = (&mut current.details, &source.details) {
+            if let (Some(v1), Some(v2)) = (d1.cache_read_input_tokens, d2.cache_read_input_tokens)
+            {
+                d1.cache_read_input_tokens = Some(v1 + v2);
+            }
+            if let (Some(v1), Some(v2)) =
+                (d1.reasoning_output_tokens, d2.reasoning_output_tokens)
+            {
+                d1.reasoning_output_tokens = Some(v1 + v2);
+            }
+        }
+    } else {
+        *target = Some(source.clone());
     }
 }
