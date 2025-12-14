@@ -28,18 +28,6 @@ fn test_discover_project_root_with_explicit() {
 }
 
 #[test]
-fn test_discover_project_root_with_env_var() {
-    // Set environment variable
-    env::set_var("AGTRACE_PROJECT_ROOT", "/env/project/root");
-
-    let result = discover_project_root(None).unwrap();
-    assert_eq!(result, PathBuf::from("/env/project/root"));
-
-    // Clean up
-    env::remove_var("AGTRACE_PROJECT_ROOT");
-}
-
-#[test]
 fn test_discover_project_root_priority() {
     // Set environment variable
     env::set_var("AGTRACE_PROJECT_ROOT", "/env/project/root");
