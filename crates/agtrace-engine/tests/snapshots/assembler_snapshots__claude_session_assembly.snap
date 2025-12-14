@@ -15,8 +15,8 @@ expression: value
     {
       "id": "<UUID_REDACTED>",
       "stats": {
-        "duration_ms": 22108,
-        "step_count": 4,
+        "duration_ms": 30283,
+        "step_count": 3,
         "total_tokens": 729
       },
       "steps": [
@@ -36,25 +36,6 @@ expression: value
             "event_id": "<UUID_REDACTED>"
           },
           "timestamp": "2025-12-09T19:47:42.930Z",
-          "tools": [],
-          "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_read_input_tokens": 12135,
-              "reasoning_output_tokens": null
-            },
-            "input_tokens": 10,
-            "output_tokens": 8,
-            "total_tokens": 18
-          }
-        },
-        {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": null,
-          "reasoning": null,
-          "timestamp": "2025-12-09T19:47:55.174Z",
           "tools": [
             {
               "call": {
@@ -70,9 +51,18 @@ expression: value
                 "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
                 "timestamp": "2025-12-09T19:47:55.793Z"
               },
-              "duration_ms": null,
+              "duration_ms": 4192,
               "is_error": false,
-              "result": null
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:47:59.985Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
             }
           ],
           "usage": {
@@ -82,9 +72,9 @@ expression: value
               "cache_read_input_tokens": 12135,
               "reasoning_output_tokens": null
             },
-            "input_tokens": 10,
-            "output_tokens": 436,
-            "total_tokens": 446
+            "input_tokens": 20,
+            "output_tokens": 444,
+            "total_tokens": 464
           }
         },
         {
@@ -97,7 +87,7 @@ expression: value
             },
             "event_id": "<UUID_REDACTED>"
           },
-          "timestamp": "2025-12-09T19:47:55.793Z",
+          "timestamp": "2025-12-09T19:48:04.245Z",
           "tools": [
             {
               "call": {
@@ -113,9 +103,18 @@ expression: value
                 "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx",
                 "timestamp": "2025-12-09T19:48:05.038Z"
               },
-              "duration_ms": null,
+              "duration_ms": 2983,
               "is_error": false,
-              "result": null
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:48:08.021Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
             }
           ],
           "usage": {
@@ -145,7 +144,7 @@ expression: value
             },
             "event_id": "<UUID_REDACTED>"
           },
-          "timestamp": "2025-12-09T19:48:05.038Z",
+          "timestamp": "2025-12-09T19:48:13.213Z",
           "tools": [],
           "usage": {
             "details": {
@@ -171,14 +170,14 @@ expression: value
     {
       "id": "<UUID_REDACTED>",
       "stats": {
-        "duration_ms": 13765,
+        "duration_ms": 20618,
         "step_count": 3,
         "total_tokens": 207
       },
       "steps": [
         {
           "id": "<UUID_REDACTED>",
-          "is_failed": false,
+          "is_failed": true,
           "message": null,
           "reasoning": {
             "content": {
@@ -202,9 +201,18 @@ expression: value
                 "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
                 "timestamp": "2025-12-09T19:48:23.391Z"
               },
-              "duration_ms": null,
-              "is_error": false,
-              "result": null
+              "duration_ms": 4584,
+              "is_error": true,
+              "result": {
+                "content": {
+                  "is_error": true,
+                  "output": "error: target shim binary not found",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:48:27.975Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
             }
           ],
           "usage": {
@@ -221,7 +229,7 @@ expression: value
         },
         {
           "id": "<UUID_REDACTED>",
-          "is_failed": true,
+          "is_failed": false,
           "message": null,
           "reasoning": {
             "content": {
@@ -229,7 +237,7 @@ expression: value
             },
             "event_id": "<UUID_REDACTED>"
           },
-          "timestamp": "2025-12-09T19:48:23.391Z",
+          "timestamp": "2025-12-09T19:48:30.651Z",
           "tools": [
             {
               "call": {
@@ -245,9 +253,18 @@ expression: value
                 "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
                 "timestamp": "2025-12-09T19:48:31.225Z"
               },
-              "duration_ms": null,
+              "duration_ms": 2658,
               "is_error": false,
-              "result": null
+              "result": {
+                "content": {
+                  "is_error": false,
+                  "output": "2",
+                  "tool_call_id": "<UUID_REDACTED>"
+                },
+                "event_id": "<UUID_REDACTED>",
+                "timestamp": "2025-12-09T19:48:33.883Z",
+                "tool_call_id": "<UUID_REDACTED>"
+              }
             }
           ],
           "usage": {
@@ -277,7 +294,7 @@ expression: value
             },
             "event_id": "<UUID_REDACTED>"
           },
-          "timestamp": "2025-12-09T19:48:31.225Z",
+          "timestamp": "2025-12-09T19:48:38.078Z",
           "tools": [],
           "usage": {
             "details": {

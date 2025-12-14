@@ -2,7 +2,6 @@ use crate::session::*;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
-use std::mem;
 use uuid::Uuid;
 
 pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
@@ -15,7 +14,6 @@ pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
     let end_time = events.last().map(|e| e.timestamp);
 
     let turns = build_turns(events);
-
     let stats = calculate_session_stats(&turns, start_time, end_time);
 
     Some(AgentSession {
@@ -41,7 +39,7 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
                 }
 
                 current_turn = Some(TurnBuilder::new(
-                    event.id, // Use user event ID as turn ID
+                    event.id,
                     event.timestamp,
                     UserMessage {
                         event_id: event.id,
@@ -70,8 +68,12 @@ struct TurnBuilder {
     id: Uuid,
     timestamp: DateTime<Utc>,
     user: UserMessage,
-    step_builder: StepBuilder,
-    completed_steps: Vec<AgentStep>,
+
+    steps: Vec<StepBuilder>,
+    current_step: StepBuilder,
+
+    // Key: Tool Call Event ID, Value: (Step Index, Call Index in Step)
+    pending_calls: HashMap<Uuid, (usize, usize)>,
 }
 
 impl TurnBuilder {
@@ -80,95 +82,150 @@ impl TurnBuilder {
             id,
             timestamp,
             user,
-            step_builder: StepBuilder::new(timestamp),
-            completed_steps: Vec::new(),
+            steps: Vec::new(),
+            current_step: StepBuilder::new(timestamp),
+            pending_calls: HashMap::new(),
         }
     }
 
     fn add_event(&mut self, event: &AgentEvent) {
         match &event.payload {
-            EventPayload::TokenUsage(usage) => {
-                self.step_builder.usage = Some(usage.clone());
-                let builder =
-                    mem::replace(&mut self.step_builder, StepBuilder::new(event.timestamp));
-                if let Some(step) = builder.build() {
-                    self.completed_steps.push(step);
-                }
-            }
             EventPayload::Reasoning(reasoning) => {
-                self.step_builder.set_id_if_none(event.id);
-                self.step_builder.reasoning = Some(ReasoningBlock {
+                self.ensure_new_step_if_needed(event.timestamp);
+
+                self.current_step.id = Some(event.id);
+                self.current_step.reasoning = Some(ReasoningBlock {
                     event_id: event.id,
                     content: reasoning.clone(),
                 });
             }
+
             EventPayload::Message(message) => {
-                self.step_builder.set_id_if_none(event.id);
-                self.step_builder.message = Some(MessageBlock {
+                if self.current_step.message.is_some() {
+                    self.start_new_step(event.timestamp);
+                }
+
+                if self.current_step.id.is_none() {
+                    self.current_step.id = Some(event.id);
+                }
+
+                self.current_step.message = Some(MessageBlock {
                     event_id: event.id,
                     content: message.clone(),
                 });
             }
+
             EventPayload::ToolCall(tool_call) => {
-                self.step_builder.set_id_if_none(event.id);
-                self.step_builder.tool_calls.push((
-                    event.id,
-                    event.timestamp,
-                    tool_call.provider_call_id.clone(),
-                    tool_call.clone(),
-                ));
+                if self.current_step.id.is_none() {
+                    self.current_step.id = Some(event.id);
+                }
+
+                let call_block = ToolCallBlock {
+                    event_id: event.id,
+                    timestamp: event.timestamp,
+                    provider_call_id: tool_call.provider_call_id.clone(),
+                    content: tool_call.clone(),
+                };
+
+                let call_idx = self.current_step.tool_executions.len();
+                self.current_step.tool_executions.push(ToolExecution {
+                    call: call_block,
+                    result: None,
+                    duration_ms: None,
+                    is_error: false,
+                });
+
+                self.pending_calls
+                    .insert(event.id, (self.steps.len(), call_idx));
             }
+
             EventPayload::ToolResult(tool_result) => {
-                self.step_builder.set_id_if_none(event.id);
-                self.step_builder.tool_results.push((
-                    event.id,
-                    event.timestamp,
-                    tool_result.tool_call_id,
-                    tool_result.clone(),
-                ));
+                let result_block = ToolResultBlock {
+                    event_id: event.id,
+                    timestamp: event.timestamp,
+                    tool_call_id: tool_result.tool_call_id,
+                    content: tool_result.clone(),
+                };
+
+                if let Some(&(step_idx, call_idx)) =
+                    self.pending_calls.get(&tool_result.tool_call_id)
+                {
+                    let target_step = if step_idx < self.steps.len() {
+                        &mut self.steps[step_idx]
+                    } else {
+                        &mut self.current_step
+                    };
+
+                    if let Some(exec) = target_step.tool_executions.get_mut(call_idx) {
+                        let duration = (event.timestamp - exec.call.timestamp).num_milliseconds();
+
+                        exec.result = Some(result_block);
+                        exec.duration_ms = Some(duration);
+                        exec.is_error = tool_result.is_error;
+                    }
+
+                    self.pending_calls.remove(&tool_result.tool_call_id);
+                }
             }
-            EventPayload::User(_) => {}
+
+            EventPayload::TokenUsage(usage) => {
+                if let Some(current) = &mut self.current_step.usage {
+                    current.input_tokens += usage.input_tokens;
+                    current.output_tokens += usage.output_tokens;
+                    current.total_tokens += usage.total_tokens;
+                } else {
+                    self.current_step.usage = Some(usage.clone());
+                }
+            }
+
+            EventPayload::User(_) => unreachable!(),
         }
     }
 
-    fn build(mut self) -> Option<AgentTurn> {
-        if let Some(step) = self.step_builder.build() {
-            self.completed_steps.push(step);
+    fn ensure_new_step_if_needed(&mut self, timestamp: DateTime<Utc>) {
+        if self.current_step.reasoning.is_some() {
+            self.start_new_step(timestamp);
+        }
+    }
+
+    fn start_new_step(&mut self, timestamp: DateTime<Utc>) {
+        if self.current_step.is_empty() {
+            return;
         }
 
-        if self.completed_steps.is_empty() {
+        let completed = std::mem::replace(&mut self.current_step, StepBuilder::new(timestamp));
+        self.steps.push(completed);
+    }
+
+    fn build(mut self) -> Option<AgentTurn> {
+        if !self.current_step.is_empty() {
+            self.steps.push(self.current_step);
+        }
+
+        if self.steps.is_empty() {
             return None;
         }
 
-        let stats = calculate_turn_stats(&self.completed_steps, self.timestamp);
+        let completed_steps: Vec<AgentStep> = self.steps.into_iter().map(|b| b.build()).collect();
+
+        let stats = calculate_turn_stats(&completed_steps, self.timestamp);
 
         Some(AgentTurn {
             id: self.id,
             timestamp: self.timestamp,
             user: self.user,
-            steps: self.completed_steps,
+            steps: completed_steps,
             stats,
         })
     }
 }
 
 struct StepBuilder {
-    id: Option<Uuid>, // None until first event is added
+    id: Option<Uuid>,
     timestamp: DateTime<Utc>,
     reasoning: Option<ReasoningBlock>,
     message: Option<MessageBlock>,
-    tool_calls: Vec<(
-        Uuid,
-        DateTime<Utc>,
-        Option<String>,
-        agtrace_types::v2::ToolCallPayload,
-    )>,
-    tool_results: Vec<(
-        Uuid,
-        DateTime<Utc>,
-        Uuid,
-        agtrace_types::v2::ToolResultPayload,
-    )>,
+    tool_executions: Vec<ToolExecution>,
     usage: Option<agtrace_types::v2::TokenUsagePayload>,
 }
 
@@ -179,104 +236,33 @@ impl StepBuilder {
             timestamp,
             reasoning: None,
             message: None,
-            tool_calls: Vec::new(),
-            tool_results: Vec::new(),
+            tool_executions: Vec::new(),
             usage: None,
         }
     }
 
-    fn set_id_if_none(&mut self, id: Uuid) {
-        if self.id.is_none() {
-            self.id = Some(id);
-        }
+    fn is_empty(&self) -> bool {
+        self.reasoning.is_none()
+            && self.message.is_none()
+            && self.tool_executions.is_empty()
+            && self.usage.is_none()
     }
 
-    fn build(self) -> Option<AgentStep> {
-        if self.reasoning.is_none()
-            && self.message.is_none()
-            && self.tool_calls.is_empty()
-            && self.usage.is_none()
-        {
-            return None;
-        }
-
-        // Use first event ID, or generate one if somehow none was set
+    fn build(self) -> AgentStep {
         let id = self.id.unwrap_or_else(Uuid::new_v4);
 
-        let tools = build_tool_executions(&self.tool_calls, &self.tool_results);
+        let is_failed = self.tool_executions.iter().any(|t| t.is_error);
 
-        let is_failed = tools.iter().any(|t| t.is_error)
-            || self.tool_results.iter().any(|(_, _, _, r)| r.is_error);
-
-        Some(AgentStep {
+        AgentStep {
             id,
             timestamp: self.timestamp,
             reasoning: self.reasoning,
             message: self.message,
-            tools,
+            tools: self.tool_executions,
             usage: self.usage,
             is_failed,
-        })
+        }
     }
-}
-
-fn build_tool_executions(
-    tool_calls: &[(
-        Uuid,
-        DateTime<Utc>,
-        Option<String>,
-        agtrace_types::v2::ToolCallPayload,
-    )],
-    tool_results: &[(
-        Uuid,
-        DateTime<Utc>,
-        Uuid,
-        agtrace_types::v2::ToolResultPayload,
-    )],
-) -> Vec<ToolExecution> {
-    let mut results_map: HashMap<
-        Uuid,
-        (Uuid, DateTime<Utc>, agtrace_types::v2::ToolResultPayload),
-    > = HashMap::new();
-
-    for (result_event_id, result_timestamp, tool_call_id, result) in tool_results {
-        results_map.insert(
-            *tool_call_id,
-            (*result_event_id, *result_timestamp, result.clone()),
-        );
-    }
-
-    tool_calls
-        .iter()
-        .map(|(call_event_id, call_timestamp, provider_call_id, call)| {
-            let result = results_map.get(call_event_id).map(
-                |(result_event_id, result_timestamp, result_payload)| ToolResultBlock {
-                    event_id: *result_event_id,
-                    timestamp: *result_timestamp,
-                    tool_call_id: *call_event_id,
-                    content: result_payload.clone(),
-                },
-            );
-
-            let duration_ms = result
-                .as_ref()
-                .map(|r| (r.timestamp - *call_timestamp).num_milliseconds());
-
-            let is_error = result.as_ref().map(|r| r.content.is_error).unwrap_or(false);
-
-            ToolExecution {
-                call: ToolCallBlock {
-                    event_id: *call_event_id,
-                    timestamp: *call_timestamp,
-                    provider_call_id: provider_call_id.clone(),
-                    content: call.clone(),
-                },
-                result,
-                duration_ms,
-                is_error,
-            }
-        })
-        .collect()
 }
 
 fn calculate_session_stats(
