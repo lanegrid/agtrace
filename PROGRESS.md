@@ -1,6 +1,6 @@
 # Schema v1 to v2 Migration Progress
 
-## Current State (2025-12-14 - Phase 3 Complete)
+## Current State (2025-12-14 - Phase 4 In Progress)
 
 ### Codebase Overview
 - **Total lines**: ~9,500 lines
@@ -119,7 +119,7 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
 **Commits**:
 - `498ea77` - feat: add v2 span engine with O(1) tool matching and sidecar token tracking
 
-### Phase 4: Validation & Switch ⏳ NOT STARTED
+### Phase 4: Validation & Switch ⏳ IN PROGRESS
 **Goal**: Verify v2 produces correct results, then switch CLI to v2
 
 **Tasks**:
@@ -128,7 +128,13 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
   - [ ] Compare SessionSummary outputs
   - [ ] Compare Span counts and token calculations
   - [ ] Document where v2 is more accurate
-- [ ] Add integration tests for all providers
+- [x] Add integration tests for all providers ✅ (2025-12-14)
+  - [x] Created `normalize_codex_file_v2` helper function
+  - [x] Created `normalize_claude_file_v2` helper function
+  - [x] Added integration tests in `span_v2_snapshots.rs`:
+    - [x] test_codex_span_v2_building
+    - [x] test_claude_span_v2_building
+  - [x] All v2 tests passing (13 provider unit tests + 6 engine tests)
 - [ ] Switch CLI commands to use v2 pipeline:
   - [ ] Update session show command
   - [ ] Update analysis commands
@@ -136,6 +142,9 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
 - [ ] Update documentation
 
 **Success Criteria**: All tests pass, CLI uses v2 by default
+
+**Commits**:
+- `1d41f45` - feat: add normalize_*_file_v2 helpers and integration tests for Codex and Claude
 
 ### Phase 5: Cleanup ⏳ NOT STARTED
 **Goal**: Remove v1 code once v2 is stable
@@ -179,20 +188,19 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
 
 ## Next Steps
 
-Phase 3 is complete! The v2 engine can now build spans from v2 events with improved accuracy.
+Phase 4 is in progress! Integration tests for all three providers are now complete.
 
 **Immediate Next Steps**:
-1. **Phase 4: Validation & Switch**
+1. **Phase 4: Validation & Switch** (Remaining tasks)
    - Create dual-pipeline tests comparing v1 and v2 outputs
-   - Add normalize_*_file_v2 helpers for Codex and Claude
-   - Write integration tests for all three providers
-   - Validate token calculations and span accuracy
+   - Validate token calculations and span accuracy across all providers
    - Document where v2 is more accurate than v1
+   - Switch CLI commands to use v2 pipeline
 
 2. **Future Considerations**:
    - Decide if turn_v2.rs is needed (can defer to Phase 5)
-   - Plan CLI migration strategy
    - Consider adding summary_v2.rs for SessionSummary generation
+   - Plan full CLI migration rollout
 
 ## References
 
