@@ -19,8 +19,8 @@ pub use codex::CodexProvider;
 pub use gemini::GeminiProvider;
 
 // Re-export normalize functions (for tests and external use)
-pub use claude::normalize_claude_file;
-pub use codex::normalize_codex_file;
+pub use claude::{normalize_claude_file, normalize_claude_file_v2};
+pub use codex::{normalize_codex_file, normalize_codex_file_v2};
 pub use gemini::{normalize_gemini_file, normalize_gemini_file_v2};
 
 // Re-export registry functions for convenience

@@ -10,7 +10,8 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 pub use self::io::{
-    extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session, normalize_codex_file,
+    extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session,
+    normalize_codex_file, normalize_codex_file_v2,
 };
 
 pub struct CodexProvider;

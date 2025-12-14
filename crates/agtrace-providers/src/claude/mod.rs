@@ -10,7 +10,10 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file};
+pub use self::io::{
+    extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file,
+    normalize_claude_file_v2,
+};
 
 /// Encode project_root path to Claude Code directory name format
 /// Claude Code replaces both '/' and '.' with '-'

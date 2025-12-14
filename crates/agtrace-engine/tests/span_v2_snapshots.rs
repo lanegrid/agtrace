@@ -22,11 +22,47 @@ fn test_gemini_span_v2_building() {
     insta::assert_json_snapshot!("gemini_spans_v2", spans);
 }
 
-// TODO: Add Codex and Claude v2 tests once normalize_*_file_v2 functions are implemented
-// #[test]
-// fn test_codex_span_v2_building() { ... }
-// #[test]
-// fn test_claude_span_v2_building() { ... }
+#[test]
+fn test_codex_span_v2_building() {
+    let path = Path::new("../agtrace-providers/tests/samples/codex_session.jsonl");
+
+    if !path.exists() {
+        eprintln!("Warning: Test file not found, skipping: {}", path.display());
+        return;
+    }
+
+    let events =
+        agtrace_providers::normalize_codex_file_v2(path).expect("Failed to normalize Codex file");
+
+    let spans = build_spans_from_v2(&events);
+
+    // Verify spans were created
+    assert!(!spans.is_empty(), "Expected at least one span");
+
+    // Snapshot the spans
+    insta::assert_json_snapshot!("codex_spans_v2", spans);
+}
+
+#[test]
+fn test_claude_span_v2_building() {
+    let path = Path::new("../agtrace-providers/tests/samples/claude_session.jsonl");
+
+    if !path.exists() {
+        eprintln!("Warning: Test file not found, skipping: {}", path.display());
+        return;
+    }
+
+    let events =
+        agtrace_providers::normalize_claude_file_v2(path).expect("Failed to normalize Claude file");
+
+    let spans = build_spans_from_v2(&events);
+
+    // Verify spans were created
+    assert!(!spans.is_empty(), "Expected at least one span");
+
+    // Snapshot the spans
+    insta::assert_json_snapshot!("claude_spans_v2", spans);
+}
 
 #[test]
 fn test_v2_tool_matching_accuracy() {
