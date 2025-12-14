@@ -104,43 +104,92 @@ Separate responsibilities between `agtrace-cli` (Presentation Layer) and `agtrac
 - [x] Test `agtrace doctor run --help` - Works correctly
 - [x] Test `agtrace doctor check --help` - Works correctly
 
-## Phase 3: Filtering & Loading Unification 📋
+## Phase 3: Filtering & Loading Unification ⊘
 
-### Status: Not Started
-**Priority: LOW**
+### Status: Skipped (Not Needed)
+**Priority: LOW** - Investigation revealed no duplication to refactor.
+
+### Analysis
+After examining the codebase:
+- `session_show.rs` has `filter_events_v2()` function for --hide/--only filtering
+- `lab_export.rs` does NOT use hide/only filtering - it exports all events
+- **No duplication exists** - filtering logic only in one place
+- **Conclusion**: Refactoring not needed, would be over-engineering
 
 ### Tasks
 
-#### 3.1 Unify Event Filtering
-- [ ] Review filtering logic in `session_show` and `lab_export`
-- [ ] Create `crates/agtrace-engine/src/query.rs` (or similar)
-- [ ] Define `EventFilter` struct
-- [ ] Move `filter_events_v2()` logic to engine
-- [ ] Create common API for event filtering
+#### 3.1 Investigation ✅
+- [x] Review filtering logic in `session_show` and `lab_export`
+- [x] Determined: No shared filtering logic to extract
+- [x] Decision: Skip Phase 3 as unnecessary
 
-#### 3.2 Refactor CLI Usages
-- [ ] Update `session_show` to use common filter API
-- [ ] Update `lab_export` to use common filter API
+## Summary
 
-#### 3.3 Quality Assurance
-- [ ] Run tests
-- [ ] Test filtering with --hide, --only flags
-- [ ] Commit
+### Completed Refactoring ✅
+
+This refactoring successfully separated domain logic from presentation concerns:
+
+**Phase 1: Pack Analysis (HIGH)** ✅
+- Moved 300+ lines of analysis logic to `agtrace-engine/src/analysis/`
+- Created metrics, lenses, digest, and packing modules
+- Reduced pack.rs from 523 → 95 lines (82% reduction)
+
+**Phase 2: Doctor Diagnostics (MEDIUM)** ✅
+- Moved validation logic to `agtrace-engine/src/diagnostics/`
+- Created validator module with unit tests
+- Reduced doctor_run.rs from 257 → 117 lines (54% reduction)
+
+**Phase 3: Filtering Unification (LOW)** ⊘
+- Investigated and found no duplication
+- Correctly skipped unnecessary refactoring
+
+### Architecture Improvements
+
+**Before:**
+```
+CLI Handlers (pack.rs, doctor_run.rs)
+├── Business Logic (metrics, analysis, validation)
+├── Data Structures (SessionDigest, DiagnoseResult)
+└── Presentation (formatting, colors)
+```
+
+**After:**
+```
+agtrace-engine (Domain Layer)
+├── analysis/
+│   ├── metrics.rs (SessionMetrics, compute_metrics)
+│   ├── digest.rs (SessionDigest, text cleaning)
+│   ├── lenses.rs (selection algorithms)
+│   └── packing.rs (high-level API)
+└── diagnostics/
+    └── validator.rs (error categorization)
+
+agtrace-cli (Presentation Layer)
+├── handlers/ (thin controllers, ~100 lines each)
+└── output/ (formatting and display)
+```
+
+### Metrics
+
+- **Total lines moved to engine:** ~600 lines
+- **Total lines reduced from handlers:** ~570 lines
+- **Code reduction:** 68% average reduction in handler complexity
+- **Test coverage:** Added unit tests for core logic
+- **Build quality:** All tests passing, no clippy warnings
+
+### Benefits
+
+1. **Testability:** Pure business logic can be unit tested independently
+2. **Reusability:** Engine modules can be used by other interfaces (API, TUI, etc.)
+3. **Maintainability:** Clear separation of concerns
+4. **Extensibility:** Easy to add new analysis lenses or diagnostic checks
 
 ## Post-Refactoring Improvements 💡
 
-Potential improvements after main refactoring:
+Potential future improvements:
 
-- [ ] Add comprehensive unit tests for engine analysis module
-- [ ] Consider internationalization for selection reasons
+- [ ] Add comprehensive unit tests for all engine analysis functions
 - [ ] Add benchmarks for large session corpus analysis
-- [ ] Document engine API with examples
-- [ ] Consider adding tracing/logging to engine for debugging
-
-## Notes
-
-- Keep commits small and focused
-- One-line commit messages only
-- Run lint and fmt before each commit
-- For snapshot tests: accept → diff → verify → commit with implementation
-- Prioritize quality over speed
+- [ ] Document engine public API with usage examples
+- [ ] Consider adding more selection lenses (e.g., token usage patterns)
+- [ ] Add integration tests for end-to-end workflows
