@@ -1,6 +1,5 @@
-use agtrace_engine::Span;
+use agtrace_engine::AgentSession;
 use agtrace_types::ToolStatus;
-use chrono::DateTime;
 use owo_colors::OwoColorize;
 
 /// Options for compact format output
@@ -19,9 +18,13 @@ impl Default for CompactFormatOpts {
     }
 }
 
-fn format_time(session_start: Option<DateTime<chrono::FixedOffset>>, timestamp: &str) -> String {
-    if let (Some(start), Ok(current)) = (session_start, DateTime::parse_from_rfc3339(timestamp)) {
-        let duration = current.signed_duration_since(start);
+fn format_time_utc(
+    session_start: Option<chrono::DateTime<chrono::Utc>>,
+    _text: &str,
+    timestamp: chrono::DateTime<chrono::Utc>,
+) -> String {
+    if let Some(start) = session_start {
+        let duration = timestamp.signed_duration_since(start);
         let seconds = duration.num_seconds();
         if seconds < 60 {
             format!("[+{:02}:{:02}]", 0, seconds)
@@ -30,10 +33,13 @@ fn format_time(session_start: Option<DateTime<chrono::FixedOffset>>, timestamp: 
             let secs = seconds % 60;
             format!("[+{:02}:{:02}]", minutes, secs)
         }
-    } else if timestamp.len() >= 19 {
-        format!("[{}]", &timestamp[11..19])
     } else {
-        "[+00:00]".to_string()
+        let ts_str = timestamp.to_rfc3339();
+        if ts_str.len() >= 19 {
+            format!("[{}]", &ts_str[11..19])
+        } else {
+            "[+00:00]".to_string()
+        }
     }
 }
 
@@ -47,10 +53,10 @@ fn format_duration(duration_ms: u64) -> String {
     }
 }
 
-/// Format spans into compact string representation
-pub fn format_spans_compact(spans: &[Span], opts: &CompactFormatOpts) -> Vec<String> {
-    if spans.is_empty() {
-        let msg = "No spans to display";
+/// Format AgentSession into compact string representation
+pub fn format_session_compact(session: &AgentSession, opts: &CompactFormatOpts) -> Vec<String> {
+    if session.turns.is_empty() {
+        let msg = "No turns to display";
         return vec![if opts.enable_color {
             format!("{}", msg.bright_black())
         } else {
@@ -59,95 +65,102 @@ pub fn format_spans_compact(spans: &[Span], opts: &CompactFormatOpts) -> Vec<Str
     }
 
     let session_start = if opts.relative_time {
-        spans
-            .first()
-            .and_then(|s| s.user.as_ref())
-            .and_then(|u| DateTime::parse_from_rfc3339(&u.ts).ok())
+        Some(session.start_time)
     } else {
         None
     };
 
     let mut lines = Vec::new();
 
-    for span in spans {
+    for turn in &session.turns {
         // User message
-        if let Some(user) = &span.user {
-            let time_display = format_time(session_start, &user.ts);
-            let dur_placeholder = "   -   ";
-            let line = if opts.enable_color {
-                format!(
-                    "{} {} User: \"{}\"",
-                    time_display.bright_black(),
-                    dur_placeholder.bright_black(),
-                    user.text.green()
-                )
-            } else {
-                format!(
-                    "{} {} User: \"{}\"",
-                    time_display, dur_placeholder, user.text
-                )
-            };
-            lines.push(line);
-        }
+        let time_display = format_time_utc(
+            session_start,
+            turn.user.content.text.as_str(),
+            turn.timestamp,
+        );
+        let dur_placeholder = "   -   ";
+        let line = if opts.enable_color {
+            format!(
+                "{} {} User: \"{}\"",
+                time_display.bright_black(),
+                dur_placeholder.bright_black(),
+                turn.user.content.text.green()
+            )
+        } else {
+            format!(
+                "{} {} User: \"{}\"",
+                time_display, dur_placeholder, turn.user.content.text
+            )
+        };
+        lines.push(line);
 
-        // Tool actions
-        if !span.tools.is_empty() {
-            let e2e_ms = span.stats.e2e_ms.unwrap_or(0);
-            let dur_str = format_duration(e2e_ms);
+        // Steps
+        for step in &turn.steps {
+            // Tool executions
+            if !step.tools.is_empty() {
+                let duration_ms = step
+                    .tools
+                    .iter()
+                    .filter_map(|t| t.duration_ms)
+                    .max()
+                    .unwrap_or(0);
+                let dur_str = format_duration(duration_ms as u64);
 
-            let tools_display = format_tools(&span.tools, opts.enable_color);
+                let tools_display = format_tool_executions(&step.tools, opts.enable_color);
 
-            let time_display = span
-                .tools
-                .first()
-                .map(|t| format_time(session_start, &t.ts_call))
-                .unwrap_or_else(|| "   -   ".to_string());
+                let time_display = step
+                    .tools
+                    .first()
+                    .map(|t| format_time_utc(session_start, "", t.call.timestamp))
+                    .unwrap_or_else(|| "   -   ".to_string());
 
-            let line = if opts.enable_color {
-                let dur_colored = if e2e_ms > 30000 {
-                    format!("{}", dur_str.red())
-                } else if e2e_ms > 10000 {
-                    format!("{}", dur_str.yellow())
-                } else {
-                    format!("{}", dur_str.bright_black())
-                };
-                format!(
-                    "{} {} {}",
-                    time_display.bright_black(),
-                    dur_colored,
-                    tools_display.cyan()
-                )
-            } else {
-                format!("{} {} {}", time_display, dur_str, tools_display)
-            };
-            lines.push(line);
-        }
-
-        // Assistant messages (if any meaningful text)
-        for assistant in &span.assistant {
-            if !assistant.text.trim().is_empty() {
-                let time_display = format_time(session_start, &assistant.ts);
-                let dur_placeholder = "   -   ";
-                let text_preview = if assistant.text.chars().count() > 100 {
-                    let chars: Vec<char> = assistant.text.chars().take(100).collect();
-                    chars.iter().collect::<String>() + "..."
-                } else {
-                    assistant.text.clone()
-                };
                 let line = if opts.enable_color {
+                    let dur_colored = if duration_ms > 30000 {
+                        format!("{}", dur_str.red())
+                    } else if duration_ms > 10000 {
+                        format!("{}", dur_str.yellow())
+                    } else {
+                        format!("{}", dur_str.bright_black())
+                    };
                     format!(
-                        "{} {} Assistant: \"{}\"",
+                        "{} {} {}",
                         time_display.bright_black(),
-                        dur_placeholder.bright_black(),
-                        text_preview.blue()
+                        dur_colored,
+                        tools_display.cyan()
                     )
                 } else {
-                    format!(
-                        "{} {} Assistant: \"{}\"",
-                        time_display, dur_placeholder, text_preview
-                    )
+                    format!("{} {} {}", time_display, dur_str, tools_display)
                 };
                 lines.push(line);
+            }
+
+            // Assistant messages (if any meaningful text)
+            if let Some(msg) = &step.message {
+                if !msg.content.text.trim().is_empty() {
+                    let time_display = format_time_utc(session_start, "", step.timestamp);
+                    let dur_placeholder = "   -   ";
+                    let text_preview = if msg.content.text.chars().count() > 100 {
+                        let chars: Vec<char> = msg.content.text.chars().take(100).collect();
+                        chars.iter().collect::<String>() + "..."
+                    } else {
+                        msg.content.text.clone()
+                    };
+                    let line = if opts.enable_color {
+                        format!(
+                            "{} {} Assistant: \"{}\"",
+                            time_display.bright_black(),
+                            dur_placeholder.bright_black(),
+                            text_preview.blue()
+                        )
+                    } else {
+                        format!(
+                            "{} {} Assistant: \"{}\"",
+                            time_display, dur_placeholder, text_preview
+                        )
+                    };
+                    lines.push(line);
+                }
             }
         }
     }
@@ -155,15 +168,24 @@ pub fn format_spans_compact(spans: &[Span], opts: &CompactFormatOpts) -> Vec<Str
     lines
 }
 
-fn format_tools(tools: &[agtrace_engine::ToolAction], enable_color: bool) -> String {
+fn format_tool_executions(tools: &[agtrace_engine::ToolExecution], enable_color: bool) -> String {
     let parts: Vec<String> = tools
         .iter()
-        .map(|tool| {
-            let status_indicator = format_tool_status(tool.status.as_ref(), enable_color);
-            let tool_display = if !tool.input_summary.is_empty() {
-                format!("{}({})", tool.tool_name, tool.input_summary)
+        .map(|tool_exec| {
+            let status = if tool_exec.is_error {
+                Some(ToolStatus::Error)
+            } else if tool_exec.result.is_some() {
+                Some(ToolStatus::Success)
             } else {
-                tool.tool_name.clone()
+                None
+            };
+            let status_indicator = format_tool_status(status.as_ref(), enable_color);
+
+            let input_summary = extract_input_summary(&tool_exec.call.content);
+            let tool_display = if !input_summary.is_empty() {
+                format!("{}({})", tool_exec.call.content.name, input_summary)
+            } else {
+                tool_exec.call.content.name.clone()
             };
             format!("{}{}", status_indicator, tool_display)
         })
@@ -173,6 +195,37 @@ fn format_tools(tools: &[agtrace_engine::ToolAction], enable_color: bool) -> Str
         "no tools".to_string()
     } else {
         parts.join(" → ")
+    }
+}
+
+fn extract_input_summary(payload: &agtrace_types::v2::ToolCallPayload) -> String {
+    // Try to extract meaningful summary from arguments
+    if let Some(file_path) = payload.arguments.get("file_path").and_then(|v| v.as_str()) {
+        if let Some(filename) = std::path::Path::new(file_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+        {
+            return filename.to_string();
+        }
+    }
+
+    if let Some(cmd) = payload.arguments.get("command").and_then(|v| v.as_str()) {
+        return truncate_string(cmd, 50);
+    }
+
+    if let Some(pattern) = payload.arguments.get("pattern").and_then(|v| v.as_str()) {
+        return format!("\"{}\"", truncate_string(pattern, 30));
+    }
+
+    String::new()
+}
+
+fn truncate_string(s: &str, max_len: usize) -> String {
+    if s.chars().count() <= max_len {
+        s.to_string()
+    } else {
+        let chars: Vec<char> = s.chars().take(max_len - 3).collect();
+        format!("{}...", chars.iter().collect::<String>())
     }
 }
 

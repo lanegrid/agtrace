@@ -1,6 +1,6 @@
-use crate::output::{format_spans_compact, CompactFormatOpts};
+use crate::output::{format_session_compact, CompactFormatOpts};
 use crate::session_loader::{LoadOptions, SessionLoader};
-use agtrace_engine::{build_spans, Span};
+use agtrace_engine::{assemble_session_from_events, AgentSession};
 use agtrace_index::{Database, SessionSummary};
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
@@ -35,12 +35,15 @@ pub fn handle(
 
     for (i, session) in balanced_sessions.iter().enumerate() {
         if let Ok(events) = loader.load_events_v2(&session.id, &options) {
-            let spans = build_spans(&events);
-            if !spans.is_empty() {
+            if let Some(agent_session) = assemble_session_from_events(&events) {
                 // Newer sessions get a small boost in scoring
                 let recency_boost = (balanced_sessions.len() - i) as u32;
-                let digest =
-                    SessionDigest::new(&session.id, &session.provider, spans, recency_boost);
+                let digest = SessionDigest::new(
+                    &session.id,
+                    &session.provider,
+                    agent_session,
+                    recency_boost,
+                );
                 digests.push(digest);
             }
         }
@@ -81,7 +84,7 @@ struct SessionMetrics {
 struct SessionDigest {
     session_id: String,
     source: String,
-    spans: Vec<Span>,
+    session: AgentSession,
     opening: Option<String>,
     activation: Option<String>,
     metrics: SessionMetrics,
@@ -300,21 +303,22 @@ fn select_sessions_by_lenses(
 // --- Session Digest Construction & Cleaning ---
 
 impl SessionDigest {
-    fn new(session_id: &str, provider: &str, spans: Vec<Span>, recency_boost: u32) -> Self {
+    fn new(session_id: &str, provider: &str, session: AgentSession, recency_boost: u32) -> Self {
         // Find the first meaningful user text (Opening)
-        let opening = spans
-            .iter()
-            .find_map(|s| s.user.as_ref().map(|u| clean_snippet(&u.text)))
+        let opening = session
+            .turns
+            .first()
+            .map(|t| clean_snippet(&t.user.content.text))
             .filter(|s| !s.is_empty())
             .map(|s| truncate_string(&s, 100));
 
-        let metrics = compute_metrics(&spans);
-        let activation = find_activation(&spans);
+        let metrics = compute_metrics(&session);
+        let activation = find_activation(&session);
 
         Self {
             session_id: session_id.to_string(),
             source: provider.to_string(),
-            spans,
+            session,
             opening,
             activation,
             metrics,
@@ -324,39 +328,57 @@ impl SessionDigest {
     }
 }
 
-fn compute_metrics(spans: &[Span]) -> SessionMetrics {
-    let tool_calls_total: usize = spans.iter().map(|s| s.stats.tool_calls).sum();
-    let tool_failures_total: usize = spans.iter().map(|s| s.stats.tool_failures).sum();
+fn compute_metrics(session: &AgentSession) -> SessionMetrics {
+    let mut tool_calls_total = 0;
+    let mut tool_failures_total = 0;
+    let mut missing_tool_pairs = 0;
+    let mut max_tool_ms = 0i64;
+    let mut longest_chain = 0;
+    let mut tool_counts_per_turn = Vec::new();
 
-    let max_e2e_ms = spans
+    for turn in &session.turns {
+        let mut turn_tool_count = 0;
+        for step in &turn.steps {
+            turn_tool_count += step.tools.len();
+            tool_calls_total += step.tools.len();
+
+            for tool_exec in &step.tools {
+                if tool_exec.is_error {
+                    tool_failures_total += 1;
+                }
+                if tool_exec.result.is_none() {
+                    missing_tool_pairs += 1;
+                }
+                if let Some(duration_ms) = tool_exec.duration_ms {
+                    if duration_ms > max_tool_ms {
+                        max_tool_ms = duration_ms;
+                    }
+                }
+            }
+
+            if step.tools.len() > longest_chain {
+                longest_chain = step.tools.len();
+            }
+        }
+        tool_counts_per_turn.push(turn_tool_count);
+    }
+
+    // Calculate max e2e time (turn duration)
+    let max_e2e_ms = session
+        .turns
         .iter()
-        .filter_map(|s| s.stats.e2e_ms)
+        .map(|turn| turn.stats.duration_ms)
         .max()
         .unwrap_or(0);
 
-    let max_tool_ms = spans
-        .iter()
-        .filter_map(|s| s.stats.tool_ms)
-        .max()
-        .unwrap_or(0);
-
-    // Heuristic: Loop detection (same tool called > 5 times in span)
-    let loop_signals = spans.iter().filter(|s| s.stats.tool_calls > 5).count();
-
-    // missing_tool_pairs: count tools without matching results
-    // A tool is missing its result if ts_result is None
-    let missing_tool_pairs = spans
-        .iter()
-        .map(|s| s.tools.iter().filter(|t| t.ts_result.is_none()).count())
-        .sum();
-
-    let longest_chain = spans.iter().map(|s| s.tools.len()).max().unwrap_or(0);
+    // Heuristic: Loop detection (same turn has > 5 tool calls)
+    let loop_signals = tool_counts_per_turn.iter().filter(|&&c| c > 5).count();
 
     SessionMetrics {
         tool_calls_total,
         tool_failures_total,
-        max_e2e_ms,
-        max_tool_ms,
+        max_e2e_ms: max_e2e_ms as u64,
+        max_tool_ms: max_tool_ms as u64,
         missing_tool_pairs,
         loop_signals,
         longest_chain,
@@ -364,34 +386,32 @@ fn compute_metrics(spans: &[Span]) -> SessionMetrics {
 }
 
 // Extract the user prompt that triggered the most intense tool usage
-fn find_activation(spans: &[Span]) -> Option<String> {
-    if spans.is_empty() {
+fn find_activation(session: &AgentSession) -> Option<String> {
+    if session.turns.is_empty() {
         return None;
     }
 
-    // Sliding window of 5 spans
-    let mut best_start_idx = 0;
-    let mut max_tools_in_window = 0;
-
-    for i in 0..spans.len() {
-        let end = (i + 5).min(spans.len());
-        let tools_in_window: usize = spans[i..end].iter().map(|s| s.stats.tool_calls).sum();
-
-        if tools_in_window > max_tools_in_window {
-            max_tools_in_window = tools_in_window;
-            best_start_idx = i;
-        }
-    }
+    // Find the turn with the most tool calls
+    let (best_idx, max_tools) = session
+        .turns
+        .iter()
+        .enumerate()
+        .map(|(i, turn)| {
+            let tool_count: usize = turn.steps.iter().map(|s| s.tools.len()).sum();
+            (i, tool_count)
+        })
+        .max_by_key(|(_, count)| *count)
+        .unwrap_or((0, 0));
 
     // Must have at least meaningful activity to be an "activation"
-    if max_tools_in_window < 3 {
+    if max_tools < 3 {
         return None;
     }
 
-    spans
-        .get(best_start_idx)
-        .and_then(|s| s.user.as_ref())
-        .map(|u| clean_snippet(&u.text))
+    session
+        .turns
+        .get(best_idx)
+        .map(|turn| clean_snippet(&turn.user.content.text))
         .map(|s| truncate_string(&s, 120))
 }
 
@@ -464,7 +484,7 @@ fn output_compact(digests: &[SessionDigest]) {
         print_digest_summary(digest);
 
         println!("Work:");
-        let lines = format_spans_compact(&digest.spans, &opts);
+        let lines = format_session_compact(&digest.session, &opts);
         // Show first few lines of work
         for line in lines.iter().take(15) {
             println!("  {}", line);

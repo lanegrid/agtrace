@@ -1,5 +1,5 @@
 use crate::session_loader::{LoadOptions, SessionLoader};
-use agtrace_engine::build_spans;
+use agtrace_engine::assemble_session_from_events;
 use agtrace_index::Database;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
@@ -27,19 +27,24 @@ pub fn handle(db: &Database, project_hash: Option<String>, all_projects: bool) -
 
     let mut total_tool_calls = 0;
     let mut total_failures = 0;
-    let mut max_duration = 0;
+    let mut max_duration = 0i64;
 
     // Simple one-pass metrics
     for session in &raw_sessions {
         if let Ok(events) = loader.load_events_v2(&session.id, &options) {
             // Just quick aggregations for the header
-            let spans = build_spans(&events);
-            for span in spans {
-                total_tool_calls += span.stats.tool_calls;
-                total_failures += span.stats.tool_failures;
-                if let Some(ms) = span.stats.e2e_ms {
-                    if ms > max_duration {
-                        max_duration = ms;
+            if let Some(agent_session) = assemble_session_from_events(&events) {
+                for turn in &agent_session.turns {
+                    for step in &turn.steps {
+                        total_tool_calls += step.tools.len();
+                        for tool_exec in &step.tools {
+                            if tool_exec.is_error {
+                                total_failures += 1;
+                            }
+                        }
+                    }
+                    if turn.stats.duration_ms > max_duration {
+                        max_duration = turn.stats.duration_ms;
                     }
                 }
             }

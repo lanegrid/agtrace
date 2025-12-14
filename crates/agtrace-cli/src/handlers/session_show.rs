@@ -1,8 +1,8 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
-use crate::output::{format_spans_compact, print_events_timeline, CompactFormatOpts};
+use crate::output::{format_session_compact, print_events_timeline, CompactFormatOpts};
 use crate::session_loader::{LoadOptions, SessionLoader};
-use agtrace_engine::build_spans_from_events;
+use agtrace_engine::assemble_session_from_events;
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
@@ -54,14 +54,17 @@ pub fn handle(
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
     } else if style == "compact" {
-        let spans = build_spans_from_events(&filtered_events);
-        let opts = CompactFormatOpts {
-            enable_color,
-            relative_time: true,
-        };
-        let lines = format_spans_compact(&spans, &opts);
-        for line in lines {
-            println!("{}", line);
+        if let Some(session) = assemble_session_from_events(&filtered_events) {
+            let opts = CompactFormatOpts {
+                enable_color,
+                relative_time: true,
+            };
+            let lines = format_session_compact(&session, &opts);
+            for line in lines {
+                println!("{}", line);
+            }
+        } else {
+            eprintln!("Failed to assemble session from events");
         }
     } else {
         // Timeline view uses v2 events directly
