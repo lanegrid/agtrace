@@ -1,0 +1,202 @@
+---
+source: crates/agtrace-engine/tests/span_v2_snapshots.rs
+expression: spans
+---
+[
+  {
+    "user": {
+      "ts": "2025-12-09T19:51:29.418+00:00",
+      "role": "user",
+      "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+      "tokens": null
+    },
+    "assistant": [
+      {
+        "ts": "2025-12-09T19:51:50.106+00:00",
+        "role": "assistant",
+        "text": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
+        "tokens": {
+          "input": 13629,
+          "output": 52,
+          "total": 13767,
+          "cached": 6979,
+          "thinking": 86
+        }
+      },
+      {
+        "ts": "2025-12-09T19:52:16.623+00:00",
+        "role": "assistant",
+        "text": "Directory `myapp` created. Next, create `hoge.py` within `myapp`.",
+        "tokens": {
+          "input": 6219,
+          "output": 38,
+          "total": 6290,
+          "cached": 5864,
+          "thinking": 33
+        }
+      },
+      {
+        "ts": "2025-12-09T19:52:21.382+00:00",
+        "role": "assistant",
+        "text": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content.",
+        "tokens": {
+          "input": 6286,
+          "output": 53,
+          "total": 6373,
+          "cached": 5844,
+          "thinking": 34
+        }
+      },
+      {
+        "ts": "2025-12-09T19:52:26.013+00:00",
+        "role": "assistant",
+        "text": "`myapp` directory and `hoge.py` within it are confirmed. Request complete.",
+        "tokens": {
+          "input": 6402,
+          "output": 19,
+          "total": 6460,
+          "cached": 5836,
+          "thinking": 39
+        }
+      }
+    ],
+    "tools": [
+      {
+        "call_id": "run_shell_command-1765309910095-ad8431786e6368",
+        "ts_call": "2025-12-09T19:51:50.106+00:00",
+        "tool_name": "run_shell_command",
+        "input_summary": "mkdir myapp",
+        "ts_result": "2025-12-09T19:51:50.106+00:00",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": 0,
+        "error_summary": null
+      },
+      {
+        "call_id": "write_file-1765309936615-3e48006f9d7538",
+        "ts_call": "2025-12-09T19:52:16.623+00:00",
+        "tool_name": "write_file",
+        "input_summary": "hoge.py",
+        "ts_result": "2025-12-09T19:52:16.623+00:00",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": 0,
+        "error_summary": null
+      },
+      {
+        "call_id": "run_shell_command-1765309941376-a3b382f7de6c78",
+        "ts_call": "2025-12-09T19:52:21.382+00:00",
+        "tool_name": "run_shell_command",
+        "input_summary": "ls -F",
+        "ts_result": "2025-12-09T19:52:21.382+00:00",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": 0,
+        "error_summary": null
+      }
+    ],
+    "reasoning": [
+      "Analyzing the Task's Requirements: I'm currently focused on the specific steps the user wants to accomplish. Creating the directory `myapp` and then placing the `hoge.py` file with the specified Python code is straightforward. I'm considering the potential for edge cases or assumptions that may need to be addressed in the execution plan, such as file permissions or existing directory conflicts.",
+      "Crafting the Execution Steps: Now, I'm refining the steps to be as clear and concise as possible. Creating the file and writing the content seem like distinct sub-tasks, and I'm prioritizing directness. Thinking about how the Python code should be written.",
+      "Creating the file structure: I've got the `myapp` directory set up, just as intended. The next logical step is to create the `hoge.py` file within it, and populate it with the required initial content.",
+      "Delivering on Requests: I've successfully created the `myapp` directory and the `hoge.py` file within, as requested. The file now contains the exact content specified, a straightforward outcome. I'm satisfied with the completion of this task.",
+      "Analyzing File Structure Creation: I can confirm the creation of the `myapp` directory and the `hoge.py` file within it. It appears the initial setup requested by the user is now complete, and the base structure is in place. I have successfully fulfilled the immediate requirements."
+    ],
+    "system": [],
+    "stats": {
+      "tool_calls": 3,
+      "tool_failures": 0,
+      "e2e_ms": 56595,
+      "pre_tool_ms": 20688,
+      "tool_ms": 31276,
+      "post_tool_ms": 4631,
+      "tokens_total": 32890
+    }
+  },
+  {
+    "user": {
+      "ts": "2025-12-09T19:52:58.592+00:00",
+      "role": "user",
+      "text": "cd to myapp and run python hoge.py",
+      "tokens": null
+    },
+    "assistant": [
+      {
+        "ts": "2025-12-09T19:53:16.156+00:00",
+        "role": "assistant",
+        "text": "Okay, I'll `cd myapp` and then `python hoge.py`.",
+        "tokens": {
+          "input": 21501,
+          "output": 50,
+          "total": 21579,
+          "cached": 7294,
+          "thinking": 28
+        }
+      },
+      {
+        "ts": "2025-12-09T19:54:17.694+00:00",
+        "role": "assistant",
+        "text": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path.",
+        "tokens": {
+          "input": 6550,
+          "output": 71,
+          "total": 6748,
+          "cached": 5809,
+          "thinking": 127
+        }
+      },
+      {
+        "ts": "2025-12-09T19:54:21.715+00:00",
+        "role": "assistant",
+        "text": "`python3 hoge.py` executed, outputting \"2\". Request complete.",
+        "tokens": {
+          "input": 6686,
+          "output": 17,
+          "total": 6733,
+          "cached": 5751,
+          "thinking": 30
+        }
+      }
+    ],
+    "tools": [
+      {
+        "call_id": "run_shell_command-1765309996151-96a3b98446867",
+        "ts_call": "2025-12-09T19:53:16.156+00:00",
+        "tool_name": "run_shell_command",
+        "input_summary": "cd myapp && python hoge.py",
+        "ts_result": "2025-12-09T19:53:16.156+00:00",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": 0,
+        "error_summary": null
+      },
+      {
+        "call_id": "run_shell_command-1765310057688-05817d34470d1",
+        "ts_call": "2025-12-09T19:54:17.694+00:00",
+        "tool_name": "run_shell_command",
+        "input_summary": "cd myapp && python3 hoge.py",
+        "ts_result": "2025-12-09T19:54:17.694+00:00",
+        "status": "success",
+        "exit_code": null,
+        "latency_ms": 0,
+        "error_summary": null
+      }
+    ],
+    "reasoning": [
+      "Planning the Execution: I'm focusing now on the exact steps needed. It seems simple: I need to change the current directory to `myapp` first, and *then* run `hoge.py` with Python. Thinking about the best way to represent this sequence concisely.",
+      "Analyzing Command Failures: I'm currently focused on the \"target shim binary not found\" error. I suspect the issue lies in the Python path configuration. I am going to try explicitly specifying the full path to Python.",
+      "Testing Python Execution Paths: I'm now investigating potential path problems. I'll explicitly call `python3` instead of relying on the default `python` alias, to sidestep any potential environment issues. If this resolves the \"target shim binary not found\" error, the path configuration is the culprit. Otherwise, a deeper dive into the shell environment is needed.",
+      "Evaluating the Result: I've verified the output; the `python3 hoge.py` script produced the anticipated result, printing \"2.\" This confirms that the user's initial objective was achieved without issue. I'm satisfied with the outcome."
+    ],
+    "system": [],
+    "stats": {
+      "tool_calls": 2,
+      "tool_failures": 0,
+      "e2e_ms": 83123,
+      "pre_tool_ms": 17564,
+      "tool_ms": 61538,
+      "post_tool_ms": 4021,
+      "tokens_total": 35060
+    }
+  }
+]

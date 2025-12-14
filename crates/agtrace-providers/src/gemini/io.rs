@@ -4,6 +4,7 @@ use std::path::Path;
 
 use super::mapper::normalize_gemini_session;
 use super::schema::GeminiSession;
+use crate::v2::normalize_gemini_session_v2;
 
 /// Parse Gemini CLI JSON file and normalize to AgentEventV1
 pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
@@ -35,6 +36,33 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
 
     anyhow::bail!(
         "Failed to parse Gemini file in any known format: {}",
+        path.display()
+    )
+}
+
+/// Parse Gemini CLI JSON file and normalize to v2::AgentEvent
+pub fn normalize_gemini_file_v2(path: &Path) -> Result<Vec<agtrace_types::v2::AgentEvent>> {
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
+
+    // Parse as Value to preserve original JSON
+    let raw_value: serde_json::Value = serde_json::from_str(&text)
+        .with_context(|| format!("Failed to parse Gemini file as JSON: {}", path.display()))?;
+
+    // Try new format (session object) first
+    if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
+        // Extract raw messages array
+        let raw_messages = raw_value
+            .get("messages")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        return Ok(normalize_gemini_session_v2(&session, raw_messages));
+    }
+
+    anyhow::bail!(
+        "Gemini v2 normalization only supports session format: {}",
         path.display()
     )
 }

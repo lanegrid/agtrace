@@ -3,9 +3,9 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 // Provider implementations (internal modules)
-mod claude;
-mod codex;
-mod gemini;
+pub mod claude;
+pub mod codex;
+pub mod gemini;
 
 // V2 normalization layer
 pub mod v2;
@@ -21,7 +21,7 @@ pub use gemini::GeminiProvider;
 // Re-export normalize functions (for tests and external use)
 pub use claude::normalize_claude_file;
 pub use codex::normalize_codex_file;
-pub use gemini::normalize_gemini_file;
+pub use gemini::{normalize_gemini_file, normalize_gemini_file_v2};
 
 // Re-export registry functions for convenience
 pub use registry::{

@@ -12,6 +12,7 @@ use walkdir::WalkDir;
 
 pub use self::io::{
     extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file,
+    normalize_gemini_file_v2,
 };
 
 pub struct GeminiProvider;
