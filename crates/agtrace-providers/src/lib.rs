@@ -7,6 +7,9 @@ mod claude;
 mod codex;
 mod gemini;
 
+// V2 normalization layer
+pub mod v2;
+
 // Provider registry
 pub mod registry;
 
