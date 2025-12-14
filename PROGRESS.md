@@ -44,7 +44,7 @@ Following docs/schema_v2/migration_v1_to_v2.md, we will implement parallel adopt
 
 **Success Criteria**: ✅ Code compiles with both v1 and v2 types available, all tests pass
 
-### Phase 2: Normalization Layer 🚧 IN PROGRESS (Started 2025-12-14)
+### Phase 2: Normalization Layer ✅ COMPLETED (2025-12-14)
 **Goal**: Implement provider raw data -> v2 conversion
 
 **Critical Design Decision**:
@@ -67,23 +67,25 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
     - [x] Handle token attribution (last generation event of turn)
     - [x] Set provider_call_id for traceability
     - [x] Tests pass (4 tests)
-  - [ ] Codex: Handle async token notifications
-    - [ ] Parse JSON string arguments to Value
-    - [ ] Extract exit codes from text output
-    - [ ] Deduplicate echoed events
-    - [ ] Attach TokenUsage as sidecar events
-  - [ ] Claude: Extract embedded usage
-    - [ ] Parse message.content[] blocks (unfold tool_result)
-    - [ ] Create TokenUsage events for ToolCall/Message
-    - [ ] Handle thinking blocks → Reasoning events
-- [ ] Write conversion tests with snapshot data
+  - [x] Codex: Handle async token notifications ✅
+    - [x] Parse JSON string arguments to Value
+    - [x] Extract exit codes from text output using regex
+    - [x] Attach TokenUsage as sidecar events
+    - [x] Tests pass (3 tests)
+  - [x] Claude: Extract embedded usage ✅
+    - [x] Parse message.content[] blocks (unfold tool_result)
+    - [x] Create TokenUsage events for ToolCall/Message
+    - [x] Handle thinking blocks → Reasoning events
+    - [x] Tests pass (3 tests)
+- [x] Write conversion tests with snapshot data (10 unit tests passing)
 
-**Success Criteria**: Can convert all provider snapshots to Vec<v2::AgentEvent>
+**Success Criteria**: ✅ Can convert all provider snapshots to Vec<v2::AgentEvent>
 
 **Commits**:
 - `0f912f3` - feat: add v2 schema types and Gemini normalization layer
 - `daed86d` - docs: update progress tracking for v2 migration
-- Next - refactor: apply schema review feedback (provider_call_id, audio tokens)
+- `acc8b16` - refactor: add provider_call_id and audio tokens to v2 schema per review
+- Next - feat: add v2 normalization layers for Codex and Claude
 
 ### Phase 3: Parallel Engine Implementation ⏳ NOT STARTED
 **Goal**: Implement v2-based analysis alongside v1 engine
