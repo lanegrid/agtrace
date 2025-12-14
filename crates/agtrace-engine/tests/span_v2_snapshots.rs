@@ -1,4 +1,4 @@
-use agtrace_engine::build_spans_from_v2;
+use agtrace_engine::build_spans_from_events;
 use std::path::Path;
 
 #[test]
@@ -13,7 +13,7 @@ fn test_gemini_span_v2_building() {
     let events =
         agtrace_providers::normalize_gemini_file_v2(path).expect("Failed to normalize Gemini file");
 
-    let spans = build_spans_from_v2(&events);
+    let spans = build_spans_from_events(&events);
 
     // Verify spans were created
     assert!(!spans.is_empty(), "Expected at least one span");
@@ -34,7 +34,7 @@ fn test_codex_span_v2_building() {
     let events =
         agtrace_providers::normalize_codex_file_v2(path).expect("Failed to normalize Codex file");
 
-    let spans = build_spans_from_v2(&events);
+    let spans = build_spans_from_events(&events);
 
     // Verify spans were created
     assert!(!spans.is_empty(), "Expected at least one span");
@@ -55,7 +55,7 @@ fn test_claude_span_v2_building() {
     let events =
         agtrace_providers::normalize_claude_file_v2(path).expect("Failed to normalize Claude file");
 
-    let spans = build_spans_from_v2(&events);
+    let spans = build_spans_from_events(&events);
 
     // Verify spans were created
     assert!(!spans.is_empty(), "Expected at least one span");
@@ -164,7 +164,7 @@ fn test_v2_tool_matching_accuracy() {
         },
     ];
 
-    let spans = build_spans_from_v2(&events);
+    let spans = build_spans_from_events(&events);
 
     assert_eq!(spans.len(), 1);
     let span = &spans[0];
