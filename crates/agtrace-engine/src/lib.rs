@@ -2,6 +2,7 @@
 // This layer sits between normalized events (types) and CLI presentation
 
 pub mod analysis;
+mod convert;
 pub mod export;
 pub mod span;
 pub mod summary;

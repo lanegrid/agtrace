@@ -1,14 +1,11 @@
-use agtrace_types::{AgentEventV1, EventType, FileOp};
-use chrono::DateTime;
+use agtrace_types::v2::{AgentEvent, EventPayload};
 use owo_colors::OwoColorize;
-use std::collections::HashMap;
 
-// Local summary structures for v1 timeline display
+// Local summary structures for timeline display
 #[derive(Debug, Clone)]
 struct TimelineSessionSummary {
     event_counts: TimelineEventCounts,
     token_stats: TimelineTokenStats,
-    file_operations: HashMap<FileOp, usize>,
     duration: Option<TimelineDuration>,
 }
 
@@ -36,95 +33,74 @@ struct TimelineTokenStats {
     thinking: u64,
 }
 
-fn summarize_v1_events(events: &[AgentEventV1]) -> TimelineSessionSummary {
+fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
     let mut user_count = 0;
     let mut assistant_count = 0;
     let mut tool_call_count = 0;
     let mut reasoning_count = 0;
 
-    let mut total_input = 0u64;
-    let mut total_output = 0u64;
-    let mut total_cached = 0u64;
-    let mut total_thinking = 0u64;
-
-    let mut file_ops: HashMap<FileOp, usize> = HashMap::new();
+    let mut total_input = 0i32;
+    let mut total_output = 0i32;
+    let mut total_cached = 0i32;
+    let mut total_thinking = 0i32;
 
     for event in events {
-        match event.event_type {
-            EventType::UserMessage => user_count += 1,
-            EventType::AssistantMessage => assistant_count += 1,
-            EventType::ToolCall => tool_call_count += 1,
-            EventType::Reasoning => reasoning_count += 1,
-            _ => {}
-        }
-
-        if let Some(tokens_in) = event.tokens_input {
-            total_input += tokens_in;
-        }
-        if let Some(tokens_out) = event.tokens_output {
-            total_output += tokens_out;
-        }
-        if let Some(tokens_cached) = event.tokens_cached {
-            total_cached += tokens_cached;
-        }
-        if let Some(tokens_thinking) = event.tokens_thinking {
-            total_thinking += tokens_thinking;
-        }
-
-        if let Some(file_op) = event.file_op {
-            *file_ops.entry(file_op).or_insert(0) += 1;
+        match &event.payload {
+            EventPayload::User(_) => user_count += 1,
+            EventPayload::Message(_) => assistant_count += 1,
+            EventPayload::ToolCall(_) => tool_call_count += 1,
+            EventPayload::Reasoning(_) => reasoning_count += 1,
+            EventPayload::ToolResult(_) => {}
+            EventPayload::TokenUsage(token) => {
+                total_input += token.input_tokens;
+                total_output += token.output_tokens;
+                if let Some(details) = &token.details {
+                    if let Some(cached) = details.cache_read_input_tokens {
+                        total_cached += cached;
+                    }
+                    if let Some(thinking) = details.reasoning_output_tokens {
+                        total_thinking += thinking;
+                    }
+                }
+            }
         }
     }
 
     let duration = if let (Some(first), Some(last)) = (events.first(), events.last()) {
-        if let (Ok(first_ts), Ok(last_ts)) = (
-            DateTime::parse_from_rfc3339(&first.ts),
-            DateTime::parse_from_rfc3339(&last.ts),
-        ) {
-            let duration = last_ts.signed_duration_since(first_ts);
-            Some(TimelineDuration {
-                minutes: duration.num_minutes(),
-                seconds: duration.num_seconds() % 60,
-            })
-        } else {
-            None
-        }
+        let first_ts = first.timestamp;
+        let last_ts = last.timestamp;
+        let duration = last_ts.signed_duration_since(first_ts);
+        Some(TimelineDuration {
+            minutes: duration.num_minutes(),
+            seconds: duration.num_seconds() % 60,
+        })
     } else {
         None
     };
 
     TimelineSessionSummary {
         event_counts: TimelineEventCounts {
-            total: events.len(),
+            total: events
+                .iter()
+                .filter(|e| !matches!(e.payload, EventPayload::TokenUsage(_)))
+                .count(),
             user_messages: user_count,
             assistant_messages: assistant_count,
             tool_calls: tool_call_count,
             reasoning_blocks: reasoning_count,
         },
         token_stats: TimelineTokenStats {
-            total: total_input + total_output,
-            input: total_input,
-            output: total_output,
-            cached: total_cached,
-            thinking: total_thinking,
+            total: (total_input + total_output) as u64,
+            input: total_input as u64,
+            output: total_output as u64,
+            cached: total_cached as u64,
+            thinking: total_thinking as u64,
         },
-        file_operations: file_ops,
         duration,
     }
 }
 
-fn file_op_to_str(op: &FileOp) -> &'static str {
-    match op {
-        FileOp::Read => "read",
-        FileOp::Write => "write",
-        FileOp::Modify => "modify",
-        FileOp::Delete => "delete",
-        FileOp::Create => "create",
-        FileOp::Move => "move",
-    }
-}
-
-pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_color: bool) {
+pub fn print_events_timeline(events: &[AgentEvent], truncate: bool, enable_color: bool) {
     if events.is_empty() {
         let msg = "No events to display";
         if enable_color {
@@ -135,16 +111,17 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
         return;
     }
 
-    let session_start = events
-        .first()
-        .and_then(|e| DateTime::parse_from_rfc3339(&e.ts).ok());
+    let session_start = events.first().map(|e| e.timestamp);
 
     for event in events {
+        // Skip TokenUsage events in timeline display (shown in summary)
+        if matches!(event.payload, EventPayload::TokenUsage(_)) {
+            continue;
+        }
+
         // Calculate relative time from session start
-        let time_display = if let (Some(start), Ok(current)) =
-            (session_start, DateTime::parse_from_rfc3339(&event.ts))
-        {
-            let duration = current.signed_duration_since(start);
+        let time_display = if let Some(start) = session_start {
+            let duration = event.timestamp.signed_duration_since(start);
             let seconds = duration.num_seconds();
             if seconds < 60 {
                 format!("[+{}s    ]", seconds)
@@ -154,85 +131,55 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
                 format!("[+{}m {:02}s]", minutes, secs)
             }
         } else {
-            format!("[{}]", &event.ts[11..19]) // fallback to HH:MM:SS
+            let ts_str = event.timestamp.to_rfc3339();
+            format!("[{}]", &ts_str[11..19]) // fallback to HH:MM:SS
         };
 
         // Event type string with optional color
-        let event_type_name = match event.event_type {
-            EventType::UserMessage => "UserMessage",
-            EventType::AssistantMessage => "AssistantMessage",
-            EventType::Reasoning => "Reasoning",
-            EventType::ToolCall => "ToolCall",
-            EventType::ToolResult => "ToolResult",
-            EventType::SystemMessage => "SystemMessage",
-            EventType::FileSnapshot => "FileSnapshot",
-            EventType::SessionSummary => "SessionSummary",
-            EventType::Meta => "Meta",
-            EventType::Log => "Log",
+        let (event_type_name, text_opt, tool_name_opt, is_error) = match &event.payload {
+            EventPayload::User(p) => ("UserMessage", Some(&p.text), None, false),
+            EventPayload::Message(p) => ("AssistantMessage", Some(&p.text), None, false),
+            EventPayload::Reasoning(p) => ("Reasoning", Some(&p.text), None, false),
+            EventPayload::ToolCall(p) => ("ToolCall", Some(&p.name), Some(&p.name), false),
+            EventPayload::ToolResult(p) => ("ToolResult", Some(&p.output), None, p.is_error),
+            EventPayload::TokenUsage(_) => continue, // Skip (already filtered above)
         };
 
         // Add status indicator for ToolResult events
-        let status_indicator = if matches!(event.event_type, EventType::ToolResult) {
-            match event.tool_status {
-                Some(agtrace_types::ToolStatus::Success) => {
-                    if enable_color {
-                        format!("{} ", "✓".green())
-                    } else {
-                        "✓ ".to_string()
-                    }
+        let status_indicator = if matches!(event.payload, EventPayload::ToolResult(_)) {
+            if is_error {
+                if enable_color {
+                    format!("{} ", "✗".red())
+                } else {
+                    "✗ ".to_string()
                 }
-                Some(agtrace_types::ToolStatus::Error) => {
-                    if enable_color {
-                        format!("{} ", "✗".red())
-                    } else {
-                        "✗ ".to_string()
-                    }
-                }
-                _ => String::new(),
+            } else if enable_color {
+                format!("{} ", "✓".green())
+            } else {
+                "✓ ".to_string()
             }
         } else {
             String::new()
         };
 
         let event_type_str = if enable_color {
-            match event.event_type {
-                EventType::UserMessage => format!("{}", event_type_name.green()),
-                EventType::AssistantMessage => format!("{}", event_type_name.blue()),
-                EventType::Reasoning => format!("{}", event_type_name.cyan()),
-                EventType::ToolCall => format!("{}", event_type_name.yellow()),
-                EventType::ToolResult => {
-                    // Color ToolResult based on status
-                    match event.tool_status {
-                        Some(agtrace_types::ToolStatus::Success) => {
-                            format!("{}", event_type_name.green())
-                        }
-                        Some(agtrace_types::ToolStatus::Error) => {
-                            format!("{}", event_type_name.red())
-                        }
-                        _ => format!("{}", event_type_name.magenta()),
+            match &event.payload {
+                EventPayload::User(_) => format!("{}", event_type_name.green()),
+                EventPayload::Message(_) => format!("{}", event_type_name.blue()),
+                EventPayload::Reasoning(_) => format!("{}", event_type_name.cyan()),
+                EventPayload::ToolCall(_) => format!("{}", event_type_name.yellow()),
+                EventPayload::ToolResult(_) => {
+                    if is_error {
+                        format!("{}", event_type_name.red())
+                    } else {
+                        format!("{}", event_type_name.green())
                     }
                 }
-                EventType::SystemMessage => format!("{}", event_type_name.white()),
-                EventType::FileSnapshot => format!("{}", event_type_name.bright_black()),
-                EventType::SessionSummary => format!("{}", event_type_name.bright_blue()),
-                EventType::Meta => format!("{}", event_type_name.bright_black()),
-                EventType::Log => format!("{}", event_type_name.bright_black()),
+                EventPayload::TokenUsage(_) => continue,
             }
         } else {
             event_type_name.to_string()
         };
-
-        let role_str = event
-            .role
-            .map(|r| {
-                let s = format!("(role={:?})", r);
-                if enable_color {
-                    format!("{}", s.bright_black())
-                } else {
-                    s
-                }
-            })
-            .unwrap_or_else(|| "".to_string());
 
         let time_colored = if enable_color {
             format!("{}", time_display.bright_black())
@@ -241,17 +188,15 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
         };
 
         println!(
-            "{} {}{:<20} {}",
-            time_colored, status_indicator, event_type_str, role_str
+            "{} {}{:<20}",
+            time_colored, status_indicator, event_type_str
         );
 
-        if let Some(text) = &event.text {
+        if let Some(text) = text_opt {
             let preview = if truncate && text.chars().count() > 100 {
-                // Only truncate if --short flag is used AND text is long
                 let truncated: String = text.chars().take(97).collect();
                 format!("{}...", truncated)
             } else {
-                // Default: show full text
                 text.clone()
             };
 
@@ -263,98 +208,11 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
             println!("  {}", text_output);
         }
 
-        if let Some(tool_name) = &event.tool_name {
+        if let Some(tool_name) = tool_name_opt {
             if enable_color {
-                print!("  tool: {}", tool_name.yellow());
+                println!("  tool: {}", tool_name.yellow());
             } else {
-                print!("  tool: {}", tool_name);
-            }
-
-            if let Some(file_path) = &event.file_path {
-                if enable_color {
-                    print!(" ({})", file_path.bright_blue());
-                } else {
-                    print!(" ({})", file_path);
-                }
-            }
-
-            if let Some(file_op) = &event.file_op {
-                let op_str = file_op_to_str(file_op);
-                if enable_color {
-                    print!(" [{}]", op_str.bright_cyan());
-                } else {
-                    print!(" [{}]", op_str);
-                }
-            }
-
-            // Show status for ToolResult events
-            if matches!(event.event_type, EventType::ToolResult) {
-                if let Some(status) = &event.tool_status {
-                    let status_str = format!("{:?}", status).to_lowercase();
-                    if enable_color {
-                        let status_colored = match status {
-                            agtrace_types::ToolStatus::Success => {
-                                format!("{}", status_str.green().bold())
-                            }
-                            agtrace_types::ToolStatus::Error => {
-                                format!("{}", status_str.red().bold())
-                            }
-                            _ => format!("{}", status_str.yellow()),
-                        };
-                        print!(" {}", status_colored);
-                    } else {
-                        print!(" {}", status_str);
-                    }
-                }
-            }
-
-            if let Some(exit_code) = event.tool_exit_code {
-                let exit_str = format!("exit={}", exit_code);
-                if enable_color {
-                    let exit_colored = if exit_code == 0 {
-                        format!("{}", exit_str.green())
-                    } else {
-                        format!("{}", exit_str.red())
-                    };
-                    print!(" {}", exit_colored);
-                } else {
-                    print!(" {}", exit_str);
-                }
-            }
-            println!();
-        }
-
-        // Display token information for assistant messages
-        if matches!(event.event_type, EventType::AssistantMessage) {
-            let mut token_parts = Vec::new();
-            if let Some(input) = event.tokens_input {
-                token_parts.push(format!("in:{}", input));
-            }
-            if let Some(output) = event.tokens_output {
-                token_parts.push(format!("out:{}", output));
-            }
-            if let Some(cached) = event.tokens_cached {
-                if cached > 0 {
-                    token_parts.push(format!("cached:{}", cached));
-                }
-            }
-            if let Some(thinking) = event.tokens_thinking {
-                if thinking > 0 {
-                    token_parts.push(format!("thinking:{}", thinking));
-                }
-            }
-            if let Some(tool) = event.tokens_tool {
-                if tool > 0 {
-                    token_parts.push(format!("tool:{}", tool));
-                }
-            }
-            if !token_parts.is_empty() {
-                let tokens_str = token_parts.join(", ");
-                if enable_color {
-                    println!("  tokens: {}", tokens_str.bright_black());
-                } else {
-                    println!("  tokens: {}", tokens_str);
-                }
+                println!("  tool: {}", tool_name);
             }
         }
 
@@ -365,12 +223,12 @@ pub fn print_events_timeline(events: &[AgentEventV1], truncate: bool, enable_col
     print_session_summary(events, enable_color);
 }
 
-fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
+fn print_session_summary(events: &[AgentEvent], enable_color: bool) {
     if events.is_empty() {
         return;
     }
 
-    let session_summary = summarize_v1_events(events);
+    let session_summary = summarize_events(events);
 
     if enable_color {
         println!("{}", "---".bright_black());
@@ -436,22 +294,6 @@ fn print_session_summary(events: &[AgentEventV1], enable_color: bool) {
             "    Reasoning blocks: {}",
             session_summary.event_counts.reasoning_blocks
         );
-    }
-
-    if !session_summary.file_operations.is_empty() {
-        if enable_color {
-            println!("  {}:", "File operations".cyan());
-        } else {
-            println!("  File operations:");
-        }
-        for (op, count) in session_summary.file_operations.iter() {
-            let op_str = file_op_to_str(op);
-            if enable_color {
-                println!("    {}: {}", op_str, count.to_string().bright_white());
-            } else {
-                println!("    {}: {}", op_str, count);
-            }
-        }
     }
 
     if session_summary.token_stats.total > 0 {

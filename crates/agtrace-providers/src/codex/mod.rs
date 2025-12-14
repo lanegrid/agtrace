@@ -1,5 +1,4 @@
 pub mod io;
-pub mod mapper;
 pub mod schema;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};

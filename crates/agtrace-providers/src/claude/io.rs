@@ -1,35 +1,9 @@
-use agtrace_types::AgentEventV1;
 use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::mapper::normalize_claude_stream;
 use super::schema::ClaudeRecord;
 use crate::v2::normalize_claude_session_v2;
-
-/// Parse Claude Code JSONL file and normalize to AgentEventV1
-pub fn normalize_claude_file(
-    path: &Path,
-    project_root_override: Option<&str>,
-) -> Result<Vec<AgentEventV1>> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read Claude file: {}", path.display()))?;
-
-    let mut records: Vec<(ClaudeRecord, serde_json::Value)> = Vec::new();
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let record: ClaudeRecord = serde_json::from_str(line)
-            .with_context(|| format!("Failed to parse JSON line: {}", line))?;
-        let raw_value: serde_json::Value = serde_json::from_str(line)
-            .with_context(|| format!("Failed to parse JSON line as Value: {}", line))?;
-        records.push((record, raw_value));
-    }
-
-    Ok(normalize_claude_stream(records, project_root_override))
-}
 
 /// Parse Claude Code JSONL file and normalize to v2::AgentEvent
 pub fn normalize_claude_file_v2(path: &Path) -> Result<Vec<agtrace_types::v2::AgentEvent>> {

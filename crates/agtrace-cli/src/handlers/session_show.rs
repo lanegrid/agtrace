@@ -5,7 +5,6 @@ use crate::session_loader::{LoadOptions, SessionLoader};
 use agtrace_engine::build_spans_from_events;
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
-use agtrace_types::{AgentEventV1, EventType};
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
 use std::fs;
@@ -65,11 +64,9 @@ pub fn handle(
             println!("{}", line);
         }
     } else {
-        // For timeline view, convert v2 events to v1 format for now
-        // TODO: Update print_events_timeline to work with v2 events
-        let v1_events = convert_v2_to_v1(&filtered_events);
+        // Timeline view uses v2 events directly
         let truncate = short;
-        print_events_timeline(&v1_events, truncate, enable_color);
+        print_events_timeline(&filtered_events, truncate, enable_color);
     }
 
     Ok(())
@@ -128,76 +125,4 @@ fn filter_events_v2(
     }
 
     filtered
-}
-
-/// Convert v2 events to v1 format for compatibility with legacy output functions
-fn convert_v2_to_v1(events: &[AgentEvent]) -> Vec<AgentEventV1> {
-    use agtrace_types::Source;
-
-    events
-        .iter()
-        .filter_map(|e| {
-            // Skip TokenUsage events in v1 representation
-            if matches!(e.payload, EventPayload::TokenUsage(_)) {
-                return None;
-            }
-
-            let event_type = match &e.payload {
-                EventPayload::User(_) => EventType::UserMessage,
-                EventPayload::Message(_) => EventType::AssistantMessage,
-                EventPayload::ToolCall(_) => EventType::ToolCall,
-                EventPayload::ToolResult(_) => EventType::ToolResult,
-                EventPayload::Reasoning(_) => EventType::Reasoning,
-                EventPayload::TokenUsage(_) => return None,
-            };
-
-            let text = match &e.payload {
-                EventPayload::User(p) => Some(p.text.clone()),
-                EventPayload::Message(p) => Some(p.text.clone()),
-                EventPayload::Reasoning(p) => Some(p.text.clone()),
-                EventPayload::ToolResult(p) => Some(p.output.clone()),
-                EventPayload::ToolCall(p) => Some(format!("{}: {}", p.name, p.arguments)),
-                _ => None,
-            };
-
-            let tool_name = match &e.payload {
-                EventPayload::ToolCall(p) => Some(p.name.clone()),
-                _ => None,
-            };
-
-            Some(AgentEventV1 {
-                schema_version: AgentEventV1::SCHEMA_VERSION.to_string(),
-                source: Source::new("unknown"),
-                project_hash: String::new(),
-                project_root: None,
-                session_id: Some(e.trace_id.to_string()),
-                event_id: Some(e.id.to_string()),
-                parent_event_id: e.parent_id.map(|id| id.to_string()),
-                ts: e.timestamp.to_rfc3339(),
-                event_type,
-                role: None,
-                channel: None,
-                text,
-                context: None,
-                policy: None,
-                tool_name,
-                tool_call_id: None,
-                tool_status: None,
-                tool_latency_ms: None,
-                tool_exit_code: None,
-                file_path: None,
-                file_language: None,
-                file_op: None,
-                model: None,
-                tokens_input: None,
-                tokens_output: None,
-                tokens_total: None,
-                tokens_cached: None,
-                tokens_thinking: None,
-                tokens_tool: None,
-                agent_id: None,
-                raw: serde_json::Value::Null,
-            })
-        })
-        .collect()
 }

@@ -1,50 +1,9 @@
-use agtrace_types::AgentEventV1;
 use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::mapper::normalize_codex_stream;
 use super::schema::CodexRecord;
 use crate::v2::normalize_codex_session_v2;
-
-/// Parse Codex JSONL file and normalize to AgentEventV1
-pub fn normalize_codex_file(
-    path: &Path,
-    project_root_override: Option<&str>,
-) -> Result<Vec<AgentEventV1>> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read Codex file: {}", path.display()))?;
-
-    let mut records: Vec<(CodexRecord, serde_json::Value)> = Vec::new();
-    let mut session_id_from_meta: Option<String> = None;
-
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let record: CodexRecord = serde_json::from_str(line)
-            .with_context(|| format!("Failed to parse JSON line: {}", line))?;
-        let raw_value: serde_json::Value = serde_json::from_str(line)
-            .with_context(|| format!("Failed to parse JSON line as Value: {}", line))?;
-
-        // Extract session_id from session_meta record (Spec 2.5.5)
-        if let CodexRecord::SessionMeta(ref meta) = record {
-            session_id_from_meta = Some(meta.payload.id.clone());
-        }
-
-        records.push((record, raw_value));
-    }
-
-    // session_id should be extracted from file content, fallback to "unknown-session"
-    let session_id = session_id_from_meta.unwrap_or_else(|| "unknown-session".to_string());
-
-    Ok(normalize_codex_stream(
-        records,
-        &session_id,
-        project_root_override,
-    ))
-}
 
 /// Parse Codex JSONL file and normalize to v2::AgentEvent
 pub fn normalize_codex_file_v2(path: &Path) -> Result<Vec<agtrace_types::v2::AgentEvent>> {

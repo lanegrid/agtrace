@@ -95,3 +95,15 @@ fn apply_reasoning_strategy(events: &[AgentEventV1]) -> Vec<AgentEventV1> {
 
     reasoning_pairs
 }
+
+/// Transform v2 events using v2->v1 adapter
+pub fn transform_v2(
+    events: &[agtrace_types::v2::AgentEvent],
+    strategy: ExportStrategy,
+) -> Vec<agtrace_types::v2::AgentEvent> {
+    let v1_events = crate::convert::convert_v2_to_v1(events);
+    let _transformed_v1 = transform(&v1_events, strategy);
+    // For now, return original v2 events
+    // TODO: Convert back to v2 or implement native v2 export
+    events.to_vec()
+}

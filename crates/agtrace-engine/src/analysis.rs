@@ -377,3 +377,13 @@ fn format_time_span(start: &str, end: &str) -> String {
         "Unknown".to_string()
     }
 }
+
+/// Analyze v2 events using v2->v1 adapter
+pub fn analyze_v2(
+    session_id: String,
+    events: &[agtrace_types::v2::AgentEvent],
+    detectors: Vec<Detector>,
+) -> AnalysisReport {
+    let v1_events = crate::convert::convert_v2_to_v1(events);
+    analyze(session_id, &v1_events, detectors)
+}
