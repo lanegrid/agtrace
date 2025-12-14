@@ -50,6 +50,12 @@ Following docs/schema_v2/migration_v1_to_v2.md, we will implement parallel adopt
 **Critical Design Decision**:
 Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses information.
 
+**Schema Review Applied** (2025-12-14):
+- [x] Add `provider_call_id` to ToolCallPayload for log tracing
+- [x] Extend TokenUsageDetails with audio token fields
+- [x] Validate against real provider data (Claude, Codex, Gemini)
+- [x] Document ingestion requirements (UUID resolution, unfold strategies)
+
 **Tasks**:
 - [x] Create conversion infrastructure:
   - [x] EventBuilder with trace_id, parent_id tracking
@@ -59,18 +65,25 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
     - [x] Handle thoughts[] -> multiple Reasoning events
     - [x] Handle toolCalls[] -> ToolCall + ToolResult pairs
     - [x] Handle token attribution (last generation event of turn)
+    - [x] Set provider_call_id for traceability
     - [x] Tests pass (4 tests)
   - [ ] Codex: Handle async token notifications
+    - [ ] Parse JSON string arguments to Value
+    - [ ] Extract exit codes from text output
     - [ ] Deduplicate echoed events
     - [ ] Attach TokenUsage as sidecar events
   - [ ] Claude: Extract embedded usage
-    - [ ] Parse message.content[] blocks
+    - [ ] Parse message.content[] blocks (unfold tool_result)
     - [ ] Create TokenUsage events for ToolCall/Message
+    - [ ] Handle thinking blocks → Reasoning events
 - [ ] Write conversion tests with snapshot data
 
 **Success Criteria**: Can convert all provider snapshots to Vec<v2::AgentEvent>
 
-**Commit**: `0f912f3` - feat: add v2 schema types and Gemini normalization layer
+**Commits**:
+- `0f912f3` - feat: add v2 schema types and Gemini normalization layer
+- `daed86d` - docs: update progress tracking for v2 migration
+- Next - refactor: apply schema review feedback (provider_call_id, audio tokens)
 
 ### Phase 3: Parallel Engine Implementation ⏳ NOT STARTED
 **Goal**: Implement v2-based analysis alongside v1 engine

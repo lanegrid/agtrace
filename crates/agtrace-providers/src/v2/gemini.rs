@@ -63,6 +63,7 @@ pub fn normalize_gemini_session_v2(
                         EventPayload::ToolCall(ToolCallPayload {
                             name: tool_call.name.clone(),
                             arguments: tool_call.args.clone(),
+                            provider_call_id: Some(tool_call.id.clone()),
                         }),
                         Some(raw_value.clone()),
                     );
@@ -121,6 +122,8 @@ pub fn normalize_gemini_session_v2(
                         details: Some(TokenUsageDetails {
                             cache_read_input_tokens: Some(gemini_msg.tokens.cached as i32),
                             reasoning_output_tokens: Some(gemini_msg.tokens.thoughts as i32),
+                            audio_input_tokens: None,
+                            audio_output_tokens: None,
                         }),
                     }),
                     None, // No raw for token event

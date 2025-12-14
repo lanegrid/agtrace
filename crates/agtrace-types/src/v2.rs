@@ -76,10 +76,17 @@ pub struct ReasoningPayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCallPayload {
-    /// Tool name to execute
+    /// Tool name to execute (e.g., "bash", "write_file")
     pub name: String,
-    /// Tool arguments (JSON)
+
+    /// Tool arguments (JSON Value)
+    /// Codex's stringified JSON should be parsed into Value object
     pub arguments: Value,
+
+    /// Provider-assigned call ID (e.g., "call_Dyh...", "toolu_01...")
+    /// Essential for linking with ToolResult and log tracing
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_call_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,10 +125,14 @@ pub struct TokenUsagePayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenUsageDetails {
-    /// Cache read input tokens (Claude, etc.)
+    /// Cache read input tokens (Claude/Gemini)
     pub cache_read_input_tokens: Option<i32>,
-    /// Reasoning output tokens (o1/Gemini, etc.)
+    /// Reasoning output tokens (o1/Gemini)
     pub reasoning_output_tokens: Option<i32>,
+    /// Audio input tokens (future-proofing for multimodal)
+    pub audio_input_tokens: Option<i32>,
+    /// Audio output tokens (future-proofing for multimodal)
+    pub audio_output_tokens: Option<i32>,
 }
 
 // --- Helper Methods ---
@@ -178,6 +189,7 @@ mod tests {
             payload: EventPayload::ToolCall(ToolCallPayload {
                 name: "bash".to_string(),
                 arguments: serde_json::json!({"command": "ls"}),
+                provider_call_id: Some("call_123".to_string()),
             }),
             metadata: None,
         };

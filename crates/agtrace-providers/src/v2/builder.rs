@@ -103,6 +103,7 @@ mod tests {
             EventPayload::ToolCall(ToolCallPayload {
                 name: "bash".to_string(),
                 arguments: serde_json::json!({"command": "ls"}),
+                provider_call_id: Some("call_123".to_string()),
             }),
             None,
         );
