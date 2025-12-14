@@ -156,7 +156,7 @@ impl LogProvider for ClaudeProvider {
                     session_id: session_id.clone(),
                     project_hash: context.project_hash.clone(),
                     project_root: header.cwd.clone(),
-                    provider: "claude".to_string(),
+                    provider: "claude_code".to_string(),
                     start_ts: header.timestamp.clone(),
                     end_ts: None,
                     snippet: header.snippet.clone(),

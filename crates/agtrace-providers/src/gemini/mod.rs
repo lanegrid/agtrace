@@ -45,7 +45,8 @@ impl LogProvider for GeminiProvider {
         }
 
         let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
-        filename == "logs.json" || (filename.starts_with("session-") && filename.ends_with(".json"))
+        // Only handle session-*.json files, skip logs.json (metadata file, not conversation data)
+        filename.starts_with("session-") && filename.ends_with(".json")
     }
 
     fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
@@ -109,8 +110,6 @@ impl LogProvider for GeminiProvider {
                 continue;
             }
 
-            let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
-
             if let Some(parent) = path.parent() {
                 if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
                     if is_64_char_hex(dir_name)
@@ -139,12 +138,7 @@ impl LogProvider for GeminiProvider {
 
                 let log_file = LogFileMetadata {
                     path: path.display().to_string(),
-                    role: if filename == "logs.json" {
-                        "meta"
-                    } else {
-                        "main"
-                    }
-                    .to_string(),
+                    role: "main".to_string(),
                     file_size,
                     mod_time,
                 };
