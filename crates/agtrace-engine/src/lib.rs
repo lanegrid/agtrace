@@ -30,7 +30,7 @@ pub fn build_spans_from_events(events: &[agtrace_types::v2::AgentEvent]) -> Vec<
     span::build_spans(events)
 }
 
-/// Summarize session statistics from events
-pub fn summarize_session(events: &[agtrace_types::v2::AgentEvent]) -> SessionSummary {
-    summary::summarize(events)
+/// Summarize session statistics from AgentSession
+pub fn summarize_session(session: &AgentSession) -> SessionSummary {
+    summary::summarize(session)
 }

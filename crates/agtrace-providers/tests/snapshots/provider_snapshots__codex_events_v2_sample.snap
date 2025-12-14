@@ -52,43 +52,6 @@ expression: json_pretty
 
 {
   "content": {
-    "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "images": [],
-      "message": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
-      "type": "user_message"
-    },
-    "timestamp": "2025-12-09T19:55:18.144Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:18.144Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
-}
-
-{
-  "content": {
-    "text": "**Creating directory and file using shell and patch**"
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "text": "**Creating directory and file using shell and patch**",
-      "type": "agent_reasoning"
-    },
-    "timestamp": "2025-12-09T19:55:28.078Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:28.078Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
-}
-
-{
-  "content": {
     "text": "**Creating directory and file using shell and patch**"
   },
   "id": "<UUID_REDACTED>",
@@ -175,43 +138,6 @@ expression: json_pretty
   "timestamp": "2025-12-09T19:55:30.257Z",
   "trace_id": "<UUID_REDACTED>",
   "type": "tool_result"
-}
-
-{
-  "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 64
-    },
-    "input_tokens": 3505,
-    "output_tokens": 101,
-    "total_tokens": 3606
-  },
-  "id": "<UUID_REDACTED>",
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:31.006Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
-}
-
-{
-  "content": {
-    "text": "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding."
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "text": "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding.",
-      "type": "agent_reasoning"
-    },
-    "timestamp": "2025-12-09T19:55:33.501Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:33.501Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
 }
 
 {
@@ -306,43 +232,6 @@ expression: json_pretty
 
 {
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
-    },
-    "input_tokens": 3711,
-    "output_tokens": 40,
-    "total_tokens": 3751
-  },
-  "id": "<UUID_REDACTED>",
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:35.989Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
-}
-
-{
-  "content": {
-    "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`."
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "message": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`.",
-      "type": "agent_message"
-    },
-    "timestamp": "2025-12-09T19:55:37.423Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:37.423Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
-}
-
-{
-  "content": {
     "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`."
   },
   "id": "<UUID_REDACTED>",
@@ -406,62 +295,6 @@ expression: json_pretty
   "timestamp": "2025-12-09T19:55:45.472Z",
   "trace_id": "<UUID_REDACTED>",
   "type": "user"
-}
-
-{
-  "content": {
-    "text": "cd to myapp and run python hoge.py"
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "images": [],
-      "message": "cd to myapp and run python hoge.py",
-      "type": "user_message"
-    },
-    "timestamp": "2025-12-09T19:55:45.472Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:45.472Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
-}
-
-{
-  "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_read_input_tokens": 3584,
-      "reasoning_output_tokens": 0
-    },
-    "input_tokens": 3815,
-    "output_tokens": 26,
-    "total_tokens": 3841
-  },
-  "id": "<UUID_REDACTED>",
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:46.392Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
-}
-
-{
-  "content": {
-    "text": "**Running Python script in workspace**"
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "text": "**Running Python script in workspace**",
-      "type": "agent_reasoning"
-    },
-    "timestamp": "2025-12-09T19:55:49.552Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:49.552Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
 }
 
 {
@@ -552,43 +385,6 @@ expression: json_pretty
   "timestamp": "2025-12-09T19:55:50.681Z",
   "trace_id": "<UUID_REDACTED>",
   "type": "tool_result"
-}
-
-{
-  "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
-    },
-    "input_tokens": 3708,
-    "output_tokens": 37,
-    "total_tokens": 3745
-  },
-  "id": "<UUID_REDACTED>",
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:51.375Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
-}
-
-{
-  "content": {
-    "text": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification."
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "text": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification.",
-      "type": "agent_reasoning"
-    },
-    "timestamp": "2025-12-09T19:55:54.600Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:54.600Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
 }
 
 {
@@ -685,43 +481,6 @@ expression: json_pretty
 
 {
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 64
-    },
-    "input_tokens": 3845,
-    "output_tokens": 128,
-    "total_tokens": 3973
-  },
-  "id": "<UUID_REDACTED>",
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:00.261Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
-}
-
-{
-  "content": {
-    "text": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative."
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "text": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative.",
-      "type": "agent_reasoning"
-    },
-    "timestamp": "2025-12-09T19:56:02.412Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:02.412Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
-}
-
-{
-  "content": {
     "text": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative."
   },
   "id": "<UUID_REDACTED>",
@@ -812,43 +571,6 @@ expression: json_pretty
 
 {
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
-    },
-    "input_tokens": 4017,
-    "output_tokens": 38,
-    "total_tokens": 4055
-  },
-  "id": "<UUID_REDACTED>",
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:03.675Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
-}
-
-{
-  "content": {
-    "text": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "text": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing.",
-      "type": "agent_reasoning"
-    },
-    "timestamp": "2025-12-09T19:56:05.955Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:05.955Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
-}
-
-{
-  "content": {
     "text": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
   },
   "id": "<UUID_REDACTED>",
@@ -870,24 +592,6 @@ expression: json_pretty
   "timestamp": "2025-12-09T19:56:05.955Z",
   "trace_id": "<UUID_REDACTED>",
   "type": "reasoning"
-}
-
-{
-  "content": {
-    "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2"
-  },
-  "id": "<UUID_REDACTED>",
-  "metadata": {
-    "payload": {
-      "message": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2",
-      "type": "agent_message"
-    },
-    "timestamp": "2025-12-09T19:56:06.171Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:06.171Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
 }
 
 {

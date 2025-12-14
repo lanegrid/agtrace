@@ -32,23 +32,6 @@ expression: metadata_json_pretty
 
 {
   "payload": {
-    "images": [],
-    "message": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
-    "type": "user_message"
-  },
-  "timestamp": "2025-12-09T19:55:18.144Z"
-}
-
-{
-  "payload": {
-    "text": "**Creating directory and file using shell and patch**",
-    "type": "agent_reasoning"
-  },
-  "timestamp": "2025-12-09T19:55:28.078Z"
-}
-
-{
-  "payload": {
     "content": null,
     "encrypted_content": "gAAAAABpOH6wd5zv7ckwzUE7fjqQRFIW0mZWuFRMi91uGtECYj9-cYJXMGUAL4mUVrkImbDPeLeV2dxAIKSPb24RA4mrRtmGT0RUUfQJdsyKkpZJI7WOn8DiypUo6W3uacK19tM8-H91UWovOe9OTjKrzNIYGx9AbCLBBcMjk-r64FdRKINvaejg2lWlg9Pe4XVDyNIHCkrtKALJNDL5Q8I0ebtErpluw6lTalWFGWCXILe6rwwGO8Y8P9DU6MA8VqTCcPK-J_ocEgkBxiJ-P36gf0uj-X91IGj2L6pWaS4OWG1rAw3eRsQbDE4YXibSm21Qv6cC7jlGmZwPevnRp8NR9iAdeNrXfwmIVTQjB_OpZncuZu3LaNIMjK8mKeft5cfe87fNjapLuu_D9pWcjqjqR4qxa_J-4wBoxA-kSAUPtCiwFis6XueyRDZMeUfxGX0McbqEzfr9QEMX9VMtrcR2XzZCgv5EaWHZIAXjePbqQDhwV41uCOAQYuCiq06iFlfcRQxp5Zd4_lugYC9KKWYsV-Jl783fdh4lCNipm1n8r6vQuxUZCHWLtWFi5zGyYS96VweVf7Z9KqpRMx0Ins-DfT0uk1e-MsjStk3ettfgjPcQe3kC8aIRR7ABMZ9UdVWiNCDjyo5UoQf6dYzvVjVzYmNuahh5h8UdsYlhi8U2f5hzOK9nJkknEsNl559GjYCpMB_Uxxdq_sGwF965E68xhUCN8gT2vcTTBkioew3Lc8uhMhCI-5_9dCRe8llY1G8k5SawUFFhuG28dgQL0-4mevDRfsuY3S2KT2SKZDMGyvjDRSYkT6UCGCxWSREea4j2XaUjbZ5N5NSgEtlDVEFPsWniwrWUZC50sZgcEKewcdYBH3fxSH4SGtdgPL3RYLXsKNGFEgJHndobCeAv79UdCWBC5b0DiVWeiT2SuTH9okChZx34gkJ0J6qrw9lMXLdq_P09MKxQ3a92w4F5NB1tV1oxaB1_VYWS0qCEC4la8whvj9w2qNsJV5sBgIGyD-9CZhklE3DWK084sPoqMNC5NPdmJm_y_u30Azsz8uH34QHVLNd7OE1nwujj-c12-SAgL3iDqoJTR6oShZDzF-eBG71yAfn39lQ5FLoWUnRJgOnI74--6JQPQlDvj4sxCtU003jlUqGL-ORnsjDLjYGt1dP1s8MPjCQD6rsXU622iXafsyj19zb3WfTxs5O4tllFutkqB8PlkRrZykf_NNZv60Q9dX9bFNjATLWKb-bqRlqFIfgcgkmYI21F8TZrQzzcJKkCCOf1_tSI_5FdxOMIeLyJ0OtmgsysuuSKpuiJrm6ObBKwBArbm0lB3jTcAwHZveKTP9FMbUiQYRQcGH7g3LVP_gbRvM9Q5W0OJfroqHn0HSiwnuMjFn1Whoue58c-YYG2W9iksrMf34bDrL_bIW-FGa4w2ixkAPUiNarIgMvOrbwboa3On3PdUqX9QpO4zwnL7RPlktyqFNeAjDm0plUsTsmrsA==",
     "summary": [
@@ -81,16 +64,6 @@ null
     "type": "function_call_output"
   },
   "timestamp": "2025-12-09T19:55:30.257Z"
-}
-
-null
-
-{
-  "payload": {
-    "text": "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding.",
-    "type": "agent_reasoning"
-  },
-  "timestamp": "2025-12-09T19:55:33.501Z"
 }
 
 {
@@ -130,16 +103,6 @@ null
   "timestamp": "2025-12-09T19:55:35.204Z"
 }
 
-null
-
-{
-  "payload": {
-    "message": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`.",
-    "type": "agent_message"
-  },
-  "timestamp": "2025-12-09T19:55:37.423Z"
-}
-
 {
   "payload": {
     "content": [
@@ -168,25 +131,6 @@ null
     "type": "message"
   },
   "timestamp": "2025-12-09T19:55:45.472Z"
-}
-
-{
-  "payload": {
-    "images": [],
-    "message": "cd to myapp and run python hoge.py",
-    "type": "user_message"
-  },
-  "timestamp": "2025-12-09T19:55:45.472Z"
-}
-
-null
-
-{
-  "payload": {
-    "text": "**Running Python script in workspace**",
-    "type": "agent_reasoning"
-  },
-  "timestamp": "2025-12-09T19:55:49.552Z"
 }
 
 {
@@ -225,16 +169,6 @@ null
   "timestamp": "2025-12-09T19:55:50.681Z"
 }
 
-null
-
-{
-  "payload": {
-    "text": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification.",
-    "type": "agent_reasoning"
-  },
-  "timestamp": "2025-12-09T19:55:54.600Z"
-}
-
 {
   "payload": {
     "content": null,
@@ -269,16 +203,6 @@ null
     "type": "function_call_output"
   },
   "timestamp": "2025-12-09T19:55:59.497Z"
-}
-
-null
-
-{
-  "payload": {
-    "text": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative.",
-    "type": "agent_reasoning"
-  },
-  "timestamp": "2025-12-09T19:56:02.412Z"
 }
 
 {
@@ -317,16 +241,6 @@ null
   "timestamp": "2025-12-09T19:56:02.744Z"
 }
 
-null
-
-{
-  "payload": {
-    "text": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing.",
-    "type": "agent_reasoning"
-  },
-  "timestamp": "2025-12-09T19:56:05.955Z"
-}
-
 {
   "payload": {
     "content": null,
@@ -340,14 +254,6 @@ null
     "type": "reasoning"
   },
   "timestamp": "2025-12-09T19:56:05.955Z"
-}
-
-{
-  "payload": {
-    "message": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2",
-    "type": "agent_message"
-  },
-  "timestamp": "2025-12-09T19:56:06.171Z"
 }
 
 {

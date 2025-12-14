@@ -31,34 +31,7 @@ expression: spans
       "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
       "tokens": null
     },
-    "assistant": [],
-    "tools": [],
-    "reasoning": [],
-    "system": [],
-    "stats": {
-      "tool_calls": 0,
-      "tool_failures": 0,
-      "e2e_ms": null,
-      "pre_tool_ms": null,
-      "tool_ms": null,
-      "post_tool_ms": null,
-      "tokens_total": null
-    }
-  },
-  {
-    "user": {
-      "ts": "2025-12-09T19:55:18.144+00:00",
-      "role": "user",
-      "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
-      "tokens": null
-    },
     "assistant": [
-      {
-        "ts": "2025-12-09T19:55:37.423+00:00",
-        "role": "assistant",
-        "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`.",
-        "tokens": null
-      },
       {
         "ts": "2025-12-09T19:55:37.424+00:00",
         "role": "assistant",
@@ -98,16 +71,14 @@ expression: spans
     ],
     "reasoning": [
       "**Creating directory and file using shell and patch**",
-      "**Creating directory and file using shell and patch**",
-      "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding.",
       "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding."
     ],
     "system": [],
     "stats": {
       "tool_calls": 2,
       "tool_failures": 0,
-      "e2e_ms": 19280,
-      "pre_tool_ms": 11972,
+      "e2e_ms": 19281,
+      "pre_tool_ms": 11973,
       "tool_ms": 5088,
       "post_tool_ms": 2220,
       "tokens_total": 3841
@@ -120,34 +91,7 @@ expression: spans
       "text": "cd to myapp and run python hoge.py",
       "tokens": null
     },
-    "assistant": [],
-    "tools": [],
-    "reasoning": [],
-    "system": [],
-    "stats": {
-      "tool_calls": 0,
-      "tool_failures": 0,
-      "e2e_ms": null,
-      "pre_tool_ms": null,
-      "tool_ms": null,
-      "post_tool_ms": null,
-      "tokens_total": null
-    }
-  },
-  {
-    "user": {
-      "ts": "2025-12-09T19:55:45.472+00:00",
-      "role": "user",
-      "text": "cd to myapp and run python hoge.py",
-      "tokens": null
-    },
     "assistant": [
-      {
-        "ts": "2025-12-09T19:56:06.171+00:00",
-        "role": "assistant",
-        "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2",
-        "tokens": null
-      },
       {
         "ts": "2025-12-09T19:56:06.171+00:00",
         "role": "assistant",
@@ -198,12 +142,8 @@ expression: spans
     ],
     "reasoning": [
       "**Running Python script in workspace**",
-      "**Running Python script in workspace**",
-      "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification.",
       "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification.",
       "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative.",
-      "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative.",
-      "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing.",
       "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
     ],
     "system": [],
