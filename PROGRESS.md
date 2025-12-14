@@ -135,6 +135,15 @@ Convert **Provider Raw -> V2** directly (NOT V1 -> V2), because v1 loses informa
     - [x] test_codex_span_v2_building
     - [x] test_claude_span_v2_building
   - [x] All v2 tests passing (13 provider unit tests + 6 engine tests)
+- [x] Add v2 provider snapshot tests ✅ (2025-12-14)
+  - [x] Add test_gemini_parse_v2_snapshot
+  - [x] Add test_codex_parse_v2_snapshot
+  - [x] Add test_claude_parse_v2_snapshot
+  - [x] Add test_gemini_parse_raw_v2_snapshot
+  - [x] Add test_codex_parse_raw_v2_snapshot
+  - [x] Add test_claude_parse_raw_v2_snapshot
+  - [x] UUID redaction helper for deterministic snapshots
+  - [x] All 6 v2 snapshot tests passing
 - [ ] Switch CLI commands to use v2 pipeline:
   - [ ] Update session show command
   - [ ] Update analysis commands
