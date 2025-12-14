@@ -24,7 +24,7 @@ pub fn handle(db: &Database, session_id: String, detect: String, format: String)
             .collect()
     };
 
-    let report = analysis::analyze_v2(session_id.clone(), &events_v2, detectors);
+    let report = analysis::analyze(session_id.clone(), &events_v2, detectors);
 
     if format == "json" {
         println!("{}", serde_json::to_string_pretty(&report)?);

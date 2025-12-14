@@ -1,4 +1,4 @@
-use agtrace_types::{AgentEventV1, EventType};
+use agtrace_types::v2::{AgentEvent, EventPayload};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy)]
@@ -21,7 +21,7 @@ impl FromStr for ExportStrategy {
     }
 }
 
-pub fn transform(events: &[AgentEventV1], strategy: ExportStrategy) -> Vec<AgentEventV1> {
+pub fn transform(events: &[AgentEvent], strategy: ExportStrategy) -> Vec<AgentEvent> {
     match strategy {
         ExportStrategy::Raw => events.to_vec(),
         ExportStrategy::Clean => apply_clean_strategy(events),
@@ -29,31 +29,27 @@ pub fn transform(events: &[AgentEventV1], strategy: ExportStrategy) -> Vec<Agent
     }
 }
 
-fn apply_clean_strategy(events: &[AgentEventV1]) -> Vec<AgentEventV1> {
+fn apply_clean_strategy(events: &[AgentEvent]) -> Vec<AgentEvent> {
     let mut cleaned = Vec::new();
     let mut skip_until_next_success = false;
 
     for event in events.iter() {
-        match event.event_type {
-            EventType::ToolResult => {
-                if let Some(exit_code) = event.tool_exit_code {
-                    if exit_code != 0 {
-                        skip_until_next_success = true;
-                        continue;
-                    } else {
-                        skip_until_next_success = false;
-                    }
+        match &event.payload {
+            EventPayload::ToolResult(result) => {
+                if result.is_error {
+                    skip_until_next_success = true;
+                    continue;
+                } else {
+                    skip_until_next_success = false;
                 }
             }
-            EventType::AssistantMessage => {
-                if let Some(text) = &event.text {
-                    let text_lower = text.to_lowercase();
-                    if text_lower.contains("i apologize")
-                        || text_lower.contains("my mistake")
-                        || text_lower.contains("sorry")
-                    {
-                        continue;
-                    }
+            EventPayload::Message(msg) => {
+                let text_lower = msg.text.to_lowercase();
+                if text_lower.contains("i apologize")
+                    || text_lower.contains("my mistake")
+                    || text_lower.contains("sorry")
+                {
+                    continue;
                 }
             }
             _ => {}
@@ -62,13 +58,33 @@ fn apply_clean_strategy(events: &[AgentEventV1]) -> Vec<AgentEventV1> {
         if !skip_until_next_success {
             let mut cleaned_event = event.clone();
 
-            if let Some(text) = &cleaned_event.text {
-                if text.len() > 5000 {
-                    cleaned_event.text = Some(format!(
-                        "{}...<truncated_output_for_training>",
-                        text.chars().take(1000).collect::<String>()
-                    ));
+            // Truncate long text in payloads
+            match &mut cleaned_event.payload {
+                EventPayload::Message(msg) => {
+                    if msg.text.len() > 5000 {
+                        msg.text = format!(
+                            "{}...<truncated_output_for_training>",
+                            msg.text.chars().take(1000).collect::<String>()
+                        );
+                    }
                 }
+                EventPayload::ToolResult(result) => {
+                    if result.output.len() > 5000 {
+                        result.output = format!(
+                            "{}...<truncated_output_for_training>",
+                            result.output.chars().take(1000).collect::<String>()
+                        );
+                    }
+                }
+                EventPayload::Reasoning(reasoning) => {
+                    if reasoning.text.len() > 5000 {
+                        reasoning.text = format!(
+                            "{}...<truncated_output_for_training>",
+                            reasoning.text.chars().take(1000).collect::<String>()
+                        );
+                    }
+                }
+                _ => {}
             }
 
             cleaned.push(cleaned_event);
@@ -78,15 +94,15 @@ fn apply_clean_strategy(events: &[AgentEventV1]) -> Vec<AgentEventV1> {
     cleaned
 }
 
-fn apply_reasoning_strategy(events: &[AgentEventV1]) -> Vec<AgentEventV1> {
+fn apply_reasoning_strategy(events: &[AgentEvent]) -> Vec<AgentEvent> {
     let mut reasoning_pairs = Vec::new();
 
     for i in 0..events.len() {
-        if matches!(events[i].event_type, EventType::Reasoning) {
+        if matches!(events[i].payload, EventPayload::Reasoning(_)) {
             reasoning_pairs.push(events[i].clone());
 
             if let Some(next) = events.get(i + 1) {
-                if matches!(next.event_type, EventType::ToolCall) {
+                if matches!(next.payload, EventPayload::ToolCall(_)) {
                     reasoning_pairs.push(next.clone());
                 }
             }
@@ -94,16 +110,4 @@ fn apply_reasoning_strategy(events: &[AgentEventV1]) -> Vec<AgentEventV1> {
     }
 
     reasoning_pairs
-}
-
-/// Transform v2 events using v2->v1 adapter
-pub fn transform_v2(
-    events: &[agtrace_types::v2::AgentEvent],
-    strategy: ExportStrategy,
-) -> Vec<agtrace_types::v2::AgentEvent> {
-    let v1_events = crate::convert::convert_v2_to_v1(events);
-    let _transformed_v1 = transform(&v1_events, strategy);
-    // For now, return original v2 events
-    // TODO: Convert back to v2 or implement native v2 export
-    events.to_vec()
 }
