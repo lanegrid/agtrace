@@ -1,6 +1,5 @@
 ---
 source: crates/agtrace-engine/tests/assembler_snapshots.rs
-assertion_line: 72
 expression: value
 ---
 {
@@ -9,7 +8,7 @@ expression: value
   "start_time": "2025-12-09T19:55:16.336Z",
   "stats": {
     "duration_seconds": 49,
-    "total_tokens": 27148,
+    "total_tokens": 23397,
     "total_turns": 2
   },
   "turns": [
@@ -18,7 +17,7 @@ expression: value
       "stats": {
         "duration_ms": 15358,
         "step_count": 2,
-        "total_tokens": 11198
+        "total_tokens": 7447
       },
       "steps": [
         {
@@ -121,12 +120,12 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
-              "cache_read_input_tokens": 6656,
+              "cache_read_input_tokens": 3584,
               "reasoning_output_tokens": 0
             },
-            "input_tokens": 7526,
-            "output_tokens": 66,
-            "total_tokens": 7592
+            "input_tokens": 3815,
+            "output_tokens": 40,
+            "total_tokens": 3841
           }
         }
       ],

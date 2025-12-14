@@ -8,7 +8,7 @@ expression: value
   "start_time": "2025-12-09T19:47:42.930Z",
   "stats": {
     "duration_seconds": 67,
-    "total_tokens": 936,
+    "total_tokens": 918,
     "total_turns": 2
   },
   "turns": [
@@ -17,7 +17,7 @@ expression: value
       "stats": {
         "duration_ms": 30283,
         "step_count": 3,
-        "total_tokens": 729
+        "total_tokens": 711
       },
       "steps": [
         {
@@ -72,9 +72,9 @@ expression: value
               "cache_read_input_tokens": 12135,
               "reasoning_output_tokens": null
             },
-            "input_tokens": 20,
-            "output_tokens": 444,
-            "total_tokens": 464
+            "input_tokens": 10,
+            "output_tokens": 436,
+            "total_tokens": 446
           }
         },
         {

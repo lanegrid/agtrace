@@ -120,6 +120,18 @@ impl TurnBuilder {
                     self.current_step.id = Some(event.id);
                 }
 
+                // Deduplication: Skip if tool call with same event_id already exists
+                // This handles echo events from providers like Codex
+                let already_exists = self
+                    .current_step
+                    .tool_executions
+                    .iter()
+                    .any(|t| t.call.event_id == event.id);
+
+                if already_exists {
+                    return;
+                }
+
                 let call_block = ToolCallBlock {
                     event_id: event.id,
                     timestamp: event.timestamp,
@@ -316,21 +328,23 @@ fn merge_usage(
     source: &agtrace_types::v2::TokenUsagePayload,
 ) {
     if let Some(current) = target {
-        current.input_tokens += source.input_tokens;
-        current.output_tokens += source.output_tokens;
-        current.total_tokens += source.total_tokens;
+        // Strategy: Use max() instead of += to handle cumulative values
+        // Most providers (Codex, Claude, Gemini) send cumulative snapshots, not deltas
+        // Using max() prevents double-counting when same usage is sent multiple times
+        current.input_tokens = current.input_tokens.max(source.input_tokens);
+        current.output_tokens = current.output_tokens.max(source.output_tokens);
+        current.total_tokens = current.total_tokens.max(source.total_tokens);
 
         // Merge details if both exist
         if let (Some(d1), Some(d2)) = (&mut current.details, &source.details) {
-            if let (Some(v1), Some(v2)) = (d1.cache_read_input_tokens, d2.cache_read_input_tokens)
-            {
-                d1.cache_read_input_tokens = Some(v1 + v2);
+            if let (Some(v1), Some(v2)) = (d1.cache_read_input_tokens, d2.cache_read_input_tokens) {
+                d1.cache_read_input_tokens = Some(v1.max(v2));
             }
-            if let (Some(v1), Some(v2)) =
-                (d1.reasoning_output_tokens, d2.reasoning_output_tokens)
-            {
-                d1.reasoning_output_tokens = Some(v1 + v2);
+            if let (Some(v1), Some(v2)) = (d1.reasoning_output_tokens, d2.reasoning_output_tokens) {
+                d1.reasoning_output_tokens = Some(v1.max(v2));
             }
+        } else if current.details.is_none() {
+            current.details = source.details.clone();
         }
     } else {
         *target = Some(source.clone());
