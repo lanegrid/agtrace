@@ -1,12 +1,14 @@
 // Engine module - Core processing logic (interpretation, analysis, export)
 // This layer sits between normalized events (types) and CLI presentation
 
+pub mod analysis;
 pub mod assembler;
 pub mod export;
 pub mod session;
 pub mod span;
 pub mod summary;
 
+pub use analysis::{analyze_and_select_sessions, compute_metrics, SessionDigest, SessionMetrics};
 pub use assembler::assemble_session;
 pub use session::{
     AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionStats, ToolCallBlock,
