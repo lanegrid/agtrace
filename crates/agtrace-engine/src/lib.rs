@@ -3,6 +3,7 @@
 
 pub mod analysis;
 pub mod assembler;
+pub mod diagnostics;
 pub mod export;
 pub mod session;
 pub mod span;
@@ -10,6 +11,7 @@ pub mod summary;
 
 pub use analysis::{analyze_and_select_sessions, compute_metrics, SessionDigest, SessionMetrics};
 pub use assembler::assemble_session;
+pub use diagnostics::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
 pub use session::{
     AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionStats, ToolCallBlock,
     ToolExecution, ToolResultBlock, TurnStats, UserMessage,
