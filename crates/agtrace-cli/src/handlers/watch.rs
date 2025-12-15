@@ -209,11 +209,17 @@ fn check_safety_alert(args: &serde_json::Value) -> Option<String> {
 }
 
 /// Truncate text to max length with ellipsis
+/// Handles multibyte characters correctly by finding the nearest char boundary
 fn truncate(text: &str, max_len: usize) -> String {
     if text.len() <= max_len {
         text.to_string()
     } else {
-        format!("{}...", &text[..max_len])
+        // Find the nearest char boundary at or before max_len
+        let mut boundary = max_len;
+        while boundary > 0 && !text.is_char_boundary(boundary) {
+            boundary -= 1;
+        }
+        format!("{}...", &text[..boundary])
     }
 }
 
