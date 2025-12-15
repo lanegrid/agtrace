@@ -95,9 +95,24 @@ impl SessionWatcher {
             WatchTarget::Waiting { .. } => log_root.clone(),
         };
 
-        // Set up polling-based watcher for better compatibility with macOS FSEvents
-        // FSEvents coalesces rapid changes, causing delays in event delivery
-        // Polling ensures we detect changes within 500ms regardless of FSEvents behavior
+        // NOTE: Why PollWatcher instead of RecommendedWatcher (FSEvents)?
+        //
+        // Problem: Codex appends to JSONL files rapidly during agent sessions, but FSEvents
+        // on macOS coalesces these rapid file changes to reduce system load. This causes
+        // significant delays (several seconds) before events are delivered to our watcher.
+        //
+        // Investigation results:
+        // - `touch file.jsonl` → FSEvents delivers Modify event immediately
+        // - `echo >> file.jsonl` → FSEvents delivers Modify event immediately
+        // - Codex writes to file.jsonl → No FSEvents event for several seconds
+        // - `fswatch` (FSEvents-based) also doesn't detect Codex writes immediately
+        // - `watch -n 1 "wc -l file.jsonl"` shows line count increasing in real-time
+        //
+        // Root cause: FSEvents batches/coalesces events when it detects rapid changes.
+        // Codex's write pattern triggers this coalescing behavior, causing event delays.
+        //
+        // Solution: PollWatcher polls file metadata every 500ms, bypassing FSEvents entirely.
+        // This ensures we detect changes within 500ms regardless of FSEvents coalescing.
         let config = notify::Config::default().with_poll_interval(Duration::from_millis(500));
 
         let mut watcher = PollWatcher::new(
