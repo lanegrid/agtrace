@@ -450,9 +450,42 @@ If performance becomes an issue with very large sessions (> 1000 events):
 - Add `parse_line_stateful()` method with provider state management
 - Consider separate streaming schema (v3) optimized for real-time
 
+## Implementation Complete ✅
+
+**Commit**: `df3311d` - fix: replace line-by-line parsing with full file re-normalization in watch mode
+
+### Changes Made
+1. **Replaced line-by-line parsing with full file re-normalization**:
+   - Removed `process_new_events()` function that used `provider.parse_line()`
+   - Added `detect_new_events()` that calls `provider.normalize_file()`
+   - Added `count_existing_events()` helper for initial event count
+
+2. **Updated state tracking**:
+   - Changed from `HashMap<PathBuf, u64>` (file offsets) to `HashMap<PathBuf, usize>` (event counts)
+   - Track number of events processed instead of file byte positions
+   - Only emit new events using `.skip(last_event_count)`
+
+3. **Simplified WatchTarget**:
+   - Removed unused `offset` field from `WatchTarget::File`
+   - Removed unused imports (`File`, `BufRead`, `BufReader`, `Seek`, `SeekFrom`)
+
+### Results
+- **Build**: ✅ Compiles without warnings
+- **Clippy**: ✅ No warnings
+- **Testing**: ✅ Verified with real Claude Code session
+  - Project filtering working correctly
+  - Event display now functional (was previously not working)
+  - Session auto-attach working
+
+### Performance Characteristics
+- **Event frequency**: ~10 seconds per event (low volume)
+- **File sizes**: Typically < 1MB per session
+- **Re-normalization overhead**: Negligible for typical sessions
+- **Correctness**: Guaranteed consistency with batch import
+
 ## Current Status
 - [x] Project filtering implemented and working
 - [x] File modification detection working
 - [x] Debug logging added
-- [ ] Event normalization in watch mode (blocked by this issue)
-- [ ] Implement file re-normalization approach
+- [x] Event normalization in watch mode via file re-normalization
+- [x] Watch mode event display working correctly
