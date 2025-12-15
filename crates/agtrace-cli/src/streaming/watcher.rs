@@ -3,8 +3,6 @@ use agtrace_types::v2::AgentEvent;
 use anyhow::Result;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
@@ -14,7 +12,7 @@ use std::time::{Duration, SystemTime};
 #[derive(Debug, Clone)]
 pub enum WatchTarget {
     /// Active file to attach to
-    File { path: PathBuf, offset: u64 },
+    File { path: PathBuf },
     /// No active sessions - waiting mode
     Waiting { message: String },
 }
@@ -78,12 +76,20 @@ impl SessionWatcher {
         };
 
         let mut current_file: Option<PathBuf> = None;
-        let mut file_offsets: HashMap<PathBuf, u64> = HashMap::new();
+        let mut file_event_counts: HashMap<PathBuf, usize> = HashMap::new();
 
         match target {
-            WatchTarget::File { path, offset } => {
+            WatchTarget::File { path } => {
+                // Count existing events in the file
+                let event_count = match count_existing_events(&path, &provider) {
+                    Ok(count) => count,
+                    Err(e) => {
+                        eprintln!("[WARN] Failed to count existing events: {}", e);
+                        0
+                    }
+                };
                 current_file = Some(path.clone());
-                file_offsets.insert(path.clone(), offset);
+                file_event_counts.insert(path.clone(), event_count);
                 let _ = tx_out.send(StreamEvent::Attached {
                     path: path.clone(),
                     session_id: extract_session_id(&path),
@@ -105,7 +111,7 @@ impl SessionWatcher {
                         if let Err(e) = handle_fs_event(
                             &event,
                             &mut current_file,
-                            &mut file_offsets,
+                            &mut file_event_counts,
                             &tx_worker,
                             &provider,
                             project_root.as_deref(),
@@ -159,7 +165,7 @@ impl SessionWatcher {
 fn handle_fs_event(
     event: &Event,
     current_file: &mut Option<PathBuf>,
-    file_offsets: &mut HashMap<PathBuf, u64>,
+    file_event_counts: &mut HashMap<PathBuf, usize>,
     tx: &Sender<StreamEvent>,
     provider: &Arc<dyn LogProvider>,
     project_root: Option<&Path>,
@@ -209,7 +215,15 @@ fn handle_fs_event(
                     if should_switch {
                         let old_path = current_file.clone();
                         *current_file = Some(path.clone());
-                        file_offsets.insert(path.clone(), 0);
+                        // Count existing events when switching to new file
+                        let event_count = match count_existing_events(path, provider) {
+                            Ok(count) => count,
+                            Err(e) => {
+                                eprintln!("[WARN] Failed to count existing events: {}", e);
+                                0
+                            }
+                        };
+                        file_event_counts.insert(path.clone(), event_count);
 
                         if let Some(old) = old_path {
                             let _ = tx.send(StreamEvent::SessionRotated {
@@ -229,16 +243,25 @@ fn handle_fs_event(
         EventKind::Modify(_) => {
             for path in &event.paths {
                 if Some(path) == current_file.as_ref() {
-                    // Read and parse new content
-                    let offset = *file_offsets.get(path).unwrap_or(&0);
-                    match process_new_lines(path, offset) {
-                        Ok((new_offset, events)) => {
-                            file_offsets.insert(path.clone(), new_offset);
+                    // Detect new events using full file re-normalization
+                    let last_count = *file_event_counts.get(path).unwrap_or(&0);
+                    match detect_new_events(path, last_count, provider) {
+                        Ok(events) => {
+                            let new_count = last_count + events.len();
+                            eprintln!(
+                                "[DEBUG] Detected {} new events from {} (count: {} -> {})",
+                                events.len(),
+                                path.file_name().unwrap_or_default().to_string_lossy(),
+                                last_count,
+                                new_count
+                            );
+                            file_event_counts.insert(path.clone(), new_count);
                             if !events.is_empty() {
                                 let _ = tx.send(StreamEvent::NewEvents(events));
                             }
                         }
                         Err(e) => {
+                            eprintln!("[DEBUG] Error detecting events: {}", e);
                             let _ = tx.send(StreamEvent::Error(format!(
                                 "Failed to read {}: {}",
                                 path.display(),
@@ -255,29 +278,42 @@ fn handle_fs_event(
     Ok(())
 }
 
-/// Process new lines from a file starting at the given offset
-fn process_new_lines(path: &Path, offset: u64) -> Result<(u64, Vec<AgentEvent>)> {
-    let mut file = File::open(path)?;
-    file.seek(SeekFrom::Start(offset))?;
-    let reader = BufReader::new(file);
+/// Count existing events in a file by normalizing it
+fn count_existing_events(path: &Path, provider: &Arc<dyn LogProvider>) -> Result<usize> {
+    let context = agtrace_providers::ImportContext {
+        project_root_override: None,
+        session_id_prefix: None,
+        all_projects: false,
+    };
+    let events = provider.normalize_file(path, &context)?;
+    Ok(events.len())
+}
 
-    let mut new_offset = offset;
-    let mut events = Vec::new();
+/// Detect new events from a file using full file re-normalization
+///
+/// This function re-normalizes the entire file and returns only the events
+/// that haven't been seen before (based on event count).
+///
+/// Rationale for full re-normalization:
+/// - Event frequency is low (~10 seconds per event)
+/// - File sizes are manageable (< 1MB typically)
+/// - Correctness: Guaranteed consistency with batch import
+/// - Simplicity: Reuses existing normalize_file() logic
+fn detect_new_events(
+    path: &Path,
+    last_event_count: usize,
+    provider: &Arc<dyn LogProvider>,
+) -> Result<Vec<AgentEvent>> {
+    let context = agtrace_providers::ImportContext {
+        project_root_override: None,
+        session_id_prefix: None,
+        all_projects: false,
+    };
 
-    for line in reader.lines() {
-        let line = line?;
-        new_offset += line.len() as u64 + 1; // +1 for newline
+    let all_events = provider.normalize_file(path, &context)?;
 
-        // Parse event (v2 schema)
-        match serde_json::from_str::<AgentEvent>(&line) {
-            Ok(event) => events.push(event),
-            Err(_) => {
-                // Skip malformed lines silently (could be incomplete writes)
-            }
-        }
-    }
-
-    Ok((new_offset, events))
+    // Return only events we haven't seen before
+    Ok(all_events.into_iter().skip(last_event_count).collect())
 }
 
 /// Resolve an explicitly specified target (session ID or file path)
@@ -286,11 +322,7 @@ fn resolve_explicit_target(log_root: &Path, id_or_path: &str) -> Result<WatchTar
 
     // Case 1: Direct file path (absolute or relative)
     if path_buf.exists() && path_buf.is_file() && is_log_file(&path_buf) {
-        let metadata = std::fs::metadata(&path_buf)?;
-        return Ok(WatchTarget::File {
-            path: path_buf,
-            offset: metadata.len(),
-        });
+        return Ok(WatchTarget::File { path: path_buf });
     }
 
     // Case 2: Session ID - search in log_root
@@ -305,10 +337,8 @@ fn resolve_explicit_target(log_root: &Path, id_or_path: &str) -> Result<WatchTar
         if path.is_file() && is_log_file(path) {
             if let Some(stem) = path.file_stem() {
                 if stem.to_string_lossy().contains(id_or_path) {
-                    let metadata = std::fs::metadata(path)?;
                     return Ok(WatchTarget::File {
                         path: path.to_path_buf(),
-                        offset: metadata.len(),
                     });
                 }
             }
@@ -458,10 +488,7 @@ fn find_active_target(
         );
     }
 
-    Ok(WatchTarget::File {
-        path: path.clone(),
-        offset: *size,
-    })
+    Ok(WatchTarget::File { path: path.clone() })
 }
 
 /// Format duration into human-readable string
