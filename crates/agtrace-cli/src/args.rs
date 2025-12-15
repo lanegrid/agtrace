@@ -70,6 +70,11 @@ pub enum Commands {
         limit: usize,
     },
 
+    Watch {
+        #[arg(long, value_parser = ["claude_code", "codex", "gemini"])]
+        provider: Option<String>,
+    },
+
     Init {
         #[arg(long)]
         refresh: bool,

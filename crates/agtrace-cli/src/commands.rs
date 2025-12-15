@@ -183,6 +183,32 @@ pub fn run(cli: Cli) -> Result<()> {
 
             handlers::pack::handle(&db, &template, limit, cli.project_root, cli.all_projects)
         }
+
+        Commands::Watch { provider } => {
+            let config_path = data_dir.join("config.toml");
+            let config = Config::load_from(&config_path)?;
+
+            // Determine which provider to watch
+            let provider_name = provider.unwrap_or_else(|| {
+                // Auto-detect: use first enabled provider
+                config
+                    .providers
+                    .iter()
+                    .find(|(_, p)| p.enabled)
+                    .map(|(name, _)| name.clone())
+                    .unwrap_or_else(|| "claude_code".to_string())
+            });
+
+            let provider_config = config.providers.get(&provider_name).ok_or_else(|| {
+                anyhow::anyhow!("Provider '{}' not found in config", provider_name)
+            })?;
+
+            if !provider_config.enabled {
+                anyhow::bail!("Provider '{}' is not enabled. Run 'agtrace provider list' to see available providers.", provider_name);
+            }
+
+            handlers::watch::handle(&provider_config.log_root)
+        }
     }
 }
 

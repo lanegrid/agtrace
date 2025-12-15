@@ -11,3 +11,4 @@ pub mod provider;
 pub mod provider_schema;
 pub mod session_list;
 pub mod session_show;
+pub mod watch;
