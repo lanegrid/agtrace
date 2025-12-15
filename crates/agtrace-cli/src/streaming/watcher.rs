@@ -1,5 +1,6 @@
+use agtrace_engine::{assemble_session_from_events, AgentSession};
 use agtrace_providers::LogProvider;
-use agtrace_types::v2::AgentEvent;
+use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
@@ -17,6 +18,21 @@ pub enum WatchTarget {
     Waiting { message: String },
 }
 
+/// Data payload for a session update
+#[derive(Debug, Clone)]
+pub struct SessionUpdate {
+    /// The fully assembled session state (snapshot)
+    pub session: Option<AgentSession>,
+    /// New raw events detected in this update (delta)
+    pub new_events: Vec<AgentEvent>,
+    /// Events that were not included in the session (e.g. pre-session noise)
+    #[allow(dead_code)]
+    pub orphaned_events: Vec<AgentEvent>,
+    /// Total count of events in the file
+    #[allow(dead_code)]
+    pub total_events: usize,
+}
+
 /// Events emitted by SessionWatcher
 #[derive(Debug, Clone)]
 pub enum StreamEvent {
@@ -26,8 +42,8 @@ pub enum StreamEvent {
         #[allow(dead_code)]
         session_id: Option<String>,
     },
-    /// New events parsed from the log file
-    NewEvents(Vec<AgentEvent>),
+    /// Session updated (new events and/or state change)
+    Update(SessionUpdate),
     /// Session file was rotated (new session started)
     SessionRotated {
         #[allow(dead_code)]
@@ -170,17 +186,6 @@ fn handle_fs_event(
     provider: &Arc<dyn LogProvider>,
     project_root: Option<&Path>,
 ) -> Result<()> {
-    // Debug: Print file system events
-    eprintln!(
-        "[DEBUG] FS Event: {:?} | Paths: {:?}",
-        event.kind,
-        event
-            .paths
-            .iter()
-            .map(|p| p.display().to_string())
-            .collect::<Vec<_>>()
-    );
-
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
@@ -191,19 +196,9 @@ fn handle_fs_event(
 
                 // Check if file belongs to current project using provider
                 if let Some(root) = project_root {
-                    let belongs = provider.belongs_to_project(path, root);
-                    eprintln!(
-                        "[DEBUG] Project filter: {} | belongs={} | project_root={}",
-                        path.display(),
-                        belongs,
-                        root.display()
-                    );
-                    if !belongs {
-                        // Ignore sessions from other projects
+                    if !provider.belongs_to_project(path, root) {
                         continue;
                     }
-                } else {
-                    eprintln!("[DEBUG] No project filter applied (watching all projects)");
                 }
 
                 // Check if this is a newer session than current
@@ -246,30 +241,33 @@ fn handle_fs_event(
         EventKind::Modify(_) => {
             for path in &event.paths {
                 if Some(path) == current_file.as_ref() {
-                    // Detect new events using full file re-normalization
                     let last_count = *file_event_counts.get(path).unwrap_or(&0);
-                    match detect_new_events(path, last_count, provider) {
-                        Ok(events) => {
-                            let new_count = last_count + events.len();
-                            eprintln!(
-                                "[DEBUG] Detected {} new events from {} (count: {} -> {})",
-                                events.len(),
-                                path.file_name().unwrap_or_default().to_string_lossy(),
-                                last_count,
-                                new_count
-                            );
+
+                    if let Ok((all_events, new_events)) =
+                        load_and_detect_changes(path, last_count, provider)
+                    {
+                        if !new_events.is_empty() {
+                            let new_count = last_count + new_events.len();
                             file_event_counts.insert(path.clone(), new_count);
-                            if !events.is_empty() {
-                                let _ = tx.send(StreamEvent::NewEvents(events));
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!("[DEBUG] Error detecting events: {}", e);
-                            let _ = tx.send(StreamEvent::Error(format!(
-                                "Failed to read {}: {}",
-                                path.display(),
-                                e
-                            )));
+
+                            let session = assemble_session_from_events(&all_events);
+
+                            let start_idx = all_events
+                                .iter()
+                                .position(|e| matches!(e.payload, EventPayload::User(_)))
+                                .unwrap_or(all_events.len());
+
+                            let orphaned_events =
+                                all_events.iter().take(start_idx).cloned().collect();
+
+                            let update = SessionUpdate {
+                                session,
+                                new_events,
+                                orphaned_events,
+                                total_events: all_events.len(),
+                            };
+
+                            let _ = tx.send(StreamEvent::Update(update));
                         }
                     }
                 }
@@ -292,21 +290,12 @@ fn count_existing_events(path: &Path, provider: &Arc<dyn LogProvider>) -> Result
     Ok(events.len())
 }
 
-/// Detect new events from a file using full file re-normalization
-///
-/// This function re-normalizes the entire file and returns only the events
-/// that haven't been seen before (based on event count).
-///
-/// Rationale for full re-normalization:
-/// - Event frequency is low (~10 seconds per event)
-/// - File sizes are manageable (< 1MB typically)
-/// - Correctness: Guaranteed consistency with batch import
-/// - Simplicity: Reuses existing normalize_file() logic
-fn detect_new_events(
+/// Load full file and separate new events from old ones
+fn load_and_detect_changes(
     path: &Path,
     last_event_count: usize,
     provider: &Arc<dyn LogProvider>,
-) -> Result<Vec<AgentEvent>> {
+) -> Result<(Vec<AgentEvent>, Vec<AgentEvent>)> {
     let context = agtrace_providers::ImportContext {
         project_root_override: None,
         session_id_prefix: None,
@@ -315,8 +304,9 @@ fn detect_new_events(
 
     let all_events = provider.normalize_file(path, &context)?;
 
-    // Return only events we haven't seen before
-    Ok(all_events.into_iter().skip(last_event_count).collect())
+    let new_events = all_events.iter().skip(last_event_count).cloned().collect();
+
+    Ok((all_events, new_events))
 }
 
 /// Resolve an explicitly specified target (session ID or file path)
@@ -360,27 +350,11 @@ fn resolve_explicit_target(
 }
 
 /// Find an active target session using Liveness Window detection
-///
-/// Priority order:
-/// 1. Hot Active (< 5 min): Attach to the latest matching project
-/// 2. Cold Dead (> 5 min): Enter waiting mode
-/// 3. No files: Enter waiting mode
-///
-/// If project_root is provided, only considers files belonging to that project
 fn find_active_target(
     dir: &Path,
     provider: &Arc<dyn LogProvider>,
     project_root: Option<&Path>,
 ) -> Result<WatchTarget> {
-    eprintln!(
-        "[DEBUG] find_active_target: dir={} | has_project_filter={}",
-        dir.display(),
-        project_root.is_some()
-    );
-    if let Some(root) = project_root {
-        eprintln!("[DEBUG] project_root={}", root.display());
-    }
-
     if !dir.exists() {
         return Ok(WatchTarget::Waiting {
             message: format!("Directory does not exist: {}", dir.display()),
@@ -400,17 +374,13 @@ fn find_active_target(
     {
         let path = entry.path();
 
-        // Use provider.can_handle() to respect provider-specific filtering (e.g., skip agent- files)
         if !provider.can_handle(path) {
             continue;
         }
 
         if path.is_file() {
-            // Filter by project if root is provided
             if let Some(root) = project_root {
-                let belongs = provider.belongs_to_project(path, root);
-                eprintln!("[DEBUG] Scanning: {} | belongs={}", path.display(), belongs);
-                if !belongs {
+                if !provider.belongs_to_project(path, root) {
                     continue;
                 }
             }
@@ -424,11 +394,6 @@ fn find_active_target(
         }
     }
 
-    eprintln!(
-        "[DEBUG] Found {} log files matching criteria",
-        entries.len()
-    );
-
     if entries.is_empty() {
         return Ok(WatchTarget::Waiting {
             message: "No session files found. Waiting for new session...".to_string(),
@@ -437,17 +402,6 @@ fn find_active_target(
 
     // Sort by modification time (newest first)
     entries.sort_by(|a, b| b.1.cmp(&a.1));
-
-    eprintln!("[DEBUG] Latest 3 files:");
-    for (i, (path, mtime, _)) in entries.iter().take(3).enumerate() {
-        let elapsed = now.duration_since(*mtime).unwrap_or(Duration::from_secs(0));
-        eprintln!(
-            "[DEBUG]   {}: {} (age: {})",
-            i + 1,
-            path.display(),
-            format_duration(elapsed)
-        );
-    }
 
     // Find hot active sessions (< 5 min)
     let hot_sessions: Vec<_> = entries
@@ -460,12 +414,6 @@ fn find_active_target(
             }
         })
         .collect();
-
-    eprintln!(
-        "[DEBUG] Hot sessions (< 5 min): {} / {}",
-        hot_sessions.len(),
-        entries.len()
-    );
 
     if hot_sessions.is_empty() {
         // All sessions are cold - enter waiting mode
@@ -483,23 +431,7 @@ fn find_active_target(
         });
     }
 
-    // We have at least one hot session
-    let (path, _mtime, size) = hot_sessions[0];
-
-    eprintln!(
-        "[DEBUG] Selected file: {} (offset={})",
-        path.display(),
-        size
-    );
-
-    // Check for multiple hot sessions
-    if hot_sessions.len() > 1 {
-        eprintln!(
-            "⚠️  Note: {} active sessions detected. Showing the latest one.",
-            hot_sessions.len()
-        );
-    }
-
+    let (path, _mtime, _size) = hot_sessions[0];
     Ok(WatchTarget::File { path: path.clone() })
 }
 

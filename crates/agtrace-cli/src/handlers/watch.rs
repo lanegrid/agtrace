@@ -48,9 +48,11 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
                             .unwrap_or_else(|| path.display().to_string())
                     );
                 }
-                StreamEvent::NewEvents(events) => {
-                    for event in events {
-                        print_event(&event);
+                StreamEvent::Update(update) => {
+                    let turn_count = update.session.as_ref().map(|s| s.turns.len()).unwrap_or(0);
+
+                    for event in update.new_events {
+                        print_event(&event, turn_count);
                     }
                 }
                 StreamEvent::SessionRotated { new_path, .. } => {
@@ -90,13 +92,19 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
 }
 
 /// Print a formatted event to stdout
-fn print_event(event: &AgentEvent) {
+fn print_event(event: &AgentEvent, turn_context: usize) {
     let time = event.timestamp.with_timezone(&Local).format("%H:%M:%S");
 
     match &event.payload {
         EventPayload::User(payload) => {
             let text = truncate(&payload.text, 100);
-            println!("{} {} \"{}\"", time.dimmed(), "👤 User:".bold(), text);
+            println!(
+                "{} {} [T{}] \"{}\"",
+                time.dimmed(),
+                "👤 User:".bold(),
+                turn_context + 1,
+                text
+            );
         }
         EventPayload::Reasoning(payload) => {
             let text = truncate(&payload.text, 50);

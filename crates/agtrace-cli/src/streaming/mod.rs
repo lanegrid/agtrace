@@ -1,3 +1,4 @@
 mod watcher;
 
-pub use watcher::{SessionWatcher, StreamEvent};
+#[allow(unused_imports)]
+pub use watcher::{SessionUpdate, SessionWatcher, StreamEvent};
