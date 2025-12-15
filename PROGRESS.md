@@ -193,3 +193,108 @@ enum WatchTarget {
     Waiting { reason: String },
 }
 ```
+
+---
+
+# Progress: Context-Aware Watch (Project Isolation)
+
+## Overview
+Enhancing `agtrace watch` to understand project context - only monitoring and displaying logs related to the current working directory's project, avoiding noise from other concurrent projects.
+
+## Problem Statement
+Current `watch` command monitors all sessions in the log directory without filtering:
+- **Issue 1**: Switching to unrelated sessions when working in different projects
+- **Issue 2**: Noise from concurrent agent sessions in other projects
+- **Issue 3**: No intuitive "watch this project" behavior
+
+## Solution: Content-Aware Filtering
+Implement project context detection that reads log file headers to check if they belong to the current project:
+- **Claude Code**: Check `cwd` field in log files
+- **Gemini**: Check `project_hash` field in logs.json
+- **Codex**: Check `cwd` field in session files
+
+## Implementation Plan
+
+### Phase 1: Project Context Detection ✅
+- [x] Add project context detection to `handlers/watch.rs`
+- [x] Use existing `discover_project_root()` from agtrace-types
+- [x] Get LogProvider instance via `create_provider()`
+- [x] Pass provider and project_root to SessionWatcher
+
+### Phase 2: Content-Aware File Filtering ✅
+- [x] Refactor to use `LogProvider::belongs_to_project()` (no custom implementation)
+- [x] Update `SessionWatcher::new()` to accept `Arc<dyn LogProvider>` and `Option<PathBuf>`
+- [x] Update `find_active_target()` to call `provider.belongs_to_project()`
+- [x] Update `handle_fs_event()` to filter new files via provider
+- [x] Remove duplicate/custom project filtering logic
+
+### Phase 3: Testing & Validation ⏳
+- [ ] Test Case 1: Single project auto-attach
+- [ ] Test Case 2: Multi-project isolation (Case 6 from requirements)
+- [ ] Test Case 3: Explicit --id override still works
+- [x] Build, fmt, clippy
+- [ ] Commit with one-line message
+
+## Implementation Summary
+
+Successfully implemented context-aware watch using existing infrastructure:
+
+### Architecture
+```
+handlers/watch.rs
+  ├─ discover_project_root() → PathBuf
+  ├─ create_provider(name) → Arc<dyn LogProvider>
+  └─ SessionWatcher::new(log_root, provider, target, project_root)
+       │
+       ├─ find_active_target() → filters via provider.belongs_to_project()
+       └─ handle_fs_event() → filters new files via provider.belongs_to_project()
+```
+
+### Key Implementation Details
+
+1. **Leverages Existing Code**:
+   - Uses `LogProvider::belongs_to_project()` from agtrace-providers
+   - No duplicate implementation of header parsing
+   - Claude: Uses `extract_cwd_from_claude_file()` internally
+   - Gemini: Uses `extract_project_hash_from_gemini_file()` internally
+
+2. **Provider Instance Management**:
+   - Provider inferred from log_root path (`~/.claude`, `~/.codex`, `~/.gemini`)
+   - Converted to `Arc<dyn LogProvider>` for thread-safe sharing
+   - Passed to worker thread for session rotation filtering
+
+3. **Project Filtering Behavior**:
+   - With `--id`: No filtering (explicit override)
+   - Without `--id` + cwd determinable: Filter to current project
+   - Without `--id` + cwd not determinable: Watch all (fallback)
+
+## Key Design Decisions
+
+### 1. Reuse Existing Provider Infrastructure
+- **No Custom Implementation**: Removed custom `is_file_for_project()` in favor of `LogProvider::belongs_to_project()`
+- **Provider-Agnostic**: Works with all providers (Claude, Codex, Gemini) without special casing
+- **Maintainability**: Single source of truth for project membership logic
+
+### 2. Provider Detection
+Infer provider from log root path:
+- `~/.claude/projects/`: Claude Code
+- `~/.gemini/sessions/`: Gemini
+- `~/.codex/sessions/`: Codex
+
+### 3. Backwards Compatibility
+- Explicit `--id` flag bypasses project filtering (existing behavior)
+- `--all-projects` flag (future) could disable filtering
+- No changes to v2 schema or provider normalization
+
+## Expected Behavior Changes
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| `watch` in Proj-A | Attaches to any latest session | Only attaches to Proj-A sessions |
+| New session in Proj-B while watching Proj-A | Switches to Proj-B | Ignores Proj-B, stays on Proj-A |
+| `watch --id <session>` | Attaches to session | Same (bypasses filter) |
+
+## Out of Scope (Future Work)
+- `--all-projects` flag to disable filtering
+- Cross-project session comparison view
+- Provider instance integration with SessionWatcher (for raw format parsing)

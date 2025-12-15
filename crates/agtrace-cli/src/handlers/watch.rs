@@ -1,16 +1,38 @@
 use crate::streaming::{SessionWatcher, StreamEvent};
+use agtrace_providers::{create_provider, LogProvider};
+use agtrace_types::discover_project_root;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use chrono::Local;
 use owo_colors::OwoColorize;
 use std::path::Path;
+use std::sync::Arc;
 
 /// Handle the watch command - auto-attach to latest session and stream formatted events
 pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
     println!("{} {}", "[👀 Watching]".bright_cyan(), log_root.display());
 
-    // Create session watcher with optional explicit target
-    let watcher = SessionWatcher::new(log_root.to_path_buf(), explicit_target)?;
+    // Detect provider from log_root path
+    // TODO: Should accept --provider flag, but for now infer from path
+    let provider_name = infer_provider_from_path(log_root)?;
+    let provider: Arc<dyn LogProvider> = Arc::from(create_provider(&provider_name)?);
+
+    // Detect current project context for filtering
+    let project_root = if explicit_target.is_some() {
+        // If explicit target is provided, skip project filtering
+        None
+    } else {
+        // Discover current project for filtering
+        discover_project_root(None).ok()
+    };
+
+    // Create session watcher with provider and optional project context
+    let watcher = SessionWatcher::new(
+        log_root.to_path_buf(),
+        provider,
+        explicit_target,
+        project_root,
+    )?;
 
     // Event loop - receive and display events
     // IMPORTANT: Keep watcher alive to maintain file system monitoring
@@ -192,5 +214,23 @@ fn truncate(text: &str, max_len: usize) -> String {
         text.to_string()
     } else {
         format!("{}...", &text[..max_len])
+    }
+}
+
+/// Infer provider name from log root path
+fn infer_provider_from_path(path: &Path) -> Result<String> {
+    let path_str = path.to_string_lossy();
+
+    if path_str.contains(".claude") {
+        Ok("claude_code".to_string())
+    } else if path_str.contains(".codex") {
+        Ok("codex".to_string())
+    } else if path_str.contains(".gemini") {
+        Ok("gemini".to_string())
+    } else {
+        anyhow::bail!(
+            "Cannot infer provider from path: {}. Please use --provider flag.",
+            path.display()
+        )
     }
 }

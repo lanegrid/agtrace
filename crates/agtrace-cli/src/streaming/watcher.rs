@@ -1,3 +1,4 @@
+use agtrace_providers::LogProvider;
 use agtrace_types::v2::AgentEvent;
 use anyhow::Result;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -6,6 +7,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 /// Target for watch command - either an active file or waiting mode
@@ -49,7 +51,13 @@ pub struct SessionWatcher {
 impl SessionWatcher {
     /// Create a new SessionWatcher that monitors the given log root directory
     /// If explicit_target is provided, it bypasses liveness detection and watches that specific file
-    pub fn new(log_root: PathBuf, explicit_target: Option<String>) -> Result<Self> {
+    /// If project_root is provided, only sessions matching the project will be watched
+    pub fn new(
+        log_root: PathBuf,
+        provider: Arc<dyn LogProvider>,
+        explicit_target: Option<String>,
+        project_root: Option<PathBuf>,
+    ) -> Result<Self> {
         let (tx_out, rx_out) = channel();
         let (tx_fs, rx_fs) = channel();
 
@@ -66,7 +74,7 @@ impl SessionWatcher {
         let target = if let Some(id_or_path) = explicit_target {
             resolve_explicit_target(&log_root, &id_or_path)?
         } else {
-            find_active_target(&log_root)?
+            find_active_target(&log_root, &provider, project_root.as_deref())?
         };
 
         let mut current_file: Option<PathBuf> = None;
@@ -99,6 +107,8 @@ impl SessionWatcher {
                             &mut current_file,
                             &mut file_offsets,
                             &tx_worker,
+                            &provider,
+                            project_root.as_deref(),
                         ) {
                             let _ = tx_worker.send(StreamEvent::Error(format!(
                                 "File system event handling error: {}",
@@ -151,11 +161,21 @@ fn handle_fs_event(
     current_file: &mut Option<PathBuf>,
     file_offsets: &mut HashMap<PathBuf, u64>,
     tx: &Sender<StreamEvent>,
+    provider: &Arc<dyn LogProvider>,
+    project_root: Option<&Path>,
 ) -> Result<()> {
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
                 if is_log_file(path) {
+                    // Check if file belongs to current project using provider
+                    if let Some(root) = project_root {
+                        if !provider.belongs_to_project(path, root) {
+                            // Ignore sessions from other projects
+                            continue;
+                        }
+                    }
+
                     // Check if this is a newer session than current
                     let should_switch = if let Some(ref current) = current_file {
                         // Compare modification times
@@ -285,10 +305,16 @@ fn resolve_explicit_target(log_root: &Path, id_or_path: &str) -> Result<WatchTar
 /// Find an active target session using Liveness Window detection
 ///
 /// Priority order:
-/// 1. Hot Active (< 5 min): Attach to the latest
+/// 1. Hot Active (< 5 min): Attach to the latest matching project
 /// 2. Cold Dead (> 5 min): Enter waiting mode
 /// 3. No files: Enter waiting mode
-fn find_active_target(dir: &Path) -> Result<WatchTarget> {
+///
+/// If project_root is provided, only considers files belonging to that project
+fn find_active_target(
+    dir: &Path,
+    provider: &Arc<dyn LogProvider>,
+    project_root: Option<&Path>,
+) -> Result<WatchTarget> {
     if !dir.exists() {
         return Ok(WatchTarget::Waiting {
             message: format!("Directory does not exist: {}", dir.display()),
@@ -309,6 +335,13 @@ fn find_active_target(dir: &Path) -> Result<WatchTarget> {
         let path = entry.path();
 
         if path.is_file() && is_log_file(path) {
+            // Filter by project if root is provided
+            if let Some(root) = project_root {
+                if !provider.belongs_to_project(path, root) {
+                    continue;
+                }
+            }
+
             if let Ok(metadata) = path.metadata() {
                 if let Ok(modified) = metadata.modified() {
                     let size = metadata.len();
@@ -386,11 +419,11 @@ fn format_duration(d: Duration) -> String {
     }
 }
 
-/// Check if a file is a log file (JSONL)
+/// Check if a file is a log file (JSONL or JSON)
 fn is_log_file(path: &Path) -> bool {
     path.extension()
         .and_then(|s| s.to_str())
-        .map(|ext| ext == "jsonl")
+        .map(|ext| ext == "jsonl" || ext == "json")
         .unwrap_or(false)
 }
 
