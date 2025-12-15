@@ -11,11 +11,11 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
 
     // Create session watcher with optional explicit target
     let watcher = SessionWatcher::new(log_root.to_path_buf(), explicit_target)?;
-    let rx = watcher.into_receiver();
 
     // Event loop - receive and display events
+    // IMPORTANT: Keep watcher alive to maintain file system monitoring
     loop {
-        match rx.recv() {
+        match watcher.receiver().recv() {
             Ok(event) => match event {
                 StreamEvent::Attached { path, .. } => {
                     println!(
