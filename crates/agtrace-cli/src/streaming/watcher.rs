@@ -164,16 +164,36 @@ fn handle_fs_event(
     provider: &Arc<dyn LogProvider>,
     project_root: Option<&Path>,
 ) -> Result<()> {
+    // Debug: Print file system events
+    eprintln!(
+        "[DEBUG] FS Event: {:?} | Paths: {:?}",
+        event.kind,
+        event
+            .paths
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect::<Vec<_>>()
+    );
+
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
                 if is_log_file(path) {
                     // Check if file belongs to current project using provider
                     if let Some(root) = project_root {
-                        if !provider.belongs_to_project(path, root) {
+                        let belongs = provider.belongs_to_project(path, root);
+                        eprintln!(
+                            "[DEBUG] Project filter: {} | belongs={} | project_root={}",
+                            path.display(),
+                            belongs,
+                            root.display()
+                        );
+                        if !belongs {
                             // Ignore sessions from other projects
                             continue;
                         }
+                    } else {
+                        eprintln!("[DEBUG] No project filter applied (watching all projects)");
                     }
 
                     // Check if this is a newer session than current
@@ -315,6 +335,15 @@ fn find_active_target(
     provider: &Arc<dyn LogProvider>,
     project_root: Option<&Path>,
 ) -> Result<WatchTarget> {
+    eprintln!(
+        "[DEBUG] find_active_target: dir={} | has_project_filter={}",
+        dir.display(),
+        project_root.is_some()
+    );
+    if let Some(root) = project_root {
+        eprintln!("[DEBUG] project_root={}", root.display());
+    }
+
     if !dir.exists() {
         return Ok(WatchTarget::Waiting {
             message: format!("Directory does not exist: {}", dir.display()),
@@ -337,7 +366,9 @@ fn find_active_target(
         if path.is_file() && is_log_file(path) {
             // Filter by project if root is provided
             if let Some(root) = project_root {
-                if !provider.belongs_to_project(path, root) {
+                let belongs = provider.belongs_to_project(path, root);
+                eprintln!("[DEBUG] Scanning: {} | belongs={}", path.display(), belongs);
+                if !belongs {
                     continue;
                 }
             }
@@ -351,6 +382,11 @@ fn find_active_target(
         }
     }
 
+    eprintln!(
+        "[DEBUG] Found {} log files matching criteria",
+        entries.len()
+    );
+
     if entries.is_empty() {
         return Ok(WatchTarget::Waiting {
             message: "No session files found. Waiting for new session...".to_string(),
@@ -359,6 +395,17 @@ fn find_active_target(
 
     // Sort by modification time (newest first)
     entries.sort_by(|a, b| b.1.cmp(&a.1));
+
+    eprintln!("[DEBUG] Latest 3 files:");
+    for (i, (path, mtime, _)) in entries.iter().take(3).enumerate() {
+        let elapsed = now.duration_since(*mtime).unwrap_or(Duration::from_secs(0));
+        eprintln!(
+            "[DEBUG]   {}: {} (age: {})",
+            i + 1,
+            path.display(),
+            format_duration(elapsed)
+        );
+    }
 
     // Find hot active sessions (< 5 min)
     let hot_sessions: Vec<_> = entries
@@ -371,6 +418,12 @@ fn find_active_target(
             }
         })
         .collect();
+
+    eprintln!(
+        "[DEBUG] Hot sessions (< 5 min): {} / {}",
+        hot_sessions.len(),
+        entries.len()
+    );
 
     if hot_sessions.is_empty() {
         // All sessions are cold - enter waiting mode
@@ -390,6 +443,12 @@ fn find_active_target(
 
     // We have at least one hot session
     let (path, _mtime, size) = hot_sessions[0];
+
+    eprintln!(
+        "[DEBUG] Selected file: {} (offset={})",
+        path.display(),
+        size
+    );
 
     // Check for multiple hot sessions
     if hot_sessions.len() > 1 {
