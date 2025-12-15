@@ -1,121 +1,52 @@
+use crate::streaming::{SessionWatcher, StreamEvent};
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use chrono::Local;
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use owo_colors::OwoColorize;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
-use std::sync::mpsc::channel;
-use std::time::SystemTime;
+use std::path::Path;
 
 /// Handle the watch command - auto-attach to latest session and stream formatted events
 pub fn handle(log_root: &Path) -> Result<()> {
     println!("{} {}", "[👀 Watching]".bright_cyan(), log_root.display());
 
-    // Track file offsets (path -> byte offset)
-    let mut file_offsets: HashMap<PathBuf, u64> = HashMap::new();
+    // Create session watcher
+    let watcher = SessionWatcher::new(log_root.to_path_buf())?;
+    let rx = watcher.into_receiver();
 
-    // Find and attach to the latest file
-    let mut current_file = find_latest_log_file(log_root)?;
-    if let Some(ref path) = current_file {
-        let offset = std::fs::metadata(path)?.len();
-        file_offsets.insert(path.clone(), offset);
-        println!(
-            "{}  {}\n",
-            "✨ Attached to active session:".bright_green(),
-            path.file_name().unwrap().to_string_lossy()
-        );
-    } else {
-        println!("{}", "(Waiting for activity...)".dimmed());
-    }
-
-    // Set up file system watcher (recursive to handle subdirectories)
-    let (tx, rx) = channel();
-    let mut watcher: RecommendedWatcher = Watcher::new(tx, notify::Config::default())?;
-    watcher.watch(log_root, RecursiveMode::Recursive)?;
-
-    // Event loop
-    loop {
-        match rx.recv() {
-            Ok(Ok(event)) => {
-                if let Err(e) =
-                    handle_fs_event(&event, &mut current_file, &mut file_offsets, log_root)
-                {
-                    eprintln!("Error handling event: {}", e);
+    // Event loop - receive and display events
+    for event in rx {
+        match event {
+            StreamEvent::Attached { path, .. } => {
+                println!(
+                    "{}  {}\n",
+                    "✨ Attached to active session:".bright_green(),
+                    path.file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| path.display().to_string())
+                );
+            }
+            StreamEvent::NewEvents(events) => {
+                for event in events {
+                    print_event(&event);
                 }
             }
-            Ok(Err(e)) => eprintln!("Watch error: {:?}", e),
-            Err(e) => {
-                eprintln!("Channel error: {:?}", e);
-                break;
+            StreamEvent::SessionRotated { new_path, .. } => {
+                println!(
+                    "\n{} {}\n",
+                    "✨ New session detected:".bright_green(),
+                    new_path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| new_path.display().to_string())
+                );
+            }
+            StreamEvent::Error(msg) => {
+                eprintln!("{} {}", "❌ Error:".red(), msg);
             }
         }
     }
 
     Ok(())
-}
-
-/// Handle a file system event
-fn handle_fs_event(
-    event: &Event,
-    current_file: &mut Option<PathBuf>,
-    file_offsets: &mut HashMap<PathBuf, u64>,
-    _log_root: &Path,
-) -> Result<()> {
-    match event.kind {
-        EventKind::Create(_) => {
-            for path in &event.paths {
-                if is_log_file(path) {
-                    // Switch to the new session
-                    println!(
-                        "\n{} {}\n",
-                        "✨ New session detected:".bright_green(),
-                        path.file_name().unwrap().to_string_lossy()
-                    );
-                    *current_file = Some(path.clone());
-                    file_offsets.insert(path.clone(), 0);
-                }
-            }
-        }
-        EventKind::Modify(_) => {
-            for path in &event.paths {
-                if Some(path) == current_file.as_ref() {
-                    // Read and display new content
-                    let offset = *file_offsets.get(path).unwrap_or(&0);
-                    let new_offset = process_new_lines(path, offset)?;
-                    file_offsets.insert(path.clone(), new_offset);
-                }
-            }
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
-
-/// Process new lines from a file starting at the given offset
-fn process_new_lines(path: &Path, offset: u64) -> Result<u64> {
-    let mut file = File::open(path)?;
-    file.seek(SeekFrom::Start(offset))?;
-    let reader = BufReader::new(file);
-
-    let mut new_offset = offset;
-    for line in reader.lines() {
-        let line = line?;
-        new_offset += line.len() as u64 + 1; // +1 for newline
-
-        // Parse and display event
-        match serde_json::from_str::<AgentEvent>(&line) {
-            Ok(event) => print_event(&event),
-            Err(_) => {
-                // Skip malformed lines silently (could be incomplete writes)
-            }
-        }
-    }
-
-    Ok(new_offset)
 }
 
 /// Print a formatted event to stdout
@@ -244,46 +175,4 @@ fn truncate(text: &str, max_len: usize) -> String {
     } else {
         format!("{}...", &text[..max_len])
     }
-}
-
-/// Find the most recently modified log file in the directory (recursive)
-fn find_latest_log_file(dir: &Path) -> Result<Option<PathBuf>> {
-    if !dir.exists() {
-        return Ok(None);
-    }
-
-    let mut latest: Option<(PathBuf, SystemTime)> = None;
-
-    // Use walkdir for recursive search
-    for entry in walkdir::WalkDir::new(dir)
-        .follow_links(false)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let path = entry.path();
-
-        if path.is_file() && is_log_file(path) {
-            if let Ok(metadata) = path.metadata() {
-                if let Ok(modified) = metadata.modified() {
-                    if let Some((_, latest_time)) = &latest {
-                        if modified > *latest_time {
-                            latest = Some((path.to_path_buf(), modified));
-                        }
-                    } else {
-                        latest = Some((path.to_path_buf(), modified));
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(latest.map(|(path, _)| path))
-}
-
-/// Check if a file is a log file (JSONL)
-fn is_log_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|s| s.to_str())
-        .map(|ext| ext == "jsonl")
-        .unwrap_or(false)
 }

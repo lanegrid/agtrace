@@ -74,4 +74,14 @@ pub trait LogProvider: Send + Sync {
     }
 
     fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>>;
+
+    /// Parse a single line for streaming/watch mode
+    /// Returns None if the line is malformed or cannot be parsed (e.g., incomplete write)
+    /// Default implementation assumes v2 schema JSONL format
+    fn parse_line(&self, line: &str) -> Result<Option<AgentEvent>> {
+        match serde_json::from_str::<AgentEvent>(line) {
+            Ok(event) => Ok(Some(event)),
+            Err(_) => Ok(None), // Silently skip malformed lines
+        }
+    }
 }
