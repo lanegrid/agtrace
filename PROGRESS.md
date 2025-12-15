@@ -297,4 +297,162 @@ Infer provider from log root path:
 ## Out of Scope (Future Work)
 - `--all-projects` flag to disable filtering
 - Cross-project session comparison view
-- Provider instance integration with SessionWatcher (for raw format parsing)
+
+---
+
+# Issue: Watch Mode Event Display Not Working
+
+## Problem Discovery (2025-12-16)
+
+Watch command detects file modifications but doesn't display parsed events:
+```
+[DEBUG] FS Event: Modify(Data(Content)) | Paths: [".../242c8d90.jsonl"]
+[DEBUG] FS Event: Modify(Data(Content)) | Paths: [".../242c8d90.jsonl"]
+# ... but no actual AgentEvent output
+```
+
+## Root Cause Analysis
+
+### Current Implementation
+```rust
+process_new_events(path, offset, provider) {
+    // Reads lines from offset
+    provider.parse_line(line)  // ← This is the problem
+}
+```
+
+### The Issue
+1. **`LogProvider::parse_line()` default implementation assumes v2 JSONL**:
+   ```rust
+   fn parse_line(&self, line: &str) -> Result<Option<AgentEvent>> {
+       serde_json::from_str::<AgentEvent>(line)  // Direct v2 parse
+   }
+   ```
+
+2. **Claude Code logs are raw `ClaudeRecord` format**, not v2:
+   ```json
+   {"type":"user","uuid":"...","sessionId":"...","message":{...}}
+   {"type":"assistant","uuid":"...","sessionId":"...","message":{...}}
+   ```
+
+3. **Normalization requires full session context**:
+   - `EventBuilder` needs to track tool_call mappings across records
+   - ToolResult events need to resolve `tool_use_id` → `tool_call_uuid`
+   - Parent-child relationships require ordered traversal
+
+### Why Line-by-Line Streaming is Hard
+- **Stateful normalization**: `EventBuilder` maintains session-wide state
+- **Cross-record dependencies**: ToolResult needs previous ToolCall's UUID
+- **Multiple events per record**: One AssistantRecord → [Reasoning, ToolCall, Message, TokenUsage]
+
+## Proposed Solution: File Re-Normalization Approach
+
+### Design Decision
+**Re-normalize the entire file on each modification** instead of incremental line parsing.
+
+**Rationale**:
+- Event frequency: ~10 seconds per event (low volume)
+- File size: Typical sessions are < 1MB
+- Simplicity: Reuse existing `normalize_file()` logic
+- Correctness: Guaranteed consistency with batch import
+
+### Implementation Plan
+
+#### Phase 1: Offset-Based Duplicate Detection ✅ (Already Implemented)
+Current code tracks file offset to skip already-processed content.
+
+#### Phase 2: Event Deduplication Strategy
+Two approaches:
+
+**Option A: Event Count Tracking** (Simpler)
+```rust
+struct FileState {
+    path: PathBuf,
+    event_count: usize,  // Number of events already displayed
+}
+
+on_modify(path) {
+    let all_events = provider.normalize_file(path)?;
+    let state = file_states.get_mut(path);
+    let new_events = &all_events[state.event_count..];
+
+    display(new_events);
+    state.event_count = all_events.len();
+}
+```
+
+**Option B: Event ID Tracking** (More Robust)
+```rust
+struct FileState {
+    path: PathBuf,
+    seen_event_ids: HashSet<Uuid>,
+}
+
+on_modify(path) {
+    let all_events = provider.normalize_file(path)?;
+    let new_events: Vec<_> = all_events
+        .into_iter()
+        .filter(|e| !state.seen_event_ids.contains(&e.id))
+        .collect();
+
+    display(new_events);
+    state.seen_event_ids.extend(new_events.iter().map(|e| e.id));
+}
+```
+
+**Recommendation**: Start with **Option A** (event count), fallback to **Option B** if issues arise.
+
+#### Phase 3: Implementation Changes
+
+1. **Rename `process_new_events()` → `detect_new_events()`**
+2. **Replace line-by-line parsing with full normalization**:
+   ```rust
+   fn detect_new_events(
+       path: &Path,
+       last_event_count: usize,
+       provider: &Arc<dyn LogProvider>,
+   ) -> Result<Vec<AgentEvent>> {
+       let all_events = provider.normalize_file(path, &ImportContext::default())?;
+       Ok(all_events.into_iter().skip(last_event_count).collect())
+   }
+   ```
+
+3. **Update state tracking**:
+   ```rust
+   // Replace HashMap<PathBuf, u64> with HashMap<PathBuf, usize>
+   let mut file_event_counts: HashMap<PathBuf, usize> = HashMap::new();
+   ```
+
+#### Phase 4: Testing & Validation
+- [ ] Test with Claude Code sessions (primary use case)
+- [ ] Test with rapid file updates (buffering behavior)
+- [ ] Verify no duplicate events displayed
+- [ ] Performance test with large sessions (> 100 events)
+
+## Alternative Considered: Provider-Specific `parse_line()` Implementation
+
+### Why We're NOT Doing This (For Now)
+
+**Complexity**:
+- Requires maintaining stateful parsers for each provider
+- Claude: Need `EventBuilder` state for UUID mapping
+- Gemini: Array format makes line-by-line parsing impossible
+- Codex: Similar challenges
+
+**Limited Benefit**:
+- Event frequency is low (~10s intervals)
+- File sizes are manageable (< 1MB typically)
+- Full re-normalization is fast enough
+
+**Future Work**:
+If performance becomes an issue with very large sessions (> 1000 events):
+- Implement incremental normalization with snapshot/checkpoint system
+- Add `parse_line_stateful()` method with provider state management
+- Consider separate streaming schema (v3) optimized for real-time
+
+## Current Status
+- [x] Project filtering implemented and working
+- [x] File modification detection working
+- [x] Debug logging added
+- [ ] Event normalization in watch mode (blocked by this issue)
+- [ ] Implement file re-normalization approach
