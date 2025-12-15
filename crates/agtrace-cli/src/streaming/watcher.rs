@@ -70,7 +70,7 @@ impl SessionWatcher {
 
         // Determine target: explicit or auto-detected
         let target = if let Some(id_or_path) = explicit_target {
-            resolve_explicit_target(&log_root, &id_or_path)?
+            resolve_explicit_target(&log_root, &id_or_path, &provider)?
         } else {
             find_active_target(&log_root, &provider, project_root.as_deref())?
         };
@@ -184,58 +184,61 @@ fn handle_fs_event(
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
-                if is_log_file(path) {
-                    // Check if file belongs to current project using provider
-                    if let Some(root) = project_root {
-                        let belongs = provider.belongs_to_project(path, root);
-                        eprintln!(
-                            "[DEBUG] Project filter: {} | belongs={} | project_root={}",
-                            path.display(),
-                            belongs,
-                            root.display()
-                        );
-                        if !belongs {
-                            // Ignore sessions from other projects
-                            continue;
-                        }
-                    } else {
-                        eprintln!("[DEBUG] No project filter applied (watching all projects)");
+                // Use provider.can_handle() to respect provider-specific filtering
+                if !provider.can_handle(path) {
+                    continue;
+                }
+
+                // Check if file belongs to current project using provider
+                if let Some(root) = project_root {
+                    let belongs = provider.belongs_to_project(path, root);
+                    eprintln!(
+                        "[DEBUG] Project filter: {} | belongs={} | project_root={}",
+                        path.display(),
+                        belongs,
+                        root.display()
+                    );
+                    if !belongs {
+                        // Ignore sessions from other projects
+                        continue;
                     }
+                } else {
+                    eprintln!("[DEBUG] No project filter applied (watching all projects)");
+                }
 
-                    // Check if this is a newer session than current
-                    let should_switch = if let Some(ref current) = current_file {
-                        // Compare modification times
-                        let new_time = std::fs::metadata(path)?.modified()?;
-                        let current_time = std::fs::metadata(current)?.modified()?;
-                        new_time > current_time
-                    } else {
-                        true
-                    };
+                // Check if this is a newer session than current
+                let should_switch = if let Some(ref current) = current_file {
+                    // Compare modification times
+                    let new_time = std::fs::metadata(path)?.modified()?;
+                    let current_time = std::fs::metadata(current)?.modified()?;
+                    new_time > current_time
+                } else {
+                    true
+                };
 
-                    if should_switch {
-                        let old_path = current_file.clone();
-                        *current_file = Some(path.clone());
-                        // Count existing events when switching to new file
-                        let event_count = match count_existing_events(path, provider) {
-                            Ok(count) => count,
-                            Err(e) => {
-                                eprintln!("[WARN] Failed to count existing events: {}", e);
-                                0
-                            }
-                        };
-                        file_event_counts.insert(path.clone(), event_count);
-
-                        if let Some(old) = old_path {
-                            let _ = tx.send(StreamEvent::SessionRotated {
-                                old_path: old,
-                                new_path: path.clone(),
-                            });
-                        } else {
-                            let _ = tx.send(StreamEvent::Attached {
-                                path: path.clone(),
-                                session_id: extract_session_id(path),
-                            });
+                if should_switch {
+                    let old_path = current_file.clone();
+                    *current_file = Some(path.clone());
+                    // Count existing events when switching to new file
+                    let event_count = match count_existing_events(path, provider) {
+                        Ok(count) => count,
+                        Err(e) => {
+                            eprintln!("[WARN] Failed to count existing events: {}", e);
+                            0
                         }
+                    };
+                    file_event_counts.insert(path.clone(), event_count);
+
+                    if let Some(old) = old_path {
+                        let _ = tx.send(StreamEvent::SessionRotated {
+                            old_path: old,
+                            new_path: path.clone(),
+                        });
+                    } else {
+                        let _ = tx.send(StreamEvent::Attached {
+                            path: path.clone(),
+                            session_id: extract_session_id(path),
+                        });
                     }
                 }
             }
@@ -317,11 +320,15 @@ fn detect_new_events(
 }
 
 /// Resolve an explicitly specified target (session ID or file path)
-fn resolve_explicit_target(log_root: &Path, id_or_path: &str) -> Result<WatchTarget> {
+fn resolve_explicit_target(
+    log_root: &Path,
+    id_or_path: &str,
+    provider: &Arc<dyn LogProvider>,
+) -> Result<WatchTarget> {
     let path_buf = PathBuf::from(id_or_path);
 
     // Case 1: Direct file path (absolute or relative)
-    if path_buf.exists() && path_buf.is_file() && is_log_file(&path_buf) {
+    if path_buf.exists() && path_buf.is_file() && provider.can_handle(&path_buf) {
         return Ok(WatchTarget::File { path: path_buf });
     }
 
@@ -334,7 +341,7 @@ fn resolve_explicit_target(log_root: &Path, id_or_path: &str) -> Result<WatchTar
     {
         let path = entry.path();
 
-        if path.is_file() && is_log_file(path) {
+        if path.is_file() && provider.can_handle(path) {
             if let Some(stem) = path.file_stem() {
                 if stem.to_string_lossy().contains(id_or_path) {
                     return Ok(WatchTarget::File {
@@ -393,7 +400,12 @@ fn find_active_target(
     {
         let path = entry.path();
 
-        if path.is_file() && is_log_file(path) {
+        // Use provider.can_handle() to respect provider-specific filtering (e.g., skip agent- files)
+        if !provider.can_handle(path) {
+            continue;
+        }
+
+        if path.is_file() {
             // Filter by project if root is provided
             if let Some(root) = project_root {
                 let belongs = provider.belongs_to_project(path, root);
@@ -503,14 +515,6 @@ fn format_duration(d: Duration) -> String {
     } else {
         format!("{}d", secs / 86400)
     }
-}
-
-/// Check if a file is a log file (JSONL or JSON)
-fn is_log_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|s| s.to_str())
-        .map(|ext| ext == "jsonl" || ext == "json")
-        .unwrap_or(false)
 }
 
 /// Extract session ID from file path

@@ -50,6 +50,13 @@ impl LogProvider for ClaudeProvider {
             return false;
         }
 
+        // Skip agent- prefix files (only handle UUID format files)
+        if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+            if file_name.starts_with("agent-") {
+                return false;
+            }
+        }
+
         // Skip empty files
         if let Ok(metadata) = std::fs::metadata(path) {
             if metadata.len() == 0 {
