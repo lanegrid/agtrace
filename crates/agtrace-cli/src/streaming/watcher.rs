@@ -66,15 +66,41 @@ impl SessionWatcher {
 
         // Spawn worker thread to handle file system events
         let tx_worker = tx_out.clone();
-        std::thread::spawn(move || {
-            while let Ok(event) = rx_fs.recv() {
-                if let Err(e) =
-                    handle_fs_event(&event, &mut current_file, &mut file_offsets, &tx_worker)
-                {
-                    let _ = tx_worker.send(StreamEvent::Error(e.to_string()));
+        std::thread::Builder::new()
+            .name("session-watcher-worker".to_string())
+            .spawn(move || {
+                // Catch panics to prevent silent failures
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    while let Ok(event) = rx_fs.recv() {
+                        if let Err(e) = handle_fs_event(
+                            &event,
+                            &mut current_file,
+                            &mut file_offsets,
+                            &tx_worker,
+                        ) {
+                            let _ = tx_worker.send(StreamEvent::Error(format!(
+                                "File system event handling error: {}",
+                                e
+                            )));
+                        }
+                    }
+                }));
+
+                // Send error if worker panicked
+                if let Err(panic_err) = result {
+                    let panic_msg = if let Some(s) = panic_err.downcast_ref::<&str>() {
+                        s.to_string()
+                    } else if let Some(s) = panic_err.downcast_ref::<String>() {
+                        s.clone()
+                    } else {
+                        "Worker thread panicked with unknown error".to_string()
+                    };
+                    let _ = tx_worker.send(StreamEvent::Error(format!(
+                        "FATAL: Worker thread panicked: {}",
+                        panic_msg
+                    )));
                 }
-            }
-        });
+            })?;
 
         Ok(Self {
             _watcher: watcher,

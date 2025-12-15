@@ -14,34 +14,49 @@ pub fn handle(log_root: &Path) -> Result<()> {
     let rx = watcher.into_receiver();
 
     // Event loop - receive and display events
-    for event in rx {
-        match event {
-            StreamEvent::Attached { path, .. } => {
-                println!(
-                    "{}  {}\n",
-                    "✨ Attached to active session:".bright_green(),
-                    path.file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_else(|| path.display().to_string())
-                );
-            }
-            StreamEvent::NewEvents(events) => {
-                for event in events {
-                    print_event(&event);
+    loop {
+        match rx.recv() {
+            Ok(event) => match event {
+                StreamEvent::Attached { path, .. } => {
+                    println!(
+                        "{}  {}\n",
+                        "✨ Attached to active session:".bright_green(),
+                        path.file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_else(|| path.display().to_string())
+                    );
                 }
-            }
-            StreamEvent::SessionRotated { new_path, .. } => {
-                println!(
-                    "\n{} {}\n",
-                    "✨ New session detected:".bright_green(),
-                    new_path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_else(|| new_path.display().to_string())
+                StreamEvent::NewEvents(events) => {
+                    for event in events {
+                        print_event(&event);
+                    }
+                }
+                StreamEvent::SessionRotated { new_path, .. } => {
+                    println!(
+                        "\n{} {}\n",
+                        "✨ New session detected:".bright_green(),
+                        new_path
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_else(|| new_path.display().to_string())
+                    );
+                }
+                StreamEvent::Error(msg) => {
+                    eprintln!("{} {}", "❌ Error:".red(), msg);
+                    // Check if this is a fatal error
+                    if msg.starts_with("FATAL:") {
+                        eprintln!("{}", "Watch stream terminated due to fatal error".red());
+                        break;
+                    }
+                }
+            },
+            Err(_) => {
+                // Channel disconnected - worker thread terminated
+                eprintln!(
+                    "{}",
+                    "⚠️  Watch stream ended (worker thread terminated)".yellow()
                 );
-            }
-            StreamEvent::Error(msg) => {
-                eprintln!("{} {}", "❌ Error:".red(), msg);
+                break;
             }
         }
     }

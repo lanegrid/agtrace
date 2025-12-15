@@ -103,10 +103,25 @@ Refactoring the `watch` command to separate concerns between file watching logic
 ## Known Limitations (Post-Refactor)
 - Still expects v2 schema JSONL format
 - Provider parse_line() implementation needed for raw formats
-- No reconnection logic if watcher fails
+  - Requires passing provider instance to SessionWatcher (architectural change)
+- No automatic reconnection if watcher fails
+
+## Post-Refactor Improvements (Review Feedback)
+
+### Error Handling Enhancement
+- ✅ Worker thread panic handling with `std::panic::catch_unwind`
+- ✅ Fatal error detection and graceful termination
+- ✅ Channel disconnection detection with user-friendly messages
+- ✅ Named worker threads for better debugging
+
+### Provider Documentation
+- ✅ Comprehensive parse_line documentation
+- ✅ Clear distinction between v2 JSONL and raw format support
+- ✅ Future extension path documented
 
 ## Future Enhancements
 - TUI mode with ratatui
 - JSON output mode for scripting
 - Multi-session parallel watching
 - Session filtering by project
+- Provider-specific raw format support in watch mode

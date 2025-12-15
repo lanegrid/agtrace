@@ -76,8 +76,27 @@ pub trait LogProvider: Send + Sync {
     fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>>;
 
     /// Parse a single line for streaming/watch mode
-    /// Returns None if the line is malformed or cannot be parsed (e.g., incomplete write)
-    /// Default implementation assumes v2 schema JSONL format
+    ///
+    /// Returns:
+    /// - `Ok(Some(event))` if the line was successfully parsed
+    /// - `Ok(None)` if the line is malformed or incomplete (non-fatal, skip silently)
+    /// - `Err(e)` if a fatal error occurred that should stop processing
+    ///
+    /// Default implementation assumes v2 schema JSONL format.
+    ///
+    /// # Provider-specific implementations
+    ///
+    /// Providers storing logs in raw formats (not v2 JSONL) should override this method
+    /// to parse their specific format. For example:
+    /// - Codex: Parse raw JSON format and convert to AgentEvent
+    /// - Gemini: Parse raw JSON format and convert to AgentEvent
+    /// - Claude: Already uses v2 JSONL, default implementation works
+    ///
+    /// # Current limitation
+    ///
+    /// The watch command currently only supports v2 JSONL format. Provider-specific
+    /// raw format support requires passing the provider instance to SessionWatcher,
+    /// which is planned for future implementation.
     fn parse_line(&self, line: &str) -> Result<Option<AgentEvent>> {
         match serde_json::from_str::<AgentEvent>(line) {
             Ok(event) => Ok(Some(event)),
