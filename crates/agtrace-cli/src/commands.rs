@@ -184,7 +184,7 @@ pub fn run(cli: Cli) -> Result<()> {
             handlers::pack::handle(&db, &template, limit, cli.project_root, cli.all_projects)
         }
 
-        Commands::Watch { provider } => {
+        Commands::Watch { provider, id } => {
             let config_path = data_dir.join("config.toml");
             let config = Config::load_from(&config_path)?;
 
@@ -207,7 +207,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 anyhow::bail!("Provider '{}' is not enabled. Run 'agtrace provider list' to see available providers.", provider_name);
             }
 
-            handlers::watch::handle(&provider_config.log_root)
+            handlers::watch::handle(&provider_config.log_root, id)
         }
     }
 }

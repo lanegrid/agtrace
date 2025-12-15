@@ -6,11 +6,11 @@ use owo_colors::OwoColorize;
 use std::path::Path;
 
 /// Handle the watch command - auto-attach to latest session and stream formatted events
-pub fn handle(log_root: &Path) -> Result<()> {
+pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
     println!("{} {}", "[👀 Watching]".bright_cyan(), log_root.display());
 
-    // Create session watcher
-    let watcher = SessionWatcher::new(log_root.to_path_buf())?;
+    // Create session watcher with optional explicit target
+    let watcher = SessionWatcher::new(log_root.to_path_buf(), explicit_target)?;
     let rx = watcher.into_receiver();
 
     // Event loop - receive and display events
@@ -40,6 +40,9 @@ pub fn handle(log_root: &Path) -> Result<()> {
                             .map(|n| n.to_string_lossy().to_string())
                             .unwrap_or_else(|| new_path.display().to_string())
                     );
+                }
+                StreamEvent::Waiting { message } => {
+                    println!("{} {}", "[⏳ Waiting]".bright_yellow(), message);
                 }
                 StreamEvent::Error(msg) => {
                     eprintln!("{} {}", "❌ Error:".red(), msg);

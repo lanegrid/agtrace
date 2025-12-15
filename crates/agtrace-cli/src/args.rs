@@ -73,6 +73,12 @@ pub enum Commands {
     Watch {
         #[arg(long, value_parser = ["claude_code", "codex", "gemini"])]
         provider: Option<String>,
+
+        #[arg(
+            long,
+            help = "Explicit session ID or file path to watch (bypasses liveness detection)"
+        )]
+        id: Option<String>,
     },
 
     Init {

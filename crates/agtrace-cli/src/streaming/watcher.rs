@@ -6,7 +6,16 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
+
+/// Target for watch command - either an active file or waiting mode
+#[derive(Debug, Clone)]
+pub enum WatchTarget {
+    /// Active file to attach to
+    File { path: PathBuf, offset: u64 },
+    /// No active sessions - waiting mode
+    Waiting { message: String },
+}
 
 /// Events emitted by SessionWatcher
 #[derive(Debug, Clone)]
@@ -27,6 +36,8 @@ pub enum StreamEvent {
     },
     /// Error occurred during watching or parsing
     Error(String),
+    /// Waiting for new session (no active sessions found)
+    Waiting { message: String },
 }
 
 /// Watches a directory for log files and streams events
@@ -37,7 +48,8 @@ pub struct SessionWatcher {
 
 impl SessionWatcher {
     /// Create a new SessionWatcher that monitors the given log root directory
-    pub fn new(log_root: PathBuf) -> Result<Self> {
+    /// If explicit_target is provided, it bypasses liveness detection and watches that specific file
+    pub fn new(log_root: PathBuf, explicit_target: Option<String>) -> Result<Self> {
         let (tx_out, rx_out) = channel();
         let (tx_fs, rx_fs) = channel();
 
@@ -50,18 +62,28 @@ impl SessionWatcher {
 
         watcher.watch(&log_root, RecursiveMode::Recursive)?;
 
-        // Find and attach to the latest session file
-        let initial_file = find_latest_log_file(&log_root)?;
-        let mut current_file = initial_file.clone();
+        // Determine target: explicit or auto-detected
+        let target = if let Some(id_or_path) = explicit_target {
+            resolve_explicit_target(&log_root, &id_or_path)?
+        } else {
+            find_active_target(&log_root)?
+        };
+
+        let mut current_file: Option<PathBuf> = None;
         let mut file_offsets: HashMap<PathBuf, u64> = HashMap::new();
 
-        if let Some(ref path) = initial_file {
-            let offset = std::fs::metadata(path)?.len();
-            file_offsets.insert(path.clone(), offset);
-            let _ = tx_out.send(StreamEvent::Attached {
-                path: path.clone(),
-                session_id: extract_session_id(path),
-            });
+        match target {
+            WatchTarget::File { path, offset } => {
+                current_file = Some(path.clone());
+                file_offsets.insert(path.clone(), offset);
+                let _ = tx_out.send(StreamEvent::Attached {
+                    path: path.clone(),
+                    session_id: extract_session_id(&path),
+                });
+            }
+            WatchTarget::Waiting { message } => {
+                let _ = tx_out.send(StreamEvent::Waiting { message });
+            }
         }
 
         // Spawn worker thread to handle file system events
@@ -215,13 +237,66 @@ fn process_new_lines(path: &Path, offset: u64) -> Result<(u64, Vec<AgentEvent>)>
     Ok((new_offset, events))
 }
 
-/// Find the most recently modified log file in the directory (recursive)
-fn find_latest_log_file(dir: &Path) -> Result<Option<PathBuf>> {
-    if !dir.exists() {
-        return Ok(None);
+/// Resolve an explicitly specified target (session ID or file path)
+fn resolve_explicit_target(log_root: &Path, id_or_path: &str) -> Result<WatchTarget> {
+    let path_buf = PathBuf::from(id_or_path);
+
+    // Case 1: Direct file path (absolute or relative)
+    if path_buf.exists() && path_buf.is_file() && is_log_file(&path_buf) {
+        let metadata = std::fs::metadata(&path_buf)?;
+        return Ok(WatchTarget::File {
+            path: path_buf,
+            offset: metadata.len(),
+        });
     }
 
-    let mut latest: Option<(PathBuf, SystemTime)> = None;
+    // Case 2: Session ID - search in log_root
+    // Try to find a file matching the session ID pattern
+    for entry in walkdir::WalkDir::new(log_root)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        if path.is_file() && is_log_file(path) {
+            if let Some(stem) = path.file_stem() {
+                if stem.to_string_lossy().contains(id_or_path) {
+                    let metadata = std::fs::metadata(path)?;
+                    return Ok(WatchTarget::File {
+                        path: path.to_path_buf(),
+                        offset: metadata.len(),
+                    });
+                }
+            }
+        }
+    }
+
+    // Not found
+    anyhow::bail!(
+        "No session file found for '{}'. Tried as file path and session ID.",
+        id_or_path
+    )
+}
+
+/// Find an active target session using Liveness Window detection
+///
+/// Priority order:
+/// 1. Hot Active (< 5 min): Attach to the latest
+/// 2. Cold Dead (> 5 min): Enter waiting mode
+/// 3. No files: Enter waiting mode
+fn find_active_target(dir: &Path) -> Result<WatchTarget> {
+    if !dir.exists() {
+        return Ok(WatchTarget::Waiting {
+            message: format!("Directory does not exist: {}", dir.display()),
+        });
+    }
+
+    let now = SystemTime::now();
+    let hot_threshold = Duration::from_secs(300); // 5 minutes
+
+    // Collect all log files with their metadata
+    let mut entries: Vec<(PathBuf, SystemTime, u64)> = Vec::new();
 
     for entry in walkdir::WalkDir::new(dir)
         .follow_links(false)
@@ -233,19 +308,79 @@ fn find_latest_log_file(dir: &Path) -> Result<Option<PathBuf>> {
         if path.is_file() && is_log_file(path) {
             if let Ok(metadata) = path.metadata() {
                 if let Ok(modified) = metadata.modified() {
-                    if let Some((_, latest_time)) = &latest {
-                        if modified > *latest_time {
-                            latest = Some((path.to_path_buf(), modified));
-                        }
-                    } else {
-                        latest = Some((path.to_path_buf(), modified));
-                    }
+                    let size = metadata.len();
+                    entries.push((path.to_path_buf(), modified, size));
                 }
             }
         }
     }
 
-    Ok(latest.map(|(path, _)| path))
+    if entries.is_empty() {
+        return Ok(WatchTarget::Waiting {
+            message: "No session files found. Waiting for new session...".to_string(),
+        });
+    }
+
+    // Sort by modification time (newest first)
+    entries.sort_by(|a, b| b.1.cmp(&a.1));
+
+    // Find hot active sessions (< 5 min)
+    let hot_sessions: Vec<_> = entries
+        .iter()
+        .filter(|(_, mtime, _)| {
+            if let Ok(elapsed) = now.duration_since(*mtime) {
+                elapsed < hot_threshold
+            } else {
+                false
+            }
+        })
+        .collect();
+
+    if hot_sessions.is_empty() {
+        // All sessions are cold - enter waiting mode
+        let (_path, latest_time, _) = &entries[0];
+        let elapsed = now
+            .duration_since(*latest_time)
+            .unwrap_or(Duration::from_secs(0));
+
+        let time_ago = format_duration(elapsed);
+        return Ok(WatchTarget::Waiting {
+            message: format!(
+                "No active sessions found (last activity: {}). Waiting for new session...",
+                time_ago
+            ),
+        });
+    }
+
+    // We have at least one hot session
+    let (path, _mtime, size) = hot_sessions[0];
+
+    // Check for multiple hot sessions
+    if hot_sessions.len() > 1 {
+        eprintln!(
+            "⚠️  Note: {} active sessions detected. Showing the latest one.",
+            hot_sessions.len()
+        );
+    }
+
+    Ok(WatchTarget::File {
+        path: path.clone(),
+        offset: *size,
+    })
+}
+
+/// Format duration into human-readable string
+fn format_duration(d: Duration) -> String {
+    let secs = d.as_secs();
+    if secs < 60 {
+        format!("{}s", secs)
+    } else if secs < 3600 {
+        format!("{}m", secs / 60)
+    } else if secs < 86400 {
+        format!("{}h", secs / 3600)
+    } else {
+        format!("{}d", secs / 86400)
+    }
 }
 
 /// Check if a file is a log file (JSONL)

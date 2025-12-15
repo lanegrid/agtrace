@@ -125,3 +125,62 @@ Refactoring the `watch` command to separate concerns between file watching logic
 - Multi-session parallel watching
 - Session filtering by project
 - Provider-specific raw format support in watch mode
+
+---
+
+# Progress: Smart Session Detection with Liveness Window
+
+## Overview
+Improving `agtrace watch` session detection to avoid UX issues:
+- **Problem 1**: Attaching to "dead" sessions (last updated days ago)
+- **Problem 2**: Confusing behavior with multiple concurrent sessions
+- **Solution**: Implement Liveness Window detection with smart fallback
+
+## Implementation Plan
+
+### Phase 1: Core Liveness Logic ✅
+- [ ] Define `SessionLiveness` enum (Hot/Warm/Cold/None)
+- [ ] Replace `find_latest_log_file` with `find_active_target`
+- [ ] Implement 5-minute window for "Hot Active" sessions
+- [ ] Add waiting mode for "Cold Dead" sessions
+- [ ] Multi-session warning when multiple hot sessions exist
+
+### Phase 2: CLI Extension
+- [ ] Add `--id <SESSION_ID>` option to watch command
+- [ ] Support explicit file path specification
+- [ ] Update handler to respect explicit session selection
+
+### Phase 3: Testing & Polish
+- [ ] Build and fix compilation errors
+- [ ] Run fmt and clippy
+- [ ] Manual testing scenarios:
+  - No sessions (waiting mode)
+  - One hot session (auto-attach)
+  - Multiple hot sessions (warning + latest)
+  - Only cold sessions (waiting mode)
+  - Explicit --id override
+- [ ] Commit with one-line message
+
+## Design Details
+
+### Liveness Thresholds
+- **Hot Active**: Last modified within 5 minutes
+- **Warm Idle**: Last modified within 1 hour (future enhancement)
+- **Cold Dead**: Older than 1 hour
+
+### Behavior Matrix
+| Scenario | Behavior |
+|----------|----------|
+| No files | Wait mode: "Waiting for new session..." |
+| Only cold files | Wait mode: "No active sessions (last: 2 days ago)" |
+| One hot file | Auto-attach |
+| Multiple hot files | Auto-attach to latest + warning |
+| --id specified | Force attach (skip liveness check) |
+
+### Return Type
+```rust
+enum WatchTarget {
+    File { path: PathBuf, offset: u64 },
+    Waiting { reason: String },
+}
+```
