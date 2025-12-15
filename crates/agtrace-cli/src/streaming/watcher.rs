@@ -2,7 +2,7 @@ use agtrace_engine::{assemble_session_from_events, AgentSession};
 use agtrace_providers::LogProvider;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -58,7 +58,7 @@ pub enum StreamEvent {
 
 /// Watches a directory for log files and streams events
 pub struct SessionWatcher {
-    _watcher: RecommendedWatcher,
+    _watcher: PollWatcher,
     rx: Receiver<StreamEvent>,
 }
 
@@ -75,15 +75,6 @@ impl SessionWatcher {
         let (tx_out, rx_out) = channel();
         let (tx_fs, rx_fs) = channel();
 
-        // Set up file system watcher
-        let mut watcher = notify::recommended_watcher(move |res: Result<Event, _>| {
-            if let Ok(event) = res {
-                let _ = tx_fs.send(event);
-            }
-        })?;
-
-        watcher.watch(&log_root, RecursiveMode::Recursive)?;
-
         // Determine target: explicit or auto-detected
         let target = if let Some(id_or_path) = explicit_target {
             resolve_explicit_target(&log_root, &id_or_path, &provider)?
@@ -94,9 +85,34 @@ impl SessionWatcher {
         let mut current_file: Option<PathBuf> = None;
         let mut file_event_counts: HashMap<PathBuf, usize> = HashMap::new();
 
+        // Determine which directory to watch based on target
+        let watch_dir = match &target {
+            WatchTarget::File { path } => {
+                // Watch the parent directory of the file for better event detection
+                // This is more reliable on macOS for deeply nested files
+                path.parent().unwrap_or(&log_root).to_path_buf()
+            }
+            WatchTarget::Waiting { .. } => log_root.clone(),
+        };
+
+        // Set up polling-based watcher for better compatibility with macOS FSEvents
+        // FSEvents coalesces rapid changes, causing delays in event delivery
+        // Polling ensures we detect changes within 500ms regardless of FSEvents behavior
+        let config = notify::Config::default().with_poll_interval(Duration::from_millis(500));
+
+        let mut watcher = PollWatcher::new(
+            move |res: Result<Event, _>| {
+                if let Ok(event) = res {
+                    let _ = tx_fs.send(event);
+                }
+            },
+            config,
+        )?;
+
+        watcher.watch(&watch_dir, RecursiveMode::Recursive)?;
+
         match target {
             WatchTarget::File { path } => {
-                // Count existing events in the file
                 let event_count = match count_existing_events(&path, &provider) {
                     Ok(count) => count,
                     Err(e) => {
@@ -121,7 +137,6 @@ impl SessionWatcher {
         std::thread::Builder::new()
             .name("session-watcher-worker".to_string())
             .spawn(move || {
-                // Catch panics to prevent silent failures
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     while let Ok(event) = rx_fs.recv() {
                         if let Err(e) = handle_fs_event(
@@ -240,6 +255,30 @@ fn handle_fs_event(
         }
         EventKind::Modify(_) => {
             for path in &event.paths {
+                // If current_file is None, check if this is a new session file to attach to
+                if current_file.is_none() && provider.can_handle(path) {
+                    if let Some(root) = project_root {
+                        if !provider.belongs_to_project(path, root) {
+                            continue;
+                        }
+                    }
+
+                    let event_count = match count_existing_events(path, provider) {
+                        Ok(count) => count,
+                        Err(e) => {
+                            eprintln!("[WARN] Failed to count existing events: {}", e);
+                            0
+                        }
+                    };
+                    *current_file = Some(path.clone());
+                    file_event_counts.insert(path.clone(), event_count);
+                    let _ = tx.send(StreamEvent::Attached {
+                        path: path.clone(),
+                        session_id: extract_session_id(path),
+                    });
+                    continue;
+                }
+
                 if Some(path) == current_file.as_ref() {
                     let last_count = *file_event_counts.get(path).unwrap_or(&0);
 
