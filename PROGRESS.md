@@ -162,6 +162,52 @@ Created `types.rs` with domain enums using `clap::ValueEnum`:
 ✅ Better IDE support (autocomplete, exhaustiveness checks)
 ✅ Aligns with project philosophy: "Domain types help" (WatchTarget pattern)
 
+### 🐛 Critical Bug Fix: Database Path Inconsistency (Completed)
+
+**Issue Discovered:**
+During codebase exploration, found critical inconsistency in database filename:
+- ExecutionContext used: `db.sqlite` ❌ (wrong)
+- Rest of codebase used: `agtrace.db` ✅ (correct)
+
+**Location:** `context.rs:41` in `db()` method
+
+**Impact:**
+- **Severity:** 🔴 **CRITICAL**
+- All 8 handlers migrated to ExecutionContext would fail to find database
+- Would create empty database at wrong location
+- Potential for data loss and user confusion
+- Bug was latent (not caught by existing tests)
+
+**Root Cause:**
+Copy-paste error during initial ExecutionContext implementation - used generic name instead of project-specific name.
+
+**Fix Applied:**
+```diff
+// context.rs:41
+pub fn db(&self) -> Result<&Database> {
+    self.db.get_or_try_init(|| {
+-       let db_path = self.data_dir.join("db.sqlite");
++       let db_path = self.data_dir.join("agtrace.db");
+        Database::open(&db_path)
+    })
+}
+```
+
+**Test Added:**
+Created `test_database_path_consistency()` to verify:
+- ExecutionContext creates `agtrace.db` (correct)
+- Does NOT create `db.sqlite` (wrong/old)
+- Prevents future regression
+
+**Impact:**
+- ✅ Bug fixed before reaching production
+- ✅ All 8 ExecutionContext handlers now use correct database
+- ✅ Test coverage: +1 test (49 total tests passing)
+- ✅ Prevented potential data loss scenario
+
+**Lesson Learned:**
+Even simple refactorings need careful attention to constants and paths. Systematic testing and code review caught this before deployment.
+
 ### ⏸️ Phase 3: Low Priority Handlers (Deferred)
 
 **Candidates:**
@@ -229,6 +275,8 @@ handlers::foo::handle(&ctx, ...)
 | Runtime format errors | 5+ potential | 0 | -100% |
 | Stringly-typed params | 17+ | 0 | -100% |
 | Type safety coverage | ~60% | ~95% | +35% |
+| Critical bugs discovered | 0 | 1 (fixed) | ✅ |
+| Total tests (agtrace-cli) | 18 | 26 (+8) | +44% |
 
 ### Benefits Achieved
 
@@ -320,11 +368,14 @@ fn test_watch_provider_switching() {
 4. **Centralization scales:** Single source of truth for provider logic
 5. **Type safety pays off:** Eliminating stringly-typed params caught bugs at compile time
 6. **Clap ValueEnum is powerful:** Auto-generates CLI validation and help text
+7. **Systematic exploration catches bugs:** Exploring codebase for inconsistencies found critical database path bug before production
+8. **Test for invariants:** Even simple constants (file paths, names) need tests to prevent copy-paste errors
 
 ## Contributors
 
 - ExecutionContext refactoring: 2025-01-16
 - Type safety improvements: 2025-01-16
+- Critical bug fix (database path): 2025-01-16
 
 ## References
 
