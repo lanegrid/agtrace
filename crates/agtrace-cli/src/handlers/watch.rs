@@ -73,13 +73,71 @@ fn initialize_session_state(
 }
 
 /// Handle StreamEvent::Attached
-fn handle_attached_event(path: &Path, session_id: Option<&str>) {
+fn handle_attached_event(
+    ctx: &ExecutionContext,
+    path: &Path,
+    session_id: Option<&str>,
+) -> Result<()> {
     let display_name = format_session_display_name(path, session_id);
     println!(
         "{}  {}\n",
         "✨ Attached to active session:".bright_green(),
         display_name
     );
+
+    // Load and display recent session history
+    if let Some(sid) = session_id {
+        if let Err(e) = display_session_history(ctx, sid) {
+            eprintln!(
+                "{} Failed to load session history: {}",
+                "⚠️  Warning:".yellow(),
+                e
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Display recent session history (last 5 turns)
+fn display_session_history(ctx: &ExecutionContext, session_id: &str) -> Result<()> {
+    use crate::output::{format_session_compact, CompactFormatOpts};
+    use crate::session_loader::{LoadOptions, SessionLoader};
+    use agtrace_engine::assemble_session_from_events;
+
+    let db = ctx.db()?;
+    let loader = SessionLoader::new(db);
+    let options = LoadOptions::default();
+
+    let events = loader.load_events_v2(session_id, &options)?;
+
+    if let Some(session) = assemble_session_from_events(&events) {
+        if session.turns.is_empty() {
+            return Ok(());
+        }
+
+        let num_turns = session.turns.len().min(5);
+        let start_idx = session.turns.len().saturating_sub(num_turns);
+
+        println!("{}  Last {} turn(s):\n", "📜".dimmed(), num_turns);
+
+        let opts = CompactFormatOpts {
+            enable_color: true,
+            relative_time: false,
+        };
+
+        // Create a subset session with only the recent turns
+        let mut recent_session = session.clone();
+        recent_session.turns = session.turns[start_idx..].to_vec();
+
+        let lines = format_session_compact(&recent_session, &opts);
+        for line in lines {
+            println!("  {}", line);
+        }
+        println!();
+    }
+
+    Ok(())
 }
 
 /// Handle StreamEvent::Waiting
@@ -197,7 +255,9 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
         match watcher.receiver().recv() {
             Ok(event) => match event {
                 StreamEvent::Attached { path, session_id } => {
-                    handle_attached_event(&path, session_id.as_deref());
+                    if let Err(e) = handle_attached_event(ctx, &path, session_id.as_deref()) {
+                        eprintln!("{} {}", "❌ Error:".red(), e);
+                    }
                 }
                 StreamEvent::Update(update) => {
                     process_update_event(
