@@ -18,7 +18,7 @@ impl TuiRenderer {
     }
 
     fn print_token_summary(&self, ctx: &ReactorContext) {
-        // Always print summary on TokenUsage events
+        // Print token summary on TokenUsage events (skip if no tokens consumed yet)
 
         let input_tokens = ctx.state.total_input_tokens as u64;
         let output_tokens = ctx.state.total_output_tokens as u64;

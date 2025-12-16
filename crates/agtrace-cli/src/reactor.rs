@@ -51,6 +51,12 @@ pub struct SessionState {
     /// Total output tokens consumed
     pub total_output_tokens: i32,
 
+    /// Cache read tokens (from prompt caching)
+    pub cache_read_tokens: i32,
+
+    /// Reasoning tokens (extended thinking)
+    pub reasoning_tokens: i32,
+
     /// Consecutive error count (reset on success)
     pub error_count: u32,
 
@@ -76,6 +82,8 @@ impl SessionState {
             model: None,
             total_input_tokens: 0,
             total_output_tokens: 0,
+            cache_read_tokens: 0,
+            reasoning_tokens: 0,
             error_count: 0,
             event_count: 0,
             turn_count: 0,
@@ -229,6 +237,8 @@ mod tests {
         assert_eq!(state.session_id, "test-id");
         assert_eq!(state.total_input_tokens, 0);
         assert_eq!(state.total_output_tokens, 0);
+        assert_eq!(state.cache_read_tokens, 0);
+        assert_eq!(state.reasoning_tokens, 0);
         assert_eq!(state.error_count, 0);
         assert_eq!(state.event_count, 0);
         assert_eq!(state.turn_count, 0);

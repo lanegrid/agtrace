@@ -343,6 +343,30 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
         EventPayload::TokenUsage(usage) => {
             state.total_input_tokens += usage.input_tokens;
             state.total_output_tokens += usage.output_tokens;
+
+            if let Some(details) = &usage.details {
+                if let Some(cached) = details.cache_read_input_tokens {
+                    state.cache_read_tokens += cached;
+                }
+                if let Some(thinking) = details.reasoning_output_tokens {
+                    state.reasoning_tokens += thinking;
+                }
+            }
+
+            // Extract model from metadata if not yet set
+            if state.model.is_none() {
+                if let Some(metadata) = &event.metadata {
+                    if let Some(model) = metadata
+                        .get("message")
+                        .and_then(|m| m.get("model"))
+                        .and_then(|v| v.as_str())
+                    {
+                        state.model = Some(model.to_string());
+                    } else if let Some(model) = metadata.get("model").and_then(|v| v.as_str()) {
+                        state.model = Some(model.to_string());
+                    }
+                }
+            }
         }
         EventPayload::ToolResult(result) => {
             if result.is_error {
@@ -481,6 +505,8 @@ mod tests {
 
         assert_eq!(state.total_input_tokens, 100);
         assert_eq!(state.total_output_tokens, 50);
+        assert_eq!(state.cache_read_tokens, 20);
+        assert_eq!(state.reasoning_tokens, 10);
         assert_eq!(state.event_count, 1);
     }
 
@@ -517,6 +543,41 @@ mod tests {
 
         assert_eq!(state.error_count, 1);
         assert_eq!(state.event_count, 1);
+    }
+
+    #[test]
+    fn test_update_session_state_token_usage_with_model() {
+        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        assert!(state.model.is_none());
+
+        let id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000005").unwrap();
+        let trace_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000006").unwrap();
+
+        let mut metadata = serde_json::Map::new();
+        metadata.insert(
+            "model".to_string(),
+            serde_json::json!("claude-3-5-sonnet-20241022"),
+        );
+
+        let event = AgentEvent {
+            id,
+            trace_id,
+            parent_id: None,
+            timestamp: Utc::now(),
+            payload: EventPayload::TokenUsage(TokenUsagePayload {
+                input_tokens: 100,
+                output_tokens: 50,
+                total_tokens: 150,
+                details: None,
+            }),
+            metadata: Some(serde_json::Value::Object(metadata)),
+        };
+
+        update_session_state(&mut state, &event);
+
+        assert_eq!(state.model, Some("claude-3-5-sonnet-20241022".to_string()));
+        assert_eq!(state.total_input_tokens, 100);
+        assert_eq!(state.total_output_tokens, 50);
     }
 
     #[test]
