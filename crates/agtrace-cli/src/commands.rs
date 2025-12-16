@@ -19,11 +19,12 @@ pub fn run(cli: Cli) -> Result<()> {
                 if let Ok(sessions) = db.list_sessions(None, 1) {
                     if !sessions.is_empty() {
                         // Show corpus overview instead of guidance
-                        return handlers::corpus_overview::handle(
-                            &db,
-                            cli.project_root,
+                        let ctx = ExecutionContext::new(
+                            data_dir.clone(),
+                            cli.project_root.clone(),
                             cli.all_projects,
-                        );
+                        )?;
+                        return handlers::corpus_overview::handle(&ctx, cli.project_root);
                     }
                 }
             }
@@ -144,12 +145,15 @@ pub fn run(cli: Cli) -> Result<()> {
         },
 
         Commands::Project { command } => {
-            let db_path = data_dir.join("agtrace.db");
-            let db = Database::open(&db_path)?;
+            let ctx = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            )?;
 
             match command {
                 ProjectCommand::List { project_root } => {
-                    handlers::project::handle(&db, project_root)
+                    handlers::project::handle(&ctx, project_root)
                 }
             }
         }
@@ -169,10 +173,13 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Pack { template, limit } => {
-            let db_path = data_dir.join("agtrace.db");
-            let db = Database::open(&db_path)?;
+            let ctx = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            )?;
 
-            handlers::pack::handle(&db, &template, limit, cli.project_root, cli.all_projects)
+            handlers::pack::handle(&ctx, &template, limit, cli.project_root)
         }
 
         Commands::Watch { provider, id } => {

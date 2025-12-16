@@ -1,8 +1,9 @@
-use agtrace_index::Database;
+use crate::context::ExecutionContext;
 use agtrace_types::discover_project_root;
 use anyhow::Result;
 
-pub fn handle(db: &Database, project_root: Option<String>) -> Result<()> {
+pub fn handle(ctx: &ExecutionContext, project_root: Option<String>) -> Result<()> {
+    let db = ctx.db()?;
     let project_root_path = discover_project_root(project_root.as_deref())?;
     let project_hash = agtrace_types::project_hash_from_root(&project_root_path.to_string_lossy());
 

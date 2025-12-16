@@ -1,18 +1,20 @@
+use crate::context::ExecutionContext;
 use crate::output::{output_compact, output_diagnose, output_tools};
 use crate::session_loader::{LoadOptions, SessionLoader};
 use agtrace_engine::{analyze_and_select_sessions, assemble_session_from_events, SessionDigest};
-use agtrace_index::{Database, SessionSummary};
+use agtrace_index::SessionSummary;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 use std::collections::HashMap;
 
 pub fn handle(
-    db: &Database,
+    ctx: &ExecutionContext,
     template: &str,
     limit: usize,
     project_hash: Option<String>,
-    all_projects: bool,
 ) -> Result<()> {
+    let db = ctx.db()?;
+    let all_projects = ctx.all_projects;
     let (effective_hash_string, _all_projects) =
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();

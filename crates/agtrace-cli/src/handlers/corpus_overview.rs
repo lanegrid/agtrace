@@ -1,10 +1,12 @@
+use crate::context::ExecutionContext;
 use crate::session_loader::{LoadOptions, SessionLoader};
 use agtrace_engine::assemble_session_from_events;
-use agtrace_index::Database;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 
-pub fn handle(db: &Database, project_hash: Option<String>, all_projects: bool) -> Result<()> {
+pub fn handle(ctx: &ExecutionContext, project_hash: Option<String>) -> Result<()> {
+    let db = ctx.db()?;
+    let all_projects = ctx.all_projects;
     let (effective_hash_string, _all_projects) =
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();
