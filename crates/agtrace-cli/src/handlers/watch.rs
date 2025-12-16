@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
 use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState, Severity};
-use crate::reactors::{SafetyGuard, StallDetector, TuiRenderer};
+use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor, TuiRenderer};
 use crate::streaming::{SessionWatcher, StreamEvent};
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
@@ -27,6 +27,7 @@ fn create_reactors() -> Vec<Box<dyn Reactor>> {
         Box::new(TuiRenderer::new()),
         Box::new(StallDetector::new(60)), // 60 seconds idle threshold
         Box::new(SafetyGuard::new()),
+        Box::new(TokenUsageMonitor::default_thresholds()), // 80% warning, 95% critical
     ]
 }
 
@@ -247,6 +248,16 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
             // Reset error count on new user input
             state.error_count = 0;
         }
+        EventPayload::Message(_) => {
+            // Extract model name from metadata if available
+            if state.model.is_none() {
+                if let Some(metadata) = &event.metadata {
+                    if let Some(model) = metadata.get("model").and_then(|v| v.as_str()) {
+                        state.model = Some(model.to_string());
+                    }
+                }
+            }
+        }
         EventPayload::TokenUsage(usage) => {
             state.total_input_tokens += usage.input_tokens;
             state.total_output_tokens += usage.output_tokens;
@@ -348,10 +359,11 @@ mod tests {
     #[test]
     fn test_create_reactors() {
         let reactors = create_reactors();
-        assert_eq!(reactors.len(), 3);
+        assert_eq!(reactors.len(), 4);
         assert_eq!(reactors[0].name(), "TuiRenderer");
         assert_eq!(reactors[1].name(), "StallDetector");
         assert_eq!(reactors[2].name(), "SafetyGuard");
+        assert_eq!(reactors[3].name(), "TokenUsageMonitor");
     }
 
     #[test]

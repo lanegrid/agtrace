@@ -42,6 +42,9 @@ pub struct SessionState {
     /// Last activity timestamp
     pub last_activity: DateTime<Utc>,
 
+    /// Model name (e.g., "claude-3-5-sonnet-20241022")
+    pub model: Option<String>,
+
     /// Total input tokens consumed
     pub total_input_tokens: i32,
 
@@ -70,6 +73,7 @@ impl SessionState {
             project_root,
             start_time,
             last_activity: start_time,
+            model: None,
             total_input_tokens: 0,
             total_output_tokens: 0,
             error_count: 0,

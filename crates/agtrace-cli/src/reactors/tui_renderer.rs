@@ -1,15 +1,74 @@
 use crate::reactor::{Reaction, Reactor, ReactorContext};
+use crate::token_limits::TokenLimits;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use chrono::Local;
 use owo_colors::OwoColorize;
 
 /// TUI Renderer - displays events to stdout
-pub struct TuiRenderer;
+pub struct TuiRenderer {
+    token_limits: TokenLimits,
+    last_summary_turn: usize,
+}
 
 impl TuiRenderer {
     pub fn new() -> Self {
-        Self
+        Self {
+            token_limits: TokenLimits::new(),
+            last_summary_turn: 0,
+        }
+    }
+
+    fn print_token_summary(&mut self, ctx: &ReactorContext) {
+        // Print summary every 5 turns or if significant token usage
+        let should_print = ctx.state.turn_count > 0
+            && (ctx.state.turn_count.is_multiple_of(5)
+                || ctx.state.turn_count != self.last_summary_turn);
+
+        if !should_print {
+            return;
+        }
+
+        self.last_summary_turn = ctx.state.turn_count;
+
+        let input_tokens = ctx.state.total_input_tokens as u64;
+        let output_tokens = ctx.state.total_output_tokens as u64;
+        let total = input_tokens + output_tokens;
+
+        if total == 0 {
+            return;
+        }
+
+        let model = match &ctx.state.model {
+            Some(m) => m.as_str(),
+            None => return,
+        };
+
+        if let Some((input_pct, output_pct, total_pct)) =
+            self.token_limits
+                .get_usage_percentage(model, input_tokens, output_tokens)
+        {
+            let bar = create_progress_bar(total_pct);
+            let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
+                |s: &str| s.red().to_string()
+            } else if total_pct >= 80.0 {
+                |s: &str| s.yellow().to_string()
+            } else {
+                |s: &str| s.green().to_string()
+            };
+
+            println!(
+                "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {}/{} tokens",
+                "📊".dimmed(),
+                "Tokens:".bright_black(),
+                color_fn(&bar),
+                total_pct,
+                input_pct,
+                output_pct,
+                total,
+                self.token_limits.get_limit(model).unwrap().total_limit
+            );
+        }
     }
 }
 
@@ -23,8 +82,23 @@ impl Reactor for TuiRenderer {
         let turn_context = ctx.state.turn_count;
 
         print_event(event, turn_context);
+
+        // Print token summary on User events (new turns)
+        if matches!(event.payload, EventPayload::User(_)) {
+            self.print_token_summary(&ctx);
+        }
+
         Ok(Reaction::Continue)
     }
+}
+
+fn create_progress_bar(percentage: f64) -> String {
+    let bar_width = 20;
+    let filled = ((percentage / 100.0) * bar_width as f64) as usize;
+    let filled = filled.min(bar_width);
+    let empty = bar_width - filled;
+
+    format!("[{}{}]", "█".repeat(filled), "░".repeat(empty))
 }
 
 /// Print a formatted event to stdout
