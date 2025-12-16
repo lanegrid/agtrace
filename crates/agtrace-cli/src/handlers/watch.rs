@@ -5,7 +5,7 @@ use crate::streaming::{SessionWatcher, StreamEvent};
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 pub enum WatchTarget {
@@ -19,6 +19,44 @@ pub enum WatchTarget {
     File {
         path: PathBuf,
     },
+}
+
+/// Create default reactors for watch mode
+fn create_reactors() -> Vec<Box<dyn Reactor>> {
+    vec![
+        Box::new(TuiRenderer::new()),
+        Box::new(StallDetector::new(60)), // 60 seconds idle threshold
+        Box::new(SafetyGuard::new()),
+    ]
+}
+
+/// Format session display name from path and optional session_id
+fn format_session_display_name(path: &Path, session_id: Option<&str>) -> String {
+    session_id
+        .unwrap_or_else(|| {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_else(|| path.to_str().unwrap_or("unknown"))
+        })
+        .to_string()
+}
+
+/// Print session rotated message
+fn print_session_rotated(old_path: &Path, new_path: &Path) {
+    let old_name = old_path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| old_path.display().to_string());
+    let new_name = new_path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| new_path.display().to_string());
+    println!(
+        "\n{} {} → {}\n",
+        "✨ Session rotated:".bright_green(),
+        old_name.dimmed(),
+        new_name
+    );
 }
 
 pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
@@ -64,11 +102,7 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
     )?;
 
     // Initialize reactors
-    let mut reactors: Vec<Box<dyn Reactor>> = vec![
-        Box::new(TuiRenderer::new()),
-        Box::new(StallDetector::new(60)), // 60 seconds idle threshold
-        Box::new(SafetyGuard::new()),
-    ];
+    let mut reactors = create_reactors();
 
     // Session state (initialized on first event)
     let mut session_state: Option<SessionState> = None;
@@ -79,11 +113,7 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
         match watcher.receiver().recv() {
             Ok(event) => match event {
                 StreamEvent::Attached { path, session_id } => {
-                    let display_name = session_id.as_deref().unwrap_or_else(|| {
-                        path.file_name()
-                            .and_then(|n| n.to_str())
-                            .unwrap_or_else(|| path.to_str().unwrap_or("unknown"))
-                    });
+                    let display_name = format_session_display_name(&path, session_id.as_deref());
                     println!(
                         "{}  {}\n",
                         "✨ Attached to active session:".bright_green(),
@@ -129,45 +159,11 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
                         update_session_state(state, &event);
 
                         // Run all reactors
-                        let ctx = ReactorContext {
-                            event: &event,
-                            state,
-                        };
-
-                        for reactor in &mut reactors {
-                            match reactor.handle(ctx) {
-                                Ok(reaction) => {
-                                    if let Err(e) = handle_reaction(reaction) {
-                                        eprintln!("{} {}", "❌ Reaction error:".red(), e);
-                                    }
-                                }
-                                Err(e) => {
-                                    eprintln!(
-                                        "{} {} failed: {}",
-                                        "❌ Reactor".red(),
-                                        reactor.name(),
-                                        e
-                                    );
-                                }
-                            }
-                        }
+                        run_reactors(&event, state, &mut reactors);
                     }
                 }
                 StreamEvent::SessionRotated { old_path, new_path } => {
-                    let old_name = old_path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_else(|| old_path.display().to_string());
-                    let new_name = new_path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_else(|| new_path.display().to_string());
-                    println!(
-                        "\n{} {} → {}\n",
-                        "✨ Session rotated:".bright_green(),
-                        old_name.dimmed(),
-                        new_name
-                    );
+                    print_session_rotated(&old_path, &new_path);
                     // Reset session state for new session
                     session_state = None;
                 }
@@ -225,6 +221,24 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
     }
 }
 
+/// Run all reactors and handle their reactions
+fn run_reactors(event: &AgentEvent, state: &mut SessionState, reactors: &mut [Box<dyn Reactor>]) {
+    let ctx = ReactorContext { event, state };
+
+    for reactor in reactors {
+        match reactor.handle(ctx) {
+            Ok(reaction) => {
+                if let Err(e) = handle_reaction(reaction) {
+                    eprintln!("{} {}", "❌ Reaction error:".red(), e);
+                }
+            }
+            Err(e) => {
+                eprintln!("{} {} failed: {}", "❌ Reactor".red(), reactor.name(), e);
+            }
+        }
+    }
+}
+
 /// Handle reactor reaction
 fn handle_reaction(reaction: Reaction) -> Result<()> {
     match reaction {
@@ -245,4 +259,158 @@ fn handle_reaction(reaction: Reaction) -> Result<()> {
         },
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use agtrace_types::v2::{TokenUsageDetails, TokenUsagePayload, ToolResultPayload, UserPayload};
+    use chrono::Utc;
+    use std::str::FromStr;
+
+    fn create_test_event(payload: EventPayload) -> AgentEvent {
+        let id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let trace_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap();
+
+        AgentEvent {
+            id,
+            trace_id,
+            parent_id: None,
+            timestamp: Utc::now(),
+            payload,
+            metadata: None,
+        }
+    }
+
+    #[test]
+    fn test_format_session_display_name_with_session_id() {
+        let path = PathBuf::from("/path/to/session.jsonl");
+        let result = format_session_display_name(&path, Some("test-session-123"));
+        assert_eq!(result, "test-session-123");
+    }
+
+    #[test]
+    fn test_format_session_display_name_without_session_id() {
+        let path = PathBuf::from("/path/to/session.jsonl");
+        let result = format_session_display_name(&path, None);
+        assert_eq!(result, "session.jsonl");
+    }
+
+    #[test]
+    fn test_format_session_display_name_fallback() {
+        let path = PathBuf::from("");
+        let result = format_session_display_name(&path, None);
+        // Empty path results in empty string (edge case)
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_create_reactors() {
+        let reactors = create_reactors();
+        assert_eq!(reactors.len(), 3);
+        assert_eq!(reactors[0].name(), "TuiRenderer");
+        assert_eq!(reactors[1].name(), "StallDetector");
+        assert_eq!(reactors[2].name(), "SafetyGuard");
+    }
+
+    #[test]
+    fn test_update_session_state_user_event() {
+        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        let event = create_test_event(EventPayload::User(UserPayload {
+            text: "test".to_string(),
+        }));
+
+        update_session_state(&mut state, &event);
+
+        assert_eq!(state.turn_count, 1);
+        assert_eq!(state.error_count, 0);
+        assert_eq!(state.event_count, 1);
+    }
+
+    #[test]
+    fn test_update_session_state_token_usage() {
+        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        let event = create_test_event(EventPayload::TokenUsage(TokenUsagePayload {
+            input_tokens: 100,
+            output_tokens: 50,
+            total_tokens: 150,
+            details: Some(TokenUsageDetails {
+                cache_read_input_tokens: Some(20),
+                reasoning_output_tokens: Some(10),
+                audio_input_tokens: None,
+                audio_output_tokens: None,
+            }),
+        }));
+
+        update_session_state(&mut state, &event);
+
+        assert_eq!(state.total_input_tokens, 100);
+        assert_eq!(state.total_output_tokens, 50);
+        assert_eq!(state.event_count, 1);
+    }
+
+    #[test]
+    fn test_update_session_state_tool_result_success() {
+        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        state.error_count = 5;
+
+        let tool_call_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000003").unwrap();
+        let event = create_test_event(EventPayload::ToolResult(ToolResultPayload {
+            tool_call_id,
+            output: "success".to_string(),
+            is_error: false,
+        }));
+
+        update_session_state(&mut state, &event);
+
+        assert_eq!(state.error_count, 0);
+        assert_eq!(state.event_count, 1);
+    }
+
+    #[test]
+    fn test_update_session_state_tool_result_error() {
+        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+
+        let tool_call_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000004").unwrap();
+        let event = create_test_event(EventPayload::ToolResult(ToolResultPayload {
+            tool_call_id,
+            output: "error".to_string(),
+            is_error: true,
+        }));
+
+        update_session_state(&mut state, &event);
+
+        assert_eq!(state.error_count, 1);
+        assert_eq!(state.event_count, 1);
+    }
+
+    #[test]
+    fn test_handle_reaction_continue() {
+        let result = handle_reaction(Reaction::Continue);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_handle_reaction_warn() {
+        let result = handle_reaction(Reaction::Warn("test warning".to_string()));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_handle_reaction_intervene_notification() {
+        let result = handle_reaction(Reaction::Intervene {
+            reason: "test alert".to_string(),
+            severity: Severity::Notification,
+        });
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_handle_reaction_intervene_kill() {
+        let result = handle_reaction(Reaction::Intervene {
+            reason: "emergency".to_string(),
+            severity: Severity::Kill,
+        });
+        assert!(result.is_ok());
+    }
 }
