@@ -8,24 +8,17 @@ use owo_colors::OwoColorize;
 /// TUI Renderer - displays events to stdout
 pub struct TuiRenderer {
     token_limits: TokenLimits,
-    last_summary_turn: usize,
 }
 
 impl TuiRenderer {
     pub fn new() -> Self {
         Self {
             token_limits: TokenLimits::new(),
-            last_summary_turn: 0,
         }
     }
 
-    fn print_token_summary(&mut self, ctx: &ReactorContext) {
-        // Print summary on each new turn (when turn_count changes)
-        if ctx.state.turn_count == self.last_summary_turn {
-            return;
-        }
-
-        self.last_summary_turn = ctx.state.turn_count;
+    fn print_token_summary(&self, ctx: &ReactorContext) {
+        // Always print summary on TokenUsage events
 
         let input_tokens = ctx.state.total_input_tokens as u64;
         let output_tokens = ctx.state.total_output_tokens as u64;
