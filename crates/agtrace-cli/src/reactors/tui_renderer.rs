@@ -20,12 +20,8 @@ impl TuiRenderer {
     }
 
     fn print_token_summary(&mut self, ctx: &ReactorContext) {
-        // Print summary every 5 turns or if significant token usage
-        let should_print = ctx.state.turn_count > 0
-            && (ctx.state.turn_count.is_multiple_of(5)
-                || ctx.state.turn_count != self.last_summary_turn);
-
-        if !should_print {
+        // Print summary on each new turn (when turn_count changes)
+        if ctx.state.turn_count == self.last_summary_turn {
             return;
         }
 
@@ -83,8 +79,8 @@ impl Reactor for TuiRenderer {
 
         print_event(event, turn_context);
 
-        // Print token summary on User events (new turns)
-        if matches!(event.payload, EventPayload::User(_)) {
+        // Print token summary after TokenUsage events (when tokens are updated)
+        if matches!(event.payload, EventPayload::TokenUsage(_)) {
             self.print_token_summary(&ctx);
         }
 

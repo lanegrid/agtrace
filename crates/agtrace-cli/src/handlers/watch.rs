@@ -322,10 +322,19 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
             state.error_count = 0;
         }
         EventPayload::Message(_) => {
-            // Extract model name from metadata if available
+            // Extract model name from metadata (Claude: metadata.message.model)
             if state.model.is_none() {
                 if let Some(metadata) = &event.metadata {
-                    if let Some(model) = metadata.get("model").and_then(|v| v.as_str()) {
+                    // Try metadata.message.model (Claude format)
+                    if let Some(model) = metadata
+                        .get("message")
+                        .and_then(|m| m.get("model"))
+                        .and_then(|v| v.as_str())
+                    {
+                        state.model = Some(model.to_string());
+                    }
+                    // Fallback: Try metadata.model (if flat structure)
+                    else if let Some(model) = metadata.get("model").and_then(|v| v.as_str()) {
                         state.model = Some(model.to_string());
                     }
                 }
