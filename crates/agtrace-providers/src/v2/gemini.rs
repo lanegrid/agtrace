@@ -127,7 +127,7 @@ pub fn normalize_gemini_session_v2(
                             audio_output_tokens: None,
                         }),
                     }),
-                    None, // No raw for token event
+                    Some(raw_value),
                 );
                 events.push(token_event);
             }

@@ -181,7 +181,7 @@ pub fn normalize_claude_session_v2(records: Vec<ClaudeRecord>) -> Vec<AgentEvent
                                     audio_output_tokens: None,
                                 }),
                             }),
-                            None, // No raw for token events
+                            raw_value.clone(),
                         );
                         events.push(event);
                     }

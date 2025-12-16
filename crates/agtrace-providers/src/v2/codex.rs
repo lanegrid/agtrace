@@ -37,6 +37,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
 
             CodexRecord::EventMsg(event_msg) => {
                 let timestamp = parse_timestamp(&event_msg.timestamp);
+                let raw_value = serde_json::to_value(&event_msg).ok();
 
                 match &event_msg.payload {
                     // Skip user_message, agent_message, agent_reasoning
@@ -89,7 +90,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                                         audio_output_tokens: None,
                                     }),
                                 }),
-                                None, // No raw for token events
+                                raw_value.clone(),
                             );
                             events.push(event);
                         }
