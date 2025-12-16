@@ -37,7 +37,18 @@ impl TuiRenderer {
             self.token_limits
                 .get_usage_percentage(model, input_tokens, output_tokens)
         {
-            let bar = create_progress_bar(total_pct);
+            let limit = self.token_limits.get_limit(model).unwrap();
+            let free_tokens = limit.total_limit.saturating_sub(total);
+            let free_pct = 100.0 - total_pct;
+
+            // Claude Code style display
+            println!("\n{}", format!("Context Window ({})", model).bright_black());
+
+            // Visual progress bar with ⛁ (filled) and ⛶ (empty)
+            let bar = create_claude_style_bar(total_pct);
+            let total_str = format_token_count(total);
+            let limit_str = format_token_count(limit.total_limit);
+
             let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
                 |s: &str| s.red().to_string()
             } else if total_pct >= 80.0 {
@@ -47,16 +58,39 @@ impl TuiRenderer {
             };
 
             println!(
-                "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {}/{} tokens",
-                "📊".dimmed(),
-                "Tokens:".bright_black(),
+                "{}  {}/{} tokens ({:.1}%)",
                 color_fn(&bar),
-                total_pct,
-                input_pct,
-                output_pct,
-                total,
-                self.token_limits.get_limit(model).unwrap().total_limit
+                total_str,
+                limit_str,
+                total_pct
             );
+
+            // Show detailed breakdown when >= 70% usage
+            if total_pct >= 70.0 {
+                let input_str = format_token_count(input_tokens);
+                let output_str = format_token_count(output_tokens);
+                let free_str = format_token_count(free_tokens);
+
+                println!("{} Input:   {} ({:.1}%)", "⛁".cyan(), input_str, input_pct);
+                println!(
+                    "{} Output:  {} ({:.1}%)",
+                    "⛁".cyan(),
+                    output_str,
+                    output_pct
+                );
+                println!("{} Free:    {} ({:.1}%)", "⛶".dimmed(), free_str, free_pct);
+
+                // Warning messages at thresholds
+                if total_pct >= 95.0 {
+                    println!(
+                        "{}",
+                        "⚠️  Critical - Start new session immediately".red().bold()
+                    );
+                } else if total_pct >= 80.0 {
+                    println!("{}", "⚠️  Warning - Consider wrapping up soon".yellow());
+                }
+            }
+            println!();
         }
     }
 }
@@ -81,13 +115,23 @@ impl Reactor for TuiRenderer {
     }
 }
 
-fn create_progress_bar(percentage: f64) -> String {
-    let bar_width = 20;
+fn create_claude_style_bar(percentage: f64) -> String {
+    let bar_width = 10;
     let filled = ((percentage / 100.0) * bar_width as f64) as usize;
     let filled = filled.min(bar_width);
     let empty = bar_width - filled;
 
-    format!("[{}{}]", "█".repeat(filled), "░".repeat(empty))
+    format!("{}{}", "⛁ ".repeat(filled), "⛶ ".repeat(empty))
+}
+
+fn format_token_count(tokens: u64) -> String {
+    if tokens >= 1_000_000 {
+        format!("{:.1}M", tokens as f64 / 1_000_000.0)
+    } else if tokens >= 1_000 {
+        format!("{}k", tokens / 1_000)
+    } else {
+        format!("{}", tokens)
+    }
 }
 
 /// Print a formatted event to stdout
