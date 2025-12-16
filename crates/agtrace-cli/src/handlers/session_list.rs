@@ -3,7 +3,6 @@ use agtrace_index::{Database, SessionSummary};
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use comfy_table::{presets::UTF8_FULL, Cell, Color, ContentArrangement, Table};
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
@@ -138,17 +137,7 @@ fn format_relative_time(ts: &str) -> String {
 }
 
 fn print_sessions_table(sessions: &[SessionSummary]) {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec![
-            Cell::new("TIME").fg(Color::White),
-            Cell::new("PROVIDER").fg(Color::White),
-            Cell::new("ID").fg(Color::White),
-            Cell::new("PROJECT").fg(Color::White),
-            Cell::new("SNIPPET").fg(Color::White),
-        ]);
+    use owo_colors::OwoColorize;
 
     for session in sessions {
         let id_short = if session.id.len() > 8 {
@@ -157,46 +146,31 @@ fn print_sessions_table(sessions: &[SessionSummary]) {
             &session.id
         };
 
-        let project_short = if session.project_hash.len() > 12 {
-            format!("{}...", &session.project_hash[..9])
-        } else {
-            session.project_hash.clone()
-        };
-
         let time_str = session.start_ts.as_deref().unwrap_or("unknown");
         let time_display = format_relative_time(time_str);
 
         let snippet = session.snippet.as_deref().unwrap_or("");
-        let snippet_display = truncate_for_display(snippet, 70);
+        let snippet_display = truncate_for_display(snippet, 80);
 
-        // Color code cells
-        let time_cell = Cell::new(time_display).fg(Color::Cyan);
-
-        let provider_color = match session.provider.as_str() {
-            "claude" => Color::Blue,
-            "codex" => Color::Green,
-            "gemini" => Color::Red,
-            _ => Color::White,
+        let provider_display = match session.provider.as_str() {
+            "claude_code" => format!("{}", session.provider.blue()),
+            "codex" => format!("{}", session.provider.green()),
+            "gemini" => format!("{}", session.provider.red()),
+            _ => session.provider.clone(),
         };
-        let provider_cell = Cell::new(&session.provider).fg(provider_color);
 
-        let id_cell = Cell::new(id_short).fg(Color::Yellow);
-        let project_cell = Cell::new(project_short).fg(Color::DarkGrey);
-
-        let snippet_cell = if snippet_display.is_empty() {
-            Cell::new("[empty]").fg(Color::DarkGrey)
+        let snippet_final = if snippet_display.is_empty() {
+            format!("{}", "[empty]".bright_black())
         } else {
-            Cell::new(snippet_display).fg(Color::White)
+            snippet_display
         };
 
-        table.add_row(vec![
-            time_cell,
-            provider_cell,
-            id_cell,
-            project_cell,
-            snippet_cell,
-        ]);
+        println!(
+            "{} {} {} {}",
+            time_display.bright_black(),
+            id_short.yellow(),
+            provider_display,
+            snippet_final
+        );
     }
-
-    println!("{table}");
 }

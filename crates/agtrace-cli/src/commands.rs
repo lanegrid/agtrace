@@ -177,6 +177,36 @@ pub fn run(cli: Cli) -> Result<()> {
             }
         }
 
+        Commands::Sessions {
+            project_hash,
+            source,
+            limit,
+            since,
+            until,
+        } => {
+            let db_path = data_dir.join("agtrace.db");
+            let db = Database::open(&db_path)?;
+
+            let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
+                Some(agtrace_types::project_hash_from_root(
+                    cli.project_root.as_ref().unwrap(),
+                ))
+            } else {
+                project_hash
+            };
+
+            handlers::session_list::handle(
+                &db,
+                effective_hash,
+                limit,
+                cli.all_projects,
+                cli.format,
+                source.map(|s| s.to_string()),
+                since,
+                until,
+            )
+        }
+
         Commands::Pack { template, limit } => {
             let ctx = ExecutionContext::new(
                 data_dir.clone(),

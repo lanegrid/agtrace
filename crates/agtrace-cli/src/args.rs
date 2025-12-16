@@ -61,6 +61,23 @@ pub enum Commands {
         command: LabCommand,
     },
 
+    Sessions {
+        #[arg(long)]
+        project_hash: Option<String>,
+
+        #[arg(long)]
+        source: Option<ProviderName>,
+
+        #[arg(long, default_value = "50")]
+        limit: usize,
+
+        #[arg(long)]
+        since: Option<String>,
+
+        #[arg(long)]
+        until: Option<String>,
+    },
+
     Pack {
         #[arg(long, default_value = "compact")]
         template: PackTemplate,
