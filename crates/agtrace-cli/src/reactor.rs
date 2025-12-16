@@ -45,20 +45,25 @@ pub struct SessionState {
     /// Model name (e.g., "claude-3-5-sonnet-20241022")
     pub model: Option<String>,
 
-    /// Total input tokens consumed
-    pub total_input_tokens: i32,
+    /// Current turn's input tokens (fresh, non-cached)
+    /// This is a SNAPSHOT, not cumulative
+    pub current_input_tokens: i32,
 
-    /// Total output tokens consumed
-    pub total_output_tokens: i32,
+    /// Current turn's output tokens
+    /// This is a SNAPSHOT, not cumulative
+    pub current_output_tokens: i32,
 
-    /// Cache creation tokens (storing context for reuse)
-    pub cache_creation_tokens: i32,
+    /// Current turn's cache creation tokens (storing context for reuse)
+    /// This is a SNAPSHOT, not cumulative
+    pub current_cache_creation_tokens: i32,
 
-    /// Cache read tokens (from prompt caching)
-    pub cache_read_tokens: i32,
+    /// Current turn's cache read tokens (retrieved from cache)
+    /// This is a SNAPSHOT, not cumulative
+    pub current_cache_read_tokens: i32,
 
-    /// Reasoning tokens (extended thinking)
-    pub reasoning_tokens: i32,
+    /// Current turn's reasoning tokens (extended thinking)
+    /// This is a SNAPSHOT, not cumulative
+    pub current_reasoning_tokens: i32,
 
     /// Consecutive error count (reset on success)
     pub error_count: u32,
@@ -83,33 +88,60 @@ impl SessionState {
             start_time,
             last_activity: start_time,
             model: None,
-            total_input_tokens: 0,
-            total_output_tokens: 0,
-            cache_creation_tokens: 0,
-            cache_read_tokens: 0,
-            reasoning_tokens: 0,
+            current_input_tokens: 0,
+            current_output_tokens: 0,
+            current_cache_creation_tokens: 0,
+            current_cache_read_tokens: 0,
+            current_reasoning_tokens: 0,
             error_count: 0,
             event_count: 0,
             turn_count: 0,
         }
     }
 
-    /// Total tokens on input side (what gets sent to the model)
+    /// Total tokens on input side for CURRENT turn (what LLM receives this turn)
     /// Includes: fresh input + cache creation + cache read
+    /// This is the actual Context Window usage for this turn.
     pub fn total_input_side_tokens(&self) -> i32 {
-        self.total_input_tokens + self.cache_creation_tokens + self.cache_read_tokens
+        self.current_input_tokens + self.current_cache_creation_tokens + self.current_cache_read_tokens
     }
 
-    /// Total tokens on output side (what the model generates)
-    /// Includes: output tokens (reasoning tokens are already in output for Claude)
+    /// Total tokens on output side for CURRENT turn
     pub fn total_output_side_tokens(&self) -> i32 {
-        self.total_output_tokens
+        self.current_output_tokens
     }
 
-    /// Total context window usage (input + output)
-    /// This represents the total tokens that count toward the context limit
+    /// Total context window usage for CURRENT turn (input + output)
+    /// This represents what's currently in the context window.
     pub fn total_context_window_tokens(&self) -> i32 {
         self.total_input_side_tokens() + self.total_output_side_tokens()
+    }
+
+    /// Validate token counts are reasonable for current turn
+    pub fn validate_tokens(&self, model_limit: Option<u64>) -> Result<(), String> {
+        let total = self.total_context_window_tokens();
+
+        // Check for negative tokens (should never happen)
+        if total < 0
+            || self.current_input_tokens < 0
+            || self.current_output_tokens < 0
+            || self.current_cache_creation_tokens < 0
+            || self.current_cache_read_tokens < 0
+        {
+            return Err("Negative token count detected".to_string());
+        }
+
+        // Check if total exceeds model limit (should warn if close)
+        if let Some(limit) = model_limit {
+            if total as u64 > limit {
+                return Err(format!(
+                    "Token count {} exceeds model limit {}",
+                    total, limit
+                ));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -257,61 +289,75 @@ mod tests {
         let state = SessionState::new("test-id".to_string(), None, Utc::now());
 
         assert_eq!(state.session_id, "test-id");
-        assert_eq!(state.total_input_tokens, 0);
-        assert_eq!(state.total_output_tokens, 0);
-        assert_eq!(state.cache_creation_tokens, 0);
-        assert_eq!(state.cache_read_tokens, 0);
-        assert_eq!(state.reasoning_tokens, 0);
+        assert_eq!(state.current_input_tokens, 0);
+        assert_eq!(state.current_output_tokens, 0);
+        assert_eq!(state.current_cache_creation_tokens, 0);
+        assert_eq!(state.current_cache_read_tokens, 0);
+        assert_eq!(state.current_reasoning_tokens, 0);
         assert_eq!(state.error_count, 0);
         assert_eq!(state.event_count, 0);
         assert_eq!(state.turn_count, 0);
     }
 
     #[test]
-    fn test_session_state_token_calculations() {
+    fn test_session_state_token_snapshot() {
         let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
 
-        // Set individual token counts
-        state.total_input_tokens = 1000;
-        state.total_output_tokens = 500;
-        state.cache_creation_tokens = 2000;
-        state.cache_read_tokens = 10000;
-
-        // Test input side calculation (fresh + cache creation + cache read)
-        assert_eq!(state.total_input_side_tokens(), 13000); // 1000 + 2000 + 10000
-
-        // Test output side calculation
-        assert_eq!(state.total_output_side_tokens(), 500);
-
-        // Test context window total (input side + output side)
-        assert_eq!(state.total_context_window_tokens(), 13500); // 13000 + 500
-    }
-
-    #[test]
-    fn test_session_state_token_calculations_with_zero_cache() {
-        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
-
-        // Only fresh input/output, no cache
-        state.total_input_tokens = 100;
-        state.total_output_tokens = 50;
+        // Simulate Turn 1: 100 fresh input, 50 output
+        state.current_input_tokens = 100;
+        state.current_output_tokens = 50;
+        state.current_cache_creation_tokens = 0;
+        state.current_cache_read_tokens = 0;
 
         assert_eq!(state.total_input_side_tokens(), 100);
         assert_eq!(state.total_output_side_tokens(), 50);
         assert_eq!(state.total_context_window_tokens(), 150);
+
+        // Simulate Turn 2: 10 fresh, 1000 from cache, 60 output
+        // (Turn 1's 100 tokens are now cached and read back)
+        state.current_input_tokens = 10;
+        state.current_output_tokens = 60;
+        state.current_cache_creation_tokens = 0;
+        state.current_cache_read_tokens = 1000;
+
+        // Context window should be based on Turn 2 only
+        assert_eq!(state.total_input_side_tokens(), 1010); // 10 + 0 + 1000
+        assert_eq!(state.total_output_side_tokens(), 60);
+        assert_eq!(state.total_context_window_tokens(), 1070);
     }
 
     #[test]
-    fn test_session_state_token_calculations_cache_only() {
+    fn test_validate_tokens_success() {
         let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+        state.current_input_tokens = 1000;
+        state.current_output_tokens = 500;
+        state.current_cache_creation_tokens = 2000;
+        state.current_cache_read_tokens = 10000;
 
-        // Only cache tokens, no fresh input
-        state.cache_creation_tokens = 500;
-        state.cache_read_tokens = 5000;
-        state.total_output_tokens = 200;
+        // Should pass - total 13500 is under 200k limit
+        assert!(state.validate_tokens(Some(200_000)).is_ok());
+    }
 
-        assert_eq!(state.total_input_side_tokens(), 5500); // 0 + 500 + 5000
-        assert_eq!(state.total_output_side_tokens(), 200);
-        assert_eq!(state.total_context_window_tokens(), 5700);
+    #[test]
+    fn test_validate_tokens_exceeds_limit() {
+        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+        state.current_input_tokens = 100_000;
+        state.current_output_tokens = 150_000;
+
+        // Should fail - total 250k exceeds 200k limit
+        let result = state.validate_tokens(Some(200_000));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("exceeds model limit"));
+    }
+
+    #[test]
+    fn test_validate_tokens_negative() {
+        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+        state.current_input_tokens = -100;
+
+        let result = state.validate_tokens(None);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Negative token count detected");
     }
 
     #[test]

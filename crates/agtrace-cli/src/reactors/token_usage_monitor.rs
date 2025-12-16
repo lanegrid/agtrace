@@ -176,8 +176,8 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.total_input_tokens = 10_000;
-        state.total_output_tokens = 1_000;
+        state.current_input_tokens = 10_000;
+        state.current_output_tokens = 1_000;
 
         let ctx = ReactorContext {
             event: &event,
@@ -195,8 +195,8 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.total_input_tokens = 160_000;
-        state.total_output_tokens = 10_000;
+        state.current_input_tokens = 160_000;
+        state.current_output_tokens = 10_000;
 
         let ctx = ReactorContext {
             event: &event,
@@ -220,8 +220,8 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.total_input_tokens = 190_000;
-        state.total_output_tokens = 5_000;
+        state.current_input_tokens = 190_000;
+        state.current_output_tokens = 5_000;
 
         let ctx = ReactorContext {
             event: &event,
@@ -261,8 +261,8 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = None; // No model info
-        state.total_input_tokens = 100_000;
-        state.total_output_tokens = 10_000;
+        state.current_input_tokens = 100_000;
+        state.current_output_tokens = 10_000;
 
         let ctx = ReactorContext {
             event: &event,
@@ -279,8 +279,8 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.total_input_tokens = 160_000;
-        state.total_output_tokens = 10_000;
+        state.current_input_tokens = 160_000;
+        state.current_output_tokens = 10_000;
 
         let event = create_token_usage_event(160_000, 10_000);
         let ctx = ReactorContext {

@@ -2,6 +2,7 @@ use crate::context::ExecutionContext;
 use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState, Severity};
 use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor, TuiRenderer};
 use crate::streaming::{SessionWatcher, StreamEvent};
+use crate::token_limits::TokenLimits;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
@@ -388,18 +389,27 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
             }
         }
         EventPayload::TokenUsage(usage) => {
-            state.total_input_tokens += usage.input_tokens;
-            state.total_output_tokens += usage.output_tokens;
+            // Update current turn's token snapshot (OVERWRITE, not accumulate)
+            state.current_input_tokens = usage.input_tokens;
+            state.current_output_tokens = usage.output_tokens;
 
             if let Some(details) = &usage.details {
-                if let Some(cache_creation) = details.cache_creation_input_tokens {
-                    state.cache_creation_tokens += cache_creation;
-                }
-                if let Some(cached) = details.cache_read_input_tokens {
-                    state.cache_read_tokens += cached;
-                }
-                if let Some(thinking) = details.reasoning_output_tokens {
-                    state.reasoning_tokens += thinking;
+                state.current_cache_creation_tokens = details.cache_creation_input_tokens.unwrap_or(0);
+                state.current_cache_read_tokens = details.cache_read_input_tokens.unwrap_or(0);
+                state.current_reasoning_tokens = details.reasoning_output_tokens.unwrap_or(0);
+            } else {
+                state.current_cache_creation_tokens = 0;
+                state.current_cache_read_tokens = 0;
+                state.current_reasoning_tokens = 0;
+            }
+
+            // Validate token counts for current turn
+            if let Some(model) = &state.model {
+                let token_limits = TokenLimits::new();
+                let model_limit = token_limits.get_limit(model).map(|l| l.total_limit);
+
+                if let Err(err) = state.validate_tokens(model_limit) {
+                    eprintln!("⚠️  Token validation warning: {}", err);
                 }
             }
 
@@ -554,10 +564,11 @@ mod tests {
 
         update_session_state(&mut state, &event);
 
-        assert_eq!(state.total_input_tokens, 100);
-        assert_eq!(state.total_output_tokens, 50);
-        assert_eq!(state.cache_read_tokens, 20);
-        assert_eq!(state.reasoning_tokens, 10);
+        // Tokens are snapshots, not cumulative
+        assert_eq!(state.current_input_tokens, 100);
+        assert_eq!(state.current_output_tokens, 50);
+        assert_eq!(state.current_cache_read_tokens, 20);
+        assert_eq!(state.current_reasoning_tokens, 10);
         assert_eq!(state.event_count, 1);
     }
 
@@ -627,8 +638,8 @@ mod tests {
         update_session_state(&mut state, &event);
 
         assert_eq!(state.model, Some("claude-3-5-sonnet-20241022".to_string()));
-        assert_eq!(state.total_input_tokens, 100);
-        assert_eq!(state.total_output_tokens, 50);
+        assert_eq!(state.current_input_tokens, 100);
+        assert_eq!(state.current_output_tokens, 50);
     }
 
     #[test]
@@ -811,7 +822,7 @@ mod tests {
         let state = session_state.unwrap();
         assert_eq!(state.event_count, 3);
         assert_eq!(state.turn_count, 2);
-        assert_eq!(state.total_input_tokens, 50);
-        assert_eq!(state.total_output_tokens, 30);
+        assert_eq!(state.current_input_tokens, 50);
+        assert_eq!(state.current_output_tokens, 30);
     }
 }

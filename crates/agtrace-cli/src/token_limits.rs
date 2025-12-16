@@ -193,10 +193,10 @@ mod tests {
         let limits = TokenLimits::new();
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.total_input_tokens = 1000;
-        state.total_output_tokens = 500;
-        state.cache_creation_tokens = 2000;
-        state.cache_read_tokens = 10000;
+        state.current_input_tokens = 1000;
+        state.current_output_tokens = 500;
+        state.current_cache_creation_tokens = 2000;
+        state.current_cache_read_tokens = 10000;
 
         let (input_pct, output_pct, total_pct) =
             limits.get_usage_percentage_from_state(&state).unwrap();
@@ -218,8 +218,8 @@ mod tests {
         let limits = TokenLimits::new();
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.total_input_tokens = 100_000;
-        state.total_output_tokens = 4_000;
+        state.current_input_tokens = 100_000;
+        state.current_output_tokens = 4_000;
         // No cache tokens
 
         let (input_pct, output_pct, total_pct) =
