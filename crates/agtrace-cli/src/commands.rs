@@ -35,7 +35,12 @@ pub fn run(cli: Cli) -> Result<()> {
 
     match command {
         Commands::Init { refresh } => {
-            handlers::init::handle(&data_dir, cli.project_root, cli.all_projects, refresh)
+            let ctx = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            )?;
+            handlers::init::handle(&ctx, refresh)
         }
 
         Commands::Index { command } => {

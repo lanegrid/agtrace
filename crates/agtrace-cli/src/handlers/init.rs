@@ -4,7 +4,6 @@ use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use std::path::Path;
 
 fn format_duration(d: Duration) -> String {
     let seconds = d.num_seconds();
@@ -19,18 +18,14 @@ fn format_duration(d: Duration) -> String {
     }
 }
 
-pub fn handle(
-    data_dir: &Path,
-    project_root: Option<String>,
-    all_projects: bool,
-    refresh: bool,
-) -> Result<()> {
+pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
     println!("Initializing agtrace...\n");
 
+    let data_dir = ctx.data_dir();
     let config_path = data_dir.join("config.toml");
     let db_path = data_dir.join("agtrace.db");
 
-    let config = if !config_path.exists() {
+    let _config = if !config_path.exists() {
         println!("Step 1/4: Detecting providers...");
         let detected = Config::detect_providers()?;
 
@@ -68,10 +63,8 @@ pub fn handle(
     let db = Database::open(&db_path)?;
     println!("  Database ready at {}", db_path.display());
 
-    let current_project_root = if let Some(root) = &project_root {
-        root.clone()
-    } else if let Ok(cwd) = std::env::current_dir() {
-        cwd.display().to_string()
+    let current_project_root = if let Some(root) = &ctx.project_root {
+        root.display().to_string()
     } else {
         ".".to_string()
     };
@@ -106,12 +99,7 @@ pub fn handle(
 
     if should_scan {
         println!("\nStep 3/4: Scanning for sessions...");
-        let ctx = ExecutionContext::new(
-            data_dir.to_path_buf(),
-            Some(current_project_root.clone()),
-            all_projects,
-        )?;
-        let scan_result = super::index::handle(&ctx, "all".to_string(), false, false);
+        let scan_result = super::index::handle(ctx, "all".to_string(), false, false);
 
         match scan_result {
             Ok(_) => {}
@@ -125,7 +113,7 @@ pub fn handle(
 
     println!("\nStep 4/4: Recent sessions...\n");
 
-    let effective_hash = if all_projects {
+    let effective_hash = if ctx.all_projects {
         None
     } else {
         Some(current_project_hash.clone())
@@ -134,7 +122,7 @@ pub fn handle(
     let sessions = db.list_sessions(effective_hash.as_deref(), 10)?;
 
     if sessions.is_empty() {
-        if all_projects {
+        if ctx.all_projects {
             println!("No sessions found.");
             println!("\nTips:");
             println!("  - Check provider configuration: agtrace provider list");
@@ -152,7 +140,7 @@ pub fn handle(
         &db,
         effective_hash,
         10,
-        all_projects,
+        ctx.all_projects,
         "plain",
         None,
         None,
