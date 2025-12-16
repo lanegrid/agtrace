@@ -147,16 +147,15 @@ fn handle_initial_update(
 
     // Display token usage summary
     if let Some(state) = session_state {
-        let input_tokens = state.total_input_tokens as u64;
-        let output_tokens = state.total_output_tokens as u64;
-        let total = input_tokens + output_tokens;
+        let total = state.total_context_window_tokens() as u64;
 
         if total > 0 {
-            if let Some(model) = &state.model {
+            if state.model.is_some() {
                 let token_limits = TokenLimits::new();
                 if let Some((input_pct, output_pct, total_pct)) =
-                    token_limits.get_usage_percentage(model, input_tokens, output_tokens)
+                    token_limits.get_usage_percentage_from_state(state)
                 {
+                    let model = state.model.as_ref().unwrap();
                     let bar = create_progress_bar(total_pct);
                     let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
                         |s: &str| s.red().to_string()

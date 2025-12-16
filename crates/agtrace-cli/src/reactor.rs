@@ -93,6 +93,24 @@ impl SessionState {
             turn_count: 0,
         }
     }
+
+    /// Total tokens on input side (what gets sent to the model)
+    /// Includes: fresh input + cache creation + cache read
+    pub fn total_input_side_tokens(&self) -> i32 {
+        self.total_input_tokens + self.cache_creation_tokens + self.cache_read_tokens
+    }
+
+    /// Total tokens on output side (what the model generates)
+    /// Includes: output tokens (reasoning tokens are already in output for Claude)
+    pub fn total_output_side_tokens(&self) -> i32 {
+        self.total_output_tokens
+    }
+
+    /// Total context window usage (input + output)
+    /// This represents the total tokens that count toward the context limit
+    pub fn total_context_window_tokens(&self) -> i32 {
+        self.total_input_side_tokens() + self.total_output_side_tokens()
+    }
 }
 
 /// Context passed to reactors for each event
@@ -247,6 +265,53 @@ mod tests {
         assert_eq!(state.error_count, 0);
         assert_eq!(state.event_count, 0);
         assert_eq!(state.turn_count, 0);
+    }
+
+    #[test]
+    fn test_session_state_token_calculations() {
+        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+
+        // Set individual token counts
+        state.total_input_tokens = 1000;
+        state.total_output_tokens = 500;
+        state.cache_creation_tokens = 2000;
+        state.cache_read_tokens = 10000;
+
+        // Test input side calculation (fresh + cache creation + cache read)
+        assert_eq!(state.total_input_side_tokens(), 13000); // 1000 + 2000 + 10000
+
+        // Test output side calculation
+        assert_eq!(state.total_output_side_tokens(), 500);
+
+        // Test context window total (input side + output side)
+        assert_eq!(state.total_context_window_tokens(), 13500); // 13000 + 500
+    }
+
+    #[test]
+    fn test_session_state_token_calculations_with_zero_cache() {
+        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+
+        // Only fresh input/output, no cache
+        state.total_input_tokens = 100;
+        state.total_output_tokens = 50;
+
+        assert_eq!(state.total_input_side_tokens(), 100);
+        assert_eq!(state.total_output_side_tokens(), 50);
+        assert_eq!(state.total_context_window_tokens(), 150);
+    }
+
+    #[test]
+    fn test_session_state_token_calculations_cache_only() {
+        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+
+        // Only cache tokens, no fresh input
+        state.cache_creation_tokens = 500;
+        state.cache_read_tokens = 5000;
+        state.total_output_tokens = 200;
+
+        assert_eq!(state.total_input_side_tokens(), 5500); // 0 + 500 + 5000
+        assert_eq!(state.total_output_side_tokens(), 200);
+        assert_eq!(state.total_context_window_tokens(), 5700);
     }
 
     #[test]

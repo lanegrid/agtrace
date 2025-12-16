@@ -94,6 +94,37 @@ impl TokenLimits {
         None
     }
 
+    /// Get usage percentage from SessionState
+    /// Returns (input_pct, output_pct, total_pct)
+    ///
+    /// This is the safe method that correctly calculates percentages
+    /// including cache tokens. Prefer this over the raw token method.
+    pub fn get_usage_percentage_from_state(
+        &self,
+        state: &crate::reactor::SessionState,
+    ) -> Option<(f64, f64, f64)> {
+        let model = state.model.as_ref()?;
+        let limit = self.get_limit(model)?;
+
+        let input_side = state.total_input_side_tokens() as u64;
+        let output_side = state.total_output_side_tokens() as u64;
+        let total = state.total_context_window_tokens() as u64;
+
+        let input_pct = (input_side as f64 / limit.total_limit as f64) * 100.0;
+        let output_pct = (output_side as f64 / limit.total_limit as f64) * 100.0;
+        let total_pct = (total as f64 / limit.total_limit as f64) * 100.0;
+
+        Some((input_pct, output_pct, total_pct))
+    }
+
+    /// DEPRECATED: Use get_usage_percentage_from_state instead
+    ///
+    /// This method does NOT include cache tokens in the calculation,
+    /// which leads to severe underreporting of context window usage.
+    #[deprecated(
+        since = "0.1.1",
+        note = "Does not include cache tokens. Use get_usage_percentage_from_state instead"
+    )]
     pub fn get_usage_percentage(
         &self,
         model: &str,
@@ -152,5 +183,50 @@ mod tests {
         let limits = TokenLimits::new();
         let result = limits.get_limit("unknown-model");
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_usage_percentage_from_state() {
+        use crate::reactor::SessionState;
+        use chrono::Utc;
+
+        let limits = TokenLimits::new();
+        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        state.model = Some("claude-3-5-sonnet-20241022".to_string());
+        state.total_input_tokens = 1000;
+        state.total_output_tokens = 500;
+        state.cache_creation_tokens = 2000;
+        state.cache_read_tokens = 10000;
+
+        let (input_pct, output_pct, total_pct) =
+            limits.get_usage_percentage_from_state(&state).unwrap();
+
+        // Total input side: 1000 + 2000 + 10000 = 13000
+        // Total output side: 500
+        // Total context window: 13500
+        // Limit: 200000
+        assert_eq!(input_pct, 6.5); // 13000 / 200000 * 100
+        assert_eq!(output_pct, 0.25); // 500 / 200000 * 100
+        assert_eq!(total_pct, 6.75); // 13500 / 200000 * 100
+    }
+
+    #[test]
+    fn test_get_usage_percentage_from_state_no_cache() {
+        use crate::reactor::SessionState;
+        use chrono::Utc;
+
+        let limits = TokenLimits::new();
+        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        state.model = Some("claude-3-5-sonnet-20241022".to_string());
+        state.total_input_tokens = 100_000;
+        state.total_output_tokens = 4_000;
+        // No cache tokens
+
+        let (input_pct, output_pct, total_pct) =
+            limits.get_usage_percentage_from_state(&state).unwrap();
+
+        assert_eq!(input_pct, 50.0); // 100000 / 200000 * 100
+        assert_eq!(output_pct, 2.0); // 4000 / 200000 * 100
+        assert_eq!(total_pct, 52.0); // 104000 / 200000 * 100
     }
 }

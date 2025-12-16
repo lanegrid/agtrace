@@ -20,25 +20,17 @@ impl TuiRenderer {
     fn print_token_summary(&self, ctx: &ReactorContext) {
         // Print token summary on TokenUsage events (skip if no tokens consumed yet)
 
-        let input_tokens = ctx.state.total_input_tokens as u64;
-        let output_tokens = ctx.state.total_output_tokens as u64;
-        let cache_creation_tokens = ctx.state.cache_creation_tokens as u64;
-        let cache_read_tokens = ctx.state.cache_read_tokens as u64;
-        let total = input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens;
+        let total = ctx.state.total_context_window_tokens() as u64;
 
         if total == 0 {
             return;
         }
 
-        let model = match &ctx.state.model {
-            Some(m) => m.as_str(),
-            None => return,
-        };
-
+        // Use the safe method that includes cache tokens
         if let Some((input_pct, output_pct, total_pct)) =
-            self.token_limits
-                .get_usage_percentage(model, input_tokens, output_tokens)
+            self.token_limits.get_usage_percentage_from_state(ctx.state)
         {
+            let model = ctx.state.model.as_ref().unwrap();
             let limit = self.token_limits.get_limit(model).unwrap();
             let free_tokens = limit.total_limit.saturating_sub(total);
             let free_pct = 100.0 - total_pct;
@@ -69,8 +61,13 @@ impl TuiRenderer {
 
             // Show detailed breakdown when >= 70% usage
             if total_pct >= 70.0 {
-                let input_str = format_token_count(input_tokens);
-                let output_str = format_token_count(output_tokens);
+                let input_side = ctx.state.total_input_side_tokens() as u64;
+                let output_side = ctx.state.total_output_side_tokens() as u64;
+                let cache_creation_tokens = ctx.state.cache_creation_tokens as u64;
+                let cache_read_tokens = ctx.state.cache_read_tokens as u64;
+
+                let input_str = format_token_count(input_side);
+                let output_str = format_token_count(output_side);
                 let cache_creation_str = format_token_count(cache_creation_tokens);
                 let cache_read_str = format_token_count(cache_read_tokens);
                 let free_str = format_token_count(free_tokens);

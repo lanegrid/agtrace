@@ -33,15 +33,12 @@ impl TokenUsageMonitor {
         Self::new(80.0, 95.0)
     }
 
-    fn check_threshold(
-        &mut self,
-        model: &str,
-        input_tokens: u64,
-        output_tokens: u64,
-    ) -> Option<Reaction> {
+    fn check_threshold(&mut self, state: &crate::reactor::SessionState) -> Option<Reaction> {
         let (input_pct, output_pct, total_pct) =
-            self.limits
-                .get_usage_percentage(model, input_tokens, output_tokens)?;
+            self.limits.get_usage_percentage_from_state(state)?;
+
+        let total_tokens = state.total_context_window_tokens() as u64;
+        let model = state.model.as_ref()?;
 
         let now = Utc::now();
 
@@ -58,7 +55,7 @@ impl TokenUsageMonitor {
                     reason: format!(
                         "Token usage critical: {:.1}% ({}/{} tokens). Consider starting a new session.",
                         total_pct,
-                        input_tokens + output_tokens,
+                        total_tokens,
                         self.limits.get_limit(model)?.total_limit
                     ),
                     severity: Severity::Notification,
@@ -79,7 +76,7 @@ impl TokenUsageMonitor {
                     total_pct,
                     input_pct,
                     output_pct,
-                    input_tokens + output_tokens,
+                    total_tokens,
                     self.limits.get_limit(model)?.total_limit
                 )));
             }
@@ -108,15 +105,11 @@ impl Reactor for TokenUsageMonitor {
         }
 
         // Need model info to check limits
-        let model = match &ctx.state.model {
-            Some(m) => m,
-            None => return Ok(Reaction::Continue),
-        };
+        if ctx.state.model.is_none() {
+            return Ok(Reaction::Continue);
+        }
 
-        let input_tokens = ctx.state.total_input_tokens as u64;
-        let output_tokens = ctx.state.total_output_tokens as u64;
-
-        if let Some(reaction) = self.check_threshold(model, input_tokens, output_tokens) {
+        if let Some(reaction) = self.check_threshold(ctx.state) {
             return Ok(reaction);
         }
 
