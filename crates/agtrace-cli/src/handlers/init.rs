@@ -100,7 +100,8 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
 
     if should_scan {
         println!("\nStep 3/4: Scanning for sessions...");
-        let scan_result = super::index::handle(ctx, "all".to_string(), false, false);
+        // Use verbose=true in init to show warnings about missing/invalid directories
+        let scan_result = super::index::handle(ctx, "all".to_string(), false, true);
 
         match scan_result {
             Ok(_) => {}

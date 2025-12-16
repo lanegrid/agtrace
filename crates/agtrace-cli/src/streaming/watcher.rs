@@ -242,9 +242,15 @@ fn handle_fs_event(
                     file_event_counts.insert(path.clone(), event_count);
 
                     if let Some(old) = old_path {
+                        // Send rotation event
                         let _ = tx.send(StreamEvent::SessionRotated {
                             old_path: old,
                             new_path: path.clone(),
+                        });
+                        // Also send Attached event for the new session
+                        let _ = tx.send(StreamEvent::Attached {
+                            path: path.clone(),
+                            session_id: extract_session_id(path),
                         });
                     } else {
                         let _ = tx.send(StreamEvent::Attached {
