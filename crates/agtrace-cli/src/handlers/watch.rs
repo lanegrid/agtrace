@@ -72,78 +72,6 @@ fn initialize_session_state(
     }
 }
 
-/// Handle StreamEvent::Attached
-fn handle_attached_event(
-    provider: &Arc<dyn agtrace_providers::LogProvider>,
-    path: &Path,
-    session_id: Option<&str>,
-) -> Result<()> {
-    let display_name = format_session_display_name(path, session_id);
-    println!(
-        "{}  {}\n",
-        "✨ Attached to active session:".bright_green(),
-        display_name
-    );
-
-    // Load and display recent session history
-    if let Err(e) = display_session_history(provider, path) {
-        eprintln!(
-            "{} Failed to load session history: {}",
-            "⚠️  Warning:".yellow(),
-            e
-        );
-    }
-
-    Ok(())
-}
-
-/// Display recent session history (last 5 turns) by directly reading from file
-fn display_session_history(
-    provider: &Arc<dyn agtrace_providers::LogProvider>,
-    path: &Path,
-) -> Result<()> {
-    use crate::output::{format_session_compact, CompactFormatOpts};
-    use agtrace_engine::assemble_session_from_events;
-    use agtrace_providers::ImportContext;
-
-    // Read events directly from file without using database
-    let context = ImportContext {
-        project_root_override: None,
-        session_id_prefix: None,
-        all_projects: false,
-    };
-
-    let events = provider.normalize_file(path, &context)?;
-
-    if let Some(session) = assemble_session_from_events(&events) {
-        if session.turns.is_empty() {
-            return Ok(());
-        }
-
-        let num_turns = session.turns.len().min(5);
-        let start_idx = session.turns.len().saturating_sub(num_turns);
-
-        println!("{}  Last {} turn(s):\n", "📜".dimmed(), num_turns);
-
-        let opts = CompactFormatOpts {
-            enable_color: true,
-            relative_time: false,
-        };
-
-        // Create a subset session with only the recent turns
-        let mut recent_session = session.clone();
-        recent_session.turns = session.turns[start_idx..].to_vec();
-
-        let lines = format_session_compact(&recent_session, &opts);
-        for line in lines {
-            println!("  {}", line);
-        }
-        println!();
-    }
-
-    Ok(())
-}
-
 /// Handle StreamEvent::Waiting
 fn handle_waiting_event(message: &str) {
     println!("{} {}", "[⏳ Waiting]".bright_yellow(), message);
@@ -157,6 +85,117 @@ fn handle_error_event(msg: &str) -> bool {
         eprintln!("{}", "Watch stream terminated due to fatal error".red());
     }
     is_fatal
+}
+
+/// Handle initial Update after Attached: Initialize SessionState and display summary
+fn handle_initial_update(
+    update: crate::streaming::SessionUpdate,
+    session_state: &mut Option<SessionState>,
+    project_root: Option<PathBuf>,
+) {
+    use crate::output::{format_session_compact, CompactFormatOpts};
+    use crate::token_limits::TokenLimits;
+
+    // Initialize SessionState from assembled session if available
+    if let Some(assembled_session) = &update.session {
+        initialize_session_state(
+            session_state,
+            assembled_session.session_id.to_string(),
+            project_root.clone(),
+            assembled_session.start_time,
+        );
+    }
+
+    // Process all events to update SessionState (without displaying them)
+    for event in &update.new_events {
+        initialize_session_state(
+            session_state,
+            event.trace_id.to_string(),
+            project_root.clone(),
+            event.timestamp,
+        );
+
+        let state = session_state
+            .as_mut()
+            .expect("session_state must be Some after initialization");
+        update_session_state(state, event);
+    }
+
+    // Display summary: last 5 turns + token usage
+    if let Some(assembled_session) = &update.session {
+        if !assembled_session.turns.is_empty() {
+            let num_turns = assembled_session.turns.len().min(5);
+            let start_idx = assembled_session.turns.len().saturating_sub(num_turns);
+
+            println!("{}  Last {} turn(s):\n", "📜".dimmed(), num_turns);
+
+            let opts = CompactFormatOpts {
+                enable_color: true,
+                relative_time: false,
+            };
+
+            let mut recent_session = assembled_session.clone();
+            recent_session.turns = assembled_session.turns[start_idx..].to_vec();
+
+            let lines = format_session_compact(&recent_session, &opts);
+            for line in lines {
+                println!("  {}", line);
+            }
+            println!();
+        }
+    }
+
+    // Display token usage summary
+    if let Some(state) = session_state {
+        let input_tokens = state.total_input_tokens as u64;
+        let output_tokens = state.total_output_tokens as u64;
+        let total = input_tokens + output_tokens;
+
+        if total > 0 {
+            if let Some(model) = &state.model {
+                let token_limits = TokenLimits::new();
+                if let Some((input_pct, output_pct, total_pct)) =
+                    token_limits.get_usage_percentage(model, input_tokens, output_tokens)
+                {
+                    let bar = create_progress_bar(total_pct);
+                    let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
+                        |s: &str| s.red().to_string()
+                    } else if total_pct >= 80.0 {
+                        |s: &str| s.yellow().to_string()
+                    } else {
+                        |s: &str| s.green().to_string()
+                    };
+
+                    println!(
+                        "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {}/{} tokens",
+                        "📊".dimmed(),
+                        "Current usage:".bright_black(),
+                        color_fn(&bar),
+                        total_pct,
+                        input_pct,
+                        output_pct,
+                        total,
+                        token_limits.get_limit(model).unwrap().total_limit
+                    );
+                }
+            }
+        }
+
+        println!(
+            "{}  {} total turns processed\n",
+            "📝".dimmed(),
+            state.turn_count
+        );
+    }
+}
+
+fn create_progress_bar(percentage: f64) -> String {
+    let bar_width = 20;
+    let filled = ((percentage / 100.0) * bar_width as f64) as usize;
+    let filled = filled.min(bar_width);
+    let empty = bar_width - filled;
+
+    format!("[{}{}]", "█".repeat(filled), "░".repeat(empty))
 }
 
 /// Process StreamEvent::Update
@@ -243,9 +282,6 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
         ctx.project_root.clone()
     };
 
-    // Clone provider for use in event handlers
-    let provider_for_handlers = provider.clone();
-
     // Create session watcher with provider and optional project context
     let watcher = SessionWatcher::new(
         log_root.to_path_buf(),
@@ -260,25 +296,37 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
     // Session state (initialized on first event)
     let mut session_state: Option<SessionState> = None;
 
+    // Track if we just attached to a session
+    let mut just_attached = false;
+
     // Event loop - receive and display events
     // IMPORTANT: Keep watcher alive to maintain file system monitoring
     loop {
         match watcher.receiver().recv() {
             Ok(event) => match event {
                 StreamEvent::Attached { path, session_id } => {
-                    if let Err(e) =
-                        handle_attached_event(&provider_for_handlers, &path, session_id.as_deref())
-                    {
-                        eprintln!("{} {}", "❌ Error:".red(), e);
-                    }
+                    just_attached = true;
+                    let display_name = format_session_display_name(&path, session_id.as_deref());
+                    println!(
+                        "{}  {}\n",
+                        "✨ Attached to active session:".bright_green(),
+                        display_name
+                    );
                 }
                 StreamEvent::Update(update) => {
-                    process_update_event(
-                        update,
-                        &mut session_state,
-                        &mut reactors,
-                        project_root.clone(),
-                    );
+                    if just_attached {
+                        // Initial snapshot: Initialize SessionState and display summary only
+                        just_attached = false;
+                        handle_initial_update(update, &mut session_state, project_root.clone());
+                    } else {
+                        // Normal update: Process events through reactors
+                        process_update_event(
+                            update,
+                            &mut session_state,
+                            &mut reactors,
+                            project_root.clone(),
+                        );
+                    }
                 }
                 StreamEvent::SessionRotated { old_path, new_path } => {
                     print_session_rotated(&old_path, &new_path);

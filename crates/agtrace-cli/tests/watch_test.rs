@@ -45,6 +45,18 @@ fn test_session_rotation_emits_attached_event() {
         _ => panic!("Expected Attached event, got: {:?}", event),
     }
 
+    // After Attached, should receive Update with initial events
+    let event = rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("Should receive Update event after Attached");
+
+    match event {
+        StreamEvent::Update(_) => {
+            // Expected - initial snapshot
+        }
+        other => panic!("Expected Update event after Attached, got: {:?}", other),
+    }
+
     // Wait a bit to ensure watcher is stable
     std::thread::sleep(Duration::from_millis(500));
 
@@ -85,6 +97,18 @@ fn test_session_rotation_emits_attached_event() {
         other => {
             panic!("Expected Attached event after rotation, got: {:?}", other);
         }
+    }
+
+    // After new Attached, should receive Update with initial events
+    let event = rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("Should receive Update event after new Attached");
+
+    match event {
+        StreamEvent::Update(_) => {
+            // Expected - initial snapshot for new session
+        }
+        other => panic!("Expected Update event after new Attached, got: {:?}", other),
     }
 }
 
@@ -137,8 +161,7 @@ fn test_waiting_mode_to_active_file_sends_update() {
         other => panic!("Expected Attached event, got: {:?}", other),
     }
 
-    // BUG: Should also receive an Update event with existing events from the file
-    // But currently it doesn't because of the `continue` statement in the Modify handler
+    // Should also receive an Update event with existing events from the file
     let event = rx.recv_timeout(Duration::from_secs(2));
 
     match event {
@@ -156,7 +179,7 @@ fn test_waiting_mode_to_active_file_sends_update() {
         }
         Err(_) => {
             panic!(
-                "BUG: No Update event received after attaching to file with existing events. \
+                "No Update event received after attaching to file with existing events. \
                  The watcher attached to the file but didn't send existing events."
             );
         }

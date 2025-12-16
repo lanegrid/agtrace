@@ -124,19 +124,38 @@ impl SessionWatcher {
 
         match target {
             WatchTarget::File { path } => {
-                let event_count = match count_existing_events(&path, &provider) {
-                    Ok(count) => count,
-                    Err(e) => {
-                        eprintln!("[WARN] Failed to count existing events: {}", e);
-                        0
-                    }
-                };
                 current_file = Some(path.clone());
-                file_event_counts.insert(path.clone(), event_count);
+                // Initialize count to 0 so existing events will be treated as "new" and sent in Update
+                file_event_counts.insert(path.clone(), 0);
                 let _ = tx_out.send(StreamEvent::Attached {
                     path: path.clone(),
                     session_id: extract_session_id(&path),
                 });
+
+                // Send initial Update event with existing events from the attached file
+                if let Ok((all_events, new_events)) = load_and_detect_changes(&path, 0, &provider) {
+                    if !new_events.is_empty() {
+                        file_event_counts.insert(path.clone(), new_events.len());
+
+                        let session = assemble_session_from_events(&all_events);
+
+                        let start_idx = all_events
+                            .iter()
+                            .position(|e| matches!(e.payload, EventPayload::User(_)))
+                            .unwrap_or(all_events.len());
+
+                        let orphaned_events = all_events.iter().take(start_idx).cloned().collect();
+
+                        let update = SessionUpdate {
+                            session,
+                            new_events,
+                            orphaned_events,
+                            total_events: all_events.len(),
+                        };
+
+                        let _ = tx_out.send(StreamEvent::Update(update));
+                    }
+                }
             }
             WatchTarget::Waiting { message } => {
                 let _ = tx_out.send(StreamEvent::Waiting { message });
@@ -338,17 +357,6 @@ fn handle_fs_event(
     }
 
     Ok(())
-}
-
-/// Count existing events in a file by normalizing it
-fn count_existing_events(path: &Path, provider: &Arc<dyn LogProvider>) -> Result<usize> {
-    let context = agtrace_providers::ImportContext {
-        project_root_override: None,
-        session_id_prefix: None,
-        all_projects: false,
-    };
-    let events = provider.normalize_file(path, &context)?;
-    Ok(events.len())
 }
 
 /// Load full file and separate new events from old ones
