@@ -38,7 +38,7 @@ impl ExecutionContext {
 
     pub fn db(&self) -> Result<&Database> {
         self.db.get_or_try_init(|| {
-            let db_path = self.data_dir.join("db.sqlite");
+            let db_path = self.data_dir.join("agtrace.db");
             Database::open(&db_path)
         })
     }
@@ -275,6 +275,34 @@ log_root = "/tmp/gemini_logs"
         assert!(
             ctx_without_root.project_root.is_some(),
             "Should fall back to current directory"
+        );
+    }
+
+    #[test]
+    fn test_database_path_consistency() {
+        let temp_dir = TempDir::new().unwrap();
+        let data_dir = temp_dir.path().to_path_buf();
+
+        // Create config for ExecutionContext
+        let config_path = data_dir.join("config.toml");
+        fs::write(&config_path, "[providers]").unwrap();
+
+        let ctx = ExecutionContext::new(data_dir.clone(), None, false).unwrap();
+
+        // Access the db - this will create "agtrace.db"
+        let _db_result = ctx.db();
+
+        // Verify that "agtrace.db" was created (not "db.sqlite")
+        let expected_db_path = data_dir.join("agtrace.db");
+        let wrong_db_path = data_dir.join("db.sqlite");
+
+        assert!(
+            expected_db_path.exists(),
+            "Should create agtrace.db, not db.sqlite"
+        );
+        assert!(
+            !wrong_db_path.exists(),
+            "Should NOT create db.sqlite (old bug path)"
         );
     }
 }
