@@ -106,16 +106,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     short,
                     style,
                 } => handlers::session_show::handle(
-                    &db,
-                    session_id,
-                    raw,
-                    json,
-                    timeline,
-                    hide,
-                    only,
-                    full,
-                    short,
-                    style.to_string(),
+                    &db, session_id, raw, json, timeline, hide, only, full, short, style,
                 ),
             }
         }

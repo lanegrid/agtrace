@@ -2,6 +2,7 @@
 
 use crate::output::{format_session_compact, print_events_timeline, CompactFormatOpts};
 use crate::session_loader::{LoadOptions, SessionLoader};
+use crate::types::ViewStyle;
 use agtrace_engine::assemble_session_from_events;
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
@@ -21,7 +22,7 @@ pub fn handle(
     only: Option<Vec<String>>,
     _full: bool, // Kept for backwards compatibility, but now default
     short: bool,
-    style: String,
+    style: ViewStyle,
 ) -> Result<()> {
     // Detect if output is being piped (not a terminal)
     let is_tty = io::stdout().is_terminal();
@@ -53,23 +54,28 @@ pub fn handle(
 
     if json {
         println!("{}", serde_json::to_string_pretty(&filtered_events)?);
-    } else if style == "compact" {
-        if let Some(session) = assemble_session_from_events(&filtered_events) {
-            let opts = CompactFormatOpts {
-                enable_color,
-                relative_time: true,
-            };
-            let lines = format_session_compact(&session, &opts);
-            for line in lines {
-                println!("{}", line);
-            }
-        } else {
-            eprintln!("Failed to assemble session from events");
-        }
     } else {
-        // Timeline view uses v2 events directly
-        let truncate = short;
-        print_events_timeline(&filtered_events, truncate, enable_color);
+        match style {
+            ViewStyle::Compact => {
+                if let Some(session) = assemble_session_from_events(&filtered_events) {
+                    let opts = CompactFormatOpts {
+                        enable_color,
+                        relative_time: true,
+                    };
+                    let lines = format_session_compact(&session, &opts);
+                    for line in lines {
+                        println!("{}", line);
+                    }
+                } else {
+                    eprintln!("Failed to assemble session from events");
+                }
+            }
+            ViewStyle::Timeline => {
+                // Timeline view uses v2 events directly
+                let truncate = short;
+                print_events_timeline(&filtered_events, truncate, enable_color);
+            }
+        }
     }
 
     Ok(())

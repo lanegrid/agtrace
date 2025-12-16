@@ -123,7 +123,9 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
                             ));
                         }
 
-                        let state = session_state.as_mut().unwrap();
+                        let state = session_state
+                            .as_mut()
+                            .expect("session_state must be Some after initialization");
                         update_session_state(state, &event);
 
                         // Run all reactors
