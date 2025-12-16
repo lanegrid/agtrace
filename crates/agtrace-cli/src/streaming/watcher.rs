@@ -231,15 +231,8 @@ fn handle_fs_event(
                 if should_switch {
                     let old_path = current_file.clone();
                     *current_file = Some(path.clone());
-                    // Count existing events when switching to new file
-                    let event_count = match count_existing_events(path, provider) {
-                        Ok(count) => count,
-                        Err(e) => {
-                            eprintln!("[WARN] Failed to count existing events: {}", e);
-                            0
-                        }
-                    };
-                    file_event_counts.insert(path.clone(), event_count);
+                    // Initialize count to 0 so existing events will be treated as "new" and sent in Update
+                    file_event_counts.insert(path.clone(), 0);
 
                     if let Some(old) = old_path {
                         // Send rotation event
@@ -258,6 +251,33 @@ fn handle_fs_event(
                             session_id: extract_session_id(path),
                         });
                     }
+
+                    // Send initial Update event with existing events from the newly attached file
+                    if let Ok((all_events, new_events)) = load_and_detect_changes(path, 0, provider)
+                    {
+                        if !new_events.is_empty() {
+                            file_event_counts.insert(path.clone(), new_events.len());
+
+                            let session = assemble_session_from_events(&all_events);
+
+                            let start_idx = all_events
+                                .iter()
+                                .position(|e| matches!(e.payload, EventPayload::User(_)))
+                                .unwrap_or(all_events.len());
+
+                            let orphaned_events =
+                                all_events.iter().take(start_idx).cloned().collect();
+
+                            let update = SessionUpdate {
+                                session,
+                                new_events,
+                                orphaned_events,
+                                total_events: all_events.len(),
+                            };
+
+                            let _ = tx.send(StreamEvent::Update(update));
+                        }
+                    }
                 }
             }
         }
@@ -271,20 +291,14 @@ fn handle_fs_event(
                         }
                     }
 
-                    let event_count = match count_existing_events(path, provider) {
-                        Ok(count) => count,
-                        Err(e) => {
-                            eprintln!("[WARN] Failed to count existing events: {}", e);
-                            0
-                        }
-                    };
                     *current_file = Some(path.clone());
-                    file_event_counts.insert(path.clone(), event_count);
+                    // Initialize count to 0 so existing events will be treated as "new" and sent in Update
+                    file_event_counts.insert(path.clone(), 0);
                     let _ = tx.send(StreamEvent::Attached {
                         path: path.clone(),
                         session_id: extract_session_id(path),
                     });
-                    continue;
+                    // Don't continue - let it fall through to process existing events
                 }
 
                 if Some(path) == current_file.as_ref() {

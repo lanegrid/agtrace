@@ -87,3 +87,78 @@ fn test_session_rotation_emits_attached_event() {
         }
     }
 }
+
+/// Test that watcher sends Update event when transitioning from waiting mode to active file
+#[test]
+fn test_waiting_mode_to_active_file_sends_update() {
+    let temp_dir = TempDir::new().unwrap();
+    let log_root = temp_dir.path().join(".claude");
+    fs::create_dir_all(&log_root).unwrap();
+
+    let provider: Arc<dyn LogProvider> = Arc::from(create_provider("claude_code").unwrap());
+
+    // Create watcher with empty directory (waiting mode)
+    let watcher = SessionWatcher::new(log_root.clone(), provider.clone(), None, None).unwrap();
+
+    let rx = watcher.receiver();
+
+    // Should receive Waiting event since no files exist
+    let event = rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("Should receive Waiting event");
+
+    match event {
+        StreamEvent::Waiting { .. } => {}
+        other => panic!("Expected Waiting event, got: {:?}", other),
+    }
+
+    // Now create a session file with existing events
+    let samples_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .join("agtrace-providers/tests/samples");
+
+    let session_file = log_root.join("new_session.jsonl");
+    fs::copy(samples_dir.join("claude_session.jsonl"), &session_file).unwrap();
+
+    // Make it recent
+    let now = filetime::FileTime::now();
+    filetime::set_file_mtime(&session_file, now).unwrap();
+
+    // Watcher should detect the new file and attach
+    let event = rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("Should receive Attached event after file creation");
+
+    match event {
+        StreamEvent::Attached { path, .. } => {
+            assert_eq!(path, session_file);
+        }
+        other => panic!("Expected Attached event, got: {:?}", other),
+    }
+
+    // BUG: Should also receive an Update event with existing events from the file
+    // But currently it doesn't because of the `continue` statement in the Modify handler
+    let event = rx.recv_timeout(Duration::from_secs(2));
+
+    match event {
+        Ok(StreamEvent::Update(update)) => {
+            assert!(
+                !update.new_events.is_empty(),
+                "Should receive Update with existing events from newly attached file"
+            );
+        }
+        Ok(other) => {
+            panic!(
+                "Expected Update event after attaching to file with existing events, got: {:?}",
+                other
+            );
+        }
+        Err(_) => {
+            panic!(
+                "BUG: No Update event received after attaching to file with existing events. \
+                 The watcher attached to the file but didn't send existing events."
+            );
+        }
+    }
+}
