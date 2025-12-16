@@ -1,47 +1,28 @@
-use crate::config::Config;
+use crate::context::ExecutionContext;
 use crate::output::print_results;
 use agtrace_engine::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
-use agtrace_providers::{create_all_providers, create_provider, LogProvider};
+use agtrace_providers::LogProvider;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::Path;
 use walkdir::WalkDir;
 
-pub fn handle(config: &Config, provider_filter: String, verbose: bool) -> Result<()> {
-    let providers: Vec<Box<dyn LogProvider>> = if provider_filter == "all" {
-        create_all_providers()
-    } else {
-        vec![create_provider(&provider_filter)?]
-    };
+pub fn handle(ctx: &ExecutionContext, provider_filter: String, verbose: bool) -> Result<()> {
+    let providers_with_roots = ctx.resolve_providers(&provider_filter)?;
 
     let mut results = Vec::new();
 
-    for provider in providers {
-        let provider_name = provider.name();
-
-        let provider_config = match config.providers.get(provider_name) {
-            Some(cfg) => cfg,
-            None => {
-                eprintln!("No configuration found for provider: {}", provider_name);
-                continue;
-            }
-        };
-
-        if !provider_config.enabled {
-            continue;
-        }
-
-        let log_root = &provider_config.log_root;
+    for (provider, log_root) in providers_with_roots {
         if !log_root.exists() {
             eprintln!(
                 "Warning: log_root does not exist for {}: {}",
-                provider_name,
+                provider.name(),
                 log_root.display()
             );
             continue;
         }
 
-        let result = diagnose_provider(provider.as_ref(), log_root)?;
+        let result = diagnose_provider(provider.as_ref(), &log_root)?;
         results.push(result);
     }
 

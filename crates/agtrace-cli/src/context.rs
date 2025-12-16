@@ -76,4 +76,37 @@ impl ExecutionContext {
                 anyhow!("No enabled provider found. Run 'agtrace init' to configure providers.")
             })
     }
+
+    pub fn resolve_providers(
+        &self,
+        provider_filter: &str,
+    ) -> Result<Vec<(Box<dyn LogProvider>, PathBuf)>> {
+        use agtrace_providers::create_all_providers;
+
+        if provider_filter == "all" {
+            let config = self.config()?;
+            let all_providers = create_all_providers();
+            let mut result = Vec::new();
+
+            for provider in all_providers {
+                let provider_name = provider.name();
+                if let Some(provider_config) = config.providers.get(provider_name) {
+                    if provider_config.enabled {
+                        result.push((provider, provider_config.log_root.clone()));
+                    }
+                }
+            }
+
+            if result.is_empty() {
+                anyhow::bail!(
+                    "No enabled providers found. Run 'agtrace init' to configure providers."
+                );
+            }
+
+            Ok(result)
+        } else {
+            let (provider, log_root) = self.resolve_provider(provider_filter)?;
+            Ok(vec![(provider, log_root)])
+        }
+    }
 }

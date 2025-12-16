@@ -3,7 +3,6 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::config::Config;
 use crate::context::ExecutionContext;
 use agtrace_index::Database;
 use anyhow::Result;
@@ -39,33 +38,21 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Index { command } => {
-            let db_path = data_dir.join("agtrace.db");
-            let db = Database::open(&db_path)?;
-            let config_path = data_dir.join("config.toml");
-            let config = Config::load_from(&config_path)?;
+            let ctx = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            )?;
 
             match command {
-                IndexCommand::Update { provider, verbose } => handlers::index::handle(
-                    &db,
-                    &config,
-                    provider,
-                    cli.project_root,
-                    cli.all_projects,
-                    false,
-                    verbose,
-                ),
-                IndexCommand::Rebuild { provider, verbose } => handlers::index::handle(
-                    &db,
-                    &config,
-                    provider,
-                    cli.project_root,
-                    cli.all_projects,
-                    true,
-                    verbose,
-                ),
+                IndexCommand::Update { provider, verbose } => {
+                    handlers::index::handle(&ctx, provider, false, verbose)
+                }
+                IndexCommand::Rebuild { provider, verbose } => {
+                    handlers::index::handle(&ctx, provider, true, verbose)
+                }
                 IndexCommand::Vacuum => {
-                    let db_path = data_dir.join("agtrace.db");
-                    let db = Database::open(&db_path)?;
+                    let db = ctx.db()?;
                     db.vacuum()
                 }
             }
@@ -138,9 +125,12 @@ pub fn run(cli: Cli) -> Result<()> {
 
         Commands::Doctor { command } => match command {
             DoctorCommand::Run { provider, verbose } => {
-                let config_path = data_dir.join("config.toml");
-                let config = Config::load_from(&config_path)?;
-                handlers::doctor_run::handle(&config, provider, verbose)
+                let ctx = ExecutionContext::new(
+                    data_dir.clone(),
+                    cli.project_root.clone(),
+                    cli.all_projects,
+                )?;
+                handlers::doctor_run::handle(&ctx, provider, verbose)
             }
             DoctorCommand::Inspect {
                 file_path,

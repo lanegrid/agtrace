@@ -1,4 +1,5 @@
 use crate::config::Config;
+use crate::context::ExecutionContext;
 use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
@@ -105,15 +106,12 @@ pub fn handle(
 
     if should_scan {
         println!("\nStep 3/4: Scanning for sessions...");
-        let scan_result = super::index::handle(
-            &db,
-            &config,
-            "all".to_string(),
+        let ctx = ExecutionContext::new(
+            data_dir.to_path_buf(),
             Some(current_project_root.clone()),
             all_projects,
-            false,
-            false,
-        );
+        )?;
+        let scan_result = super::index::handle(&ctx, "all".to_string(), false, false);
 
         match scan_result {
             Ok(_) => {}

@@ -1,55 +1,20 @@
-use crate::config::Config;
-use agtrace_index::{Database, LogFileRecord, ProjectRecord, SessionRecord};
-use agtrace_providers::{create_all_providers, create_provider, LogProvider, ScanContext};
+use crate::context::ExecutionContext;
+use agtrace_index::{LogFileRecord, ProjectRecord, SessionRecord};
+use agtrace_providers::ScanContext;
 use agtrace_types::project_hash_from_root;
 use anyhow::{Context, Result};
 
-pub fn handle(
-    db: &Database,
-    config: &Config,
-    provider: String,
-    project_root: Option<String>,
-    all_projects: bool,
-    _force: bool,
-    verbose: bool,
-) -> Result<()> {
-    let current_project_root = if let Some(root) = project_root {
-        Some(root)
-    } else if let Ok(cwd) = std::env::current_dir() {
-        Some(cwd.display().to_string())
-    } else {
-        None
-    };
+pub fn handle(ctx: &ExecutionContext, provider: String, _force: bool, verbose: bool) -> Result<()> {
+    let db = ctx.db()?;
+    let providers_with_roots = ctx.resolve_providers(&provider)?;
 
-    let providers: Vec<Box<dyn LogProvider>> = if provider == "all" {
-        create_all_providers()
-    } else {
-        vec![create_provider(&provider)?]
-    };
+    let current_project_root = ctx.project_root.as_ref().map(|p| p.display().to_string());
+    let all_projects = ctx.all_projects;
 
     let mut total_sessions = 0;
 
-    for provider in providers {
+    for (provider, log_root) in providers_with_roots {
         let provider_name = provider.name();
-
-        let provider_config = match config.providers.get(provider_name) {
-            Some(cfg) => cfg,
-            None => {
-                if verbose {
-                    println!("No configuration found for provider: {}", provider_name);
-                }
-                continue;
-            }
-        };
-
-        if !provider_config.enabled {
-            if verbose {
-                println!("Skipping disabled provider: {}", provider_name);
-            }
-            continue;
-        }
-
-        let log_root = &provider_config.log_root;
         if !log_root.exists() {
             if verbose {
                 println!(
@@ -81,7 +46,7 @@ pub fn handle(
         };
 
         let sessions = provider
-            .scan(log_root, &scan_context)
+            .scan(&log_root, &scan_context)
             .with_context(|| format!("Failed to scan {}", provider_name))?;
 
         if verbose {
