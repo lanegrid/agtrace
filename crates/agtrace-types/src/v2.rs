@@ -58,6 +58,9 @@ pub enum EventPayload {
     ///
     /// Not included in context, used for cost calculation
     TokenUsage(TokenUsagePayload),
+
+    /// 7. User-facing system notification (updates, alerts, status changes)
+    Notification(NotificationPayload),
 }
 
 // --- Payload Definitions ---
@@ -133,6 +136,15 @@ pub struct TokenUsageDetails {
     pub audio_input_tokens: Option<i32>,
     /// Audio output tokens (future-proofing for multimodal)
     pub audio_output_tokens: Option<i32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NotificationPayload {
+    /// Notification message text
+    pub text: String,
+    /// Optional severity level (e.g., "info", "warning", "error")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub level: Option<String>,
 }
 
 // --- Helper Methods ---

@@ -131,9 +131,17 @@ pub fn normalize_gemini_session_v2(
                 events.push(token_event);
             }
 
-            GeminiMessage::Info(_info_msg) => {
-                // Skip info messages for now
-                // Could map to system events in future if needed
+            GeminiMessage::Info(info_msg) => {
+                let timestamp = parse_timestamp(&info_msg.timestamp);
+                let event = builder.create_event(
+                    timestamp,
+                    EventPayload::Notification(NotificationPayload {
+                        text: info_msg.content.clone(),
+                        level: Some("info".to_string()),
+                    }),
+                    Some(raw_value),
+                );
+                events.push(event);
             }
         }
     }

@@ -71,6 +71,7 @@ fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
             EventPayload::ToolCall(_) => "ToolCall",
             EventPayload::ToolResult(_) => "ToolResult",
             EventPayload::TokenUsage(_) => "TokenUsage",
+            EventPayload::Notification(_) => "Notification",
         };
 
         writeln!(file, "[{}] {}", ts_str, event_type)?;
@@ -97,6 +98,14 @@ fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
                     file,
                     "Tokens: in={}, out={}",
                     p.input_tokens, p.output_tokens
+                )?;
+            }
+            EventPayload::Notification(p) => {
+                writeln!(
+                    file,
+                    "[{}] {}",
+                    p.level.as_deref().unwrap_or("info"),
+                    p.text
                 )?;
             }
         }

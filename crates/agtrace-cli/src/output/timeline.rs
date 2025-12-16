@@ -63,6 +63,7 @@ fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
                     }
                 }
             }
+            EventPayload::Notification(_) => {}
         }
     }
 
@@ -137,12 +138,31 @@ pub fn print_events_timeline(events: &[AgentEvent], truncate: bool, enable_color
 
         // Event type string with optional color
         let (event_type_name, text_opt, tool_name_opt, is_error) = match &event.payload {
-            EventPayload::User(p) => ("UserMessage", Some(&p.text), None, false),
-            EventPayload::Message(p) => ("AssistantMessage", Some(&p.text), None, false),
-            EventPayload::Reasoning(p) => ("Reasoning", Some(&p.text), None, false),
+            EventPayload::User(p) => {
+                // Skip empty user messages
+                if p.text.trim().is_empty() {
+                    continue;
+                }
+                ("UserMessage", Some(&p.text), None, false)
+            }
+            EventPayload::Message(p) => {
+                // Skip empty assistant messages (common in Gemini when only tool calls are present)
+                if p.text.trim().is_empty() {
+                    continue;
+                }
+                ("AssistantMessage", Some(&p.text), None, false)
+            }
+            EventPayload::Reasoning(p) => {
+                // Skip empty reasoning blocks
+                if p.text.trim().is_empty() {
+                    continue;
+                }
+                ("Reasoning", Some(&p.text), None, false)
+            }
             EventPayload::ToolCall(p) => ("ToolCall", Some(&p.name), Some(&p.name), false),
             EventPayload::ToolResult(p) => ("ToolResult", Some(&p.output), None, p.is_error),
             EventPayload::TokenUsage(_) => continue, // Skip (already filtered above)
+            EventPayload::Notification(p) => ("Notification", Some(&p.text), None, false),
         };
 
         // Add status indicator for ToolResult events
@@ -176,6 +196,7 @@ pub fn print_events_timeline(events: &[AgentEvent], truncate: bool, enable_color
                     }
                 }
                 EventPayload::TokenUsage(_) => continue,
+                EventPayload::Notification(_) => format!("{}", event_type_name.cyan()),
             }
         } else {
             event_type_name.to_string()

@@ -54,6 +54,7 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
                     agtrace_types::v2::EventPayload::ToolResult(_) => "ToolResult",
                     agtrace_types::v2::EventPayload::Reasoning(_) => "Reasoning",
                     agtrace_types::v2::EventPayload::TokenUsage(_) => "TokenUsage",
+                    agtrace_types::v2::EventPayload::Notification(_) => "Notification",
                 };
                 *type_counts.entry(payload_type).or_insert(0) += 1;
             }

@@ -100,6 +100,9 @@ fn filter_events_v2(
                     EventPayload::TokenUsage(_) => {
                         pattern_lower == "token" || pattern_lower == "tokenusage"
                     }
+                    EventPayload::Notification(_) => {
+                        pattern_lower == "notification" || pattern_lower == "info"
+                    }
                 }
             })
         });
@@ -121,6 +124,9 @@ fn filter_events_v2(
                     EventPayload::Reasoning(_) => pattern_lower == "reasoning",
                     EventPayload::TokenUsage(_) => {
                         pattern_lower == "token" || pattern_lower == "tokenusage"
+                    }
+                    EventPayload::Notification(_) => {
+                        pattern_lower == "notification" || pattern_lower == "info"
                     }
                 }
             })

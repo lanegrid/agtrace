@@ -221,6 +221,11 @@ pub fn build_spans(events: &[AgentEvent]) -> Vec<Span> {
                     }
                 }
             }
+
+            EventPayload::Notification(_) => {
+                // Skip notifications - they are not part of span structure
+                // Used for watch display only
+            }
         }
     }
 

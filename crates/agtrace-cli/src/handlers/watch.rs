@@ -97,6 +97,10 @@ fn print_event(event: &AgentEvent, turn_context: usize) {
 
     match &event.payload {
         EventPayload::User(payload) => {
+            // Skip empty user messages (shouldn't happen, but defensive)
+            if payload.text.trim().is_empty() {
+                return;
+            }
             let text = truncate(&payload.text, 100);
             println!(
                 "{} {} [T{}] \"{}\"",
@@ -107,6 +111,10 @@ fn print_event(event: &AgentEvent, turn_context: usize) {
             );
         }
         EventPayload::Reasoning(payload) => {
+            // Skip empty reasoning blocks
+            if payload.text.trim().is_empty() {
+                return;
+            }
             let text = truncate(&payload.text, 50);
             println!(
                 "{} {} {}",
@@ -136,11 +144,25 @@ fn print_event(event: &AgentEvent, turn_context: usize) {
             // Success results are not shown (too noisy for MVP)
         }
         EventPayload::Message(payload) => {
+            // Skip empty messages (common in Gemini when only tool calls are present)
+            if payload.text.trim().is_empty() {
+                return;
+            }
             let text = truncate(&payload.text, 100);
             println!("{} {} {}", time.dimmed(), "💬 Msg:".cyan(), text);
         }
         EventPayload::TokenUsage(_) => {
             // Skip token usage (sidecar info, not relevant for stream)
+        }
+        EventPayload::Notification(payload) => {
+            let (icon, color_fn): (&str, fn(&str) -> String) = match payload.level.as_deref() {
+                Some("warning") => ("⚠️", |s: &str| s.yellow().to_string()),
+                Some("error") => ("❌", |s: &str| s.red().to_string()),
+                _ => ("ℹ️", |s: &str| s.cyan().to_string()), // "info" or None
+            };
+            let text = truncate(&payload.text, 100);
+            let colored_text = color_fn(&text);
+            println!("{} {} {}", time.dimmed(), icon, colored_text);
         }
     }
 }

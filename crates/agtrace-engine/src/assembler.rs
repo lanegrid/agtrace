@@ -199,6 +199,11 @@ impl TurnBuilder {
                 }
             }
 
+            EventPayload::Notification(_) => {
+                // Skip notifications - they are not part of the session structure
+                // Used for watch display only
+            }
+
             EventPayload::User(_) => unreachable!(),
         }
     }
