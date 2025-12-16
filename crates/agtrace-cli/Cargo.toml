@@ -36,3 +36,4 @@ assert_cmd = "2.0"
 predicates = "3.1"
 tempfile = "3.10"
 insta = { version = "1.34", features = ["json"] }
+uuid = "1.19.0"

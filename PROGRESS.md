@@ -51,11 +51,16 @@ Reactions (Continue, Warn, Intervene)
     - System directory access (`/`, `/etc/`, `/sys/`)
   - Emit `Intervene { severity: Notification }` for v0.1.0 (monitoring only)
 
-### Phase 3: Testing & Polish
+### Phase 3: Testing & Polish ✅
 
-- [ ] Add tests for reactor isolation
-- [ ] Document reactor interface
-- [ ] Add CLI flag: `--disable-reactor <name>` for debugging
+- [x] Add tests for reactor isolation
+  - Unit tests for `Reactor` trait (5 tests in `reactor.rs`)
+  - Unit tests for `SafetyGuard` (7 tests in `safety_guard.rs`)
+  - All tests passing (16 total in lib)
+- [x] Document reactor interface
+  - Created `docs/reactor_architecture.md` with full documentation
+  - Includes examples, design principles, and future extensions
+- [ ] Add CLI flag: `--disable-reactor <name>` for debugging (deferred to next iteration)
 
 ## Future (v0.2.0): Intervention Mode
 
