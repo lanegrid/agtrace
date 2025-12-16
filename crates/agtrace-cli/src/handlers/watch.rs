@@ -74,7 +74,7 @@ fn initialize_session_state(
 
 /// Handle StreamEvent::Attached
 fn handle_attached_event(
-    ctx: &ExecutionContext,
+    provider: &Arc<dyn agtrace_providers::LogProvider>,
     path: &Path,
     session_id: Option<&str>,
 ) -> Result<()> {
@@ -86,30 +86,34 @@ fn handle_attached_event(
     );
 
     // Load and display recent session history
-    if let Some(sid) = session_id {
-        if let Err(e) = display_session_history(ctx, sid) {
-            eprintln!(
-                "{} Failed to load session history: {}",
-                "⚠️  Warning:".yellow(),
-                e
-            );
-        }
+    if let Err(e) = display_session_history(provider, path) {
+        eprintln!(
+            "{} Failed to load session history: {}",
+            "⚠️  Warning:".yellow(),
+            e
+        );
     }
 
     Ok(())
 }
 
-/// Display recent session history (last 5 turns)
-fn display_session_history(ctx: &ExecutionContext, session_id: &str) -> Result<()> {
+/// Display recent session history (last 5 turns) by directly reading from file
+fn display_session_history(
+    provider: &Arc<dyn agtrace_providers::LogProvider>,
+    path: &Path,
+) -> Result<()> {
     use crate::output::{format_session_compact, CompactFormatOpts};
-    use crate::session_loader::{LoadOptions, SessionLoader};
     use agtrace_engine::assemble_session_from_events;
+    use agtrace_providers::ImportContext;
 
-    let db = ctx.db()?;
-    let loader = SessionLoader::new(db);
-    let options = LoadOptions::default();
+    // Read events directly from file without using database
+    let context = ImportContext {
+        project_root_override: None,
+        session_id_prefix: None,
+        all_projects: false,
+    };
 
-    let events = loader.load_events_v2(session_id, &options)?;
+    let events = provider.normalize_file(path, &context)?;
 
     if let Some(session) = assemble_session_from_events(&events) {
         if session.turns.is_empty() {
@@ -202,7 +206,11 @@ fn process_update_event(
 }
 
 pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
-    let (provider, log_root, explicit_target) = match target {
+    let (provider, log_root, explicit_target): (
+        Arc<dyn agtrace_providers::LogProvider>,
+        PathBuf,
+        Option<String>,
+    ) = match target {
         WatchTarget::Provider { name } => {
             let (provider, log_root) = ctx.resolve_provider(&name)?;
             println!(
@@ -235,6 +243,9 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
         ctx.project_root.clone()
     };
 
+    // Clone provider for use in event handlers
+    let provider_for_handlers = provider.clone();
+
     // Create session watcher with provider and optional project context
     let watcher = SessionWatcher::new(
         log_root.to_path_buf(),
@@ -255,7 +266,9 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
         match watcher.receiver().recv() {
             Ok(event) => match event {
                 StreamEvent::Attached { path, session_id } => {
-                    if let Err(e) = handle_attached_event(ctx, &path, session_id.as_deref()) {
+                    if let Err(e) =
+                        handle_attached_event(&provider_for_handlers, &path, session_id.as_deref())
+                    {
                         eprintln!("{} {}", "❌ Error:".red(), e);
                     }
                 }
