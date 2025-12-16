@@ -28,6 +28,22 @@ pub enum Severity {
 
 /// Lightweight session state metadata for reactor context
 /// This is NOT the full AgentSession, but a summary of key metrics
+///
+/// NOTE: Token fields are SNAPSHOTS, not cumulative totals
+///
+/// Why snapshots?
+/// - LLMs receive the full conversation history on EVERY turn
+/// - TokenUsage events report the current turn's token breakdown, not deltas
+/// - Example: Turn 1 uses 100 input tokens, Turn 2 uses 150 input tokens
+///   → Turn 2's event shows input_tokens=150 (the full prompt size this turn),
+///     NOT input_tokens=50 (incremental)
+///
+/// This is critical for:
+/// 1. Accurate context window tracking (latest snapshot = current usage)
+/// 2. Prompt caching visibility (cache_read shows reused tokens each turn)
+/// 3. Rate limit calculations (must use current snapshot, not accumulated total)
+///
+/// See: e156a8e "fix fundamental misunderstanding - use snapshots not cumulative totals"
 #[derive(Debug, Clone)]
 pub struct SessionState {
     /// Session/trace ID

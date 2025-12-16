@@ -389,7 +389,17 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
             }
         }
         EventPayload::TokenUsage(usage) => {
-            // Update current turn's token snapshot (OVERWRITE, not accumulate)
+            // NOTE: Use assignment (=), NOT accumulation (+=)
+            //
+            // TokenUsage events are snapshots of the current turn, not deltas.
+            // Each turn the LLM receives the full history, so:
+            // - Turn 1: 1000 tokens → event reports 1000
+            // - Turn 2: 1200 tokens (history grew) → event reports 1200
+            // Using += would give 2200, severely overreporting context window usage.
+            //
+            // This applies to ALL token fields including cache tokens:
+            // - cache_read_input_tokens: how many tokens reused THIS turn
+            // - cache_creation_input_tokens: how many new tokens cached THIS turn
             state.current_input_tokens = usage.input_tokens;
             state.current_output_tokens = usage.output_tokens;
 
