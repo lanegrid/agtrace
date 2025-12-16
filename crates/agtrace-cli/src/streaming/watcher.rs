@@ -22,6 +22,7 @@ pub enum WatchTarget {
 #[derive(Debug, Clone)]
 pub struct SessionUpdate {
     /// The fully assembled session state (snapshot)
+    #[allow(dead_code)]
     pub session: Option<AgentSession>,
     /// New raw events detected in this update (delta)
     pub new_events: Vec<AgentEvent>,

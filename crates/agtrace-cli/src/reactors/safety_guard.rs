@@ -21,8 +21,9 @@ impl SafetyGuard {
         if let Some(obj) = args.as_object() {
             for (_key, value) in obj.iter() {
                 if let Some(s) = value.as_str() {
-                    // Path traversal check
-                    if s.contains("..") {
+                    // Path traversal check: detect ".." as path component, not any occurrence
+                    if s == ".." || s.starts_with("../") || s.contains("/../") || s.ends_with("/..")
+                    {
                         return Some(format!("Path traversal detected: '{}'", s));
                     }
 
@@ -230,6 +231,40 @@ mod tests {
         let mut guard = SafetyGuard::new();
         let event = create_tool_call_event(serde_json::json!({
             "path": "src/main.rs"
+        }));
+        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let ctx = ReactorContext {
+            event: &event,
+            state: &state,
+        };
+
+        let result = guard.handle(ctx).unwrap();
+        assert!(matches!(result, Reaction::Continue));
+    }
+
+    #[test]
+    fn test_dots_in_filename_allowed() {
+        let mut guard = SafetyGuard::new();
+        // Path with consecutive dots but not path traversal
+        let event = create_tool_call_event(serde_json::json!({
+            "path": "/Users/test/reactor...md"
+        }));
+        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let ctx = ReactorContext {
+            event: &event,
+            state: &state,
+        };
+
+        let result = guard.handle(ctx).unwrap();
+        assert!(matches!(result, Reaction::Continue));
+    }
+
+    #[test]
+    fn test_truncated_display_string_allowed() {
+        let mut guard = SafetyGuard::new();
+        // Truncated path display with "..." suffix should not trigger false positive
+        let event = create_tool_call_event(serde_json::json!({
+            "path": "/Users/zawakin/go/src/github.com/lanegrid/agtrace/docs/react..."
         }));
         let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
