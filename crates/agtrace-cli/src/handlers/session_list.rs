@@ -1,3 +1,4 @@
+use crate::types::OutputFormat;
 use agtrace_index::{Database, SessionSummary};
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
@@ -10,7 +11,7 @@ pub fn handle(
     project_hash: Option<String>,
     limit: usize,
     all_projects: bool,
-    format: &str,
+    format: OutputFormat,
     source: Option<String>,
     since: Option<String>,
     until: Option<String>,
@@ -59,10 +60,13 @@ pub fn handle(
     // Apply limit after filtering
     sessions.truncate(limit);
 
-    if format == "json" {
-        println!("{}", serde_json::to_string_pretty(&sessions)?);
-    } else {
-        print_sessions_table(&sessions);
+    match format {
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(&sessions)?);
+        }
+        OutputFormat::Plain => {
+            print_sessions_table(&sessions);
+        }
     }
 
     Ok(())

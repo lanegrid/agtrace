@@ -89,7 +89,7 @@ pub fn run(cli: Cli) -> Result<()> {
                         effective_hash,
                         limit,
                         cli.all_projects,
-                        &cli.format.to_string(),
+                        cli.format,
                         source.map(|s| s.to_string()),
                         since.clone(),
                         until.clone(),
@@ -133,7 +133,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     disable,
                 } => handlers::provider::set(provider, log_root, enable, disable, &config_path),
                 ProviderCommand::Schema { provider, format } => {
-                    handlers::provider_schema::handle(provider, format.to_string())
+                    handlers::provider_schema::handle(provider, format)
                 }
             }
         }

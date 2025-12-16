@@ -1,28 +1,29 @@
+use crate::types::SchemaFormat;
 use anyhow::Result;
 use owo_colors::OwoColorize;
 
-pub fn handle(provider: String, format: String) -> Result<()> {
+pub fn handle(provider: String, format: SchemaFormat) -> Result<()> {
     match provider.as_str() {
-        "claude" => display_claude_schema(&format),
-        "codex" => display_codex_schema(&format),
-        "gemini" => display_gemini_schema(&format),
+        "claude" => display_claude_schema(format),
+        "codex" => display_codex_schema(format),
+        "gemini" => display_gemini_schema(format),
         _ => anyhow::bail!("Unknown provider: {}", provider),
     }
 }
 
-fn display_codex_schema(format: &str) -> Result<()> {
+fn display_codex_schema(format: SchemaFormat) -> Result<()> {
     match format {
-        "rust" => {
+        SchemaFormat::Rust => {
             println!(
                 "{}",
                 include_str!("../../../agtrace-providers/src/codex/schema.rs")
             );
         }
-        "json" => {
+        SchemaFormat::Json => {
             // TODO: Generate JSON Schema
             println!("JSON Schema output not yet implemented");
         }
-        _ => {
+        SchemaFormat::Text => {
             // Text format
             println!("{}", "Provider: Codex".bright_blue().bold());
             println!("Schema version: v0.53-v0.63");
@@ -76,18 +77,18 @@ fn display_codex_schema(format: &str) -> Result<()> {
     Ok(())
 }
 
-fn display_claude_schema(format: &str) -> Result<()> {
+fn display_claude_schema(format: SchemaFormat) -> Result<()> {
     match format {
-        "rust" => {
+        SchemaFormat::Rust => {
             println!(
                 "{}",
                 include_str!("../../../agtrace-providers/src/claude/schema.rs")
             );
         }
-        "json" => {
+        SchemaFormat::Json => {
             println!("JSON Schema output not yet implemented");
         }
-        _ => {
+        SchemaFormat::Text => {
             println!("{}", "Provider: Claude Code".bright_blue().bold());
             println!("Schema version: v2.0.28+");
             println!();
@@ -132,18 +133,18 @@ fn display_claude_schema(format: &str) -> Result<()> {
     Ok(())
 }
 
-fn display_gemini_schema(format: &str) -> Result<()> {
+fn display_gemini_schema(format: SchemaFormat) -> Result<()> {
     match format {
-        "rust" => {
+        SchemaFormat::Rust => {
             println!(
                 "{}",
                 include_str!("../../../agtrace-providers/src/gemini/schema.rs")
             );
         }
-        "json" => {
+        SchemaFormat::Json => {
             println!("JSON Schema output not yet implemented");
         }
-        _ => {
+        SchemaFormat::Text => {
             println!("{}", "Provider: Gemini".bright_blue().bold());
             println!("Schema version: unknown");
             println!();

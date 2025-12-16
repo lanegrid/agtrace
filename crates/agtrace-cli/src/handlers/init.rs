@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::context::ExecutionContext;
+use crate::types::OutputFormat;
 use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
@@ -141,7 +142,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
         effective_hash,
         10,
         ctx.all_projects,
-        "plain",
+        OutputFormat::Plain,
         None,
         None,
         None,

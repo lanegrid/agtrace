@@ -183,10 +183,7 @@ log_root = "/tmp/gemini_logs"
             provider_names.contains(&"claude_code"),
             "Should include claude_code"
         );
-        assert!(
-            provider_names.contains(&"codex"),
-            "Should include codex"
-        );
+        assert!(provider_names.contains(&"codex"), "Should include codex");
         assert!(
             !provider_names.contains(&"gemini"),
             "Should not include disabled gemini"
@@ -217,10 +214,7 @@ log_root = "/tmp/gemini_logs"
 
         let result = ctx.resolve_provider("gemini");
 
-        assert!(
-            result.is_err(),
-            "Should fail to resolve disabled provider"
-        );
+        assert!(result.is_err(), "Should fail to resolve disabled provider");
         let err_msg = result.err().unwrap().to_string();
         assert!(
             err_msg.contains("not enabled"),
@@ -262,8 +256,7 @@ log_root = "/tmp/gemini_logs"
 
         // Test with explicit project root
         let ctx_with_root =
-            ExecutionContext::new(data_dir.clone(), Some("/test/path".to_string()), false)
-                .unwrap();
+            ExecutionContext::new(data_dir.clone(), Some("/test/path".to_string()), false).unwrap();
         assert_eq!(
             ctx_with_root.project_root,
             Some(PathBuf::from("/test/path")),
