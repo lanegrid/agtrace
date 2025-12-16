@@ -189,17 +189,8 @@ impl SessionWatcher {
     }
 
     /// Get the receiver for stream events
-    #[allow(dead_code)]
     pub fn receiver(&self) -> &Receiver<StreamEvent> {
         &self.rx
-    }
-
-    /// Consume self and return the receiver
-    /// WARNING: This will drop the watcher, stopping file system monitoring.
-    /// Only use this if you're managing the watcher lifetime externally.
-    #[allow(dead_code)]
-    pub fn into_receiver(self) -> Receiver<StreamEvent> {
-        self.rx
     }
 }
 
