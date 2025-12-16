@@ -22,15 +22,12 @@ pub enum WatchTarget {
 #[derive(Debug, Clone)]
 pub struct SessionUpdate {
     /// The fully assembled session state (snapshot)
-    #[allow(dead_code)]
     pub session: Option<AgentSession>,
     /// New raw events detected in this update (delta)
     pub new_events: Vec<AgentEvent>,
     /// Events that were not included in the session (e.g. pre-session noise)
-    #[allow(dead_code)]
     pub orphaned_events: Vec<AgentEvent>,
     /// Total count of events in the file
-    #[allow(dead_code)]
     pub total_events: usize,
 }
 
@@ -40,14 +37,12 @@ pub enum StreamEvent {
     /// Successfully attached to a session file
     Attached {
         path: PathBuf,
-        #[allow(dead_code)]
         session_id: Option<String>,
     },
     /// Session updated (new events and/or state change)
     Update(SessionUpdate),
     /// Session file was rotated (new session started)
     SessionRotated {
-        #[allow(dead_code)]
         old_path: PathBuf,
         new_path: PathBuf,
     },

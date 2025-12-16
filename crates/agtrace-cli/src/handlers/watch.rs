@@ -50,18 +50,43 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
     loop {
         match watcher.receiver().recv() {
             Ok(event) => match event {
-                StreamEvent::Attached { path, .. } => {
+                StreamEvent::Attached { path, session_id } => {
+                    let display_name = session_id.as_deref().unwrap_or_else(|| {
+                        path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or_else(|| path.to_str().unwrap_or("unknown"))
+                    });
                     println!(
                         "{}  {}\n",
                         "✨ Attached to active session:".bright_green(),
-                        path.file_name()
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_else(|| path.display().to_string())
+                        display_name
                     );
                 }
                 StreamEvent::Update(update) => {
+                    // Log orphaned events if any (pre-session noise)
+                    if !update.orphaned_events.is_empty() {
+                        eprintln!(
+                            "{} {} orphaned events (pre-session noise), {} total events in file",
+                            "[DEBUG]".dimmed(),
+                            update.orphaned_events.len(),
+                            update.total_events
+                        );
+                    }
+
+                    // Use pre-assembled session if available
+                    if let Some(assembled_session) = &update.session {
+                        // Update session state from assembled session
+                        if session_state.is_none() {
+                            session_state = Some(SessionState::new(
+                                assembled_session.session_id.to_string(),
+                                project_root.clone(),
+                                assembled_session.start_time,
+                            ));
+                        }
+                    }
+
                     for event in update.new_events {
-                        // Initialize or update session state
+                        // Initialize session state if not yet set
                         if session_state.is_none() {
                             session_state = Some(SessionState::new(
                                 event.trace_id.to_string(),
@@ -98,14 +123,20 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
                         }
                     }
                 }
-                StreamEvent::SessionRotated { new_path, .. } => {
+                StreamEvent::SessionRotated { old_path, new_path } => {
+                    let old_name = old_path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| old_path.display().to_string());
+                    let new_name = new_path
+                        .file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| new_path.display().to_string());
                     println!(
-                        "\n{} {}\n",
-                        "✨ New session detected:".bright_green(),
-                        new_path
-                            .file_name()
-                            .map(|n| n.to_string_lossy().to_string())
-                            .unwrap_or_else(|| new_path.display().to_string())
+                        "\n{} {} → {}\n",
+                        "✨ Session rotated:".bright_green(),
+                        old_name.dimmed(),
+                        new_name
                     );
                     // Reset session state for new session
                     session_state = None;
