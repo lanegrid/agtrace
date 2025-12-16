@@ -1,10 +1,9 @@
+use crate::types::{
+    ExportFormat, ExportStrategy, InspectFormat, LogLevel, OutputFormat, PackTemplate,
+    ProviderFilter, ProviderName, SchemaFormat, ViewStyle,
+};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-
-// NOTE: Provider names are hardcoded in value_parser attributes for CLI help/autocomplete.
-// The actual validation and instantiation is done via agtrace_providers::registry.
-// Valid providers: "claude_code", "codex", "gemini", "all" (for commands that support it)
-// See agtrace-providers/src/registry.rs for the source of truth.
 
 #[derive(Parser)]
 #[command(name = "agtrace")]
@@ -14,11 +13,11 @@ pub struct Cli {
     #[arg(long, default_value = "~/.agtrace", global = true)]
     pub data_dir: String,
 
-    #[arg(long, value_parser = ["plain", "json"], default_value = "plain", global = true)]
-    pub format: String,
+    #[arg(long, default_value = "plain", global = true)]
+    pub format: OutputFormat,
 
-    #[arg(long, value_parser = ["error", "warn", "info", "debug", "trace"], default_value = "info", global = true)]
-    pub log_level: String,
+    #[arg(long, default_value = "info", global = true)]
+    pub log_level: LogLevel,
 
     #[arg(long, global = true)]
     pub project_root: Option<String>,
@@ -63,16 +62,16 @@ pub enum Commands {
     },
 
     Pack {
-        #[arg(long, value_parser = ["compact", "diagnose", "tools"], default_value = "compact")]
-        template: String,
+        #[arg(long, default_value = "compact")]
+        template: PackTemplate,
 
         #[arg(long, default_value = "20")]
         limit: usize,
     },
 
     Watch {
-        #[arg(long, value_parser = ["claude_code", "codex", "gemini"])]
-        provider: Option<String>,
+        #[arg(long)]
+        provider: Option<ProviderName>,
 
         #[arg(
             long,
@@ -90,16 +89,16 @@ pub enum Commands {
 #[derive(Subcommand)]
 pub enum IndexCommand {
     Update {
-        #[arg(long, value_parser = ["claude_code", "codex", "gemini", "all"], default_value = "all")]
-        provider: String,
+        #[arg(long, default_value = "all")]
+        provider: ProviderFilter,
 
         #[arg(long)]
         verbose: bool,
     },
 
     Rebuild {
-        #[arg(long, value_parser = ["claude_code", "codex", "gemini", "all"], default_value = "all")]
-        provider: String,
+        #[arg(long, default_value = "all")]
+        provider: ProviderFilter,
 
         #[arg(long)]
         verbose: bool,
@@ -114,8 +113,8 @@ pub enum SessionCommand {
         #[arg(long)]
         project_hash: Option<String>,
 
-        #[arg(long, value_parser = ["claude_code", "codex", "gemini"])]
-        source: Option<String>,
+        #[arg(long)]
+        source: Option<ProviderName>,
 
         #[arg(long, default_value = "50")]
         limit: usize,
@@ -154,8 +153,8 @@ pub enum SessionCommand {
         #[arg(long, help = "Truncate long text to ~100 chars for compact display")]
         short: bool,
 
-        #[arg(long, value_parser = ["timeline", "compact"], default_value = "timeline")]
-        style: String,
+        #[arg(long, default_value = "timeline")]
+        style: ViewStyle,
     },
 }
 
@@ -178,16 +177,16 @@ pub enum ProviderCommand {
     Schema {
         provider: String,
 
-        #[arg(long, value_parser = ["text", "json", "rust"], default_value = "text")]
-        format: String,
+        #[arg(long, default_value = "text")]
+        format: SchemaFormat,
     },
 }
 
 #[derive(Subcommand)]
 pub enum DoctorCommand {
     Run {
-        #[arg(long, value_parser = ["claude_code", "codex", "gemini", "all"], default_value = "all")]
-        provider: String,
+        #[arg(long, default_value = "all")]
+        provider: ProviderFilter,
 
         #[arg(long)]
         verbose: bool,
@@ -199,15 +198,15 @@ pub enum DoctorCommand {
         #[arg(long, default_value = "50")]
         lines: usize,
 
-        #[arg(long, value_parser = ["raw", "json"], default_value = "raw")]
-        format: String,
+        #[arg(long, default_value = "raw")]
+        format: InspectFormat,
     },
 
     Check {
         file_path: String,
 
-        #[arg(long, value_parser = ["claude_code", "codex", "gemini"])]
-        provider: Option<String>,
+        #[arg(long)]
+        provider: Option<ProviderName>,
     },
 }
 
@@ -227,10 +226,10 @@ pub enum LabCommand {
         #[arg(long)]
         output: Option<PathBuf>,
 
-        #[arg(long, value_parser = ["jsonl", "text"], default_value = "jsonl")]
-        format: String,
+        #[arg(long, default_value = "jsonl")]
+        format: ExportFormat,
 
-        #[arg(long, value_parser = ["raw", "clean", "reasoning"], default_value = "raw")]
-        strategy: String,
+        #[arg(long, default_value = "raw")]
+        strategy: ExportStrategy,
     },
 }

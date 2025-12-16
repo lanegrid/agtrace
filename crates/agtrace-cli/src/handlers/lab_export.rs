@@ -1,4 +1,5 @@
 use crate::session_loader::{LoadOptions, SessionLoader};
+use crate::types::{ExportFormat, ExportStrategy as CliExportStrategy};
 use agtrace_engine::export::{self, ExportStrategy};
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
@@ -11,15 +12,18 @@ pub fn handle(
     db: &Database,
     session_id: String,
     output: Option<PathBuf>,
-    format: String,
-    strategy: String,
+    format: ExportFormat,
+    strategy: CliExportStrategy,
 ) -> Result<()> {
     let loader = SessionLoader::new(db);
     let options = LoadOptions::default();
     let events_v2 = loader.load_events_v2(&session_id, &options)?;
     let resolved_id = session_id.clone();
 
-    let export_strategy: ExportStrategy = strategy.parse().map_err(|e| anyhow::anyhow!("{}", e))?;
+    let export_strategy: ExportStrategy = strategy
+        .to_string()
+        .parse()
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let processed_events = export::transform(&events_v2, export_strategy);
 
@@ -27,14 +31,16 @@ pub fn handle(
         PathBuf::from(format!(
             "session_{}.{}",
             &resolved_id[..8],
-            if format == "jsonl" { "jsonl" } else { "txt" }
+            match format {
+                ExportFormat::Jsonl => "jsonl",
+                ExportFormat::Text => "txt",
+            }
         ))
     });
 
-    match format.as_str() {
-        "jsonl" => write_jsonl(&output_path, &processed_events)?,
-        "text" => write_text(&output_path, &processed_events)?,
-        _ => anyhow::bail!("Unsupported format: {}", format),
+    match format {
+        ExportFormat::Jsonl => write_jsonl(&output_path, &processed_events)?,
+        ExportFormat::Text => write_text(&output_path, &processed_events)?,
     }
 
     println!(

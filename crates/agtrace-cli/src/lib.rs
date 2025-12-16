@@ -8,6 +8,7 @@ pub mod reactor;
 mod reactors;
 mod session_loader;
 mod streaming;
+pub mod types;
 
 pub use args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,

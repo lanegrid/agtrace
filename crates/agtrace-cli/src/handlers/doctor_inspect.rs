@@ -1,9 +1,10 @@
+use crate::types::InspectFormat;
 use anyhow::{Context, Result};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-pub fn handle(file_path: String, lines: usize, format: String) -> Result<()> {
+pub fn handle(file_path: String, lines: usize, format: InspectFormat) -> Result<()> {
     let path = Path::new(&file_path);
 
     if !path.exists() {
@@ -27,9 +28,9 @@ pub fn handle(file_path: String, lines: usize, format: String) -> Result<()> {
     );
     println!("{}", "─".repeat(40));
 
-    match format.as_str() {
-        "json" => display_json(reader, lines)?,
-        _ => display_raw(reader, lines)?,
+    match format {
+        InspectFormat::Json => display_json(reader, lines)?,
+        InspectFormat::Raw => display_raw(reader, lines)?,
     }
 
     println!("{}", "─".repeat(40));

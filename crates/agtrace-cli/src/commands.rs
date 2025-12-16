@@ -52,10 +52,10 @@ pub fn run(cli: Cli) -> Result<()> {
 
             match command {
                 IndexCommand::Update { provider, verbose } => {
-                    handlers::index::handle(&ctx, provider, false, verbose)
+                    handlers::index::handle(&ctx, provider.to_string(), false, verbose)
                 }
                 IndexCommand::Rebuild { provider, verbose } => {
-                    handlers::index::handle(&ctx, provider, true, verbose)
+                    handlers::index::handle(&ctx, provider.to_string(), true, verbose)
                 }
                 IndexCommand::Vacuum => {
                     let db = ctx.db()?;
@@ -89,8 +89,8 @@ pub fn run(cli: Cli) -> Result<()> {
                         effective_hash,
                         limit,
                         cli.all_projects,
-                        &cli.format,
-                        source.clone(),
+                        &cli.format.to_string(),
+                        source.map(|s| s.to_string()),
                         since.clone(),
                         until.clone(),
                     )
@@ -106,7 +106,16 @@ pub fn run(cli: Cli) -> Result<()> {
                     short,
                     style,
                 } => handlers::session_show::handle(
-                    &db, session_id, raw, json, timeline, hide, only, full, short, style,
+                    &db,
+                    session_id,
+                    raw,
+                    json,
+                    timeline,
+                    hide,
+                    only,
+                    full,
+                    short,
+                    style.to_string(),
                 ),
             }
         }
@@ -124,7 +133,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     disable,
                 } => handlers::provider::set(provider, log_root, enable, disable, &config_path),
                 ProviderCommand::Schema { provider, format } => {
-                    handlers::provider_schema::handle(provider, format)
+                    handlers::provider_schema::handle(provider, format.to_string())
                 }
             }
         }
@@ -136,7 +145,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     cli.project_root.clone(),
                     cli.all_projects,
                 )?;
-                handlers::doctor_run::handle(&ctx, provider, verbose)
+                handlers::doctor_run::handle(&ctx, provider.to_string(), verbose)
             }
             DoctorCommand::Inspect {
                 file_path,
@@ -146,7 +155,7 @@ pub fn run(cli: Cli) -> Result<()> {
             DoctorCommand::Check {
                 file_path,
                 provider,
-            } => handlers::doctor_check::handle(file_path, provider),
+            } => handlers::doctor_check::handle(file_path, provider.map(|p| p.to_string())),
         },
 
         Commands::Project { command } => {
@@ -184,7 +193,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 cli.all_projects,
             )?;
 
-            handlers::pack::handle(&ctx, &template, limit, cli.project_root)
+            handlers::pack::handle(&ctx, &template.to_string(), limit, cli.project_root)
         }
 
         Commands::Watch { provider, id } => {
@@ -194,7 +203,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 handlers::watch::WatchTarget::Session { id: session_id }
             } else {
                 let provider_name = if let Some(name) = provider {
-                    name
+                    name.to_string()
                 } else {
                     ctx.default_provider()?
                 };
