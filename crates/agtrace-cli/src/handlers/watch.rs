@@ -1,9 +1,10 @@
+use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState, Severity};
+use crate::reactors::{SafetyGuard, StallDetector, TuiRenderer};
 use crate::streaming::{SessionWatcher, StreamEvent};
 use agtrace_providers::{create_provider, LogProvider};
 use agtrace_types::discover_project_root;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
-use chrono::Local;
 use owo_colors::OwoColorize;
 use std::path::Path;
 use std::sync::Arc;
@@ -31,8 +32,18 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
         log_root.to_path_buf(),
         provider,
         explicit_target,
-        project_root,
+        project_root.clone(),
     )?;
+
+    // Initialize reactors
+    let mut reactors: Vec<Box<dyn Reactor>> = vec![
+        Box::new(TuiRenderer::new()),
+        Box::new(StallDetector::new(60)), // 60 seconds idle threshold
+        Box::new(SafetyGuard::new()),
+    ];
+
+    // Session state (initialized on first event)
+    let mut session_state: Option<SessionState> = None;
 
     // Event loop - receive and display events
     // IMPORTANT: Keep watcher alive to maintain file system monitoring
@@ -49,10 +60,42 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
                     );
                 }
                 StreamEvent::Update(update) => {
-                    let turn_count = update.session.as_ref().map(|s| s.turns.len()).unwrap_or(0);
-
                     for event in update.new_events {
-                        print_event(&event, turn_count);
+                        // Initialize or update session state
+                        if session_state.is_none() {
+                            session_state = Some(SessionState::new(
+                                event.trace_id.to_string(),
+                                project_root.clone(),
+                                event.timestamp,
+                            ));
+                        }
+
+                        let state = session_state.as_mut().unwrap();
+                        update_session_state(state, &event);
+
+                        // Run all reactors
+                        let ctx = ReactorContext {
+                            event: &event,
+                            state,
+                        };
+
+                        for reactor in &mut reactors {
+                            match reactor.handle(ctx) {
+                                Ok(reaction) => {
+                                    if let Err(e) = handle_reaction(reaction) {
+                                        eprintln!("{} {}", "❌ Reaction error:".red(), e);
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!(
+                                        "{} {} failed: {}",
+                                        "❌ Reactor".red(),
+                                        reactor.name(),
+                                        e
+                                    );
+                                }
+                            }
+                        }
                     }
                 }
                 StreamEvent::SessionRotated { new_path, .. } => {
@@ -64,6 +107,8 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
                             .map(|n| n.to_string_lossy().to_string())
                             .unwrap_or_else(|| new_path.display().to_string())
                     );
+                    // Reset session state for new session
+                    session_state = None;
                 }
                 StreamEvent::Waiting { message } => {
                     println!("{} {}", "[⏳ Waiting]".bright_yellow(), message);
@@ -91,166 +136,54 @@ pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
     Ok(())
 }
 
-/// Print a formatted event to stdout
-fn print_event(event: &AgentEvent, turn_context: usize) {
-    let time = event.timestamp.with_timezone(&Local).format("%H:%M:%S");
+/// Update session state based on incoming event
+fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
+    // Update last activity timestamp
+    state.last_activity = event.timestamp;
+    state.event_count += 1;
 
+    // Update state based on event type
     match &event.payload {
-        EventPayload::User(payload) => {
-            // Skip empty user messages (shouldn't happen, but defensive)
-            if payload.text.trim().is_empty() {
-                return;
-            }
-            let text = truncate(&payload.text, 100);
-            println!(
-                "{} {} [T{}] \"{}\"",
-                time.dimmed(),
-                "👤 User:".bold(),
-                turn_context + 1,
-                text
-            );
+        EventPayload::User(_) => {
+            state.turn_count += 1;
+            // Reset error count on new user input
+            state.error_count = 0;
         }
-        EventPayload::Reasoning(payload) => {
-            // Skip empty reasoning blocks
-            if payload.text.trim().is_empty() {
-                return;
-            }
-            let text = truncate(&payload.text, 50);
-            println!(
-                "{} {} {}",
-                time.dimmed(),
-                "🧠 Thnk:".dimmed(),
-                text.dimmed()
-            );
+        EventPayload::TokenUsage(usage) => {
+            state.total_input_tokens += usage.input_tokens;
+            state.total_output_tokens += usage.output_tokens;
         }
-        EventPayload::ToolCall(payload) => {
-            let (icon, color_fn) = categorize_tool(&payload.name);
-            let summary = format_tool_call(&payload.name, &payload.arguments);
-
-            // Check for safety alerts
-            let alert = check_safety_alert(&payload.arguments);
-
-            let colored_name = color_fn(&payload.name);
-            println!("{} {} {}: {}", time.dimmed(), icon, colored_name, summary);
-            if let Some(warning) = alert {
-                println!("             {} {}", "↳ ⚠️  ALERT:".red(), warning.red());
+        EventPayload::ToolResult(result) => {
+            if result.is_error {
+                state.error_count += 1;
+            } else {
+                state.error_count = 0;
             }
         }
-        EventPayload::ToolResult(payload) => {
-            if payload.is_error {
-                let output = truncate(&payload.output, 100);
-                println!("{} {} {}", time.dimmed(), "❌ Fail:".red(), output.red());
-            }
-            // Success results are not shown (too noisy for MVP)
-        }
-        EventPayload::Message(payload) => {
-            // Skip empty messages (common in Gemini when only tool calls are present)
-            if payload.text.trim().is_empty() {
-                return;
-            }
-            let text = truncate(&payload.text, 100);
-            println!("{} {} {}", time.dimmed(), "💬 Msg:".cyan(), text);
-        }
-        EventPayload::TokenUsage(_) => {
-            // Skip token usage (sidecar info, not relevant for stream)
-        }
-        EventPayload::Notification(payload) => {
-            let (icon, color_fn): (&str, fn(&str) -> String) = match payload.level.as_deref() {
-                Some("warning") => ("⚠️", |s: &str| s.yellow().to_string()),
-                Some("error") => ("❌", |s: &str| s.red().to_string()),
-                _ => ("ℹ️", |s: &str| s.cyan().to_string()), // "info" or None
-            };
-            let text = truncate(&payload.text, 100);
-            let colored_text = color_fn(&text);
-            println!("{} {} {}", time.dimmed(), icon, colored_text);
-        }
+        _ => {}
     }
 }
 
-/// Categorize a tool by name and return (icon, color_fn)
-fn categorize_tool(name: &str) -> (&'static str, fn(&str) -> String) {
-    let lower = name.to_lowercase();
-
-    if lower.contains("read")
-        || lower.contains("ls")
-        || lower.contains("cat")
-        || lower.contains("grep")
-        || lower.contains("search")
-        || lower.contains("view")
-    {
-        ("📖", |s: &str| s.cyan().to_string())
-    } else if lower.contains("write") || lower.contains("edit") || lower.contains("replace") {
-        ("🛠️", |s: &str| s.yellow().to_string())
-    } else if lower.contains("run")
-        || lower.contains("exec")
-        || lower.contains("bash")
-        || lower.contains("python")
-        || lower.contains("test")
-    {
-        ("🧪", |s: &str| s.magenta().to_string())
-    } else {
-        ("🔧", |s: &str| s.white().to_string())
-    }
-}
-
-/// Format tool call arguments into a concise summary
-fn format_tool_call(_name: &str, args: &serde_json::Value) -> String {
-    // Extract key arguments based on common patterns
-    if let Some(obj) = args.as_object() {
-        // Common argument names to look for
-        if let Some(path) = obj.get("path").or_else(|| obj.get("file_path")) {
-            if let Some(path_str) = path.as_str() {
-                return format!("(\"{}\")", truncate(path_str, 60));
+/// Handle reactor reaction
+fn handle_reaction(reaction: Reaction) -> Result<()> {
+    match reaction {
+        Reaction::Continue => {}
+        Reaction::Warn(message) => {
+            eprintln!("{} {}", "⚠️  Warning:".yellow(), message);
+        }
+        Reaction::Intervene { reason, severity } => match severity {
+            Severity::Notification => {
+                eprintln!("{} {}", "🚨 ALERT:".red().bold(), reason);
+                // Future: send desktop notification
             }
-        }
-        if let Some(command) = obj.get("command") {
-            if let Some(cmd_str) = command.as_str() {
-                return format!("(\"{}\")", truncate(cmd_str, 60));
+            Severity::Kill => {
+                eprintln!("{} {}", "🚨 EMERGENCY STOP:".red().bold(), reason);
+                // Future: kill child process (v0.2.0)
+                // For now, just log the alert
             }
-        }
-        if let Some(pattern) = obj.get("pattern") {
-            if let Some(pat_str) = pattern.as_str() {
-                return format!("(\"{}\")", truncate(pat_str, 60));
-            }
-        }
+        },
     }
-
-    // Fallback: show first 40 chars of JSON
-    let json = args.to_string();
-    format!("({})", truncate(&json, 40))
-}
-
-/// Check for potentially dangerous operations
-fn check_safety_alert(args: &serde_json::Value) -> Option<String> {
-    if let Some(obj) = args.as_object() {
-        // Check for path traversal
-        for (_key, value) in obj.iter() {
-            if let Some(s) = value.as_str() {
-                if s.contains("..") {
-                    return Some("Path contains '..' (outside access)".to_string());
-                }
-                if s.starts_with('/') && !s.starts_with("/Users/") && !s.starts_with("/home/") {
-                    return Some("Absolute path outside user directory".to_string());
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Truncate text to max length with ellipsis
-/// Handles multibyte characters correctly by finding the nearest char boundary
-fn truncate(text: &str, max_len: usize) -> String {
-    if text.len() <= max_len {
-        text.to_string()
-    } else {
-        // Find the nearest char boundary at or before max_len
-        let mut boundary = max_len;
-        while boundary > 0 && !text.is_char_boundary(boundary) {
-            boundary -= 1;
-        }
-        format!("{}...", &text[..boundary])
-    }
+    Ok(())
 }
 
 /// Infer provider name from log root path

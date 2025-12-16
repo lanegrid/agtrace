@@ -3,6 +3,8 @@ mod commands;
 pub mod config;
 mod handlers;
 mod output;
+pub mod reactor;
+mod reactors;
 mod session_loader;
 mod streaming;
 
