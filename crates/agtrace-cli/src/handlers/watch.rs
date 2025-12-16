@@ -59,6 +59,89 @@ fn print_session_rotated(old_path: &Path, new_path: &Path) {
     );
 }
 
+/// Initialize session state if not already set
+fn initialize_session_state(
+    session_state: &mut Option<SessionState>,
+    session_id: String,
+    project_root: Option<PathBuf>,
+    timestamp: chrono::DateTime<chrono::Utc>,
+) {
+    if session_state.is_none() {
+        *session_state = Some(SessionState::new(session_id, project_root, timestamp));
+    }
+}
+
+/// Handle StreamEvent::Attached
+fn handle_attached_event(path: &Path, session_id: Option<&str>) {
+    let display_name = format_session_display_name(path, session_id);
+    println!(
+        "{}  {}\n",
+        "✨ Attached to active session:".bright_green(),
+        display_name
+    );
+}
+
+/// Handle StreamEvent::Waiting
+fn handle_waiting_event(message: &str) {
+    println!("{} {}", "[⏳ Waiting]".bright_yellow(), message);
+}
+
+/// Handle StreamEvent::Error, returns true if fatal
+fn handle_error_event(msg: &str) -> bool {
+    eprintln!("{} {}", "❌ Error:".red(), msg);
+    let is_fatal = msg.starts_with("FATAL:");
+    if is_fatal {
+        eprintln!("{}", "Watch stream terminated due to fatal error".red());
+    }
+    is_fatal
+}
+
+/// Process StreamEvent::Update
+fn process_update_event(
+    update: crate::streaming::SessionUpdate,
+    session_state: &mut Option<SessionState>,
+    reactors: &mut [Box<dyn Reactor>],
+    project_root: Option<PathBuf>,
+) {
+    // Log orphaned events if any (pre-session noise)
+    if !update.orphaned_events.is_empty() {
+        eprintln!(
+            "{} {} orphaned events (pre-session noise), {} total events in file",
+            "[DEBUG]".dimmed(),
+            update.orphaned_events.len(),
+            update.total_events
+        );
+    }
+
+    // Use pre-assembled session if available
+    if let Some(assembled_session) = &update.session {
+        initialize_session_state(
+            session_state,
+            assembled_session.session_id.to_string(),
+            project_root.clone(),
+            assembled_session.start_time,
+        );
+    }
+
+    // Process new events
+    for event in update.new_events {
+        initialize_session_state(
+            session_state,
+            event.trace_id.to_string(),
+            project_root.clone(),
+            event.timestamp,
+        );
+
+        let state = session_state
+            .as_mut()
+            .expect("session_state must be Some after initialization");
+        update_session_state(state, &event);
+
+        // Run all reactors
+        run_reactors(&event, state, reactors);
+    }
+}
+
 pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
     let (provider, log_root, explicit_target) = match target {
         WatchTarget::Provider { name } => {
@@ -113,54 +196,15 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
         match watcher.receiver().recv() {
             Ok(event) => match event {
                 StreamEvent::Attached { path, session_id } => {
-                    let display_name = format_session_display_name(&path, session_id.as_deref());
-                    println!(
-                        "{}  {}\n",
-                        "✨ Attached to active session:".bright_green(),
-                        display_name
-                    );
+                    handle_attached_event(&path, session_id.as_deref());
                 }
                 StreamEvent::Update(update) => {
-                    // Log orphaned events if any (pre-session noise)
-                    if !update.orphaned_events.is_empty() {
-                        eprintln!(
-                            "{} {} orphaned events (pre-session noise), {} total events in file",
-                            "[DEBUG]".dimmed(),
-                            update.orphaned_events.len(),
-                            update.total_events
-                        );
-                    }
-
-                    // Use pre-assembled session if available
-                    if let Some(assembled_session) = &update.session {
-                        // Update session state from assembled session
-                        if session_state.is_none() {
-                            session_state = Some(SessionState::new(
-                                assembled_session.session_id.to_string(),
-                                project_root.clone(),
-                                assembled_session.start_time,
-                            ));
-                        }
-                    }
-
-                    for event in update.new_events {
-                        // Initialize session state if not yet set
-                        if session_state.is_none() {
-                            session_state = Some(SessionState::new(
-                                event.trace_id.to_string(),
-                                project_root.clone(),
-                                event.timestamp,
-                            ));
-                        }
-
-                        let state = session_state
-                            .as_mut()
-                            .expect("session_state must be Some after initialization");
-                        update_session_state(state, &event);
-
-                        // Run all reactors
-                        run_reactors(&event, state, &mut reactors);
-                    }
+                    process_update_event(
+                        update,
+                        &mut session_state,
+                        &mut reactors,
+                        project_root.clone(),
+                    );
                 }
                 StreamEvent::SessionRotated { old_path, new_path } => {
                     print_session_rotated(&old_path, &new_path);
@@ -168,13 +212,10 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
                     session_state = None;
                 }
                 StreamEvent::Waiting { message } => {
-                    println!("{} {}", "[⏳ Waiting]".bright_yellow(), message);
+                    handle_waiting_event(&message);
                 }
                 StreamEvent::Error(msg) => {
-                    eprintln!("{} {}", "❌ Error:".red(), msg);
-                    // Check if this is a fatal error
-                    if msg.starts_with("FATAL:") {
-                        eprintln!("{}", "Watch stream terminated due to fatal error".red());
+                    if handle_error_event(&msg) {
                         break;
                     }
                 }
@@ -412,5 +453,159 @@ mod tests {
             severity: Severity::Kill,
         });
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_initialize_session_state_creates_new_state() {
+        let mut session_state = None;
+        let timestamp = Utc::now();
+
+        initialize_session_state(&mut session_state, "test-id".to_string(), None, timestamp);
+
+        assert!(session_state.is_some());
+        let state = session_state.unwrap();
+        assert_eq!(state.session_id, "test-id");
+        assert_eq!(state.start_time, timestamp);
+    }
+
+    #[test]
+    fn test_initialize_session_state_preserves_existing_state() {
+        let initial_timestamp = Utc::now();
+        let mut session_state = Some(SessionState::new(
+            "original-id".to_string(),
+            None,
+            initial_timestamp,
+        ));
+
+        let later_timestamp = initial_timestamp + chrono::Duration::seconds(10);
+        initialize_session_state(
+            &mut session_state,
+            "new-id".to_string(),
+            None,
+            later_timestamp,
+        );
+
+        let state = session_state.unwrap();
+        assert_eq!(state.session_id, "original-id");
+        assert_eq!(state.start_time, initial_timestamp);
+    }
+
+    #[test]
+    fn test_handle_error_event_fatal() {
+        let is_fatal = handle_error_event("FATAL: database corrupted");
+        assert!(is_fatal);
+    }
+
+    #[test]
+    fn test_handle_error_event_non_fatal() {
+        let is_fatal = handle_error_event("WARNING: slow response");
+        assert!(!is_fatal);
+    }
+
+    #[test]
+    fn test_process_update_event_initializes_state() {
+        use crate::streaming::SessionUpdate;
+
+        let mut session_state = None;
+        let mut reactors = create_reactors();
+
+        let user_event = create_test_event(EventPayload::User(UserPayload {
+            text: "test".to_string(),
+        }));
+
+        let update = SessionUpdate {
+            session: None,
+            new_events: vec![user_event.clone()],
+            orphaned_events: vec![],
+            total_events: 1,
+        };
+
+        process_update_event(update, &mut session_state, &mut reactors, None);
+
+        assert!(session_state.is_some());
+        let state = session_state.unwrap();
+        assert_eq!(state.event_count, 1);
+        assert_eq!(state.turn_count, 1);
+    }
+
+    #[test]
+    fn test_process_update_event_with_assembled_session() {
+        use crate::streaming::SessionUpdate;
+        use agtrace_engine::{AgentSession, SessionStats};
+
+        let mut session_state = None;
+        let mut reactors = create_reactors();
+
+        let start_time = Utc::now();
+        let session_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000010").unwrap();
+        let assembled_session = AgentSession {
+            session_id,
+            start_time,
+            end_time: Some(start_time),
+            turns: vec![],
+            stats: SessionStats {
+                total_turns: 0,
+                duration_seconds: 0,
+                total_tokens: 0,
+            },
+        };
+
+        let user_event = create_test_event(EventPayload::User(UserPayload {
+            text: "test".to_string(),
+        }));
+
+        let update = SessionUpdate {
+            session: Some(assembled_session),
+            new_events: vec![user_event.clone()],
+            orphaned_events: vec![],
+            total_events: 1,
+        };
+
+        process_update_event(update, &mut session_state, &mut reactors, None);
+
+        assert!(session_state.is_some());
+        let state = session_state.unwrap();
+        assert_eq!(state.session_id, session_id.to_string());
+        assert_eq!(state.start_time, start_time);
+        assert_eq!(state.event_count, 1);
+    }
+
+    #[test]
+    fn test_process_update_event_multiple_events() {
+        use crate::streaming::SessionUpdate;
+
+        let mut session_state = None;
+        let mut reactors = create_reactors();
+
+        let events = vec![
+            create_test_event(EventPayload::User(UserPayload {
+                text: "first".to_string(),
+            })),
+            create_test_event(EventPayload::TokenUsage(TokenUsagePayload {
+                input_tokens: 50,
+                output_tokens: 30,
+                total_tokens: 80,
+                details: None,
+            })),
+            create_test_event(EventPayload::User(UserPayload {
+                text: "second".to_string(),
+            })),
+        ];
+
+        let update = SessionUpdate {
+            session: None,
+            new_events: events,
+            orphaned_events: vec![],
+            total_events: 3,
+        };
+
+        process_update_event(update, &mut session_state, &mut reactors, None);
+
+        assert!(session_state.is_some());
+        let state = session_state.unwrap();
+        assert_eq!(state.event_count, 3);
+        assert_eq!(state.turn_count, 2);
+        assert_eq!(state.total_input_tokens, 50);
+        assert_eq!(state.total_output_tokens, 30);
     }
 }
