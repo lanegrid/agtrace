@@ -150,34 +150,32 @@ fn handle_initial_update(
     if let Some(state) = session_state {
         let total = state.total_context_window_tokens() as u64;
 
-        if total > 0 {
-            if state.model.is_some() {
-                let token_limits = TokenLimits::new();
-                if let Some((input_pct, output_pct, total_pct)) =
-                    token_limits.get_usage_percentage_from_state(state)
-                {
-                    let model = state.model.as_ref().unwrap();
-                    let bar = create_progress_bar(total_pct);
-                    let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
-                        |s: &str| s.red().to_string()
-                    } else if total_pct >= 80.0 {
-                        |s: &str| s.yellow().to_string()
-                    } else {
-                        |s: &str| s.green().to_string()
-                    };
+        if total > 0 && state.model.is_some() {
+            let token_limits = TokenLimits::new();
+            if let Some((input_pct, output_pct, total_pct)) =
+                token_limits.get_usage_percentage_from_state(state)
+            {
+                let model = state.model.as_ref().unwrap();
+                let bar = create_progress_bar(total_pct);
+                let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
+                    |s: &str| s.red().to_string()
+                } else if total_pct >= 80.0 {
+                    |s: &str| s.yellow().to_string()
+                } else {
+                    |s: &str| s.green().to_string()
+                };
 
-                    println!(
-                        "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {}/{} tokens",
-                        "📊".dimmed(),
-                        "Current usage:".bright_black(),
-                        color_fn(&bar),
-                        total_pct,
-                        input_pct,
-                        output_pct,
-                        total,
-                        token_limits.get_limit(model).unwrap().total_limit
-                    );
-                }
+                println!(
+                    "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {}/{} tokens",
+                    "📊".dimmed(),
+                    "Current usage:".bright_black(),
+                    color_fn(&bar),
+                    total_pct,
+                    input_pct,
+                    output_pct,
+                    total,
+                    token_limits.get_limit(model).unwrap().total_limit
+                );
             }
         }
 
@@ -404,7 +402,8 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
             state.current_output_tokens = usage.output_tokens;
 
             if let Some(details) = &usage.details {
-                state.current_cache_creation_tokens = details.cache_creation_input_tokens.unwrap_or(0);
+                state.current_cache_creation_tokens =
+                    details.cache_creation_input_tokens.unwrap_or(0);
                 state.current_cache_read_tokens = details.cache_read_input_tokens.unwrap_or(0);
                 state.current_reasoning_tokens = details.reasoning_output_tokens.unwrap_or(0);
             } else {

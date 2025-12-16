@@ -1,6 +1,5 @@
-mod fixtures;
-
-use fixtures::TestFixture;
+mod common;
+use common::TestFixture;
 
 #[test]
 fn test_session_list_filtering() {
@@ -36,7 +35,7 @@ fn test_session_list_filtering() {
     let sessions: serde_json::Value = serde_json::from_str(&stdout).expect("Parse failed");
     let sessions_array = sessions.as_array().expect("Expected array");
 
-    assert!(sessions_array.len() >= 1, "Expected at least 1 session");
+    assert!(!sessions_array.is_empty(), "Expected at least 1 session");
 
     // Test 2: List with source filter
     let mut cmd = fixture.command();

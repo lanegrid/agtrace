@@ -1,6 +1,5 @@
-mod fixtures;
-
-use fixtures::TestFixture;
+mod common;
+use common::TestFixture;
 
 #[test]
 fn test_init_full_workflow() {

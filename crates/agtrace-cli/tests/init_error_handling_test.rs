@@ -1,6 +1,6 @@
-mod fixtures;
+mod common;
+use common::TestFixture;
 
-use fixtures::TestFixture;
 use std::fs;
 
 /// Test that init handles scan errors gracefully and provides useful feedback

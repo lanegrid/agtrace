@@ -1,6 +1,5 @@
-mod fixtures;
-
-use fixtures::TestFixture;
+mod common;
+use common::TestFixture;
 
 #[test]
 fn test_index_scan_and_query() {
@@ -48,7 +47,7 @@ fn test_index_scan_and_query() {
 
     let sessions_array = sessions.as_array().unwrap();
     assert!(
-        sessions_array.len() >= 1,
+        !sessions_array.is_empty(),
         "Expected at least 1 session, found {}",
         sessions_array.len()
     );

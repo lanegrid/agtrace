@@ -1,3 +1,13 @@
+//! Common test utilities shared across integration tests.
+//!
+//! Note: Clippy cannot track usage across integration test files,
+//! hence the `allow(dead_code)` annotation. This is a standard pattern
+//! for Rust integration test fixtures.
+//!
+//! See: docs/testing_best_practices.md
+#![cfg(test)]
+#![allow(dead_code)]
+
 use assert_cmd::Command;
 use std::fs;
 use std::path::PathBuf;
@@ -7,6 +17,12 @@ pub struct TestFixture {
     _temp_dir: TempDir,
     data_dir: PathBuf,
     log_root: PathBuf,
+}
+
+impl Default for TestFixture {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TestFixture {
@@ -47,7 +63,7 @@ impl TestFixture {
     }
 
     pub fn command(&self) -> Command {
-        let mut cmd = Command::cargo_bin("agtrace").expect("Failed to find agtrace binary");
+        let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("agtrace");
         cmd.arg("--data-dir")
             .arg(self.data_dir())
             .arg("--format")

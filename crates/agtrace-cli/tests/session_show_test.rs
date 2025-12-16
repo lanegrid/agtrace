@@ -1,6 +1,5 @@
-mod fixtures;
-
-use fixtures::TestFixture;
+mod common;
+use common::TestFixture;
 
 #[test]
 fn test_session_show_filtering() {

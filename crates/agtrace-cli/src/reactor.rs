@@ -36,7 +36,7 @@ pub enum Severity {
 /// - TokenUsage events report the current turn's token breakdown, not deltas
 /// - Example: Turn 1 uses 100 input tokens, Turn 2 uses 150 input tokens
 ///   → Turn 2's event shows input_tokens=150 (the full prompt size this turn),
-///     NOT input_tokens=50 (incremental)
+///   NOT input_tokens=50 (incremental)
 ///
 /// This is critical for:
 /// 1. Accurate context window tracking (latest snapshot = current usage)
@@ -119,7 +119,9 @@ impl SessionState {
     /// Includes: fresh input + cache creation + cache read
     /// This is the actual Context Window usage for this turn.
     pub fn total_input_side_tokens(&self) -> i32 {
-        self.current_input_tokens + self.current_cache_creation_tokens + self.current_cache_read_tokens
+        self.current_input_tokens
+            + self.current_cache_creation_tokens
+            + self.current_cache_read_tokens
     }
 
     /// Total tokens on output side for CURRENT turn
