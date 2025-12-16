@@ -1,30 +1,58 @@
+use crate::context::ExecutionContext;
 use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState, Severity};
 use crate::reactors::{SafetyGuard, StallDetector, TuiRenderer};
 use crate::streaming::{SessionWatcher, StreamEvent};
-use agtrace_providers::{create_provider, LogProvider};
-use agtrace_types::discover_project_root;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-/// Handle the watch command - auto-attach to latest session and stream formatted events
-pub fn handle(log_root: &Path, explicit_target: Option<String>) -> Result<()> {
-    println!("{} {}", "[👀 Watching]".bright_cyan(), log_root.display());
+pub enum WatchTarget {
+    Provider {
+        name: String,
+    },
+    Session {
+        id: String,
+    },
+    #[allow(dead_code)]
+    File {
+        path: PathBuf,
+    },
+}
 
-    // Detect provider from log_root path
-    // TODO: Should accept --provider flag, but for now infer from path
-    let provider_name = infer_provider_from_path(log_root)?;
-    let provider: Arc<dyn LogProvider> = Arc::from(create_provider(&provider_name)?);
+pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
+    let (provider, log_root, explicit_target) = match target {
+        WatchTarget::Provider { name } => {
+            let (provider, log_root) = ctx.resolve_provider(&name)?;
+            println!(
+                "{} {} ({})",
+                "[👀 Watching]".bright_cyan(),
+                log_root.display(),
+                name
+            );
+            (Arc::from(provider), log_root, None)
+        }
+        WatchTarget::Session { id } => {
+            let provider_name = ctx.default_provider()?;
+            let (provider, log_root) = ctx.resolve_provider(&provider_name)?;
+            println!(
+                "{} session {} in {}",
+                "[👀 Watching]".bright_cyan(),
+                id,
+                log_root.display()
+            );
+            (Arc::from(provider), log_root, Some(id))
+        }
+        WatchTarget::File { path: _ } => {
+            anyhow::bail!("Direct file watching not yet implemented");
+        }
+    };
 
-    // Detect current project context for filtering
     let project_root = if explicit_target.is_some() {
-        // If explicit target is provided, skip project filtering
         None
     } else {
-        // Discover current project for filtering
-        discover_project_root(None).ok()
+        ctx.project_root.clone()
     };
 
     // Create session watcher with provider and optional project context
@@ -215,22 +243,4 @@ fn handle_reaction(reaction: Reaction) -> Result<()> {
         },
     }
     Ok(())
-}
-
-/// Infer provider name from log root path
-fn infer_provider_from_path(path: &Path) -> Result<String> {
-    let path_str = path.to_string_lossy();
-
-    if path_str.contains(".claude") {
-        Ok("claude_code".to_string())
-    } else if path_str.contains(".codex") {
-        Ok("codex".to_string())
-    } else if path_str.contains(".gemini") {
-        Ok("gemini".to_string())
-    } else {
-        anyhow::bail!(
-            "Cannot infer provider from path: {}. Please use --provider flag.",
-            path.display()
-        )
-    }
 }

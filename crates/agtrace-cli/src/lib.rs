@@ -1,6 +1,7 @@
 mod args;
 mod commands;
 pub mod config;
+pub mod context;
 mod handlers;
 mod output;
 pub mod reactor;

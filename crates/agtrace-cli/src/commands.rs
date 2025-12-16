@@ -4,6 +4,7 @@ use super::args::{
 };
 use super::handlers;
 use crate::config::Config;
+use crate::context::ExecutionContext;
 use agtrace_index::Database;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -185,29 +186,22 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Watch { provider, id } => {
-            let config_path = data_dir.join("config.toml");
-            let config = Config::load_from(&config_path)?;
+            let ctx = ExecutionContext::new(data_dir, cli.project_root, cli.all_projects)?;
 
-            // Determine which provider to watch
-            let provider_name = provider.unwrap_or_else(|| {
-                // Auto-detect: use first enabled provider
-                config
-                    .providers
-                    .iter()
-                    .find(|(_, p)| p.enabled)
-                    .map(|(name, _)| name.clone())
-                    .unwrap_or_else(|| "claude_code".to_string())
-            });
+            let target = if let Some(session_id) = id {
+                handlers::watch::WatchTarget::Session { id: session_id }
+            } else {
+                let provider_name = if let Some(name) = provider {
+                    name
+                } else {
+                    ctx.default_provider()?
+                };
+                handlers::watch::WatchTarget::Provider {
+                    name: provider_name,
+                }
+            };
 
-            let provider_config = config.providers.get(&provider_name).ok_or_else(|| {
-                anyhow::anyhow!("Provider '{}' not found in config", provider_name)
-            })?;
-
-            if !provider_config.enabled {
-                anyhow::bail!("Provider '{}' is not enabled. Run 'agtrace provider list' to see available providers.", provider_name);
-            }
-
-            handlers::watch::handle(&provider_config.log_root, id)
+            handlers::watch::handle(&ctx, target)
         }
     }
 }
