@@ -64,6 +64,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 3072,
               "reasoning_output_tokens": 64
             },
@@ -120,6 +121,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 3584,
               "reasoning_output_tokens": 0
             },
@@ -189,6 +191,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 3072,
               "reasoning_output_tokens": 0
             },
@@ -243,6 +246,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 3072,
               "reasoning_output_tokens": 64
             },
@@ -295,6 +299,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 3072,
               "reasoning_output_tokens": 0
             },
@@ -324,6 +329,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 3968,
               "reasoning_output_tokens": 0
             },

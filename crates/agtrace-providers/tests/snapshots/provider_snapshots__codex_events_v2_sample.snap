@@ -105,6 +105,7 @@ expression: json_pretty
     "details": {
       "audio_input_tokens": null,
       "audio_output_tokens": null,
+      "cache_creation_input_tokens": null,
       "cache_read_input_tokens": 3072,
       "reasoning_output_tokens": 64
     },
@@ -113,6 +114,47 @@ expression: json_pretty
     "total_tokens": 3606
   },
   "id": "<UUID_REDACTED>",
+  "metadata": {
+    "payload": {
+      "info": {
+        "last_token_usage": {
+          "cached_input_tokens": 3072,
+          "input_tokens": 3505,
+          "output_tokens": 101,
+          "reasoning_output_tokens": 64,
+          "total_tokens": 3606
+        },
+        "model_context_window": 258400,
+        "total_token_usage": {
+          "cached_input_tokens": 3072,
+          "input_tokens": 3505,
+          "output_tokens": 101,
+          "reasoning_output_tokens": 64,
+          "total_tokens": 3606
+        }
+      },
+      "rate_limits": {
+        "credits": {
+          "balance": null,
+          "has_credits": false,
+          "unlimited": false
+        },
+        "plan_type": null,
+        "primary": {
+          "resets_at": 1765328124,
+          "used_percent": 0.0,
+          "window_minutes": 300
+        },
+        "secondary": {
+          "resets_at": 1765459426,
+          "used_percent": 0.0,
+          "window_minutes": 10080
+        }
+      },
+      "type": "token_count"
+    },
+    "timestamp": "2025-12-09T19:55:30.125Z"
+  },
   "parent_id": "<UUID_REDACTED>",
   "timestamp": "2025-12-09T19:55:30.125Z",
   "trace_id": "<UUID_REDACTED>",
@@ -195,6 +237,7 @@ expression: json_pretty
     "details": {
       "audio_input_tokens": null,
       "audio_output_tokens": null,
+      "cache_creation_input_tokens": null,
       "cache_read_input_tokens": 3072,
       "reasoning_output_tokens": 0
     },
@@ -203,6 +246,47 @@ expression: json_pretty
     "total_tokens": 3751
   },
   "id": "<UUID_REDACTED>",
+  "metadata": {
+    "payload": {
+      "info": {
+        "last_token_usage": {
+          "cached_input_tokens": 3072,
+          "input_tokens": 3711,
+          "output_tokens": 40,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 3751
+        },
+        "model_context_window": 258400,
+        "total_token_usage": {
+          "cached_input_tokens": 6144,
+          "input_tokens": 7216,
+          "output_tokens": 141,
+          "reasoning_output_tokens": 64,
+          "total_tokens": 7357
+        }
+      },
+      "rate_limits": {
+        "credits": {
+          "balance": null,
+          "has_credits": false,
+          "unlimited": false
+        },
+        "plan_type": null,
+        "primary": {
+          "resets_at": 1765328130,
+          "used_percent": 0.0,
+          "window_minutes": 300
+        },
+        "secondary": {
+          "resets_at": 1765459426,
+          "used_percent": 0.0,
+          "window_minutes": 10080
+        }
+      },
+      "type": "token_count"
+    },
+    "timestamp": "2025-12-09T19:55:34.147Z"
+  },
   "parent_id": "<UUID_REDACTED>",
   "timestamp": "2025-12-09T19:55:34.147Z",
   "trace_id": "<UUID_REDACTED>",
@@ -259,6 +343,7 @@ expression: json_pretty
     "details": {
       "audio_input_tokens": null,
       "audio_output_tokens": null,
+      "cache_creation_input_tokens": null,
       "cache_read_input_tokens": 3584,
       "reasoning_output_tokens": 0
     },
@@ -267,6 +352,47 @@ expression: json_pretty
     "total_tokens": 3841
   },
   "id": "<UUID_REDACTED>",
+  "metadata": {
+    "payload": {
+      "info": {
+        "last_token_usage": {
+          "cached_input_tokens": 3584,
+          "input_tokens": 3815,
+          "output_tokens": 26,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 3841
+        },
+        "model_context_window": 258400,
+        "total_token_usage": {
+          "cached_input_tokens": 9728,
+          "input_tokens": 11031,
+          "output_tokens": 167,
+          "reasoning_output_tokens": 64,
+          "total_tokens": 11198
+        }
+      },
+      "rate_limits": {
+        "credits": {
+          "balance": null,
+          "has_credits": false,
+          "unlimited": false
+        },
+        "plan_type": null,
+        "primary": {
+          "resets_at": 1765328130,
+          "used_percent": 0.0,
+          "window_minutes": 300
+        },
+        "secondary": {
+          "resets_at": 1765459426,
+          "used_percent": 0.0,
+          "window_minutes": 10080
+        }
+      },
+      "type": "token_count"
+    },
+    "timestamp": "2025-12-09T19:55:37.981Z"
+  },
   "parent_id": "<UUID_REDACTED>",
   "timestamp": "2025-12-09T19:55:37.981Z",
   "trace_id": "<UUID_REDACTED>",
@@ -352,6 +478,7 @@ expression: json_pretty
     "details": {
       "audio_input_tokens": null,
       "audio_output_tokens": null,
+      "cache_creation_input_tokens": null,
       "cache_read_input_tokens": 3072,
       "reasoning_output_tokens": 0
     },
@@ -360,6 +487,47 @@ expression: json_pretty
     "total_tokens": 3745
   },
   "id": "<UUID_REDACTED>",
+  "metadata": {
+    "payload": {
+      "info": {
+        "last_token_usage": {
+          "cached_input_tokens": 3072,
+          "input_tokens": 3708,
+          "output_tokens": 37,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 3745
+        },
+        "model_context_window": 258400,
+        "total_token_usage": {
+          "cached_input_tokens": 12800,
+          "input_tokens": 14739,
+          "output_tokens": 204,
+          "reasoning_output_tokens": 64,
+          "total_tokens": 14943
+        }
+      },
+      "rate_limits": {
+        "credits": {
+          "balance": null,
+          "has_credits": false,
+          "unlimited": false
+        },
+        "plan_type": null,
+        "primary": {
+          "resets_at": 1765328130,
+          "used_percent": 0.0,
+          "window_minutes": 300
+        },
+        "secondary": {
+          "resets_at": 1765459426,
+          "used_percent": 0.0,
+          "window_minutes": 10080
+        }
+      },
+      "type": "token_count"
+    },
+    "timestamp": "2025-12-09T19:55:50.568Z"
+  },
   "parent_id": "<UUID_REDACTED>",
   "timestamp": "2025-12-09T19:55:50.568Z",
   "trace_id": "<UUID_REDACTED>",
@@ -444,6 +612,7 @@ expression: json_pretty
     "details": {
       "audio_input_tokens": null,
       "audio_output_tokens": null,
+      "cache_creation_input_tokens": null,
       "cache_read_input_tokens": 3072,
       "reasoning_output_tokens": 64
     },
@@ -452,6 +621,47 @@ expression: json_pretty
     "total_tokens": 3973
   },
   "id": "<UUID_REDACTED>",
+  "metadata": {
+    "payload": {
+      "info": {
+        "last_token_usage": {
+          "cached_input_tokens": 3072,
+          "input_tokens": 3845,
+          "output_tokens": 128,
+          "reasoning_output_tokens": 64,
+          "total_tokens": 3973
+        },
+        "model_context_window": 258400,
+        "total_token_usage": {
+          "cached_input_tokens": 15872,
+          "input_tokens": 18584,
+          "output_tokens": 332,
+          "reasoning_output_tokens": 128,
+          "total_tokens": 18916
+        }
+      },
+      "rate_limits": {
+        "credits": {
+          "balance": null,
+          "has_credits": false,
+          "unlimited": false
+        },
+        "plan_type": null,
+        "primary": {
+          "resets_at": 1765328130,
+          "used_percent": 0.0,
+          "window_minutes": 300
+        },
+        "secondary": {
+          "resets_at": 1765459426,
+          "used_percent": 0.0,
+          "window_minutes": 10080
+        }
+      },
+      "type": "token_count"
+    },
+    "timestamp": "2025-12-09T19:55:55.448Z"
+  },
   "parent_id": "<UUID_REDACTED>",
   "timestamp": "2025-12-09T19:55:55.448Z",
   "trace_id": "<UUID_REDACTED>",
@@ -534,6 +744,7 @@ expression: json_pretty
     "details": {
       "audio_input_tokens": null,
       "audio_output_tokens": null,
+      "cache_creation_input_tokens": null,
       "cache_read_input_tokens": 3072,
       "reasoning_output_tokens": 0
     },
@@ -542,6 +753,47 @@ expression: json_pretty
     "total_tokens": 4055
   },
   "id": "<UUID_REDACTED>",
+  "metadata": {
+    "payload": {
+      "info": {
+        "last_token_usage": {
+          "cached_input_tokens": 3072,
+          "input_tokens": 4017,
+          "output_tokens": 38,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 4055
+        },
+        "model_context_window": 258400,
+        "total_token_usage": {
+          "cached_input_tokens": 18944,
+          "input_tokens": 22601,
+          "output_tokens": 370,
+          "reasoning_output_tokens": 128,
+          "total_tokens": 22971
+        }
+      },
+      "rate_limits": {
+        "credits": {
+          "balance": null,
+          "has_credits": false,
+          "unlimited": false
+        },
+        "plan_type": null,
+        "primary": {
+          "resets_at": 1765328130,
+          "used_percent": 0.0,
+          "window_minutes": 300
+        },
+        "secondary": {
+          "resets_at": 1765459426,
+          "used_percent": 0.0,
+          "window_minutes": 10080
+        }
+      },
+      "type": "token_count"
+    },
+    "timestamp": "2025-12-09T19:56:02.634Z"
+  },
   "parent_id": "<UUID_REDACTED>",
   "timestamp": "2025-12-09T19:56:02.634Z",
   "trace_id": "<UUID_REDACTED>",
@@ -623,6 +875,7 @@ expression: json_pretty
     "details": {
       "audio_input_tokens": null,
       "audio_output_tokens": null,
+      "cache_creation_input_tokens": null,
       "cache_read_input_tokens": 3968,
       "reasoning_output_tokens": 0
     },
@@ -631,6 +884,47 @@ expression: json_pretty
     "total_tokens": 4177
   },
   "id": "<UUID_REDACTED>",
+  "metadata": {
+    "payload": {
+      "info": {
+        "last_token_usage": {
+          "cached_input_tokens": 3968,
+          "input_tokens": 4139,
+          "output_tokens": 38,
+          "reasoning_output_tokens": 0,
+          "total_tokens": 4177
+        },
+        "model_context_window": 258400,
+        "total_token_usage": {
+          "cached_input_tokens": 22912,
+          "input_tokens": 26740,
+          "output_tokens": 408,
+          "reasoning_output_tokens": 128,
+          "total_tokens": 27148
+        }
+      },
+      "rate_limits": {
+        "credits": {
+          "balance": null,
+          "has_credits": false,
+          "unlimited": false
+        },
+        "plan_type": null,
+        "primary": {
+          "resets_at": 1765328130,
+          "used_percent": 0.0,
+          "window_minutes": 300
+        },
+        "secondary": {
+          "resets_at": 1765459426,
+          "used_percent": 0.0,
+          "window_minutes": 10080
+        }
+      },
+      "type": "token_count"
+    },
+    "timestamp": "2025-12-09T19:56:06.181Z"
+  },
   "parent_id": "<UUID_REDACTED>",
   "timestamp": "2025-12-09T19:56:06.181Z",
   "trace_id": "<UUID_REDACTED>",

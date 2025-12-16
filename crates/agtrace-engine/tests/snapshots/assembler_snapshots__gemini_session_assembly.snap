@@ -83,6 +83,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 6979,
               "reasoning_output_tokens": 86
             },
@@ -140,6 +141,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 5864,
               "reasoning_output_tokens": 33
             },
@@ -197,6 +199,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 5844,
               "reasoning_output_tokens": 34
             },
@@ -226,6 +229,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 5836,
               "reasoning_output_tokens": 39
             },
@@ -300,6 +304,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 7294,
               "reasoning_output_tokens": 28
             },
@@ -371,6 +376,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 5809,
               "reasoning_output_tokens": 127
             },
@@ -400,6 +406,7 @@ expression: value
             "details": {
               "audio_input_tokens": null,
               "audio_output_tokens": null,
+              "cache_creation_input_tokens": null,
               "cache_read_input_tokens": 5751,
               "reasoning_output_tokens": 30
             },
