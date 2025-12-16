@@ -75,6 +75,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     limit,
                     since,
                     until,
+                    no_auto_refresh,
                 } => {
                     let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
                         Some(agtrace_types::project_hash_from_root(
@@ -93,6 +94,9 @@ pub fn run(cli: Cli) -> Result<()> {
                         source.map(|s| s.to_string()),
                         since.clone(),
                         until.clone(),
+                        no_auto_refresh,
+                        &data_dir,
+                        cli.project_root.clone(),
                     )
                 }
                 SessionCommand::Show {
@@ -204,6 +208,9 @@ pub fn run(cli: Cli) -> Result<()> {
                 source.map(|s| s.to_string()),
                 since,
                 until,
+                false, // no_auto_refresh - default to auto-refresh for Sessions command
+                &data_dir,
+                cli.project_root.clone(),
             )
         }
 

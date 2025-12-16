@@ -141,6 +141,9 @@ pub enum SessionCommand {
 
         #[arg(long)]
         until: Option<String>,
+
+        #[arg(long)]
+        no_auto_refresh: bool,
     },
 
     Show {

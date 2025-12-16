@@ -15,4 +15,5 @@ Options:
       --since <SINCE>                
       --all-projects                 
       --until <UNTIL>                
+      --no-auto-refresh              
   -h, --help                         Print help

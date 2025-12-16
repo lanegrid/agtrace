@@ -22,6 +22,7 @@ fn test_session_show_filtering() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
 

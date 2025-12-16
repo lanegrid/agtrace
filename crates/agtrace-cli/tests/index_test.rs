@@ -26,6 +26,7 @@ fn test_index_scan_and_query() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
 

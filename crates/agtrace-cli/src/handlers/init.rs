@@ -147,6 +147,9 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
         None,
         None,
         None,
+        true, // no_auto_refresh - skip auto-refresh during init (we just scanned)
+        ctx.data_dir(),
+        ctx.project_root.as_ref().map(|p| p.display().to_string()),
     )?;
 
     if let Some(first_session) = sessions.first() {

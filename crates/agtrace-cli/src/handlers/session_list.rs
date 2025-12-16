@@ -1,8 +1,10 @@
+use crate::context::ExecutionContext;
 use crate::types::OutputFormat;
 use agtrace_index::{Database, SessionSummary};
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
@@ -14,7 +16,22 @@ pub fn handle(
     source: Option<String>,
     since: Option<String>,
     until: Option<String>,
+    no_auto_refresh: bool,
+    data_dir: &Path,
+    project_root: Option<String>,
 ) -> Result<()> {
+    // Auto-refresh index before listing (unless disabled)
+    if !no_auto_refresh {
+        let ctx =
+            ExecutionContext::new(data_dir.to_path_buf(), project_root.clone(), all_projects)?;
+
+        // Run incremental scan quietly (verbose=false)
+        if let Err(e) = crate::handlers::index::handle(&ctx, "all".to_string(), false, false) {
+            // Don't fail the list command if refresh fails - just warn
+            eprintln!("Warning: auto-refresh failed: {}", e);
+        }
+    }
+
     let (effective_hash_string, _all_projects) =
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();

@@ -322,6 +322,30 @@ impl Database {
         println!("Database vacuumed successfully");
         Ok(())
     }
+
+    pub fn get_all_log_files(&self) -> Result<Vec<LogFileRecord>> {
+        let mut stmt = self.conn.prepare(
+            r#"
+            SELECT path, session_id, role, file_size, mod_time
+            FROM log_files
+            ORDER BY path
+            "#,
+        )?;
+
+        let files = stmt
+            .query_map([], |row| {
+                Ok(LogFileRecord {
+                    path: row.get(0)?,
+                    session_id: row.get(1)?,
+                    role: row.get(2)?,
+                    file_size: row.get(3)?,
+                    mod_time: row.get(4)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(files)
+    }
 }
 
 #[cfg(test)]

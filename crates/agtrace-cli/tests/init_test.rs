@@ -47,6 +47,7 @@ fn test_init_full_workflow() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
 

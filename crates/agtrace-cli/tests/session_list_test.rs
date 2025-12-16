@@ -27,6 +27,7 @@ fn test_session_list_filtering() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
 
@@ -46,6 +47,7 @@ fn test_session_list_filtering() {
         .arg("json")
         .arg("--source")
         .arg("claude_code")
+        .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list with source filter");
 
@@ -70,6 +72,7 @@ fn test_session_list_filtering() {
         .arg("json")
         .arg("--limit")
         .arg("1")
+        .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list with limit");
 
@@ -87,6 +90,7 @@ fn test_session_list_filtering() {
         .arg("list")
         .arg("--format")
         .arg("plain")
+        .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list with plain format");
 
