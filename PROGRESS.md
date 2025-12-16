@@ -69,8 +69,43 @@ Reactions (Continue, Warn, Intervene)
 - [ ] Add pattern detection (loop detection, token budget)
 - [ ] Add AI-powered anomaly detection reactor
 
+## Implementation Summary (Completed)
+
+### What Was Built
+
+**Phase 1: Core Infrastructure**
+- Reactor trait system with `Reaction` enum
+- `SessionState` for lightweight session metadata
+- `ReactorContext` (Copy-able) for passing event + state
+- Main loop refactoring with reactor coordination
+
+**Phase 2: Monitoring Reactors**
+- `TuiRenderer`: Display logic (extracted from watch.rs)
+- `StallDetector`: Idle detection with cooldown
+- `SafetyGuard`: Path traversal and system directory detection
+
+**Phase 3: Testing & Documentation**
+- 12 unit tests (5 for core, 7 for SafetyGuard)
+- All tests passing (16 total including config tests)
+- Comprehensive documentation in `docs/reactor_architecture.md`
+
+### Metrics
+
+- **Code Quality**: 0 errors, 1 warning (unused field)
+- **Line Count**: 563 insertions, 152 deletions (net +411 lines)
+- **Commits**: 2 commits with atomic changes
+- **Test Coverage**: Core reactor logic fully tested
+
+### Key Design Decisions
+
+1. **Context Pattern**: Event + State separation for smart decisions
+2. **Copy-able Context**: Enables multiple reactors without borrowing issues
+3. **Check Ordering**: System paths before general absolute paths (SafetyGuard)
+4. **v0.1.0 Safety**: All interventions are Notification-level (no kills yet)
+
 ## Notes
 
 - Keep v0.1.0 focused on monitoring (no kills, only warnings)
-- Reactor interface must support both sync display and async operations
+- Reactor interface supports sync operations (async deferred to v0.2.0)
 - SessionState is lightweight summary, not full AgentSession
+- `--disable-reactor` CLI flag deferred to next iteration (not critical for MVP)
