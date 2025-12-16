@@ -393,6 +393,9 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
             state.total_output_tokens += usage.output_tokens;
 
             if let Some(details) = &usage.details {
+                if let Some(cache_creation) = details.cache_creation_input_tokens {
+                    state.cache_creation_tokens += cache_creation;
+                }
                 if let Some(cached) = details.cache_read_input_tokens {
                     state.cache_read_tokens += cached;
                 }
@@ -542,6 +545,7 @@ mod tests {
             output_tokens: 50,
             total_tokens: 150,
             details: Some(TokenUsageDetails {
+                cache_creation_input_tokens: None,
                 cache_read_input_tokens: Some(20),
                 reasoning_output_tokens: Some(10),
                 audio_input_tokens: None,

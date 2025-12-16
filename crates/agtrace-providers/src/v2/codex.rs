@@ -78,6 +78,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                                     output_tokens: usage.output_tokens as i32,
                                     total_tokens: usage.total_tokens as i32,
                                     details: Some(TokenUsageDetails {
+                                        cache_creation_input_tokens: None, // Codex doesn't track cache creation separately
                                         cache_read_input_tokens: Some(
                                             usage.cached_input_tokens as i32,
                                         ),

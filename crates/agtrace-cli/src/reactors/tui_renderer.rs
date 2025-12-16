@@ -22,7 +22,9 @@ impl TuiRenderer {
 
         let input_tokens = ctx.state.total_input_tokens as u64;
         let output_tokens = ctx.state.total_output_tokens as u64;
-        let total = input_tokens + output_tokens;
+        let cache_creation_tokens = ctx.state.cache_creation_tokens as u64;
+        let cache_read_tokens = ctx.state.cache_read_tokens as u64;
+        let total = input_tokens + output_tokens + cache_creation_tokens + cache_read_tokens;
 
         if total == 0 {
             return;
@@ -69,6 +71,8 @@ impl TuiRenderer {
             if total_pct >= 70.0 {
                 let input_str = format_token_count(input_tokens);
                 let output_str = format_token_count(output_tokens);
+                let cache_creation_str = format_token_count(cache_creation_tokens);
+                let cache_read_str = format_token_count(cache_read_tokens);
                 let free_str = format_token_count(free_tokens);
 
                 println!("{} Input:   {} ({:.1}%)", "⛁".cyan(), input_str, input_pct);
@@ -78,6 +82,26 @@ impl TuiRenderer {
                     output_str,
                     output_pct
                 );
+
+                // Show cache tokens if present
+                if cache_creation_tokens > 0 || cache_read_tokens > 0 {
+                    let cache_total = cache_creation_tokens + cache_read_tokens;
+                    let cache_pct = (cache_total as f64 / limit.total_limit as f64) * 100.0;
+                    let cache_total_str = format_token_count(cache_total);
+                    println!(
+                        "{} Cache:   {} ({:.1}%)",
+                        "⛁".cyan(),
+                        cache_total_str,
+                        cache_pct
+                    );
+                    if cache_creation_tokens > 0 {
+                        println!("  {} Creation: {}", "↳".dimmed(), cache_creation_str);
+                    }
+                    if cache_read_tokens > 0 {
+                        println!("  {} Read:     {}", "↳".dimmed(), cache_read_str);
+                    }
+                }
+
                 println!("{} Free:    {} ({:.1}%)", "⛶".dimmed(), free_str, free_pct);
 
                 // Warning messages at thresholds

@@ -51,6 +51,9 @@ pub struct SessionState {
     /// Total output tokens consumed
     pub total_output_tokens: i32,
 
+    /// Cache creation tokens (storing context for reuse)
+    pub cache_creation_tokens: i32,
+
     /// Cache read tokens (from prompt caching)
     pub cache_read_tokens: i32,
 
@@ -82,6 +85,7 @@ impl SessionState {
             model: None,
             total_input_tokens: 0,
             total_output_tokens: 0,
+            cache_creation_tokens: 0,
             cache_read_tokens: 0,
             reasoning_tokens: 0,
             error_count: 0,
@@ -237,6 +241,7 @@ mod tests {
         assert_eq!(state.session_id, "test-id");
         assert_eq!(state.total_input_tokens, 0);
         assert_eq!(state.total_output_tokens, 0);
+        assert_eq!(state.cache_creation_tokens, 0);
         assert_eq!(state.cache_read_tokens, 0);
         assert_eq!(state.reasoning_tokens, 0);
         assert_eq!(state.error_count, 0);

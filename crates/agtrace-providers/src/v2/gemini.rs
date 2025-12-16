@@ -120,6 +120,7 @@ pub fn normalize_gemini_session_v2(
                         output_tokens: gemini_msg.tokens.output as i32,
                         total_tokens: gemini_msg.tokens.total as i32,
                         details: Some(TokenUsageDetails {
+                            cache_creation_input_tokens: None, // Gemini doesn't track cache creation separately
                             cache_read_input_tokens: Some(gemini_msg.tokens.cached as i32),
                             reasoning_output_tokens: Some(gemini_msg.tokens.thoughts as i32),
                             audio_input_tokens: None,

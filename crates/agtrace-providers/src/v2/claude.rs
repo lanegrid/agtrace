@@ -170,6 +170,9 @@ pub fn normalize_claude_session_v2(records: Vec<ClaudeRecord>) -> Vec<AgentEvent
                                 output_tokens: usage.output_tokens as i32,
                                 total_tokens: (usage.input_tokens + usage.output_tokens) as i32,
                                 details: Some(TokenUsageDetails {
+                                    cache_creation_input_tokens: usage
+                                        .cache_creation_input_tokens
+                                        .map(|t| t as i32),
                                     cache_read_input_tokens: usage
                                         .cache_read_input_tokens
                                         .map(|t| t as i32),
@@ -297,6 +300,14 @@ mod tests {
             EventPayload::TokenUsage(payload) => {
                 assert_eq!(payload.input_tokens, 100);
                 assert_eq!(payload.output_tokens, 50);
+                assert_eq!(
+                    payload
+                        .details
+                        .as_ref()
+                        .unwrap()
+                        .cache_creation_input_tokens,
+                    None
+                );
                 assert_eq!(
                     payload.details.as_ref().unwrap().cache_read_input_tokens,
                     Some(10)

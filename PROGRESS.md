@@ -1,6 +1,23 @@
 # Progress
 
-## Recent Completions (2025-12-16)
+## Recent Completions (2025-12-17)
+
+### ✅ Fixed Critical Token Tracking Bug (99% Underreporting)
+- Added `cache_creation_input_tokens` tracking to fix severe token underreporting
+- Updated v2 schema to include cache creation tokens
+- Modified SessionState to track cache_creation_tokens separately
+- Updated Claude parser to extract both cache_creation and cache_read tokens
+- Enhanced display to show cache token breakdown when usage ≥70%
+- **Result**: Accurate token reporting - fixed 99% underreporting (was showing 35k instead of 4.8M tokens)
+
+**Verification**: Session 04abd352 actual total: 4.8M tokens (input: 21k, output: 14k, cache_creation: 185k, cache_read: 4.6M)
+
+**Files**:
+- `crates/agtrace-types/src/v2.rs` (added cache_creation_input_tokens)
+- `crates/agtrace-cli/src/reactor.rs` (added cache_creation_tokens to SessionState)
+- `crates/agtrace-providers/src/v2/claude.rs` (extract cache_creation tokens)
+- `crates/agtrace-cli/src/handlers/watch.rs` (accumulate cache_creation tokens)
+- `crates/agtrace-cli/src/reactors/tui_renderer.rs` (display cache breakdown)
 
 ### ✅ Incremental Session Indexing
 - `index update` now skips unchanged files (file size + mtime comparison)
@@ -20,12 +37,14 @@
 
 ---
 
-## 🚨 Critical Bug: Token Tracking Severely Underreports Usage
+## Previous Bug Report (Now Fixed)
 
-### Problem
-`agtrace watch` displays **20% usage (40k/200k)** when actual usage is **86% (172k/200k)**.
+### Problem (RESOLVED 2025-12-17)
+~~`agtrace watch` displays **20% usage (40k/200k)** when actual usage is **86% (172k/200k)**.~~
 
-**4.3x underreporting** - users will hit context limits without warning!
+~~**4.3x underreporting** - users will hit context limits without warning!~~
+
+**FIXED**: Now correctly tracks all token types including cache_creation and cache_read tokens.
 
 ### Root Cause
 Claude Code logs contain cache token fields that agtrace ignores:
@@ -96,19 +115,6 @@ let total = input_tokens + output_tokens + cache_creation_tokens + cache_read_to
 **5. Update Provider Parsers**:
 - Check if Claude Code v2 schema already includes these fields
 - Update parsers in `crates/agtrace-providers/src/claude/` if needed
-
----
-
-## Next Session Actions
-
-1. **Verify schema**: Check `crates/agtrace-types/src/v2.rs` - are cache fields already defined?
-2. **Check providers**: Does Claude parser already extract these fields?
-3. **If missing**: Add cache token fields to types + parsers
-4. **Update tracking**: Modify `watch.rs` accumulation logic
-5. **Update display**: Show cache tokens in context window display
-6. **Test**: Verify with real session that shows ~172k instead of ~40k
-
-**Critical**: This bug makes the context window display dangerously misleading. Fix before any user-facing release.
 
 ---
 

@@ -128,6 +128,8 @@ pub struct TokenUsagePayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenUsageDetails {
+    /// Cache creation input tokens (Claude/Gemini)
+    pub cache_creation_input_tokens: Option<i32>,
     /// Cache read input tokens (Claude/Gemini)
     pub cache_read_input_tokens: Option<i32>,
     /// Reasoning output tokens (o1/Gemini)

@@ -148,6 +148,7 @@ mod tests {
                 output_tokens,
                 total_tokens: input_tokens + output_tokens,
                 details: Some(TokenUsageDetails {
+                    cache_creation_input_tokens: None,
                     cache_read_input_tokens: None,
                     reasoning_output_tokens: None,
                     audio_input_tokens: None,
