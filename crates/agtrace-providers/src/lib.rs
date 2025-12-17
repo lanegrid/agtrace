@@ -7,8 +7,8 @@ pub mod claude;
 pub mod codex;
 pub mod gemini;
 
-// V2 normalization layer
-pub mod v2;
+// Event builder (shared normalization utility)
+pub mod builder;
 
 // Provider registry
 pub mod registry;

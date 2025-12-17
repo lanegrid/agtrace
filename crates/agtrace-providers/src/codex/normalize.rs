@@ -4,7 +4,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 use uuid::Uuid;
 
-use super::builder::EventBuilder;
+use crate::builder::EventBuilder;
 use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
 
@@ -45,7 +45,10 @@ fn attach_model_metadata(
 
 /// Normalize Codex session records to v2 events
 /// Handles async token notifications, JSON string parsing, and exit code extraction
-pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -> Vec<AgentEvent> {
+pub(crate) fn normalize_codex_session_v2(
+    records: Vec<CodexRecord>,
+    session_id: &str,
+) -> Vec<AgentEvent> {
     // Create trace_id from session_id (deterministic)
     let trace_id = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
     let mut builder = EventBuilder::new(trace_id);

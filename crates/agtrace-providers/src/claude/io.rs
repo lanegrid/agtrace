@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use super::normalize::normalize_claude_session_v2;
 use super::schema::ClaudeRecord;
-use crate::v2::normalize_claude_session_v2;
 
 /// Parse Claude Code JSONL file and normalize to v2::AgentEvent
 pub fn normalize_claude_file_v2(path: &Path) -> Result<Vec<agtrace_types::v2::AgentEvent>> {

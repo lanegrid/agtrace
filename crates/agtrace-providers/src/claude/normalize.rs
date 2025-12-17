@@ -2,12 +2,12 @@ use agtrace_types::v2::*;
 use chrono::DateTime;
 use uuid::Uuid;
 
-use super::builder::EventBuilder;
+use crate::builder::EventBuilder;
 use crate::claude::schema::*;
 
 /// Normalize Claude session records to v2 events
 /// Handles message.content[] blocks, thinking -> Reasoning, and TokenUsage extraction
-pub fn normalize_claude_session_v2(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
+pub(crate) fn normalize_claude_session_v2(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
     // Extract session_id from first record
     let session_id = records
         .iter()

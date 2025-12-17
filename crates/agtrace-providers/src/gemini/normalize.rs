@@ -2,12 +2,12 @@ use agtrace_types::v2::*;
 use chrono::DateTime;
 use uuid::Uuid;
 
-use super::builder::EventBuilder;
+use crate::builder::EventBuilder;
 use crate::gemini::schema::{GeminiMessage, GeminiSession};
 
 /// Normalize Gemini session to v2 events
 /// Unfolds nested structure (thoughts[], toolCalls[]) into event stream
-pub fn normalize_gemini_session_v2(
+pub(crate) fn normalize_gemini_session_v2(
     session: &GeminiSession,
     raw_messages: Vec<serde_json::Value>,
 ) -> Vec<AgentEvent> {

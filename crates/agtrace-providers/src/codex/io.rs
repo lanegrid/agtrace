@@ -2,8 +2,8 @@ use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
+use super::normalize::normalize_codex_session_v2;
 use super::schema::CodexRecord;
-use crate::v2::normalize_codex_session_v2;
 
 /// Parse Codex JSONL file and normalize to v2::AgentEvent
 pub fn normalize_codex_file_v2(path: &Path) -> Result<Vec<agtrace_types::v2::AgentEvent>> {
