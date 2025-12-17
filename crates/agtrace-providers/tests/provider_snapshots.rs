@@ -23,9 +23,9 @@ fn redact_uuids(value: &mut serde_json::Value) {
     }
 }
 
-// V2 snapshot tests - test provider normalization to v2 schema
+// Snapshot tests - test provider normalization
 #[test]
-fn test_gemini_parse_v2_snapshot() {
+fn test_gemini_parse_snapshot() {
     let path = Path::new("tests/samples/gemini_session.json");
 
     if !path.exists() {
@@ -48,11 +48,11 @@ fn test_gemini_parse_v2_snapshot() {
         })
         .collect::<Vec<_>>()
         .join("\n\n");
-    insta::assert_snapshot!("gemini_events_v2_sample", json_pretty);
+    insta::assert_snapshot!("gemini_events_sample", json_pretty);
 }
 
 #[test]
-fn test_codex_parse_v2_snapshot() {
+fn test_codex_parse_snapshot() {
     let path = Path::new("tests/samples/codex_session.jsonl");
 
     if !path.exists() {
@@ -75,11 +75,11 @@ fn test_codex_parse_v2_snapshot() {
         })
         .collect::<Vec<_>>()
         .join("\n\n");
-    insta::assert_snapshot!("codex_events_v2_sample", json_pretty);
+    insta::assert_snapshot!("codex_events_sample", json_pretty);
 }
 
 #[test]
-fn test_claude_parse_v2_snapshot() {
+fn test_claude_parse_snapshot() {
     let path = Path::new("tests/samples/claude_session.jsonl");
 
     if !path.exists() {
@@ -102,11 +102,11 @@ fn test_claude_parse_v2_snapshot() {
         })
         .collect::<Vec<_>>()
         .join("\n\n");
-    insta::assert_snapshot!("claude_events_v2_sample", json_pretty);
+    insta::assert_snapshot!("claude_events_sample", json_pretty);
 }
 
 #[test]
-fn test_gemini_parse_raw_v2_snapshot() {
+fn test_gemini_parse_raw_snapshot() {
     let path = Path::new("tests/samples/gemini_session.json");
 
     if !path.exists() {
@@ -125,11 +125,11 @@ fn test_gemini_parse_raw_v2_snapshot() {
         .map(|e| serde_json::to_string_pretty(&e.metadata).unwrap())
         .collect::<Vec<_>>()
         .join("\n\n");
-    insta::assert_snapshot!("gemini_events_v2_raw", metadata_json_pretty);
+    insta::assert_snapshot!("gemini_events_raw", metadata_json_pretty);
 }
 
 #[test]
-fn test_codex_parse_raw_v2_snapshot() {
+fn test_codex_parse_raw_snapshot() {
     let path = Path::new("tests/samples/codex_session.jsonl");
 
     if !path.exists() {
@@ -148,11 +148,11 @@ fn test_codex_parse_raw_v2_snapshot() {
         .map(|e| serde_json::to_string_pretty(&e.metadata).unwrap())
         .collect::<Vec<_>>()
         .join("\n\n");
-    insta::assert_snapshot!("codex_events_v2_raw", metadata_json_pretty);
+    insta::assert_snapshot!("codex_events_raw", metadata_json_pretty);
 }
 
 #[test]
-fn test_claude_parse_raw_v2_snapshot() {
+fn test_claude_parse_raw_snapshot() {
     let path = Path::new("tests/samples/claude_session.jsonl");
 
     if !path.exists() {
@@ -171,5 +171,5 @@ fn test_claude_parse_raw_v2_snapshot() {
         .map(|e| serde_json::to_string_pretty(&e.metadata).unwrap())
         .collect::<Vec<_>>()
         .join("\n\n");
-    insta::assert_snapshot!("claude_events_v2_raw", metadata_json_pretty);
+    insta::assert_snapshot!("claude_events_raw", metadata_json_pretty);
 }

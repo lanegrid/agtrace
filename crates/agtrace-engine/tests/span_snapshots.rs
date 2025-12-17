@@ -2,7 +2,7 @@ use agtrace_engine::build_spans_from_events;
 use std::path::Path;
 
 #[test]
-fn test_gemini_span_v2_building() {
+fn test_gemini_span_building() {
     let path = Path::new("../agtrace-providers/tests/samples/gemini_session.json");
 
     if !path.exists() {
@@ -19,11 +19,11 @@ fn test_gemini_span_v2_building() {
     assert!(!spans.is_empty(), "Expected at least one span");
 
     // Snapshot the spans
-    insta::assert_json_snapshot!("gemini_spans_v2", spans);
+    insta::assert_json_snapshot!("gemini_spans", spans);
 }
 
 #[test]
-fn test_codex_span_v2_building() {
+fn test_codex_span_building() {
     let path = Path::new("../agtrace-providers/tests/samples/codex_session.jsonl");
 
     if !path.exists() {
@@ -40,11 +40,11 @@ fn test_codex_span_v2_building() {
     assert!(!spans.is_empty(), "Expected at least one span");
 
     // Snapshot the spans
-    insta::assert_json_snapshot!("codex_spans_v2", spans);
+    insta::assert_json_snapshot!("codex_spans", spans);
 }
 
 #[test]
-fn test_claude_span_v2_building() {
+fn test_claude_span_building() {
     let path = Path::new("../agtrace-providers/tests/samples/claude_session.jsonl");
 
     if !path.exists() {
@@ -61,11 +61,11 @@ fn test_claude_span_v2_building() {
     assert!(!spans.is_empty(), "Expected at least one span");
 
     // Snapshot the spans
-    insta::assert_json_snapshot!("claude_spans_v2", spans);
+    insta::assert_json_snapshot!("claude_spans", spans);
 }
 
 #[test]
-fn test_v2_tool_matching_accuracy() {
+fn test_tool_matching_accuracy() {
     use agtrace_types::v2::*;
     use chrono::Utc;
     use uuid::Uuid;
