@@ -121,15 +121,13 @@ mod tests {
     #[test]
     fn test_get_usage_percentage_from_state() {
         use crate::reactor::SessionState;
+        use crate::token_usage::ContextWindowUsage;
         use chrono::Utc;
 
         let limits = TokenLimits::new();
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.current_input_tokens = 1000;
-        state.current_output_tokens = 500;
-        state.current_cache_creation_tokens = 2000;
-        state.current_cache_read_tokens = 10000;
+        state.current_usage = ContextWindowUsage::from_raw(1000, 2000, 10000, 500);
 
         let (input_pct, output_pct, total_pct) =
             limits.get_usage_percentage_from_state(&state).unwrap();
@@ -147,14 +145,14 @@ mod tests {
     #[test]
     fn test_get_usage_percentage_from_state_no_cache() {
         use crate::reactor::SessionState;
+        use crate::token_usage::ContextWindowUsage;
         use chrono::Utc;
 
         let limits = TokenLimits::new();
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
         state.context_window_limit = Some(200_000); // direct limit should be preferred if set
-        state.current_input_tokens = 100_000;
-        state.current_output_tokens = 4_000;
+        state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 0, 4_000);
         // No cache tokens
 
         let (input_pct, output_pct, total_pct) =

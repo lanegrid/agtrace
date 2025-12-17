@@ -3,6 +3,7 @@ use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState, Severity};
 use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor, TuiRenderer};
 use crate::streaming::{SessionWatcher, StreamEvent};
 use crate::token_limits::TokenLimits;
+use crate::token_usage::ContextWindowUsage;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
@@ -420,17 +421,29 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
             // This applies to ALL token fields including cache tokens:
             // - cache_read_input_tokens: how many tokens reused THIS turn
             // - cache_creation_input_tokens: how many new tokens cached THIS turn
-            state.current_input_tokens = usage.input_tokens;
-            state.current_output_tokens = usage.output_tokens;
+
+            // Update using type-safe ContextWindowUsage
+            let cache_creation = usage
+                .details
+                .as_ref()
+                .and_then(|d| d.cache_creation_input_tokens)
+                .unwrap_or(0);
+            let cache_read = usage
+                .details
+                .as_ref()
+                .and_then(|d| d.cache_read_input_tokens)
+                .unwrap_or(0);
+
+            state.current_usage = ContextWindowUsage::from_raw(
+                usage.input_tokens,
+                cache_creation,
+                cache_read,
+                usage.output_tokens,
+            );
 
             if let Some(details) = &usage.details {
-                state.current_cache_creation_tokens =
-                    details.cache_creation_input_tokens.unwrap_or(0);
-                state.current_cache_read_tokens = details.cache_read_input_tokens.unwrap_or(0);
                 state.current_reasoning_tokens = details.reasoning_output_tokens.unwrap_or(0);
             } else {
-                state.current_cache_creation_tokens = 0;
-                state.current_cache_read_tokens = 0;
                 state.current_reasoning_tokens = 0;
             }
 
@@ -609,9 +622,9 @@ mod tests {
         update_session_state(&mut state, &event);
 
         // Tokens are snapshots, not cumulative
-        assert_eq!(state.current_input_tokens, 100);
-        assert_eq!(state.current_output_tokens, 50);
-        assert_eq!(state.current_cache_read_tokens, 20);
+        assert_eq!(state.current_usage.fresh_input.0, 100);
+        assert_eq!(state.current_usage.output.0, 50);
+        assert_eq!(state.current_usage.cache_read.0, 20);
         assert_eq!(state.current_reasoning_tokens, 10);
         assert_eq!(state.event_count, 1);
     }
@@ -682,8 +695,8 @@ mod tests {
         update_session_state(&mut state, &event);
 
         assert_eq!(state.model, Some("claude-3-5-sonnet-20241022".to_string()));
-        assert_eq!(state.current_input_tokens, 100);
-        assert_eq!(state.current_output_tokens, 50);
+        assert_eq!(state.current_usage.fresh_input.0, 100);
+        assert_eq!(state.current_usage.output.0, 50);
     }
 
     #[test]
@@ -866,7 +879,7 @@ mod tests {
         let state = session_state.unwrap();
         assert_eq!(state.event_count, 3);
         assert_eq!(state.turn_count, 2);
-        assert_eq!(state.current_input_tokens, 50);
-        assert_eq!(state.current_output_tokens, 30);
+        assert_eq!(state.current_usage.fresh_input.0, 50);
+        assert_eq!(state.current_usage.output.0, 30);
     }
 }

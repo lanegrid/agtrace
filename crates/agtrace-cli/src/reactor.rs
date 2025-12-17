@@ -1,3 +1,4 @@
+use crate::token_usage::ContextWindowUsage;
 use agtrace_types::v2::AgentEvent;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -64,21 +65,12 @@ pub struct SessionState {
     /// Explicit context window limit reported by the provider (if available)
     pub context_window_limit: Option<u64>,
 
-    /// Current turn's input tokens (fresh, non-cached)
+    /// Current turn's context window usage (type-safe token tracking)
     /// This is a SNAPSHOT, not cumulative
-    pub current_input_tokens: i32,
-
-    /// Current turn's output tokens
-    /// This is a SNAPSHOT, not cumulative
-    pub current_output_tokens: i32,
-
-    /// Current turn's cache creation tokens (storing context for reuse)
-    /// This is a SNAPSHOT, not cumulative
-    pub current_cache_creation_tokens: i32,
-
-    /// Current turn's cache read tokens (retrieved from cache)
-    /// This is a SNAPSHOT, not cumulative
-    pub current_cache_read_tokens: i32,
+    ///
+    /// The ContextWindowUsage type makes it IMPOSSIBLE to forget including
+    /// cache_read tokens - the compiler enforces correct calculation.
+    pub current_usage: ContextWindowUsage,
 
     /// Current turn's reasoning tokens (extended thinking)
     /// This is a SNAPSHOT, not cumulative
@@ -108,10 +100,7 @@ impl SessionState {
             last_activity: start_time,
             model: None,
             context_window_limit: None,
-            current_input_tokens: 0,
-            current_output_tokens: 0,
-            current_cache_creation_tokens: 0,
-            current_cache_read_tokens: 0,
+            current_usage: ContextWindowUsage::default(),
             current_reasoning_tokens: 0,
             error_count: 0,
             event_count: 0,
@@ -123,23 +112,21 @@ impl SessionState {
     /// Includes: fresh input + cache creation + cache read.
     ///
     /// NOTE: cache_read tokens DO consume the context window.
-    /// While cache reads are cheaper for billing (10% cost), they still count
-    /// toward the model's context window limit since the LLM must process them.
+    /// The type system guarantees cache_read is always included.
     pub fn total_input_side_tokens(&self) -> i32 {
-        self.current_input_tokens
-            + self.current_cache_creation_tokens
-            + self.current_cache_read_tokens
+        self.current_usage.input_side_total()
     }
 
     /// Total tokens on output side for CURRENT turn
     pub fn total_output_side_tokens(&self) -> i32 {
-        self.current_output_tokens
+        self.current_usage.output_side_total()
     }
 
     /// Total context window usage for CURRENT turn (input + output)
     /// This represents what's currently in the context window.
+    /// The type system guarantees cache_read is always included.
     pub fn total_context_window_tokens(&self) -> i32 {
-        self.total_input_side_tokens() + self.total_output_side_tokens()
+        self.current_usage.total()
     }
 
     /// Validate token counts are reasonable for current turn
@@ -148,10 +135,10 @@ impl SessionState {
 
         // Check for negative tokens (should never happen)
         if total < 0
-            || self.current_input_tokens < 0
-            || self.current_output_tokens < 0
-            || self.current_cache_creation_tokens < 0
-            || self.current_cache_read_tokens < 0
+            || self.current_usage.fresh_input.0 < 0
+            || self.current_usage.output.0 < 0
+            || self.current_usage.cache_creation.0 < 0
+            || self.current_usage.cache_read.0 < 0
         {
             return Err("Negative token count detected".to_string());
         }
@@ -314,10 +301,7 @@ mod tests {
         let state = SessionState::new("test-id".to_string(), None, Utc::now());
 
         assert_eq!(state.session_id, "test-id");
-        assert_eq!(state.current_input_tokens, 0);
-        assert_eq!(state.current_output_tokens, 0);
-        assert_eq!(state.current_cache_creation_tokens, 0);
-        assert_eq!(state.current_cache_read_tokens, 0);
+        assert!(state.current_usage.is_empty());
         assert_eq!(state.current_reasoning_tokens, 0);
         assert_eq!(state.error_count, 0);
         assert_eq!(state.event_count, 0);
@@ -329,10 +313,7 @@ mod tests {
         let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
 
         // Simulate Turn 1: 100 fresh input, 50 output
-        state.current_input_tokens = 100;
-        state.current_output_tokens = 50;
-        state.current_cache_creation_tokens = 0;
-        state.current_cache_read_tokens = 0;
+        state.current_usage = ContextWindowUsage::from_raw(100, 0, 0, 50);
 
         assert_eq!(state.total_input_side_tokens(), 100);
         assert_eq!(state.total_output_side_tokens(), 50);
@@ -340,10 +321,7 @@ mod tests {
 
         // Simulate Turn 2: 10 fresh, 1000 from cache, 60 output
         // (Turn 1's 100 tokens are now cached and read back)
-        state.current_input_tokens = 10;
-        state.current_output_tokens = 60;
-        state.current_cache_creation_tokens = 0;
-        state.current_cache_read_tokens = 1000;
+        state.current_usage = ContextWindowUsage::from_raw(10, 0, 1000, 60);
 
         // Context window should be based on Turn 2 only
         // Note: cache_read DOES consume context window (cheaper billing, but still processed)
@@ -355,10 +333,7 @@ mod tests {
     #[test]
     fn test_validate_tokens_success() {
         let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
-        state.current_input_tokens = 1000;
-        state.current_output_tokens = 500;
-        state.current_cache_creation_tokens = 2000;
-        state.current_cache_read_tokens = 10000;
+        state.current_usage = ContextWindowUsage::from_raw(1000, 2000, 10000, 500);
 
         // Should pass - total 13500 (1000+2000+10000+500) is under 200k limit
         assert!(state.validate_tokens(Some(200_000)).is_ok());
@@ -367,8 +342,7 @@ mod tests {
     #[test]
     fn test_validate_tokens_exceeds_limit() {
         let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
-        state.current_input_tokens = 100_000;
-        state.current_output_tokens = 150_000;
+        state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 0, 150_000);
 
         // Should fail - total 250k exceeds 200k limit
         let result = state.validate_tokens(Some(200_000));
@@ -379,7 +353,7 @@ mod tests {
     #[test]
     fn test_validate_tokens_negative() {
         let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
-        state.current_input_tokens = -100;
+        state.current_usage = ContextWindowUsage::from_raw(-100, 0, 0, 0);
 
         let result = state.validate_tokens(None);
         assert!(result.is_err());

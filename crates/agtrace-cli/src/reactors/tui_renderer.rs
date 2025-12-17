@@ -63,8 +63,8 @@ impl TuiRenderer {
             if total_pct >= 70.0 {
                 let input_side = ctx.state.total_input_side_tokens() as u64;
                 let output_side = ctx.state.total_output_side_tokens() as u64;
-                let cache_creation_tokens = ctx.state.current_cache_creation_tokens as u64;
-                let cache_read_tokens = ctx.state.current_cache_read_tokens as u64;
+                let cache_creation_tokens = ctx.state.current_usage.cache_creation.0 as u64;
+                let cache_read_tokens = ctx.state.current_usage.cache_read.0 as u64;
 
                 let input_str = format_token_count(input_side);
                 let output_str = format_token_count(output_side);

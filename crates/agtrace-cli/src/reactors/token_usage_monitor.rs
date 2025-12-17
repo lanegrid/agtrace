@@ -121,6 +121,7 @@ impl Reactor for TokenUsageMonitor {
 mod tests {
     use super::*;
     use crate::reactor::SessionState;
+    use crate::token_usage::ContextWindowUsage;
     use agtrace_types::v2::{
         AgentEvent, EventPayload, TokenUsageDetails, TokenUsagePayload, UserPayload,
     };
@@ -176,8 +177,7 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.current_input_tokens = 10_000;
-        state.current_output_tokens = 1_000;
+        state.current_usage = ContextWindowUsage::from_raw(10_000, 0, 0, 1_000);
 
         let ctx = ReactorContext {
             event: &event,
@@ -195,8 +195,7 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.current_input_tokens = 160_000;
-        state.current_output_tokens = 10_000;
+        state.current_usage = ContextWindowUsage::from_raw(160_000, 0, 0, 10_000);
 
         let ctx = ReactorContext {
             event: &event,
@@ -220,8 +219,7 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.current_input_tokens = 190_000;
-        state.current_output_tokens = 5_000;
+        state.current_usage = ContextWindowUsage::from_raw(190_000, 0, 0, 5_000);
 
         let ctx = ReactorContext {
             event: &event,
@@ -261,8 +259,7 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = None; // No model info
-        state.current_input_tokens = 100_000;
-        state.current_output_tokens = 10_000;
+        state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 0, 10_000);
 
         let ctx = ReactorContext {
             event: &event,
@@ -279,8 +276,7 @@ mod tests {
 
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.current_input_tokens = 160_000;
-        state.current_output_tokens = 10_000;
+        state.current_usage = ContextWindowUsage::from_raw(160_000, 0, 0, 10_000);
 
         let event = create_token_usage_event(160_000, 10_000);
         let ctx = ReactorContext {
