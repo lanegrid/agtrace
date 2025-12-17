@@ -114,19 +114,19 @@ impl SessionState {
     /// NOTE: cache_read tokens DO consume the context window.
     /// The type system guarantees cache_read is always included.
     pub fn total_input_side_tokens(&self) -> i32 {
-        self.current_usage.input_side_total()
+        self.current_usage.input_tokens()
     }
 
     /// Total tokens on output side for CURRENT turn
     pub fn total_output_side_tokens(&self) -> i32 {
-        self.current_usage.output_side_total()
+        self.current_usage.output_tokens()
     }
 
     /// Total context window usage for CURRENT turn (input + output)
     /// This represents what's currently in the context window.
     /// The type system guarantees cache_read is always included.
     pub fn total_context_window_tokens(&self) -> i32 {
-        self.current_usage.total()
+        self.current_usage.context_window_tokens()
     }
 
     /// Validate token counts are reasonable for current turn

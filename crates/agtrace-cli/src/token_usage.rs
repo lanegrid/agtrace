@@ -92,30 +92,30 @@ impl ContextWindowUsage {
         }
     }
 
-    /// Total tokens on input side (what LLM receives)
+    /// Input-side tokens (what LLM receives this turn)
     ///
     /// Includes: fresh input + cache creation + cache read
     /// All three types consume the context window.
-    pub fn input_side_total(&self) -> i32 {
+    pub fn input_tokens(&self) -> i32 {
         self.fresh_input.0 + self.cache_creation.0 + self.cache_read.0
     }
 
-    /// Total tokens on output side (what LLM generates)
-    pub fn output_side_total(&self) -> i32 {
+    /// Output-side tokens (what LLM generates this turn)
+    pub fn output_tokens(&self) -> i32 {
         self.output.0
     }
 
-    /// Total context window usage
+    /// Context window tokens consumed this turn
     ///
     /// This is the value that counts toward the model's context limit.
     /// cache_read is ALWAYS included - the type system guarantees this.
-    pub fn total(&self) -> i32 {
-        self.input_side_total() + self.output_side_total()
+    pub fn context_window_tokens(&self) -> i32 {
+        self.input_tokens() + self.output_tokens()
     }
 
     /// Check if usage is zero (no tokens)
     pub fn is_empty(&self) -> bool {
-        self.total() == 0
+        self.context_window_tokens() == 0
     }
 }
 
@@ -136,12 +136,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_context_window_usage_total() {
+    fn test_context_window_usage_calculation() {
         let usage = ContextWindowUsage::from_raw(100, 200, 300, 50);
 
-        assert_eq!(usage.input_side_total(), 600); // 100 + 200 + 300
-        assert_eq!(usage.output_side_total(), 50);
-        assert_eq!(usage.total(), 650); // 600 + 50
+        assert_eq!(usage.input_tokens(), 600); // 100 + 200 + 300
+        assert_eq!(usage.output_tokens(), 50);
+        assert_eq!(usage.context_window_tokens(), 650); // 600 + 50
     }
 
     #[test]
@@ -150,8 +150,8 @@ mod tests {
         // The type system makes it impossible to exclude
         let usage = ContextWindowUsage::from_raw(10, 20, 5000, 30);
 
-        // cache_read (5000) is always part of the total
-        assert_eq!(usage.total(), 5060); // Not 60!
+        // cache_read (5000) is always part of the context window
+        assert_eq!(usage.context_window_tokens(), 5060); // Not 60!
     }
 
     #[test]
@@ -165,13 +165,13 @@ mod tests {
         assert_eq!(total.cache_creation.0, 220);
         assert_eq!(total.cache_read.0, 330);
         assert_eq!(total.output.0, 55);
-        assert_eq!(total.total(), 715);
+        assert_eq!(total.context_window_tokens(), 715);
     }
 
     #[test]
     fn test_default_is_empty() {
         let usage = ContextWindowUsage::default();
         assert!(usage.is_empty());
-        assert_eq!(usage.total(), 0);
+        assert_eq!(usage.context_window_tokens(), 0);
     }
 }
