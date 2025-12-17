@@ -5,6 +5,16 @@ use agtrace_types::ToolStatus;
 use chrono::{DateTime, Utc};
 use owo_colors::OwoColorize;
 
+// NOTE: Compact View Philosophy
+//
+// Why collapse tool chains into single lines showing inputs (not outputs)?
+// - Long sessions (100+ events) are hard to scan in timeline mode
+// - Shows *what was asked* (command, pattern, file), not results
+// - Preserves execution sequence while drastically reducing visual noise
+// - Bottlenecks and loops become immediately visible via duration highlights
+// - User interprets intent from facts: `Edit(schema.rs x4)` could be iteration or being stuck
+// - Trade-off: Less readable for detailed debugging, but enables quick pattern recognition
+
 pub fn format_compact(display: &SessionDisplay, opts: &DisplayOptions) -> Vec<String> {
     if display.turns.is_empty() {
         let msg = "No turns to display";

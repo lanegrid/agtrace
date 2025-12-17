@@ -5,6 +5,14 @@ use crate::types::{
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
+// NOTE: Command Organization Rationale
+//
+// Why namespaced subcommands (not flat)?
+// - Flat command structures become unwieldy past ~10 commands
+// - Namespaces (index, session, provider, doctor, lab, project) group related operations
+// - Improves --help discoverability and conceptual clarity
+// - Example: `session show` vs `session list` vs flat `show-session` and `list-sessions`
+
 #[derive(Parser)]
 #[command(name = "agtrace")]
 #[command(about = "Normalize and analyze agent behavior logs", long_about = None)]
