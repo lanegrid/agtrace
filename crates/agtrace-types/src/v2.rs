@@ -3,6 +3,30 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
+// NOTE: Schema Design Goals
+//
+// 1. Normalization: Abstract provider-specific quirks into unified time-series events
+//    - Gemini: Unfold nested batch records into sequential events
+//    - Codex: Align async token notifications and eliminate echo duplicates
+//    - Claude: Extract embedded usage into independent events
+//
+// 2. Observability: Enable accurate cost/performance tracking
+//    - Token: Sidecar pattern + incremental detection for precise billing (no double-counting)
+//    - Latency: Measure turnaround time (T_req → T_res) from user perspective
+//
+// 3. Replayability: Reconstruct full conversation context via parent_id chain
+//    - Linked-list structure ensures deterministic history recovery regardless of parallel execution
+//
+// 4. Separation: Distinguish time-series flow (parent_id) from logical relations (tool_call_id)
+//    - Enables both "conversation replay" and "request/response mapping"
+//
+// NOTE: Intentional Limitations (Not Goals)
+//
+// - OS-level execution timestamps: Unavailable in logs; command issue time ≒ execution start
+// - Tree/branch structure: Parallel tool calls are linearized in chronological/array order
+// - Real-time token sync: Codex-style delayed tokens handled via eventual consistency (sidecar)
+// - Gemini token breakdown: Total usage attached to final generation event (no speculation)
+
 /// Agent event (v2 schema)
 /// Maps 1:1 to database table row
 #[derive(Debug, Clone, Serialize, Deserialize)]
