@@ -49,6 +49,7 @@ pub struct TokenSummaryDisplay {
     pub cache_read: i32,
     pub total: i32,
     pub limit: Option<u64>,
+    pub model: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -236,6 +237,7 @@ fn calculate_token_summary_from_session(session: &AgentSession) -> TokenSummaryD
         cache_read: total_cache_read,
         total,
         limit: None,
+        model: None,
     }
 }
 
@@ -273,6 +275,7 @@ fn calculate_token_summary_from_events(
         cache_read: total_cache_read,
         total,
         limit,
+        model: None,
     }
 }
 
@@ -411,6 +414,7 @@ mod tests {
             cache_read: 800,
             total: 1500,
             limit: Some(200_000),
+            model: Some("claude-3-5-sonnet-20241022".to_string()),
         };
 
         assert_eq!(summary.input, 1000);

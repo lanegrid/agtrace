@@ -147,7 +147,7 @@ pub fn format_token_summary(summary: &TokenSummaryDisplay, opts: &DisplayOptions
         let input_pct = (summary.input as f64 / limit as f64) * 100.0;
         let output_pct = (summary.output as f64 / limit as f64) * 100.0;
 
-        let model_name = "model";
+        let model_name = summary.model.as_deref().unwrap_or("unknown");
         let header = format!("Context Window ({})", model_name);
         lines.push(if opts.enable_color {
             format!("{}", header.bright_black())
