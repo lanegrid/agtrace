@@ -120,11 +120,15 @@ impl SessionState {
     }
 
     /// Total tokens on input side for CURRENT turn (what LLM receives this turn)
-    /// Includes: fresh input + cache creation.
-    /// Note: cache_read tokens are reused from the prompt cache and do NOT consume
-    /// the context window, so they are tracked separately but excluded here.
+    /// Includes: fresh input + cache creation + cache read.
+    ///
+    /// NOTE: cache_read tokens DO consume the context window.
+    /// While cache reads are cheaper for billing (10% cost), they still count
+    /// toward the model's context window limit since the LLM must process them.
     pub fn total_input_side_tokens(&self) -> i32 {
-        self.current_input_tokens + self.current_cache_creation_tokens
+        self.current_input_tokens
+            + self.current_cache_creation_tokens
+            + self.current_cache_read_tokens
     }
 
     /// Total tokens on output side for CURRENT turn
@@ -342,10 +346,10 @@ mod tests {
         state.current_cache_read_tokens = 1000;
 
         // Context window should be based on Turn 2 only
-        // Note: cache_read does NOT consume context window
-        assert_eq!(state.total_input_side_tokens(), 10); // 10 + 0 (cache_read excluded)
+        // Note: cache_read DOES consume context window (cheaper billing, but still processed)
+        assert_eq!(state.total_input_side_tokens(), 1010); // 10 + 0 + 1000
         assert_eq!(state.total_output_side_tokens(), 60);
-        assert_eq!(state.total_context_window_tokens(), 70);
+        assert_eq!(state.total_context_window_tokens(), 1070);
     }
 
     #[test]
@@ -356,7 +360,7 @@ mod tests {
         state.current_cache_creation_tokens = 2000;
         state.current_cache_read_tokens = 10000;
 
-        // Should pass - total 3500 (1000+2000+500, cache_read excluded) is under 200k limit
+        // Should pass - total 13500 (1000+2000+10000+500) is under 200k limit
         assert!(state.validate_tokens(Some(200_000)).is_ok());
     }
 

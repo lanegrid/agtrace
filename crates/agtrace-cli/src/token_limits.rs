@@ -134,14 +134,14 @@ mod tests {
         let (input_pct, output_pct, total_pct) =
             limits.get_usage_percentage_from_state(&state).unwrap();
 
-        // Total input side: 1000 + 2000 = 3000 (cache read does not consume context window)
+        // Total input side: 1000 + 2000 + 10000 = 13000 (cache read DOES consume context window)
         // Total output side: 500
-        // Total context window: 3500
+        // Total context window: 13500
         // Limit: 200000
         let eps = 1e-6;
-        assert!((input_pct - 1.5).abs() < eps); // 3000 / 200000 * 100
+        assert!((input_pct - 6.5).abs() < eps); // 13000 / 200000 * 100
         assert!((output_pct - 0.25).abs() < eps); // 500 / 200000 * 100
-        assert!((total_pct - 1.75).abs() < eps); // 3500 / 200000 * 100
+        assert!((total_pct - 6.75).abs() < eps); // 13500 / 200000 * 100
     }
 
     #[test]
