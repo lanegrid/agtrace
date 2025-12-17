@@ -9,7 +9,7 @@ pub mod session;
 pub mod span;
 pub mod summary;
 
-pub use analysis::{analyze_and_select_sessions, compute_metrics, SessionDigest, SessionMetrics};
+pub use analysis::{analyze_and_select_sessions, SessionDigest};
 pub use assembler::assemble_session;
 pub use diagnostics::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
 pub use session::{
