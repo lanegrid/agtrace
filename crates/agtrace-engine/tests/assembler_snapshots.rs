@@ -1,5 +1,16 @@
 use agtrace_engine::assemble_session_from_events;
+use agtrace_types::AgentEvent;
+use std::fs;
 use std::path::Path;
+
+// Helper to load AgentEvent[] from fixture JSON
+fn load_events_from_fixture(fixture_name: &str) -> Vec<AgentEvent> {
+    let path = Path::new("tests/fixtures").join(fixture_name);
+    let content = fs::read_to_string(&path)
+        .unwrap_or_else(|_| panic!("Failed to read fixture: {}", path.display()));
+    serde_json::from_str(&content)
+        .unwrap_or_else(|_| panic!("Failed to parse fixture: {}", path.display()))
+}
 
 // Helper function to redact UUIDs from JSON for snapshot testing
 fn redact_uuids(value: &mut serde_json::Value) {
@@ -32,15 +43,7 @@ fn redact_uuids(value: &mut serde_json::Value) {
 
 #[test]
 fn test_gemini_session_assembly() {
-    let path = Path::new("../agtrace-providers/tests/samples/gemini_session.json");
-
-    if !path.exists() {
-        eprintln!("Warning: Test file not found, skipping: {}", path.display());
-        return;
-    }
-
-    let events =
-        agtrace_providers::normalize_gemini_file(path).expect("Failed to normalize Gemini file");
+    let events = load_events_from_fixture("gemini_events.json");
 
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
 
@@ -53,15 +56,7 @@ fn test_gemini_session_assembly() {
 
 #[test]
 fn test_codex_session_assembly() {
-    let path = Path::new("../agtrace-providers/tests/samples/codex_session.jsonl");
-
-    if !path.exists() {
-        eprintln!("Warning: Test file not found, skipping: {}", path.display());
-        return;
-    }
-
-    let events =
-        agtrace_providers::normalize_codex_file(path).expect("Failed to normalize Codex file");
+    let events = load_events_from_fixture("codex_events.json");
 
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
 
@@ -74,15 +69,7 @@ fn test_codex_session_assembly() {
 
 #[test]
 fn test_claude_session_assembly() {
-    let path = Path::new("../agtrace-providers/tests/samples/claude_session.jsonl");
-
-    if !path.exists() {
-        eprintln!("Warning: Test file not found, skipping: {}", path.display());
-        return;
-    }
-
-    let events =
-        agtrace_providers::normalize_claude_file(path).expect("Failed to normalize Claude file");
+    let events = load_events_from_fixture("claude_events.json");
 
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
 

@@ -1,0 +1,1297 @@
+[
+  {
+    "id": "90468262-5bc9-47fb-b927-65a76d986e29",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": null,
+    "timestamp": "2025-12-09T19:47:42.930Z",
+    "type": "user",
+    "content": {
+      "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": null,
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": {
+        "disabled": false,
+        "level": "high",
+        "triggers": []
+      },
+      "timestamp": "2025-12-09T19:47:42.930Z",
+      "userType": "external",
+      "uuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "f4f0df9f-bd95-4dd3-9b29-ac65bb2b2477",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "90468262-5bc9-47fb-b927-65a76d986e29",
+    "timestamp": "2025-12-09T19:47:54.563Z",
+    "type": "reasoning",
+    "content": {
+      "text": "The user wants me to:\n1. Add a myapp directory\n2. Create myapp/hoge.py which shows the result of print(1+1)\n\nThis is a straightforward task with two steps:\n1. Create the directory\n2. Create the file with the code\n\nThis is simple enough that I don't need a todo list - it's just 2 quick steps. Let me first check if the myapp directory exists, then create it and the file.\n\nActually, I should use the Write tool to create the file. The Write tool will create the directory if it doesn't exist. Let me just create the file directly.\n\nWait, I should verify first if the directory exists. Actually, looking at the instructions, I should prefer using the dedicated tools. I can just use Write to create the file, and it should handle creating the directory if needed. But let me check first with ls to see if myapp exists.\n\nActually, let me just create the directory first with bash, then write the file. That's clearer.\n\nActually, looking at the instructions more carefully: \"Before executing the command, please follow these steps: Directory Verification: If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\"\n\nSo I should first verify the parent directory (which is the working directory /Users/zawakin/agent-sample). I can see from the env that this is the working directory, so I know the parent exists. Let me create the directory and then the file."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": "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",
+            "thinking": "The user wants me to:\n1. Add a myapp directory\n2. Create myapp/hoge.py which shows the result of print(1+1)\n\nThis is a straightforward task with two steps:\n1. Create the directory\n2. Create the file with the code\n\nThis is simple enough that I don't need a todo list - it's just 2 quick steps. Let me first check if the myapp directory exists, then create it and the file.\n\nActually, I should use the Write tool to create the file. The Write tool will create the directory if it doesn't exist. Let me just create the file directly.\n\nWait, I should verify first if the directory exists. Actually, looking at the instructions, I should prefer using the dedicated tools. I can just use Write to create the file, and it should handle creating the directory if needed. But let me check first with ls to see if myapp exists.\n\nActually, let me just create the directory first with bash, then write the file. That's clearer.\n\nActually, looking at the instructions more carefully: \"Before executing the command, please follow these steps: Directory Verification: If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\"\n\nSo I should first verify the parent directory (which is the working directory /Users/zawakin/agent-sample). I can see from the env that this is the working directory, so I know the parent exists. Let me create the directory and then the file.",
+            "type": "thinking"
+          }
+        ],
+        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 3893,
+          "cache_read_input_tokens": 12135,
+          "input_tokens": 10,
+          "output_tokens": 8
+        }
+      },
+      "parentUuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
+      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:47:54.563Z",
+      "userType": "external",
+      "uuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "9cb216ae-d7d6-44e2-8d4c-2fe3ca1d2feb",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "f4f0df9f-bd95-4dd3-9b29-ac65bb2b2477",
+    "timestamp": "2025-12-09T19:47:55.174Z",
+    "type": "message",
+    "content": {
+      "text": "I'll create the myapp directory and then create the hoge.py file with the print statement."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": null,
+            "text": "I'll create the myapp directory and then create the hoge.py file with the print statement.",
+            "type": "text"
+          }
+        ],
+        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 3893,
+          "cache_read_input_tokens": 12135,
+          "input_tokens": 10,
+          "output_tokens": 8
+        }
+      },
+      "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
+      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:47:55.174Z",
+      "userType": "external",
+      "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "072a42f3-8cdf-4737-bf33-8ed413869d48",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "9cb216ae-d7d6-44e2-8d4c-2fe3ca1d2feb",
+    "timestamp": "2025-12-09T19:47:55.174Z",
+    "type": "token_usage",
+    "content": {
+      "input_tokens": 10,
+      "output_tokens": 8,
+      "total_tokens": 18,
+      "details": {
+        "cache_creation_input_tokens": 3893,
+        "cache_read_input_tokens": 12135,
+        "reasoning_output_tokens": null,
+        "audio_input_tokens": null,
+        "audio_output_tokens": null
+      }
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": null,
+            "text": "I'll create the myapp directory and then create the hoge.py file with the print statement.",
+            "type": "text"
+          }
+        ],
+        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 3893,
+          "cache_read_input_tokens": 12135,
+          "input_tokens": 10,
+          "output_tokens": 8
+        }
+      },
+      "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
+      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:47:55.174Z",
+      "userType": "external",
+      "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "280aa4a0-d88c-4f3f-944d-df0b565c763e",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "072a42f3-8cdf-4737-bf33-8ed413869d48",
+    "timestamp": "2025-12-09T19:47:55.793Z",
+    "type": "tool_call",
+    "content": {
+      "name": "Bash",
+      "arguments": {
+        "command": "mkdir -p myapp",
+        "description": "Create myapp directory"
+      },
+      "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
+            "input": {
+              "command": "mkdir -p myapp",
+              "description": "Create myapp directory"
+            },
+            "name": "Bash",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 3893,
+          "cache_read_input_tokens": 12135,
+          "input_tokens": 10,
+          "output_tokens": 436
+        }
+      },
+      "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
+      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:47:55.793Z",
+      "userType": "external",
+      "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "3f729abc-4ee2-4d0c-94f6-e18e4fd31fe9",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "280aa4a0-d88c-4f3f-944d-df0b565c763e",
+    "timestamp": "2025-12-09T19:47:55.793Z",
+    "type": "token_usage",
+    "content": {
+      "input_tokens": 10,
+      "output_tokens": 436,
+      "total_tokens": 446,
+      "details": {
+        "cache_creation_input_tokens": 3893,
+        "cache_read_input_tokens": 12135,
+        "reasoning_output_tokens": null,
+        "audio_input_tokens": null,
+        "audio_output_tokens": null
+      }
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
+            "input": {
+              "command": "mkdir -p myapp",
+              "description": "Create myapp directory"
+            },
+            "name": "Bash",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 3893,
+          "cache_read_input_tokens": 12135,
+          "input_tokens": 10,
+          "output_tokens": 436
+        }
+      },
+      "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
+      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:47:55.793Z",
+      "userType": "external",
+      "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "da94c693-0289-411b-a869-848e4721937a",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "3f729abc-4ee2-4d0c-94f6-e18e4fd31fe9",
+    "timestamp": "2025-12-09T19:47:59.985Z",
+    "type": "tool_result",
+    "content": {
+      "output": "",
+      "tool_call_id": "280aa4a0-d88c-4f3f-944d-df0b565c763e",
+      "is_error": false
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "content": "",
+            "is_error": false,
+            "tool_use_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
+            "type": "tool_result"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": null,
+      "timestamp": "2025-12-09T19:47:59.985Z",
+      "userType": "external",
+      "uuid": "81638428-86d5-4919-9d6e-010d42f97439",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "03a23fb7-98a9-4645-86d1-26f1d47f6229",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "da94c693-0289-411b-a869-848e4721937a",
+    "timestamp": "2025-12-09T19:48:04.245Z",
+    "type": "reasoning",
+    "content": {
+      "text": "Good, the directory has been created. Now let me create the hoge.py file with print(1+1)."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": "EoECCkYIChgCKkAH/dgu/KKw52+2Elq9t+athb7B3gQtJwquXdj6imtJt6Ems77ZImthVBNLGYamhcJsgnDD/lnmoUWsjp2kouSMEgyhFuZm5xA+mUC3UPAaDJqBh+LQou8IbELHByIwkEA20A4DkKA8oKq8JLWfxQ8lUxe+D5XbBSDqT2k43zdy7rA0N7OYZUSq+/g7ChUYKmnkkumqdcGg2gApvlWLsKj2Haj12XGo2SGnd4/e7udqUOrT9sn1IoEIpfx1gc09l3X7fowdlorTAiLcl/K72XDRvzipXr4Gl5RXil9nGgs+X+1jMCrP/4Q2q8+2qmCOC0/m5uDw4CDkJNAYAQ==",
+            "thinking": "Good, the directory has been created. Now let me create the hoge.py file with print(1+1).",
+            "type": "thinking"
+          }
+        ],
+        "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 458,
+          "cache_read_input_tokens": 16028,
+          "input_tokens": 14,
+          "output_tokens": 1
+        }
+      },
+      "parentUuid": "81638428-86d5-4919-9d6e-010d42f97439",
+      "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:04.245Z",
+      "userType": "external",
+      "uuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "1496ea77-8627-4502-85ac-9105fbae293a",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "03a23fb7-98a9-4645-86d1-26f1d47f6229",
+    "timestamp": "2025-12-09T19:48:05.038Z",
+    "type": "tool_call",
+    "content": {
+      "name": "Write",
+      "arguments": {
+        "content": "print(1+1)\n",
+        "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
+      },
+      "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_0154S2y9CNPch89dTHGJpmnx",
+            "input": {
+              "content": "print(1+1)\n",
+              "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
+            },
+            "name": "Write",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 458,
+          "cache_read_input_tokens": 16028,
+          "input_tokens": 14,
+          "output_tokens": 126
+        }
+      },
+      "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
+      "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:05.038Z",
+      "userType": "external",
+      "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "2cfbd0d8-e279-43a6-8a70-247243fed86f",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "1496ea77-8627-4502-85ac-9105fbae293a",
+    "timestamp": "2025-12-09T19:48:05.038Z",
+    "type": "token_usage",
+    "content": {
+      "input_tokens": 14,
+      "output_tokens": 126,
+      "total_tokens": 140,
+      "details": {
+        "cache_creation_input_tokens": 458,
+        "cache_read_input_tokens": 16028,
+        "reasoning_output_tokens": null,
+        "audio_input_tokens": null,
+        "audio_output_tokens": null
+      }
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_0154S2y9CNPch89dTHGJpmnx",
+            "input": {
+              "content": "print(1+1)\n",
+              "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
+            },
+            "name": "Write",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 458,
+          "cache_read_input_tokens": 16028,
+          "input_tokens": 14,
+          "output_tokens": 126
+        }
+      },
+      "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
+      "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:05.038Z",
+      "userType": "external",
+      "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "7c1f987f-46a1-4133-9ded-27c8b96d2a18",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "2cfbd0d8-e279-43a6-8a70-247243fed86f",
+    "timestamp": "2025-12-09T19:48:08.021Z",
+    "type": "tool_result",
+    "content": {
+      "output": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
+      "tool_call_id": "1496ea77-8627-4502-85ac-9105fbae293a",
+      "is_error": false
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "content": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
+            "is_error": false,
+            "tool_use_id": "toolu_0154S2y9CNPch89dTHGJpmnx",
+            "type": "tool_result"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": null,
+      "timestamp": "2025-12-09T19:48:08.021Z",
+      "userType": "external",
+      "uuid": "e9885817-b4bc-434b-8d1b-0895282020d4",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "aaa01f40-7470-40d8-82c2-483786e7f15e",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "7c1f987f-46a1-4133-9ded-27c8b96d2a18",
+    "timestamp": "2025-12-09T19:48:13.213Z",
+    "type": "reasoning",
+    "content": {
+      "text": "Perfect! I've created the directory and the file. The file contains print(1+1) which will output 2 when run. Let me confirm this was done successfully."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": "EsACCkYIChgCKkDLJhNfk53iOEo7zJVQGHEqwJP7sSf4phN9vkve0zBc+/aFLQxwxjq9oEfIeFbSLCCoqjtHrdeyg8LdYlodErnDEgzorhSqRUSYwVrouGYaDLG0yvQke0bgGqqiciIwiAPcoDZDJu1p9zcbxOmMyWGlC+6kDMr+sNBFDGSVhxZ4+ktnKEGCVQDgwOEvaq2KKqcBYZl97ZBXfWURUiBrTl7y1RQCU+DwbV4nsOTvhaFz1vCwxc3kBcvkLUkRSyIgUkWKx6IIzCDBygOdaqM3w9/IyUOpgBA9rq+8FsHa/Q2+aygKlbdSfGHInapRCf25z/UgmioUEnqAzLlQ/RbMexjf90O3M4RyJs1cjgKxsdORjLjR8tfY0Iqk/cv65JNbfZJj0nXxH6/TeXwIDTKWRm2M7+Ipj1Mp+zwYAQ==",
+            "thinking": "Perfect! I've created the directory and the file. The file contains print(1+1) which will output 2 when run. Let me confirm this was done successfully.",
+            "type": "thinking"
+          }
+        ],
+        "id": "msg_014f65R9TyHUNFrErYRPauLc",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 169,
+          "cache_read_input_tokens": 16486,
+          "input_tokens": 13,
+          "output_tokens": 1
+        }
+      },
+      "parentUuid": "e9885817-b4bc-434b-8d1b-0895282020d4",
+      "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:13.213Z",
+      "userType": "external",
+      "uuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "ff911ee3-5966-4504-8d1f-2c8286a26c74",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "aaa01f40-7470-40d8-82c2-483786e7f15e",
+    "timestamp": "2025-12-09T19:48:14.040Z",
+    "type": "message",
+    "content": {
+      "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": null,
+            "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```",
+            "type": "text"
+          }
+        ],
+        "id": "msg_014f65R9TyHUNFrErYRPauLc",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 169,
+          "cache_read_input_tokens": 16486,
+          "input_tokens": 13,
+          "output_tokens": 112
+        }
+      },
+      "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
+      "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:14.040Z",
+      "userType": "external",
+      "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "8bcb44bf-e69f-42c1-8f11-ea9f9e7f9be6",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "ff911ee3-5966-4504-8d1f-2c8286a26c74",
+    "timestamp": "2025-12-09T19:48:14.040Z",
+    "type": "token_usage",
+    "content": {
+      "input_tokens": 13,
+      "output_tokens": 112,
+      "total_tokens": 125,
+      "details": {
+        "cache_creation_input_tokens": 169,
+        "cache_read_input_tokens": 16486,
+        "reasoning_output_tokens": null,
+        "audio_input_tokens": null,
+        "audio_output_tokens": null
+      }
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": null,
+            "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```",
+            "type": "text"
+          }
+        ],
+        "id": "msg_014f65R9TyHUNFrErYRPauLc",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 169,
+          "cache_read_input_tokens": 16486,
+          "input_tokens": 13,
+          "output_tokens": 112
+        }
+      },
+      "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
+      "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:14.040Z",
+      "userType": "external",
+      "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "86b538d7-13be-4e2e-aec9-8b3fc4c0f827",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "8bcb44bf-e69f-42c1-8f11-ea9f9e7f9be6",
+    "timestamp": "2025-12-09T19:48:17.460Z",
+    "type": "user",
+    "content": {
+      "text": "cd to myapp and run python hoge.py"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "text": "cd to myapp and run python hoge.py",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "e012ed58-5560-47d5-ae47-74d96256a778",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": {
+        "disabled": false,
+        "level": "high",
+        "triggers": []
+      },
+      "timestamp": "2025-12-09T19:48:17.460Z",
+      "userType": "external",
+      "uuid": "d3f9b714-c2bc-4201-b076-8b634759c25f",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "46d7f19b-c9f1-420a-a2f6-bbba06b60c95",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "86b538d7-13be-4e2e-aec9-8b3fc4c0f827",
+    "timestamp": "2025-12-09T19:48:22.893Z",
+    "type": "reasoning",
+    "content": {
+      "text": "The user wants me to change directory to myapp and run the python script. I should use the Bash tool to execute this command."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": "EqYCCkYIChgCKkB7J8Pii6Bul3e+6aQSJMgjnxth+MZVbaoSmoG+EHMyankqnygHs7092nkNyO7h3uncOz/7Bkb+ohb5iw4EWmNjEgwhDxKWhgc05w0JZq0aDFOvb5jcaLza0BUskSIwBgjrGApNo0ipXgrP3KZEMVHG0ExpZTVj/KlLmkNYnKIiSpMQRW8XxGuS2zzt1jL4Ko0BWWEGFXh8+Ed8JT43gP8kIpCAMLnujJv7Ti7gBE5QnJMuRRXaTie+l7T1jh40WuLJK8lH9zwBaoezkYHU1QUfDeZ+PgzNERmECRyAtGIPwwDrVWGZ1/gJPTEcM0Vz4TOJxvAnBPH1jF5d2m6frx5UumV+WjLdbos0rfj8QWO/TZxAhE2fPG3V+I8889iWGAE=",
+            "thinking": "The user wants me to change directory to myapp and run the python script. I should use the Bash tool to execute this command.",
+            "type": "thinking"
+          }
+        ],
+        "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 333,
+          "cache_read_input_tokens": 16028,
+          "input_tokens": 10,
+          "output_tokens": 4
+        }
+      },
+      "parentUuid": "d3f9b714-c2bc-4201-b076-8b634759c25f",
+      "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:22.893Z",
+      "userType": "external",
+      "uuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "96e9c0cd-5fc5-4473-bd4a-62375c6720c7",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "46d7f19b-c9f1-420a-a2f6-bbba06b60c95",
+    "timestamp": "2025-12-09T19:48:23.391Z",
+    "type": "tool_call",
+    "content": {
+      "name": "Bash",
+      "arguments": {
+        "command": "cd myapp && python hoge.py",
+        "description": "Change to myapp directory and run hoge.py"
+      },
+      "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
+            "input": {
+              "command": "cd myapp && python hoge.py",
+              "description": "Change to myapp directory and run hoge.py"
+            },
+            "name": "Bash",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 333,
+          "cache_read_input_tokens": 16028,
+          "input_tokens": 10,
+          "output_tokens": 123
+        }
+      },
+      "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
+      "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:23.391Z",
+      "userType": "external",
+      "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "ff1a2b20-c64f-47ce-974a-54837d260ee2",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "96e9c0cd-5fc5-4473-bd4a-62375c6720c7",
+    "timestamp": "2025-12-09T19:48:23.391Z",
+    "type": "token_usage",
+    "content": {
+      "input_tokens": 10,
+      "output_tokens": 123,
+      "total_tokens": 133,
+      "details": {
+        "cache_creation_input_tokens": 333,
+        "cache_read_input_tokens": 16028,
+        "reasoning_output_tokens": null,
+        "audio_input_tokens": null,
+        "audio_output_tokens": null
+      }
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
+            "input": {
+              "command": "cd myapp && python hoge.py",
+              "description": "Change to myapp directory and run hoge.py"
+            },
+            "name": "Bash",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 333,
+          "cache_read_input_tokens": 16028,
+          "input_tokens": 10,
+          "output_tokens": 123
+        }
+      },
+      "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
+      "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:23.391Z",
+      "userType": "external",
+      "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "de531542-6f89-491c-8389-fa376abf1300",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "ff1a2b20-c64f-47ce-974a-54837d260ee2",
+    "timestamp": "2025-12-09T19:48:27.975Z",
+    "type": "tool_result",
+    "content": {
+      "output": "error: target shim binary not found",
+      "tool_call_id": "96e9c0cd-5fc5-4473-bd4a-62375c6720c7",
+      "is_error": true
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "content": "error: target shim binary not found",
+            "is_error": true,
+            "tool_use_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
+            "type": "tool_result"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "5c11c8fa-acec-495c-8aee-e95578810365",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": null,
+      "timestamp": "2025-12-09T19:48:27.975Z",
+      "userType": "external",
+      "uuid": "0d657137-983b-4fb0-b834-38ae6a0f0627",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "785b0c4f-04af-4f88-aee5-876d4a1c50fa",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "de531542-6f89-491c-8389-fa376abf1300",
+    "timestamp": "2025-12-09T19:48:30.651Z",
+    "type": "reasoning",
+    "content": {
+      "text": "It seems there's an issue with the python command. Let me try using python3 instead, which is more commonly available on macOS systems."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": "ErACCkYIChgCKkC13ghh0NKB9lvuxm3Ll7o8z11r5KVjPLvFcXOndcW0pYNDuS7DHrHAsgNsGYKcEQsEQGJiCXm53ZKJvQMvZGVxEgxtrayu9x1L9CuZpq8aDJHanH6F6t6Am8zLdCIwwFU43ML3Lcx/xD4t267UyND+4+a+h1jfu6NjHZAmbtttZkSv/7WJP3uiPhDeqt0UKpcBfARwypaSliwhZbJARXR9+VwU3+Ej4OjNM4ymx/Gw2lHxzef2ZcPBJ8sPx0BjhdOY5+WazNlWmM87GfP9hp1ar6QRoS6NNYRQ7w4oI2aZbPGmKfvfmzC4RRTyABSVWB6a1BidB/6VPeIlhHzGJ1PBRBuZvggCPxJpRfDCVod4fvv7AaBeUQIY7LDayMiAQmovzvkA1GJcEhgB",
+            "thinking": "It seems there's an issue with the python command. Let me try using python3 instead, which is more commonly available on macOS systems.",
+            "type": "thinking"
+          }
+        ],
+        "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 154,
+          "cache_read_input_tokens": 16361,
+          "input_tokens": 14,
+          "output_tokens": 1
+        }
+      },
+      "parentUuid": "0d657137-983b-4fb0-b834-38ae6a0f0627",
+      "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:30.651Z",
+      "userType": "external",
+      "uuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "90662eb5-9a02-4586-b095-f7b50b81320e",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "785b0c4f-04af-4f88-aee5-876d4a1c50fa",
+    "timestamp": "2025-12-09T19:48:31.225Z",
+    "type": "tool_call",
+    "content": {
+      "name": "Bash",
+      "arguments": {
+        "command": "cd myapp && python3 hoge.py",
+        "description": "Change to myapp directory and run hoge.py with python3"
+      },
+      "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
+            "input": {
+              "command": "cd myapp && python3 hoge.py",
+              "description": "Change to myapp directory and run hoge.py with python3"
+            },
+            "name": "Bash",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 154,
+          "cache_read_input_tokens": 16361,
+          "input_tokens": 14,
+          "output_tokens": 1
+        }
+      },
+      "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
+      "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:31.225Z",
+      "userType": "external",
+      "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "1660e9f6-2fa7-4501-bcc6-ce45d2bd0863",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "90662eb5-9a02-4586-b095-f7b50b81320e",
+    "timestamp": "2025-12-09T19:48:31.225Z",
+    "type": "token_usage",
+    "content": {
+      "input_tokens": 14,
+      "output_tokens": 1,
+      "total_tokens": 15,
+      "details": {
+        "cache_creation_input_tokens": 154,
+        "cache_read_input_tokens": 16361,
+        "reasoning_output_tokens": null,
+        "audio_input_tokens": null,
+        "audio_output_tokens": null
+      }
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
+            "input": {
+              "command": "cd myapp && python3 hoge.py",
+              "description": "Change to myapp directory and run hoge.py with python3"
+            },
+            "name": "Bash",
+            "signature": null,
+            "type": "tool_use"
+          }
+        ],
+        "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 154,
+          "cache_read_input_tokens": 16361,
+          "input_tokens": 14,
+          "output_tokens": 1
+        }
+      },
+      "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
+      "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:31.225Z",
+      "userType": "external",
+      "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "e5bf883c-0ae8-4cb2-8a98-16fe745fb28f",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "1660e9f6-2fa7-4501-bcc6-ce45d2bd0863",
+    "timestamp": "2025-12-09T19:48:33.883Z",
+    "type": "tool_result",
+    "content": {
+      "output": "2",
+      "tool_call_id": "90662eb5-9a02-4586-b095-f7b50b81320e",
+      "is_error": false
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample/myapp",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "content": "2",
+            "is_error": false,
+            "tool_use_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
+            "type": "tool_result"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": null,
+      "timestamp": "2025-12-09T19:48:33.883Z",
+      "userType": "external",
+      "uuid": "d3e622f7-4801-4915-9888-75b2acd7b721",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "a22bb94c-280b-4e21-a3c7-942117a88d1f",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "e5bf883c-0ae8-4cb2-8a98-16fe745fb28f",
+    "timestamp": "2025-12-09T19:48:38.078Z",
+    "type": "reasoning",
+    "content": {
+      "text": "Great! The script ran successfully and output \"2\" as expected."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample/myapp",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": "EuYBCkYIChgCKkCnLcRC4aBekRN74E6Mp6WYCPAlcqHm1E1R/HJyoE9u7XRcMgJR7aupoMMwuXCAA93zG+JqeEYiPU7xKEstpkoVEgzU/Hdz9wns3deWpqQaDLFBlP9l2Ge/ADnf4iIwNMqquoLtw/RsaI7APP3NxQHxKInZOUqbtx1ijLfMe7whERPPWetwSbQhoEAExIUgKk5d8A85qd3Sdi4GL/U0OeLCx8AwKUOssZ+1ilsnvVWXdZRJxEdix2mvG04sIkULO6veIfLPVF65fJrQukZ9RmtRhC9YucgxExkUQLTuetMYAQ==",
+            "thinking": "Great! The script ran successfully and output \"2\" as expected.",
+            "type": "thinking"
+          }
+        ],
+        "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 151,
+          "cache_read_input_tokens": 16515,
+          "input_tokens": 13,
+          "output_tokens": 1
+        }
+      },
+      "parentUuid": "d3e622f7-4801-4915-9888-75b2acd7b721",
+      "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:38.078Z",
+      "userType": "external",
+      "uuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "20b8773e-6c56-4113-a5ae-19e7c8923418",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "a22bb94c-280b-4e21-a3c7-942117a88d1f",
+    "timestamp": "2025-12-09T19:48:38.356Z",
+    "type": "message",
+    "content": {
+      "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample/myapp",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": null,
+            "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`.",
+            "type": "text"
+          }
+        ],
+        "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 151,
+          "cache_read_input_tokens": 16515,
+          "input_tokens": 13,
+          "output_tokens": 46
+        }
+      },
+      "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
+      "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:38.356Z",
+      "userType": "external",
+      "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "6c57f1ea-0c1c-4413-b08a-e105b228552a",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "20b8773e-6c56-4113-a5ae-19e7c8923418",
+    "timestamp": "2025-12-09T19:48:38.356Z",
+    "type": "token_usage",
+    "content": {
+      "input_tokens": 13,
+      "output_tokens": 46,
+      "total_tokens": 59,
+      "details": {
+        "cache_creation_input_tokens": 151,
+        "cache_read_input_tokens": 16515,
+        "reasoning_output_tokens": null,
+        "audio_input_tokens": null,
+        "audio_output_tokens": null
+      }
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample/myapp",
+      "gitBranch": "claude",
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "signature": null,
+            "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`.",
+            "type": "text"
+          }
+        ],
+        "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
+        "model": "claude-sonnet-4-5-20250929",
+        "role": "assistant",
+        "stop_reason": null,
+        "stop_sequence": null,
+        "type": "message",
+        "usage": {
+          "cache_creation_input_tokens": 151,
+          "cache_read_input_tokens": 16515,
+          "input_tokens": 13,
+          "output_tokens": 46
+        }
+      },
+      "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
+      "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "timestamp": "2025-12-09T19:48:38.356Z",
+      "userType": "external",
+      "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "6462b1f2-d1b9-4d9e-920e-f1b3115ddef4",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "6c57f1ea-0c1c-4413-b08a-e105b228552a",
+    "timestamp": "2025-12-09T19:48:50.228Z",
+    "type": "user",
+    "content": {
+      "text": "Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to."
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample/myapp",
+      "gitBranch": "claude",
+      "isMeta": true,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "text": "Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to.",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": null,
+      "timestamp": "2025-12-09T19:48:50.228Z",
+      "userType": "external",
+      "uuid": "12baa1f9-9626-4645-9333-8fa74bfd679e",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "d20105d8-c574-45bd-b825-84aec43d66e8",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "6462b1f2-d1b9-4d9e-920e-f1b3115ddef4",
+    "timestamp": "2025-12-09T19:48:50.204Z",
+    "type": "user",
+    "content": {
+      "text": "<command-name>/exit</command-name>\n            <command-message>exit</command-message>\n            <command-args></command-args>"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample/myapp",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "text": "<command-name>/exit</command-name>\n            <command-message>exit</command-message>\n            <command-args></command-args>",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "12baa1f9-9626-4645-9333-8fa74bfd679e",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": null,
+      "timestamp": "2025-12-09T19:48:50.204Z",
+      "userType": "external",
+      "uuid": "23a65594-5137-4355-a7a4-16857a3d7f4e",
+      "version": "2.0.28"
+    }
+  },
+  {
+    "id": "1184ef2f-0211-4edb-bc9f-db8a1bc0a4ea",
+    "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "parent_id": "d20105d8-c574-45bd-b825-84aec43d66e8",
+    "timestamp": "2025-12-09T19:48:50.204Z",
+    "type": "user",
+    "content": {
+      "text": "<local-command-stdout>Goodbye!</local-command-stdout>"
+    },
+    "metadata": {
+      "cwd": "/Users/zawakin/agent-sample/myapp",
+      "gitBranch": "claude",
+      "isMeta": false,
+      "isSidechain": false,
+      "message": {
+        "content": [
+          {
+            "text": "<local-command-stdout>Goodbye!</local-command-stdout>",
+            "type": "text"
+          }
+        ],
+        "role": "user"
+      },
+      "parentUuid": "23a65594-5137-4355-a7a4-16857a3d7f4e",
+      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+      "thinkingMetadata": null,
+      "timestamp": "2025-12-09T19:48:50.204Z",
+      "userType": "external",
+      "uuid": "61f4ec02-d975-4eb6-89be-fbb302f1167b",
+      "version": "2.0.28"
+    }
+  }
+]
