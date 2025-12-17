@@ -13,6 +13,36 @@ use crate::codex::schema::CodexRecord;
 static EXIT_CODE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"Exit Code:\s*(\d+)").unwrap());
 
+/// Attach model to event metadata when available
+fn attach_model_metadata(
+    metadata: Option<serde_json::Value>,
+    model: Option<&String>,
+) -> Option<serde_json::Value> {
+    let model = match model {
+        Some(m) => m.clone(),
+        None => return metadata,
+    };
+
+    match metadata {
+        Some(serde_json::Value::Object(mut map)) => {
+            map.entry("model")
+                .or_insert_with(|| serde_json::Value::String(model));
+            Some(serde_json::Value::Object(map))
+        }
+        Some(other) => {
+            let mut map = serde_json::Map::new();
+            map.insert("raw".to_string(), other);
+            map.insert("model".to_string(), serde_json::Value::String(model));
+            Some(serde_json::Value::Object(map))
+        }
+        None => {
+            let mut map = serde_json::Map::new();
+            map.insert("model".to_string(), serde_json::Value::String(model));
+            Some(serde_json::Value::Object(map))
+        }
+    }
+}
+
 /// Normalize Codex session records to v2 events
 /// Handles async token notifications, JSON string parsing, and exit code extraction
 pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -> Vec<AgentEvent> {
@@ -20,6 +50,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
     let trace_id = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
     let mut builder = EventBuilder::new(trace_id);
     let mut events = Vec::new();
+    let mut last_seen_model: Option<String> = None;
 
     // Track last generation event for attaching TokenUsage (future use)
     let mut _last_generation_event_id: Option<Uuid> = None;
@@ -37,7 +68,10 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
 
             CodexRecord::EventMsg(event_msg) => {
                 let timestamp = parse_timestamp(&event_msg.timestamp);
-                let raw_value = serde_json::to_value(&event_msg).ok();
+                let raw_value = attach_model_metadata(
+                    serde_json::to_value(&event_msg).ok(),
+                    last_seen_model.as_ref(),
+                );
 
                 match &event_msg.payload {
                     // Skip user_message, agent_message, agent_reasoning
@@ -104,6 +138,10 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
 
             CodexRecord::ResponseItem(response_item) => {
                 let timestamp = parse_timestamp(&response_item.timestamp);
+                let raw_value = attach_model_metadata(
+                    serde_json::to_value(&response_item).ok(),
+                    last_seen_model.as_ref(),
+                );
 
                 match &response_item.payload {
                     schema::ResponseItemPayload::Message(message) => {
@@ -116,11 +154,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                             EventPayload::Message(v2::MessagePayload { text })
                         };
 
-                        let event = builder.create_event(
-                            timestamp,
-                            payload,
-                            serde_json::to_value(&response_item).ok(),
-                        );
+                        let event = builder.create_event(timestamp, payload, raw_value.clone());
 
                         if message.role == "assistant" {
                             _last_generation_event_id = Some(event.id);
@@ -136,7 +170,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                         let event = builder.create_event(
                             timestamp,
                             EventPayload::Reasoning(v2::ReasoningPayload { text }),
-                            serde_json::to_value(&response_item).ok(),
+                            raw_value.clone(),
                         );
                         events.push(event);
                     }
@@ -152,7 +186,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                                 arguments,
                                 provider_call_id: Some(func_call.call_id.clone()),
                             }),
-                            serde_json::to_value(&response_item).ok(),
+                            raw_value.clone(),
                         );
 
                         // Register tool call mapping
@@ -173,7 +207,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                                     tool_call_id,
                                     is_error: exit_code.map(|code| code != 0).unwrap_or(false),
                                 }),
-                                serde_json::to_value(&response_item).ok(),
+                                raw_value.clone(),
                             );
                             events.push(event);
                         }
@@ -190,7 +224,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                                 arguments,
                                 provider_call_id: Some(tool_call.call_id.clone()),
                             }),
-                            serde_json::to_value(&response_item).ok(),
+                            raw_value.clone(),
                         );
 
                         builder.register_tool_call(tool_call.call_id.clone(), event.id);
@@ -209,7 +243,7 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                                     tool_call_id,
                                     is_error: exit_code.map(|code| code != 0).unwrap_or(false),
                                 }),
-                                serde_json::to_value(&response_item).ok(),
+                                raw_value.clone(),
                             );
                             events.push(event);
                         }
@@ -225,9 +259,9 @@ pub fn normalize_codex_session_v2(records: Vec<CodexRecord>, session_id: &str) -
                 }
             }
 
-            CodexRecord::TurnContext(_turn_context) => {
-                // TurnContext doesn't generate events in v2
-                // Context metadata is preserved in raw field if needed
+            CodexRecord::TurnContext(turn_context) => {
+                // Track model for downstream token usage + message events
+                last_seen_model = Some(turn_context.payload.model.clone());
             }
 
             CodexRecord::Unknown => {

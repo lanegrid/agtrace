@@ -150,12 +150,19 @@ fn handle_initial_update(
     if let Some(state) = session_state {
         let total = state.total_context_window_tokens() as u64;
 
-        if total > 0 && state.model.is_some() {
-            let token_limits = TokenLimits::new();
+        // Always show absolute tokens; percentages/limits only if known
+        let token_limits = TokenLimits::new();
+        let limit = state.context_window_limit.or_else(|| {
+            state
+                .model
+                .as_ref()
+                .and_then(|m| token_limits.get_limit(m).map(|l| l.total_limit))
+        });
+
+        if let Some(limit) = limit {
             if let Some((input_pct, output_pct, total_pct)) =
                 token_limits.get_usage_percentage_from_state(state)
             {
-                let model = state.model.as_ref().unwrap();
                 let bar = create_progress_bar(total_pct);
                 let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
                     |s: &str| s.red().to_string()
@@ -166,7 +173,7 @@ fn handle_initial_update(
                 };
 
                 println!(
-                    "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {}/{} tokens",
+                    "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {} used / {} tokens",
                     "📊".dimmed(),
                     "Current usage:".bright_black(),
                     color_fn(&bar),
@@ -174,9 +181,24 @@ fn handle_initial_update(
                     input_pct,
                     output_pct,
                     total,
-                    token_limits.get_limit(model).unwrap().total_limit
+                    limit
+                );
+            } else {
+                println!(
+                    "{}  {} {} tokens used (limit {})",
+                    "📊".dimmed(),
+                    "Current usage:".bright_black(),
+                    total,
+                    limit
                 );
             }
+        } else {
+            println!(
+                "{}  {} {} tokens used",
+                "📊".dimmed(),
+                "Current usage:".bright_black(),
+                total
+            );
         }
 
         println!(
@@ -433,6 +455,19 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
                         state.model = Some(model.to_string());
                     } else if let Some(model) = metadata.get("model").and_then(|v| v.as_str()) {
                         state.model = Some(model.to_string());
+                    }
+                }
+            }
+
+            // Extract provider-reported context window if present
+            if state.context_window_limit.is_none() {
+                if let Some(metadata) = &event.metadata {
+                    let limit = metadata
+                        .get("info")
+                        .and_then(|info| info.get("model_context_window"))
+                        .and_then(|v| v.as_u64());
+                    if let Some(limit) = limit {
+                        state.context_window_limit = Some(limit);
                     }
                 }
             }

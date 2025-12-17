@@ -61,6 +61,9 @@ pub struct SessionState {
     /// Model name (e.g., "claude-3-5-sonnet-20241022")
     pub model: Option<String>,
 
+    /// Explicit context window limit reported by the provider (if available)
+    pub context_window_limit: Option<u64>,
+
     /// Current turn's input tokens (fresh, non-cached)
     /// This is a SNAPSHOT, not cumulative
     pub current_input_tokens: i32,
@@ -104,6 +107,7 @@ impl SessionState {
             start_time,
             last_activity: start_time,
             model: None,
+            context_window_limit: None,
             current_input_tokens: 0,
             current_output_tokens: 0,
             current_cache_creation_tokens: 0,
@@ -116,12 +120,11 @@ impl SessionState {
     }
 
     /// Total tokens on input side for CURRENT turn (what LLM receives this turn)
-    /// Includes: fresh input + cache creation + cache read
-    /// This is the actual Context Window usage for this turn.
+    /// Includes: fresh input + cache creation.
+    /// Note: cache_read tokens are reused from the prompt cache and do NOT consume
+    /// the context window, so they are tracked separately but excluded here.
     pub fn total_input_side_tokens(&self) -> i32 {
-        self.current_input_tokens
-            + self.current_cache_creation_tokens
-            + self.current_cache_read_tokens
+        self.current_input_tokens + self.current_cache_creation_tokens
     }
 
     /// Total tokens on output side for CURRENT turn
@@ -339,9 +342,10 @@ mod tests {
         state.current_cache_read_tokens = 1000;
 
         // Context window should be based on Turn 2 only
-        assert_eq!(state.total_input_side_tokens(), 1010); // 10 + 0 + 1000
+        // Note: cache_read does NOT consume context window
+        assert_eq!(state.total_input_side_tokens(), 10); // 10 + 0 (cache_read excluded)
         assert_eq!(state.total_output_side_tokens(), 60);
-        assert_eq!(state.total_context_window_tokens(), 1070);
+        assert_eq!(state.total_context_window_tokens(), 70);
     }
 
     #[test]
@@ -352,7 +356,7 @@ mod tests {
         state.current_cache_creation_tokens = 2000;
         state.current_cache_read_tokens = 10000;
 
-        // Should pass - total 13500 is under 200k limit
+        // Should pass - total 3500 (1000+2000+500, cache_read excluded) is under 200k limit
         assert!(state.validate_tokens(Some(200_000)).is_ok());
     }
 

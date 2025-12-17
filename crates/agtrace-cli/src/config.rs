@@ -10,6 +10,9 @@ pub struct ProviderConfig {
     pub enabled: bool,
     /// Root directory where this provider stores logs
     pub log_root: PathBuf,
+    /// Optional override for the provider's context window limit (tokens)
+    #[serde(default)]
+    pub context_window_override: Option<u64>,
 }
 
 /// Main configuration for agtrace
@@ -77,6 +80,7 @@ impl Config {
                     ProviderConfig {
                         enabled: true,
                         log_root: path,
+                        context_window_override: None,
                     },
                 );
             }
@@ -121,6 +125,7 @@ mod tests {
             ProviderConfig {
                 enabled: true,
                 log_root: PathBuf::from("/home/user/.claude/projects"),
+                context_window_override: None,
             },
         );
 
@@ -143,6 +148,7 @@ mod tests {
             ProviderConfig {
                 enabled: true,
                 log_root: PathBuf::from("/test/claude"),
+                context_window_override: None,
             },
         );
         config.set_provider(
@@ -150,6 +156,7 @@ mod tests {
             ProviderConfig {
                 enabled: false,
                 log_root: PathBuf::from("/test/codex"),
+                context_window_override: None,
             },
         );
 

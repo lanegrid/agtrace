@@ -45,6 +45,7 @@ impl TokenLimits {
         limits.insert("gpt-4o".to_string(), TokenLimit::new(128_000));
         limits.insert("gpt-4o-mini".to_string(), TokenLimit::new(128_000));
         limits.insert("gpt-4-turbo".to_string(), TokenLimit::new(128_000));
+        limits.insert("gpt-5.1-codex".to_string(), TokenLimit::new(258_400));
 
         // Gemini models
         limits.insert("gemini-1.5-pro".to_string(), TokenLimit::new(2_000_000));
@@ -82,16 +83,20 @@ impl TokenLimits {
         &self,
         state: &crate::reactor::SessionState,
     ) -> Option<(f64, f64, f64)> {
-        let model = state.model.as_ref()?;
-        let limit = self.get_limit(model)?;
+        let limit_total = if let Some(l) = state.context_window_limit {
+            l
+        } else {
+            let model = state.model.as_ref()?;
+            self.get_limit(model)?.total_limit
+        };
 
         let input_side = state.total_input_side_tokens() as u64;
         let output_side = state.total_output_side_tokens() as u64;
         let total = state.total_context_window_tokens() as u64;
 
-        let input_pct = (input_side as f64 / limit.total_limit as f64) * 100.0;
-        let output_pct = (output_side as f64 / limit.total_limit as f64) * 100.0;
-        let total_pct = (total as f64 / limit.total_limit as f64) * 100.0;
+        let input_pct = (input_side as f64 / limit_total as f64) * 100.0;
+        let output_pct = (output_side as f64 / limit_total as f64) * 100.0;
+        let total_pct = (total as f64 / limit_total as f64) * 100.0;
 
         Some((input_pct, output_pct, total_pct))
     }
@@ -145,13 +150,14 @@ mod tests {
         let (input_pct, output_pct, total_pct) =
             limits.get_usage_percentage_from_state(&state).unwrap();
 
-        // Total input side: 1000 + 2000 + 10000 = 13000
+        // Total input side: 1000 + 2000 = 3000 (cache read does not consume context window)
         // Total output side: 500
-        // Total context window: 13500
+        // Total context window: 3500
         // Limit: 200000
-        assert_eq!(input_pct, 6.5); // 13000 / 200000 * 100
-        assert_eq!(output_pct, 0.25); // 500 / 200000 * 100
-        assert_eq!(total_pct, 6.75); // 13500 / 200000 * 100
+        let eps = 1e-6;
+        assert!((input_pct - 1.5).abs() < eps); // 3000 / 200000 * 100
+        assert!((output_pct - 0.25).abs() < eps); // 500 / 200000 * 100
+        assert!((total_pct - 1.75).abs() < eps); // 3500 / 200000 * 100
     }
 
     #[test]
@@ -162,6 +168,7 @@ mod tests {
         let limits = TokenLimits::new();
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
+        state.context_window_limit = Some(200_000); // direct limit should be preferred if set
         state.current_input_tokens = 100_000;
         state.current_output_tokens = 4_000;
         // No cache tokens

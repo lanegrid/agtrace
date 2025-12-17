@@ -56,6 +56,7 @@ pub fn set(
         crate::config::ProviderConfig {
             enabled,
             log_root: log_root.clone(),
+            context_window_override: None,
         },
     );
 
