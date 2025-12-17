@@ -1,5 +1,5 @@
 ---
-source: crates/agtrace-engine/tests/span_v2_snapshots.rs
+source: crates/agtrace-engine/tests/span_snapshots.rs
 expression: spans
 ---
 [
