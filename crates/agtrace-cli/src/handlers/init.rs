@@ -1,68 +1,60 @@
 use crate::config::Config;
 use crate::context::ExecutionContext;
+use crate::display_model::init::{InitDisplay, SkipReason, Step1Result, Step3Result};
 use crate::types::OutputFormat;
+use crate::views::init;
 use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-
-fn format_duration(d: Duration) -> String {
-    let seconds = d.num_seconds();
-    let minutes = d.num_minutes();
-    if seconds < 60 {
-        format!("{}s ago", seconds)
-    } else if minutes < 60 {
-        format!("{}m ago", minutes)
-    } else {
-        let hours = d.num_hours();
-        format!("{}h ago", hours)
-    }
-}
+use std::collections::HashMap;
 
 pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
-    println!("Initializing agtrace...\n");
+    init::print_init_header();
 
     let data_dir = ctx.data_dir();
     let config_path = data_dir.join("config.toml");
     let db_path = data_dir.join("agtrace.db");
 
+    let mut display = InitDisplay::new(config_path.clone(), db_path.clone());
+
     let _config = if !config_path.exists() {
-        println!("Step 1/4: Detecting providers...");
+        init::print_step1_detecting();
         let detected = Config::detect_providers()?;
 
         if detected.providers.is_empty() {
-            println!("  No providers detected automatically.");
-            println!("\n  To manually configure a provider:");
-            println!("    agtrace provider set <name> --log-root <PATH> --enable");
-            println!("\n  Supported providers:");
-            for provider in agtrace_providers::get_all_providers() {
-                println!(
-                    "    - {}  (default: {})",
-                    provider.name, provider.default_log_path
-                );
-            }
+            display = display.with_step1(Step1Result::NoProvidersDetected);
+            init::print_step1_result(&display.step1);
             return Ok(());
         }
 
-        println!("  Detected {} provider(s):", detected.providers.len());
-        for (name, provider_config) in &detected.providers {
-            println!("    {} -> {}", name, provider_config.log_root.display());
-        }
+        let providers: HashMap<String, _> = detected
+            .providers
+            .iter()
+            .map(|(name, cfg)| (name.clone(), cfg.log_root.clone()))
+            .collect();
 
         detected.save_to(&config_path)?;
-        println!("  Configuration saved to {}", config_path.display());
+        display = display.with_step1(Step1Result::DetectedProviders {
+            providers,
+            config_saved: true,
+        });
+        init::print_step1_result(&display.step1);
 
         detected
     } else {
-        println!("Step 1/4: Loading configuration...");
+        init::print_step1_loading();
         let cfg = Config::load_from(&config_path)?;
-        println!("  Configuration loaded from {}", config_path.display());
+        display = display.with_step1(Step1Result::LoadedConfig {
+            config_path: config_path.clone(),
+        });
+        init::print_step1_result(&display.step1);
         cfg
     };
 
-    println!("\nStep 2/4: Setting up database...");
+    init::print_step2_header();
     let db = Database::open(&db_path)?;
-    println!("  Database ready at {}", db_path.display());
+    init::print_step2_result(&display);
 
     let current_project_root = if let Some(root) = &ctx.project_root {
         root.display().to_string()
@@ -78,12 +70,11 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
             if let Ok(last_time) = DateTime::parse_from_rfc3339(last_scanned) {
                 let elapsed = Utc::now().signed_duration_since(last_time.with_timezone(&Utc));
                 if elapsed < Duration::minutes(5) {
-                    println!("\nStep 3/4: Scanning for sessions...");
-                    println!(
-                        "  Recently scanned ({}). Skipping.",
-                        format_duration(elapsed)
-                    );
-                    println!("  Use `agtrace init --refresh` to force re-scan.");
+                    init::print_step3_header();
+                    display = display.with_step3(Step3Result::Skipped {
+                        reason: SkipReason::RecentlyScanned { elapsed },
+                    });
+                    init::print_step3_result(&display.step3);
                     false
                 } else {
                     true
@@ -99,21 +90,22 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
     };
 
     if should_scan {
-        println!("\nStep 3/4: Scanning for sessions...");
-        // Use verbose=true in init to show warnings about missing/invalid directories
+        init::print_step3_header();
         let scan_result = super::index::handle(ctx, "all".to_string(), false, true);
 
         match scan_result {
             Ok(_) => {}
             Err(e) => {
-                println!("  Warning: Scan completed with errors: {}", e);
-                println!("\n  If you encounter compatibility issues, run:");
-                println!("    agtrace doctor run");
+                display = display.with_step3(Step3Result::Scanned {
+                    success: false,
+                    error: Some(format!("{}", e)),
+                });
+                init::print_step3_result(&display.step3);
             }
         }
     }
 
-    println!("\nStep 4/4: Recent sessions...\n");
+    init::print_step4_header();
 
     let effective_hash = if ctx.all_projects {
         None
@@ -124,17 +116,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
     let sessions = db.list_sessions(effective_hash.as_deref(), 10)?;
 
     if sessions.is_empty() {
-        if ctx.all_projects {
-            println!("No sessions found.");
-            println!("\nTips:");
-            println!("  - Check provider configuration: agtrace provider list");
-            println!("  - Run diagnostics: agtrace doctor run");
-        } else {
-            println!("No sessions found for the current project.");
-            println!("\nTips:");
-            println!("  - Scan all projects: agtrace init --all-projects");
-            println!("  - Or: agtrace index update --all-projects");
-        }
+        init::print_step4_no_sessions(ctx.all_projects);
         return Ok(());
     }
 
@@ -147,29 +129,13 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
         None,
         None,
         None,
-        true, // no_auto_refresh - skip auto-refresh during init (we just scanned)
+        true,
         ctx.data_dir(),
         ctx.project_root.as_ref().map(|p| p.display().to_string()),
     )?;
 
     if let Some(first_session) = sessions.first() {
-        let session_prefix = if first_session.id.len() > 8 {
-            &first_session.id[..8]
-        } else {
-            &first_session.id
-        };
-
-        println!("\nNext steps:");
-        println!("  View session in compact style (see bottlenecks and tool chains):");
-        println!(
-            "    agtrace session show {} --style compact",
-            session_prefix
-        );
-        println!("\n  View conversation only (for LLM consumption):");
-        println!(
-            "    agtrace session show {} --only user,assistant --full",
-            session_prefix
-        );
+        init::print_next_steps(&first_session.id);
     }
 
     Ok(())
