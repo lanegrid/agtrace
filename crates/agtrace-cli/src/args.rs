@@ -31,36 +31,43 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    #[command(about = "Manage index database operations")]
     Index {
         #[command(subcommand)]
         command: IndexCommand,
     },
 
+    #[command(about = "Manage and view session data")]
     Session {
         #[command(subcommand)]
         command: SessionCommand,
     },
 
+    #[command(about = "Manage provider configurations")]
     Provider {
         #[command(subcommand)]
         command: ProviderCommand,
     },
 
+    #[command(about = "Diagnose provider configurations and log files")]
     Doctor {
         #[command(subcommand)]
         command: DoctorCommand,
     },
 
+    #[command(about = "List indexed projects")]
     Project {
         #[command(subcommand)]
         command: ProjectCommand,
     },
 
+    #[command(about = "Experimental features")]
     Lab {
         #[command(subcommand)]
         command: LabCommand,
     },
 
+    #[command(about = "List recent sessions (alias for 'session list')")]
     Sessions {
         #[arg(long)]
         project_hash: Option<String>,
@@ -78,6 +85,7 @@ pub enum Commands {
         until: Option<String>,
     },
 
+    #[command(about = "Analyze and pack sessions for sharing")]
     Pack {
         #[arg(long, default_value = "compact")]
         template: PackTemplate,
@@ -86,6 +94,7 @@ pub enum Commands {
         limit: usize,
     },
 
+    #[command(about = "Watch for live session updates")]
     Watch {
         #[arg(long)]
         provider: Option<ProviderName>,
@@ -97,6 +106,7 @@ pub enum Commands {
         id: Option<String>,
     },
 
+    #[command(about = "Initialize agtrace configuration")]
     Init {
         #[arg(long)]
         refresh: bool,
@@ -105,6 +115,7 @@ pub enum Commands {
 
 #[derive(Subcommand)]
 pub enum IndexCommand {
+    #[command(about = "Incrementally update the index with new sessions")]
     Update {
         #[arg(long, default_value = "all")]
         provider: ProviderFilter,
@@ -113,6 +124,7 @@ pub enum IndexCommand {
         verbose: bool,
     },
 
+    #[command(about = "Rebuild the entire index from scratch")]
     Rebuild {
         #[arg(long, default_value = "all")]
         provider: ProviderFilter,
@@ -121,11 +133,13 @@ pub enum IndexCommand {
         verbose: bool,
     },
 
+    #[command(about = "Optimize database by reclaiming unused space")]
     Vacuum,
 }
 
 #[derive(Subcommand)]
 pub enum SessionCommand {
+    #[command(about = "List recent sessions with filtering options")]
     List {
         #[arg(long)]
         project_hash: Option<String>,
@@ -146,6 +160,7 @@ pub enum SessionCommand {
         no_auto_refresh: bool,
     },
 
+    #[command(about = "Display detailed session timeline and events")]
     Show {
         session_id: String,
 
@@ -180,8 +195,11 @@ pub enum SessionCommand {
 
 #[derive(Subcommand)]
 pub enum ProviderCommand {
+    #[command(about = "Show configured providers")]
     List,
+    #[command(about = "Auto-detect and configure providers")]
     Detect,
+    #[command(about = "Configure a provider")]
     Set {
         provider: String,
 
@@ -194,6 +212,7 @@ pub enum ProviderCommand {
         #[arg(long)]
         disable: bool,
     },
+    #[command(about = "Show provider event schema")]
     Schema {
         provider: String,
 
@@ -204,6 +223,7 @@ pub enum ProviderCommand {
 
 #[derive(Subcommand)]
 pub enum DoctorCommand {
+    #[command(about = "Diagnose provider log files for parse errors")]
     Run {
         #[arg(long, default_value = "all")]
         provider: ProviderFilter,
@@ -212,6 +232,7 @@ pub enum DoctorCommand {
         verbose: bool,
     },
 
+    #[command(about = "Inspect raw log file contents")]
     Inspect {
         file_path: String,
 
@@ -222,6 +243,7 @@ pub enum DoctorCommand {
         format: InspectFormat,
     },
 
+    #[command(about = "Check if a log file can be parsed")]
     Check {
         file_path: String,
 
@@ -232,6 +254,7 @@ pub enum DoctorCommand {
 
 #[derive(Subcommand)]
 pub enum ProjectCommand {
+    #[command(about = "List all indexed projects")]
     List {
         #[arg(long)]
         project_root: Option<String>,
@@ -240,6 +263,7 @@ pub enum ProjectCommand {
 
 #[derive(Subcommand)]
 pub enum LabCommand {
+    #[command(about = "Export session data to various formats")]
     Export {
         session_id: String,
 
