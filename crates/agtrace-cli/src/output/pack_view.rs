@@ -1,4 +1,5 @@
-use super::{format_session_compact, CompactFormatOpts};
+use crate::display_model::{DisplayOptions, SessionDisplay};
+use crate::output::session_display::format_compact;
 use agtrace_engine::SessionDigest;
 use std::collections::HashMap;
 
@@ -31,16 +32,18 @@ pub fn output_tools(digests: &[SessionDigest]) {
 }
 
 pub fn output_compact(digests: &[SessionDigest]) {
-    let opts = CompactFormatOpts {
+    let opts = DisplayOptions {
         enable_color: false,
         relative_time: false,
+        truncate_text: None,
     };
 
     for digest in digests {
         print_digest_summary(digest);
 
         println!("Work:");
-        let lines = format_session_compact(&digest.session, &opts);
+        let display = SessionDisplay::from_agent_session(&digest.session);
+        let lines = format_compact(&display, &opts);
         for line in lines.iter().take(15) {
             println!("  {}", line);
         }

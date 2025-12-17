@@ -12,6 +12,7 @@ pub mod streaming;
 mod token_limits;
 pub mod token_usage;
 pub mod types;
+mod views;
 
 pub use args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
