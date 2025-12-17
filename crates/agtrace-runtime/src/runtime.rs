@@ -6,9 +6,38 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
-use std::thread::JoinHandle;
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+#[derive(Debug, Clone)]
+pub enum ProcessTarget {
+    Pid(u32),
+    Name(String),
+    LogFileWriter { path: PathBuf },
+}
+
+#[derive(Debug, Clone)]
+pub enum Intervention {
+    Notify {
+        title: String,
+        message: String,
+    },
+    KillProcess {
+        target: ProcessTarget,
+        signal: Signal,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Signal {
+    Terminate,
+    Kill,
+    Interrupt,
+}
+
+pub trait InterventionExecutor: Send + Sync {
+    fn execute(&self, intervention: Intervention) -> Result<()>;
+}
 #[derive(Debug)]
 pub enum RuntimeEvent {
     SessionAttached {
@@ -21,6 +50,10 @@ pub enum RuntimeEvent {
     ReactionTriggered {
         reactor_name: String,
         reaction: Reaction,
+    },
+    InterventionExecuted {
+        intervention: Intervention,
+        result: Result<(), String>,
     },
     SessionRotated {
         old_path: PathBuf,
@@ -35,6 +68,7 @@ pub enum RuntimeEvent {
 pub struct RuntimeConfig {
     pub provider: Arc<dyn agtrace_providers::LogProvider>,
     pub reactors: Vec<Box<dyn Reactor>>,
+    pub executor: Arc<dyn InterventionExecutor>,
     pub watch_path: PathBuf,
     pub explicit_target: Option<String>,
     pub project_root: Option<PathBuf>,
@@ -54,6 +88,7 @@ impl Runtime {
         let explicit_target = config.explicit_target.clone();
         let project_root = config.project_root.clone();
         let provider = config.provider.clone();
+        let executor = config.executor.clone();
 
         let handle = std::thread::Builder::new()
             .name("agtrace-runtime".to_string())
@@ -91,6 +126,7 @@ impl Runtime {
                                     project_root.clone(),
                                     &tx,
                                     just_attached,
+                                    executor.clone(),
                                 ) {
                                     let _ = tx.send(RuntimeEvent::FatalError(e.to_string()));
                                     return;
@@ -150,6 +186,7 @@ fn handle_update(
     project_root: Option<PathBuf>,
     tx: &std::sync::mpsc::Sender<RuntimeEvent>,
     just_attached: bool,
+    executor: Arc<dyn InterventionExecutor>,
 ) -> Result<()> {
     if let Some(assembled_session) = &update.session {
         initialize_session_state(
@@ -181,6 +218,22 @@ fn handle_update(
                         reactor_name: reactor.name().to_string(),
                         reaction: reaction.clone(),
                     });
+                    if let Some(intervention) = to_intervention(&reaction) {
+                        let tx_exec = tx.clone();
+                        let exec_clone = executor.clone();
+                        thread::Builder::new()
+                            .name("agtrace-intervention".to_string())
+                            .spawn(move || {
+                                let result = exec_clone
+                                    .execute(intervention.clone())
+                                    .map_err(|e| e.to_string());
+                                let _ = tx_exec.send(RuntimeEvent::InterventionExecuted {
+                                    intervention,
+                                    result,
+                                });
+                            })
+                            .ok();
+                    }
                 }
                 Err(e) => {
                     let _ = tx.send(RuntimeEvent::FatalError(e.to_string()));
@@ -201,6 +254,30 @@ fn handle_update(
     }
 
     Ok(())
+}
+
+fn to_intervention(reaction: &Reaction) -> Option<Intervention> {
+    match reaction {
+        Reaction::Intervene { reason, severity } => {
+            let signal = match severity {
+                crate::reactor::Severity::Notification => None,
+                crate::reactor::Severity::Kill => Some(Signal::Terminate),
+            };
+
+            Some(if let Some(sig) = signal {
+                Intervention::KillProcess {
+                    target: ProcessTarget::Name("claude_code".to_string()),
+                    signal: sig,
+                }
+            } else {
+                Intervention::Notify {
+                    title: "Intervention requested".to_string(),
+                    message: reason.clone(),
+                }
+            })
+        }
+        _ => None,
+    }
 }
 
 fn initialize_session_state(

@@ -31,6 +31,7 @@ pub mod config;
 pub mod context;
 pub mod display_model;
 mod handlers;
+pub mod intervention;
 pub mod reactor;
 mod reactors;
 mod session_loader;

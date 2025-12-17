@@ -1,4 +1,5 @@
 use crate::context::ExecutionContext;
+use crate::intervention::CliInterventionExecutor;
 #[cfg(test)]
 use crate::reactor::ReactorContext;
 use crate::reactor::{Reaction, Reactor, SessionState};
@@ -304,6 +305,7 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView)
     let runtime = Runtime::start(RuntimeConfig {
         provider,
         reactors: std::mem::take(&mut reactors),
+        executor: Arc::new(CliInterventionExecutor::new()),
         watch_path: log_root.clone(),
         explicit_target,
         project_root: project_root.clone(),
@@ -327,6 +329,16 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView)
             }
             Ok(RuntimeEvent::ReactionTriggered { reaction, .. }) => {
                 handle_reaction(reaction, view)?;
+            }
+            Ok(RuntimeEvent::InterventionExecuted {
+                intervention,
+                result,
+            }) => {
+                let msg = match result {
+                    Ok(()) => format!("Intervention executed: {:?}", intervention),
+                    Err(e) => format!("Intervention failed: {:?} ({})", intervention, e),
+                };
+                view.render_warning(&msg)?;
             }
             Ok(RuntimeEvent::SessionRotated { old_path, new_path }) => {
                 initialized = false;
