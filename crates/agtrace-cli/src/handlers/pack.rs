@@ -49,7 +49,9 @@ pub fn handle(
     // 3. Select: Apply lenses with deduplication
     let selections = analyze_and_select_sessions(digests, limit);
 
-    let report_template = template.parse().expect("ReportTemplate parsing is infallible");
+    let report_template = template
+        .parse()
+        .expect("ReportTemplate parsing is infallible");
     view.render_pack_report(
         &selections,
         report_template,
