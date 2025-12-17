@@ -1,43 +1,35 @@
 use crate::context::ExecutionContext;
+use crate::ui::models::ProjectSummary;
+use crate::ui::TraceView;
 use agtrace_types::discover_project_root;
 use anyhow::Result;
 
-pub fn handle(ctx: &ExecutionContext, project_root: Option<String>) -> Result<()> {
+pub fn handle(
+    ctx: &ExecutionContext,
+    project_root: Option<String>,
+    view: &dyn TraceView,
+) -> Result<()> {
     let db = ctx.db()?;
     let project_root_path = discover_project_root(project_root.as_deref())?;
     let project_hash = agtrace_types::project_hash_from_root(&project_root_path.to_string_lossy());
 
-    println!("Project root: {}", project_root_path.display());
-    println!("Project hash: {}", project_hash);
-    println!();
-
-    // List all projects from database
-    println!("Registered projects:");
-    println!(
-        "{:<20} {:<50} {:<10} LAST SCANNED",
-        "HASH (short)", "ROOT PATH", "SESSIONS"
-    );
-    println!("{}", "-".repeat(120));
-
     let projects = db.list_projects()?;
+    let mut summaries = Vec::new();
     for project in projects {
         let session_count = db.count_sessions_for_project(&project.hash)?;
-        let hash_short = if project.hash.len() > 16 {
-            format!("{}...", &project.hash[..16])
-        } else {
-            project.hash.clone()
-        };
-
-        println!(
-            "{:<20} {:<50} {:<10} {}",
-            hash_short,
-            project.root_path.unwrap_or_else(|| "(unknown)".to_string()),
+        summaries.push(ProjectSummary {
+            hash: project.hash,
+            root_path: project.root_path,
             session_count,
-            project
-                .last_scanned_at
-                .unwrap_or_else(|| "(never)".to_string())
-        );
+            last_scanned: project.last_scanned_at,
+        });
     }
+
+    view.render_project_list(
+        &project_root_path.display().to_string(),
+        &project_hash,
+        &summaries,
+    )?;
 
     Ok(())
 }

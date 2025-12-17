@@ -1,9 +1,10 @@
 use crate::context::ExecutionContext;
 use crate::types::OutputFormat;
-use agtrace_index::{Database, SessionSummary};
+use crate::ui::TraceView;
+use agtrace_index::Database;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
@@ -19,6 +20,7 @@ pub fn handle(
     no_auto_refresh: bool,
     data_dir: &Path,
     project_root: Option<String>,
+    view: &dyn TraceView,
 ) -> Result<()> {
     // Auto-refresh index before listing (unless disabled)
     if !no_auto_refresh {
@@ -26,9 +28,11 @@ pub fn handle(
             ExecutionContext::new(data_dir.to_path_buf(), project_root.clone(), all_projects)?;
 
         // Run incremental scan quietly (verbose=false)
-        if let Err(e) = crate::handlers::index::handle(&ctx, "all".to_string(), false, false) {
+        if let Err(e) =
+            crate::handlers::index::handle(&ctx, "all".to_string(), false, false, view)
+        {
             // Don't fail the list command if refresh fails - just warn
-            eprintln!("Warning: auto-refresh failed: {}", e);
+            view.render_warning(&format!("Warning: auto-refresh failed: {}", e))?;
         }
     }
 
@@ -76,118 +80,7 @@ pub fn handle(
     // Apply limit after filtering
     sessions.truncate(limit);
 
-    match format {
-        OutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&sessions)?);
-        }
-        OutputFormat::Plain => {
-            print_sessions_table(&sessions);
-        }
-    }
+    view.render_session_list(&sessions, format)?;
 
     Ok(())
-}
-
-/// Truncate and normalize string for display
-/// - Replaces newlines with spaces
-/// - Collapses multiple consecutive whitespace into single space
-/// - Respects UTF-8 character boundaries
-/// - Removes common prefixes and noise
-fn truncate_for_display(s: &str, max_chars: usize) -> String {
-    // Replace newlines with spaces and collapse multiple spaces
-    let normalized = s
-        .replace(['\n', '\r'], " ")
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    // Remove common noise patterns
-    let cleaned = normalized
-        .trim_start_matches("<command-name>/clear</command-name>")
-        .trim_start_matches("<command-message>clear</command-message>")
-        .trim()
-        .to_string();
-
-    if cleaned.chars().count() <= max_chars {
-        cleaned
-    } else {
-        let truncated: String = cleaned.chars().take(max_chars - 3).collect();
-        format!("{}...", truncated)
-    }
-}
-
-/// Format timestamp as relative time (e.g., "2 hours ago", "yesterday")
-fn format_relative_time(ts: &str) -> String {
-    let parsed = match DateTime::parse_from_rfc3339(ts) {
-        Ok(dt) => dt.with_timezone(&Utc),
-        Err(_) => return ts.to_string(),
-    };
-
-    let now = Utc::now();
-    let duration = now.signed_duration_since(parsed);
-
-    let seconds = duration.num_seconds();
-    let minutes = duration.num_minutes();
-    let hours = duration.num_hours();
-    let days = duration.num_days();
-
-    if seconds < 60 {
-        "just now".to_string()
-    } else if minutes < 60 {
-        format!("{} min ago", minutes)
-    } else if hours < 24 {
-        format!("{} hours ago", hours)
-    } else if days == 1 {
-        "yesterday".to_string()
-    } else if days < 7 {
-        format!("{} days ago", days)
-    } else if days < 30 {
-        let weeks = days / 7;
-        format!("{} weeks ago", weeks)
-    } else if days < 365 {
-        let months = days / 30;
-        format!("{} months ago", months)
-    } else {
-        let years = days / 365;
-        format!("{} years ago", years)
-    }
-}
-
-fn print_sessions_table(sessions: &[SessionSummary]) {
-    use owo_colors::OwoColorize;
-
-    for session in sessions {
-        let id_short = if session.id.len() > 8 {
-            &session.id[..8]
-        } else {
-            &session.id
-        };
-
-        let time_str = session.start_ts.as_deref().unwrap_or("unknown");
-        let time_display = format_relative_time(time_str);
-
-        let snippet = session.snippet.as_deref().unwrap_or("");
-        let snippet_display = truncate_for_display(snippet, 80);
-
-        let provider_display = match session.provider.as_str() {
-            "claude_code" => format!("{}", session.provider.blue()),
-            "codex" => format!("{}", session.provider.green()),
-            "gemini" => format!("{}", session.provider.red()),
-            _ => session.provider.clone(),
-        };
-
-        let snippet_final = if snippet_display.is_empty() {
-            format!("{}", "[empty]".bright_black())
-        } else {
-            snippet_display
-        };
-
-        println!(
-            "{} {} {} {}",
-            time_display.bright_black(),
-            id_short.yellow(),
-            provider_display,
-            snippet_final
-        );
-    }
 }

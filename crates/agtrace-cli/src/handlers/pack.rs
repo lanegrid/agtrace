@@ -1,6 +1,7 @@
 use crate::context::ExecutionContext;
 use crate::session_loader::{LoadOptions, SessionLoader};
-use crate::views::pack::{print_compact, print_diagnose, print_tools};
+use crate::ui::models::ReportTemplate;
+use crate::ui::TraceView;
 use agtrace_engine::{analyze_and_select_sessions, assemble_session_from_events, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_types::resolve_effective_project_hash;
@@ -12,6 +13,7 @@ pub fn handle(
     template: &str,
     limit: usize,
     project_hash: Option<String>,
+    view: &dyn TraceView,
 ) -> Result<()> {
     let db = ctx.db()?;
     let all_projects = ctx.all_projects;
@@ -23,12 +25,6 @@ pub fn handle(
     // Fetch enough raw sessions to ensure we can balance them
     let raw_sessions = db.list_sessions(effective_project_hash, 1000)?;
     let balanced_sessions = balance_sessions_by_provider(&raw_sessions, 200);
-
-    println!(
-        "# Packing Report (pool: {} sessions from {} raw candidates)\n",
-        balanced_sessions.len(),
-        raw_sessions.len()
-    );
 
     // 2. Summarize: Calculate metrics for all candidates
     let mut digests = Vec::new();
@@ -54,13 +50,13 @@ pub fn handle(
     // 3. Select: Apply lenses with deduplication
     let selections = analyze_and_select_sessions(digests, limit);
 
-    // Output based on template
-    match template {
-        "compact" => print_compact(&selections),
-        "diagnose" => print_diagnose(&selections),
-        "tools" => print_tools(&selections),
-        _ => print_compact(&selections),
-    }
+    let report_template = ReportTemplate::from_str(template);
+    view.render_pack_report(
+        &selections,
+        report_template,
+        balanced_sessions.len(),
+        raw_sessions.len(),
+    )?;
 
     Ok(())
 }

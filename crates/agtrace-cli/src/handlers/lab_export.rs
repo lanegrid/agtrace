@@ -1,5 +1,6 @@
 use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::types::{ExportFormat, ExportStrategy as CliExportStrategy};
+use crate::ui::TraceView;
 use agtrace_engine::export::{self, ExportStrategy};
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
@@ -14,6 +15,7 @@ pub fn handle(
     output: Option<PathBuf>,
     format: ExportFormat,
     strategy: CliExportStrategy,
+    view: &dyn TraceView,
 ) -> Result<()> {
     let loader = SessionLoader::new(db);
     let options = LoadOptions::default();
@@ -43,11 +45,7 @@ pub fn handle(
         ExportFormat::Text => write_text(&output_path, &processed_events)?,
     }
 
-    println!(
-        "Exported {} events to {}",
-        processed_events.len(),
-        output_path.display()
-    );
+    view.render_lab_export(processed_events.len(), &output_path)?;
 
     Ok(())
 }

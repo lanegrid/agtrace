@@ -1,5 +1,5 @@
 use crate::context::ExecutionContext;
-use crate::views::doctor::print_results;
+use crate::ui::TraceView;
 use agtrace_engine::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
 use agtrace_providers::LogProvider;
 use anyhow::Result;
@@ -7,18 +7,23 @@ use std::collections::HashMap;
 use std::path::Path;
 use walkdir::WalkDir;
 
-pub fn handle(ctx: &ExecutionContext, provider_filter: String, verbose: bool) -> Result<()> {
+pub fn handle(
+    ctx: &ExecutionContext,
+    provider_filter: String,
+    verbose: bool,
+    view: &dyn TraceView,
+) -> Result<()> {
     let providers_with_roots = ctx.resolve_providers(&provider_filter)?;
 
     let mut results = Vec::new();
 
     for (provider, log_root) in providers_with_roots {
         if !log_root.exists() {
-            eprintln!(
+            view.render_warning(&format!(
                 "Warning: log_root does not exist for {}: {}",
                 provider.name(),
                 log_root.display()
-            );
+            ))?;
             continue;
         }
 
@@ -26,7 +31,7 @@ pub fn handle(ctx: &ExecutionContext, provider_filter: String, verbose: bool) ->
         results.push(result);
     }
 
-    print_results(&results, verbose);
+    view.render_diagnose_results(&results, verbose)?;
 
     Ok(())
 }

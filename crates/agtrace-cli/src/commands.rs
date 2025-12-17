@@ -4,12 +4,15 @@ use super::args::{
 };
 use super::handlers;
 use crate::context::ExecutionContext;
+use crate::ui::models::GuidanceContext;
+use crate::ui::{ConsoleTraceView, TraceView};
 use agtrace_index::Database;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
+    let view = ConsoleTraceView::new();
 
     let Some(command) = cli.command else {
         // Check if we should show corpus overview or guidance
@@ -24,12 +27,12 @@ pub fn run(cli: Cli) -> Result<()> {
                             cli.project_root.clone(),
                             cli.all_projects,
                         )?;
-                        return handlers::corpus_overview::handle(&ctx, cli.project_root);
+                        return handlers::corpus_overview::handle(&ctx, cli.project_root, &view);
                     }
                 }
             }
         }
-        show_guidance(&data_dir)?;
+        show_guidance(&data_dir, &view)?;
         return Ok(());
     };
 
@@ -40,7 +43,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 cli.project_root.clone(),
                 cli.all_projects,
             )?;
-            handlers::init::handle(&ctx, refresh)
+            handlers::init::handle(&ctx, refresh, &view)
         }
 
         Commands::Index { command } => {
@@ -52,10 +55,10 @@ pub fn run(cli: Cli) -> Result<()> {
 
             match command {
                 IndexCommand::Update { provider, verbose } => {
-                    handlers::index::handle(&ctx, provider.to_string(), false, verbose)
+                    handlers::index::handle(&ctx, provider.to_string(), false, verbose, &view)
                 }
                 IndexCommand::Rebuild { provider, verbose } => {
-                    handlers::index::handle(&ctx, provider.to_string(), true, verbose)
+                    handlers::index::handle(&ctx, provider.to_string(), true, verbose, &view)
                 }
                 IndexCommand::Vacuum => {
                     let db = ctx.db()?;
@@ -97,6 +100,7 @@ pub fn run(cli: Cli) -> Result<()> {
                         no_auto_refresh,
                         &data_dir,
                         cli.project_root.clone(),
+                        &view,
                     )
                 }
                 SessionCommand::Show {
@@ -110,7 +114,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     short,
                     style,
                 } => handlers::session_show::handle(
-                    &db, session_id, raw, json, timeline, hide, only, full, short, style,
+                    &db, session_id, raw, json, timeline, hide, only, full, short, style, &view,
                 ),
             }
         }
@@ -119,16 +123,23 @@ pub fn run(cli: Cli) -> Result<()> {
             let config_path = data_dir.join("config.toml");
 
             match command {
-                ProviderCommand::List => handlers::provider::list(&config_path),
-                ProviderCommand::Detect => handlers::provider::detect(&config_path),
+                ProviderCommand::List => handlers::provider::list(&config_path, &view),
+                ProviderCommand::Detect => handlers::provider::detect(&config_path, &view),
                 ProviderCommand::Set {
                     provider,
                     log_root,
                     enable,
                     disable,
-                } => handlers::provider::set(provider, log_root, enable, disable, &config_path),
+                } => handlers::provider::set(
+                    provider,
+                    log_root,
+                    enable,
+                    disable,
+                    &config_path,
+                    &view,
+                ),
                 ProviderCommand::Schema { provider, format } => {
-                    handlers::provider_schema::handle(provider, format)
+                    handlers::provider_schema::handle(provider, format, &view)
                 }
             }
         }
@@ -140,17 +151,21 @@ pub fn run(cli: Cli) -> Result<()> {
                     cli.project_root.clone(),
                     cli.all_projects,
                 )?;
-                handlers::doctor_run::handle(&ctx, provider.to_string(), verbose)
+                handlers::doctor_run::handle(&ctx, provider.to_string(), verbose, &view)
             }
             DoctorCommand::Inspect {
                 file_path,
                 lines,
                 format,
-            } => handlers::doctor_inspect::handle(file_path, lines, format),
+            } => handlers::doctor_inspect::handle(file_path, lines, format, &view),
             DoctorCommand::Check {
                 file_path,
                 provider,
-            } => handlers::doctor_check::handle(file_path, provider.map(|p| p.to_string())),
+            } => handlers::doctor_check::handle(
+                file_path,
+                provider.map(|p| p.to_string()),
+                &view,
+            ),
         },
 
         Commands::Project { command } => {
@@ -162,7 +177,7 @@ pub fn run(cli: Cli) -> Result<()> {
 
             match command {
                 ProjectCommand::List { project_root } => {
-                    handlers::project::handle(&ctx, project_root)
+                    handlers::project::handle(&ctx, project_root, &view)
                 }
             }
         }
@@ -177,7 +192,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     output,
                     format,
                     strategy,
-                } => handlers::lab_export::handle(&db, session_id, output, format, strategy),
+                } => {
+                    handlers::lab_export::handle(&db, session_id, output, format, strategy, &view)
+                }
             }
         }
 
@@ -211,6 +228,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 false, // no_auto_refresh - default to auto-refresh for Sessions command
                 &data_dir,
                 cli.project_root.clone(),
+                &view,
             )
         }
 
@@ -221,7 +239,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 cli.all_projects,
             )?;
 
-            handlers::pack::handle(&ctx, &template.to_string(), limit, cli.project_root)
+            handlers::pack::handle(&ctx, &template.to_string(), limit, cli.project_root, &view)
         }
 
         Commands::Watch { provider, id } => {
@@ -240,7 +258,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 }
             };
 
-            handlers::watch::handle(&ctx, target)
+            handlers::watch::handle(&ctx, target, &view)
         }
     }
 }
@@ -254,44 +272,25 @@ fn expand_tilde(path: &str) -> PathBuf {
     PathBuf::from(path)
 }
 
-fn show_guidance(data_dir: &Path) -> Result<()> {
+fn show_guidance(data_dir: &Path, view: &dyn TraceView) -> Result<()> {
     let config_path = data_dir.join("config.toml");
     let db_path = data_dir.join("agtrace.db");
 
     let config_exists = config_path.exists();
     let db_exists = db_path.exists();
 
-    println!("agtrace - Agent behavior log analyzer\n");
-
-    if !config_exists || !db_exists {
-        println!("Get started:");
-        println!("  agtrace init\n");
-        println!("The init command will:");
-        println!("  1. Detect and configure providers (Claude, Codex, Gemini)");
-        println!("  2. Set up the database");
-        println!("  3. Scan for sessions");
-        println!("  4. Show your recent sessions\n");
-    } else {
+    let session_count = if config_exists && db_exists {
         let db = Database::open(&db_path)?;
-        let session_count = db.list_sessions(None, 1)?.len();
+        db.list_sessions(None, 1)?.len()
+    } else {
+        0
+    };
 
-        if session_count > 0 {
-            println!("Quick commands:");
-            println!("  agtrace session list              # View recent sessions");
-            println!("  agtrace session show <ID>         # View a session");
-            println!("  agtrace index update              # Scan for new sessions");
-            println!("  agtrace doctor run                # Diagnose issues\n");
-        } else {
-            println!("No sessions found yet.");
-            println!("\nNext steps:");
-            println!("  agtrace index update              # Scan for sessions");
-            println!("  agtrace index update --all-projects  # Scan all projects");
-            println!("  agtrace provider list             # Check provider configuration\n");
-        }
-    }
+    let context = GuidanceContext {
+        config_exists,
+        db_exists,
+        session_count,
+    };
 
-    println!("For more commands:");
-    println!("  agtrace --help");
-
-    Ok(())
+    view.render_guidance(&context)
 }

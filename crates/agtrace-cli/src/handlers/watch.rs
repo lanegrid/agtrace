@@ -1,9 +1,11 @@
 use crate::context::ExecutionContext;
-use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState, Severity};
+use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState};
 use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor, TuiRenderer};
 use crate::streaming::{SessionWatcher, StreamEvent};
 use crate::token_limits::TokenLimits;
 use crate::token_usage::ContextWindowUsage;
+use crate::ui::models::{WatchStart, WatchSummary, WatchTokenUsage};
+use crate::ui::TraceView;
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
@@ -44,24 +46,6 @@ fn format_session_display_name(path: &Path, session_id: Option<&str>) -> String 
         .to_string()
 }
 
-/// Print session rotated message
-fn print_session_rotated(old_path: &Path, new_path: &Path) {
-    let old_name = old_path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| old_path.display().to_string());
-    let new_name = new_path
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| new_path.display().to_string());
-    println!(
-        "\n{} {} → {}\n",
-        "✨ Session rotated:".bright_green(),
-        old_name.dimmed(),
-        new_name
-    );
-}
-
 /// Initialize session state if not already set
 fn initialize_session_state(
     session_state: &mut Option<SessionState>,
@@ -74,30 +58,20 @@ fn initialize_session_state(
     }
 }
 
-/// Handle StreamEvent::Waiting
-fn handle_waiting_event(message: &str) {
-    println!("{} {}", "[⏳ Waiting]".bright_yellow(), message);
-}
-
 /// Handle StreamEvent::Error, returns true if fatal
-fn handle_error_event(msg: &str) -> bool {
-    eprintln!("{} {}", "❌ Error:".red(), msg);
+fn handle_error_event(msg: &str, view: &dyn TraceView) -> Result<bool> {
     let is_fatal = msg.starts_with("FATAL:");
-    if is_fatal {
-        eprintln!("{}", "Watch stream terminated due to fatal error".red());
-    }
-    is_fatal
+    view.on_watch_error(msg, is_fatal)?;
+    Ok(is_fatal)
 }
 
 /// Handle initial Update after Attached: Initialize SessionState and display summary
 fn handle_initial_update(
-    update: crate::streaming::SessionUpdate,
+    update: &crate::streaming::SessionUpdate,
     session_state: &mut Option<SessionState>,
     project_root: Option<PathBuf>,
-) {
-    use crate::display_model::{DisplayOptions, SessionDisplay};
-    use crate::token_limits::TokenLimits;
-
+    view: &dyn TraceView,
+) -> Result<WatchSummary> {
     // Initialize SessionState from assembled session if available
     if let Some(assembled_session) = &update.session {
         initialize_session_state(
@@ -120,40 +94,31 @@ fn handle_initial_update(
         let state = session_state
             .as_mut()
             .expect("session_state must be Some after initialization");
-        update_session_state(state, event);
+        update_session_state(state, event, view)?;
     }
 
-    // Display summary: last 5 turns + token usage
+    let mut recent_lines = Vec::new();
     if let Some(assembled_session) = &update.session {
         if !assembled_session.turns.is_empty() {
             let num_turns = assembled_session.turns.len().min(5);
             let start_idx = assembled_session.turns.len().saturating_sub(num_turns);
 
-            println!("{}  Last {} turn(s):\n", "📜".dimmed(), num_turns);
-
             let mut recent_session = assembled_session.clone();
             recent_session.turns = assembled_session.turns[start_idx..].to_vec();
 
-            let display = SessionDisplay::from_agent_session(&recent_session);
-            let opts = DisplayOptions {
+            let display = crate::display_model::SessionDisplay::from_agent_session(&recent_session);
+            let opts = crate::display_model::DisplayOptions {
                 enable_color: true,
                 relative_time: false,
                 truncate_text: None,
             };
 
-            let lines = crate::views::session::format_compact(&display, &opts);
-            for line in lines {
-                println!("  {}", line);
-            }
-            println!();
+            recent_lines = crate::views::session::format_compact(&display, &opts);
         }
     }
 
-    // Display token usage summary
-    if let Some(state) = session_state {
+    let summary = if let Some(state) = session_state {
         let total = state.total_context_window_tokens() as u64;
-
-        // Always show absolute tokens; percentages/limits only if known
         let token_limits = TokenLimits::new();
         let limit = state.context_window_limit.or_else(|| {
             state
@@ -162,80 +127,56 @@ fn handle_initial_update(
                 .and_then(|m| token_limits.get_limit(m).map(|l| l.total_limit))
         });
 
-        if let Some(limit) = limit {
-            if let Some((input_pct, output_pct, total_pct)) =
-                token_limits.get_usage_percentage_from_state(state)
-            {
-                let bar = create_progress_bar(total_pct);
-                let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
-                    |s: &str| s.red().to_string()
-                } else if total_pct >= 80.0 {
-                    |s: &str| s.yellow().to_string()
-                } else {
-                    |s: &str| s.green().to_string()
-                };
+        let usage = if let Some(limit) = limit {
+            let percentages = token_limits.get_usage_percentage_from_state(state);
+            let (input_pct, output_pct, total_pct) = percentages
+                .map(|(input, output, total)| (Some(input), Some(output), Some(total)))
+                .unwrap_or((None, None, None));
 
-                println!(
-                    "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {} used / {} tokens",
-                    "📊".dimmed(),
-                    "Current usage:".bright_black(),
-                    color_fn(&bar),
-                    total_pct,
-                    input_pct,
-                    output_pct,
-                    total,
-                    limit
-                );
-            } else {
-                println!(
-                    "{}  {} {} tokens used (limit {})",
-                    "📊".dimmed(),
-                    "Current usage:".bright_black(),
-                    total,
-                    limit
-                );
-            }
+            Some(WatchTokenUsage {
+                total_tokens: total,
+                limit: Some(limit),
+                input_pct,
+                output_pct,
+                total_pct,
+            })
         } else {
-            println!(
-                "{}  {} {} tokens used",
-                "📊".dimmed(),
-                "Current usage:".bright_black(),
-                total
-            );
+            Some(WatchTokenUsage {
+                total_tokens: total,
+                limit: None,
+                input_pct: None,
+                output_pct: None,
+                total_pct: None,
+            })
+        };
+
+        WatchSummary {
+            recent_lines,
+            token_usage: usage,
+            turn_count: state.turn_count,
         }
+    } else {
+        WatchSummary {
+            recent_lines,
+            token_usage: None,
+            turn_count: 0,
+        }
+    };
 
-        println!(
-            "{}  {} total turns processed\n",
-            "📝".dimmed(),
-            state.turn_count
-        );
-    }
-}
-
-fn create_progress_bar(percentage: f64) -> String {
-    let bar_width = 20;
-    let filled = ((percentage / 100.0) * bar_width as f64) as usize;
-    let filled = filled.min(bar_width);
-    let empty = bar_width - filled;
-
-    format!("[{}{}]", "█".repeat(filled), "░".repeat(empty))
+    Ok(summary)
 }
 
 /// Process StreamEvent::Update
 fn process_update_event(
-    update: crate::streaming::SessionUpdate,
+    update: &crate::streaming::SessionUpdate,
     session_state: &mut Option<SessionState>,
     reactors: &mut [Box<dyn Reactor>],
     project_root: Option<PathBuf>,
-) {
+    view: &dyn TraceView,
+) -> Result<()> {
     // Log orphaned events if any (pre-session noise)
     if !update.orphaned_events.is_empty() {
-        eprintln!(
-            "{} {} orphaned events (pre-session noise), {} total events in file",
-            "[DEBUG]".dimmed(),
-            update.orphaned_events.len(),
-            update.total_events
-        );
+        view.on_watch_orphaned(update.orphaned_events.len(), update.total_events)?;
     }
 
     // Use pre-assembled session if available
@@ -249,7 +190,7 @@ fn process_update_event(
     }
 
     // Process new events
-    for event in update.new_events {
+    for event in &update.new_events {
         initialize_session_state(
             session_state,
             event.trace_id.to_string(),
@@ -260,44 +201,54 @@ fn process_update_event(
         let state = session_state
             .as_mut()
             .expect("session_state must be Some after initialization");
-        update_session_state(state, &event);
+        update_session_state(state, event, view)?;
 
         // Run all reactors
-        run_reactors(&event, state, reactors);
+        run_reactors(event, state, reactors, view)?;
     }
+
+    if let Some(state) = session_state.as_ref() {
+        view.render_stream_update(state, &update.new_events)?;
+    }
+
+    Ok(())
 }
 
-pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
-    let (provider, log_root, explicit_target): (
+pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView) -> Result<()> {
+    let (provider, log_root, explicit_target, start_event): (
         Arc<dyn agtrace_providers::LogProvider>,
         PathBuf,
         Option<String>,
+        WatchStart,
     ) = match target {
         WatchTarget::Provider { name } => {
             let (provider, log_root) = ctx.resolve_provider(&name)?;
-            println!(
-                "{} {} ({})",
-                "[👀 Watching]".bright_cyan(),
-                log_root.display(),
-                name
-            );
-            (Arc::from(provider), log_root, None)
+            (
+                Arc::from(provider),
+                log_root.clone(),
+                None,
+                WatchStart::Provider {
+                    name,
+                    log_root: log_root.clone(),
+                },
+            )
         }
         WatchTarget::Session { id } => {
             let provider_name = ctx.default_provider()?;
             let (provider, log_root) = ctx.resolve_provider(&provider_name)?;
-            println!(
-                "{} session {} in {}",
-                "[👀 Watching]".bright_cyan(),
-                id,
-                log_root.display()
-            );
-            (Arc::from(provider), log_root, Some(id))
+            (
+                Arc::from(provider),
+                log_root.clone(),
+                Some(id.clone()),
+                WatchStart::Session { id, log_root },
+            )
         }
         WatchTarget::File { path: _ } => {
             anyhow::bail!("Direct file watching not yet implemented");
         }
     };
+
+    view.render_watch_start(&start_event)?;
 
     let project_root = if explicit_target.is_some() {
         None
@@ -330,47 +281,51 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
                 StreamEvent::Attached { path, session_id } => {
                     just_attached = true;
                     let display_name = format_session_display_name(&path, session_id.as_deref());
-                    println!(
-                        "{}  {}\n",
-                        "✨ Attached to active session:".bright_green(),
-                        display_name
-                    );
+                    view.on_watch_attached(&display_name)?;
                 }
                 StreamEvent::Update(update) => {
                     if just_attached {
                         // Initial snapshot: Initialize SessionState and display summary only
                         just_attached = false;
-                        handle_initial_update(update, &mut session_state, project_root.clone());
+                        let summary =
+                            handle_initial_update(
+                                &update,
+                                &mut session_state,
+                                project_root.clone(),
+                                view,
+                            )?;
+                        view.on_watch_initial_summary(&summary)?;
                     } else {
                         // Normal update: Process events through reactors
                         process_update_event(
-                            update,
+                            &update,
                             &mut session_state,
                             &mut reactors,
                             project_root.clone(),
-                        );
+                            view,
+                        )?;
                     }
                 }
                 StreamEvent::SessionRotated { old_path, new_path } => {
-                    print_session_rotated(&old_path, &new_path);
+                    view.on_watch_rotated(&old_path, &new_path)?;
                     // Reset session state for new session
                     session_state = None;
                 }
                 StreamEvent::Waiting { message } => {
-                    handle_waiting_event(&message);
+                    view.on_watch_waiting(&message)?;
                 }
                 StreamEvent::Error(msg) => {
-                    if handle_error_event(&msg) {
+                    if handle_error_event(&msg, view)? {
                         break;
                     }
                 }
             },
             Err(_) => {
                 // Channel disconnected - worker thread terminated
-                eprintln!(
+                view.render_warning(&format!(
                     "{}",
                     "⚠️  Watch stream ended (worker thread terminated)".yellow()
-                );
+                ))?;
                 break;
             }
         }
@@ -380,7 +335,11 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
 }
 
 /// Update session state based on incoming event
-fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
+fn update_session_state(
+    state: &mut SessionState,
+    event: &AgentEvent,
+    view: &dyn TraceView,
+) -> Result<()> {
     // Update last activity timestamp
     state.last_activity = event.timestamp;
     state.event_count += 1;
@@ -455,7 +414,7 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
                 let model_limit = token_limits.get_limit(model).map(|l| l.total_limit);
 
                 if let Err(err) = state.validate_tokens(model_limit) {
-                    eprintln!("⚠️  Token validation warning: {}", err);
+                    view.on_watch_token_warning(&format!("{}", err))?;
                 }
             }
 
@@ -496,54 +455,52 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) {
         }
         _ => {}
     }
+
+    Ok(())
 }
 
 /// Run all reactors and handle their reactions
-fn run_reactors(event: &AgentEvent, state: &mut SessionState, reactors: &mut [Box<dyn Reactor>]) {
+fn run_reactors(
+    event: &AgentEvent,
+    state: &mut SessionState,
+    reactors: &mut [Box<dyn Reactor>],
+    view: &dyn TraceView,
+) -> Result<()> {
     let ctx = ReactorContext { event, state };
 
     for reactor in reactors {
         match reactor.handle(ctx) {
             Ok(reaction) => {
-                if let Err(e) = handle_reaction(reaction) {
-                    eprintln!("{} {}", "❌ Reaction error:".red(), e);
+                if let Err(e) = handle_reaction(reaction, view) {
+                    view.on_watch_reaction_error(&format!("{}", e))?;
                 }
             }
             Err(e) => {
-                eprintln!("{} {} failed: {}", "❌ Reactor".red(), reactor.name(), e);
+                view.on_watch_reactor_error(reactor.name(), &format!("{}", e))?;
             }
         }
     }
+
+    Ok(())
 }
 
 /// Handle reactor reaction
-fn handle_reaction(reaction: Reaction) -> Result<()> {
-    match reaction {
-        Reaction::Continue => {}
-        Reaction::Warn(message) => {
-            eprintln!("{} {}", "⚠️  Warning:".yellow(), message);
-        }
-        Reaction::Intervene { reason, severity } => match severity {
-            Severity::Notification => {
-                eprintln!("{} {}", "🚨 ALERT:".red().bold(), reason);
-                // Future: send desktop notification
-            }
-            Severity::Kill => {
-                eprintln!("{} {}", "🚨 EMERGENCY STOP:".red().bold(), reason);
-                // Future: kill child process (v0.2.0)
-                // For now, just log the alert
-            }
-        },
-    }
-    Ok(())
+fn handle_reaction(reaction: Reaction, view: &dyn TraceView) -> Result<()> {
+    view.on_watch_reaction(&reaction)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::reactor::Severity;
     use agtrace_types::v2::{TokenUsageDetails, TokenUsagePayload, ToolResultPayload, UserPayload};
     use chrono::Utc;
     use std::str::FromStr;
+    use crate::ui::ConsoleTraceView;
+
+    fn test_view() -> ConsoleTraceView {
+        ConsoleTraceView::new()
+    }
 
     fn create_test_event(payload: EventPayload) -> AgentEvent {
         let id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000001").unwrap();
@@ -597,8 +554,9 @@ mod tests {
         let event = create_test_event(EventPayload::User(UserPayload {
             text: "test".to_string(),
         }));
+        let view = test_view();
 
-        update_session_state(&mut state, &event);
+        update_session_state(&mut state, &event, &view).unwrap();
 
         assert_eq!(state.turn_count, 1);
         assert_eq!(state.error_count, 0);
@@ -620,8 +578,9 @@ mod tests {
                 audio_output_tokens: None,
             }),
         }));
+        let view = test_view();
 
-        update_session_state(&mut state, &event);
+        update_session_state(&mut state, &event, &view).unwrap();
 
         // Tokens are snapshots, not cumulative
         assert_eq!(state.current_usage.fresh_input.0, 100);
@@ -635,6 +594,7 @@ mod tests {
     fn test_update_session_state_tool_result_success() {
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         state.error_count = 5;
+        let view = test_view();
 
         let tool_call_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000003").unwrap();
         let event = create_test_event(EventPayload::ToolResult(ToolResultPayload {
@@ -643,7 +603,7 @@ mod tests {
             is_error: false,
         }));
 
-        update_session_state(&mut state, &event);
+        update_session_state(&mut state, &event, &view).unwrap();
 
         assert_eq!(state.error_count, 0);
         assert_eq!(state.event_count, 1);
@@ -652,6 +612,7 @@ mod tests {
     #[test]
     fn test_update_session_state_tool_result_error() {
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        let view = test_view();
 
         let tool_call_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000004").unwrap();
         let event = create_test_event(EventPayload::ToolResult(ToolResultPayload {
@@ -660,7 +621,7 @@ mod tests {
             is_error: true,
         }));
 
-        update_session_state(&mut state, &event);
+        update_session_state(&mut state, &event, &view).unwrap();
 
         assert_eq!(state.error_count, 1);
         assert_eq!(state.event_count, 1);
@@ -670,6 +631,7 @@ mod tests {
     fn test_update_session_state_token_usage_with_model() {
         let mut state = SessionState::new("test".to_string(), None, Utc::now());
         assert!(state.model.is_none());
+        let view = test_view();
 
         let id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000005").unwrap();
         let trace_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000006").unwrap();
@@ -694,7 +656,7 @@ mod tests {
             metadata: Some(serde_json::Value::Object(metadata)),
         };
 
-        update_session_state(&mut state, &event);
+        update_session_state(&mut state, &event, &view).unwrap();
 
         assert_eq!(state.model, Some("claude-3-5-sonnet-20241022".to_string()));
         assert_eq!(state.current_usage.fresh_input.0, 100);
@@ -703,31 +665,35 @@ mod tests {
 
     #[test]
     fn test_handle_reaction_continue() {
-        let result = handle_reaction(Reaction::Continue);
+        let view = test_view();
+        let result = handle_reaction(Reaction::Continue, &view);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_handle_reaction_warn() {
-        let result = handle_reaction(Reaction::Warn("test warning".to_string()));
+        let view = test_view();
+        let result = handle_reaction(Reaction::Warn("test warning".to_string()), &view);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_handle_reaction_intervene_notification() {
+        let view = test_view();
         let result = handle_reaction(Reaction::Intervene {
             reason: "test alert".to_string(),
             severity: Severity::Notification,
-        });
+        }, &view);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_handle_reaction_intervene_kill() {
+        let view = test_view();
         let result = handle_reaction(Reaction::Intervene {
             reason: "emergency".to_string(),
             severity: Severity::Kill,
-        });
+        }, &view);
         assert!(result.is_ok());
     }
 
@@ -768,13 +734,15 @@ mod tests {
 
     #[test]
     fn test_handle_error_event_fatal() {
-        let is_fatal = handle_error_event("FATAL: database corrupted");
+        let view = test_view();
+        let is_fatal = handle_error_event("FATAL: database corrupted", &view).unwrap();
         assert!(is_fatal);
     }
 
     #[test]
     fn test_handle_error_event_non_fatal() {
-        let is_fatal = handle_error_event("WARNING: slow response");
+        let view = test_view();
+        let is_fatal = handle_error_event("WARNING: slow response", &view).unwrap();
         assert!(!is_fatal);
     }
 
@@ -784,6 +752,7 @@ mod tests {
 
         let mut session_state = None;
         let mut reactors = create_reactors();
+        let view = test_view();
 
         let user_event = create_test_event(EventPayload::User(UserPayload {
             text: "test".to_string(),
@@ -796,7 +765,7 @@ mod tests {
             total_events: 1,
         };
 
-        process_update_event(update, &mut session_state, &mut reactors, None);
+        process_update_event(&update, &mut session_state, &mut reactors, None, &view).unwrap();
 
         assert!(session_state.is_some());
         let state = session_state.unwrap();
@@ -811,6 +780,7 @@ mod tests {
 
         let mut session_state = None;
         let mut reactors = create_reactors();
+        let view = test_view();
 
         let start_time = Utc::now();
         let session_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000010").unwrap();
@@ -837,7 +807,7 @@ mod tests {
             total_events: 1,
         };
 
-        process_update_event(update, &mut session_state, &mut reactors, None);
+        process_update_event(&update, &mut session_state, &mut reactors, None, &view).unwrap();
 
         assert!(session_state.is_some());
         let state = session_state.unwrap();
@@ -852,6 +822,7 @@ mod tests {
 
         let mut session_state = None;
         let mut reactors = create_reactors();
+        let view = test_view();
 
         let events = vec![
             create_test_event(EventPayload::User(UserPayload {
@@ -875,7 +846,7 @@ mod tests {
             total_events: 3,
         };
 
-        process_update_event(update, &mut session_state, &mut reactors, None);
+        process_update_event(&update, &mut session_state, &mut reactors, None, &view).unwrap();
 
         assert!(session_state.is_some());
         let state = session_state.unwrap();

@@ -2,15 +2,16 @@ use crate::config::Config;
 use crate::context::ExecutionContext;
 use crate::display_model::init::{InitDisplay, SkipReason, Step1Result, Step3Result};
 use crate::types::OutputFormat;
-use crate::views::init;
+use crate::ui::models::InitRenderEvent;
+use crate::ui::TraceView;
 use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 
-pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
-    init::print_init_header();
+pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Result<()> {
+    view.render_init_event(InitRenderEvent::Header)?;
 
     let data_dir = ctx.data_dir();
     let config_path = data_dir.join("config.toml");
@@ -19,12 +20,14 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
     let mut display = InitDisplay::new(config_path.clone(), db_path.clone());
 
     let _config = if !config_path.exists() {
-        init::print_step1_detecting();
+        view.render_init_event(InitRenderEvent::Step1Detecting)?;
         let detected = Config::detect_providers()?;
 
         if detected.providers.is_empty() {
             display = display.with_step1(Step1Result::NoProvidersDetected);
-            init::print_step1_result(&display.step1);
+            view.render_init_event(InitRenderEvent::Step1Result(
+                display.step1.clone(),
+            ))?;
             return Ok(());
         }
 
@@ -39,22 +42,26 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
             providers,
             config_saved: true,
         });
-        init::print_step1_result(&display.step1);
+        view.render_init_event(InitRenderEvent::Step1Result(
+            display.step1.clone(),
+        ))?;
 
         detected
     } else {
-        init::print_step1_loading();
+        view.render_init_event(InitRenderEvent::Step1Loading)?;
         let cfg = Config::load_from(&config_path)?;
         display = display.with_step1(Step1Result::LoadedConfig {
             config_path: config_path.clone(),
         });
-        init::print_step1_result(&display.step1);
+        view.render_init_event(InitRenderEvent::Step1Result(
+            display.step1.clone(),
+        ))?;
         cfg
     };
 
-    init::print_step2_header();
+    view.render_init_event(InitRenderEvent::Step2Header)?;
     let db = Database::open(&db_path)?;
-    init::print_step2_result(&display);
+    view.render_init_event(InitRenderEvent::Step2Result(display.clone()))?;
 
     let current_project_root = if let Some(root) = &ctx.project_root {
         root.display().to_string()
@@ -70,11 +77,13 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
             if let Ok(last_time) = DateTime::parse_from_rfc3339(last_scanned) {
                 let elapsed = Utc::now().signed_duration_since(last_time.with_timezone(&Utc));
                 if elapsed < Duration::minutes(5) {
-                    init::print_step3_header();
+                    view.render_init_event(InitRenderEvent::Step3Header)?;
                     display = display.with_step3(Step3Result::Skipped {
                         reason: SkipReason::RecentlyScanned { elapsed },
                     });
-                    init::print_step3_result(&display.step3);
+                    view.render_init_event(InitRenderEvent::Step3Result(
+                        display.step3.clone(),
+                    ))?;
                     false
                 } else {
                     true
@@ -90,8 +99,8 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
     };
 
     if should_scan {
-        init::print_step3_header();
-        let scan_result = super::index::handle(ctx, "all".to_string(), false, true);
+        view.render_init_event(InitRenderEvent::Step3Header)?;
+        let scan_result = super::index::handle(ctx, "all".to_string(), false, true, view);
 
         match scan_result {
             Ok(_) => {}
@@ -100,12 +109,14 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
                     success: false,
                     error: Some(format!("{}", e)),
                 });
-                init::print_step3_result(&display.step3);
+                view.render_init_event(InitRenderEvent::Step3Result(
+                    display.step3.clone(),
+                ))?;
             }
         }
     }
 
-    init::print_step4_header();
+    view.render_init_event(InitRenderEvent::Step4Header)?;
 
     let effective_hash = if ctx.all_projects {
         None
@@ -116,7 +127,9 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
     let sessions = db.list_sessions(effective_hash.as_deref(), 10)?;
 
     if sessions.is_empty() {
-        init::print_step4_no_sessions(ctx.all_projects);
+        view.render_init_event(InitRenderEvent::Step4NoSessions {
+            all_projects: ctx.all_projects,
+        })?;
         return Ok(());
     }
 
@@ -132,10 +145,13 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool) -> Result<()> {
         true,
         ctx.data_dir(),
         ctx.project_root.as_ref().map(|p| p.display().to_string()),
+        view,
     )?;
 
     if let Some(first_session) = sessions.first() {
-        init::print_next_steps(&first_session.id);
+        view.render_init_event(InitRenderEvent::NextSteps {
+            session_id: first_session.id.clone(),
+        })?;
     }
 
     Ok(())

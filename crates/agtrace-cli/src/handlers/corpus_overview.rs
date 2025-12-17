@@ -1,10 +1,16 @@
 use crate::context::ExecutionContext;
 use crate::session_loader::{LoadOptions, SessionLoader};
+use crate::ui::models::CorpusStats;
+use crate::ui::TraceView;
 use agtrace_engine::assemble_session_from_events;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 
-pub fn handle(ctx: &ExecutionContext, project_hash: Option<String>) -> Result<()> {
+pub fn handle(
+    ctx: &ExecutionContext,
+    project_hash: Option<String>,
+    view: &dyn TraceView,
+) -> Result<()> {
     let db = ctx.db()?;
     let all_projects = ctx.all_projects;
     let (effective_hash_string, _all_projects) =
@@ -13,16 +19,6 @@ pub fn handle(ctx: &ExecutionContext, project_hash: Option<String>) -> Result<()
 
     // Use a larger pool and balance
     let raw_sessions = db.list_sessions(effective_project_hash, 500)?;
-
-    if raw_sessions.is_empty() {
-        println!("No sessions found.");
-        return Ok(());
-    }
-
-    println!(
-        "# Corpus Overview (Sample: {} sessions)",
-        raw_sessions.len()
-    );
 
     let loader = SessionLoader::new(db);
     let options = LoadOptions::default();
@@ -53,10 +49,12 @@ pub fn handle(ctx: &ExecutionContext, project_hash: Option<String>) -> Result<()
         }
     }
 
-    println!("Total Tool Calls: {}", total_tool_calls);
-    println!("Total Failures: {}", total_failures);
-    println!("Max Duration: {:.1}s", max_duration as f64 / 1000.0);
-    println!("\nUse `agtrace pack --template diagnose` to see actionable problem sessions.");
+    view.render_corpus_overview(&CorpusStats {
+        sample_size: raw_sessions.len(),
+        total_tool_calls,
+        total_failures,
+        max_duration_ms: max_duration,
+    })?;
 
     Ok(())
 }

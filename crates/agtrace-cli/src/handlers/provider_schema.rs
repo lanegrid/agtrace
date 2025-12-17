@@ -1,10 +1,10 @@
 use crate::display_model::ProviderSchemaContent;
 use crate::types::SchemaFormat;
-use crate::views::provider::print_provider_schema;
+use crate::ui::TraceView;
 use anyhow::Result;
 
-pub fn handle(provider: String, format: SchemaFormat) -> Result<()> {
+pub fn handle(provider: String, format: SchemaFormat, view: &dyn TraceView) -> Result<()> {
     let content = ProviderSchemaContent::for_provider(&provider, format)?;
-    print_provider_schema(&content);
+    view.render_provider_schema(&content)?;
     Ok(())
 }

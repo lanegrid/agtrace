@@ -1,37 +1,41 @@
+use crate::ui::models::{ProviderConfigSummary, ProviderSetResult};
+use crate::ui::TraceView;
 use anyhow::Result;
 use std::path::PathBuf;
 
-pub fn list(config_path: &PathBuf) -> Result<()> {
+pub fn list(config_path: &PathBuf, view: &dyn TraceView) -> Result<()> {
     let config = crate::config::Config::load_from(config_path)?;
 
-    if config.providers.is_empty() {
-        println!("No providers configured. Run 'agtrace provider detect' to auto-detect.");
-        return Ok(());
-    }
+    let providers = config
+        .providers
+        .iter()
+        .map(|(name, provider_config)| ProviderConfigSummary {
+            name: name.clone(),
+            enabled: provider_config.enabled,
+            log_root: provider_config.log_root.clone(),
+        })
+        .collect::<Vec<_>>();
 
-    println!("{:<15} {:<10} LOG_ROOT", "PROVIDER", "ENABLED");
-    println!("{}", "-".repeat(80));
-
-    for (name, provider_config) in &config.providers {
-        println!(
-            "{:<15} {:<10} {}",
-            name,
-            if provider_config.enabled { "yes" } else { "no" },
-            provider_config.log_root.display()
-        );
-    }
+    view.render_provider_list(&providers)?;
 
     Ok(())
 }
 
-pub fn detect(config_path: &PathBuf) -> Result<()> {
+pub fn detect(config_path: &PathBuf, view: &dyn TraceView) -> Result<()> {
     let config = crate::config::Config::detect_providers()?;
     config.save_to(config_path)?;
 
-    println!("Detected {} provider(s):", config.providers.len());
-    for (name, provider_config) in &config.providers {
-        println!("  {} -> {}", name, provider_config.log_root.display());
-    }
+    let providers = config
+        .providers
+        .iter()
+        .map(|(name, provider_config)| ProviderConfigSummary {
+            name: name.clone(),
+            enabled: provider_config.enabled,
+            log_root: provider_config.log_root.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    view.render_provider_detected(&providers)?;
 
     Ok(())
 }
@@ -42,6 +46,7 @@ pub fn set(
     enable: bool,
     disable: bool,
     config_path: &PathBuf,
+    view: &dyn TraceView,
 ) -> Result<()> {
     if enable && disable {
         anyhow::bail!("Cannot specify both --enable and --disable");
@@ -62,12 +67,11 @@ pub fn set(
 
     config.save_to(config_path)?;
 
-    println!(
-        "Set provider '{}': enabled={}, log_root={}",
+    view.render_provider_set(&ProviderSetResult {
         provider,
         enabled,
-        log_root.display()
-    );
+        log_root,
+    })?;
 
     Ok(())
 }

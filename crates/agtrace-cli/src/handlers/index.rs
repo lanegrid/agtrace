@@ -1,4 +1,6 @@
 use crate::context::ExecutionContext;
+use crate::ui::models::IndexEvent;
+use crate::ui::TraceView;
 use agtrace_index::{LogFileRecord, ProjectRecord, SessionRecord};
 use agtrace_providers::ScanContext;
 use agtrace_types::project_hash_from_root;
@@ -6,7 +8,13 @@ use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::path::Path;
 
-pub fn handle(ctx: &ExecutionContext, provider: String, force: bool, verbose: bool) -> Result<()> {
+pub fn handle(
+    ctx: &ExecutionContext,
+    provider: String,
+    force: bool,
+    verbose: bool,
+    view: &dyn TraceView,
+) -> Result<()> {
     let db = ctx.db()?;
     let providers_with_roots = ctx.resolve_providers(&provider)?;
 
@@ -34,27 +42,27 @@ pub fn handle(ctx: &ExecutionContext, provider: String, force: bool, verbose: bo
     };
 
     if verbose && !force {
-        println!(
-            "Incremental scan mode: {} files already indexed",
-            indexed_files.len()
-        );
+        view.render_index_event(IndexEvent::IncrementalHint {
+            indexed_files: indexed_files.len(),
+        })?;
     }
 
     for (provider, log_root) in providers_with_roots {
         let provider_name = provider.name();
         if !log_root.exists() {
             if verbose {
-                println!(
-                    "Warning: log_root does not exist for {}: {}",
-                    provider_name,
-                    log_root.display()
-                );
+                view.render_index_event(IndexEvent::LogRootMissing {
+                    provider_name: provider_name.to_string(),
+                    log_root: log_root.clone(),
+                })?;
             }
             continue;
         }
 
         if verbose {
-            println!("Scanning provider: {}", provider_name);
+            view.render_index_event(IndexEvent::ProviderScanning {
+                provider_name: provider_name.to_string(),
+            })?;
         }
 
         let project_hash = if let Some(root) = &current_project_root {
@@ -77,11 +85,12 @@ pub fn handle(ctx: &ExecutionContext, provider: String, force: bool, verbose: bo
             .with_context(|| format!("Failed to scan {}", provider_name))?;
 
         if verbose {
-            println!(
-                "  Found {} sessions for project {}",
-                sessions.len(),
-                if all_projects { "(all)" } else { &project_hash }
-            );
+            view.render_index_event(IndexEvent::ProviderSessionCount {
+                provider_name: provider_name.to_string(),
+                count: sessions.len(),
+                project_hash: project_hash.clone(),
+                all_projects,
+            })?;
         }
 
         for session in sessions {
@@ -98,7 +107,9 @@ pub fn handle(ctx: &ExecutionContext, provider: String, force: bool, verbose: bo
             }
 
             if verbose {
-                println!("  Registered: {}", session.session_id);
+                view.render_index_event(IndexEvent::SessionRegistered {
+                    session_id: session.session_id.clone(),
+                })?;
             }
 
             let project_record = ProjectRecord {
@@ -135,14 +146,12 @@ pub fn handle(ctx: &ExecutionContext, provider: String, force: bool, verbose: bo
         }
     }
 
-    if verbose {
-        println!(
-            "Scan complete: {} sessions, {} files scanned, {} files skipped",
-            total_sessions, scanned_files, skipped_files
-        );
-    } else {
-        println!("Scan complete: {} sessions registered", total_sessions);
-    }
+    view.render_index_event(IndexEvent::Completed {
+        total_sessions,
+        scanned_files,
+        skipped_files,
+        verbose,
+    })?;
 
     Ok(())
 }

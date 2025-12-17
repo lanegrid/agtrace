@@ -3,7 +3,8 @@
 use crate::display_model::{DisplayOptions, SessionDisplay};
 use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::types::ViewStyle;
-use crate::views::session::print_events_timeline;
+use crate::ui::models::RawFileContent;
+use crate::ui::TraceView;
 use agtrace_engine::assemble_session_from_events;
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
@@ -24,6 +25,7 @@ pub fn handle(
     _full: bool, // Kept for backwards compatibility, but now default
     short: bool,
     style: ViewStyle,
+    view: &dyn TraceView,
 ) -> Result<()> {
     // Detect if output is being piped (not a terminal)
     let is_tty = io::stdout().is_terminal();
@@ -37,11 +39,17 @@ pub fn handle(
             .filter(|f| f.role != "sidechain")
             .collect();
 
+        let mut contents = Vec::new();
+
         for log_file in &main_files {
             let content = fs::read_to_string(&log_file.path)
                 .with_context(|| format!("Failed to read file: {}", log_file.path))?;
-            println!("{}", content);
+            contents.push(RawFileContent {
+                path: log_file.path.clone(),
+                content,
+            });
         }
+        view.render_session_raw_files(&contents)?;
         return Ok(());
     }
 
@@ -54,7 +62,7 @@ pub fn handle(
     let filtered_events = filter_events_v2(&all_events_v2, hide.as_ref(), only.as_ref());
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&filtered_events)?);
+        view.render_session_events_json(&filtered_events)?;
     } else {
         match style {
             ViewStyle::Compact => {
@@ -65,17 +73,14 @@ pub fn handle(
                         relative_time: true,
                         truncate_text: if short { Some(100) } else { None },
                     };
-                    let lines = crate::views::session::format_compact(&display, &opts);
-                    for line in lines {
-                        println!("{}", line);
-                    }
+                    view.render_session_compact(&display, &opts)?;
                 } else {
-                    eprintln!("Failed to assemble session from events");
+                    view.render_session_assemble_error()?;
                 }
             }
             ViewStyle::Timeline => {
                 let truncate = short;
-                print_events_timeline(&filtered_events, truncate, enable_color);
+                view.render_session_timeline(&filtered_events, truncate, enable_color)?;
             }
         }
     }

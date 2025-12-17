@@ -1,10 +1,17 @@
 use crate::types::InspectFormat;
+use crate::ui::models::{InspectContent, InspectDisplay, InspectLine};
+use crate::ui::TraceView;
 use anyhow::{Context, Result};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-pub fn handle(file_path: String, lines: usize, format: InspectFormat) -> Result<()> {
+pub fn handle(
+    file_path: String,
+    lines: usize,
+    format: InspectFormat,
+    view: &dyn TraceView,
+) -> Result<()> {
     let path = Path::new(&file_path);
 
     if !path.exists() {
@@ -20,46 +27,30 @@ pub fn handle(file_path: String, lines: usize, format: InspectFormat) -> Result<
         .lines()
         .count();
 
-    println!("File: {}", file_path);
-    println!(
-        "Lines: 1-{} (total: {} lines)",
-        lines.min(total_lines),
-        total_lines
-    );
-    println!("{}", "─".repeat(40));
-
-    match format {
-        InspectFormat::Json => display_json(reader, lines)?,
-        InspectFormat::Raw => display_raw(reader, lines)?,
-    }
-
-    println!("{}", "─".repeat(40));
-
-    Ok(())
-}
-
-fn display_raw(reader: BufReader<File>, max_lines: usize) -> Result<()> {
-    for (idx, line) in reader.lines().take(max_lines).enumerate() {
+    let mut rendered_lines = Vec::new();
+    for (idx, line) in reader.lines().take(lines).enumerate() {
         let line = line?;
-        println!("{:>6}  {}", idx + 1, line);
+        let content = match format {
+            InspectFormat::Raw => InspectContent::Raw(line.clone()),
+            InspectFormat::Json => match serde_json::from_str::<serde_json::Value>(&line) {
+                Ok(json) => InspectContent::Json(json),
+                Err(_) => InspectContent::Raw(line.clone()),
+            },
+        };
+        rendered_lines.push(InspectLine {
+            number: idx + 1,
+            content,
+        });
     }
-    Ok(())
-}
 
-fn display_json(reader: BufReader<File>, max_lines: usize) -> Result<()> {
-    for (idx, line) in reader.lines().take(max_lines).enumerate() {
-        let line = line?;
+    let display = InspectDisplay {
+        file_path,
+        total_lines,
+        shown_lines: rendered_lines.len(),
+        lines: rendered_lines,
+    };
 
-        // Try to parse and pretty-print JSON
-        match serde_json::from_str::<serde_json::Value>(&line) {
-            Ok(json) => {
-                println!("{:>6}  {}", idx + 1, serde_json::to_string_pretty(&json)?);
-            }
-            Err(_) => {
-                // If not valid JSON, display as-is
-                println!("{:>6}  {}", idx + 1, line);
-            }
-        }
-    }
+    view.render_inspect(&display)?;
+
     Ok(())
 }

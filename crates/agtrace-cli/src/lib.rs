@@ -11,6 +11,7 @@ pub mod streaming;
 mod token_limits;
 pub mod token_usage;
 pub mod types;
+pub mod ui;
 mod views;
 
 pub use args::{
