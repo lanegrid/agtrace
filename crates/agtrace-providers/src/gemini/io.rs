@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
-use super::normalize::normalize_gemini_session_v2;
+use super::normalize::normalize_gemini_session;
 use super::schema::GeminiSession;
 
-/// Parse Gemini CLI JSON file and normalize to v2::AgentEvent
-pub fn normalize_gemini_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
+/// Parse Gemini CLI JSON file and normalize to AgentEvent
+pub fn normalize_gemini_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
 
@@ -22,11 +22,11 @@ pub fn normalize_gemini_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentE
             .cloned()
             .unwrap_or_default();
 
-        return Ok(normalize_gemini_session_v2(&session, raw_messages));
+        return Ok(normalize_gemini_session(&session, raw_messages));
     }
 
     anyhow::bail!(
-        "Gemini v2 normalization only supports session format: {}",
+        "Gemini normalization only supports session format: {}",
         path.display()
     )
 }

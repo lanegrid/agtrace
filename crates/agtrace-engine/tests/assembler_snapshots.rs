@@ -40,7 +40,7 @@ fn test_gemini_session_assembly() {
     }
 
     let events =
-        agtrace_providers::normalize_gemini_file_v2(path).expect("Failed to normalize Gemini file");
+        agtrace_providers::normalize_gemini_file(path).expect("Failed to normalize Gemini file");
 
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
 
@@ -61,7 +61,7 @@ fn test_codex_session_assembly() {
     }
 
     let events =
-        agtrace_providers::normalize_codex_file_v2(path).expect("Failed to normalize Codex file");
+        agtrace_providers::normalize_codex_file(path).expect("Failed to normalize Codex file");
 
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
 
@@ -82,7 +82,7 @@ fn test_claude_session_assembly() {
     }
 
     let events =
-        agtrace_providers::normalize_claude_file_v2(path).expect("Failed to normalize Claude file");
+        agtrace_providers::normalize_claude_file(path).expect("Failed to normalize Claude file");
 
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
 

@@ -5,9 +5,9 @@ use uuid::Uuid;
 use crate::builder::EventBuilder;
 use crate::claude::schema::*;
 
-/// Normalize Claude session records to v2 events
+/// Normalize Claude session records to events
 /// Handles message.content[] blocks, thinking -> Reasoning, and TokenUsage extraction
-pub(crate) fn normalize_claude_session_v2(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
+pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
     // Extract session_id from first record
     let session_id = records
         .iter()
@@ -46,7 +46,7 @@ pub(crate) fn normalize_claude_session_v2(records: Vec<ClaudeRecord>) -> Vec<Age
                             content: result_content,
                             is_error,
                         } => {
-                            // ToolResult in user message - map to v2 ToolResult event
+                            // ToolResult in user message - map to ToolResult event
                             // Need to look up the tool_call_id from provider ID
                             if let Some(tool_call_id) = builder.get_tool_call_uuid(tool_use_id) {
                                 let output = result_content
@@ -234,7 +234,7 @@ mod tests {
             thinking_metadata: None,
         })];
 
-        let events = normalize_claude_session_v2(records);
+        let events = normalize_claude_session(records);
         assert_eq!(events.len(), 1);
 
         match &events[0].payload {
@@ -282,7 +282,7 @@ mod tests {
             request_id: None,
         })];
 
-        let events = normalize_claude_session_v2(records);
+        let events = normalize_claude_session(records);
         // Should have: Reasoning + Message + TokenUsage (3 events)
         assert_eq!(events.len(), 3);
 
@@ -352,7 +352,7 @@ mod tests {
             request_id: None,
         })];
 
-        let events = normalize_claude_session_v2(records);
+        let events = normalize_claude_session(records);
         // Should have: ToolCall + TokenUsage (2 events)
         assert_eq!(events.len(), 2);
 

@@ -21,10 +21,10 @@ pub use claude::ClaudeProvider;
 pub use codex::CodexProvider;
 pub use gemini::GeminiProvider;
 
-// Re-export v2 normalize functions (for tests and external use)
-pub use claude::normalize_claude_file_v2;
-pub use codex::normalize_codex_file_v2;
-pub use gemini::normalize_gemini_file_v2;
+// Re-export normalize functions (for tests and external use)
+pub use claude::normalize_claude_file;
+pub use codex::normalize_codex_file;
+pub use gemini::normalize_gemini_file;
 
 // Re-export registry functions for convenience
 pub use registry::{
@@ -85,19 +85,19 @@ pub trait LogProvider: Send + Sync {
     /// - `Ok(None)` if the line is malformed or incomplete (non-fatal, skip silently)
     /// - `Err(e)` if a fatal error occurred that should stop processing
     ///
-    /// Default implementation assumes v2 schema JSONL format.
+    /// Default implementation assumes JSONL format.
     ///
     /// # Provider-specific implementations
     ///
-    /// Providers storing logs in raw formats (not v2 JSONL) should override this method
+    /// Providers storing logs in raw formats (not JSONL) should override this method
     /// to parse their specific format. For example:
     /// - Codex: Parse raw JSON format and convert to AgentEvent
     /// - Gemini: Parse raw JSON format and convert to AgentEvent
-    /// - Claude: Already uses v2 JSONL, default implementation works
+    /// - Claude: Already uses JSONL, default implementation works
     ///
     /// # Current limitation
     ///
-    /// The watch command currently only supports v2 JSONL format. Provider-specific
+    /// The watch command currently only supports JSONL format. Provider-specific
     /// raw format support requires passing the provider instance to SessionWatcher,
     /// which is planned for future implementation.
     fn parse_line(&self, line: &str) -> Result<Option<AgentEvent>> {

@@ -5,9 +5,9 @@ use uuid::Uuid;
 use crate::builder::EventBuilder;
 use crate::gemini::schema::{GeminiMessage, GeminiSession};
 
-/// Normalize Gemini session to v2 events
+/// Normalize Gemini session to events
 /// Unfolds nested structure (thoughts[], toolCalls[]) into event stream
-pub(crate) fn normalize_gemini_session_v2(
+pub(crate) fn normalize_gemini_session(
     session: &GeminiSession,
     raw_messages: Vec<serde_json::Value>,
 ) -> Vec<AgentEvent> {
@@ -176,7 +176,7 @@ mod tests {
             })],
         };
 
-        let events = normalize_gemini_session_v2(&session, vec![]);
+        let events = normalize_gemini_session(&session, vec![]);
         assert_eq!(events.len(), 1);
 
         match &events[0].payload {
@@ -211,7 +211,7 @@ mod tests {
             })],
         };
 
-        let events = normalize_gemini_session_v2(&session, vec![]);
+        let events = normalize_gemini_session(&session, vec![]);
         // Should have: Message + TokenUsage (2 events)
         assert_eq!(events.len(), 2);
 

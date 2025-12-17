@@ -43,9 +43,9 @@ fn attach_model_metadata(
     }
 }
 
-/// Normalize Codex session records to v2 events
+/// Normalize Codex session records to events
 /// Handles async token notifications, JSON string parsing, and exit code extraction
-pub(crate) fn normalize_codex_session_v2(
+pub(crate) fn normalize_codex_session(
     records: Vec<CodexRecord>,
     session_id: &str,
 ) -> Vec<AgentEvent> {
@@ -65,7 +65,7 @@ pub(crate) fn normalize_codex_session_v2(
     for record in records {
         match record {
             CodexRecord::SessionMeta(_meta) => {
-                // SessionMeta doesn't generate events in v2
+                // SessionMeta doesn't generate events
                 // Metadata is preserved in raw field if needed
             }
 

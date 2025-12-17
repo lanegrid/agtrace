@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-/// EventBuilder helps convert provider raw data to v2 events
+/// EventBuilder helps convert provider raw data to events
 /// Maintains state for proper parent_id chain and tool_call_id mapping
 pub struct EventBuilder {
     /// Current trace/session ID

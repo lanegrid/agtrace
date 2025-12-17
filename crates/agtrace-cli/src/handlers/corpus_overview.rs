@@ -29,7 +29,7 @@ pub fn handle(
 
     // Simple one-pass metrics
     for session in &raw_sessions {
-        if let Ok(events) = loader.load_events_v2(&session.id, &options) {
+        if let Ok(events) = loader.load_events(&session.id, &options) {
             // Just quick aggregations for the header
             if let Some(agent_session) = assemble_session_from_events(&events) {
                 for turn in &agent_session.turns {

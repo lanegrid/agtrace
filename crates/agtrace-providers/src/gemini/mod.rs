@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub use self::io::{
-    extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file_v2,
+    extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file,
 };
 
 pub struct GeminiProvider;
@@ -52,7 +52,7 @@ impl LogProvider for GeminiProvider {
     }
 
     fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
-        normalize_gemini_file_v2(path)
+        normalize_gemini_file(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {

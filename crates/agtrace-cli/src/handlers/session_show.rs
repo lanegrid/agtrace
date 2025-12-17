@@ -53,13 +53,13 @@ pub fn handle(
         return Ok(());
     }
 
-    // Load and normalize events (using v2 pipeline)
+    // Load and normalize events
     let loader = SessionLoader::new(db);
     let options = LoadOptions::default();
-    let all_events_v2 = loader.load_events_v2(&session_id, &options)?;
+    let all_events = loader.load_events(&session_id, &options)?;
 
     // Filter events based on --hide and --only options
-    let filtered_events = filter_events_v2(&all_events_v2, hide.as_ref(), only.as_ref());
+    let filtered_events = filter_events(&all_events, hide.as_ref(), only.as_ref());
 
     if json {
         view.render_session_events_json(&filtered_events)?;
@@ -88,8 +88,8 @@ pub fn handle(
     Ok(())
 }
 
-/// Filter v2 events based on hide/only patterns
-fn filter_events_v2(
+/// Filter events based on hide/only patterns
+fn filter_events(
     events: &[AgentEvent],
     hide: Option<&Vec<String>>,
     only: Option<&Vec<String>>,

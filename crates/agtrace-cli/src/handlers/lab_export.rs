@@ -19,7 +19,7 @@ pub fn handle(
 ) -> Result<()> {
     let loader = SessionLoader::new(db);
     let options = LoadOptions::default();
-    let events_v2 = loader.load_events_v2(&session_id, &options)?;
+    let events = loader.load_events(&session_id, &options)?;
     let resolved_id = session_id.clone();
 
     let export_strategy: ExportStrategy = strategy
@@ -27,7 +27,7 @@ pub fn handle(
         .parse()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let processed_events = export::transform(&events_v2, export_strategy);
+    let processed_events = export::transform(&events, export_strategy);
 
     let output_path = output.unwrap_or_else(|| {
         PathBuf::from(format!(

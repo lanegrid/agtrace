@@ -2,11 +2,11 @@ use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::normalize::normalize_claude_session_v2;
+use super::normalize::normalize_claude_session;
 use super::schema::ClaudeRecord;
 
-/// Parse Claude Code JSONL file and normalize to v2::AgentEvent
-pub fn normalize_claude_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
+/// Parse Claude Code JSONL file and normalize to AgentEvent
+pub fn normalize_claude_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Claude file: {}", path.display()))?;
 
@@ -21,7 +21,7 @@ pub fn normalize_claude_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentE
         records.push(record);
     }
 
-    Ok(normalize_claude_session_v2(records))
+    Ok(normalize_claude_session(records))
 }
 
 /// Extract cwd from a Claude session file by reading the first few lines

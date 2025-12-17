@@ -2,11 +2,11 @@ use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::normalize::normalize_codex_session_v2;
+use super::normalize::normalize_codex_session;
 use super::schema::CodexRecord;
 
-/// Parse Codex JSONL file and normalize to v2::AgentEvent
-pub fn normalize_codex_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
+/// Parse Codex JSONL file and normalize to AgentEvent
+pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Codex file: {}", path.display()))?;
 
@@ -32,7 +32,7 @@ pub fn normalize_codex_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentEv
     // session_id should be extracted from file content, fallback to "unknown-session"
     let session_id = session_id_from_meta.unwrap_or_else(|| "unknown-session".to_string());
 
-    Ok(normalize_codex_session_v2(records, &session_id))
+    Ok(normalize_codex_session(records, &session_id))
 }
 
 /// Extract cwd from a Codex session file by reading the first few records

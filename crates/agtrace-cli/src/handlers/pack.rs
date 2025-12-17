@@ -31,7 +31,7 @@ pub fn handle(
     let options = LoadOptions::default();
 
     for (i, session) in balanced_sessions.iter().enumerate() {
-        if let Ok(events) = loader.load_events_v2(&session.id, &options) {
+        if let Ok(events) = loader.load_events(&session.id, &options) {
             if let Some(agent_session) = assemble_session_from_events(&events) {
                 // Newer sessions get a small boost in scoring
                 let recency_boost = (balanced_sessions.len() - i) as u32;

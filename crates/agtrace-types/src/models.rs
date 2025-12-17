@@ -27,7 +27,7 @@ use uuid::Uuid;
 // - Real-time token sync: Codex-style delayed tokens handled via eventual consistency (sidecar)
 // - Gemini token breakdown: Total usage attached to final generation event (no speculation)
 
-/// Agent event (v2 schema)
+/// Agent event
 /// Maps 1:1 to database table row
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentEvent {

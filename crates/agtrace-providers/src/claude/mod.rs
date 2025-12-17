@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file_v2};
+pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file};
 
 /// Encode project_root path to Claude Code directory name format
 /// Claude Code replaces both '/' and '.' with '-'
@@ -70,7 +70,7 @@ impl LogProvider for ClaudeProvider {
     }
 
     fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
-        normalize_claude_file_v2(path)
+        normalize_claude_file(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {

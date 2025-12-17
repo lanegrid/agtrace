@@ -11,7 +11,7 @@ fn test_gemini_span_building() {
     }
 
     let events =
-        agtrace_providers::normalize_gemini_file_v2(path).expect("Failed to normalize Gemini file");
+        agtrace_providers::normalize_gemini_file(path).expect("Failed to normalize Gemini file");
 
     let spans = build_spans_from_events(&events);
 
@@ -32,7 +32,7 @@ fn test_codex_span_building() {
     }
 
     let events =
-        agtrace_providers::normalize_codex_file_v2(path).expect("Failed to normalize Codex file");
+        agtrace_providers::normalize_codex_file(path).expect("Failed to normalize Codex file");
 
     let spans = build_spans_from_events(&events);
 
@@ -53,7 +53,7 @@ fn test_claude_span_building() {
     }
 
     let events =
-        agtrace_providers::normalize_claude_file_v2(path).expect("Failed to normalize Claude file");
+        agtrace_providers::normalize_claude_file(path).expect("Failed to normalize Claude file");
 
     let spans = build_spans_from_events(&events);
 

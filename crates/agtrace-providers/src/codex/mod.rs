@@ -11,8 +11,7 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 pub use self::io::{
-    extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session,
-    normalize_codex_file_v2,
+    extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session, normalize_codex_file,
 };
 
 pub struct CodexProvider;
@@ -53,7 +52,7 @@ impl LogProvider for CodexProvider {
     }
 
     fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
-        normalize_codex_file_v2(path)
+        normalize_codex_file(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {

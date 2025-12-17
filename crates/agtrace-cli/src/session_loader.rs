@@ -1,7 +1,5 @@
 use agtrace_index::Database;
-use agtrace_providers::{
-    normalize_claude_file_v2, normalize_codex_file_v2, normalize_gemini_file_v2,
-};
+use agtrace_providers::{normalize_claude_file, normalize_codex_file, normalize_gemini_file};
 use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::Path;
@@ -20,11 +18,7 @@ impl<'a> SessionLoader<'a> {
         Self { db }
     }
 
-    pub fn load_events_v2(
-        &self,
-        session_id: &str,
-        options: &LoadOptions,
-    ) -> Result<Vec<AgentEvent>> {
+    pub fn load_events(&self, session_id: &str, options: &LoadOptions) -> Result<Vec<AgentEvent>> {
         let resolved_id = self.resolve_session_id(session_id)?;
         let log_files = self.db.get_session_files(&resolved_id)?;
 
@@ -50,13 +44,13 @@ impl<'a> SessionLoader<'a> {
         for log_file in &files_to_process {
             let path = Path::new(&log_file.path);
 
-            // Call provider-specific v2 normalization functions
+            // Call provider-specific normalization functions
             let result = if log_file.path.contains(".claude/") {
-                normalize_claude_file_v2(path)
+                normalize_claude_file(path)
             } else if log_file.path.contains(".codex/") {
-                normalize_codex_file_v2(path)
+                normalize_codex_file(path)
             } else if log_file.path.contains(".gemini/") {
-                normalize_gemini_file_v2(path)
+                normalize_gemini_file(path)
             } else {
                 anyhow::bail!("Cannot detect provider from path: {}", log_file.path)
             };

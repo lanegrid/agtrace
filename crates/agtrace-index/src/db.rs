@@ -8,7 +8,7 @@ use std::path::Path;
 // - Provider logs change format frequently; parsing logic needs flexibility
 // - Event normalization is complex (Gemini unfold, Codex dedup, etc.)
 // - Raw logs are source of truth; DB is just an index for fast lookup
-// - Keeps DB lightweight and migration-free when v2 schema evolves
+// - Keeps DB lightweight and migration-free when schema evolves
 //
 // Why hash-based project identification?
 // - Gemini logs contain projectHash but not projectRoot path
