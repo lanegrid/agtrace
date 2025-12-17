@@ -1,9 +1,8 @@
 pub mod doctor_view;
 pub mod pack_view;
-pub mod session_display;
-mod timeline;
 
 pub use doctor_view::print_results;
 pub use pack_view::{output_compact, output_diagnose, output_tools};
-pub use session_display::{format_compact, format_token_summary};
-pub use timeline::print_events_timeline;
+
+// Re-export from views for backward compatibility
+pub use crate::views::session::{format_compact, format_token_summary, print_events_timeline};
