@@ -3,7 +3,7 @@ use crate::views::session::format_compact;
 use agtrace_engine::SessionDigest;
 use std::collections::HashMap;
 
-pub fn output_diagnose(digests: &[SessionDigest]) {
+pub fn print_diagnose(digests: &[SessionDigest]) {
     println!("## Selected Sessions (Diagnose Mode)\n");
 
     let mut by_reason: HashMap<String, Vec<&SessionDigest>> = HashMap::new();
@@ -27,11 +27,11 @@ pub fn output_diagnose(digests: &[SessionDigest]) {
     }
 }
 
-pub fn output_tools(digests: &[SessionDigest]) {
-    output_compact(digests);
+pub fn print_tools(digests: &[SessionDigest]) {
+    print_compact(digests);
 }
 
-pub fn output_compact(digests: &[SessionDigest]) {
+pub fn print_compact(digests: &[SessionDigest]) {
     let opts = DisplayOptions {
         enable_color: false,
         relative_time: false,
