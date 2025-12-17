@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Optimize database by reclaiming unused space
+
 Usage: agtrace index vacuum [OPTIONS]
 
 Options:

@@ -1,6 +1,5 @@
 use crate::context::ExecutionContext;
 use crate::session_loader::{LoadOptions, SessionLoader};
-use crate::ui::models::ReportTemplate;
 use crate::ui::TraceView;
 use agtrace_engine::{analyze_and_select_sessions, assemble_session_from_events, SessionDigest};
 use agtrace_index::SessionSummary;
@@ -50,7 +49,7 @@ pub fn handle(
     // 3. Select: Apply lenses with deduplication
     let selections = analyze_and_select_sessions(digests, limit);
 
-    let report_template = ReportTemplate::from_str(template);
+    let report_template = template.parse().expect("ReportTemplate parsing is infallible");
     view.render_pack_report(
         &selections,
         report_template,

@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+List all indexed projects
+
 Usage: agtrace project list [OPTIONS]
 
 Options:

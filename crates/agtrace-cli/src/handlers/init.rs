@@ -25,9 +25,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
 
         if detected.providers.is_empty() {
             display = display.with_step1(Step1Result::NoProvidersDetected);
-            view.render_init_event(InitRenderEvent::Step1Result(
-                display.step1.clone(),
-            ))?;
+            view.render_init_event(InitRenderEvent::Step1Result(display.step1.clone()))?;
             return Ok(());
         }
 
@@ -42,9 +40,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
             providers,
             config_saved: true,
         });
-        view.render_init_event(InitRenderEvent::Step1Result(
-            display.step1.clone(),
-        ))?;
+        view.render_init_event(InitRenderEvent::Step1Result(display.step1.clone()))?;
 
         detected
     } else {
@@ -53,9 +49,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
         display = display.with_step1(Step1Result::LoadedConfig {
             config_path: config_path.clone(),
         });
-        view.render_init_event(InitRenderEvent::Step1Result(
-            display.step1.clone(),
-        ))?;
+        view.render_init_event(InitRenderEvent::Step1Result(display.step1.clone()))?;
         cfg
     };
 
@@ -81,9 +75,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
                     display = display.with_step3(Step3Result::Skipped {
                         reason: SkipReason::RecentlyScanned { elapsed },
                     });
-                    view.render_init_event(InitRenderEvent::Step3Result(
-                        display.step3.clone(),
-                    ))?;
+                    view.render_init_event(InitRenderEvent::Step3Result(display.step3.clone()))?;
                     false
                 } else {
                     true
@@ -109,9 +101,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
                     success: false,
                     error: Some(format!("{}", e)),
                 });
-                view.render_init_event(InitRenderEvent::Step3Result(
-                    display.step3.clone(),
-                ))?;
+                view.render_init_event(InitRenderEvent::Step3Result(display.step3.clone()))?;
             }
         }
     }

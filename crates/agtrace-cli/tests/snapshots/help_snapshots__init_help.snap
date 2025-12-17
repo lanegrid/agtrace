@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Initialize agtrace configuration
+
 Usage: agtrace init [OPTIONS]
 
 Options:

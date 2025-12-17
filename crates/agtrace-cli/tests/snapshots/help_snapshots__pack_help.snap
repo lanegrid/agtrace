@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Analyze and pack sessions for sharing
+
 Usage: agtrace pack [OPTIONS]
 
 Options:

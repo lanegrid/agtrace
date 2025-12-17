@@ -28,8 +28,7 @@ pub fn handle(
             ExecutionContext::new(data_dir.to_path_buf(), project_root.clone(), all_projects)?;
 
         // Run incremental scan quietly (verbose=false)
-        if let Err(e) =
-            crate::handlers::index::handle(&ctx, "all".to_string(), false, false, view)
+        if let Err(e) = crate::handlers::index::handle(&ctx, "all".to_string(), false, false, view)
         {
             // Don't fail the list command if refresh fails - just warn
             view.render_warning(&format!("Warning: auto-refresh failed: {}", e))?;

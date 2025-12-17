@@ -1,6 +1,7 @@
 use crate::display_model::init::{InitDisplay, Step1Result, Step3Result};
 use serde_json::Value;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct ProviderConfigSummary {
@@ -72,13 +73,15 @@ pub enum ReportTemplate {
     Tools,
 }
 
-impl ReportTemplate {
-    pub fn from_str(template: &str) -> Self {
-        match template {
+impl FromStr for ReportTemplate {
+    type Err = std::convert::Infallible;
+
+    fn from_str(template: &str) -> Result<Self, Self::Err> {
+        Ok(match template {
             "diagnose" => Self::Diagnose,
             "tools" => Self::Tools,
             _ => Self::Compact,
-        }
+        })
     }
 }
 
@@ -99,16 +102,25 @@ pub enum InitRenderEvent {
 
 #[derive(Debug, Clone)]
 pub enum IndexEvent {
-    IncrementalHint { indexed_files: usize },
-    LogRootMissing { provider_name: String, log_root: PathBuf },
-    ProviderScanning { provider_name: String },
+    IncrementalHint {
+        indexed_files: usize,
+    },
+    LogRootMissing {
+        provider_name: String,
+        log_root: PathBuf,
+    },
+    ProviderScanning {
+        provider_name: String,
+    },
     ProviderSessionCount {
         provider_name: String,
         count: usize,
         project_hash: String,
         all_projects: bool,
     },
-    SessionRegistered { session_id: String },
+    SessionRegistered {
+        session_id: String,
+    },
     Completed {
         total_sessions: usize,
         scanned_files: usize,

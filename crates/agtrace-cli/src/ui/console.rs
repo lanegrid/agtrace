@@ -1,4 +1,6 @@
-use crate::display_model::{DisplayOptions, DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay};
+use crate::display_model::{
+    DisplayOptions, DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay,
+};
 use crate::reactor::{Reaction, SessionState, Severity};
 use crate::types::OutputFormat;
 use crate::ui::models::*;
@@ -11,6 +13,12 @@ use owo_colors::OwoColorize;
 use std::path::Path;
 
 pub struct ConsoleTraceView;
+
+impl Default for ConsoleTraceView {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl ConsoleTraceView {
     pub fn new() -> Self {
@@ -119,7 +127,10 @@ impl SystemView for ConsoleTraceView {
             println!(
                 "{:<20} {:<50} {:<10} {}",
                 hash_short,
-                project.root_path.clone().unwrap_or_else(|| "(unknown)".to_string()),
+                project
+                    .root_path
+                    .clone()
+                    .unwrap_or_else(|| "(unknown)".to_string()),
                 project.session_count,
                 project
                     .last_scanned
@@ -136,10 +147,7 @@ impl SystemView for ConsoleTraceView {
             println!("No sessions found.");
             return Ok(());
         }
-        println!(
-            "# Corpus Overview (Sample: {} sessions)",
-            stats.sample_size
-        );
+        println!("# Corpus Overview (Sample: {} sessions)", stats.sample_size);
         println!("Total Tool Calls: {}", stats.total_tool_calls);
         println!("Total Failures: {}", stats.total_failures);
         println!(
@@ -216,7 +224,9 @@ impl SystemView for ConsoleTraceView {
             InitRenderEvent::Step1Loading => crate::views::init::print_step1_loading(),
             InitRenderEvent::Step1Result(step) => crate::views::init::print_step1_result(&step),
             InitRenderEvent::Step2Header => crate::views::init::print_step2_header(),
-            InitRenderEvent::Step2Result(display) => crate::views::init::print_step2_result(&display),
+            InitRenderEvent::Step2Result(display) => {
+                crate::views::init::print_step2_result(&display)
+            }
             InitRenderEvent::Step3Header => crate::views::init::print_step3_header(),
             InitRenderEvent::Step3Result(step) => crate::views::init::print_step3_result(&step),
             InitRenderEvent::Step4Header => crate::views::init::print_step4_header(),
@@ -231,11 +241,7 @@ impl SystemView for ConsoleTraceView {
     }
 
     fn render_lab_export(&self, exported: usize, output_path: &Path) -> Result<()> {
-        println!(
-            "Exported {} events to {}",
-            exported,
-            output_path.display()
-        );
+        println!("Exported {} events to {}", exported, output_path.display());
         Ok(())
     }
 }
@@ -532,7 +538,11 @@ impl WatchView for ConsoleTraceView {
         Ok(())
     }
 
-    fn render_stream_update(&self, _state: &SessionState, _new_events: &[AgentEvent]) -> Result<()> {
+    fn render_stream_update(
+        &self,
+        _state: &SessionState,
+        _new_events: &[AgentEvent],
+    ) -> Result<()> {
         Ok(())
     }
 }

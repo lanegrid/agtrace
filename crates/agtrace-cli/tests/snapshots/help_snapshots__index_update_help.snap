@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Incrementally update the index with new sessions
+
 Usage: agtrace index update [OPTIONS]
 
 Options:

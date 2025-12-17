@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Diagnose provider log files for parse errors
+
 Usage: agtrace doctor run [OPTIONS]
 
 Options:

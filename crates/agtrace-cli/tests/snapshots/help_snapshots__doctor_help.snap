@@ -2,12 +2,14 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Diagnose provider configurations and log files
+
 Usage: agtrace doctor [OPTIONS] <COMMAND>
 
 Commands:
-  run      
-  inspect  
-  check    
+  run      Diagnose provider log files for parse errors
+  inspect  Inspect raw log file contents
+  check    Check if a log file can be parsed
   help     Print this message or the help of the given subcommand(s)
 
 Options:

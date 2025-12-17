@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Display detailed session timeline and events
+
 Usage: agtrace session show [OPTIONS] <SESSION_ID>
 
 Arguments:

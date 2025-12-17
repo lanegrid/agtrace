@@ -7,16 +7,16 @@ Normalize and analyze agent behavior logs
 Usage: agtrace [OPTIONS] [COMMAND]
 
 Commands:
-  index     
-  session   
-  provider  
-  doctor    
-  project   
-  lab       
-  sessions  
-  pack      
-  watch     
-  init      
+  index     Manage index database operations
+  session   Manage and view session data
+  provider  Manage provider configurations
+  doctor    Diagnose provider configurations and log files
+  project   List indexed projects
+  lab       Experimental features
+  sessions  List recent sessions (alias for 'session list')
+  pack      Analyze and pack sessions for sharing
+  watch     Watch for live session updates
+  init      Initialize agtrace configuration
   help      Print this message or the help of the given subcommand(s)
 
 Options:

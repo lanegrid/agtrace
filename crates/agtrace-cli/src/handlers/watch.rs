@@ -287,13 +287,12 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView)
                     if just_attached {
                         // Initial snapshot: Initialize SessionState and display summary only
                         just_attached = false;
-                        let summary =
-                            handle_initial_update(
-                                &update,
-                                &mut session_state,
-                                project_root.clone(),
-                                view,
-                            )?;
+                        let summary = handle_initial_update(
+                            &update,
+                            &mut session_state,
+                            project_root.clone(),
+                            view,
+                        )?;
                         view.on_watch_initial_summary(&summary)?;
                     } else {
                         // Normal update: Process events through reactors
@@ -414,7 +413,7 @@ fn update_session_state(
                 let model_limit = token_limits.get_limit(model).map(|l| l.total_limit);
 
                 if let Err(err) = state.validate_tokens(model_limit) {
-                    view.on_watch_token_warning(&format!("{}", err))?;
+                    view.on_watch_token_warning(&err.to_string())?;
                 }
             }
 
@@ -493,10 +492,10 @@ fn handle_reaction(reaction: Reaction, view: &dyn TraceView) -> Result<()> {
 mod tests {
     use super::*;
     use crate::reactor::Severity;
+    use crate::ui::ConsoleTraceView;
     use agtrace_types::v2::{TokenUsageDetails, TokenUsagePayload, ToolResultPayload, UserPayload};
     use chrono::Utc;
     use std::str::FromStr;
-    use crate::ui::ConsoleTraceView;
 
     fn test_view() -> ConsoleTraceView {
         ConsoleTraceView::new()
@@ -680,20 +679,26 @@ mod tests {
     #[test]
     fn test_handle_reaction_intervene_notification() {
         let view = test_view();
-        let result = handle_reaction(Reaction::Intervene {
-            reason: "test alert".to_string(),
-            severity: Severity::Notification,
-        }, &view);
+        let result = handle_reaction(
+            Reaction::Intervene {
+                reason: "test alert".to_string(),
+                severity: Severity::Notification,
+            },
+            &view,
+        );
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_handle_reaction_intervene_kill() {
         let view = test_view();
-        let result = handle_reaction(Reaction::Intervene {
-            reason: "emergency".to_string(),
-            severity: Severity::Kill,
-        }, &view);
+        let result = handle_reaction(
+            Reaction::Intervene {
+                reason: "emergency".to_string(),
+                severity: Severity::Kill,
+            },
+            &view,
+        );
         assert!(result.is_ok());
     }
 

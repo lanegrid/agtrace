@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Auto-detect and configure providers
+
 Usage: agtrace provider detect [OPTIONS]
 
 Options:

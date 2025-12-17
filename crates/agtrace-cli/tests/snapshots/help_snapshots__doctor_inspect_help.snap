@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Inspect raw log file contents
+
 Usage: agtrace doctor inspect [OPTIONS] <FILE_PATH>
 
 Arguments:

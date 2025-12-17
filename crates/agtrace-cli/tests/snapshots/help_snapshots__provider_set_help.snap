@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Configure a provider
+
 Usage: agtrace provider set [OPTIONS] --log-root <LOG_ROOT> <PROVIDER>
 
 Arguments:

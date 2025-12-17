@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Show provider event schema
+
 Usage: agtrace provider schema [OPTIONS] <PROVIDER>
 
 Arguments:

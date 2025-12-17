@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Export session data to various formats
+
 Usage: agtrace lab export [OPTIONS] <SESSION_ID>
 
 Arguments:

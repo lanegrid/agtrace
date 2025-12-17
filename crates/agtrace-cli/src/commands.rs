@@ -161,11 +161,7 @@ pub fn run(cli: Cli) -> Result<()> {
             DoctorCommand::Check {
                 file_path,
                 provider,
-            } => handlers::doctor_check::handle(
-                file_path,
-                provider.map(|p| p.to_string()),
-                &view,
-            ),
+            } => handlers::doctor_check::handle(file_path, provider.map(|p| p.to_string()), &view),
         },
 
         Commands::Project { command } => {
@@ -192,9 +188,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     output,
                     format,
                     strategy,
-                } => {
-                    handlers::lab_export::handle(&db, session_id, output, format, strategy, &view)
-                }
+                } => handlers::lab_export::handle(&db, session_id, output, format, strategy, &view),
             }
         }
 

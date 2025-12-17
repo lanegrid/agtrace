@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Show configured providers
+
 Usage: agtrace provider list [OPTIONS]
 
 Options:

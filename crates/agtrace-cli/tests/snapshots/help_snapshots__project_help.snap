@@ -2,10 +2,12 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+List indexed projects
+
 Usage: agtrace project [OPTIONS] <COMMAND>
 
 Commands:
-  list  
+  list  List all indexed projects
   help  Print this message or the help of the given subcommand(s)
 
 Options:

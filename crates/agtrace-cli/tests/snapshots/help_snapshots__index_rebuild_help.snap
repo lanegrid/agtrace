@@ -2,6 +2,8 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Rebuild the entire index from scratch
+
 Usage: agtrace index rebuild [OPTIONS]
 
 Options:

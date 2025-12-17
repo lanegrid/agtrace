@@ -2,12 +2,14 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
+Manage index database operations
+
 Usage: agtrace index [OPTIONS] <COMMAND>
 
 Commands:
-  update   
-  rebuild  
-  vacuum   
+  update   Incrementally update the index with new sessions
+  rebuild  Rebuild the entire index from scratch
+  vacuum   Optimize database by reclaiming unused space
   help     Print this message or the help of the given subcommand(s)
 
 Options:
