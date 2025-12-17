@@ -6,38 +6,8 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
-use std::thread::{self, JoinHandle};
+use std::thread::JoinHandle;
 use std::time::Duration;
-
-#[derive(Debug, Clone)]
-pub enum ProcessTarget {
-    Pid(u32),
-    Name(String),
-    LogFileWriter { path: PathBuf },
-}
-
-#[derive(Debug, Clone)]
-pub enum Intervention {
-    Notify {
-        title: String,
-        message: String,
-    },
-    KillProcess {
-        target: ProcessTarget,
-        signal: Signal,
-    },
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Signal {
-    Terminate,
-    Kill,
-    Interrupt,
-}
-
-pub trait InterventionExecutor: Send + Sync {
-    fn execute(&self, intervention: Intervention) -> Result<()>;
-}
 #[derive(Debug)]
 pub enum RuntimeEvent {
     SessionAttached {
@@ -50,10 +20,6 @@ pub enum RuntimeEvent {
     ReactionTriggered {
         reactor_name: String,
         reaction: Reaction,
-    },
-    InterventionExecuted {
-        intervention: Intervention,
-        result: Result<(), String>,
     },
     SessionRotated {
         old_path: PathBuf,
@@ -68,7 +34,6 @@ pub enum RuntimeEvent {
 pub struct RuntimeConfig {
     pub provider: Arc<dyn agtrace_providers::LogProvider>,
     pub reactors: Vec<Box<dyn Reactor>>,
-    pub executor: Arc<dyn InterventionExecutor>,
     pub watch_path: PathBuf,
     pub explicit_target: Option<String>,
     pub project_root: Option<PathBuf>,
@@ -88,7 +53,6 @@ impl Runtime {
         let explicit_target = config.explicit_target.clone();
         let project_root = config.project_root.clone();
         let provider = config.provider.clone();
-        let executor = config.executor.clone();
 
         let handle = std::thread::Builder::new()
             .name("agtrace-runtime".to_string())
@@ -126,7 +90,6 @@ impl Runtime {
                                     project_root.clone(),
                                     &tx,
                                     just_attached,
-                                    executor.clone(),
                                 ) {
                                     let _ = tx.send(RuntimeEvent::FatalError(e.to_string()));
                                     return;
@@ -186,7 +149,6 @@ fn handle_update(
     project_root: Option<PathBuf>,
     tx: &std::sync::mpsc::Sender<RuntimeEvent>,
     just_attached: bool,
-    executor: Arc<dyn InterventionExecutor>,
 ) -> Result<()> {
     if let Some(assembled_session) = &update.session {
         initialize_session_state(
@@ -218,22 +180,6 @@ fn handle_update(
                         reactor_name: reactor.name().to_string(),
                         reaction: reaction.clone(),
                     });
-                    if let Some(intervention) = to_intervention(&reaction) {
-                        let tx_exec = tx.clone();
-                        let exec_clone = executor.clone();
-                        thread::Builder::new()
-                            .name("agtrace-intervention".to_string())
-                            .spawn(move || {
-                                let result = exec_clone
-                                    .execute(intervention.clone())
-                                    .map_err(|e| e.to_string());
-                                let _ = tx_exec.send(RuntimeEvent::InterventionExecuted {
-                                    intervention,
-                                    result,
-                                });
-                            })
-                            .ok();
-                    }
                 }
                 Err(e) => {
                     let _ = tx.send(RuntimeEvent::FatalError(e.to_string()));
@@ -256,34 +202,10 @@ fn handle_update(
     Ok(())
 }
 
-fn to_intervention(reaction: &Reaction) -> Option<Intervention> {
-    match reaction {
-        Reaction::Intervene { reason, severity } => {
-            let signal = match severity {
-                crate::reactor::Severity::Notification => None,
-                crate::reactor::Severity::Kill => Some(Signal::Terminate),
-            };
-
-            Some(if let Some(sig) = signal {
-                Intervention::KillProcess {
-                    target: ProcessTarget::Name("claude_code".to_string()),
-                    signal: sig,
-                }
-            } else {
-                Intervention::Notify {
-                    title: "Intervention requested".to_string(),
-                    message: reason.clone(),
-                }
-            })
-        }
-        _ => None,
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::reactor::{Reactor, ReactorContext, Severity};
+    use crate::reactor::{Reactor, ReactorContext};
     use crate::streaming::SessionUpdate;
     use agtrace_types::v2::{AgentEvent, EventPayload, UserPayload};
     use chrono::Utc;
@@ -291,26 +213,13 @@ mod tests {
     use std::time::Duration;
     use uuid::Uuid;
 
-    struct KillReactor;
-    impl Reactor for KillReactor {
+    struct WarnReactor;
+    impl Reactor for WarnReactor {
         fn name(&self) -> &str {
-            "KillReactor"
+            "WarnReactor"
         }
         fn handle(&mut self, _ctx: ReactorContext) -> Result<Reaction> {
-            Ok(Reaction::Intervene {
-                reason: "panic".into(),
-                severity: Severity::Kill,
-            })
-        }
-    }
-
-    struct RecordingExecutor {
-        tx: std::sync::mpsc::Sender<Intervention>,
-    }
-    impl InterventionExecutor for RecordingExecutor {
-        fn execute(&self, intervention: Intervention) -> Result<()> {
-            self.tx.send(intervention).unwrap();
-            Ok(())
+            Ok(Reaction::Warn("alert".into()))
         }
     }
 
@@ -326,28 +235,11 @@ mod tests {
     }
 
     #[test]
-    fn to_intervention_maps_kill_to_signal() {
-        let reaction = Reaction::Intervene {
-            reason: "stop".into(),
-            severity: Severity::Kill,
-        };
-        let intervention = to_intervention(&reaction).unwrap();
-        match intervention {
-            Intervention::KillProcess { signal, .. } => {
-                assert!(matches!(signal, Signal::Terminate))
-            }
-            _ => panic!("expected kill process"),
-        }
-    }
-
-    #[test]
-    fn handle_update_triggers_executor_for_kill() {
+    fn handle_update_emits_reaction_triggered() {
         let (tx_events, rx_events) = channel();
-        let (tx_exec, rx_exec) = channel();
 
         let mut session_state = None;
-        let mut reactors: Vec<Box<dyn Reactor>> = vec![Box::new(KillReactor)];
-        let executor = Arc::new(RecordingExecutor { tx: tx_exec });
+        let mut reactors: Vec<Box<dyn Reactor>> = vec![Box::new(WarnReactor)];
 
         let update = SessionUpdate {
             session: None,
@@ -363,26 +255,20 @@ mod tests {
             None,
             &tx_events,
             false,
-            executor,
         )
         .unwrap();
 
-        // Expect InterventionExecuted sent through tx_events via spawned thread
-        let mut got_exec = false;
+        let mut got_reaction = false;
         for _ in 0..3 {
-            if let Ok(RuntimeEvent::InterventionExecuted { intervention, .. }) =
+            if let Ok(RuntimeEvent::ReactionTriggered { reaction, .. }) =
                 rx_events.recv_timeout(Duration::from_secs(1))
             {
-                if let Intervention::KillProcess { signal, .. } = intervention {
-                    assert!(matches!(signal, Signal::Terminate));
-                    got_exec = true;
-                }
+                assert!(matches!(reaction, Reaction::Warn(_)));
+                got_reaction = true;
+                break;
             }
         }
-        // Also ensure executor recorded the intervention directly
-        let recorded = rx_exec.recv_timeout(Duration::from_secs(1)).unwrap();
-        assert!(matches!(recorded, Intervention::KillProcess { .. }));
-        assert!(got_exec);
+        assert!(got_reaction);
     }
 }
 

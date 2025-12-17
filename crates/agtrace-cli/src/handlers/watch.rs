@@ -1,5 +1,4 @@
 use crate::context::ExecutionContext;
-use crate::intervention::CliInterventionExecutor;
 use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor};
 use crate::ui::models::{WatchStart, WatchSummary};
 use crate::ui::TraceView;
@@ -59,7 +58,6 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView)
             Box::new(SafetyGuard::new()),
             Box::new(TokenUsageMonitor::default_thresholds()),
         ],
-        executor: Arc::new(CliInterventionExecutor::new()),
         watch_path: log_root,
         explicit_target,
         project_root,
@@ -86,16 +84,6 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView)
             }
             RuntimeEvent::ReactionTriggered { reaction, .. } => {
                 view.on_watch_reaction(&reaction)?
-            }
-            RuntimeEvent::InterventionExecuted {
-                intervention,
-                result,
-            } => {
-                let msg = match result {
-                    Ok(()) => format!("Intervention executed: {:?}", intervention),
-                    Err(e) => format!("Intervention failed: {:?} ({})", intervention, e),
-                };
-                view.render_warning(&msg)?;
             }
             RuntimeEvent::SessionRotated { old_path, new_path } => {
                 initialized = false;

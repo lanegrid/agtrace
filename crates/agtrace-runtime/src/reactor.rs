@@ -9,14 +9,6 @@ use std::path::PathBuf;
 pub enum Reaction {
     Continue,
     Warn(String),
-    Intervene { reason: String, severity: Severity },
-}
-
-/// Severity level for interventions
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Severity {
-    Notification,
-    Kill,
 }
 
 /// Lightweight session state metadata for reactor context
@@ -192,32 +184,6 @@ mod tests {
         match result {
             Reaction::Warn(msg) => assert_eq!(msg, "test warning"),
             _ => panic!("Expected Warn reaction"),
-        }
-    }
-
-    #[test]
-    fn test_reactor_returns_intervene() {
-        let mut reactor = MockReactor::new(
-            "test",
-            vec![Reaction::Intervene {
-                reason: "test alert".to_string(),
-                severity: Severity::Notification,
-            }],
-        );
-        let event = create_test_event();
-        let state = create_test_state();
-        let ctx = ReactorContext {
-            event: &event,
-            state: &state,
-        };
-
-        let result = reactor.handle(ctx).unwrap();
-        match result {
-            Reaction::Intervene { reason, severity } => {
-                assert_eq!(reason, "test alert");
-                assert_eq!(severity, Severity::Notification);
-            }
-            _ => panic!("Expected Intervene reaction"),
         }
     }
 

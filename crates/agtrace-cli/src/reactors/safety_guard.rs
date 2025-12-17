@@ -1,4 +1,4 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext, Severity};
+use crate::reactor::{Reaction, Reactor, ReactorContext};
 use agtrace_types::v2::EventPayload;
 use anyhow::Result;
 
@@ -9,24 +9,13 @@ use anyhow::Result;
 // - Path traversal (../) can escape intended sandbox boundaries
 // - System directory access (/etc/, /sys/, /) can cause irreversible damage
 // - Absolute paths outside user directories may indicate unintended targets
-//
-// Why progressive severity (Notification → Kill)?
-// - v0.1.0: Monitor and warn (build confidence, tune detection)
-// - v0.2.0: Automatic termination (once patterns are validated)
-// - Gradual rollout reduces false positive impact
 
 /// SafetyGuard - detects potentially dangerous operations
-pub struct SafetyGuard {
-    /// Whether to emit Kill severity for dangerous operations
-    /// (false for v0.1.0 - monitoring only, true for v0.2.0 - intervention)
-    kill_on_danger: bool,
-}
+pub struct SafetyGuard;
 
 impl SafetyGuard {
     pub fn new() -> Self {
-        Self {
-            kill_on_danger: false, // v0.1.0: monitoring only
-        }
+        Self
     }
 
     /// Check for dangerous patterns in tool arguments
@@ -65,16 +54,10 @@ impl Reactor for SafetyGuard {
         // Only check ToolCall events
         if let EventPayload::ToolCall(payload) = &ctx.event.payload {
             if let Some(danger_msg) = self.check_danger(&payload.arguments) {
-                let severity = if self.kill_on_danger {
-                    Severity::Kill
-                } else {
-                    Severity::Notification
-                };
-
-                return Ok(Reaction::Intervene {
-                    reason: format!("Dangerous operation in {}: {}", payload.name, danger_msg),
-                    severity,
-                });
+                return Ok(Reaction::Warn(format!(
+                    "Dangerous operation in {}: {}",
+                    payload.name, danger_msg
+                )));
             }
         }
 
@@ -154,11 +137,10 @@ mod tests {
 
         let result = guard.handle(ctx).unwrap();
         match result {
-            Reaction::Intervene { reason, severity } => {
+            Reaction::Warn(reason) => {
                 assert!(reason.contains("Path traversal"));
-                assert_eq!(severity, Severity::Notification);
             }
-            _ => panic!("Expected Intervene reaction for path traversal"),
+            _ => panic!("Expected Warn reaction for path traversal"),
         }
     }
 
@@ -176,10 +158,10 @@ mod tests {
 
         let result = guard.handle(ctx).unwrap();
         match result {
-            Reaction::Intervene { reason, .. } => {
+            Reaction::Warn(reason) => {
                 assert!(reason.contains("System directory"));
             }
-            _ => panic!("Expected Intervene reaction for system directory"),
+            _ => panic!("Expected Warn reaction for system directory"),
         }
     }
 
@@ -197,10 +179,10 @@ mod tests {
 
         let result = guard.handle(ctx).unwrap();
         match result {
-            Reaction::Intervene { reason, .. } => {
+            Reaction::Warn(reason) => {
                 assert!(reason.contains("System directory"));
             }
-            _ => panic!("Expected Intervene reaction for root path"),
+            _ => panic!("Expected Warn reaction for root path"),
         }
     }
 
@@ -218,10 +200,10 @@ mod tests {
 
         let result = guard.handle(ctx).unwrap();
         match result {
-            Reaction::Intervene { reason, .. } => {
+            Reaction::Warn(reason) => {
                 assert!(reason.contains("outside user directory"));
             }
-            _ => panic!("Expected Intervene reaction for path outside user directory"),
+            _ => panic!("Expected Warn reaction for path outside user directory"),
         }
     }
 

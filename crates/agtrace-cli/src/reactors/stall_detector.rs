@@ -1,4 +1,4 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext, Severity};
+use crate::reactor::{Reaction, Reactor, ReactorContext};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 
@@ -57,13 +57,10 @@ impl Reactor for StallDetector {
                 self.last_notify = Some(now);
 
                 let idle_mins = idle_duration.num_minutes();
-                return Ok(Reaction::Intervene {
-                    reason: format!(
-                        "Agent idle for {} minutes. Waiting for user input?",
-                        idle_mins
-                    ),
-                    severity: Severity::Notification,
-                });
+                return Ok(Reaction::Warn(format!(
+                    "Agent idle for {} minutes. Waiting for user input?",
+                    idle_mins
+                )));
             }
         } else {
             // Reset last_notify if activity resumed

@@ -1,4 +1,4 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext, Severity};
+use crate::reactor::{Reaction, Reactor, ReactorContext};
 use crate::token_limits::TokenLimits;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
@@ -63,15 +63,12 @@ impl TokenUsageMonitor {
 
             if should_notify {
                 self.last_critical = Some(now);
-                return Some(Reaction::Intervene {
-                    reason: format!(
-                        "Token usage critical: {:.1}% ({}/{} tokens). Consider starting a new session.",
-                        total_pct,
-                        total_tokens,
-                        self.limits.get_limit(model)?.total_limit
-                    ),
-                    severity: Severity::Notification,
-                });
+                return Some(Reaction::Warn(format!(
+                    "Token usage critical: {:.1}% ({}/{} tokens). Consider starting a new session.",
+                    total_pct,
+                    total_tokens,
+                    self.limits.get_limit(model)?.total_limit
+                )));
             }
         }
         // Check warning threshold (80%)
@@ -240,12 +237,11 @@ mod tests {
 
         let result = monitor.handle(ctx).unwrap();
         match result {
-            Reaction::Intervene { reason, severity } => {
+            Reaction::Warn(reason) => {
                 assert!(reason.contains("critical"));
                 assert!(reason.contains("97.5"));
-                assert_eq!(severity, Severity::Notification);
             }
-            _ => panic!("Expected Intervene reaction"),
+            _ => panic!("Expected Warn reaction"),
         }
     }
 

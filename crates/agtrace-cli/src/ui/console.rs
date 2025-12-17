@@ -1,7 +1,7 @@
 use crate::display_model::{
     DisplayOptions, DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay, TokenSummaryDisplay,
 };
-use crate::reactor::{Reaction, SessionState, Severity};
+use crate::reactor::{Reaction, SessionState};
 use crate::token_limits::TokenLimits;
 use crate::types::OutputFormat;
 use crate::ui::models::*;
@@ -528,14 +528,6 @@ impl WatchView for ConsoleTraceView {
             Reaction::Warn(message) => {
                 eprintln!("{} {}", "⚠️  Warning:".yellow(), message);
             }
-            Reaction::Intervene { reason, severity } => match severity {
-                Severity::Notification => {
-                    eprintln!("{} {}", "🚨 ALERT:".red().bold(), reason);
-                }
-                Severity::Kill => {
-                    eprintln!("{} {}", "🚨 EMERGENCY STOP:".red().bold(), reason);
-                }
-            },
         }
         Ok(())
     }
