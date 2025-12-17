@@ -13,6 +13,9 @@ pub mod v2;
 // Provider registry
 pub mod registry;
 
+// Token limits resolution
+pub mod token_limits;
+
 // Re-export provider types
 pub use claude::ClaudeProvider;
 pub use codex::CodexProvider;

@@ -1,4 +1,12 @@
-use std::collections::HashMap;
+// NOTE: Architecture decision - Thin CLI layer
+// This module is intentionally thin and delegates to agtrace_providers::token_limits.
+// The CLI layer's responsibility is only to:
+// 1. Provide a stable API for existing consumers (TuiRenderer, TokenUsageMonitor)
+// 2. Apply resolution priority (runtime metadata > provider knowledge)
+// 3. Bridge between provider types (ModelSpec) and CLI types (TokenLimit)
+//
+// All model knowledge lives in agtrace_providers to maintain separation of concerns.
+// This design allows the providers crate to be reused by other tools without CLI dependencies.
 
 #[derive(Debug, Clone)]
 pub struct TokenLimit {
@@ -11,67 +19,27 @@ impl TokenLimit {
     }
 }
 
-pub struct TokenLimits {
-    limits: HashMap<String, TokenLimit>,
-}
+pub struct TokenLimits;
 
 impl TokenLimits {
     pub fn new() -> Self {
-        let mut limits = HashMap::new();
-
-        // Claude models
-        limits.insert(
-            "claude-3-5-sonnet-20241022".to_string(),
-            TokenLimit::new(200_000),
-        );
-        limits.insert(
-            "claude-3-5-sonnet-20240620".to_string(),
-            TokenLimit::new(200_000),
-        );
-        limits.insert(
-            "claude-3-opus-20240229".to_string(),
-            TokenLimit::new(200_000),
-        );
-        limits.insert(
-            "claude-3-haiku-20240307".to_string(),
-            TokenLimit::new(200_000),
-        );
-        limits.insert(
-            "claude-sonnet-4-5-20250929".to_string(),
-            TokenLimit::new(200_000),
-        );
-
-        // Codex models (using default limits)
-        limits.insert("gpt-4o".to_string(), TokenLimit::new(128_000));
-        limits.insert("gpt-4o-mini".to_string(), TokenLimit::new(128_000));
-        limits.insert("gpt-4-turbo".to_string(), TokenLimit::new(128_000));
-        limits.insert("gpt-5.1-codex".to_string(), TokenLimit::new(258_400));
-
-        // Gemini models
-        limits.insert("gemini-1.5-pro".to_string(), TokenLimit::new(2_000_000));
-        limits.insert("gemini-1.5-flash".to_string(), TokenLimit::new(1_000_000));
-        limits.insert(
-            "gemini-2.0-flash-exp".to_string(),
-            TokenLimit::new(1_000_000),
-        );
-
-        Self { limits }
+        Self
     }
 
-    pub fn get_limit(&self, model: &str) -> Option<&TokenLimit> {
-        // Try exact match first
-        if let Some(limit) = self.limits.get(model) {
-            return Some(limit);
-        }
-
-        // Try prefix match for model variants
-        for (key, limit) in &self.limits {
-            if model.starts_with(key) || key.starts_with(model) {
-                return Some(limit);
-            }
-        }
-
-        None
+    pub fn get_limit(&self, model: &str) -> Option<TokenLimit> {
+        // NOTE: Why delegate to providers instead of maintaining our own lookup?
+        // This ensures we have a single source of truth for model specifications.
+        // Previously, this file contained hardcoded model limits, which led to:
+        // - Duplication across provider modules and CLI
+        // - Inconsistencies when providers were updated but CLI wasn't
+        // - High maintenance burden (every new model required changes in multiple places)
+        //
+        // By delegating to providers, we get:
+        // - Automatic updates when provider definitions change
+        // - Longest prefix matching for resilient version handling
+        // - Clean separation between "knowledge" and "usage"
+        agtrace_providers::token_limits::resolve_model_limit(model)
+            .map(|spec| TokenLimit::new(spec.max_tokens))
     }
 
     /// Get usage percentage from SessionState
@@ -79,13 +47,29 @@ impl TokenLimits {
     ///
     /// This is the safe method that correctly calculates percentages
     /// including cache tokens. Prefer this over the raw token method.
+    ///
+    /// Resolution priority:
+    /// 1. Runtime metadata (state.context_window_limit)
+    /// 2. Provider knowledge (via longest prefix matching)
+    ///
+    /// NOTE: Why prioritize runtime metadata over provider knowledge?
+    /// Runtime metadata comes directly from the LLM provider's log files and represents
+    /// the actual context window limit that was in effect during that session. This is:
+    /// - Always correct for that specific session (source of truth)
+    /// - Handles special cases (e.g., beta extended context, custom enterprise limits)
+    /// - Future-proof against provider changes we haven't updated yet
+    ///
+    /// Provider knowledge is a fallback heuristic for when metadata is unavailable.
+    /// This follows the principle: "Trust the source, fallback to heuristics."
     pub fn get_usage_percentage_from_state(
         &self,
         state: &crate::reactor::SessionState,
     ) -> Option<(f64, f64, f64)> {
         let limit_total = if let Some(l) = state.context_window_limit {
+            // Priority 1: Runtime metadata from log files (always most accurate)
             l
         } else {
+            // Priority 2: Provider knowledge via longest prefix matching (best-effort heuristic)
             let model = state.model.as_ref()?;
             self.get_limit(model)?.total_limit
         };
