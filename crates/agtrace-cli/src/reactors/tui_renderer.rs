@@ -5,6 +5,14 @@ use crate::views::session::print_event;
 use agtrace_types::v2::EventPayload;
 use anyhow::Result;
 
+// NOTE: TuiRenderer Design Rationale
+//
+// Why separate display into a reactor (not inline in watch loop)?
+// - Keeps display logic isolated from event processing
+// - Can be disabled/replaced without modifying core loop
+// - Testable independently (mock reactor can verify display calls)
+// - Future: Enable multiple renderers (TUI, JSON stream, HTML)
+
 /// TUI Renderer - displays events to stdout
 pub struct TuiRenderer {
     token_limits: TokenLimits,

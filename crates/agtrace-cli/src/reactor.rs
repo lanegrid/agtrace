@@ -4,6 +4,31 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
 
+// NOTE: Reactor Architecture Rationale
+//
+// Why event-driven plugin system (not monolithic handler)?
+// - Enables extensible monitoring without modifying core watch loop
+// - Each reactor has single responsibility (display, security, resource tracking)
+// - New behaviors can be added without changing existing code
+// - Testable in isolation (trait-based, mockable)
+//
+// Why pass both event AND state (not just event)?
+// - Trigger context: "What just happened?" (current event)
+// - Background context: "What's the overall situation?" (session state)
+// - Enables decisions like "Is this the 5th consecutive error?" (needs state)
+// - Enables decisions like "Is this tool call dangerous?" (needs event)
+//
+// Why three reaction types (Continue, Warn, Intervene)?
+// - Continue: Normal operation, no action needed
+// - Warn: Log issues but don't block (e.g., unusual patterns)
+// - Intervene: Requires action (notification or process termination)
+// - Allows progressive enhancement: v0.1.0 monitors, v0.2.0 adds process control
+//
+// Why trait-based (not enum of reactors)?
+// - Open for extension without modifying core (Open/Closed Principle)
+// - Each reactor can maintain internal state (cooldowns, counters)
+// - Enables third-party reactors via plugin system (future)
+
 /// Reaction returned by reactors to instruct the main loop
 #[derive(Debug, Clone)]
 pub enum Reaction {

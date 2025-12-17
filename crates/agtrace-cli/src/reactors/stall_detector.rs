@@ -2,6 +2,17 @@ use crate::reactor::{Reaction, Reactor, ReactorContext, Severity};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 
+// NOTE: StallDetector Design Rationale
+//
+// Why detect idle state?
+// - Long-running agents may pause for user input without clear indication
+// - User may leave session running while away ("go to bathroom" scenario)
+// - Desktop notifications alert user when action is needed
+//
+// Why cooldown between notifications?
+// - Prevents notification spam if agent remains idle
+// - 5-minute cooldown balances responsiveness with annoyance
+
 /// StallDetector - detects when agent is idle/stalled (waiting for input)
 pub struct StallDetector {
     /// Idle threshold - how long before we consider the agent stalled

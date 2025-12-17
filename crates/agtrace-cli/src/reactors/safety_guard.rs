@@ -2,6 +2,19 @@ use crate::reactor::{Reaction, Reactor, ReactorContext, Severity};
 use agtrace_types::v2::EventPayload;
 use anyhow::Result;
 
+// NOTE: SafetyGuard Design Rationale
+//
+// Why detect dangerous operations?
+// - Agents can make mistakes or be misguided by user prompts
+// - Path traversal (../) can escape intended sandbox boundaries
+// - System directory access (/etc/, /sys/, /) can cause irreversible damage
+// - Absolute paths outside user directories may indicate unintended targets
+//
+// Why progressive severity (Notification → Kill)?
+// - v0.1.0: Monitor and warn (build confidence, tune detection)
+// - v0.2.0: Automatic termination (once patterns are validated)
+// - Gradual rollout reduces false positive impact
+
 /// SafetyGuard - detects potentially dangerous operations
 pub struct SafetyGuard {
     /// Whether to emit Kill severity for dangerous operations

@@ -3,6 +3,18 @@ use crate::token_limits::TokenLimits;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 
+// NOTE: TokenUsageMonitor Design Rationale
+//
+// Why monitor token usage?
+// - Context window limits can be reached silently (no API error until overflow)
+// - Approaching limit degrades response quality (less room for output)
+// - Early warning enables user to start fresh session before hitting limit
+//
+// Why two thresholds (warning + critical)?
+// - 80% warning: User has time to wrap up current task
+// - 95% critical: Imminent limit, urgent action needed
+// - Progressive alerts match severity to urgency
+
 pub struct TokenUsageMonitor {
     limits: TokenLimits,
     /// Warning threshold (percentage, e.g., 80.0)
