@@ -2,6 +2,24 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 
+// NOTE: Database Design Rationale (Pointer Edition)
+//
+// Why Schema-on-Read (not Schema-on-Write)?
+// - Provider logs change format frequently; parsing logic needs flexibility
+// - Event normalization is complex (Gemini unfold, Codex dedup, etc.)
+// - Raw logs are source of truth; DB is just an index for fast lookup
+// - Keeps DB lightweight and migration-free when v2 schema evolves
+//
+// Why hash-based project identification?
+// - Gemini logs contain projectHash but not projectRoot path
+// - Hash allows cross-provider session grouping before path resolution
+// - Enables "same project" detection across Claude/Codex/Gemini
+//
+// Why soft delete (is_valid flag)?
+// - Avoid orphaned log_files entries when session is deleted
+// - Enable "undo" or audit trail without complex cascade logic
+// - Simplifies cleanup: UPDATE instead of multi-table DELETE transaction
+
 #[derive(Debug, Clone)]
 pub struct ProjectRecord {
     pub hash: String,
