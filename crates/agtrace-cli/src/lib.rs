@@ -4,7 +4,6 @@ pub mod config;
 pub mod context;
 pub mod display_model;
 mod handlers;
-mod output;
 pub mod reactor;
 mod reactors;
 mod session_loader;

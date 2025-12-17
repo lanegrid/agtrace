@@ -1,9 +1,9 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
 use crate::display_model::{DisplayOptions, SessionDisplay};
-use crate::output::print_events_timeline;
 use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::types::ViewStyle;
+use crate::views::session::print_events_timeline;
 use agtrace_engine::assemble_session_from_events;
 use agtrace_index::Database;
 use agtrace_types::v2::{AgentEvent, EventPayload};
@@ -65,7 +65,7 @@ pub fn handle(
                         relative_time: true,
                         truncate_text: if short { Some(100) } else { None },
                     };
-                    let lines = crate::output::format_compact(&display, &opts);
+                    let lines = crate::views::session::format_compact(&display, &opts);
                     for line in lines {
                         println!("{}", line);
                     }

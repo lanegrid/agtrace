@@ -48,7 +48,7 @@ impl TuiRenderer {
         };
 
         println!();
-        let lines = crate::output::format_token_summary(&summary, &opts);
+        let lines = crate::views::session::format_token_summary(&summary, &opts);
         for line in lines {
             println!("{}", line);
         }

@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
-use crate::output::{output_compact, output_diagnose, output_tools};
 use crate::session_loader::{LoadOptions, SessionLoader};
+use crate::views::pack::{print_compact, print_diagnose, print_tools};
 use agtrace_engine::{analyze_and_select_sessions, assemble_session_from_events, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_types::resolve_effective_project_hash;
@@ -56,10 +56,10 @@ pub fn handle(
 
     // Output based on template
     match template {
-        "compact" => output_compact(&selections),
-        "diagnose" => output_diagnose(&selections),
-        "tools" => output_tools(&selections),
-        _ => output_compact(&selections),
+        "compact" => print_compact(&selections),
+        "diagnose" => print_diagnose(&selections),
+        "tools" => print_tools(&selections),
+        _ => print_compact(&selections),
     }
 
     Ok(())

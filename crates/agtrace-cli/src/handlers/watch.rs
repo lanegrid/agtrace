@@ -141,7 +141,7 @@ fn handle_initial_update(
                 truncate_text: None,
             };
 
-            let lines = crate::output::format_compact(&display, &opts);
+            let lines = crate::views::session::format_compact(&display, &opts);
             for line in lines {
                 println!("  {}", line);
             }
