@@ -1,6 +1,7 @@
+use crate::display_model::DoctorCheckDisplay;
+use crate::views::doctor::print_check_result;
 use agtrace_providers::{create_provider, detect_provider_from_path, ImportContext, LogProvider};
 use anyhow::Result;
-use owo_colors::OwoColorize;
 use std::path::Path;
 
 pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()> {
@@ -21,93 +22,21 @@ pub fn handle(file_path: String, provider_override: Option<String>) -> Result<()
             (provider, name)
         };
 
-    println!("File: {}", file_path);
-    println!("Provider: {}", provider_name);
-
     let context = ImportContext {
         project_root_override: None,
         session_id_prefix: None,
         all_projects: true,
     };
 
-    match provider.normalize_file(path, &context) {
-        Ok(events) => {
-            println!("Status: {}", "✓ Valid".green().bold());
-            println!();
-            println!("Parsed successfully:");
-
-            // Extract session info
-            if let Some(first_event) = events.first() {
-                println!("  - Trace ID: {}", first_event.trace_id);
-                println!("  - Timestamp: {}", first_event.timestamp);
-            }
-
-            println!("  - Events extracted: {}", events.len());
-
-            // Show event payload type breakdown
-            let mut type_counts = std::collections::HashMap::new();
-            for event in &events {
-                let payload_type = match &event.payload {
-                    agtrace_types::v2::EventPayload::User(_) => "User",
-                    agtrace_types::v2::EventPayload::Message(_) => "Message",
-                    agtrace_types::v2::EventPayload::ToolCall(_) => "ToolCall",
-                    agtrace_types::v2::EventPayload::ToolResult(_) => "ToolResult",
-                    agtrace_types::v2::EventPayload::Reasoning(_) => "Reasoning",
-                    agtrace_types::v2::EventPayload::TokenUsage(_) => "TokenUsage",
-                    agtrace_types::v2::EventPayload::Notification(_) => "Notification",
-                };
-                *type_counts.entry(payload_type).or_insert(0) += 1;
-            }
-
-            if !type_counts.is_empty() {
-                println!("  - Event breakdown:");
-                for (payload_type, count) in type_counts {
-                    println!("      {}: {}", payload_type, count);
-                }
-            }
-        }
+    let display = match provider.normalize_file(path, &context) {
+        Ok(events) => DoctorCheckDisplay::from_events(file_path.clone(), provider_name, events),
         Err(e) => {
-            println!("Status: {}", "✗ Invalid".red().bold());
-            println!();
-            println!("Parse error:");
-            println!("  {}", format!("{:#}", e).red());
-            println!();
-
-            // Try to provide helpful suggestions
-            let error_msg = format!("{:#}", e);
-
-            if error_msg.contains("missing field") {
-                println!("{}", "Suggestion:".cyan().bold());
-                println!("  This field may have been added in a newer version of the provider.");
-                println!("  Check if the schema definition needs to make this field optional.");
-            } else if error_msg.contains("invalid type") {
-                println!("{}", "Suggestion:".cyan().bold());
-                println!("  The field type in the schema may not match the actual data format.");
-                println!(
-                    "  Use 'agtrace inspect {}' to examine the actual structure.",
-                    file_path
-                );
-                println!("  Use 'agtrace schema <provider>' to see the expected format.");
-            } else if error_msg.contains("expected") {
-                println!("{}", "Suggestion:".cyan().bold());
-                println!("  The data format may have changed between provider versions.");
-                println!("  Consider using an enum or untagged union to support multiple formats.");
-            }
-
-            println!();
-            println!("Next steps:");
-            println!("  1. Examine the actual data:");
-            println!("       agtrace inspect {} --lines 20", file_path);
-            println!("  2. Compare with expected schema:");
-            println!(
-                "       agtrace schema {}",
-                provider_name.split_whitespace().next().unwrap_or("")
-            );
-            println!("  3. Update schema definition if needed");
-
+            let display = DoctorCheckDisplay::from_error(file_path, provider_name, e);
+            print_check_result(&display);
             anyhow::bail!("Validation failed");
         }
-    }
+    };
 
+    print_check_result(&display);
     Ok(())
 }

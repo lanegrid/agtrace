@@ -1,5 +1,64 @@
+use crate::display_model::{CheckResult, DoctorCheckDisplay};
 use agtrace_engine::DiagnoseResult;
 use owo_colors::OwoColorize;
+
+pub fn print_check_result(display: &DoctorCheckDisplay) {
+    println!("File: {}", display.file_path);
+    println!("Provider: {}", display.provider_name);
+
+    match &display.result {
+        CheckResult::Valid {
+            trace_id,
+            timestamp,
+            event_count,
+            event_breakdown,
+        } => {
+            println!("Status: {}", "✓ Valid".green().bold());
+            println!();
+            println!("Parsed successfully:");
+            println!("  - Trace ID: {}", trace_id);
+            println!("  - Timestamp: {}", timestamp);
+            println!("  - Events extracted: {}", event_count);
+
+            if !event_breakdown.is_empty() {
+                println!("  - Event breakdown:");
+                for (payload_type, count) in event_breakdown {
+                    println!("      {}: {}", payload_type, count);
+                }
+            }
+        }
+        CheckResult::Invalid {
+            error_message,
+            suggestion,
+        } => {
+            println!("Status: {}", "✗ Invalid".red().bold());
+            println!();
+            println!("Parse error:");
+            println!("  {}", error_message.red());
+            println!();
+
+            if let Some(suggestion_text) = suggestion {
+                println!("{}", "Suggestion:".cyan().bold());
+                for line in suggestion_text.lines() {
+                    println!("  {}", line);
+                }
+            }
+
+            println!();
+            println!("Next steps:");
+            println!("  1. Examine the actual data:");
+            println!("       agtrace inspect {} --lines 20", display.file_path);
+            println!("  2. Compare with expected schema:");
+            let provider_first_word = display
+                .provider_name
+                .split_whitespace()
+                .next()
+                .unwrap_or("");
+            println!("       agtrace schema {}", provider_first_word);
+            println!("  3. Update schema definition if needed");
+        }
+    }
+}
 
 pub fn print_results(results: &[DiagnoseResult], verbose: bool) {
     println!("{}", "=== Diagnose Results ===".bold());
