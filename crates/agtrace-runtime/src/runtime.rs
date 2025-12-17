@@ -280,6 +280,112 @@ fn to_intervention(reaction: &Reaction) -> Option<Intervention> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::reactor::{Reactor, ReactorContext, Severity};
+    use crate::streaming::SessionUpdate;
+    use agtrace_types::v2::{AgentEvent, EventPayload, UserPayload};
+    use chrono::Utc;
+    use std::sync::mpsc::channel;
+    use std::time::Duration;
+    use uuid::Uuid;
+
+    struct KillReactor;
+    impl Reactor for KillReactor {
+        fn name(&self) -> &str {
+            "KillReactor"
+        }
+        fn handle(&mut self, _ctx: ReactorContext) -> Result<Reaction> {
+            Ok(Reaction::Intervene {
+                reason: "panic".into(),
+                severity: Severity::Kill,
+            })
+        }
+    }
+
+    struct RecordingExecutor {
+        tx: std::sync::mpsc::Sender<Intervention>,
+    }
+    impl InterventionExecutor for RecordingExecutor {
+        fn execute(&self, intervention: Intervention) -> Result<()> {
+            self.tx.send(intervention).unwrap();
+            Ok(())
+        }
+    }
+
+    fn user_event() -> AgentEvent {
+        AgentEvent {
+            id: Uuid::nil(),
+            trace_id: Uuid::nil(),
+            parent_id: None,
+            timestamp: Utc::now(),
+            payload: EventPayload::User(UserPayload { text: "hi".into() }),
+            metadata: None,
+        }
+    }
+
+    #[test]
+    fn to_intervention_maps_kill_to_signal() {
+        let reaction = Reaction::Intervene {
+            reason: "stop".into(),
+            severity: Severity::Kill,
+        };
+        let intervention = to_intervention(&reaction).unwrap();
+        match intervention {
+            Intervention::KillProcess { signal, .. } => {
+                assert!(matches!(signal, Signal::Terminate))
+            }
+            _ => panic!("expected kill process"),
+        }
+    }
+
+    #[test]
+    fn handle_update_triggers_executor_for_kill() {
+        let (tx_events, rx_events) = channel();
+        let (tx_exec, rx_exec) = channel();
+
+        let mut session_state = None;
+        let mut reactors: Vec<Box<dyn Reactor>> = vec![Box::new(KillReactor)];
+        let executor = Arc::new(RecordingExecutor { tx: tx_exec });
+
+        let update = SessionUpdate {
+            session: None,
+            new_events: vec![user_event()],
+            orphaned_events: vec![],
+            total_events: 1,
+        };
+
+        handle_update(
+            &update,
+            &mut session_state,
+            &mut reactors,
+            None,
+            &tx_events,
+            false,
+            executor,
+        )
+        .unwrap();
+
+        // Expect InterventionExecuted sent through tx_events via spawned thread
+        let mut got_exec = false;
+        for _ in 0..3 {
+            if let Ok(RuntimeEvent::InterventionExecuted { intervention, .. }) =
+                rx_events.recv_timeout(Duration::from_secs(1))
+            {
+                if let Intervention::KillProcess { signal, .. } = intervention {
+                    assert!(matches!(signal, Signal::Terminate));
+                    got_exec = true;
+                }
+            }
+        }
+        // Also ensure executor recorded the intervention directly
+        let recorded = rx_exec.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert!(matches!(recorded, Intervention::KillProcess { .. }));
+        assert!(got_exec);
+    }
+}
+
 fn initialize_session_state(
     session_state: &mut Option<SessionState>,
     session_id: String,

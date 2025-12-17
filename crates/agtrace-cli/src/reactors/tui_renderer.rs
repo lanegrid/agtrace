@@ -13,18 +13,20 @@ use anyhow::Result;
 // - Testable independently (mock reactor can verify display calls)
 // - Future: Enable multiple renderers (TUI, JSON stream, HTML)
 
-/// TUI Renderer - displays events to stdout
+#[allow(dead_code)]
 pub struct TuiRenderer {
     token_limits: TokenLimits,
 }
 
 impl TuiRenderer {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             token_limits: TokenLimits::new(),
         }
     }
 
+    #[allow(dead_code)]
     fn print_token_summary(&self, ctx: &ReactorContext) {
         let total = ctx.state.total_context_window_tokens() as u64;
 

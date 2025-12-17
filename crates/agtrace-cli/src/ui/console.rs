@@ -1,13 +1,15 @@
 use crate::display_model::{
-    DisplayOptions, DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay,
+    DisplayOptions, DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay, TokenSummaryDisplay,
 };
 use crate::reactor::{Reaction, SessionState, Severity};
+use crate::token_limits::TokenLimits;
 use crate::types::OutputFormat;
 use crate::ui::models::*;
 use crate::ui::traits::{DiagnosticView, SessionView, SystemView, WatchView};
+use crate::views::session::{format_token_summary, print_event};
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
-use agtrace_types::v2::AgentEvent;
+use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;
@@ -538,11 +540,41 @@ impl WatchView for ConsoleTraceView {
         Ok(())
     }
 
-    fn render_stream_update(
-        &self,
-        _state: &SessionState,
-        _new_events: &[AgentEvent],
-    ) -> Result<()> {
+    fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()> {
+        for event in new_events {
+            print_event(event, state.turn_count);
+
+            if matches!(event.payload, EventPayload::TokenUsage(_)) {
+                let token_limits = TokenLimits::new();
+                let limit = state.context_window_limit.or_else(|| {
+                    state
+                        .model
+                        .as_ref()
+                        .and_then(|m| token_limits.get_limit(m).map(|l| l.total_limit))
+                });
+
+                let summary = TokenSummaryDisplay {
+                    input: state.total_input_side_tokens(),
+                    output: state.total_output_side_tokens(),
+                    cache_creation: state.current_usage.cache_creation.0,
+                    cache_read: state.current_usage.cache_read.0,
+                    total: state.total_context_window_tokens(),
+                    limit,
+                    model: state.model.clone(),
+                };
+
+                let opts = DisplayOptions {
+                    enable_color: true,
+                    relative_time: false,
+                    truncate_text: None,
+                };
+
+                println!();
+                for line in format_token_summary(&summary, &opts) {
+                    println!("{}", line);
+                }
+            }
+        }
         Ok(())
     }
 }

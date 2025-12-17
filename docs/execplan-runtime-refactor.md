@@ -12,7 +12,7 @@ Move `agtrace` from a CLI-centric watcher into a layered runtime where pure pars
 - [x] (2025-12-17 17:27Z) Phase 1: Added `agtrace-engine` `StateUpdates`/`ContextWindowUsage`, implemented `extract_state_updates`, refactored CLI watcher to consume it, and ran `cargo test -p agtrace-engine state_updates` plus `cargo test -p agtrace-cli handlers::watch`.
 - [x] (2025-12-17 17:50Z) Phase 2: Added `agtrace-runtime` crate with watcher/reactor/runtime loop, re-exported SessionState/Reaction/streaming to CLI, refactored `watch` handler to subscribe to `RuntimeEvent`, and ran `cargo test -p agtrace-runtime` plus `cargo test -p agtrace-cli handlers::watch`.
 - [x] (2025-12-17 18:05Z) Phase 3: Added runtime intervention plumbing and `RuntimeEvent::InterventionExecuted`, implemented CLI `CliInterventionExecutor` (pgrep + prompt + signals), wired into `watch` runtime config, and surfaced executor results via `TraceView` warnings. Tests: `cargo test -p agtrace-runtime`, `cargo test -p agtrace-cli handlers::watch`.
-- [ ] Phase 4: Refactor TUI rendering into a runtime observer consuming `RuntimeEvent`; shrink `watch` handler to runtime setup/subscription.
+- [x] (2025-12-17 18:20Z) Phase 4: Removed `TuiRenderer` from reactors, moved stream rendering to `TraceView::render_stream_update` consuming `RuntimeEvent::StateUpdated`, and kept `watch` handler focused on runtime setup/subscription. Tests: `cargo test -p agtrace-cli handlers::watch`.
 - [ ] Validation: Run targeted tests (`cargo test -p agtrace-engine`, new `agtrace-runtime` tests, `cargo test -p agtrace-cli`).
 
 ## Surprises & Discoveries
@@ -24,10 +24,11 @@ Move `agtrace` from a CLI-centric watcher into a layered runtime where pure pars
 - Decision: Move token usage types (`ContextWindowUsage` and newtypes) into `agtrace-engine` and re-export them to keep CLI imports stable while enabling runtime to depend on engine-owned parsing. Rationale: Keeps token math co-located with pure parsing (`StateUpdates`) and supports the required dependency direction (`types` ← `engine` ← `runtime` ← `cli`). Date/Author: 2025-12-17 / Assistant.
 - Decision: Introduced `agtrace-runtime` as a dedicated crate owning watcher/reactor/runtime loop while CLI re-exports the traits/types and subscribes to `RuntimeEvent` for rendering. Rationale: Enforces the one-way dependency chain and prepares for executor injection without embedding orchestration in the CLI. Date/Author: 2025-12-17 / Assistant.
 - Decision: Added `Intervention`/`ProcessTarget`/`InterventionExecutor` surfaces to runtime and a CLI `CliInterventionExecutor` using `pgrep` + user confirmation + POSIX signals. Rationale: Provide an initial executor path so `SafetyGuard`/reactor interventions propagate through runtime events without blocking the main stream (execution on a worker thread). Date/Author: 2025-12-17 / Assistant.
+- Decision: Shifted rendering to the `TraceView` observer by implementing event printing/token summaries in `render_stream_update` and removing `TuiRenderer` from the reactor set. Rationale: Aligns with the runtime observer model and keeps reactors pure decision-makers. Date/Author: 2025-12-17 / Assistant.
 
 ## Outcomes & Retrospective
 
-To be completed after milestones. Summarize behavioral changes and remaining gaps.
+All phases completed: engine exposes pure `StateUpdates` with I/O-free tests; runtime crate owns watcher/reactor loop, interventions, and emits `RuntimeEvent`s; CLI watch handler now ~100 lines focused on runtime wiring and `TraceView` observation with interventions executed via `CliInterventionExecutor`. Remaining risk: intervention targeting uses a placeholder process name and should be refined to real targets; consider richer initial summaries if needed.
 
 ## Context and Orientation
 

@@ -175,4 +175,84 @@ mod tests {
         let updates = extract_state_updates(&event);
         assert!(updates.is_error);
     }
+
+    #[test]
+    fn applies_updates_to_session_state_without_io() {
+        #[derive(Default)]
+        struct SessionState {
+            model: Option<String>,
+            context_window_limit: Option<u64>,
+            usage: ContextWindowUsage,
+            reasoning_tokens: i32,
+            turn_count: usize,
+            error_count: u32,
+        }
+
+        impl SessionState {
+            fn apply(&mut self, updates: StateUpdates, is_error_event: bool) {
+                if updates.is_new_turn {
+                    self.turn_count += 1;
+                    self.error_count = 0;
+                }
+                if is_error_event && updates.is_error {
+                    self.error_count += 1;
+                }
+                if let Some(m) = updates.model {
+                    self.model.get_or_insert(m);
+                }
+                if let Some(limit) = updates.context_window_limit {
+                    self.context_window_limit.get_or_insert(limit);
+                }
+                if let Some(u) = updates.usage {
+                    self.usage = u;
+                }
+                if let Some(rt) = updates.reasoning_tokens {
+                    self.reasoning_tokens = rt;
+                }
+            }
+        }
+
+        let user = base_event(EventPayload::User(UserPayload { text: "hi".into() }));
+        let mut usage_event = base_event(EventPayload::TokenUsage(TokenUsagePayload {
+            input_tokens: 120,
+            output_tokens: 30,
+            total_tokens: 150,
+            details: Some(TokenUsageDetails {
+                cache_creation_input_tokens: Some(10),
+                cache_read_input_tokens: Some(5),
+                reasoning_output_tokens: Some(3),
+                audio_input_tokens: None,
+                audio_output_tokens: None,
+            }),
+        }));
+        let mut meta = serde_json::Map::new();
+        meta.insert("model".into(), serde_json::Value::String("claude-3".into()));
+        meta.insert(
+            "info".into(),
+            serde_json::json!({"model_context_window": 100000}),
+        );
+        usage_event.metadata = Some(Value::Object(meta));
+
+        let tool_err = base_event(EventPayload::ToolResult(ToolResultPayload {
+            tool_call_id: Uuid::from_str("00000000-0000-0000-0000-000000000009").unwrap(),
+            output: "boom".into(),
+            is_error: true,
+        }));
+
+        let mut state = SessionState::default();
+
+        state.apply(extract_state_updates(&user), false);
+        state.apply(extract_state_updates(&usage_event), false);
+        state.apply(extract_state_updates(&tool_err), true);
+
+        assert_eq!(state.turn_count, 1);
+        assert_eq!(state.error_count, 1);
+        assert_eq!(state.model.as_deref(), Some("claude-3"));
+        assert_eq!(state.context_window_limit, Some(100_000));
+        assert_eq!(state.usage.fresh_input.0, 120);
+        assert_eq!(state.usage.output.0, 30);
+        assert_eq!(state.usage.cache_creation.0, 10);
+        assert_eq!(state.usage.cache_read.0, 5);
+        assert_eq!(state.reasoning_tokens, 3);
+    }
 }

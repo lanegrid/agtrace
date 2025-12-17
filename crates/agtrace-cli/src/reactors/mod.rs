@@ -6,4 +6,3 @@ mod tui_renderer;
 pub use safety_guard::SafetyGuard;
 pub use stall_detector::StallDetector;
 pub use token_usage_monitor::TokenUsageMonitor;
-pub use tui_renderer::TuiRenderer;
