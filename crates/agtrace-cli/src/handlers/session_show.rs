@@ -1,6 +1,7 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
-use crate::output::{format_session_compact, print_events_timeline, CompactFormatOpts};
+use crate::display_model::{DisplayOptions, SessionDisplay};
+use crate::output::print_events_timeline;
 use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::types::ViewStyle;
 use agtrace_engine::assemble_session_from_events;
@@ -58,11 +59,13 @@ pub fn handle(
         match style {
             ViewStyle::Compact => {
                 if let Some(session) = assemble_session_from_events(&filtered_events) {
-                    let opts = CompactFormatOpts {
+                    let display = SessionDisplay::from_agent_session(&session);
+                    let opts = DisplayOptions {
                         enable_color,
                         relative_time: true,
+                        truncate_text: if short { Some(100) } else { None },
                     };
-                    let lines = format_session_compact(&session, &opts);
+                    let lines = crate::output::format_compact(&display, &opts);
                     for line in lines {
                         println!("{}", line);
                     }
@@ -71,7 +74,6 @@ pub fn handle(
                 }
             }
             ViewStyle::Timeline => {
-                // Timeline view uses v2 events directly
                 let truncate = short;
                 print_events_timeline(&filtered_events, truncate, enable_color);
             }

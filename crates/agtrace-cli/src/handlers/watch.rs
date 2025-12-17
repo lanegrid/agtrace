@@ -95,7 +95,7 @@ fn handle_initial_update(
     session_state: &mut Option<SessionState>,
     project_root: Option<PathBuf>,
 ) {
-    use crate::output::{format_session_compact, CompactFormatOpts};
+    use crate::display_model::{DisplayOptions, SessionDisplay};
     use crate::token_limits::TokenLimits;
 
     // Initialize SessionState from assembled session if available
@@ -131,15 +131,17 @@ fn handle_initial_update(
 
             println!("{}  Last {} turn(s):\n", "📜".dimmed(), num_turns);
 
-            let opts = CompactFormatOpts {
-                enable_color: true,
-                relative_time: false,
-            };
-
             let mut recent_session = assembled_session.clone();
             recent_session.turns = assembled_session.turns[start_idx..].to_vec();
 
-            let lines = format_session_compact(&recent_session, &opts);
+            let display = SessionDisplay::from_agent_session(&recent_session);
+            let opts = DisplayOptions {
+                enable_color: true,
+                relative_time: false,
+                truncate_text: None,
+            };
+
+            let lines = crate::output::format_compact(&display, &opts);
             for line in lines {
                 println!("  {}", line);
             }

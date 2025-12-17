@@ -2,6 +2,7 @@ mod args;
 mod commands;
 pub mod config;
 pub mod context;
+pub mod display_model;
 mod handlers;
 mod output;
 pub mod reactor;
