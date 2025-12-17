@@ -7,7 +7,9 @@ pub mod diagnostics;
 pub mod export;
 pub mod session;
 pub mod span;
+pub mod state_updates;
 pub mod summary;
+pub mod token_usage;
 
 pub use analysis::{analyze_and_select_sessions, SessionDigest};
 pub use assembler::assemble_session;
@@ -17,7 +19,11 @@ pub use session::{
     ToolExecution, ToolResultBlock, TurnStats, UserMessage,
 };
 pub use span::{build_spans, Message, Span, SpanStats, SystemEvent, TokenBundle, ToolAction};
+pub use state_updates::{extract_state_updates, StateUpdates};
 pub use summary::{summarize, SessionSummary};
+pub use token_usage::{
+    CacheCreationTokens, CacheReadTokens, ContextWindowUsage, FreshInputTokens, OutputTokens,
+};
 
 // Façade API - Stable public interface for CLI layer
 // CLI should use these functions instead of directly accessing internal modules

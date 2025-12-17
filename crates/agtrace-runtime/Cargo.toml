@@ -1,0 +1,19 @@
+[package]
+name = "agtrace-runtime"
+version = "0.1.0"
+edition = "2021"
+authors = ["lanegrid team"]
+description = "Runtime orchestration for agtrace (watch loop, reactors, streaming)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+anyhow = "1.0"
+chrono = "0.4"
+notify = "6.1"
+walkdir = "2.5"
+agtrace-engine = { path = "../agtrace-engine" }
+agtrace-types = { path = "../agtrace-types" }
+agtrace-providers = { path = "../agtrace-providers" }
+serde_json = "1.0"
+uuid = { version = "1.10", features = ["v4"] }
+

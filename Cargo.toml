@@ -4,6 +4,7 @@ members = [
     "crates/agtrace-providers",
     "crates/agtrace-index",
     "crates/agtrace-engine",
+    "crates/agtrace-runtime",
     "crates/agtrace-cli",
 ]
 default-members = ["crates/agtrace-cli"]

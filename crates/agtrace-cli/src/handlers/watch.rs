@@ -1,16 +1,23 @@
 use crate::context::ExecutionContext;
-use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState};
+#[cfg(test)]
+use crate::reactor::ReactorContext;
+use crate::reactor::{Reaction, Reactor, SessionState};
 use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor, TuiRenderer};
-use crate::streaming::{SessionWatcher, StreamEvent};
 use crate::token_limits::TokenLimits;
-use crate::token_usage::ContextWindowUsage;
 use crate::ui::models::{WatchStart, WatchSummary, WatchTokenUsage};
 use crate::ui::TraceView;
+#[cfg(test)]
+use agtrace_engine::extract_state_updates;
+use agtrace_runtime::{Runtime, RuntimeConfig, RuntimeEvent};
+#[cfg(test)]
 use agtrace_types::v2::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
-use std::path::{Path, PathBuf};
+#[cfg(test)]
+use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub enum WatchTarget {
     Provider {
@@ -35,6 +42,7 @@ fn create_reactors() -> Vec<Box<dyn Reactor>> {
     ]
 }
 
+#[cfg(test)]
 /// Format session display name from path and optional session_id
 fn format_session_display_name(path: &Path, session_id: Option<&str>) -> String {
     session_id
@@ -46,6 +54,7 @@ fn format_session_display_name(path: &Path, session_id: Option<&str>) -> String 
         .to_string()
 }
 
+#[cfg(test)]
 /// Initialize session state if not already set
 fn initialize_session_state(
     session_state: &mut Option<SessionState>,
@@ -65,6 +74,8 @@ fn handle_error_event(msg: &str, view: &dyn TraceView) -> Result<bool> {
     Ok(is_fatal)
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
 /// Handle initial Update after Attached: Initialize SessionState and display summary
 fn handle_initial_update(
     update: &crate::streaming::SessionUpdate,
@@ -166,6 +177,38 @@ fn handle_initial_update(
     Ok(summary)
 }
 
+fn build_watch_summary(state: &SessionState) -> Result<WatchSummary> {
+    let token_limits = TokenLimits::new();
+    let limit = state.context_window_limit.or_else(|| {
+        state
+            .model
+            .as_ref()
+            .and_then(|m| token_limits.get_limit(m).map(|l| l.total_limit))
+    });
+
+    let total = state.total_context_window_tokens() as u64;
+
+    let (input_pct, output_pct, total_pct) = token_limits
+        .get_usage_percentage_from_state(state)
+        .map(|(input, output, total)| (Some(input), Some(output), Some(total)))
+        .unwrap_or((None, None, None));
+
+    let usage = WatchTokenUsage {
+        total_tokens: total,
+        limit,
+        input_pct,
+        output_pct,
+        total_pct,
+    };
+
+    Ok(WatchSummary {
+        recent_lines: Vec::new(),
+        token_usage: Some(usage),
+        turn_count: state.turn_count,
+    })
+}
+
+#[cfg(test)]
 /// Process StreamEvent::Update
 fn process_update_event(
     update: &crate::streaming::SessionUpdate,
@@ -256,71 +299,48 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView)
         ctx.project_root.clone()
     };
 
-    // Create session watcher with provider and optional project context
-    let watcher = SessionWatcher::new(
-        log_root.to_path_buf(),
-        provider,
-        explicit_target,
-        project_root.clone(),
-    )?;
-
-    // Initialize reactors
     let mut reactors = create_reactors();
 
-    // Session state (initialized on first event)
-    let mut session_state: Option<SessionState> = None;
+    let runtime = Runtime::start(RuntimeConfig {
+        provider,
+        reactors: std::mem::take(&mut reactors),
+        watch_path: log_root.clone(),
+        explicit_target,
+        project_root: project_root.clone(),
+        poll_interval: Duration::from_millis(500),
+    })?;
 
-    // Track if we just attached to a session
-    let mut just_attached = false;
+    let mut initialized = false;
 
-    // Event loop - receive and display events
-    // IMPORTANT: Keep watcher alive to maintain file system monitoring
     loop {
-        match watcher.receiver().recv() {
-            Ok(event) => match event {
-                StreamEvent::Attached { path, session_id } => {
-                    just_attached = true;
-                    let display_name = format_session_display_name(&path, session_id.as_deref());
-                    view.on_watch_attached(&display_name)?;
+        match runtime.receiver().recv() {
+            Ok(RuntimeEvent::SessionAttached { display_name }) => {
+                view.on_watch_attached(&display_name)?;
+            }
+            Ok(RuntimeEvent::StateUpdated { state, new_events }) => {
+                if !initialized {
+                    let summary = build_watch_summary(&state)?;
+                    view.on_watch_initial_summary(&summary)?;
+                    initialized = true;
                 }
-                StreamEvent::Update(update) => {
-                    if just_attached {
-                        // Initial snapshot: Initialize SessionState and display summary only
-                        just_attached = false;
-                        let summary = handle_initial_update(
-                            &update,
-                            &mut session_state,
-                            project_root.clone(),
-                            view,
-                        )?;
-                        view.on_watch_initial_summary(&summary)?;
-                    } else {
-                        // Normal update: Process events through reactors
-                        process_update_event(
-                            &update,
-                            &mut session_state,
-                            &mut reactors,
-                            project_root.clone(),
-                            view,
-                        )?;
-                    }
+                view.render_stream_update(&state, &new_events)?;
+            }
+            Ok(RuntimeEvent::ReactionTriggered { reaction, .. }) => {
+                handle_reaction(reaction, view)?;
+            }
+            Ok(RuntimeEvent::SessionRotated { old_path, new_path }) => {
+                initialized = false;
+                view.on_watch_rotated(&old_path, &new_path)?;
+            }
+            Ok(RuntimeEvent::Waiting { message }) => {
+                view.on_watch_waiting(&message)?;
+            }
+            Ok(RuntimeEvent::FatalError(msg)) => {
+                if handle_error_event(&msg, view)? {
+                    break;
                 }
-                StreamEvent::SessionRotated { old_path, new_path } => {
-                    view.on_watch_rotated(&old_path, &new_path)?;
-                    // Reset session state for new session
-                    session_state = None;
-                }
-                StreamEvent::Waiting { message } => {
-                    view.on_watch_waiting(&message)?;
-                }
-                StreamEvent::Error(msg) => {
-                    if handle_error_event(&msg, view)? {
-                        break;
-                    }
-                }
-            },
+            }
             Err(_) => {
-                // Channel disconnected - worker thread terminated
                 view.render_warning(&format!(
                     "{}",
                     "⚠️  Watch stream ended (worker thread terminated)".yellow()
@@ -333,6 +353,7 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView)
     Ok(())
 }
 
+#[cfg(test)]
 /// Update session state based on incoming event
 fn update_session_state(
     state: &mut SessionState,
@@ -343,110 +364,16 @@ fn update_session_state(
     state.last_activity = event.timestamp;
     state.event_count += 1;
 
-    // Update state based on event type
+    let updates = extract_state_updates(event);
+
+    if updates.is_new_turn {
+        state.turn_count += 1;
+        state.error_count = 0;
+    }
+
     match &event.payload {
-        EventPayload::User(_) => {
-            state.turn_count += 1;
-            // Reset error count on new user input
-            state.error_count = 0;
-        }
-        EventPayload::Message(_) => {
-            // Extract model name from metadata (Claude: metadata.message.model)
-            if state.model.is_none() {
-                if let Some(metadata) = &event.metadata {
-                    // Try metadata.message.model (Claude format)
-                    if let Some(model) = metadata
-                        .get("message")
-                        .and_then(|m| m.get("model"))
-                        .and_then(|v| v.as_str())
-                    {
-                        state.model = Some(model.to_string());
-                    }
-                    // Fallback: Try metadata.model (if flat structure)
-                    else if let Some(model) = metadata.get("model").and_then(|v| v.as_str()) {
-                        state.model = Some(model.to_string());
-                    }
-                }
-            }
-        }
-        EventPayload::TokenUsage(usage) => {
-            // NOTE: Use assignment (=), NOT accumulation (+=)
-            //
-            // TokenUsage events are snapshots of the current turn, not deltas.
-            // Each turn the LLM receives the full history, so:
-            // - Turn 1: 1000 tokens → event reports 1000
-            // - Turn 2: 1200 tokens (history grew) → event reports 1200
-            // Using += would give 2200, severely overreporting context window usage.
-            //
-            // This applies to ALL token fields including cache tokens:
-            // - cache_read_input_tokens: how many tokens reused THIS turn
-            // - cache_creation_input_tokens: how many new tokens cached THIS turn
-
-            // Update using type-safe ContextWindowUsage
-            let cache_creation = usage
-                .details
-                .as_ref()
-                .and_then(|d| d.cache_creation_input_tokens)
-                .unwrap_or(0);
-            let cache_read = usage
-                .details
-                .as_ref()
-                .and_then(|d| d.cache_read_input_tokens)
-                .unwrap_or(0);
-
-            state.current_usage = ContextWindowUsage::from_raw(
-                usage.input_tokens,
-                cache_creation,
-                cache_read,
-                usage.output_tokens,
-            );
-
-            if let Some(details) = &usage.details {
-                state.current_reasoning_tokens = details.reasoning_output_tokens.unwrap_or(0);
-            } else {
-                state.current_reasoning_tokens = 0;
-            }
-
-            // Validate token counts for current turn
-            if let Some(model) = &state.model {
-                let token_limits = TokenLimits::new();
-                let model_limit = token_limits.get_limit(model).map(|l| l.total_limit);
-
-                if let Err(err) = state.validate_tokens(model_limit) {
-                    view.on_watch_token_warning(&err.to_string())?;
-                }
-            }
-
-            // Extract model from metadata if not yet set
-            if state.model.is_none() {
-                if let Some(metadata) = &event.metadata {
-                    if let Some(model) = metadata
-                        .get("message")
-                        .and_then(|m| m.get("model"))
-                        .and_then(|v| v.as_str())
-                    {
-                        state.model = Some(model.to_string());
-                    } else if let Some(model) = metadata.get("model").and_then(|v| v.as_str()) {
-                        state.model = Some(model.to_string());
-                    }
-                }
-            }
-
-            // Extract provider-reported context window if present
-            if state.context_window_limit.is_none() {
-                if let Some(metadata) = &event.metadata {
-                    let limit = metadata
-                        .get("info")
-                        .and_then(|info| info.get("model_context_window"))
-                        .and_then(|v| v.as_u64());
-                    if let Some(limit) = limit {
-                        state.context_window_limit = Some(limit);
-                    }
-                }
-            }
-        }
         EventPayload::ToolResult(result) => {
-            if result.is_error {
+            if updates.is_error && result.is_error {
                 state.error_count += 1;
             } else {
                 state.error_count = 0;
@@ -455,9 +382,44 @@ fn update_session_state(
         _ => {}
     }
 
+    if let Some(model) = updates.model {
+        if state.model.is_none() {
+            state.model = Some(model);
+        }
+    }
+
+    if let Some(limit) = updates.context_window_limit {
+        if state.context_window_limit.is_none() {
+            state.context_window_limit = Some(limit);
+        }
+    }
+
+    if let Some(usage) = updates.usage {
+        state.current_usage = usage;
+        state.current_reasoning_tokens = updates.reasoning_tokens.unwrap_or(0);
+
+        let token_limits = TokenLimits::new();
+        let model_limit = state
+            .context_window_limit
+            .or_else(|| {
+                state
+                    .model
+                    .as_ref()
+                    .and_then(|m| token_limits.get_limit(m).map(|l| l.total_limit))
+            })
+            .or(updates.context_window_limit);
+
+        if let Err(err) = state.validate_tokens(model_limit) {
+            view.on_watch_token_warning(&err.to_string())?;
+        }
+    } else if let Some(reasoning_tokens) = updates.reasoning_tokens {
+        state.current_reasoning_tokens = reasoning_tokens;
+    }
+
     Ok(())
 }
 
+#[cfg(test)]
 /// Run all reactors and handle their reactions
 fn run_reactors(
     event: &AgentEvent,

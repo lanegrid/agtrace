@@ -1,4 +1,1 @@
-mod watcher;
-
-#[allow(unused_imports)]
-pub use watcher::{SessionUpdate, SessionWatcher, StreamEvent};
+pub use agtrace_runtime::streaming::{SessionUpdate, SessionWatcher, StreamEvent};

@@ -9,59 +9,43 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-/// Target for watch command - either an active file or waiting mode
 #[derive(Debug, Clone)]
 pub enum WatchTarget {
-    /// Active file to attach to
     File { path: PathBuf },
-    /// No active sessions - waiting mode
     Waiting { message: String },
 }
 
-/// Data payload for a session update
 #[derive(Debug, Clone)]
 pub struct SessionUpdate {
-    /// The fully assembled session state (snapshot)
     pub session: Option<AgentSession>,
-    /// New raw events detected in this update (delta)
     pub new_events: Vec<AgentEvent>,
-    /// Events that were not included in the session (e.g. pre-session noise)
     pub orphaned_events: Vec<AgentEvent>,
-    /// Total count of events in the file
     pub total_events: usize,
 }
 
-/// Events emitted by SessionWatcher
 #[derive(Debug, Clone)]
 pub enum StreamEvent {
-    /// Successfully attached to a session file
     Attached {
         path: PathBuf,
         session_id: Option<String>,
     },
-    /// Session updated (new events and/or state change)
     Update(SessionUpdate),
-    /// Session file was rotated (new session started)
     SessionRotated {
         old_path: PathBuf,
         new_path: PathBuf,
     },
-    /// Error occurred during watching or parsing
     Error(String),
-    /// Waiting for new session (no active sessions found)
-    Waiting { message: String },
+    Waiting {
+        message: String,
+    },
 }
 
-/// Watches a directory for log files and streams events
 pub struct SessionWatcher {
     _watcher: PollWatcher,
     rx: Receiver<StreamEvent>,
 }
 
 impl SessionWatcher {
-    /// Create a new SessionWatcher that monitors the given log root directory
-    /// If explicit_target is provided, it bypasses liveness detection and watches that specific file
-    /// If project_root is provided, only sessions matching the project will be watched
     pub fn new(
         log_root: PathBuf,
         provider: Arc<dyn LogProvider>,
@@ -71,7 +55,6 @@ impl SessionWatcher {
         let (tx_out, rx_out) = channel();
         let (tx_fs, rx_fs) = channel();
 
-        // Determine target: explicit or auto-detected
         let target = if let Some(id_or_path) = explicit_target {
             resolve_explicit_target(&log_root, &id_or_path, &provider)?
         } else {
@@ -81,34 +64,11 @@ impl SessionWatcher {
         let mut current_file: Option<PathBuf> = None;
         let mut file_event_counts: HashMap<PathBuf, usize> = HashMap::new();
 
-        // Determine which directory to watch based on target
         let watch_dir = match &target {
-            WatchTarget::File { path } => {
-                // Watch the parent directory of the file for better event detection
-                // This is more reliable on macOS for deeply nested files
-                path.parent().unwrap_or(&log_root).to_path_buf()
-            }
+            WatchTarget::File { path } => path.parent().unwrap_or(&log_root).to_path_buf(),
             WatchTarget::Waiting { .. } => log_root.clone(),
         };
 
-        // NOTE: Why PollWatcher instead of RecommendedWatcher (FSEvents)?
-        //
-        // Problem: Codex appends to JSONL files rapidly during agent sessions, but FSEvents
-        // on macOS coalesces these rapid file changes to reduce system load. This causes
-        // significant delays (several seconds) before events are delivered to our watcher.
-        //
-        // Investigation results:
-        // - `touch file.jsonl` → FSEvents delivers Modify event immediately
-        // - `echo >> file.jsonl` → FSEvents delivers Modify event immediately
-        // - Codex writes to file.jsonl → No FSEvents event for several seconds
-        // - `fswatch` (FSEvents-based) also doesn't detect Codex writes immediately
-        // - `watch -n 1 "wc -l file.jsonl"` shows line count increasing in real-time
-        //
-        // Root cause: FSEvents batches/coalesces events when it detects rapid changes.
-        // Codex's write pattern triggers this coalescing behavior, causing event delays.
-        //
-        // Solution: PollWatcher polls file metadata every 500ms, bypassing FSEvents entirely.
-        // This ensures we detect changes within 500ms regardless of FSEvents coalescing.
         let config = notify::Config::default().with_poll_interval(Duration::from_millis(500));
 
         let mut watcher = PollWatcher::new(
@@ -125,14 +85,12 @@ impl SessionWatcher {
         match target {
             WatchTarget::File { path } => {
                 current_file = Some(path.clone());
-                // Initialize count to 0 so existing events will be treated as "new" and sent in Update
                 file_event_counts.insert(path.clone(), 0);
                 let _ = tx_out.send(StreamEvent::Attached {
                     path: path.clone(),
                     session_id: extract_session_id(&path),
                 });
 
-                // Send initial Update event with existing events from the attached file
                 if let Ok((all_events, new_events)) = load_and_detect_changes(&path, 0, &provider) {
                     if !new_events.is_empty() {
                         file_event_counts.insert(path.clone(), new_events.len());
@@ -162,7 +120,6 @@ impl SessionWatcher {
             }
         }
 
-        // Spawn worker thread to handle file system events
         let tx_worker = tx_out.clone();
         std::thread::Builder::new()
             .name("session-watcher-worker".to_string())
@@ -185,7 +142,6 @@ impl SessionWatcher {
                     }
                 }));
 
-                // Send error if worker panicked
                 if let Err(panic_err) = result {
                     let panic_msg = if let Some(s) = panic_err.downcast_ref::<&str>() {
                         s.to_string()
@@ -207,13 +163,11 @@ impl SessionWatcher {
         })
     }
 
-    /// Get the receiver for stream events
     pub fn receiver(&self) -> &Receiver<StreamEvent> {
         &self.rx
     }
 }
 
-/// Handle a file system event
 fn handle_fs_event(
     event: &Event,
     current_file: &mut Option<PathBuf>,
@@ -225,21 +179,17 @@ fn handle_fs_event(
     match event.kind {
         EventKind::Create(_) => {
             for path in &event.paths {
-                // Use provider.can_handle() to respect provider-specific filtering
                 if !provider.can_handle(path) {
                     continue;
                 }
 
-                // Check if file belongs to current project using provider
                 if let Some(root) = project_root {
                     if !provider.belongs_to_project(path, root) {
                         continue;
                     }
                 }
 
-                // Check if this is a newer session than current
                 let should_switch = if let Some(ref current) = current_file {
-                    // Compare modification times
                     let new_time = std::fs::metadata(path)?.modified()?;
                     let current_time = std::fs::metadata(current)?.modified()?;
                     new_time > current_time
@@ -250,16 +200,13 @@ fn handle_fs_event(
                 if should_switch {
                     let old_path = current_file.clone();
                     *current_file = Some(path.clone());
-                    // Initialize count to 0 so existing events will be treated as "new" and sent in Update
                     file_event_counts.insert(path.clone(), 0);
 
                     if let Some(old) = old_path {
-                        // Send rotation event
                         let _ = tx.send(StreamEvent::SessionRotated {
                             old_path: old,
                             new_path: path.clone(),
                         });
-                        // Also send Attached event for the new session
                         let _ = tx.send(StreamEvent::Attached {
                             path: path.clone(),
                             session_id: extract_session_id(path),
@@ -271,7 +218,6 @@ fn handle_fs_event(
                         });
                     }
 
-                    // Send initial Update event with existing events from the newly attached file
                     if let Ok((all_events, new_events)) = load_and_detect_changes(path, 0, provider)
                     {
                         if !new_events.is_empty() {
@@ -302,7 +248,6 @@ fn handle_fs_event(
         }
         EventKind::Modify(_) => {
             for path in &event.paths {
-                // If current_file is None, check if this is a new session file to attach to
                 if current_file.is_none() && provider.can_handle(path) {
                     if let Some(root) = project_root {
                         if !provider.belongs_to_project(path, root) {
@@ -311,13 +256,11 @@ fn handle_fs_event(
                     }
 
                     *current_file = Some(path.clone());
-                    // Initialize count to 0 so existing events will be treated as "new" and sent in Update
                     file_event_counts.insert(path.clone(), 0);
                     let _ = tx.send(StreamEvent::Attached {
                         path: path.clone(),
                         session_id: extract_session_id(path),
                     });
-                    // Don't continue - let it fall through to process existing events
                 }
 
                 if Some(path) == current_file.as_ref() {
@@ -359,7 +302,6 @@ fn handle_fs_event(
     Ok(())
 }
 
-/// Load full file and separate new events from old ones
 fn load_and_detect_changes(
     path: &Path,
     last_event_count: usize,
@@ -378,7 +320,6 @@ fn load_and_detect_changes(
     Ok((all_events, new_events))
 }
 
-/// Resolve an explicitly specified target (session ID or file path)
 fn resolve_explicit_target(
     log_root: &Path,
     id_or_path: &str,
@@ -386,13 +327,10 @@ fn resolve_explicit_target(
 ) -> Result<WatchTarget> {
     let path_buf = PathBuf::from(id_or_path);
 
-    // Case 1: Direct file path (absolute or relative)
     if path_buf.exists() && path_buf.is_file() && provider.can_handle(&path_buf) {
         return Ok(WatchTarget::File { path: path_buf });
     }
 
-    // Case 2: Session ID - search in log_root
-    // Try to find a file matching the session ID pattern
     for entry in walkdir::WalkDir::new(log_root)
         .follow_links(false)
         .into_iter()
@@ -411,14 +349,12 @@ fn resolve_explicit_target(
         }
     }
 
-    // Not found
     anyhow::bail!(
         "No session file found for '{}'. Tried as file path and session ID.",
         id_or_path
     )
 }
 
-/// Find an active target session using Liveness Window detection
 fn find_active_target(
     dir: &Path,
     provider: &Arc<dyn LogProvider>,
@@ -431,9 +367,8 @@ fn find_active_target(
     }
 
     let now = SystemTime::now();
-    let hot_threshold = Duration::from_secs(300); // 5 minutes
+    let hot_threshold = Duration::from_secs(300);
 
-    // Collect all log files with their metadata
     let mut entries: Vec<(PathBuf, SystemTime, u64)> = Vec::new();
 
     for entry in walkdir::WalkDir::new(dir)
@@ -469,23 +404,18 @@ fn find_active_target(
         });
     }
 
-    // Sort by modification time (newest first)
     entries.sort_by(|a, b| b.1.cmp(&a.1));
 
-    // Find hot active sessions (< 5 min)
     let hot_sessions: Vec<_> = entries
         .iter()
         .filter(|(_, mtime, _)| {
-            if let Ok(elapsed) = now.duration_since(*mtime) {
-                elapsed < hot_threshold
-            } else {
-                false
-            }
+            now.duration_since(*mtime)
+                .map(|d| d < hot_threshold)
+                .unwrap_or(false)
         })
         .collect();
 
     if hot_sessions.is_empty() {
-        // All sessions are cold - enter waiting mode
         let (_path, latest_time, _) = &entries[0];
         let elapsed = now
             .duration_since(*latest_time)
@@ -504,7 +434,6 @@ fn find_active_target(
     Ok(WatchTarget::File { path: path.clone() })
 }
 
-/// Format duration into human-readable string
 fn format_duration(d: Duration) -> String {
     let secs = d.as_secs();
     if secs < 60 {
@@ -518,7 +447,6 @@ fn format_duration(d: Duration) -> String {
     }
 }
 
-/// Extract session ID from file path
 fn extract_session_id(path: &Path) -> Option<String> {
     path.file_stem()
         .and_then(|s| s.to_str())
