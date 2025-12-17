@@ -2,7 +2,7 @@ use crate::display_model::{DisplayOptions, TokenSummaryDisplay};
 use crate::reactor::{Reaction, Reactor, ReactorContext};
 use crate::token_limits::TokenLimits;
 use crate::views::session::print_event;
-use agtrace_types::v2::EventPayload;
+use agtrace_types::EventPayload;
 use anyhow::Result;
 
 // NOTE: TuiRenderer Design Rationale

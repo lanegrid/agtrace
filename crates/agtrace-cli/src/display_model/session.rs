@@ -1,6 +1,6 @@
 use agtrace_engine::{AgentSession, AgentTurn};
-use agtrace_types::v2::{AgentEvent, EventPayload};
 use agtrace_types::ToolStatus;
+use agtrace_types::{AgentEvent, EventPayload};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone)]
@@ -174,7 +174,7 @@ impl TurnDisplay {
     }
 }
 
-fn extract_input_summary(payload: &agtrace_types::v2::ToolCallPayload) -> String {
+fn extract_input_summary(payload: &agtrace_types::ToolCallPayload) -> String {
     if let Some(file_path) = payload.arguments.get("file_path").and_then(|v| v.as_str()) {
         if let Some(filename) = std::path::Path::new(file_path)
             .file_name()

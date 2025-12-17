@@ -3,7 +3,7 @@ use crate::types::{ExportFormat, ExportStrategy as CliExportStrategy};
 use crate::ui::TraceView;
 use agtrace_engine::export::{self, ExportStrategy};
 use agtrace_index::Database;
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
 use std::fs;
 use std::io::Write;

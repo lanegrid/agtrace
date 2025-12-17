@@ -1,4 +1,4 @@
-use agtrace_types::v2::AgentEvent;
+use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 

@@ -1,5 +1,5 @@
 use crate::token_usage::ContextWindowUsage;
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use serde_json::Value;
 
 /// Pure data extracted from an AgentEvent to update runtime session state.
@@ -94,7 +94,7 @@ fn extract_context_window_limit(metadata: &Value) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::v2::{TokenUsageDetails, TokenUsagePayload, ToolResultPayload, UserPayload};
+    use agtrace_types::{TokenUsageDetails, TokenUsagePayload, ToolResultPayload, UserPayload};
     use chrono::Utc;
     use std::str::FromStr;
     use uuid::Uuid;

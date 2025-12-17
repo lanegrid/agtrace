@@ -2,7 +2,7 @@ use agtrace_index::Database;
 use agtrace_providers::{
     normalize_claude_file_v2, normalize_codex_file_v2, normalize_gemini_file_v2,
 };
-use agtrace_types::v2::AgentEvent;
+use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::Path;
 

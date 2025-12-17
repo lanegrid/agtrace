@@ -1,4 +1,4 @@
-use agtrace_types::v2::*;
+use agtrace_types::*;
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use uuid::Uuid;

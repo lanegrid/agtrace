@@ -1,4 +1,4 @@
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 

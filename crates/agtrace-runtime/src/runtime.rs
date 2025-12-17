@@ -1,7 +1,7 @@
 use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState};
 use crate::streaming::{SessionUpdate, SessionWatcher, StreamEvent};
 use agtrace_engine::extract_state_updates;
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
@@ -207,7 +207,7 @@ mod tests {
     use super::*;
     use crate::reactor::{Reactor, ReactorContext};
     use crate::streaming::SessionUpdate;
-    use agtrace_types::v2::{AgentEvent, EventPayload, UserPayload};
+    use agtrace_types::{AgentEvent, EventPayload, UserPayload};
     use chrono::Utc;
     use std::sync::mpsc::channel;
     use std::time::Duration;

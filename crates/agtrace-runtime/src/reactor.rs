@@ -1,5 +1,5 @@
 use agtrace_engine::ContextWindowUsage;
-use agtrace_types::v2::AgentEvent;
+use agtrace_types::AgentEvent;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
@@ -99,7 +99,7 @@ pub trait Reactor: Send {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::v2::{EventPayload, UserPayload};
+    use agtrace_types::{EventPayload, UserPayload};
 
     struct MockReactor {
         name: String,

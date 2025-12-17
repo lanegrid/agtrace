@@ -1,5 +1,5 @@
-use agtrace_types::v2::{AgentEvent, EventPayload};
 use agtrace_types::ToolStatus;
+use agtrace_types::{AgentEvent, EventPayload};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -335,7 +335,7 @@ fn calculate_stats(span: &mut Span, _token_map: &HashMap<Uuid, TokenBundle>) {
     }
 }
 
-fn extract_input_summary(payload: &agtrace_types::v2::ToolCallPayload) -> String {
+fn extract_input_summary(payload: &agtrace_types::ToolCallPayload) -> String {
     // Try to extract meaningful summary from arguments
     if let Some(file_path) = payload.arguments.get("file_path").and_then(|v| v.as_str()) {
         if let Some(filename) = std::path::Path::new(file_path)
@@ -378,7 +378,7 @@ fn truncate_string(s: &str, max_len: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::v2::*;
+    use agtrace_types::*;
     use chrono::Utc;
 
     #[test]

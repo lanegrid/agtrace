@@ -1,4 +1,4 @@
-use agtrace_types::v2::{self, *};
+use agtrace_types::{self, *};
 use chrono::DateTime;
 use regex::Regex;
 use std::sync::LazyLock;
@@ -154,7 +154,7 @@ pub(crate) fn normalize_codex_session_v2(
                         let payload = if message.role == "user" {
                             EventPayload::User(UserPayload { text })
                         } else {
-                            EventPayload::Message(v2::MessagePayload { text })
+                            EventPayload::Message(MessagePayload { text })
                         };
 
                         let event = builder.create_event(timestamp, payload, raw_value.clone());
@@ -172,7 +172,7 @@ pub(crate) fn normalize_codex_session_v2(
 
                         let event = builder.create_event(
                             timestamp,
-                            EventPayload::Reasoning(v2::ReasoningPayload { text }),
+                            EventPayload::Reasoning(ReasoningPayload { text }),
                             raw_value.clone(),
                         );
                         events.push(event);

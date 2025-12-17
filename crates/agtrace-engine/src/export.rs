@@ -1,4 +1,4 @@
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy)]

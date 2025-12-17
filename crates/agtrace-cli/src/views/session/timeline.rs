@@ -1,4 +1,4 @@
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use owo_colors::OwoColorize;
 
 // Local summary structures for timeline display

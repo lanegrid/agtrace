@@ -1,8 +1,9 @@
+pub mod models;
 mod util;
-pub mod v2;
 
 use serde::{Deserialize, Serialize};
 
+pub use models::*;
 pub use util::*;
 
 /// Git repository context

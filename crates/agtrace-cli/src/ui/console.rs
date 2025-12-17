@@ -9,7 +9,7 @@ use crate::ui::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::views::session::{format_token_summary, print_event};
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;

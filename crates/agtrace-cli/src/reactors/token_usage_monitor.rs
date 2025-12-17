@@ -108,7 +108,7 @@ impl Reactor for TokenUsageMonitor {
         // Only check on TokenUsage events
         if !matches!(
             ctx.event.payload,
-            agtrace_types::v2::EventPayload::TokenUsage(_)
+            agtrace_types::EventPayload::TokenUsage(_)
         ) {
             return Ok(Reaction::Continue);
         }
@@ -131,7 +131,7 @@ mod tests {
     use super::*;
     use crate::reactor::SessionState;
     use crate::token_usage::ContextWindowUsage;
-    use agtrace_types::v2::{
+    use agtrace_types::{
         AgentEvent, EventPayload, TokenUsageDetails, TokenUsagePayload, UserPayload,
     };
     use chrono::Utc;

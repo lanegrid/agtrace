@@ -1,5 +1,5 @@
 use crate::reactor::{Reaction, Reactor, ReactorContext};
-use agtrace_types::v2::EventPayload;
+use agtrace_types::EventPayload;
 use anyhow::Result;
 
 // NOTE: SafetyGuard Design Rationale
@@ -68,7 +68,7 @@ impl Reactor for SafetyGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::v2::{AgentEvent, EventPayload, ToolCallPayload, UserPayload};
+    use agtrace_types::{AgentEvent, EventPayload, ToolCallPayload, UserPayload};
     use chrono::Utc;
 
     fn create_tool_call_event(args: serde_json::Value) -> AgentEvent {

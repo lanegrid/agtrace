@@ -6,7 +6,7 @@ use super::normalize::normalize_claude_session_v2;
 use super::schema::ClaudeRecord;
 
 /// Parse Claude Code JSONL file and normalize to v2::AgentEvent
-pub fn normalize_claude_file_v2(path: &Path) -> Result<Vec<agtrace_types::v2::AgentEvent>> {
+pub fn normalize_claude_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Claude file: {}", path.display()))?;
 

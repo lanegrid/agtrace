@@ -4,7 +4,7 @@ pub mod normalize;
 pub mod schema;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
-use agtrace_types::v2::AgentEvent;
+use agtrace_types::AgentEvent;
 use agtrace_types::{is_64_char_hex, project_hash_from_root};
 use anyhow::Result;
 use std::collections::HashMap;

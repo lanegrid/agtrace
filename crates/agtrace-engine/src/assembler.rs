@@ -1,5 +1,5 @@
 use crate::session::*;
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -252,7 +252,7 @@ struct StepBuilder {
     reasoning: Option<ReasoningBlock>,
     message: Option<MessageBlock>,
     tool_executions: Vec<ToolExecution>,
-    usage: Option<agtrace_types::v2::TokenUsagePayload>,
+    usage: Option<agtrace_types::TokenUsagePayload>,
 }
 
 impl StepBuilder {
@@ -329,8 +329,8 @@ fn calculate_turn_stats(steps: &[AgentStep], turn_start: DateTime<Utc>) -> TurnS
 }
 
 fn merge_usage(
-    target: &mut Option<agtrace_types::v2::TokenUsagePayload>,
-    source: &agtrace_types::v2::TokenUsagePayload,
+    target: &mut Option<agtrace_types::TokenUsagePayload>,
+    source: &agtrace_types::TokenUsagePayload,
 ) {
     if let Some(current) = target {
         // Strategy: Use max() instead of += to handle cumulative values

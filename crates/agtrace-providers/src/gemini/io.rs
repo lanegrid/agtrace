@@ -5,7 +5,7 @@ use super::normalize::normalize_gemini_session_v2;
 use super::schema::GeminiSession;
 
 /// Parse Gemini CLI JSON file and normalize to v2::AgentEvent
-pub fn normalize_gemini_file_v2(path: &Path) -> Result<Vec<agtrace_types::v2::AgentEvent>> {
+pub fn normalize_gemini_file_v2(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
 

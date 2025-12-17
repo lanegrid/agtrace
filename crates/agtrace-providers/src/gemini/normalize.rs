@@ -1,4 +1,4 @@
-use agtrace_types::v2::*;
+use agtrace_types::*;
 use chrono::DateTime;
 use uuid::Uuid;
 

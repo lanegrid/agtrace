@@ -29,14 +29,12 @@ pub use token_usage::{
 // CLI should use these functions instead of directly accessing internal modules
 
 /// Assemble events into AgentSession structure
-pub fn assemble_session_from_events(
-    events: &[agtrace_types::v2::AgentEvent],
-) -> Option<AgentSession> {
+pub fn assemble_session_from_events(events: &[agtrace_types::AgentEvent]) -> Option<AgentSession> {
     assembler::assemble_session(events)
 }
 
 /// Build spans from events - improved tool matching and token tracking
-pub fn build_spans_from_events(events: &[agtrace_types::v2::AgentEvent]) -> Vec<Span> {
+pub fn build_spans_from_events(events: &[agtrace_types::AgentEvent]) -> Vec<Span> {
     span::build_spans(events)
 }
 

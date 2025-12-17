@@ -66,7 +66,7 @@ fn test_claude_span_building() {
 
 #[test]
 fn test_tool_matching_accuracy() {
-    use agtrace_types::v2::*;
+    use agtrace_types::*;
     use chrono::Utc;
     use uuid::Uuid;
 

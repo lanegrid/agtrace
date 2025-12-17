@@ -7,7 +7,7 @@ use crate::ui::models::RawFileContent;
 use crate::ui::TraceView;
 use agtrace_engine::assemble_session_from_events;
 use agtrace_index::Database;
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
 use std::fs;

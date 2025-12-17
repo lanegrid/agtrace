@@ -1,6 +1,6 @@
 use agtrace_engine::{assemble_session_from_events, AgentSession};
 use agtrace_providers::LogProvider;
-use agtrace_types::v2::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;

@@ -5,7 +5,7 @@ pub mod schema;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::paths_equal;
-use agtrace_types::v2::AgentEvent;
+use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::Path;
 use walkdir::WalkDir;
