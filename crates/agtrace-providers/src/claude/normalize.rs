@@ -31,12 +31,14 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 let base_id = &user_record.uuid;
 
                 // Process user content blocks
-                for content in &user_record.message.content {
+                for (idx, content) in user_record.message.content.iter().enumerate() {
+                    let indexed_base_id = format!("{}-content-{}", base_id, idx);
+
                     match content {
                         UserContent::Text { text } => {
                             builder.build_and_push(
                                 &mut events,
-                                base_id,
+                                &indexed_base_id,
                                 SemanticSuffix::User,
                                 timestamp,
                                 EventPayload::User(UserPayload { text: text.clone() }),
@@ -60,7 +62,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
 
                                 builder.build_and_push(
                                     &mut events,
-                                    base_id,
+                                    &indexed_base_id,
                                     SemanticSuffix::ToolResult,
                                     timestamp,
                                     EventPayload::ToolResult(ToolResultPayload {
@@ -94,13 +96,15 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 let mut last_generation_event_id: Option<Uuid> = None;
 
                 // Process assistant content blocks
-                for content in &asst_record.message.content {
+                for (idx, content) in asst_record.message.content.iter().enumerate() {
+                    let indexed_base_id = format!("{}-content-{}", base_id, idx);
+
                     match content {
                         AssistantContent::Thinking { thinking, .. } => {
                             // Thinking block -> Reasoning event
                             builder.build_and_push(
                                 &mut events,
-                                base_id,
+                                &indexed_base_id,
                                 SemanticSuffix::Reasoning,
                                 timestamp,
                                 EventPayload::Reasoning(ReasoningPayload {
@@ -116,7 +120,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             // ToolUse -> ToolCall event
                             let event_id = builder.build_and_push(
                                 &mut events,
-                                base_id,
+                                &indexed_base_id,
                                 SemanticSuffix::ToolCall,
                                 timestamp,
                                 EventPayload::ToolCall(ToolCallPayload {
@@ -136,7 +140,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             // Text block -> Message event
                             let event_id = builder.build_and_push(
                                 &mut events,
-                                base_id,
+                                &indexed_base_id,
                                 SemanticSuffix::Message,
                                 timestamp,
                                 EventPayload::Message(MessagePayload { text: text.clone() }),
@@ -154,7 +158,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             if let Some(tool_call_id) = builder.get_tool_call_uuid(tool_use_id) {
                                 builder.build_and_push(
                                     &mut events,
-                                    base_id,
+                                    &indexed_base_id,
                                     SemanticSuffix::ToolResult,
                                     timestamp,
                                     EventPayload::ToolResult(ToolResultPayload {

@@ -20,7 +20,7 @@ expression: json_pretty
 }
 
 {
-  "id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "id": "9666aa36-052d-575c-aaa9-83bf611608be",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
   "parent_id": "1f5601e4-9923-530d-a5d8-99faa34614c4",
   "timestamp": "2025-12-09T19:51:50.106Z",
@@ -85,9 +85,9 @@ expression: json_pretty
 }
 
 {
-  "id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "id": "1180c5a1-11f5-50fe-aa0e-833bef9e5e77",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "parent_id": "9666aa36-052d-575c-aaa9-83bf611608be",
   "timestamp": "2025-12-09T19:51:50.106Z",
   "type": "reasoning",
   "content": {
@@ -150,9 +150,9 @@ expression: json_pretty
 }
 
 {
-  "id": "159b43e9-762e-57df-b42a-83f175d78f84",
+  "id": "bac0d1e6-9a24-5e69-b509-a20241412298",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "parent_id": "1180c5a1-11f5-50fe-aa0e-833bef9e5e77",
   "timestamp": "2025-12-09T19:51:50.106Z",
   "type": "tool_call",
   "content": {
@@ -220,14 +220,14 @@ expression: json_pretty
 }
 
 {
-  "id": "f7c25860-879e-54ca-a1c5-e004846f007b",
+  "id": "cc37d53a-5dbd-5d29-8d6b-0b2774f23760",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "159b43e9-762e-57df-b42a-83f175d78f84",
+  "parent_id": "bac0d1e6-9a24-5e69-b509-a20241412298",
   "timestamp": "2025-12-09T19:51:50.106Z",
   "type": "tool_result",
   "content": {
     "output": "",
-    "tool_call_id": "159b43e9-762e-57df-b42a-83f175d78f84",
+    "tool_call_id": "bac0d1e6-9a24-5e69-b509-a20241412298",
     "is_error": false
   },
   "metadata": {
@@ -289,7 +289,7 @@ expression: json_pretty
 {
   "id": "567b0f9a-f01a-5c07-bdc7-95883f7a6cd0",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "f7c25860-879e-54ca-a1c5-e004846f007b",
+  "parent_id": "cc37d53a-5dbd-5d29-8d6b-0b2774f23760",
   "timestamp": "2025-12-09T19:51:50.106Z",
   "type": "message",
   "content": {
@@ -426,7 +426,7 @@ expression: json_pretty
 }
 
 {
-  "id": "998fbedd-7389-5859-95ec-84ad5d727a70",
+  "id": "ffae36f5-0826-5662-92f4-bb901a7bf386",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
   "parent_id": "57126603-4d11-583c-86e2-5d867974b993",
   "timestamp": "2025-12-09T19:52:16.623Z",
@@ -485,9 +485,9 @@ expression: json_pretty
 }
 
 {
-  "id": "82297797-def9-5b8c-a106-d302877817f3",
+  "id": "296bbe29-5899-576d-9bf2-5675d73961b5",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "998fbedd-7389-5859-95ec-84ad5d727a70",
+  "parent_id": "ffae36f5-0826-5662-92f4-bb901a7bf386",
   "timestamp": "2025-12-09T19:52:16.623Z",
   "type": "tool_call",
   "content": {
@@ -549,14 +549,14 @@ expression: json_pretty
 }
 
 {
-  "id": "96f1565f-20ff-59ed-92b4-e4c7125e595e",
+  "id": "75dc131d-3e44-5703-9961-b871c7490c8e",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "82297797-def9-5b8c-a106-d302877817f3",
+  "parent_id": "296bbe29-5899-576d-9bf2-5675d73961b5",
   "timestamp": "2025-12-09T19:52:16.623Z",
   "type": "tool_result",
   "content": {
     "output": "[FunctionResponse { function_response: FunctionResponseInner { id: \"write_file-1765309936615-3e48006f9d7538\", name: \"write_file\", response: Object {\"output\": String(\"Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py.\")} } }]",
-    "tool_call_id": "82297797-def9-5b8c-a106-d302877817f3",
+    "tool_call_id": "296bbe29-5899-576d-9bf2-5675d73961b5",
     "is_error": false
   },
   "metadata": {
@@ -612,7 +612,7 @@ expression: json_pretty
 {
   "id": "3c51c270-ba64-58af-9a36-91090529a079",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "96f1565f-20ff-59ed-92b4-e4c7125e595e",
+  "parent_id": "75dc131d-3e44-5703-9961-b871c7490c8e",
   "timestamp": "2025-12-09T19:52:16.623Z",
   "type": "message",
   "content": {
@@ -737,7 +737,7 @@ expression: json_pretty
 }
 
 {
-  "id": "551226d6-77a7-50e4-b76a-8a4e4e65fb61",
+  "id": "151bb539-7124-51cf-bac9-b6eb70ffff8d",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
   "parent_id": "96d811e6-2d86-5605-984c-6308fb2f4045",
   "timestamp": "2025-12-09T19:52:21.382Z",
@@ -797,9 +797,9 @@ expression: json_pretty
 }
 
 {
-  "id": "9a1c5544-88ec-5d0a-abce-5d71a2a17a99",
+  "id": "0a556268-9f34-53f2-bda7-843362c1ebd1",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "551226d6-77a7-50e4-b76a-8a4e4e65fb61",
+  "parent_id": "151bb539-7124-51cf-bac9-b6eb70ffff8d",
   "timestamp": "2025-12-09T19:52:21.382Z",
   "type": "tool_call",
   "content": {
@@ -862,14 +862,14 @@ expression: json_pretty
 }
 
 {
-  "id": "385dabb1-412e-5e4c-b9d0-a8d55d887346",
+  "id": "af4a7504-c200-5e17-bff3-d2ce8bd40fa1",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "9a1c5544-88ec-5d0a-abce-5d71a2a17a99",
+  "parent_id": "0a556268-9f34-53f2-bda7-843362c1ebd1",
   "timestamp": "2025-12-09T19:52:21.382Z",
   "type": "tool_result",
   "content": {
     "output": "hello.text      myapp/",
-    "tool_call_id": "9a1c5544-88ec-5d0a-abce-5d71a2a17a99",
+    "tool_call_id": "0a556268-9f34-53f2-bda7-843362c1ebd1",
     "is_error": false
   },
   "metadata": {
@@ -926,7 +926,7 @@ expression: json_pretty
 {
   "id": "2975138f-194a-5619-bd89-99357b22e03b",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "385dabb1-412e-5e4c-b9d0-a8d55d887346",
+  "parent_id": "af4a7504-c200-5e17-bff3-d2ce8bd40fa1",
   "timestamp": "2025-12-09T19:52:21.382Z",
   "type": "message",
   "content": {
@@ -1053,7 +1053,7 @@ expression: json_pretty
 }
 
 {
-  "id": "c83dc4a8-888a-500d-9c72-7b6c580cb340",
+  "id": "1f8b431c-84f3-533f-88ec-566182335e62",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
   "parent_id": "b1fd5c4d-7069-5244-98ff-111babdbbd37",
   "timestamp": "2025-12-09T19:52:26.013Z",
@@ -1088,7 +1088,7 @@ expression: json_pretty
 {
   "id": "a4ca0056-6891-5e5b-b061-4becea11c37f",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "c83dc4a8-888a-500d-9c72-7b6c580cb340",
+  "parent_id": "1f8b431c-84f3-533f-88ec-566182335e62",
   "timestamp": "2025-12-09T19:52:26.013Z",
   "type": "message",
   "content": {
@@ -1178,7 +1178,7 @@ expression: json_pretty
 }
 
 {
-  "id": "fe964fb6-8c91-543d-a598-3b94112ba261",
+  "id": "254f166d-c6b5-568e-936b-9a90dfec3a0c",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
   "parent_id": "5843dc46-99b3-5e2c-b5eb-8e417daabc6d",
   "timestamp": "2025-12-09T19:53:16.156Z",
@@ -1238,9 +1238,9 @@ expression: json_pretty
 }
 
 {
-  "id": "af063a5c-89f1-598d-8c84-d2f3c2882a38",
+  "id": "8583cbc5-24d0-5863-a3d1-e86d8a4c31f4",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "fe964fb6-8c91-543d-a598-3b94112ba261",
+  "parent_id": "254f166d-c6b5-568e-936b-9a90dfec3a0c",
   "timestamp": "2025-12-09T19:53:16.156Z",
   "type": "tool_call",
   "content": {
@@ -1303,14 +1303,14 @@ expression: json_pretty
 }
 
 {
-  "id": "3196a98b-7acd-5f17-b87d-33000bd8001b",
+  "id": "39d28083-c7ae-5b01-8f82-747c9e45a8dc",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "af063a5c-89f1-598d-8c84-d2f3c2882a38",
+  "parent_id": "8583cbc5-24d0-5863-a3d1-e86d8a4c31f4",
   "timestamp": "2025-12-09T19:53:16.156Z",
   "type": "tool_result",
   "content": {
     "output": "error: target shim binary not found",
-    "tool_call_id": "af063a5c-89f1-598d-8c84-d2f3c2882a38",
+    "tool_call_id": "8583cbc5-24d0-5863-a3d1-e86d8a4c31f4",
     "is_error": false
   },
   "metadata": {
@@ -1367,7 +1367,7 @@ expression: json_pretty
 {
   "id": "2f6454bb-40b7-5ad5-99c6-01825d9824c4",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "3196a98b-7acd-5f17-b87d-33000bd8001b",
+  "parent_id": "39d28083-c7ae-5b01-8f82-747c9e45a8dc",
   "timestamp": "2025-12-09T19:53:16.156Z",
   "type": "message",
   "content": {
@@ -1494,7 +1494,7 @@ expression: json_pretty
 }
 
 {
-  "id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "id": "c39616ca-5761-53c3-8717-63c5217eb1ee",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
   "parent_id": "9105da31-957b-5548-9ed6-dec9929c2fd1",
   "timestamp": "2025-12-09T19:54:17.694Z",
@@ -1559,9 +1559,9 @@ expression: json_pretty
 }
 
 {
-  "id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "id": "ab0a3791-67d9-5785-afd9-1f3d08faf0cf",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "parent_id": "c39616ca-5761-53c3-8717-63c5217eb1ee",
   "timestamp": "2025-12-09T19:54:17.694Z",
   "type": "reasoning",
   "content": {
@@ -1624,9 +1624,9 @@ expression: json_pretty
 }
 
 {
-  "id": "af7dafd6-d03e-5510-800c-c2b889f50c89",
+  "id": "a1c9f82c-bad4-5331-9741-371b9f883006",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "parent_id": "ab0a3791-67d9-5785-afd9-1f3d08faf0cf",
   "timestamp": "2025-12-09T19:54:17.694Z",
   "type": "tool_call",
   "content": {
@@ -1694,14 +1694,14 @@ expression: json_pretty
 }
 
 {
-  "id": "d1e93c66-efbb-55df-a9b9-a6fd827c35e4",
+  "id": "adda3007-2dc5-54b2-90dd-c8f669b20baa",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "af7dafd6-d03e-5510-800c-c2b889f50c89",
+  "parent_id": "a1c9f82c-bad4-5331-9741-371b9f883006",
   "timestamp": "2025-12-09T19:54:17.694Z",
   "type": "tool_result",
   "content": {
     "output": "2",
-    "tool_call_id": "af7dafd6-d03e-5510-800c-c2b889f50c89",
+    "tool_call_id": "a1c9f82c-bad4-5331-9741-371b9f883006",
     "is_error": false
   },
   "metadata": {
@@ -1763,7 +1763,7 @@ expression: json_pretty
 {
   "id": "5042264d-0749-5199-be51-467fbdf6900c",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "d1e93c66-efbb-55df-a9b9-a6fd827c35e4",
+  "parent_id": "adda3007-2dc5-54b2-90dd-c8f669b20baa",
   "timestamp": "2025-12-09T19:54:17.694Z",
   "type": "message",
   "content": {
@@ -1900,7 +1900,7 @@ expression: json_pretty
 }
 
 {
-  "id": "7b68cc9a-2cde-51fa-9079-a4c755e9b7e4",
+  "id": "3855a508-a89d-574f-93a5-e129165682a5",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
   "parent_id": "b7760ec9-e5ad-5d13-a20b-d878edcd5497",
   "timestamp": "2025-12-09T19:54:21.715Z",
@@ -1935,7 +1935,7 @@ expression: json_pretty
 {
   "id": "1cd43dc5-28ea-5990-b05b-66fb7c35d128",
   "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
-  "parent_id": "7b68cc9a-2cde-51fa-9079-a4c755e9b7e4",
+  "parent_id": "3855a508-a89d-574f-93a5-e129165682a5",
   "timestamp": "2025-12-09T19:54:21.715Z",
   "type": "message",
   "content": {

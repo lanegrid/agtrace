@@ -3,7 +3,7 @@ source: crates/agtrace-providers/tests/provider_snapshots.rs
 expression: json_pretty
 ---
 {
-  "id": "e62dab63-a111-5448-9c25-d2d6eb6a585e",
+  "id": "c1f00fe5-e2ab-5aab-8248-0091dcc000d2",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": null,
   "timestamp": "2025-12-09T19:47:42.930Z",
@@ -40,9 +40,9 @@ expression: json_pretty
 }
 
 {
-  "id": "902c8db7-be54-53a2-a90e-717c7499b6e9",
+  "id": "d7c997b4-c775-5e55-a3cf-da2e9e182051",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "e62dab63-a111-5448-9c25-d2d6eb6a585e",
+  "parent_id": "c1f00fe5-e2ab-5aab-8248-0091dcc000d2",
   "timestamp": "2025-12-09T19:47:54.563Z",
   "type": "reasoning",
   "content": {
@@ -84,9 +84,9 @@ expression: json_pretty
 }
 
 {
-  "id": "8d4be065-dcae-5c38-b87c-74e939c50d66",
+  "id": "56a05cb9-335b-5dbc-aca1-ef39fd79c544",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "902c8db7-be54-53a2-a90e-717c7499b6e9",
+  "parent_id": "d7c997b4-c775-5e55-a3cf-da2e9e182051",
   "timestamp": "2025-12-09T19:47:55.174Z",
   "type": "message",
   "content": {
@@ -130,7 +130,7 @@ expression: json_pretty
 {
   "id": "8a4443da-a9aa-5397-901b-ff4c05b2db23",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "8d4be065-dcae-5c38-b87c-74e939c50d66",
+  "parent_id": "56a05cb9-335b-5dbc-aca1-ef39fd79c544",
   "timestamp": "2025-12-09T19:47:55.174Z",
   "type": "token_usage",
   "content": {
@@ -181,7 +181,7 @@ expression: json_pretty
 }
 
 {
-  "id": "91c45c30-4875-5cde-8f32-75231f3f3b67",
+  "id": "c2b08670-fd6b-5477-bf45-625605862090",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "8a4443da-a9aa-5397-901b-ff4c05b2db23",
   "timestamp": "2025-12-09T19:47:55.793Z",
@@ -237,7 +237,7 @@ expression: json_pretty
 {
   "id": "83a04a45-9a60-56d9-bfb3-d32ccfb67818",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "91c45c30-4875-5cde-8f32-75231f3f3b67",
+  "parent_id": "c2b08670-fd6b-5477-bf45-625605862090",
   "timestamp": "2025-12-09T19:47:55.793Z",
   "type": "token_usage",
   "content": {
@@ -293,14 +293,14 @@ expression: json_pretty
 }
 
 {
-  "id": "879d38d3-5f5e-5fb8-a870-c2ff20934e1b",
+  "id": "075b48f1-2346-51ff-b551-322efcb92a30",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "83a04a45-9a60-56d9-bfb3-d32ccfb67818",
   "timestamp": "2025-12-09T19:47:59.985Z",
   "type": "tool_result",
   "content": {
     "output": "",
-    "tool_call_id": "91c45c30-4875-5cde-8f32-75231f3f3b67",
+    "tool_call_id": "c2b08670-fd6b-5477-bf45-625605862090",
     "is_error": false
   },
   "metadata": {
@@ -330,9 +330,9 @@ expression: json_pretty
 }
 
 {
-  "id": "afac6f61-207f-5778-b5f3-8ea45dcba4ef",
+  "id": "5d46eb9d-7898-594c-b150-63051a5cb460",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "879d38d3-5f5e-5fb8-a870-c2ff20934e1b",
+  "parent_id": "075b48f1-2346-51ff-b551-322efcb92a30",
   "timestamp": "2025-12-09T19:48:04.245Z",
   "type": "reasoning",
   "content": {
@@ -374,9 +374,9 @@ expression: json_pretty
 }
 
 {
-  "id": "82da3dc6-7b60-52e9-8244-78b46bcfd971",
+  "id": "0c2f6c9a-db5d-524b-a374-310b37c527ab",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "afac6f61-207f-5778-b5f3-8ea45dcba4ef",
+  "parent_id": "5d46eb9d-7898-594c-b150-63051a5cb460",
   "timestamp": "2025-12-09T19:48:05.038Z",
   "type": "tool_call",
   "content": {
@@ -430,7 +430,7 @@ expression: json_pretty
 {
   "id": "84005dce-6d3f-527b-9671-4ebfe285fc8b",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "82da3dc6-7b60-52e9-8244-78b46bcfd971",
+  "parent_id": "0c2f6c9a-db5d-524b-a374-310b37c527ab",
   "timestamp": "2025-12-09T19:48:05.038Z",
   "type": "token_usage",
   "content": {
@@ -486,14 +486,14 @@ expression: json_pretty
 }
 
 {
-  "id": "91406fe0-47fb-5d92-804f-fd906c759570",
+  "id": "4cb860da-faa4-5477-a9c6-dfe2beec404a",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "84005dce-6d3f-527b-9671-4ebfe285fc8b",
   "timestamp": "2025-12-09T19:48:08.021Z",
   "type": "tool_result",
   "content": {
     "output": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
-    "tool_call_id": "82da3dc6-7b60-52e9-8244-78b46bcfd971",
+    "tool_call_id": "0c2f6c9a-db5d-524b-a374-310b37c527ab",
     "is_error": false
   },
   "metadata": {
@@ -523,9 +523,9 @@ expression: json_pretty
 }
 
 {
-  "id": "2d87bb6e-6ac0-55cf-9598-77fe14537661",
+  "id": "b87bf734-6477-5004-9847-6eaccbd28cb2",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "91406fe0-47fb-5d92-804f-fd906c759570",
+  "parent_id": "4cb860da-faa4-5477-a9c6-dfe2beec404a",
   "timestamp": "2025-12-09T19:48:13.213Z",
   "type": "reasoning",
   "content": {
@@ -567,9 +567,9 @@ expression: json_pretty
 }
 
 {
-  "id": "a2e1d0de-c451-5aef-9efa-e41304b74eab",
+  "id": "eda47c4e-685a-59b0-ba22-1febb603db77",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "2d87bb6e-6ac0-55cf-9598-77fe14537661",
+  "parent_id": "b87bf734-6477-5004-9847-6eaccbd28cb2",
   "timestamp": "2025-12-09T19:48:14.040Z",
   "type": "message",
   "content": {
@@ -613,7 +613,7 @@ expression: json_pretty
 {
   "id": "b30f5077-1a23-5367-a5d8-5d4397429280",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "a2e1d0de-c451-5aef-9efa-e41304b74eab",
+  "parent_id": "eda47c4e-685a-59b0-ba22-1febb603db77",
   "timestamp": "2025-12-09T19:48:14.040Z",
   "type": "token_usage",
   "content": {
@@ -664,7 +664,7 @@ expression: json_pretty
 }
 
 {
-  "id": "fc46b3d4-7c75-5dd0-8260-c00fed9a9a01",
+  "id": "9c152208-b962-5d87-891e-d66b5807b623",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "b30f5077-1a23-5367-a5d8-5d4397429280",
   "timestamp": "2025-12-09T19:48:17.460Z",
@@ -701,9 +701,9 @@ expression: json_pretty
 }
 
 {
-  "id": "b1f15ed9-7d5d-52a7-b954-161f4ea79536",
+  "id": "f3c66961-fbf5-57e8-8992-d6a43d870323",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "fc46b3d4-7c75-5dd0-8260-c00fed9a9a01",
+  "parent_id": "9c152208-b962-5d87-891e-d66b5807b623",
   "timestamp": "2025-12-09T19:48:22.893Z",
   "type": "reasoning",
   "content": {
@@ -745,9 +745,9 @@ expression: json_pretty
 }
 
 {
-  "id": "3b1ec225-6327-5606-8683-81ce070cf595",
+  "id": "1166eb3e-3449-5741-9784-8c85db9c59a2",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "b1f15ed9-7d5d-52a7-b954-161f4ea79536",
+  "parent_id": "f3c66961-fbf5-57e8-8992-d6a43d870323",
   "timestamp": "2025-12-09T19:48:23.391Z",
   "type": "tool_call",
   "content": {
@@ -801,7 +801,7 @@ expression: json_pretty
 {
   "id": "9ad4fb49-3261-5539-987c-6c8710e554af",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "3b1ec225-6327-5606-8683-81ce070cf595",
+  "parent_id": "1166eb3e-3449-5741-9784-8c85db9c59a2",
   "timestamp": "2025-12-09T19:48:23.391Z",
   "type": "token_usage",
   "content": {
@@ -857,14 +857,14 @@ expression: json_pretty
 }
 
 {
-  "id": "0f550ca0-e004-545d-96e7-e2aca1bf6fa8",
+  "id": "556d5423-8799-5b23-8643-eef0c9224d1a",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "9ad4fb49-3261-5539-987c-6c8710e554af",
   "timestamp": "2025-12-09T19:48:27.975Z",
   "type": "tool_result",
   "content": {
     "output": "error: target shim binary not found",
-    "tool_call_id": "3b1ec225-6327-5606-8683-81ce070cf595",
+    "tool_call_id": "1166eb3e-3449-5741-9784-8c85db9c59a2",
     "is_error": true
   },
   "metadata": {
@@ -894,9 +894,9 @@ expression: json_pretty
 }
 
 {
-  "id": "a932e9b5-1141-5d2b-ba99-98a3076649f8",
+  "id": "bb201340-e5d4-57c8-820f-7b7d8b199d60",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "0f550ca0-e004-545d-96e7-e2aca1bf6fa8",
+  "parent_id": "556d5423-8799-5b23-8643-eef0c9224d1a",
   "timestamp": "2025-12-09T19:48:30.651Z",
   "type": "reasoning",
   "content": {
@@ -938,9 +938,9 @@ expression: json_pretty
 }
 
 {
-  "id": "1f5b409c-02be-53be-8801-58680a675e83",
+  "id": "59db6f3f-1452-5b33-b038-5b3cb9953355",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "a932e9b5-1141-5d2b-ba99-98a3076649f8",
+  "parent_id": "bb201340-e5d4-57c8-820f-7b7d8b199d60",
   "timestamp": "2025-12-09T19:48:31.225Z",
   "type": "tool_call",
   "content": {
@@ -994,7 +994,7 @@ expression: json_pretty
 {
   "id": "7c24fe41-b620-5275-bfa4-6144bfc9a885",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "1f5b409c-02be-53be-8801-58680a675e83",
+  "parent_id": "59db6f3f-1452-5b33-b038-5b3cb9953355",
   "timestamp": "2025-12-09T19:48:31.225Z",
   "type": "token_usage",
   "content": {
@@ -1050,14 +1050,14 @@ expression: json_pretty
 }
 
 {
-  "id": "b063c6c8-859f-5dc2-9a55-6d28dba98287",
+  "id": "d77e761e-5be1-57f5-a9ac-d3d1936b64f7",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "7c24fe41-b620-5275-bfa4-6144bfc9a885",
   "timestamp": "2025-12-09T19:48:33.883Z",
   "type": "tool_result",
   "content": {
     "output": "2",
-    "tool_call_id": "1f5b409c-02be-53be-8801-58680a675e83",
+    "tool_call_id": "59db6f3f-1452-5b33-b038-5b3cb9953355",
     "is_error": false
   },
   "metadata": {
@@ -1087,9 +1087,9 @@ expression: json_pretty
 }
 
 {
-  "id": "2f52a286-26df-5362-be55-b2c013e2df65",
+  "id": "e6d2c10f-4df0-5290-9c2d-91c93652d9f4",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "b063c6c8-859f-5dc2-9a55-6d28dba98287",
+  "parent_id": "d77e761e-5be1-57f5-a9ac-d3d1936b64f7",
   "timestamp": "2025-12-09T19:48:38.078Z",
   "type": "reasoning",
   "content": {
@@ -1131,9 +1131,9 @@ expression: json_pretty
 }
 
 {
-  "id": "9b637e54-030c-5bd4-9fef-2b6a3845dfd0",
+  "id": "54a05448-bc6e-5bc3-8b53-f48f36c0da2b",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "2f52a286-26df-5362-be55-b2c013e2df65",
+  "parent_id": "e6d2c10f-4df0-5290-9c2d-91c93652d9f4",
   "timestamp": "2025-12-09T19:48:38.356Z",
   "type": "message",
   "content": {
@@ -1177,7 +1177,7 @@ expression: json_pretty
 {
   "id": "cfb2637d-f4f3-57bc-8830-bcc3c4c23882",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "9b637e54-030c-5bd4-9fef-2b6a3845dfd0",
+  "parent_id": "54a05448-bc6e-5bc3-8b53-f48f36c0da2b",
   "timestamp": "2025-12-09T19:48:38.356Z",
   "type": "token_usage",
   "content": {
@@ -1228,7 +1228,7 @@ expression: json_pretty
 }
 
 {
-  "id": "e1237478-9507-54f9-b88a-3665d4504012",
+  "id": "03b9e4cd-b044-5a37-88ac-6e102614fa16",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "cfb2637d-f4f3-57bc-8830-bcc3c4c23882",
   "timestamp": "2025-12-09T19:48:50.228Z",
@@ -1261,9 +1261,9 @@ expression: json_pretty
 }
 
 {
-  "id": "e85d9562-b4a2-5edc-8cf9-497332de20b0",
+  "id": "fc2e140f-2e4f-52ea-b29c-d72d23885e80",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "e1237478-9507-54f9-b88a-3665d4504012",
+  "parent_id": "03b9e4cd-b044-5a37-88ac-6e102614fa16",
   "timestamp": "2025-12-09T19:48:50.204Z",
   "type": "user",
   "content": {
@@ -1294,9 +1294,9 @@ expression: json_pretty
 }
 
 {
-  "id": "0eb92b3f-678a-5a07-b012-558efbf37884",
+  "id": "58df7ea3-a3a9-54df-ad65-cdb235894ae8",
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "e85d9562-b4a2-5edc-8cf9-497332de20b0",
+  "parent_id": "fc2e140f-2e4f-52ea-b29c-d72d23885e80",
   "timestamp": "2025-12-09T19:48:50.204Z",
   "type": "user",
   "content": {

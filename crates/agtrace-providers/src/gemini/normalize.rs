@@ -47,10 +47,11 @@ pub(crate) fn normalize_gemini_session(
                 let base_id = &gemini_msg.id;
 
                 // 1. Reasoning events (thoughts)
-                for thought in &gemini_msg.thoughts {
+                for (idx, thought) in gemini_msg.thoughts.iter().enumerate() {
+                    let indexed_base_id = format!("{}-thought-{}", base_id, idx);
                     builder.build_and_push(
                         &mut events,
-                        base_id,
+                        &indexed_base_id,
                         SemanticSuffix::Reasoning,
                         timestamp,
                         EventPayload::Reasoning(ReasoningPayload {
@@ -61,11 +62,13 @@ pub(crate) fn normalize_gemini_session(
                 }
 
                 // 2. Tool calls and results
-                for tool_call in &gemini_msg.tool_calls {
+                for (idx, tool_call) in gemini_msg.tool_calls.iter().enumerate() {
+                    let indexed_base_id = format!("{}-tool-{}", base_id, idx);
+
                     // ToolCall event
                     let tool_call_uuid = builder.build_and_push(
                         &mut events,
-                        base_id,
+                        &indexed_base_id,
                         SemanticSuffix::ToolCall,
                         timestamp,
                         EventPayload::ToolCall(ToolCallPayload {
@@ -94,7 +97,7 @@ pub(crate) fn normalize_gemini_session(
 
                         builder.build_and_push(
                             &mut events,
-                            base_id,
+                            &indexed_base_id,
                             SemanticSuffix::ToolResult,
                             timestamp,
                             EventPayload::ToolResult(ToolResultPayload {
