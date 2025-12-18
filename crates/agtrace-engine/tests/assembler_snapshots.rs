@@ -69,6 +69,7 @@ fn test_session_assembly_structure() {
             trace_id,
             parent_id: None,
             timestamp: base_time,
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::User(UserPayload {
                 text: "Hello".to_string(),
             }),
@@ -79,6 +80,7 @@ fn test_session_assembly_structure() {
             trace_id,
             parent_id: Some(user_id),
             timestamp: base_time,
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::Reasoning(ReasoningPayload {
                 text: "I should respond".to_string(),
             }),
@@ -89,6 +91,7 @@ fn test_session_assembly_structure() {
             trace_id,
             parent_id: Some(reasoning_id),
             timestamp: base_time,
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolCall(ToolCallPayload {
                 name: "bash".to_string(),
                 arguments: serde_json::json!({"command": "echo hello"}),
@@ -101,6 +104,7 @@ fn test_session_assembly_structure() {
             trace_id,
             parent_id: Some(tool1_id),
             timestamp: base_time,
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: "hello".to_string(),
                 tool_call_id: tool1_id,
@@ -113,6 +117,7 @@ fn test_session_assembly_structure() {
             trace_id,
             parent_id: Some(tool_result1_id),
             timestamp: base_time,
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::Message(MessagePayload {
                 text: "Done!".to_string(),
             }),
@@ -123,6 +128,7 @@ fn test_session_assembly_structure() {
             trace_id,
             parent_id: Some(message_id),
             timestamp: base_time,
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::TokenUsage(TokenUsagePayload {
                 input_tokens: 100,
                 output_tokens: 50,

@@ -70,6 +70,7 @@ fn test_tool_matching_accuracy() {
             trace_id,
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::User(UserPayload {
                 text: "Run three commands".to_string(),
             }),
@@ -81,6 +82,7 @@ fn test_tool_matching_accuracy() {
             trace_id,
             parent_id: Some(user_id),
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolCall(ToolCallPayload {
                 name: "bash".to_string(),
                 arguments: serde_json::json!({"command": "ls"}),
@@ -93,6 +95,7 @@ fn test_tool_matching_accuracy() {
             trace_id,
             parent_id: Some(tool1_id),
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolCall(ToolCallPayload {
                 name: "grep".to_string(),
                 arguments: serde_json::json!({"pattern": "test"}),
@@ -105,6 +108,7 @@ fn test_tool_matching_accuracy() {
             trace_id,
             parent_id: Some(tool2_id),
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolCall(ToolCallPayload {
                 name: "python".to_string(),
                 arguments: serde_json::json!({"command": "print('hello')"}),
@@ -118,6 +122,7 @@ fn test_tool_matching_accuracy() {
             trace_id,
             parent_id: Some(tool3_id),
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: "hello".to_string(),
                 tool_call_id: tool3_id,
@@ -130,6 +135,7 @@ fn test_tool_matching_accuracy() {
             trace_id,
             parent_id: Some(tool3_id),
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: "file1.txt\nfile2.txt".to_string(),
                 tool_call_id: tool1_id,
@@ -142,6 +148,7 @@ fn test_tool_matching_accuracy() {
             trace_id,
             parent_id: Some(tool3_id),
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: "match found".to_string(),
                 tool_call_id: tool2_id,

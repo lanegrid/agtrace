@@ -395,6 +395,7 @@ mod tests {
                 trace_id,
                 parent_id: None,
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::User(UserPayload {
                     text: "Calculate 1+1".to_string(),
                 }),
@@ -405,6 +406,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(user_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::ToolCall(ToolCallPayload {
                     name: "python".to_string(),
                     arguments: serde_json::json!({"command": "print(1+1)"}),
@@ -417,6 +419,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(tool_call_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::ToolResult(ToolResultPayload {
                     output: "2".to_string(),
                     tool_call_id,
@@ -429,6 +432,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(tool_result_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::Message(MessagePayload {
                     text: "The answer is 2".to_string(),
                 }),
@@ -465,6 +469,7 @@ mod tests {
                 trace_id,
                 parent_id: None,
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::User(UserPayload {
                     text: "test".to_string(),
                 }),
@@ -475,6 +480,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(user_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::ToolCall(ToolCallPayload {
                     name: "bash".to_string(),
                     arguments: serde_json::json!({"command": "ls"}),
@@ -487,6 +493,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(tool1_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::ToolCall(ToolCallPayload {
                     name: "grep".to_string(),
                     arguments: serde_json::json!({"pattern": "test"}),
@@ -500,6 +507,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(tool2_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::ToolResult(ToolResultPayload {
                     output: "match found".to_string(),
                     tool_call_id: tool2_id,
@@ -512,6 +520,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(result2_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::ToolResult(ToolResultPayload {
                     output: "file1.txt\nfile2.txt".to_string(),
                     tool_call_id: tool1_id,
@@ -545,6 +554,7 @@ mod tests {
                 trace_id,
                 parent_id: None,
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::User(UserPayload {
                     text: "hello".to_string(),
                 }),
@@ -555,6 +565,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(user_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::Message(MessagePayload {
                     text: "hi".to_string(),
                 }),
@@ -565,6 +576,7 @@ mod tests {
                 trace_id,
                 parent_id: Some(message_id),
                 timestamp: Utc::now(),
+                stream_id: agtrace_types::StreamId::Main,
                 payload: EventPayload::TokenUsage(TokenUsagePayload {
                     input_tokens: 100,
                     output_tokens: 50,
