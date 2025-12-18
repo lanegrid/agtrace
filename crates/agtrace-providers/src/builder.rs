@@ -36,9 +36,10 @@ pub struct EventBuilder {
     /// Current trace/session ID
     pub trace_id: Uuid,
 
-    /// Most recent event ID in time-series chain
-    /// Used as parent_id for next event
-    last_event_id: Option<Uuid>,
+    /// Most recent event ID per stream in time-series chain
+    /// Maps stream_id -> latest event UUID for that stream
+    /// Enables independent parent chains for main/sidechain/subagent streams
+    stream_tips: HashMap<StreamId, Uuid>,
 
     /// Provider tool call ID -> UUID mapping
     /// Allows O(1) lookup when creating ToolResult events
@@ -49,7 +50,7 @@ impl EventBuilder {
     pub fn new(trace_id: Uuid) -> Self {
         Self {
             trace_id,
-            last_event_id: None,
+            stream_tips: HashMap::new(),
             tool_map: HashMap::new(),
         }
     }
@@ -57,6 +58,7 @@ impl EventBuilder {
     /// Create and push event with deterministic UUID generation
     /// Uses UUID v5 with trace_id as namespace and "base_id:suffix" as name
     /// Returns the generated event ID
+    #[allow(clippy::too_many_arguments)]
     pub fn build_and_push(
         &mut self,
         events: &mut Vec<AgentEvent>,
@@ -65,23 +67,30 @@ impl EventBuilder {
         timestamp: DateTime<Utc>,
         payload: EventPayload,
         metadata: Option<serde_json::Value>,
+        stream_id: StreamId,
     ) -> Uuid {
         // Generate deterministic UUID: trace_id namespace + "base_id:suffix" name
         let name = format!("{}:{}", base_id, suffix.as_str());
         let id = Uuid::new_v5(&self.trace_id, name.as_bytes());
 
+        // Get parent_id from stream-specific tip
+        let parent_id = self.stream_tips.get(&stream_id).copied();
+
         let event = AgentEvent {
             id,
             trace_id: self.trace_id,
-            parent_id: self.last_event_id,
+            parent_id,
             timestamp,
+            stream_id: stream_id.clone(),
             payload,
             metadata,
         };
 
         let event_id = event.id;
         events.push(event);
-        self.last_event_id = Some(event_id);
+
+        // Update stream tip
+        self.stream_tips.insert(stream_id, event_id);
         event_id
     }
 
@@ -95,11 +104,11 @@ impl EventBuilder {
         self.tool_map.get(provider_id).copied()
     }
 
-    /// Reset the event chain (e.g., for new user message)
+    /// Reset the event chain for a specific stream
     /// Not currently used, but available if needed for future logic
     #[allow(dead_code)]
-    pub fn reset_chain(&mut self) {
-        self.last_event_id = None;
+    pub fn reset_stream(&mut self, stream_id: &StreamId) {
+        self.stream_tips.remove(stream_id);
     }
 }
 
@@ -123,9 +132,11 @@ mod tests {
                 text: "Hello".to_string(),
             }),
             None,
+            StreamId::Main,
         );
         assert_eq!(events[0].parent_id, None);
         assert_eq!(events[0].trace_id, trace_id);
+        assert_eq!(events[0].stream_id, StreamId::Main);
 
         // Second event has first as parent
         let event2_id = builder.build_and_push(
@@ -137,6 +148,7 @@ mod tests {
                 text: "Hi".to_string(),
             }),
             None,
+            StreamId::Main,
         );
         assert_eq!(events[1].parent_id, Some(event1_id));
 
@@ -152,8 +164,64 @@ mod tests {
                 provider_call_id: Some("call_123".to_string()),
             }),
             None,
+            StreamId::Main,
         );
         assert_eq!(events[2].parent_id, Some(event2_id));
+    }
+
+    #[test]
+    fn test_multi_stream_chains() {
+        let trace_id = Uuid::new_v4();
+        let mut builder = EventBuilder::new(trace_id);
+        let mut events = Vec::new();
+
+        // Main stream events
+        let main1_id = builder.build_and_push(
+            &mut events,
+            "main-1",
+            SemanticSuffix::User,
+            Utc::now(),
+            EventPayload::User(UserPayload {
+                text: "Main".to_string(),
+            }),
+            None,
+            StreamId::Main,
+        );
+
+        // Sidechain stream events
+        let _side1_id = builder.build_and_push(
+            &mut events,
+            "side-1",
+            SemanticSuffix::User,
+            Utc::now(),
+            EventPayload::User(UserPayload {
+                text: "Sidechain".to_string(),
+            }),
+            None,
+            StreamId::Sidechain {
+                agent_id: "test123".to_string(),
+            },
+        );
+
+        // Another main stream event (should chain from main1)
+        let _main2_id = builder.build_and_push(
+            &mut events,
+            "main-2",
+            SemanticSuffix::Message,
+            Utc::now(),
+            EventPayload::Message(MessagePayload {
+                text: "Main 2".to_string(),
+            }),
+            None,
+            StreamId::Main,
+        );
+
+        // Verify main stream chain
+        assert_eq!(events[0].parent_id, None); // main1
+        assert_eq!(events[2].parent_id, Some(main1_id)); // main2
+
+        // Verify sidechain has independent chain
+        assert_eq!(events[1].parent_id, None); // side1 (no parent in sidechain)
     }
 
     #[test]

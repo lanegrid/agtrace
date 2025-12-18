@@ -3,6 +3,7 @@ source: crates/agtrace-providers/tests/provider_snapshots.rs
 expression: metadata_json_pretty
 ---
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isMeta": false,
@@ -30,6 +31,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -64,6 +66,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -98,6 +101,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -132,6 +136,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -171,6 +176,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -210,6 +216,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isMeta": false,
@@ -235,6 +242,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -269,6 +277,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -308,6 +317,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -347,6 +357,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isMeta": false,
@@ -372,6 +383,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -406,6 +418,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -440,6 +453,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -474,6 +488,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isMeta": false,
@@ -501,6 +516,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -535,6 +551,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -574,6 +591,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -613,6 +631,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isMeta": false,
@@ -638,6 +657,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -672,6 +692,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -711,6 +732,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -750,6 +772,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample/myapp",
   "gitBranch": "claude",
   "isMeta": false,
@@ -775,6 +798,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample/myapp",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -809,6 +833,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample/myapp",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -843,6 +868,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample/myapp",
   "gitBranch": "claude",
   "isSidechain": false,
@@ -877,6 +903,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample/myapp",
   "gitBranch": "claude",
   "isMeta": true,
@@ -900,6 +927,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample/myapp",
   "gitBranch": "claude",
   "isMeta": false,
@@ -923,6 +951,7 @@ expression: metadata_json_pretty
 }
 
 {
+  "agentId": null,
   "cwd": "/Users/zawakin/agent-sample/myapp",
   "gitBranch": "claude",
   "isMeta": false,

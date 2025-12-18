@@ -132,7 +132,7 @@ mod tests {
     use crate::reactor::SessionState;
     use crate::token_usage::ContextWindowUsage;
     use agtrace_types::{
-        AgentEvent, EventPayload, TokenUsageDetails, TokenUsagePayload, UserPayload,
+        AgentEvent, EventPayload, StreamId, TokenUsageDetails, TokenUsagePayload, UserPayload,
     };
     use chrono::Utc;
 
@@ -146,6 +146,7 @@ mod tests {
             trace_id,
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::TokenUsage(TokenUsagePayload {
                 input_tokens,
                 output_tokens,
@@ -172,6 +173,7 @@ mod tests {
             trace_id,
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::User(UserPayload {
                 text: "test".to_string(),
             }),

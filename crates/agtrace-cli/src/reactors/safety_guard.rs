@@ -68,7 +68,7 @@ impl Reactor for SafetyGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::{AgentEvent, EventPayload, ToolCallPayload, UserPayload};
+    use agtrace_types::{AgentEvent, EventPayload, StreamId, ToolCallPayload, UserPayload};
     use chrono::Utc;
 
     fn create_tool_call_event(args: serde_json::Value) -> AgentEvent {
@@ -81,6 +81,7 @@ mod tests {
             trace_id,
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::ToolCall(ToolCallPayload {
                 name: "Read".to_string(),
                 arguments: args,
@@ -100,6 +101,7 @@ mod tests {
             trace_id,
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::User(UserPayload {
                 text: "test".to_string(),
             }),

@@ -34,14 +34,10 @@ pub fn handle(
     // Handle raw mode (display raw files without normalization)
     if raw {
         let log_files = db.get_session_files(&session_id)?;
-        let main_files: Vec<_> = log_files
-            .into_iter()
-            .filter(|f| f.role != "sidechain")
-            .collect();
 
         let mut contents = Vec::new();
 
-        for log_file in &main_files {
+        for log_file in &log_files {
             let content = fs::read_to_string(&log_file.path)
                 .with_context(|| format!("Failed to read file: {}", log_file.path))?;
             contents.push(RawFileContent {

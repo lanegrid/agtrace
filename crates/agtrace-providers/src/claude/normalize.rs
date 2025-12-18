@@ -5,6 +5,17 @@ use uuid::Uuid;
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
 
+/// Determine StreamId from Claude record fields
+fn determine_stream_id(is_sidechain: bool, agent_id: &Option<String>) -> StreamId {
+    if is_sidechain {
+        StreamId::Sidechain {
+            agent_id: agent_id.clone().unwrap_or_else(|| "unknown".to_string()),
+        }
+    } else {
+        StreamId::Main
+    }
+}
+
 /// Normalize Claude session records to events
 /// Handles message.content[] blocks, thinking -> Reasoning, and TokenUsage extraction
 pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
@@ -29,6 +40,8 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 let timestamp = parse_timestamp(&user_record.timestamp);
                 let raw_value = serde_json::to_value(&user_record).ok();
                 let base_id = &user_record.uuid;
+                let stream_id =
+                    determine_stream_id(user_record.is_sidechain, &user_record.agent_id);
 
                 // Process user content blocks
                 for (idx, content) in user_record.message.content.iter().enumerate() {
@@ -43,6 +56,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 timestamp,
                                 EventPayload::User(UserPayload { text: text.clone() }),
                                 raw_value.clone(),
+                                stream_id.clone(),
                             );
                         }
 
@@ -71,6 +85,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         is_error: *is_error,
                                     }),
                                     raw_value.clone(),
+                                    stream_id.clone(),
                                 );
                             }
                         }
@@ -91,6 +106,8 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 let timestamp = parse_timestamp(&asst_record.timestamp);
                 let raw_value = serde_json::to_value(&asst_record).ok();
                 let base_id = &asst_record.uuid;
+                let stream_id =
+                    determine_stream_id(asst_record.is_sidechain, &asst_record.agent_id);
 
                 // Track the last generation event for TokenUsage sidecar
                 let mut last_generation_event_id: Option<Uuid> = None;
@@ -111,6 +128,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     text: thinking.clone(),
                                 }),
                                 raw_value.clone(),
+                                stream_id.clone(),
                             );
                         }
 
@@ -129,6 +147,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     provider_call_id: Some(id.clone()),
                                 }),
                                 raw_value.clone(),
+                                stream_id.clone(),
                             );
 
                             // Register tool call mapping
@@ -145,6 +164,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 timestamp,
                                 EventPayload::Message(MessagePayload { text: text.clone() }),
                                 raw_value.clone(),
+                                stream_id.clone(),
                             );
                             last_generation_event_id = Some(event_id);
                         }
@@ -167,6 +187,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         is_error: *is_error,
                                     }),
                                     raw_value.clone(),
+                                    stream_id.clone(),
                                 );
                             }
                         }
@@ -203,6 +224,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 }),
                             }),
                             raw_value.clone(),
+                            stream_id.clone(),
                         );
                     }
                 }
@@ -247,6 +269,7 @@ mod tests {
             },
             is_sidechain: false,
             is_meta: false,
+            agent_id: None,
             cwd: None,
             git_branch: None,
             user_type: None,
@@ -295,6 +318,7 @@ mod tests {
                 }),
             },
             is_sidechain: false,
+            agent_id: None,
             cwd: None,
             git_branch: None,
             user_type: None,
@@ -365,6 +389,7 @@ mod tests {
                 }),
             },
             is_sidechain: false,
+            agent_id: None,
             cwd: None,
             git_branch: None,
             user_type: None,

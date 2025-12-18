@@ -7,7 +7,7 @@ use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMet
 use agtrace_types::paths_equal;
 use agtrace_types::AgentEvent;
 use anyhow::Result;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub use self::io::{
@@ -130,5 +130,29 @@ impl LogProvider for CodexProvider {
         }
 
         Ok(sessions)
+    }
+
+    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
+        let mut matching_files = Vec::new();
+
+        // Codex stores sessions as rollout-*.jsonl files in date-based directories
+        // Performance: Typical ~5ms for directory scan
+        for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+
+            // Quick filter: must be a rollout-*.jsonl file
+            if !self.can_handle(path) {
+                continue;
+            }
+
+            // Extract session_id from file header
+            if let Ok(header) = extract_codex_header(path) {
+                if header.session_id.as_deref() == Some(session_id) {
+                    matching_files.push(path.to_path_buf());
+                }
+            }
+        }
+
+        Ok(matching_files)
     }
 }

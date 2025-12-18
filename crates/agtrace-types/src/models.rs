@@ -27,6 +27,32 @@ use uuid::Uuid;
 // - Real-time token sync: Codex-style delayed tokens handled via eventual consistency (sidecar)
 // - Gemini token breakdown: Total usage attached to final generation event (no speculation)
 
+/// Stream identifier for multi-stream sessions
+/// Enables parallel conversation streams within same session (e.g., background reasoning, subagents)
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(tag = "stream_type", content = "stream_data")]
+#[serde(rename_all = "snake_case")]
+pub enum StreamId {
+    /// Main conversation stream (default)
+    #[default]
+    Main,
+    /// Claude sidechain (background agent with specific ID)
+    Sidechain { agent_id: String },
+    /// Codex subagent (e.g., "review", "test", etc.)
+    Subagent { name: String },
+}
+
+impl StreamId {
+    /// Get string representation for debugging/logging
+    pub fn as_str(&self) -> String {
+        match self {
+            StreamId::Main => "main".to_string(),
+            StreamId::Sidechain { agent_id } => format!("sidechain:{}", agent_id),
+            StreamId::Subagent { name } => format!("subagent:{}", name),
+        }
+    }
+}
+
 /// Agent event
 /// Maps 1:1 to database table row
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,6 +69,11 @@ pub struct AgentEvent {
 
     /// Event timestamp (UTC)
     pub timestamp: DateTime<Utc>,
+
+    /// Stream identifier (main, sidechain, subagent)
+    /// Enables parallel conversation streams within same session
+    #[serde(default)]
+    pub stream_id: StreamId,
 
     /// Event type and content (flattened enum)
     #[serde(flatten)]
@@ -202,6 +233,7 @@ mod tests {
             trace_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::User(UserPayload {
                 text: "Hello".to_string(),
             }),
@@ -224,6 +256,7 @@ mod tests {
             trace_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::ToolCall(ToolCallPayload {
                 name: "bash".to_string(),
                 arguments: serde_json::json!({"command": "ls"}),
@@ -238,6 +271,7 @@ mod tests {
             trace_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::Message(MessagePayload {
                 text: "Done".to_string(),
             }),
@@ -250,6 +284,7 @@ mod tests {
             trace_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::User(UserPayload {
                 text: "Hi".to_string(),
             }),
@@ -265,6 +300,7 @@ mod tests {
             trace_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::TokenUsage(TokenUsagePayload {
                 input_tokens: 100,
                 output_tokens: 50,
@@ -280,11 +316,31 @@ mod tests {
             trace_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: StreamId::Main,
             payload: EventPayload::User(UserPayload {
                 text: "Hi".to_string(),
             }),
             metadata: None,
         };
         assert!(user.is_context_event());
+    }
+
+    #[test]
+    fn test_stream_id_variants() {
+        // Test Main stream
+        let main_stream = StreamId::Main;
+        assert_eq!(main_stream.as_str(), "main");
+
+        // Test Sidechain stream
+        let sidechain_stream = StreamId::Sidechain {
+            agent_id: "abc123".to_string(),
+        };
+        assert_eq!(sidechain_stream.as_str(), "sidechain:abc123");
+
+        // Test Subagent stream
+        let subagent_stream = StreamId::Subagent {
+            name: "review".to_string(),
+        };
+        assert_eq!(subagent_stream.as_str(), "subagent:review");
     }
 }

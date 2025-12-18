@@ -62,6 +62,36 @@ impl TestFixture {
         Ok(())
     }
 
+    /// Copy sample file to a Claude-encoded project directory
+    /// Claude encodes project paths like: /Users/foo/bar -> -Users-foo-bar
+    pub fn copy_sample_file_to_project(
+        &self,
+        sample_name: &str,
+        dest_name: &str,
+        project_dir: &str,
+    ) -> anyhow::Result<()> {
+        let samples_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("agtrace-providers/tests/samples");
+
+        let source = samples_dir.join(sample_name);
+
+        // Encode project directory (Claude format)
+        let encoded = project_dir
+            .replace(['/', '.'], "-")
+            .trim_start_matches('-')
+            .to_string();
+        let encoded_dir = format!("-{}", encoded);
+
+        let project_log_dir = self.log_root.join(encoded_dir);
+        fs::create_dir_all(&project_log_dir)?;
+
+        let dest = project_log_dir.join(dest_name);
+        fs::copy(source, dest)?;
+        Ok(())
+    }
+
     pub fn command(&self) -> Command {
         let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("agtrace");
         cmd.arg("--data-dir")

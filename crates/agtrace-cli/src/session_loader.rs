@@ -9,16 +9,14 @@ pub struct SessionLoader<'a> {
 }
 
 #[derive(Default)]
-pub struct LoadOptions {
-    pub include_sidechain: bool,
-}
+pub struct LoadOptions {}
 
 impl<'a> SessionLoader<'a> {
     pub fn new(db: &'a Database) -> Self {
         Self { db }
     }
 
-    pub fn load_events(&self, session_id: &str, options: &LoadOptions) -> Result<Vec<AgentEvent>> {
+    pub fn load_events(&self, session_id: &str, _options: &LoadOptions) -> Result<Vec<AgentEvent>> {
         let resolved_id = self.resolve_session_id(session_id)?;
         let log_files = self.db.get_session_files(&resolved_id)?;
 
@@ -26,22 +24,9 @@ impl<'a> SessionLoader<'a> {
             anyhow::bail!("Session not found: {}", session_id);
         }
 
-        let files_to_process: Vec<_> = if options.include_sidechain {
-            log_files
-        } else {
-            log_files
-                .into_iter()
-                .filter(|f| f.role != "sidechain")
-                .collect()
-        };
-
-        if files_to_process.is_empty() {
-            anyhow::bail!("No log files found for session: {}", session_id);
-        }
-
         let mut all_events = Vec::new();
 
-        for log_file in &files_to_process {
+        for log_file in &log_files {
             let path = Path::new(&log_file.path);
 
             // Call provider-specific normalization functions

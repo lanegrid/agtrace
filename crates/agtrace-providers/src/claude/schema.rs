@@ -40,6 +40,8 @@ pub(crate) struct UserRecord {
     #[serde(default)]
     pub is_meta: bool,
     #[serde(default)]
+    pub agent_id: Option<String>,
+    #[serde(default)]
     pub cwd: Option<String>,
     #[serde(default)]
     pub git_branch: Option<String>,
@@ -108,6 +110,8 @@ pub(crate) struct AssistantRecord {
     pub message: AssistantMessage,
     #[serde(default)]
     pub is_sidechain: bool,
+    #[serde(default)]
+    pub agent_id: Option<String>,
     #[serde(default)]
     pub cwd: Option<String>,
     #[serde(default)]

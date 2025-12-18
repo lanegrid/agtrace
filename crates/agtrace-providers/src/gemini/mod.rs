@@ -172,4 +172,32 @@ impl LogProvider for GeminiProvider {
 
         Ok(sessions.into_values().collect())
     }
+
+    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
+        let mut matching_files = Vec::new();
+
+        // Gemini stores sessions as session-*.json files in project hash directories
+        // Performance: Typical ~5ms for directory scan
+        for entry in WalkDir::new(log_root)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+
+            // Quick filter: must be a session-*.json file
+            if !self.can_handle(path) {
+                continue;
+            }
+
+            // Extract session_id from file header
+            if let Ok(header) = extract_gemini_header(path) {
+                if header.session_id.as_deref() == Some(session_id) {
+                    matching_files.push(path.to_path_buf());
+                }
+            }
+        }
+
+        Ok(matching_files)
+    }
 }

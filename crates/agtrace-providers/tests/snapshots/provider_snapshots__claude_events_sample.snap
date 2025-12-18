@@ -7,11 +7,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": null,
   "timestamp": "2025-12-09T19:47:42.930Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "user",
   "content": {
     "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isMeta": false,
@@ -44,11 +48,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "c1f00fe5-e2ab-5aab-8248-0091dcc000d2",
   "timestamp": "2025-12-09T19:47:54.563Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "reasoning",
   "content": {
     "text": "The user wants me to:\n1. Add a myapp directory\n2. Create myapp/hoge.py which shows the result of print(1+1)\n\nThis is a straightforward task with two steps:\n1. Create the directory\n2. Create the file with the code\n\nThis is simple enough that I don't need a todo list - it's just 2 quick steps. Let me first check if the myapp directory exists, then create it and the file.\n\nActually, I should use the Write tool to create the file. The Write tool will create the directory if it doesn't exist. Let me just create the file directly.\n\nWait, I should verify first if the directory exists. Actually, looking at the instructions, I should prefer using the dedicated tools. I can just use Write to create the file, and it should handle creating the directory if needed. But let me check first with ls to see if myapp exists.\n\nActually, let me just create the directory first with bash, then write the file. That's clearer.\n\nActually, looking at the instructions more carefully: \"Before executing the command, please follow these steps: Directory Verification: If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\"\n\nSo I should first verify the parent directory (which is the working directory /Users/zawakin/agent-sample). I can see from the env that this is the working directory, so I know the parent exists. Let me create the directory and then the file."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -88,11 +96,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "d7c997b4-c775-5e55-a3cf-da2e9e182051",
   "timestamp": "2025-12-09T19:47:55.174Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "message",
   "content": {
     "text": "I'll create the myapp directory and then create the hoge.py file with the print statement."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -132,6 +144,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "56a05cb9-335b-5dbc-aca1-ef39fd79c544",
   "timestamp": "2025-12-09T19:47:55.174Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "token_usage",
   "content": {
     "input_tokens": 10,
@@ -146,6 +161,7 @@ expression: json_pretty
     }
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -185,6 +201,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "8a4443da-a9aa-5397-901b-ff4c05b2db23",
   "timestamp": "2025-12-09T19:47:55.793Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_call",
   "content": {
     "name": "Bash",
@@ -195,6 +214,7 @@ expression: json_pretty
     "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -239,6 +259,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "c2b08670-fd6b-5477-bf45-625605862090",
   "timestamp": "2025-12-09T19:47:55.793Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "token_usage",
   "content": {
     "input_tokens": 10,
@@ -253,6 +276,7 @@ expression: json_pretty
     }
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -297,6 +321,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "83a04a45-9a60-56d9-bfb3-d32ccfb67818",
   "timestamp": "2025-12-09T19:47:59.985Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_result",
   "content": {
     "output": "",
@@ -304,6 +331,7 @@ expression: json_pretty
     "is_error": false
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isMeta": false,
@@ -334,11 +362,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "075b48f1-2346-51ff-b551-322efcb92a30",
   "timestamp": "2025-12-09T19:48:04.245Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "reasoning",
   "content": {
     "text": "Good, the directory has been created. Now let me create the hoge.py file with print(1+1)."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -378,6 +410,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "5d46eb9d-7898-594c-b150-63051a5cb460",
   "timestamp": "2025-12-09T19:48:05.038Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_call",
   "content": {
     "name": "Write",
@@ -388,6 +423,7 @@ expression: json_pretty
     "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -432,6 +468,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "0c2f6c9a-db5d-524b-a374-310b37c527ab",
   "timestamp": "2025-12-09T19:48:05.038Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "token_usage",
   "content": {
     "input_tokens": 14,
@@ -446,6 +485,7 @@ expression: json_pretty
     }
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -490,6 +530,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "84005dce-6d3f-527b-9671-4ebfe285fc8b",
   "timestamp": "2025-12-09T19:48:08.021Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_result",
   "content": {
     "output": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
@@ -497,6 +540,7 @@ expression: json_pretty
     "is_error": false
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isMeta": false,
@@ -527,11 +571,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "4cb860da-faa4-5477-a9c6-dfe2beec404a",
   "timestamp": "2025-12-09T19:48:13.213Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "reasoning",
   "content": {
     "text": "Perfect! I've created the directory and the file. The file contains print(1+1) which will output 2 when run. Let me confirm this was done successfully."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -571,11 +619,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "b87bf734-6477-5004-9847-6eaccbd28cb2",
   "timestamp": "2025-12-09T19:48:14.040Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "message",
   "content": {
     "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -615,6 +667,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "eda47c4e-685a-59b0-ba22-1febb603db77",
   "timestamp": "2025-12-09T19:48:14.040Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "token_usage",
   "content": {
     "input_tokens": 13,
@@ -629,6 +684,7 @@ expression: json_pretty
     }
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -668,11 +724,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "b30f5077-1a23-5367-a5d8-5d4397429280",
   "timestamp": "2025-12-09T19:48:17.460Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "user",
   "content": {
     "text": "cd to myapp and run python hoge.py"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isMeta": false,
@@ -705,11 +765,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "9c152208-b962-5d87-891e-d66b5807b623",
   "timestamp": "2025-12-09T19:48:22.893Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "reasoning",
   "content": {
     "text": "The user wants me to change directory to myapp and run the python script. I should use the Bash tool to execute this command."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -749,6 +813,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "f3c66961-fbf5-57e8-8992-d6a43d870323",
   "timestamp": "2025-12-09T19:48:23.391Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_call",
   "content": {
     "name": "Bash",
@@ -759,6 +826,7 @@ expression: json_pretty
     "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -803,6 +871,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "1166eb3e-3449-5741-9784-8c85db9c59a2",
   "timestamp": "2025-12-09T19:48:23.391Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "token_usage",
   "content": {
     "input_tokens": 10,
@@ -817,6 +888,7 @@ expression: json_pretty
     }
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -861,6 +933,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "9ad4fb49-3261-5539-987c-6c8710e554af",
   "timestamp": "2025-12-09T19:48:27.975Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_result",
   "content": {
     "output": "error: target shim binary not found",
@@ -868,6 +943,7 @@ expression: json_pretty
     "is_error": true
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isMeta": false,
@@ -898,11 +974,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "556d5423-8799-5b23-8643-eef0c9224d1a",
   "timestamp": "2025-12-09T19:48:30.651Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "reasoning",
   "content": {
     "text": "It seems there's an issue with the python command. Let me try using python3 instead, which is more commonly available on macOS systems."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -942,6 +1022,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "bb201340-e5d4-57c8-820f-7b7d8b199d60",
   "timestamp": "2025-12-09T19:48:31.225Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_call",
   "content": {
     "name": "Bash",
@@ -952,6 +1035,7 @@ expression: json_pretty
     "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -996,6 +1080,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "59db6f3f-1452-5b33-b038-5b3cb9953355",
   "timestamp": "2025-12-09T19:48:31.225Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "token_usage",
   "content": {
     "input_tokens": 14,
@@ -1010,6 +1097,7 @@ expression: json_pretty
     }
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -1054,6 +1142,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "7c24fe41-b620-5275-bfa4-6144bfc9a885",
   "timestamp": "2025-12-09T19:48:33.883Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "tool_result",
   "content": {
     "output": "2",
@@ -1061,6 +1152,7 @@ expression: json_pretty
     "is_error": false
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
     "isMeta": false,
@@ -1091,11 +1183,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "d77e761e-5be1-57f5-a9ac-d3d1936b64f7",
   "timestamp": "2025-12-09T19:48:38.078Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "reasoning",
   "content": {
     "text": "Great! The script ran successfully and output \"2\" as expected."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -1135,11 +1231,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "e6d2c10f-4df0-5290-9c2d-91c93652d9f4",
   "timestamp": "2025-12-09T19:48:38.356Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "message",
   "content": {
     "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -1179,6 +1279,9 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "54a05448-bc6e-5bc3-8b53-f48f36c0da2b",
   "timestamp": "2025-12-09T19:48:38.356Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "token_usage",
   "content": {
     "input_tokens": 13,
@@ -1193,6 +1296,7 @@ expression: json_pretty
     }
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
     "isSidechain": false,
@@ -1232,11 +1336,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "cfb2637d-f4f3-57bc-8830-bcc3c4c23882",
   "timestamp": "2025-12-09T19:48:50.228Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "user",
   "content": {
     "text": "Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to."
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
     "isMeta": true,
@@ -1265,11 +1373,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "03b9e4cd-b044-5a37-88ac-6e102614fa16",
   "timestamp": "2025-12-09T19:48:50.204Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "user",
   "content": {
     "text": "<command-name>/exit</command-name>\n            <command-message>exit</command-message>\n            <command-args></command-args>"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
     "isMeta": false,
@@ -1298,11 +1410,15 @@ expression: json_pretty
   "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "fc2e140f-2e4f-52ea-b29c-d72d23885e80",
   "timestamp": "2025-12-09T19:48:50.204Z",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "type": "user",
   "content": {
     "text": "<local-command-stdout>Goodbye!</local-command-stdout>"
   },
   "metadata": {
+    "agentId": null,
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
     "isMeta": false,

@@ -133,6 +133,7 @@ pub(crate) fn normalize_codex_session(
                                     }),
                                 }),
                                 raw_value.clone(),
+                                StreamId::Main,
                             );
                         }
                     }
@@ -174,6 +175,7 @@ pub(crate) fn normalize_codex_session(
                             timestamp,
                             payload,
                             raw_value.clone(),
+                            StreamId::Main,
                         );
 
                         if message.role == "assistant" {
@@ -192,6 +194,7 @@ pub(crate) fn normalize_codex_session(
                             timestamp,
                             EventPayload::Reasoning(ReasoningPayload { text }),
                             raw_value.clone(),
+                            StreamId::Main,
                         );
                     }
 
@@ -210,6 +213,7 @@ pub(crate) fn normalize_codex_session(
                                 provider_call_id: Some(func_call.call_id.clone()),
                             }),
                             raw_value.clone(),
+                            StreamId::Main,
                         );
 
                         // Register tool call mapping
@@ -233,6 +237,7 @@ pub(crate) fn normalize_codex_session(
                                     is_error: exit_code.map(|code| code != 0).unwrap_or(false),
                                 }),
                                 raw_value.clone(),
+                                StreamId::Main,
                             );
                         }
                     }
@@ -252,6 +257,7 @@ pub(crate) fn normalize_codex_session(
                                 provider_call_id: Some(tool_call.call_id.clone()),
                             }),
                             raw_value.clone(),
+                            StreamId::Main,
                         );
 
                         builder.register_tool_call(tool_call.call_id.clone(), event_id);
@@ -273,6 +279,7 @@ pub(crate) fn normalize_codex_session(
                                     is_error: exit_code.map(|code| code != 0).unwrap_or(false),
                                 }),
                                 raw_value.clone(),
+                                StreamId::Main,
                             );
                         }
                     }

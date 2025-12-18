@@ -78,6 +78,27 @@ pub trait LogProvider: Send + Sync {
 
     fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>>;
 
+    /// Find all log files belonging to a specific session
+    ///
+    /// This method is used by the watch command to discover all files (main + sidechain)
+    /// associated with a session ID. It performs a lightweight filesystem scan without
+    /// full normalization.
+    ///
+    /// # Arguments
+    /// * `log_root` - The provider's log root directory
+    /// * `session_id` - The session ID to search for
+    ///
+    /// # Returns
+    /// A vector of absolute file paths belonging to the session, or an error if the scan fails.
+    ///
+    /// # Performance
+    /// This method is called repeatedly by the watch command (every 500ms poll cycle).
+    /// Implementations should be optimized for speed:
+    /// - Scan only relevant directories (not the entire filesystem)
+    /// - Use metadata/filename checks, not full file parsing
+    /// - Target: <10ms for typical project directories (~100 files)
+    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>>;
+
     /// Parse a single line for streaming/watch mode
     ///
     /// Returns:

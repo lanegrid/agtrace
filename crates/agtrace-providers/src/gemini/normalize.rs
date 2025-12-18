@@ -39,6 +39,7 @@ pub(crate) fn normalize_gemini_session(
                         text: user_msg.content.clone(),
                     }),
                     Some(raw_value),
+                    StreamId::Main,
                 );
             }
 
@@ -58,6 +59,7 @@ pub(crate) fn normalize_gemini_session(
                             text: format!("{}: {}", thought.subject, thought.description),
                         }),
                         Some(raw_value.clone()),
+                        StreamId::Main,
                     );
                 }
 
@@ -77,6 +79,7 @@ pub(crate) fn normalize_gemini_session(
                             provider_call_id: Some(tool_call.id.clone()),
                         }),
                         Some(raw_value.clone()),
+                        StreamId::Main,
                     );
 
                     // Register tool call ID mapping (provider ID -> UUID)
@@ -106,6 +109,7 @@ pub(crate) fn normalize_gemini_session(
                                 is_error,
                             }),
                             Some(raw_value.clone()),
+                            StreamId::Main,
                         );
                     }
                 }
@@ -120,6 +124,7 @@ pub(crate) fn normalize_gemini_session(
                         text: gemini_msg.content.clone(),
                     }),
                     Some(raw_value.clone()),
+                    StreamId::Main,
                 );
 
                 // 4. TokenUsage event (sidecar attached to message)
@@ -142,6 +147,7 @@ pub(crate) fn normalize_gemini_session(
                         }),
                     }),
                     Some(raw_value),
+                    StreamId::Main,
                 );
             }
 
@@ -157,6 +163,7 @@ pub(crate) fn normalize_gemini_session(
                         level: Some("info".to_string()),
                     }),
                     Some(raw_value),
+                    StreamId::Main,
                 );
             }
         }
