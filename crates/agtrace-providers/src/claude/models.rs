@@ -14,10 +14,13 @@ use std::collections::HashMap;
 /// - Easy to extend with new fields (e.g., output_limit, cache_support)
 /// - IDE auto-completion works
 /// - Compiler enforces all fields are provided
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ModelSpec {
     pub prefix: &'static str,
     pub context_window: u64,
+    /// Compaction buffer percentage (0-100)
+    /// When input tokens exceed (100% - compaction_buffer_pct), compaction is triggered
+    pub compaction_buffer_pct: f64,
 }
 
 impl ModelSpec {
@@ -26,13 +29,22 @@ impl ModelSpec {
     /// NOTE: Why const fn?
     /// Allows construction at compile time in const context (MODEL_SPECS array).
     /// Zero runtime overhead - all values computed at compile time.
-    pub const fn new(prefix: &'static str, context_window: u64) -> Self {
+    pub const fn new(
+        prefix: &'static str,
+        context_window: u64,
+        compaction_buffer_pct: f64,
+    ) -> Self {
         Self {
             prefix,
             context_window,
+            compaction_buffer_pct,
         }
     }
 }
+
+/// Compaction buffer percentage for Claude models (Claude Code default)
+/// When input tokens exceed (100% - COMPACTION_BUFFER_PCT), compaction is triggered
+const COMPACTION_BUFFER_PCT: f64 = 22.5;
 
 /// Claude provider model specifications
 ///
@@ -44,24 +56,29 @@ impl ModelSpec {
 /// - Extensibility: Easy to add new fields without breaking existing code
 const MODEL_SPECS: &[ModelSpec] = &[
     // Claude 4.5 series (as of 2025-12-17)
-    ModelSpec::new("claude-sonnet-4-5", 200_000),
-    ModelSpec::new("claude-haiku-4-5", 200_000),
-    ModelSpec::new("claude-opus-4-5", 200_000),
+    ModelSpec::new("claude-sonnet-4-5", 200_000, COMPACTION_BUFFER_PCT),
+    ModelSpec::new("claude-haiku-4-5", 200_000, COMPACTION_BUFFER_PCT),
+    ModelSpec::new("claude-opus-4-5", 200_000, COMPACTION_BUFFER_PCT),
     // Claude 4 series
-    ModelSpec::new("claude-sonnet-4", 200_000),
-    ModelSpec::new("claude-haiku-4", 200_000),
-    ModelSpec::new("claude-opus-4", 200_000),
+    ModelSpec::new("claude-sonnet-4", 200_000, COMPACTION_BUFFER_PCT),
+    ModelSpec::new("claude-haiku-4", 200_000, COMPACTION_BUFFER_PCT),
+    ModelSpec::new("claude-opus-4", 200_000, COMPACTION_BUFFER_PCT),
     // Claude 3.5 series
-    ModelSpec::new("claude-3-5", 200_000),
+    ModelSpec::new("claude-3-5", 200_000, COMPACTION_BUFFER_PCT),
     // Claude 3 series (fallback)
-    ModelSpec::new("claude-3", 200_000),
+    ModelSpec::new("claude-3", 200_000, COMPACTION_BUFFER_PCT),
 ];
 
-/// Returns model prefix -> context window limit mapping
-pub fn get_model_limits() -> HashMap<&'static str, u64> {
+/// Returns model prefix -> (context window, compaction buffer %) mapping
+pub fn get_model_limits() -> HashMap<&'static str, (u64, f64)> {
     MODEL_SPECS
         .iter()
-        .map(|spec| (spec.prefix, spec.context_window))
+        .map(|spec| {
+            (
+                spec.prefix,
+                (spec.context_window, spec.compaction_buffer_pct),
+            )
+        })
         .collect()
 }
 
@@ -93,12 +110,12 @@ mod tests {
         let limits = get_model_limits();
 
         // Verify key models are defined
-        assert_eq!(limits.get("claude-sonnet-4-5"), Some(&200_000));
-        assert_eq!(limits.get("claude-haiku-4-5"), Some(&200_000));
-        assert_eq!(limits.get("claude-opus-4-5"), Some(&200_000));
-        assert_eq!(limits.get("claude-sonnet-4"), Some(&200_000));
-        assert_eq!(limits.get("claude-3-5"), Some(&200_000));
-        assert_eq!(limits.get("claude-3"), Some(&200_000));
+        assert_eq!(limits.get("claude-sonnet-4-5"), Some(&(200_000, 22.5)));
+        assert_eq!(limits.get("claude-haiku-4-5"), Some(&(200_000, 22.5)));
+        assert_eq!(limits.get("claude-opus-4-5"), Some(&(200_000, 22.5)));
+        assert_eq!(limits.get("claude-sonnet-4"), Some(&(200_000, 22.5)));
+        assert_eq!(limits.get("claude-3-5"), Some(&(200_000, 22.5)));
+        assert_eq!(limits.get("claude-3"), Some(&(200_000, 22.5)));
     }
 
     #[test]

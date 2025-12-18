@@ -34,12 +34,18 @@ impl TuiRenderer {
             return;
         }
 
-        let limit = ctx.state.context_window_limit.or_else(|| {
-            ctx.state
-                .model
-                .as_ref()
-                .and_then(|m| self.token_limits.get_limit(m).map(|l| l.total_limit))
-        });
+        let token_spec = ctx
+            .state
+            .model
+            .as_ref()
+            .and_then(|m| self.token_limits.get_limit(m));
+
+        let limit = ctx
+            .state
+            .context_window_limit
+            .or_else(|| token_spec.as_ref().map(|spec| spec.total_limit));
+
+        let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
 
         let summary = TokenSummaryDisplay {
             input: ctx.state.total_input_side_tokens(),
@@ -49,6 +55,7 @@ impl TuiRenderer {
             total: ctx.state.total_context_window_tokens(),
             limit,
             model: ctx.state.model.clone(),
+            compaction_buffer_pct,
         };
 
         let opts = DisplayOptions {

@@ -165,7 +165,7 @@ pub fn format_token_summary(summary: &TokenSummaryDisplay, opts: &DisplayOptions
             header
         });
 
-        let bar = create_progress_bar(total_pct);
+        let bar = create_progress_bar(total_pct, summary.compaction_buffer_pct);
         let total_str = format_token_count(summary.total as u64);
         let limit_str = format_token_count(limit);
 
@@ -385,13 +385,30 @@ fn truncate_text(text: &str, max_len: usize) -> String {
     }
 }
 
-fn create_progress_bar(percentage: f64) -> String {
+fn create_progress_bar(percentage: f64, compaction_buffer_pct: Option<f64>) -> String {
     let bar_width = 10;
     let filled = ((percentage / 100.0) * bar_width as f64) as usize;
     let filled = filled.min(bar_width);
-    let empty = bar_width - filled;
 
-    format!("{}{}", "⛁ ".repeat(filled), "⛶ ".repeat(empty))
+    // Calculate compaction threshold position (e.g., 77.5% for 22.5% buffer)
+    let threshold_pos = compaction_buffer_pct.map(|buffer_pct| {
+        let threshold_pct = 100.0 - buffer_pct;
+        ((threshold_pct / 100.0) * bar_width as f64).round() as usize
+    });
+
+    let mut result = String::new();
+    for i in 0..bar_width {
+        if Some(i) == threshold_pos {
+            result.push('|');
+            result.push(' ');
+        } else if i < filled {
+            result.push_str("⛁ ");
+        } else {
+            result.push_str("⛶ ");
+        }
+    }
+
+    result
 }
 
 fn format_token_count(tokens: u64) -> String {
@@ -423,8 +440,15 @@ mod tests {
 
     #[test]
     fn test_create_progress_bar() {
-        let bar = create_progress_bar(50.0);
+        let bar = create_progress_bar(50.0, None);
         assert!(bar.contains("⛁"));
         assert!(bar.contains("⛶"));
+        assert!(!bar.contains("|"));
+
+        // Test with compaction buffer (22.5% buffer = 77.5% threshold)
+        let bar_with_threshold = create_progress_bar(50.0, Some(22.5));
+        assert!(bar_with_threshold.contains("⛁"));
+        assert!(bar_with_threshold.contains("⛶"));
+        assert!(bar_with_threshold.contains("|"));
     }
 }

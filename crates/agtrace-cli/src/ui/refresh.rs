@@ -57,12 +57,39 @@ impl WatchBuffer {
 
     pub fn format_content(&self) -> Vec<String> {
         let mut lines = Vec::new();
+        let mut prev_time: Option<chrono::DateTime<chrono::Utc>> = None;
 
         for event in &self.events {
-            lines.push(self.format_event(event));
+            let delta = if let Some(prev) = prev_time {
+                let diff = event.timestamp.signed_duration_since(prev);
+                self.format_delta_time(diff)
+            } else {
+                None
+            };
+            lines.push(self.format_event(event, delta));
+            prev_time = Some(event.timestamp);
         }
 
         lines
+    }
+
+    fn format_delta_time(&self, duration: chrono::Duration) -> Option<String> {
+        let seconds = duration.num_seconds();
+        if seconds < 2 {
+            return None; // Don't show deltas less than 2 seconds (noise)
+        }
+
+        if seconds < 60 {
+            Some(format!("+{}s", seconds))
+        } else {
+            let minutes = seconds / 60;
+            let remaining_secs = seconds % 60;
+            if remaining_secs == 0 {
+                Some(format!("+{}m", minutes))
+            } else {
+                Some(format!("+{}m{}s", minutes, remaining_secs))
+            }
+        }
     }
 
     pub fn format_footer(&self) -> Vec<String> {
@@ -71,12 +98,18 @@ impl WatchBuffer {
         use crate::views::session::format_token_summary;
 
         let token_limits = TokenLimits::new();
-        let limit = self.state.context_window_limit.or_else(|| {
-            self.state
-                .model
-                .as_ref()
-                .and_then(|m| token_limits.get_limit(m).map(|l| l.total_limit))
-        });
+        let token_spec = self
+            .state
+            .model
+            .as_ref()
+            .and_then(|m| token_limits.get_limit(m));
+
+        let limit = self
+            .state
+            .context_window_limit
+            .or_else(|| token_spec.as_ref().map(|spec| spec.total_limit));
+
+        let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
 
         let summary = TokenSummaryDisplay {
             input: self.state.total_input_side_tokens(),
@@ -86,6 +119,7 @@ impl WatchBuffer {
             total: self.state.total_context_window_tokens(),
             limit,
             model: self.state.model.clone(),
+            compaction_buffer_pct,
         };
 
         let opts = DisplayOptions {
@@ -97,36 +131,82 @@ impl WatchBuffer {
         format_token_summary(&summary, &opts)
     }
 
-    fn format_event(&self, event: &AgentEvent) -> String {
-        use agtrace_types::EventPayload;
+    fn format_event(&self, event: &AgentEvent, delta: Option<String>) -> String {
+        use agtrace_types::{EventPayload, StreamId};
         use chrono::Local;
         use owo_colors::OwoColorize;
 
         let time = event.timestamp.with_timezone(&Local).format("%H:%M:%S");
+        let delta_str = delta
+            .map(|d| format!(" {}", d.dimmed()))
+            .unwrap_or_default();
+
+        // Check if this is a sidechain event
+        if let StreamId::Sidechain { agent_id } = &event.stream_id {
+            let short_id = &agent_id.chars().take(6).collect::<String>();
+            return format!(
+                "{}{} {} Sidechain #{} spawned",
+                time.dimmed(),
+                delta_str,
+                "⛓️".yellow(),
+                short_id.yellow()
+            );
+        }
 
         match &event.payload {
             EventPayload::User(payload) => {
                 let text = self.truncate(&payload.text, 100);
-                format!("{} {} \"{}\"", time.dimmed(), "👤 User:".bold(), text)
+                format!(
+                    "{}{} {} \"{}\"",
+                    time.dimmed(),
+                    delta_str,
+                    "👤 User:".bold(),
+                    text
+                )
             }
             EventPayload::Reasoning(payload) => {
                 let text = self.truncate(&payload.text, 50);
-                format!("{} {} {}", time.dimmed(), "🧠 Thnk:".dimmed(), text.cyan())
+                format!(
+                    "{}{} {} {}",
+                    time.dimmed(),
+                    delta_str,
+                    "🧠 Thnk:".dimmed(),
+                    text.cyan()
+                )
             }
             EventPayload::Message(payload) => {
                 let text = self.truncate(&payload.text, 100);
-                format!("{} {} {}", time.dimmed(), "💬 Msg:".cyan(), text)
+                format!(
+                    "{}{} {} {}",
+                    time.dimmed(),
+                    delta_str,
+                    "💬 Msg:".cyan(),
+                    text
+                )
             }
             EventPayload::ToolCall(payload) => {
                 let (icon, color_fn) = self.categorize_tool(&payload.name);
                 let summary = self.format_tool_call(&payload.name, &payload.arguments);
                 let colored_name = color_fn(&payload.name);
-                format!("{} {} {}: {}", time.dimmed(), icon, colored_name, summary)
+                format!(
+                    "{}{} {} {}: {}",
+                    time.dimmed(),
+                    delta_str,
+                    icon,
+                    colored_name,
+                    summary
+                )
             }
             EventPayload::ToolResult(payload) => {
                 if payload.is_error {
                     let output = self.truncate(&payload.output, 100);
-                    format!("{} {} {}", time.dimmed(), "❌ Fail:".red(), output.red())
+                    format!(
+                        "{}{} {} {}",
+                        time.dimmed(),
+                        delta_str,
+                        "❌ Fail:".red(),
+                        output.red()
+                    )
                 } else {
                     String::new()
                 }

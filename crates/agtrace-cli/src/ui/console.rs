@@ -538,12 +538,13 @@ impl WatchView for ConsoleTraceView {
 
             if matches!(event.payload, EventPayload::TokenUsage(_)) {
                 let token_limits = TokenLimits::new();
-                let limit = state.context_window_limit.or_else(|| {
-                    state
-                        .model
-                        .as_ref()
-                        .and_then(|m| token_limits.get_limit(m).map(|l| l.total_limit))
-                });
+                let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
+
+                let limit = state
+                    .context_window_limit
+                    .or_else(|| token_spec.as_ref().map(|spec| spec.total_limit));
+
+                let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
 
                 let summary = TokenSummaryDisplay {
                     input: state.total_input_side_tokens(),
@@ -553,6 +554,7 @@ impl WatchView for ConsoleTraceView {
                     total: state.total_context_window_tokens(),
                     limit,
                     model: state.model.clone(),
+                    compaction_buffer_pct,
                 };
 
                 let opts = DisplayOptions {

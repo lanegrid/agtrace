@@ -50,6 +50,9 @@ pub struct TokenSummaryDisplay {
     pub total: i32,
     pub limit: Option<u64>,
     pub model: Option<String>,
+    /// Compaction buffer percentage (0-100)
+    /// When input tokens exceed (100% - compaction_buffer_pct), compaction is triggered
+    pub compaction_buffer_pct: Option<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -238,6 +241,7 @@ fn calculate_token_summary_from_session(session: &AgentSession) -> TokenSummaryD
         total,
         limit: None,
         model: None,
+        compaction_buffer_pct: None,
     }
 }
 
@@ -276,6 +280,7 @@ fn calculate_token_summary_from_events(
         total,
         limit,
         model: None,
+        compaction_buffer_pct: None,
     }
 }
 
@@ -415,6 +420,7 @@ mod tests {
             total: 1500,
             limit: Some(200_000),
             model: Some("claude-3-5-sonnet-20241022".to_string()),
+            compaction_buffer_pct: Some(22.5),
         };
 
         assert_eq!(summary.input, 1000);

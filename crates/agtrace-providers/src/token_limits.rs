@@ -11,9 +11,13 @@ use crate::codex::models as codex_models;
 use crate::gemini::models as gemini_models;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ModelSpec {
     pub max_tokens: u64,
+    /// Compaction buffer percentage (0-100)
+    /// When input tokens exceed (100% - compaction_buffer_pct), compaction is triggered
+    /// Example: Claude Code has 22.5% buffer, so compaction happens at 77.5% input usage
+    pub compaction_buffer_pct: f64,
 }
 
 /// Resolve model context window limit using longest prefix matching
@@ -44,7 +48,7 @@ pub fn resolve_model_limit(model_name: &str) -> Option<ModelSpec> {
     // The aggregation overhead is negligible (< 100 entries, ~microseconds) compared to
     // the benefits of simplicity and testability. If profiling shows this is a bottleneck,
     // we can optimize with lazy_static/OnceCell later. YAGNI principle applies here.
-    let all_limits: HashMap<&str, u64> = [
+    let all_limits: HashMap<&str, (u64, f64)> = [
         claude_models::get_model_limits(),
         codex_models::get_model_limits(),
         gemini_models::get_model_limits(),
@@ -56,17 +60,20 @@ pub fn resolve_model_limit(model_name: &str) -> Option<ModelSpec> {
     // Longest prefix matching algorithm
     // NOTE: This is O(n) where n = number of defined model prefixes (~30-50).
     // We prefer readability over premature optimization (e.g., trie structures).
-    let mut best_match: Option<u64> = None;
+    let mut best_match: Option<(u64, f64)> = None;
     let mut best_len = 0;
 
-    for (prefix, &limit) in &all_limits {
+    for (prefix, &(limit, buffer)) in &all_limits {
         if model_name.starts_with(prefix) && prefix.len() > best_len {
-            best_match = Some(limit);
+            best_match = Some((limit, buffer));
             best_len = prefix.len();
         }
     }
 
-    best_match.map(|max_tokens| ModelSpec { max_tokens })
+    best_match.map(|(max_tokens, compaction_buffer_pct)| ModelSpec {
+        max_tokens,
+        compaction_buffer_pct,
+    })
 }
 
 #[cfg(test)]
@@ -79,7 +86,8 @@ mod tests {
         assert_eq!(
             resolve_model_limit("claude-sonnet-4-5"),
             Some(ModelSpec {
-                max_tokens: 200_000
+                max_tokens: 200_000,
+                compaction_buffer_pct: 22.5
             })
         );
 
@@ -87,13 +95,15 @@ mod tests {
         assert_eq!(
             resolve_model_limit("claude-sonnet-4-5-20250929"),
             Some(ModelSpec {
-                max_tokens: 200_000
+                max_tokens: 200_000,
+                compaction_buffer_pct: 22.5
             })
         );
         assert_eq!(
             resolve_model_limit("claude-haiku-4-5-20251001"),
             Some(ModelSpec {
-                max_tokens: 200_000
+                max_tokens: 200_000,
+                compaction_buffer_pct: 22.5
             })
         );
 
@@ -101,7 +111,8 @@ mod tests {
         assert_eq!(
             resolve_model_limit("claude-3-5-sonnet-20241022"),
             Some(ModelSpec {
-                max_tokens: 200_000
+                max_tokens: 200_000,
+                compaction_buffer_pct: 22.5
             })
         );
 
@@ -109,7 +120,8 @@ mod tests {
         assert_eq!(
             resolve_model_limit("claude-3-opus-20240229"),
             Some(ModelSpec {
-                max_tokens: 200_000
+                max_tokens: 200_000,
+                compaction_buffer_pct: 22.5
             })
         );
     }
@@ -120,7 +132,8 @@ mod tests {
         assert_eq!(
             resolve_model_limit("gpt-5.2"),
             Some(ModelSpec {
-                max_tokens: 400_000
+                max_tokens: 400_000,
+                compaction_buffer_pct: 0.0
             })
         );
 
@@ -128,13 +141,15 @@ mod tests {
         assert_eq!(
             resolve_model_limit("gpt-5.1-codex-max"),
             Some(ModelSpec {
-                max_tokens: 400_000
+                max_tokens: 400_000,
+                compaction_buffer_pct: 0.0
             })
         );
         assert_eq!(
             resolve_model_limit("gpt-5.1-codex"),
             Some(ModelSpec {
-                max_tokens: 400_000
+                max_tokens: 400_000,
+                compaction_buffer_pct: 0.0
             })
         );
 
@@ -142,13 +157,15 @@ mod tests {
         assert_eq!(
             resolve_model_limit("gpt-5-codex"),
             Some(ModelSpec {
-                max_tokens: 400_000
+                max_tokens: 400_000,
+                compaction_buffer_pct: 0.0
             })
         );
         assert_eq!(
             resolve_model_limit("gpt-5"),
             Some(ModelSpec {
-                max_tokens: 400_000
+                max_tokens: 400_000,
+                compaction_buffer_pct: 0.0
             })
         );
     }
@@ -159,13 +176,15 @@ mod tests {
         assert_eq!(
             resolve_model_limit("gemini-2.5-pro"),
             Some(ModelSpec {
-                max_tokens: 1_048_576
+                max_tokens: 1_048_576,
+                compaction_buffer_pct: 0.0
             })
         );
         assert_eq!(
             resolve_model_limit("gemini-2.5-flash"),
             Some(ModelSpec {
-                max_tokens: 1_048_576
+                max_tokens: 1_048_576,
+                compaction_buffer_pct: 0.0
             })
         );
 
@@ -173,7 +192,8 @@ mod tests {
         assert_eq!(
             resolve_model_limit("gemini-2.0-flash"),
             Some(ModelSpec {
-                max_tokens: 1_048_576
+                max_tokens: 1_048_576,
+                compaction_buffer_pct: 0.0
             })
         );
     }
@@ -193,7 +213,8 @@ mod tests {
         assert_eq!(
             spec,
             Some(ModelSpec {
-                max_tokens: 400_000
+                max_tokens: 400_000,
+                compaction_buffer_pct: 0.0
             })
         );
 
@@ -202,7 +223,8 @@ mod tests {
         assert_eq!(
             spec,
             Some(ModelSpec {
-                max_tokens: 200_000
+                max_tokens: 200_000,
+                compaction_buffer_pct: 22.5
             })
         );
     }
@@ -213,13 +235,15 @@ mod tests {
         assert_eq!(
             resolve_model_limit("claude-3-5-sonnet-custom-version"),
             Some(ModelSpec {
-                max_tokens: 200_000
+                max_tokens: 200_000,
+                compaction_buffer_pct: 22.5
             })
         );
         assert_eq!(
             resolve_model_limit("gpt-5.1-codex-experimental"),
             Some(ModelSpec {
-                max_tokens: 400_000
+                max_tokens: 400_000,
+                compaction_buffer_pct: 0.0
             })
         );
     }

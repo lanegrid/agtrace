@@ -11,11 +11,17 @@
 #[derive(Debug, Clone)]
 pub struct TokenLimit {
     pub total_limit: u64,
+    /// Compaction buffer percentage (0-100)
+    /// When input tokens exceed (100% - compaction_buffer_pct), compaction is triggered
+    pub compaction_buffer_pct: f64,
 }
 
 impl TokenLimit {
-    pub fn new(total_limit: u64) -> Self {
-        Self { total_limit }
+    pub fn new(total_limit: u64, compaction_buffer_pct: f64) -> Self {
+        Self {
+            total_limit,
+            compaction_buffer_pct,
+        }
     }
 }
 
@@ -39,7 +45,7 @@ impl TokenLimits {
         // - Longest prefix matching for resilient version handling
         // - Clean separation between "knowledge" and "usage"
         agtrace_providers::token_limits::resolve_model_limit(model)
-            .map(|spec| TokenLimit::new(spec.max_tokens))
+            .map(|spec| TokenLimit::new(spec.max_tokens, spec.compaction_buffer_pct))
     }
 
     /// Get usage percentage from SessionState
