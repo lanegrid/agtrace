@@ -37,6 +37,24 @@ impl WatchBuffer {
         self.state = state;
     }
 
+    pub fn format_header(&self) -> Vec<String> {
+        use owo_colors::OwoColorize;
+        let mut lines = Vec::new();
+
+        // Project info
+        if let Some(root) = &self.state.project_root {
+            let root_str = root.display().to_string();
+            lines.push(format!("{} {}", "📁 Project:".bold(), root_str.cyan()));
+
+            // Calculate project hash
+            let hash = agtrace_types::project_hash_from_root(&root_str);
+            let short_hash = &hash[..8];
+            lines.push(format!("{} {}", "🔖 Hash:".bold(), short_hash.dimmed()));
+        }
+
+        lines
+    }
+
     pub fn format_content(&self) -> Vec<String> {
         let mut lines = Vec::new();
 
@@ -144,11 +162,24 @@ impl WatchBuffer {
         }
     }
 
+    fn shorten_path(&self, path: &str) -> String {
+        if let Some(root) = &self.state.project_root {
+            if let Ok(relative) = std::path::Path::new(path).strip_prefix(root) {
+                let relative_str = relative.to_string_lossy();
+                if relative_str.len() < path.len() {
+                    return relative_str.to_string();
+                }
+            }
+        }
+        path.to_string()
+    }
+
     fn format_tool_call(&self, _name: &str, args: &serde_json::Value) -> String {
         if let Some(obj) = args.as_object() {
             if let Some(path) = obj.get("path").or_else(|| obj.get("file_path")) {
                 if let Some(path_str) = path.as_str() {
-                    return format!("(\"{}\")", self.truncate(path_str, 60));
+                    let shortened = self.shorten_path(path_str);
+                    return format!("(\"{}\")", self.truncate(&shortened, 60));
                 }
             }
             if let Some(command) = obj.get("command") {
@@ -274,7 +305,7 @@ impl RefreshingWatchView {
         let mut inner = self.inner.lock().unwrap();
         inner.terminal.clear_screen();
 
-        let header = inner.header.clone();
+        let header = inner.buffer.format_header();
         let mut content = inner.buffer.format_content();
         let footer = inner.buffer.format_footer();
 

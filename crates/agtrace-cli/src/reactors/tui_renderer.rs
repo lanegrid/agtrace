@@ -73,8 +73,9 @@ impl Reactor for TuiRenderer {
     fn handle(&mut self, ctx: ReactorContext) -> Result<Reaction> {
         let event = ctx.event;
         let turn_context = ctx.state.turn_count;
+        let project_root = ctx.state.project_root.as_deref();
 
-        print_event(event, turn_context);
+        print_event(event, turn_context, project_root);
 
         // Print token summary after TokenUsage events (when tokens are updated)
         if matches!(event.payload, EventPayload::TokenUsage(_)) {

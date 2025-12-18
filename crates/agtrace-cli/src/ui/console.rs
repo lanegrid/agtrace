@@ -534,7 +534,7 @@ impl WatchView for ConsoleTraceView {
 
     fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()> {
         for event in new_events {
-            print_event(event, state.turn_count);
+            print_event(event, state.turn_count, state.project_root.as_deref());
 
             if matches!(event.payload, EventPayload::TokenUsage(_)) {
                 let token_limits = TokenLimits::new();

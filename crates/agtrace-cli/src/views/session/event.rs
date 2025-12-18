@@ -2,7 +2,11 @@ use agtrace_types::{AgentEvent, EventPayload};
 use chrono::Local;
 use owo_colors::OwoColorize;
 
-pub fn print_event(event: &AgentEvent, turn_context: usize) {
+pub fn print_event(
+    event: &AgentEvent,
+    turn_context: usize,
+    project_root: Option<&std::path::Path>,
+) {
     let time = event.timestamp.with_timezone(&Local).format("%H:%M:%S");
 
     match &event.payload {
@@ -33,7 +37,7 @@ pub fn print_event(event: &AgentEvent, turn_context: usize) {
         }
         EventPayload::ToolCall(payload) => {
             let (icon, color_fn) = categorize_tool(&payload.name);
-            let summary = format_tool_call(&payload.name, &payload.arguments);
+            let summary = format_tool_call(&payload.name, &payload.arguments, project_root);
 
             let colored_name = color_fn(&payload.name);
             println!("{} {} {}: {}", time.dimmed(), icon, colored_name, summary);
@@ -90,11 +94,16 @@ fn categorize_tool(name: &str) -> (&'static str, fn(&str) -> String) {
     }
 }
 
-fn format_tool_call(_name: &str, args: &serde_json::Value) -> String {
+fn format_tool_call(
+    _name: &str,
+    args: &serde_json::Value,
+    project_root: Option<&std::path::Path>,
+) -> String {
     if let Some(obj) = args.as_object() {
         if let Some(path) = obj.get("path").or_else(|| obj.get("file_path")) {
             if let Some(path_str) = path.as_str() {
-                return format!("(\"{}\")", truncate(path_str, 60));
+                let shortened = shorten_path(path_str, project_root);
+                return format!("(\"{}\")", truncate(&shortened, 60));
             }
         }
         if let Some(command) = obj.get("command") {
@@ -123,4 +132,18 @@ fn truncate(text: &str, max_len: usize) -> String {
         }
         format!("{}...", &text[..boundary])
     }
+}
+
+/// Convert absolute path to relative path if it's shorter
+fn shorten_path(path: &str, project_root: Option<&std::path::Path>) -> String {
+    if let Some(root) = project_root {
+        if let Ok(relative) = std::path::Path::new(path).strip_prefix(root) {
+            let relative_str = relative.to_string_lossy();
+            // Use relative path only if it's shorter
+            if relative_str.len() < path.len() {
+                return relative_str.to_string();
+            }
+        }
+    }
+    path.to_string()
 }
