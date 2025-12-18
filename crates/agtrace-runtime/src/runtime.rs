@@ -202,6 +202,58 @@ fn handle_update(
     Ok(())
 }
 
+fn initialize_session_state(
+    session_state: &mut Option<SessionState>,
+    session_id: String,
+    project_root: Option<PathBuf>,
+    timestamp: chrono::DateTime<chrono::Utc>,
+) {
+    if session_state.is_none() {
+        *session_state = Some(SessionState::new(session_id, project_root, timestamp));
+    }
+}
+
+fn update_session_state(state: &mut SessionState, event: &AgentEvent) -> Result<()> {
+    state.last_activity = event.timestamp;
+    state.event_count += 1;
+
+    let updates = extract_state_updates(event);
+
+    if updates.is_new_turn {
+        state.turn_count += 1;
+        state.error_count = 0;
+    }
+
+    if let EventPayload::ToolResult(result) = &event.payload {
+        if updates.is_error && result.is_error {
+            state.error_count += 1;
+        } else {
+            state.error_count = 0;
+        }
+    }
+
+    if let Some(model) = updates.model {
+        if state.model.is_none() {
+            state.model = Some(model);
+        }
+    }
+
+    if let Some(limit) = updates.context_window_limit {
+        if state.context_window_limit.is_none() {
+            state.context_window_limit = Some(limit);
+        }
+    }
+
+    if let Some(usage) = updates.usage {
+        state.current_usage = usage;
+        state.current_reasoning_tokens = updates.reasoning_tokens.unwrap_or(0);
+    } else if let Some(reasoning_tokens) = updates.reasoning_tokens {
+        state.current_reasoning_tokens = reasoning_tokens;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -270,56 +322,4 @@ mod tests {
         }
         assert!(got_reaction);
     }
-}
-
-fn initialize_session_state(
-    session_state: &mut Option<SessionState>,
-    session_id: String,
-    project_root: Option<PathBuf>,
-    timestamp: chrono::DateTime<chrono::Utc>,
-) {
-    if session_state.is_none() {
-        *session_state = Some(SessionState::new(session_id, project_root, timestamp));
-    }
-}
-
-fn update_session_state(state: &mut SessionState, event: &AgentEvent) -> Result<()> {
-    state.last_activity = event.timestamp;
-    state.event_count += 1;
-
-    let updates = extract_state_updates(event);
-
-    if updates.is_new_turn {
-        state.turn_count += 1;
-        state.error_count = 0;
-    }
-
-    if let EventPayload::ToolResult(result) = &event.payload {
-        if updates.is_error && result.is_error {
-            state.error_count += 1;
-        } else {
-            state.error_count = 0;
-        }
-    }
-
-    if let Some(model) = updates.model {
-        if state.model.is_none() {
-            state.model = Some(model);
-        }
-    }
-
-    if let Some(limit) = updates.context_window_limit {
-        if state.context_window_limit.is_none() {
-            state.context_window_limit = Some(limit);
-        }
-    }
-
-    if let Some(usage) = updates.usage {
-        state.current_usage = usage;
-        state.current_reasoning_tokens = updates.reasoning_tokens.unwrap_or(0);
-    } else if let Some(reasoning_tokens) = updates.reasoning_tokens {
-        state.current_reasoning_tokens = reasoning_tokens;
-    }
-
-    Ok(())
 }
