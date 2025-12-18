@@ -259,7 +259,7 @@ pub fn run(cli: Cli) -> Result<()> {
             if refresh {
                 use crate::ui::{AnsiTerminal, RefreshingWatchView};
                 let terminal = Box::new(AnsiTerminal::new());
-                let refresh_view = RefreshingWatchView::new(terminal, 50);
+                let refresh_view = RefreshingWatchView::new(terminal);
                 handlers::watch::handle(&ctx, target, &refresh_view)
             } else {
                 handlers::watch::handle(&ctx, target, &view)

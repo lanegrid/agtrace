@@ -11,25 +11,32 @@ pub trait TerminalWriter: Send {
 
 pub struct WatchBuffer {
     events: VecDeque<AgentEvent>,
-    max_events: usize,
     state: SessionState,
 }
 
+impl Default for WatchBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WatchBuffer {
-    pub fn new(max_events: usize) -> Self {
+    pub fn new() -> Self {
         use chrono::Utc;
         Self {
-            events: VecDeque::with_capacity(max_events),
-            max_events,
+            events: VecDeque::new(),
             state: SessionState::new("test".to_string(), None, Utc::now()),
         }
     }
 
     pub fn push_event(&mut self, event: AgentEvent) {
-        if self.events.len() >= self.max_events {
+        self.events.push_back(event);
+    }
+
+    pub fn trim_to_fit(&mut self, max_events: usize) {
+        while self.events.len() > max_events {
             self.events.pop_front();
         }
-        self.events.push_back(event);
     }
 
     pub fn update_state(&mut self, state: SessionState) {
@@ -251,10 +258,10 @@ pub struct RefreshingWatchView {
 }
 
 impl RefreshingWatchView {
-    pub fn new(terminal: Box<dyn TerminalWriter>, max_events: usize) -> Self {
+    pub fn new(terminal: Box<dyn TerminalWriter>) -> Self {
         Self {
             inner: Mutex::new(RefreshingWatchViewInner {
-                buffer: WatchBuffer::new(max_events),
+                buffer: WatchBuffer::new(),
                 terminal,
                 header: Vec::new(),
             }),
@@ -274,8 +281,31 @@ impl RefreshingWatchView {
         inner.terminal.clear_screen();
 
         let header = inner.header.clone();
-        let content = inner.buffer.format_content();
+        let mut content = inner.buffer.format_content();
         let footer = inner.buffer.format_footer();
+
+        // Calculate available lines for content
+        let terminal_height = self.get_terminal_height();
+        let header_lines = if header.is_empty() {
+            0
+        } else {
+            header.len() + 1
+        };
+        let footer_lines = if footer.is_empty() {
+            0
+        } else {
+            footer.len() + 1
+        };
+        let available_lines = terminal_height.saturating_sub(header_lines + footer_lines);
+
+        // Trim content to fit terminal
+        if content.len() > available_lines {
+            let skip = content.len() - available_lines;
+            content = content.into_iter().skip(skip).collect();
+        }
+
+        // Trim buffer to reasonable size (keep last 1000 events)
+        inner.buffer.trim_to_fit(1000);
 
         for line in &header {
             inner.terminal.write_line(line);
@@ -299,6 +329,14 @@ impl RefreshingWatchView {
         }
 
         inner.terminal.flush();
+    }
+
+    fn get_terminal_height(&self) -> usize {
+        if let Some((_, terminal_size::Height(h))) = terminal_size::terminal_size() {
+            h as usize
+        } else {
+            24 // Default fallback
+        }
     }
 }
 
@@ -596,7 +634,7 @@ mod tests {
 
     #[test]
     fn test_buffer_push_event() {
-        let mut buffer = WatchBuffer::new(5);
+        let mut buffer = WatchBuffer::new();
         buffer.push_event(create_user_event("test1"));
         buffer.push_event(create_user_event("test2"));
 
@@ -605,12 +643,13 @@ mod tests {
     }
 
     #[test]
-    fn test_buffer_max_events() {
-        let mut buffer = WatchBuffer::new(3);
+    fn test_buffer_trim_to_fit() {
+        let mut buffer = WatchBuffer::new();
         for i in 0..5 {
             buffer.push_event(create_user_event(&format!("test{}", i)));
         }
 
+        buffer.trim_to_fit(3);
         let lines = buffer.format_content();
         assert_eq!(lines.len(), 3);
         assert!(lines[0].contains("test2"));
@@ -619,7 +658,7 @@ mod tests {
 
     #[test]
     fn test_buffer_formatting() {
-        let mut buffer = WatchBuffer::new(10);
+        let mut buffer = WatchBuffer::new();
         buffer.push_event(create_user_event("hello world"));
 
         let lines = buffer.format_content();
@@ -642,7 +681,7 @@ mod tests {
 
     #[test]
     fn test_refreshing_view_render() {
-        let view = RefreshingWatchView::new(Box::new(MockTerminal::new()), 10);
+        let view = RefreshingWatchView::new(Box::new(MockTerminal::new()));
 
         view.on_event(create_user_event("test message"));
         view.render();
@@ -650,7 +689,7 @@ mod tests {
 
     #[test]
     fn test_footer_contains_context_window() {
-        let buffer = WatchBuffer::new(10);
+        let buffer = WatchBuffer::new();
         let footer = buffer.format_footer();
 
         assert!(
