@@ -3,30 +3,34 @@ source: crates/agtrace-providers/tests/provider_snapshots.rs
 expression: json_pretty
 ---
 {
+  "id": "1f5601e4-9923-530d-a5d8-99faa34614c4",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": null,
+  "timestamp": "2025-12-09T19:51:29.418Z",
+  "type": "user",
   "content": {
     "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
-    "id": "<UUID_REDACTED>",
+    "id": "15a79f8b-41d7-4f21-98b0-ea93ac553897",
     "timestamp": "2025-12-09T19:51:29.418Z",
     "type": "user"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:51:29.418Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "1f5601e4-9923-530d-a5d8-99faa34614c4",
+  "timestamp": "2025-12-09T19:51:50.106Z",
+  "type": "reasoning",
   "content": {
     "text": "Analyzing the Task's Requirements: I'm currently focused on the specific steps the user wants to accomplish. Creating the directory `myapp` and then placing the `hoge.py` file with the specified Python code is straightforward. I'm considering the potential for edge cases or assumptions that may need to be addressed in the execution plan, such as file permissions or existing directory conflicts."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
-    "id": "<UUID_REDACTED>",
+    "id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -57,13 +61,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309910095-ad8431786e6368",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309910095-ad8431786e6368",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: mkdir myapp\nDirectory: (root)\nOutput: (empty)\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27175"
@@ -77,21 +81,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:51:50.106Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "timestamp": "2025-12-09T19:51:50.106Z",
+  "type": "reasoning",
   "content": {
     "text": "Crafting the Execution Steps: Now, I'm refining the steps to be as clear and concise as possible. Creating the file and writing the content seem like distinct sub-tasks, and I'm prioritizing directness. Thinking about how the Python code should be written."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
-    "id": "<UUID_REDACTED>",
+    "id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -122,13 +126,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309910095-ad8431786e6368",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309910095-ad8431786e6368",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: mkdir myapp\nDirectory: (root)\nOutput: (empty)\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27175"
@@ -142,26 +146,26 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:51:50.106Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "159b43e9-762e-57df-b42a-83f175d78f84",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "6310a887-a976-59e1-9d3d-e429f6cb1e8c",
+  "timestamp": "2025-12-09T19:51:50.106Z",
+  "type": "tool_call",
   "content": {
+    "name": "run_shell_command",
     "arguments": {
       "command": "mkdir myapp",
       "description": "Create a directory named myapp."
     },
-    "name": "run_shell_command",
     "provider_call_id": "run_shell_command-1765309910095-ad8431786e6368"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
-    "id": "<UUID_REDACTED>",
+    "id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -192,13 +196,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309910095-ad8431786e6368",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309910095-ad8431786e6368",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: mkdir myapp\nDirectory: (root)\nOutput: (empty)\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27175"
@@ -212,23 +216,23 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:51:50.106Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "f7c25860-879e-54ca-a1c5-e004846f007b",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "159b43e9-762e-57df-b42a-83f175d78f84",
+  "timestamp": "2025-12-09T19:51:50.106Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "159b43e9-762e-57df-b42a-83f175d78f84",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
-    "id": "<UUID_REDACTED>",
+    "id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -259,13 +263,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309910095-ad8431786e6368",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309910095-ad8431786e6368",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: mkdir myapp\nDirectory: (root)\nOutput: (empty)\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27175"
@@ -279,21 +283,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:51:50.106Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "567b0f9a-f01a-5c07-bdc7-95883f7a6cd0",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "f7c25860-879e-54ca-a1c5-e004846f007b",
+  "timestamp": "2025-12-09T19:51:50.106Z",
+  "type": "message",
   "content": {
     "text": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
-    "id": "<UUID_REDACTED>",
+    "id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -324,13 +328,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309910095-ad8431786e6368",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309910095-ad8431786e6368",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: mkdir myapp\nDirectory: (root)\nOutput: (empty)\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27175"
@@ -344,30 +348,30 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:51:50.106Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "57126603-4d11-583c-86e2-5d867974b993",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "567b0f9a-f01a-5c07-bdc7-95883f7a6cd0",
+  "timestamp": "2025-12-09T19:51:50.106Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 6979,
-      "reasoning_output_tokens": 86
-    },
     "input_tokens": 13629,
     "output_tokens": 52,
-    "total_tokens": 13767
+    "total_tokens": 13767,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 6979,
+      "reasoning_output_tokens": 86,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I will create a directory named `myapp` and then create a file `hoge.py` inside it with the content `print(1+1)`.",
-    "id": "<UUID_REDACTED>",
+    "id": "ab7c3686-068b-4c8a-9045-2055fd56a85d",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -398,13 +402,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309910095-ad8431786e6368",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309910095-ad8431786e6368",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: mkdir myapp\nDirectory: (root)\nOutput: (empty)\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27175"
@@ -418,21 +422,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:51:50.106Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "998fbedd-7389-5859-95ec-84ad5d727a70",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "57126603-4d11-583c-86e2-5d867974b993",
+  "timestamp": "2025-12-09T19:52:16.623Z",
+  "type": "reasoning",
   "content": {
     "text": "Creating the file structure: I've got the `myapp` directory set up, just as intended. The next logical step is to create the `hoge.py` file within it, and populate it with the required initial content."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Directory `myapp` created. Next, create `hoge.py` within `myapp`.",
-    "id": "<UUID_REDACTED>",
+    "id": "366e6d91-085a-411a-b090-78c62cfe0531",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -458,13 +462,13 @@ expression: json_pretty
         },
         "description": "Writes content to a specified file in the local filesystem.\n\n      The user has the ability to modify `content`. If modified, this will be stated in the response.",
         "displayName": "WriteFile",
-        "id": "<UUID_REDACTED>",
+        "id": "write_file-1765309936615-3e48006f9d7538",
         "name": "write_file",
         "renderOutputAsMarkdown": true,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
                 "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
@@ -477,26 +481,26 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:16.623Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "82297797-def9-5b8c-a106-d302877817f3",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "998fbedd-7389-5859-95ec-84ad5d727a70",
+  "timestamp": "2025-12-09T19:52:16.623Z",
+  "type": "tool_call",
   "content": {
+    "name": "write_file",
     "arguments": {
       "content": "print(1+1)",
       "file_path": "myapp/hoge.py"
     },
-    "name": "write_file",
     "provider_call_id": "write_file-1765309936615-3e48006f9d7538"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Directory `myapp` created. Next, create `hoge.py` within `myapp`.",
-    "id": "<UUID_REDACTED>",
+    "id": "366e6d91-085a-411a-b090-78c62cfe0531",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -522,13 +526,13 @@ expression: json_pretty
         },
         "description": "Writes content to a specified file in the local filesystem.\n\n      The user has the ability to modify `content`. If modified, this will be stated in the response.",
         "displayName": "WriteFile",
-        "id": "<UUID_REDACTED>",
+        "id": "write_file-1765309936615-3e48006f9d7538",
         "name": "write_file",
         "renderOutputAsMarkdown": true,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
                 "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
@@ -541,23 +545,23 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:16.623Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "96f1565f-20ff-59ed-92b4-e4c7125e595e",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "82297797-def9-5b8c-a106-d302877817f3",
+  "timestamp": "2025-12-09T19:52:16.623Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "[FunctionResponse { function_response: FunctionResponseInner { id: \"write_file-1765309936615-3e48006f9d7538\", name: \"write_file\", response: Object {\"output\": String(\"Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py.\")} } }]",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "82297797-def9-5b8c-a106-d302877817f3",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Directory `myapp` created. Next, create `hoge.py` within `myapp`.",
-    "id": "<UUID_REDACTED>",
+    "id": "366e6d91-085a-411a-b090-78c62cfe0531",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -583,13 +587,13 @@ expression: json_pretty
         },
         "description": "Writes content to a specified file in the local filesystem.\n\n      The user has the ability to modify `content`. If modified, this will be stated in the response.",
         "displayName": "WriteFile",
-        "id": "<UUID_REDACTED>",
+        "id": "write_file-1765309936615-3e48006f9d7538",
         "name": "write_file",
         "renderOutputAsMarkdown": true,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
                 "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
@@ -602,21 +606,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:16.623Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "3c51c270-ba64-58af-9a36-91090529a079",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "96f1565f-20ff-59ed-92b4-e4c7125e595e",
+  "timestamp": "2025-12-09T19:52:16.623Z",
+  "type": "message",
   "content": {
     "text": "Directory `myapp` created. Next, create `hoge.py` within `myapp`."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Directory `myapp` created. Next, create `hoge.py` within `myapp`.",
-    "id": "<UUID_REDACTED>",
+    "id": "366e6d91-085a-411a-b090-78c62cfe0531",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -642,13 +646,13 @@ expression: json_pretty
         },
         "description": "Writes content to a specified file in the local filesystem.\n\n      The user has the ability to modify `content`. If modified, this will be stated in the response.",
         "displayName": "WriteFile",
-        "id": "<UUID_REDACTED>",
+        "id": "write_file-1765309936615-3e48006f9d7538",
         "name": "write_file",
         "renderOutputAsMarkdown": true,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
                 "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
@@ -661,30 +665,30 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:16.623Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "96d811e6-2d86-5605-984c-6308fb2f4045",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "3c51c270-ba64-58af-9a36-91090529a079",
+  "timestamp": "2025-12-09T19:52:16.623Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 5864,
-      "reasoning_output_tokens": 33
-    },
     "input_tokens": 6219,
     "output_tokens": 38,
-    "total_tokens": 6290
+    "total_tokens": 6290,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 5864,
+      "reasoning_output_tokens": 33,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Directory `myapp` created. Next, create `hoge.py` within `myapp`.",
-    "id": "<UUID_REDACTED>",
+    "id": "366e6d91-085a-411a-b090-78c62cfe0531",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -710,13 +714,13 @@ expression: json_pretty
         },
         "description": "Writes content to a specified file in the local filesystem.\n\n      The user has the ability to modify `content`. If modified, this will be stated in the response.",
         "displayName": "WriteFile",
-        "id": "<UUID_REDACTED>",
+        "id": "write_file-1765309936615-3e48006f9d7538",
         "name": "write_file",
         "renderOutputAsMarkdown": true,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
                 "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
@@ -729,21 +733,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:16.623Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "551226d6-77a7-50e4-b76a-8a4e4e65fb61",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "96d811e6-2d86-5605-984c-6308fb2f4045",
+  "timestamp": "2025-12-09T19:52:21.382Z",
+  "type": "reasoning",
   "content": {
     "text": "Delivering on Requests: I've successfully created the `myapp` directory and the `hoge.py` file within, as requested. The file now contains the exact content specified, a straightforward outcome. I'm satisfied with the completion of this task."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content.",
-    "id": "<UUID_REDACTED>",
+    "id": "dedc4cf0-bd72-415a-b3ac-2d3864d19954",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -769,13 +773,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309941376-a3b382f7de6c78",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309941376-a3b382f7de6c78",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: ls -F\nDirectory: (root)\nOutput: hello.text      myapp/\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27178"
@@ -789,26 +793,26 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:21.382Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "9a1c5544-88ec-5d0a-abce-5d71a2a17a99",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "551226d6-77a7-50e4-b76a-8a4e4e65fb61",
+  "timestamp": "2025-12-09T19:52:21.382Z",
+  "type": "tool_call",
   "content": {
+    "name": "run_shell_command",
     "arguments": {
       "command": "ls -F",
       "description": "List all files and folders in the current directory, indicating folders with a slash."
     },
-    "name": "run_shell_command",
     "provider_call_id": "run_shell_command-1765309941376-a3b382f7de6c78"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content.",
-    "id": "<UUID_REDACTED>",
+    "id": "dedc4cf0-bd72-415a-b3ac-2d3864d19954",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -834,13 +838,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309941376-a3b382f7de6c78",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309941376-a3b382f7de6c78",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: ls -F\nDirectory: (root)\nOutput: hello.text      myapp/\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27178"
@@ -854,23 +858,23 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:21.382Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "385dabb1-412e-5e4c-b9d0-a8d55d887346",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "9a1c5544-88ec-5d0a-abce-5d71a2a17a99",
+  "timestamp": "2025-12-09T19:52:21.382Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "hello.text      myapp/",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "9a1c5544-88ec-5d0a-abce-5d71a2a17a99",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content.",
-    "id": "<UUID_REDACTED>",
+    "id": "dedc4cf0-bd72-415a-b3ac-2d3864d19954",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -896,13 +900,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309941376-a3b382f7de6c78",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309941376-a3b382f7de6c78",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: ls -F\nDirectory: (root)\nOutput: hello.text      myapp/\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27178"
@@ -916,21 +920,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:21.382Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "2975138f-194a-5619-bd89-99357b22e03b",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "385dabb1-412e-5e4c-b9d0-a8d55d887346",
+  "timestamp": "2025-12-09T19:52:21.382Z",
+  "type": "message",
   "content": {
     "text": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content.",
-    "id": "<UUID_REDACTED>",
+    "id": "dedc4cf0-bd72-415a-b3ac-2d3864d19954",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -956,13 +960,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309941376-a3b382f7de6c78",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309941376-a3b382f7de6c78",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: ls -F\nDirectory: (root)\nOutput: hello.text      myapp/\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27178"
@@ -976,30 +980,30 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:21.382Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "b1fd5c4d-7069-5244-98ff-111babdbbd37",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "2975138f-194a-5619-bd89-99357b22e03b",
+  "timestamp": "2025-12-09T19:52:21.382Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 5844,
-      "reasoning_output_tokens": 34
-    },
     "input_tokens": 6286,
     "output_tokens": 53,
-    "total_tokens": 6373
+    "total_tokens": 6373,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 5844,
+      "reasoning_output_tokens": 34,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "I've completed the request: `myapp` directory and `myapp/hoge.py` are created with the specified content.",
-    "id": "<UUID_REDACTED>",
+    "id": "dedc4cf0-bd72-415a-b3ac-2d3864d19954",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1025,13 +1029,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309941376-a3b382f7de6c78",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309941376-a3b382f7de6c78",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: ls -F\nDirectory: (root)\nOutput: hello.text      myapp/\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27178"
@@ -1045,21 +1049,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:21.382Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "c83dc4a8-888a-500d-9c72-7b6c580cb340",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "b1fd5c4d-7069-5244-98ff-111babdbbd37",
+  "timestamp": "2025-12-09T19:52:26.013Z",
+  "type": "reasoning",
   "content": {
     "text": "Analyzing File Structure Creation: I can confirm the creation of the `myapp` directory and the `hoge.py` file within it. It appears the initial setup requested by the user is now complete, and the base structure is in place. I have successfully fulfilled the immediate requirements."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "`myapp` directory and `hoge.py` within it are confirmed. Request complete.",
-    "id": "<UUID_REDACTED>",
+    "id": "d38b41c7-9101-43ff-aebb-94cafea7c547",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1078,21 +1082,21 @@ expression: json_pretty
       "total": 6460
     },
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:26.013Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "a4ca0056-6891-5e5b-b061-4becea11c37f",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "c83dc4a8-888a-500d-9c72-7b6c580cb340",
+  "timestamp": "2025-12-09T19:52:26.013Z",
+  "type": "message",
   "content": {
     "text": "`myapp` directory and `hoge.py` within it are confirmed. Request complete."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "`myapp` directory and `hoge.py` within it are confirmed. Request complete.",
-    "id": "<UUID_REDACTED>",
+    "id": "d38b41c7-9101-43ff-aebb-94cafea7c547",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1111,30 +1115,30 @@ expression: json_pretty
       "total": 6460
     },
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:26.013Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "782cc19d-056e-51fc-9a8b-4986bf9cc55d",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "a4ca0056-6891-5e5b-b061-4becea11c37f",
+  "timestamp": "2025-12-09T19:52:26.013Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 5836,
-      "reasoning_output_tokens": 39
-    },
     "input_tokens": 6402,
     "output_tokens": 19,
-    "total_tokens": 6460
+    "total_tokens": 6460,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 5836,
+      "reasoning_output_tokens": 39,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "`myapp` directory and `hoge.py` within it are confirmed. Request complete.",
-    "id": "<UUID_REDACTED>",
+    "id": "d38b41c7-9101-43ff-aebb-94cafea7c547",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1153,38 +1157,38 @@ expression: json_pretty
       "total": 6460
     },
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:26.013Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "5843dc46-99b3-5e2c-b5eb-8e417daabc6d",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "782cc19d-056e-51fc-9a8b-4986bf9cc55d",
+  "timestamp": "2025-12-09T19:52:58.592Z",
+  "type": "user",
   "content": {
     "text": "cd to myapp and run python hoge.py"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "cd to myapp and run python hoge.py",
-    "id": "<UUID_REDACTED>",
+    "id": "d8c0d58c-f2a0-4806-874b-b3e98da38356",
     "timestamp": "2025-12-09T19:52:58.592Z",
     "type": "user"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:52:58.592Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "fe964fb6-8c91-543d-a598-3b94112ba261",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "5843dc46-99b3-5e2c-b5eb-8e417daabc6d",
+  "timestamp": "2025-12-09T19:53:16.156Z",
+  "type": "reasoning",
   "content": {
     "text": "Planning the Execution: I'm focusing now on the exact steps needed. It seems simple: I need to change the current directory to `myapp` first, and *then* run `hoge.py` with Python. Thinking about the best way to represent this sequence concisely."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I'll `cd myapp` and then `python hoge.py`.",
-    "id": "<UUID_REDACTED>",
+    "id": "0ee64212-920a-47e0-a366-5ace7d8df9d7",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1210,13 +1214,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309996151-96a3b98446867",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309996151-96a3b98446867",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python hoge.py\nDirectory: (root)\nOutput: error: target shim binary not found\nError: (none)\nExit Code: 1\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27209"
@@ -1230,26 +1234,26 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:53:16.156Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "af063a5c-89f1-598d-8c84-d2f3c2882a38",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "fe964fb6-8c91-543d-a598-3b94112ba261",
+  "timestamp": "2025-12-09T19:53:16.156Z",
+  "type": "tool_call",
   "content": {
+    "name": "run_shell_command",
     "arguments": {
       "command": "cd myapp && python hoge.py",
       "description": "Change directory to 'myapp' and execute 'hoge.py' using python."
     },
-    "name": "run_shell_command",
     "provider_call_id": "run_shell_command-1765309996151-96a3b98446867"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I'll `cd myapp` and then `python hoge.py`.",
-    "id": "<UUID_REDACTED>",
+    "id": "0ee64212-920a-47e0-a366-5ace7d8df9d7",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1275,13 +1279,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309996151-96a3b98446867",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309996151-96a3b98446867",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python hoge.py\nDirectory: (root)\nOutput: error: target shim binary not found\nError: (none)\nExit Code: 1\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27209"
@@ -1295,23 +1299,23 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:53:16.156Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "3196a98b-7acd-5f17-b87d-33000bd8001b",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "af063a5c-89f1-598d-8c84-d2f3c2882a38",
+  "timestamp": "2025-12-09T19:53:16.156Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "error: target shim binary not found",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "af063a5c-89f1-598d-8c84-d2f3c2882a38",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I'll `cd myapp` and then `python hoge.py`.",
-    "id": "<UUID_REDACTED>",
+    "id": "0ee64212-920a-47e0-a366-5ace7d8df9d7",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1337,13 +1341,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309996151-96a3b98446867",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309996151-96a3b98446867",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python hoge.py\nDirectory: (root)\nOutput: error: target shim binary not found\nError: (none)\nExit Code: 1\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27209"
@@ -1357,21 +1361,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:53:16.156Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "2f6454bb-40b7-5ad5-99c6-01825d9824c4",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "3196a98b-7acd-5f17-b87d-33000bd8001b",
+  "timestamp": "2025-12-09T19:53:16.156Z",
+  "type": "message",
   "content": {
     "text": "Okay, I'll `cd myapp` and then `python hoge.py`."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I'll `cd myapp` and then `python hoge.py`.",
-    "id": "<UUID_REDACTED>",
+    "id": "0ee64212-920a-47e0-a366-5ace7d8df9d7",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1397,13 +1401,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309996151-96a3b98446867",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309996151-96a3b98446867",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python hoge.py\nDirectory: (root)\nOutput: error: target shim binary not found\nError: (none)\nExit Code: 1\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27209"
@@ -1417,30 +1421,30 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:53:16.156Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "9105da31-957b-5548-9ed6-dec9929c2fd1",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "2f6454bb-40b7-5ad5-99c6-01825d9824c4",
+  "timestamp": "2025-12-09T19:53:16.156Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 7294,
-      "reasoning_output_tokens": 28
-    },
     "input_tokens": 21501,
     "output_tokens": 50,
-    "total_tokens": 21579
+    "total_tokens": 21579,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 7294,
+      "reasoning_output_tokens": 28,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "Okay, I'll `cd myapp` and then `python hoge.py`.",
-    "id": "<UUID_REDACTED>",
+    "id": "0ee64212-920a-47e0-a366-5ace7d8df9d7",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1466,13 +1470,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765309996151-96a3b98446867",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765309996151-96a3b98446867",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python hoge.py\nDirectory: (root)\nOutput: error: target shim binary not found\nError: (none)\nExit Code: 1\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27209"
@@ -1486,21 +1490,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:53:16.156Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "9105da31-957b-5548-9ed6-dec9929c2fd1",
+  "timestamp": "2025-12-09T19:54:17.694Z",
+  "type": "reasoning",
   "content": {
     "text": "Analyzing Command Failures: I'm currently focused on the \"target shim binary not found\" error. I suspect the issue lies in the Python path configuration. I am going to try explicitly specifying the full path to Python."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path.",
-    "id": "<UUID_REDACTED>",
+    "id": "f81824ae-e215-42fb-898a-e324c8bac796",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1531,13 +1535,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765310057688-05817d34470d1",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765310057688-05817d34470d1",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python3 hoge.py\nDirectory: (root)\nOutput: 2\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27212"
@@ -1551,21 +1555,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:17.694Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "timestamp": "2025-12-09T19:54:17.694Z",
+  "type": "reasoning",
   "content": {
     "text": "Testing Python Execution Paths: I'm now investigating potential path problems. I'll explicitly call `python3` instead of relying on the default `python` alias, to sidestep any potential environment issues. If this resolves the \"target shim binary not found\" error, the path configuration is the culprit. Otherwise, a deeper dive into the shell environment is needed."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path.",
-    "id": "<UUID_REDACTED>",
+    "id": "f81824ae-e215-42fb-898a-e324c8bac796",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1596,13 +1600,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765310057688-05817d34470d1",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765310057688-05817d34470d1",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python3 hoge.py\nDirectory: (root)\nOutput: 2\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27212"
@@ -1616,26 +1620,26 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:17.694Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "af7dafd6-d03e-5510-800c-c2b889f50c89",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "74a7e588-494f-5527-9dd9-7eadf2256461",
+  "timestamp": "2025-12-09T19:54:17.694Z",
+  "type": "tool_call",
   "content": {
+    "name": "run_shell_command",
     "arguments": {
       "command": "cd myapp && python3 hoge.py",
       "description": "Change directory to 'myapp' and execute 'hoge.py' using python3."
     },
-    "name": "run_shell_command",
     "provider_call_id": "run_shell_command-1765310057688-05817d34470d1"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path.",
-    "id": "<UUID_REDACTED>",
+    "id": "f81824ae-e215-42fb-898a-e324c8bac796",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1666,13 +1670,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765310057688-05817d34470d1",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765310057688-05817d34470d1",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python3 hoge.py\nDirectory: (root)\nOutput: 2\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27212"
@@ -1686,23 +1690,23 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:17.694Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "d1e93c66-efbb-55df-a9b9-a6fd827c35e4",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "af7dafd6-d03e-5510-800c-c2b889f50c89",
+  "timestamp": "2025-12-09T19:54:17.694Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "2",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "af7dafd6-d03e-5510-800c-c2b889f50c89",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path.",
-    "id": "<UUID_REDACTED>",
+    "id": "f81824ae-e215-42fb-898a-e324c8bac796",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1733,13 +1737,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765310057688-05817d34470d1",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765310057688-05817d34470d1",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python3 hoge.py\nDirectory: (root)\nOutput: 2\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27212"
@@ -1753,21 +1757,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:17.694Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "5042264d-0749-5199-be51-467fbdf6900c",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "d1e93c66-efbb-55df-a9b9-a6fd827c35e4",
+  "timestamp": "2025-12-09T19:54:17.694Z",
+  "type": "message",
   "content": {
     "text": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path.",
-    "id": "<UUID_REDACTED>",
+    "id": "f81824ae-e215-42fb-898a-e324c8bac796",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1798,13 +1802,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765310057688-05817d34470d1",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765310057688-05817d34470d1",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python3 hoge.py\nDirectory: (root)\nOutput: 2\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27212"
@@ -1818,30 +1822,30 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:17.694Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "b7760ec9-e5ad-5d13-a20b-d878edcd5497",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "5042264d-0749-5199-be51-467fbdf6900c",
+  "timestamp": "2025-12-09T19:54:17.694Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 5809,
-      "reasoning_output_tokens": 127
-    },
     "input_tokens": 6550,
     "output_tokens": 71,
-    "total_tokens": 6748
+    "total_tokens": 6748,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 5809,
+      "reasoning_output_tokens": 127,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "\"Target shim binary not found\" indicates a `python` path issue. I'll try `python3` first; if that fails, I'll check the full path.",
-    "id": "<UUID_REDACTED>",
+    "id": "f81824ae-e215-42fb-898a-e324c8bac796",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1872,13 +1876,13 @@ expression: json_pretty
         },
         "description": "This tool executes a given shell command as `bash -c <command>`. Command can start background processes using `&`. Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n\n      The following information is returned:\n\n      Command: Executed command.\n      Directory: Directory where command was executed, or `(root)`.\n      Stdout: Output on stdout stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Stderr: Output on stderr stream. Can be `(empty)` or partial on error and for any unwaited background processes.\n      Error: Error or `(none)` if no error was reported for the subprocess.\n      Exit Code: Exit code or `(none)` if terminated by signal.\n      Signal: Signal number or `(none)` if no signal was received.\n      Background PIDs: List of background processes started or `(none)`.\n      Process Group PGID: Process group started or `(none)`",
         "displayName": "Shell",
-        "id": "<UUID_REDACTED>",
+        "id": "run_shell_command-1765310057688-05817d34470d1",
         "name": "run_shell_command",
         "renderOutputAsMarkdown": false,
         "result": [
           {
             "functionResponse": {
-              "id": "<UUID_REDACTED>",
+              "id": "run_shell_command-1765310057688-05817d34470d1",
               "name": "run_shell_command",
               "response": {
                 "output": "Command: cd myapp && python3 hoge.py\nDirectory: (root)\nOutput: 2\nError: (none)\nExit Code: 0\nSignal: 0\nBackground PIDs: (none)\nProcess Group PGID: 27212"
@@ -1892,21 +1896,21 @@ expression: json_pretty
       }
     ],
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:17.694Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "7b68cc9a-2cde-51fa-9079-a4c755e9b7e4",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "b7760ec9-e5ad-5d13-a20b-d878edcd5497",
+  "timestamp": "2025-12-09T19:54:21.715Z",
+  "type": "reasoning",
   "content": {
     "text": "Evaluating the Result: I've verified the output; the `python3 hoge.py` script produced the anticipated result, printing \"2.\" This confirms that the user's initial objective was achieved without issue. I'm satisfied with the outcome."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "`python3 hoge.py` executed, outputting \"2\". Request complete.",
-    "id": "<UUID_REDACTED>",
+    "id": "987ce5b4-fb0f-4d2d-bae7-2a1aa1bf99c0",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1925,21 +1929,21 @@ expression: json_pretty
       "total": 6733
     },
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:21.715Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "1cd43dc5-28ea-5990-b05b-66fb7c35d128",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "7b68cc9a-2cde-51fa-9079-a4c755e9b7e4",
+  "timestamp": "2025-12-09T19:54:21.715Z",
+  "type": "message",
   "content": {
     "text": "`python3 hoge.py` executed, outputting \"2\". Request complete."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "`python3 hoge.py` executed, outputting \"2\". Request complete.",
-    "id": "<UUID_REDACTED>",
+    "id": "987ce5b4-fb0f-4d2d-bae7-2a1aa1bf99c0",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -1958,30 +1962,30 @@ expression: json_pretty
       "total": 6733
     },
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:21.715Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "923d5f5a-c88e-587f-9982-3f61f587ed11",
+  "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+  "parent_id": "1cd43dc5-28ea-5990-b05b-66fb7c35d128",
+  "timestamp": "2025-12-09T19:54:21.715Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 5751,
-      "reasoning_output_tokens": 30
-    },
     "input_tokens": 6686,
     "output_tokens": 17,
-    "total_tokens": 6733
+    "total_tokens": 6733,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 5751,
+      "reasoning_output_tokens": 30,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "content": "`python3 hoge.py` executed, outputting \"2\". Request complete.",
-    "id": "<UUID_REDACTED>",
+    "id": "987ce5b4-fb0f-4d2d-bae7-2a1aa1bf99c0",
     "model": "gemini-2.5-flash",
     "thoughts": [
       {
@@ -2000,9 +2004,5 @@ expression: json_pretty
       "total": 6733
     },
     "type": "gemini"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:54:21.715Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }

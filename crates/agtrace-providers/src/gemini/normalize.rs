@@ -2,7 +2,7 @@ use agtrace_types::*;
 use chrono::DateTime;
 use uuid::Uuid;
 
-use crate::builder::EventBuilder;
+use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::gemini::schema::{GeminiMessage, GeminiSession};
 
 /// Normalize Gemini session to events
@@ -30,35 +30,43 @@ pub(crate) fn normalize_gemini_session(
                 }
 
                 let timestamp = parse_timestamp(&user_msg.timestamp);
-                let event = builder.create_event(
+                builder.build_and_push(
+                    &mut events,
+                    &user_msg.id,
+                    SemanticSuffix::User,
                     timestamp,
                     EventPayload::User(UserPayload {
                         text: user_msg.content.clone(),
                     }),
                     Some(raw_value),
                 );
-                events.push(event);
             }
 
             GeminiMessage::Gemini(gemini_msg) => {
                 let timestamp = parse_timestamp(&gemini_msg.timestamp);
+                let base_id = &gemini_msg.id;
 
                 // 1. Reasoning events (thoughts)
                 for thought in &gemini_msg.thoughts {
-                    let event = builder.create_event(
+                    builder.build_and_push(
+                        &mut events,
+                        base_id,
+                        SemanticSuffix::Reasoning,
                         timestamp,
                         EventPayload::Reasoning(ReasoningPayload {
                             text: format!("{}: {}", thought.subject, thought.description),
                         }),
                         Some(raw_value.clone()),
                     );
-                    events.push(event);
                 }
 
                 // 2. Tool calls and results
                 for tool_call in &gemini_msg.tool_calls {
                     // ToolCall event
-                    let tool_event = builder.create_event(
+                    let tool_call_uuid = builder.build_and_push(
+                        &mut events,
+                        base_id,
+                        SemanticSuffix::ToolCall,
                         timestamp,
                         EventPayload::ToolCall(ToolCallPayload {
                             name: tool_call.name.clone(),
@@ -68,12 +76,8 @@ pub(crate) fn normalize_gemini_session(
                         Some(raw_value.clone()),
                     );
 
-                    // Save tool_call UUID before moving tool_event
-                    let tool_call_uuid = tool_event.id;
-
                     // Register tool call ID mapping (provider ID -> UUID)
                     builder.register_tool_call(tool_call.id.clone(), tool_call_uuid);
-                    events.push(tool_event);
 
                     // ToolResult event (if result exists)
                     if !tool_call.result.is_empty() {
@@ -88,7 +92,10 @@ pub(crate) fn normalize_gemini_session(
                             .map(|s| s == "error")
                             .unwrap_or(false);
 
-                        let result_event = builder.create_event(
+                        builder.build_and_push(
+                            &mut events,
+                            base_id,
+                            SemanticSuffix::ToolResult,
                             timestamp,
                             EventPayload::ToolResult(ToolResultPayload {
                                 output,
@@ -97,23 +104,27 @@ pub(crate) fn normalize_gemini_session(
                             }),
                             Some(raw_value.clone()),
                         );
-                        events.push(result_event);
                     }
                 }
 
                 // 3. Message event (assistant response)
-                let message_event = builder.create_event(
+                builder.build_and_push(
+                    &mut events,
+                    base_id,
+                    SemanticSuffix::Message,
                     timestamp,
                     EventPayload::Message(MessagePayload {
                         text: gemini_msg.content.clone(),
                     }),
                     Some(raw_value.clone()),
                 );
-                events.push(message_event.clone());
 
                 // 4. TokenUsage event (sidecar attached to message)
                 // Gemini returns turn-level totals, so we attach to the last generation event
-                let token_event = builder.create_event(
+                builder.build_and_push(
+                    &mut events,
+                    base_id,
+                    SemanticSuffix::TokenUsage,
                     timestamp,
                     EventPayload::TokenUsage(TokenUsagePayload {
                         input_tokens: gemini_msg.tokens.input as i32,
@@ -129,12 +140,14 @@ pub(crate) fn normalize_gemini_session(
                     }),
                     Some(raw_value),
                 );
-                events.push(token_event);
             }
 
             GeminiMessage::Info(info_msg) => {
                 let timestamp = parse_timestamp(&info_msg.timestamp);
-                let event = builder.create_event(
+                builder.build_and_push(
+                    &mut events,
+                    &info_msg.id,
+                    SemanticSuffix::Notification,
                     timestamp,
                     EventPayload::Notification(NotificationPayload {
                         text: info_msg.content.clone(),
@@ -142,7 +155,6 @@ pub(crate) fn normalize_gemini_session(
                     }),
                     Some(raw_value),
                 );
-                events.push(event);
             }
         }
     }

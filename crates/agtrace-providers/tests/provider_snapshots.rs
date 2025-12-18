@@ -1,28 +1,5 @@
 use std::path::Path;
 
-// Helper function to redact UUIDs from JSON for snapshot testing
-fn redact_uuids(value: &mut serde_json::Value) {
-    match value {
-        serde_json::Value::Object(map) => {
-            for (key, val) in map.iter_mut() {
-                if key == "id" || key == "trace_id" || key == "parent_id" || key == "tool_call_id" {
-                    if val.is_string() || val.is_null() {
-                        *val = serde_json::Value::String("<UUID_REDACTED>".to_string());
-                    }
-                } else {
-                    redact_uuids(val);
-                }
-            }
-        }
-        serde_json::Value::Array(arr) => {
-            for val in arr.iter_mut() {
-                redact_uuids(val);
-            }
-        }
-        _ => {}
-    }
-}
-
 // Snapshot tests - test provider normalization
 #[test]
 fn test_gemini_parse_snapshot() {
@@ -38,14 +15,10 @@ fn test_gemini_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // Snapshot all events in pretty JSON format with UUIDs redacted
+    // Snapshot all events in pretty JSON format with deterministic UUIDs
     let json_pretty = events
         .iter()
-        .map(|e| {
-            let mut value = serde_json::to_value(e).unwrap();
-            redact_uuids(&mut value);
-            serde_json::to_string_pretty(&value).unwrap()
-        })
+        .map(|e| serde_json::to_string_pretty(e).unwrap())
         .collect::<Vec<_>>()
         .join("\n\n");
     insta::assert_snapshot!("gemini_events_sample", json_pretty);
@@ -65,14 +38,10 @@ fn test_codex_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // Snapshot all events in pretty JSON format with UUIDs redacted
+    // Snapshot all events in pretty JSON format with deterministic UUIDs
     let json_pretty = events
         .iter()
-        .map(|e| {
-            let mut value = serde_json::to_value(e).unwrap();
-            redact_uuids(&mut value);
-            serde_json::to_string_pretty(&value).unwrap()
-        })
+        .map(|e| serde_json::to_string_pretty(e).unwrap())
         .collect::<Vec<_>>()
         .join("\n\n");
     insta::assert_snapshot!("codex_events_sample", json_pretty);
@@ -92,14 +61,10 @@ fn test_claude_parse_snapshot() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // Snapshot all events in pretty JSON format with UUIDs redacted
+    // Snapshot all events in pretty JSON format with deterministic UUIDs
     let json_pretty = events
         .iter()
-        .map(|e| {
-            let mut value = serde_json::to_value(e).unwrap();
-            redact_uuids(&mut value);
-            serde_json::to_string_pretty(&value).unwrap()
-        })
+        .map(|e| serde_json::to_string_pretty(e).unwrap())
         .collect::<Vec<_>>()
         .join("\n\n");
     insta::assert_snapshot!("claude_events_sample", json_pretty);

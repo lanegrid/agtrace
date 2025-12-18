@@ -3,10 +3,14 @@ source: crates/agtrace-providers/tests/provider_snapshots.rs
 expression: json_pretty
 ---
 {
+  "id": "41a3d82a-226a-5229-952a-7833af667ac1",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": null,
+  "timestamp": "2025-12-09T19:55:16.336Z",
+  "type": "user",
   "content": {
     "text": "<environment_context>\n  <cwd>/Users/zawakin/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "payload": {
       "content": [
@@ -19,18 +23,18 @@ expression: json_pretty
       "type": "message"
     },
     "timestamp": "2025-12-09T19:55:16.336Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:16.336Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "cf8181a9-3046-5240-a199-7ea91abf1e50",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "41a3d82a-226a-5229-952a-7833af667ac1",
+  "timestamp": "2025-12-09T19:55:18.143Z",
+  "type": "user",
   "content": {
     "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "payload": {
       "content": [
@@ -43,18 +47,18 @@ expression: json_pretty
       "type": "message"
     },
     "timestamp": "2025-12-09T19:55:18.143Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:18.143Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "8bc22088-0ee5-5e40-ac19-c3ee4b09c6cd",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "cf8181a9-3046-5240-a199-7ea91abf1e50",
+  "timestamp": "2025-12-09T19:55:28.079Z",
+  "type": "reasoning",
   "content": {
     "text": "**Creating directory and file using shell and patch**"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -69,23 +73,23 @@ expression: json_pretty
       "type": "reasoning"
     },
     "timestamp": "2025-12-09T19:55:28.079Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:28.079Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "36fe3a8d-57f4-5286-b69d-f26ff99b1fd8",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "8bc22088-0ee5-5e40-ac19-c3ee4b09c6cd",
+  "timestamp": "2025-12-09T19:55:30.116Z",
+  "type": "tool_call",
   "content": {
+    "name": "shell_command",
     "arguments": {
       "command": "mkdir -p myapp",
       "workdir": "/Users/zawakin/agent-sample"
     },
-    "name": "shell_command",
     "provider_call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -95,27 +99,27 @@ expression: json_pretty
       "type": "function_call"
     },
     "timestamp": "2025-12-09T19:55:30.116Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:30.116Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "e9de7cb3-7186-5139-9047-f09318893ee5",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "36fe3a8d-57f4-5286-b69d-f26ff99b1fd8",
+  "timestamp": "2025-12-09T19:55:30.125Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 64
-    },
     "input_tokens": 3505,
     "output_tokens": 101,
-    "total_tokens": 3606
+    "total_tokens": 3606,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 3072,
+      "reasoning_output_tokens": 64,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -157,20 +161,20 @@ expression: json_pretty
       "type": "token_count"
     },
     "timestamp": "2025-12-09T19:55:30.125Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:30.125Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "1b063679-5ccd-543c-9e67-5194f1d06ab7",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "e9de7cb3-7186-5139-9047-f09318893ee5",
+  "timestamp": "2025-12-09T19:55:30.257Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "36fe3a8d-57f4-5286-b69d-f26ff99b1fd8",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -179,18 +183,18 @@ expression: json_pretty
       "type": "function_call_output"
     },
     "timestamp": "2025-12-09T19:55:30.257Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:30.257Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "c63f54e4-2d7a-521a-81be-7e6571f58a25",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "1b063679-5ccd-543c-9e67-5194f1d06ab7",
+  "timestamp": "2025-12-09T19:55:33.501Z",
+  "type": "reasoning",
   "content": {
     "text": "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -205,22 +209,22 @@ expression: json_pretty
       "type": "reasoning"
     },
     "timestamp": "2025-12-09T19:55:33.501Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:33.501Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "219a752b-b08d-5c4e-81e4-d52f361ae6e6",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "c63f54e4-2d7a-521a-81be-7e6571f58a25",
+  "timestamp": "2025-12-09T19:55:34.147Z",
+  "type": "tool_call",
   "content": {
+    "name": "apply_patch",
     "arguments": {
       "raw": "*** Begin Patch\n*** Add File: myapp/hoge.py\n+print(1 + 1)\n*** End Patch"
     },
-    "name": "apply_patch",
     "provider_call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -231,27 +235,27 @@ expression: json_pretty
       "type": "custom_tool_call"
     },
     "timestamp": "2025-12-09T19:55:34.147Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:34.147Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "734cff15-8512-577e-9721-4f0cd5d71793",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "219a752b-b08d-5c4e-81e4-d52f361ae6e6",
+  "timestamp": "2025-12-09T19:55:34.147Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
-    },
     "input_tokens": 3711,
     "output_tokens": 40,
-    "total_tokens": 3751
+    "total_tokens": 3751,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 3072,
+      "reasoning_output_tokens": 0,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -293,20 +297,20 @@ expression: json_pretty
       "type": "token_count"
     },
     "timestamp": "2025-12-09T19:55:34.147Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:34.147Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "e707a946-a5a5-5483-9f29-45e116daf027",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "734cff15-8512-577e-9721-4f0cd5d71793",
+  "timestamp": "2025-12-09T19:55:35.204Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "{\"output\":\"Success. Updated the following files:\\nA myapp/hoge.py\\n\",\"metadata\":{\"exit_code\":0,\"duration_seconds\":1.0}}",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "219a752b-b08d-5c4e-81e4-d52f361ae6e6",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -315,18 +319,18 @@ expression: json_pretty
       "type": "custom_tool_call_output"
     },
     "timestamp": "2025-12-09T19:55:35.204Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:35.204Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "6cb65777-1359-5839-a3ea-2bee52ba4a87",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "e707a946-a5a5-5483-9f29-45e116daf027",
+  "timestamp": "2025-12-09T19:55:37.424Z",
+  "type": "message",
   "content": {
     "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -340,27 +344,27 @@ expression: json_pretty
       "type": "message"
     },
     "timestamp": "2025-12-09T19:55:37.424Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:37.424Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "3354aa58-6c7e-559d-84eb-050f5f9a4094",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "6cb65777-1359-5839-a3ea-2bee52ba4a87",
+  "timestamp": "2025-12-09T19:55:37.981Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3584,
-      "reasoning_output_tokens": 0
-    },
     "input_tokens": 3815,
     "output_tokens": 26,
-    "total_tokens": 3841
+    "total_tokens": 3841,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 3584,
+      "reasoning_output_tokens": 0,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -402,18 +406,18 @@ expression: json_pretty
       "type": "token_count"
     },
     "timestamp": "2025-12-09T19:55:37.981Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:37.981Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "b80c0701-4bdd-51aa-836c-0df00265307a",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "3354aa58-6c7e-559d-84eb-050f5f9a4094",
+  "timestamp": "2025-12-09T19:55:45.472Z",
+  "type": "user",
   "content": {
     "text": "cd to myapp and run python hoge.py"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -427,18 +431,18 @@ expression: json_pretty
       "type": "message"
     },
     "timestamp": "2025-12-09T19:55:45.472Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:45.472Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "0fa028c6-868d-51b1-a973-41529803026a",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "b80c0701-4bdd-51aa-836c-0df00265307a",
+  "timestamp": "2025-12-09T19:55:49.552Z",
+  "type": "reasoning",
   "content": {
     "text": "**Running Python script in workspace**"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -453,23 +457,23 @@ expression: json_pretty
       "type": "reasoning"
     },
     "timestamp": "2025-12-09T19:55:49.552Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:49.552Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "65c27d12-fb8a-5747-a853-df4168ecd807",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "0fa028c6-868d-51b1-a973-41529803026a",
+  "timestamp": "2025-12-09T19:55:50.553Z",
+  "type": "tool_call",
   "content": {
+    "name": "shell_command",
     "arguments": {
       "command": "python hoge.py",
       "workdir": "/Users/zawakin/agent-sample/myapp"
     },
-    "name": "shell_command",
     "provider_call_id": "call_5j2yJgrbOClvto1R8nvfSoJS"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -479,27 +483,27 @@ expression: json_pretty
       "type": "function_call"
     },
     "timestamp": "2025-12-09T19:55:50.553Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:50.553Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "36b4a08a-c619-5131-91af-8863ba75e126",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "65c27d12-fb8a-5747-a853-df4168ecd807",
+  "timestamp": "2025-12-09T19:55:50.568Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
-    },
     "input_tokens": 3708,
     "output_tokens": 37,
-    "total_tokens": 3745
+    "total_tokens": 3745,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 3072,
+      "reasoning_output_tokens": 0,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -541,20 +545,20 @@ expression: json_pretty
       "type": "token_count"
     },
     "timestamp": "2025-12-09T19:55:50.568Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:50.568Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "ebec843d-cde4-5f16-8a42-829fd1ddb1cc",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "36b4a08a-c619-5131-91af-8863ba75e126",
+  "timestamp": "2025-12-09T19:55:50.681Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\nerror: target shim binary not found\n",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "65c27d12-fb8a-5747-a853-df4168ecd807",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -563,18 +567,18 @@ expression: json_pretty
       "type": "function_call_output"
     },
     "timestamp": "2025-12-09T19:55:50.681Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:50.681Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "651997f3-b960-5ca6-9177-b319ba9b0904",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "ebec843d-cde4-5f16-8a42-829fd1ddb1cc",
+  "timestamp": "2025-12-09T19:55:54.600Z",
+  "type": "reasoning",
   "content": {
     "text": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -589,25 +593,25 @@ expression: json_pretty
       "type": "reasoning"
     },
     "timestamp": "2025-12-09T19:55:54.600Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:54.600Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "445053cc-5bf6-518d-beb1-71c7949e4720",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "651997f3-b960-5ca6-9177-b319ba9b0904",
+  "timestamp": "2025-12-09T19:55:55.447Z",
+  "type": "tool_call",
   "content": {
+    "name": "shell_command",
     "arguments": {
       "command": "python hoge.py",
       "justification": "Need to run python script outside sandbox because default sandbox fails to locate python shim",
       "with_escalated_permissions": true,
       "workdir": "/Users/zawakin/agent-sample/myapp"
     },
-    "name": "shell_command",
     "provider_call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -617,27 +621,27 @@ expression: json_pretty
       "type": "function_call"
     },
     "timestamp": "2025-12-09T19:55:55.447Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:55.447Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "8c34c4b0-0c0f-5168-89ce-dc1d31ca5a91",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "445053cc-5bf6-518d-beb1-71c7949e4720",
+  "timestamp": "2025-12-09T19:55:55.448Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 64
-    },
     "input_tokens": 3845,
     "output_tokens": 128,
-    "total_tokens": 3973
+    "total_tokens": 3973,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 3072,
+      "reasoning_output_tokens": 64,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -679,20 +683,20 @@ expression: json_pretty
       "type": "token_count"
     },
     "timestamp": "2025-12-09T19:55:55.448Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:55.448Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "b1e2dbf1-2dda-5ac7-9246-e587a02bbdb8",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "8c34c4b0-0c0f-5168-89ce-dc1d31ca5a91",
+  "timestamp": "2025-12-09T19:55:59.497Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\nerror: target shim binary not found\n",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "445053cc-5bf6-518d-beb1-71c7949e4720",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -701,18 +705,18 @@ expression: json_pretty
       "type": "function_call_output"
     },
     "timestamp": "2025-12-09T19:55:59.497Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:55:59.497Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "f4ff835a-aa8f-55c8-ac0f-c792a220485d",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "b1e2dbf1-2dda-5ac7-9246-e587a02bbdb8",
+  "timestamp": "2025-12-09T19:56:02.412Z",
+  "type": "reasoning",
   "content": {
     "text": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -727,23 +731,23 @@ expression: json_pretty
       "type": "reasoning"
     },
     "timestamp": "2025-12-09T19:56:02.412Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:02.412Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "bfcc217a-edf0-578e-804e-ce4593418ef2",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "f4ff835a-aa8f-55c8-ac0f-c792a220485d",
+  "timestamp": "2025-12-09T19:56:02.618Z",
+  "type": "tool_call",
   "content": {
+    "name": "shell_command",
     "arguments": {
       "command": "python3 hoge.py",
       "workdir": "/Users/zawakin/agent-sample/myapp"
     },
-    "name": "shell_command",
     "provider_call_id": "call_mI2n5JLETgVMNGApYPPAjEwD"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -753,27 +757,27 @@ expression: json_pretty
       "type": "function_call"
     },
     "timestamp": "2025-12-09T19:56:02.618Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:02.618Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "504ff31d-1812-5e04-a92e-0dd5aa06ffc9",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "bfcc217a-edf0-578e-804e-ce4593418ef2",
+  "timestamp": "2025-12-09T19:56:02.634Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
-    },
     "input_tokens": 4017,
     "output_tokens": 38,
-    "total_tokens": 4055
+    "total_tokens": 4055,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 3072,
+      "reasoning_output_tokens": 0,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -815,20 +819,20 @@ expression: json_pretty
       "type": "token_count"
     },
     "timestamp": "2025-12-09T19:56:02.634Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:02.634Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "ae3a2c17-61c8-5aff-960e-816e5105dd2d",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "504ff31d-1812-5e04-a92e-0dd5aa06ffc9",
+  "timestamp": "2025-12-09T19:56:02.744Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n2\n",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "bfcc217a-edf0-578e-804e-ce4593418ef2",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -837,18 +841,18 @@ expression: json_pretty
       "type": "function_call_output"
     },
     "timestamp": "2025-12-09T19:56:02.744Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:02.744Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "95871586-8e1a-553c-b24b-a2adc7e6b678",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "ae3a2c17-61c8-5aff-960e-816e5105dd2d",
+  "timestamp": "2025-12-09T19:56:05.955Z",
+  "type": "reasoning",
   "content": {
     "text": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -863,18 +867,18 @@ expression: json_pretty
       "type": "reasoning"
     },
     "timestamp": "2025-12-09T19:56:05.955Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:05.955Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "a2dc7bff-c903-5b05-bb4e-193c6abf199b",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "95871586-8e1a-553c-b24b-a2adc7e6b678",
+  "timestamp": "2025-12-09T19:56:06.171Z",
+  "type": "message",
   "content": {
     "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -888,27 +892,27 @@ expression: json_pretty
       "type": "message"
     },
     "timestamp": "2025-12-09T19:56:06.171Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:06.171Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "a632ca5b-2a15-5af4-b77c-d1fce53c0bca",
+  "trace_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "parent_id": "a2dc7bff-c903-5b05-bb4e-193c6abf199b",
+  "timestamp": "2025-12-09T19:56:06.181Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3968,
-      "reasoning_output_tokens": 0
-    },
     "input_tokens": 4139,
     "output_tokens": 38,
-    "total_tokens": 4177
+    "total_tokens": 4177,
+    "details": {
+      "cache_creation_input_tokens": null,
+      "cache_read_input_tokens": 3968,
+      "reasoning_output_tokens": 0,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "model": "gpt-5.1-codex-max",
     "payload": {
@@ -950,9 +954,5 @@ expression: json_pretty
       "type": "token_count"
     },
     "timestamp": "2025-12-09T19:56:06.181Z"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:56:06.181Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }

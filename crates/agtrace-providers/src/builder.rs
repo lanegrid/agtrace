@@ -3,6 +3,33 @@ use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+/// Semantic suffix for deterministic UUID generation
+/// Represents the "why" behind each event creation
+#[derive(Debug, Clone, Copy)]
+pub enum SemanticSuffix {
+    User,
+    Reasoning,
+    Message,
+    ToolCall,
+    ToolResult,
+    TokenUsage,
+    Notification,
+}
+
+impl SemanticSuffix {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Reasoning => "reasoning",
+            Self::Message => "message",
+            Self::ToolCall => "call",
+            Self::ToolResult => "result",
+            Self::TokenUsage => "usage",
+            Self::Notification => "notify",
+        }
+    }
+}
+
 /// EventBuilder helps convert provider raw data to events
 /// Maintains state for proper parent_id chain and tool_call_id mapping
 pub struct EventBuilder {
@@ -27,14 +54,50 @@ impl EventBuilder {
         }
     }
 
+    /// Create and push event with deterministic UUID generation
+    /// Uses UUID v5 with trace_id as namespace and "base_id:suffix" as name
+    /// Returns the generated event ID
+    pub fn build_and_push(
+        &mut self,
+        events: &mut Vec<AgentEvent>,
+        base_id: &str,
+        suffix: SemanticSuffix,
+        timestamp: DateTime<Utc>,
+        payload: EventPayload,
+        metadata: Option<serde_json::Value>,
+    ) -> Uuid {
+        // Generate deterministic UUID: trace_id namespace + "base_id:suffix" name
+        let name = format!("{}:{}", base_id, suffix.as_str());
+        let id = Uuid::new_v5(&self.trace_id, name.as_bytes());
+
+        let event = AgentEvent {
+            id,
+            trace_id: self.trace_id,
+            parent_id: self.last_event_id,
+            timestamp,
+            payload,
+            metadata,
+        };
+
+        let event_id = event.id;
+        events.push(event);
+        self.last_event_id = Some(event_id);
+        event_id
+    }
+
     /// Create a new event with proper parent_id chaining
+    /// If id is None, generates a new UUID using new_v4()
+    ///
+    /// DEPRECATED: Use build_and_push for deterministic UUID generation
+    #[allow(dead_code)]
     pub fn create_event(
         &mut self,
+        id: Option<Uuid>,
         timestamp: DateTime<Utc>,
         payload: EventPayload,
         metadata: Option<serde_json::Value>,
     ) -> AgentEvent {
-        let id = Uuid::new_v4();
+        let id = id.unwrap_or_else(Uuid::new_v4);
         let event = AgentEvent {
             id,
             trace_id: self.trace_id,
@@ -78,6 +141,7 @@ mod tests {
 
         // First event has no parent
         let event1 = builder.create_event(
+            None,
             Utc::now(),
             EventPayload::User(UserPayload {
                 text: "Hello".to_string(),
@@ -89,6 +153,7 @@ mod tests {
 
         // Second event has first as parent
         let event2 = builder.create_event(
+            None,
             Utc::now(),
             EventPayload::Message(MessagePayload {
                 text: "Hi".to_string(),
@@ -99,6 +164,7 @@ mod tests {
 
         // Third event has second as parent
         let event3 = builder.create_event(
+            None,
             Utc::now(),
             EventPayload::ToolCall(ToolCallPayload {
                 name: "bash".to_string(),

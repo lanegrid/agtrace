@@ -3,10 +3,14 @@ source: crates/agtrace-providers/tests/provider_snapshots.rs
 expression: json_pretty
 ---
 {
+  "id": "e62dab63-a111-5448-9c25-d2d6eb6a585e",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": null,
+  "timestamp": "2025-12-09T19:47:42.930Z",
+  "type": "user",
   "content": {
     "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -32,18 +36,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:47:42.930Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "902c8db7-be54-53a2-a90e-717c7499b6e9",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "e62dab63-a111-5448-9c25-d2d6eb6a585e",
+  "timestamp": "2025-12-09T19:47:54.563Z",
+  "type": "reasoning",
   "content": {
     "text": "The user wants me to:\n1. Add a myapp directory\n2. Create myapp/hoge.py which shows the result of print(1+1)\n\nThis is a straightforward task with two steps:\n1. Create the directory\n2. Create the file with the code\n\nThis is simple enough that I don't need a todo list - it's just 2 quick steps. Let me first check if the myapp directory exists, then create it and the file.\n\nActually, I should use the Write tool to create the file. The Write tool will create the directory if it doesn't exist. Let me just create the file directly.\n\nWait, I should verify first if the directory exists. Actually, looking at the instructions, I should prefer using the dedicated tools. I can just use Write to create the file, and it should handle creating the directory if needed. But let me check first with ls to see if myapp exists.\n\nActually, let me just create the directory first with bash, then write the file. That's clearer.\n\nActually, looking at the instructions more carefully: \"Before executing the command, please follow these steps: Directory Verification: If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\"\n\nSo I should first verify the parent directory (which is the working directory /Users/zawakin/agent-sample). I can see from the env that this is the working directory, so I know the parent exists. Let me create the directory and then the file."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -56,7 +60,7 @@ expression: json_pretty
           "type": "thinking"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -76,18 +80,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:47:54.563Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "8d4be065-dcae-5c38-b87c-74e939c50d66",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "902c8db7-be54-53a2-a90e-717c7499b6e9",
+  "timestamp": "2025-12-09T19:47:55.174Z",
+  "type": "message",
   "content": {
     "text": "I'll create the myapp directory and then create the hoge.py file with the print statement."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -100,7 +104,7 @@ expression: json_pretty
           "type": "text"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -120,27 +124,27 @@ expression: json_pretty
     "userType": "external",
     "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:47:55.174Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "8a4443da-a9aa-5397-901b-ff4c05b2db23",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "8d4be065-dcae-5c38-b87c-74e939c50d66",
+  "timestamp": "2025-12-09T19:47:55.174Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": 3893,
-      "cache_read_input_tokens": 12135,
-      "reasoning_output_tokens": null
-    },
     "input_tokens": 10,
     "output_tokens": 8,
-    "total_tokens": 18
+    "total_tokens": 18,
+    "details": {
+      "cache_creation_input_tokens": 3893,
+      "cache_read_input_tokens": 12135,
+      "reasoning_output_tokens": null,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -153,7 +157,7 @@ expression: json_pretty
           "type": "text"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -173,23 +177,23 @@ expression: json_pretty
     "userType": "external",
     "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:47:55.174Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "91c45c30-4875-5cde-8f32-75231f3f3b67",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "8a4443da-a9aa-5397-901b-ff4c05b2db23",
+  "timestamp": "2025-12-09T19:47:55.793Z",
+  "type": "tool_call",
   "content": {
+    "name": "Bash",
     "arguments": {
       "command": "mkdir -p myapp",
       "description": "Create myapp directory"
     },
-    "name": "Bash",
     "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -197,7 +201,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
           "input": {
             "command": "mkdir -p myapp",
             "description": "Create myapp directory"
@@ -207,7 +211,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -227,27 +231,27 @@ expression: json_pretty
     "userType": "external",
     "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:47:55.793Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "83a04a45-9a60-56d9-bfb3-d32ccfb67818",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "91c45c30-4875-5cde-8f32-75231f3f3b67",
+  "timestamp": "2025-12-09T19:47:55.793Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": 3893,
-      "cache_read_input_tokens": 12135,
-      "reasoning_output_tokens": null
-    },
     "input_tokens": 10,
     "output_tokens": 436,
-    "total_tokens": 446
+    "total_tokens": 446,
+    "details": {
+      "cache_creation_input_tokens": 3893,
+      "cache_read_input_tokens": 12135,
+      "reasoning_output_tokens": null,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -255,7 +259,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
           "input": {
             "command": "mkdir -p myapp",
             "description": "Create myapp directory"
@@ -265,7 +269,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -285,20 +289,20 @@ expression: json_pretty
     "userType": "external",
     "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:47:55.793Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "879d38d3-5f5e-5fb8-a870-c2ff20934e1b",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "83a04a45-9a60-56d9-bfb3-d32ccfb67818",
+  "timestamp": "2025-12-09T19:47:59.985Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "91c45c30-4875-5cde-8f32-75231f3f3b67",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -322,18 +326,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "81638428-86d5-4919-9d6e-010d42f97439",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:47:59.985Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "afac6f61-207f-5778-b5f3-8ea45dcba4ef",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "879d38d3-5f5e-5fb8-a870-c2ff20934e1b",
+  "timestamp": "2025-12-09T19:48:04.245Z",
+  "type": "reasoning",
   "content": {
     "text": "Good, the directory has been created. Now let me create the hoge.py file with print(1+1)."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -346,7 +350,7 @@ expression: json_pretty
           "type": "thinking"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -366,23 +370,23 @@ expression: json_pretty
     "userType": "external",
     "uuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:04.245Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "82da3dc6-7b60-52e9-8244-78b46bcfd971",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "afac6f61-207f-5778-b5f3-8ea45dcba4ef",
+  "timestamp": "2025-12-09T19:48:05.038Z",
+  "type": "tool_call",
   "content": {
+    "name": "Write",
     "arguments": {
       "content": "print(1+1)\n",
       "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
     },
-    "name": "Write",
     "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -390,7 +394,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_0154S2y9CNPch89dTHGJpmnx",
           "input": {
             "content": "print(1+1)\n",
             "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
@@ -400,7 +404,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -420,27 +424,27 @@ expression: json_pretty
     "userType": "external",
     "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:05.038Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "84005dce-6d3f-527b-9671-4ebfe285fc8b",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "82da3dc6-7b60-52e9-8244-78b46bcfd971",
+  "timestamp": "2025-12-09T19:48:05.038Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": 458,
-      "cache_read_input_tokens": 16028,
-      "reasoning_output_tokens": null
-    },
     "input_tokens": 14,
     "output_tokens": 126,
-    "total_tokens": 140
+    "total_tokens": 140,
+    "details": {
+      "cache_creation_input_tokens": 458,
+      "cache_read_input_tokens": 16028,
+      "reasoning_output_tokens": null,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -448,7 +452,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_0154S2y9CNPch89dTHGJpmnx",
           "input": {
             "content": "print(1+1)\n",
             "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
@@ -458,7 +462,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -478,20 +482,20 @@ expression: json_pretty
     "userType": "external",
     "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:05.038Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "91406fe0-47fb-5d92-804f-fd906c759570",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "84005dce-6d3f-527b-9671-4ebfe285fc8b",
+  "timestamp": "2025-12-09T19:48:08.021Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "82da3dc6-7b60-52e9-8244-78b46bcfd971",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -515,18 +519,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "e9885817-b4bc-434b-8d1b-0895282020d4",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:08.021Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "2d87bb6e-6ac0-55cf-9598-77fe14537661",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "91406fe0-47fb-5d92-804f-fd906c759570",
+  "timestamp": "2025-12-09T19:48:13.213Z",
+  "type": "reasoning",
   "content": {
     "text": "Perfect! I've created the directory and the file. The file contains print(1+1) which will output 2 when run. Let me confirm this was done successfully."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -539,7 +543,7 @@ expression: json_pretty
           "type": "thinking"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_014f65R9TyHUNFrErYRPauLc",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -559,18 +563,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:13.213Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "a2e1d0de-c451-5aef-9efa-e41304b74eab",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "2d87bb6e-6ac0-55cf-9598-77fe14537661",
+  "timestamp": "2025-12-09T19:48:14.040Z",
+  "type": "message",
   "content": {
     "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -583,7 +587,7 @@ expression: json_pretty
           "type": "text"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_014f65R9TyHUNFrErYRPauLc",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -603,27 +607,27 @@ expression: json_pretty
     "userType": "external",
     "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:14.040Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "b30f5077-1a23-5367-a5d8-5d4397429280",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "a2e1d0de-c451-5aef-9efa-e41304b74eab",
+  "timestamp": "2025-12-09T19:48:14.040Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": 169,
-      "cache_read_input_tokens": 16486,
-      "reasoning_output_tokens": null
-    },
     "input_tokens": 13,
     "output_tokens": 112,
-    "total_tokens": 125
+    "total_tokens": 125,
+    "details": {
+      "cache_creation_input_tokens": 169,
+      "cache_read_input_tokens": 16486,
+      "reasoning_output_tokens": null,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -636,7 +640,7 @@ expression: json_pretty
           "type": "text"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_014f65R9TyHUNFrErYRPauLc",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -656,18 +660,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:14.040Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "fc46b3d4-7c75-5dd0-8260-c00fed9a9a01",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "b30f5077-1a23-5367-a5d8-5d4397429280",
+  "timestamp": "2025-12-09T19:48:17.460Z",
+  "type": "user",
   "content": {
     "text": "cd to myapp and run python hoge.py"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -693,18 +697,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "d3f9b714-c2bc-4201-b076-8b634759c25f",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:17.460Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "b1f15ed9-7d5d-52a7-b954-161f4ea79536",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "fc46b3d4-7c75-5dd0-8260-c00fed9a9a01",
+  "timestamp": "2025-12-09T19:48:22.893Z",
+  "type": "reasoning",
   "content": {
     "text": "The user wants me to change directory to myapp and run the python script. I should use the Bash tool to execute this command."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -717,7 +721,7 @@ expression: json_pretty
           "type": "thinking"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -737,23 +741,23 @@ expression: json_pretty
     "userType": "external",
     "uuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:22.893Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "3b1ec225-6327-5606-8683-81ce070cf595",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "b1f15ed9-7d5d-52a7-b954-161f4ea79536",
+  "timestamp": "2025-12-09T19:48:23.391Z",
+  "type": "tool_call",
   "content": {
+    "name": "Bash",
     "arguments": {
       "command": "cd myapp && python hoge.py",
       "description": "Change to myapp directory and run hoge.py"
     },
-    "name": "Bash",
     "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -761,7 +765,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
           "input": {
             "command": "cd myapp && python hoge.py",
             "description": "Change to myapp directory and run hoge.py"
@@ -771,7 +775,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -791,27 +795,27 @@ expression: json_pretty
     "userType": "external",
     "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:23.391Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "9ad4fb49-3261-5539-987c-6c8710e554af",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "3b1ec225-6327-5606-8683-81ce070cf595",
+  "timestamp": "2025-12-09T19:48:23.391Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": 333,
-      "cache_read_input_tokens": 16028,
-      "reasoning_output_tokens": null
-    },
     "input_tokens": 10,
     "output_tokens": 123,
-    "total_tokens": 133
+    "total_tokens": 133,
+    "details": {
+      "cache_creation_input_tokens": 333,
+      "cache_read_input_tokens": 16028,
+      "reasoning_output_tokens": null,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -819,7 +823,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
           "input": {
             "command": "cd myapp && python hoge.py",
             "description": "Change to myapp directory and run hoge.py"
@@ -829,7 +833,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -849,20 +853,20 @@ expression: json_pretty
     "userType": "external",
     "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:23.391Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "0f550ca0-e004-545d-96e7-e2aca1bf6fa8",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "9ad4fb49-3261-5539-987c-6c8710e554af",
+  "timestamp": "2025-12-09T19:48:27.975Z",
+  "type": "tool_result",
   "content": {
-    "is_error": true,
     "output": "error: target shim binary not found",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "3b1ec225-6327-5606-8683-81ce070cf595",
+    "is_error": true
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -886,18 +890,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "0d657137-983b-4fb0-b834-38ae6a0f0627",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:27.975Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "a932e9b5-1141-5d2b-ba99-98a3076649f8",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "0f550ca0-e004-545d-96e7-e2aca1bf6fa8",
+  "timestamp": "2025-12-09T19:48:30.651Z",
+  "type": "reasoning",
   "content": {
     "text": "It seems there's an issue with the python command. Let me try using python3 instead, which is more commonly available on macOS systems."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -910,7 +914,7 @@ expression: json_pretty
           "type": "thinking"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -930,23 +934,23 @@ expression: json_pretty
     "userType": "external",
     "uuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:30.651Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "1f5b409c-02be-53be-8801-58680a675e83",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "a932e9b5-1141-5d2b-ba99-98a3076649f8",
+  "timestamp": "2025-12-09T19:48:31.225Z",
+  "type": "tool_call",
   "content": {
+    "name": "Bash",
     "arguments": {
       "command": "cd myapp && python3 hoge.py",
       "description": "Change to myapp directory and run hoge.py with python3"
     },
-    "name": "Bash",
     "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -954,7 +958,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
           "input": {
             "command": "cd myapp && python3 hoge.py",
             "description": "Change to myapp directory and run hoge.py with python3"
@@ -964,7 +968,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -984,27 +988,27 @@ expression: json_pretty
     "userType": "external",
     "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:31.225Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_call"
+  }
 }
 
 {
+  "id": "7c24fe41-b620-5275-bfa4-6144bfc9a885",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "1f5b409c-02be-53be-8801-58680a675e83",
+  "timestamp": "2025-12-09T19:48:31.225Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": 154,
-      "cache_read_input_tokens": 16361,
-      "reasoning_output_tokens": null
-    },
     "input_tokens": 14,
     "output_tokens": 1,
-    "total_tokens": 15
+    "total_tokens": 15,
+    "details": {
+      "cache_creation_input_tokens": 154,
+      "cache_read_input_tokens": 16361,
+      "reasoning_output_tokens": null,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample",
     "gitBranch": "claude",
@@ -1012,7 +1016,7 @@ expression: json_pretty
     "message": {
       "content": [
         {
-          "id": "<UUID_REDACTED>",
+          "id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
           "input": {
             "command": "cd myapp && python3 hoge.py",
             "description": "Change to myapp directory and run hoge.py with python3"
@@ -1022,7 +1026,7 @@ expression: json_pretty
           "type": "tool_use"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -1042,20 +1046,20 @@ expression: json_pretty
     "userType": "external",
     "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:31.225Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "b063c6c8-859f-5dc2-9a55-6d28dba98287",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "7c24fe41-b620-5275-bfa4-6144bfc9a885",
+  "timestamp": "2025-12-09T19:48:33.883Z",
+  "type": "tool_result",
   "content": {
-    "is_error": false,
     "output": "2",
-    "tool_call_id": "<UUID_REDACTED>"
+    "tool_call_id": "1f5b409c-02be-53be-8801-58680a675e83",
+    "is_error": false
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
@@ -1079,18 +1083,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "d3e622f7-4801-4915-9888-75b2acd7b721",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:33.883Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "tool_result"
+  }
 }
 
 {
+  "id": "2f52a286-26df-5362-be55-b2c013e2df65",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "b063c6c8-859f-5dc2-9a55-6d28dba98287",
+  "timestamp": "2025-12-09T19:48:38.078Z",
+  "type": "reasoning",
   "content": {
     "text": "Great! The script ran successfully and output \"2\" as expected."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
@@ -1103,7 +1107,7 @@ expression: json_pretty
           "type": "thinking"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -1123,18 +1127,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:38.078Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "reasoning"
+  }
 }
 
 {
+  "id": "9b637e54-030c-5bd4-9fef-2b6a3845dfd0",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "2f52a286-26df-5362-be55-b2c013e2df65",
+  "timestamp": "2025-12-09T19:48:38.356Z",
+  "type": "message",
   "content": {
     "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
@@ -1147,7 +1151,7 @@ expression: json_pretty
           "type": "text"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -1167,27 +1171,27 @@ expression: json_pretty
     "userType": "external",
     "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:38.356Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "message"
+  }
 }
 
 {
+  "id": "cfb2637d-f4f3-57bc-8830-bcc3c4c23882",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "9b637e54-030c-5bd4-9fef-2b6a3845dfd0",
+  "timestamp": "2025-12-09T19:48:38.356Z",
+  "type": "token_usage",
   "content": {
-    "details": {
-      "audio_input_tokens": null,
-      "audio_output_tokens": null,
-      "cache_creation_input_tokens": 151,
-      "cache_read_input_tokens": 16515,
-      "reasoning_output_tokens": null
-    },
     "input_tokens": 13,
     "output_tokens": 46,
-    "total_tokens": 59
+    "total_tokens": 59,
+    "details": {
+      "cache_creation_input_tokens": 151,
+      "cache_read_input_tokens": 16515,
+      "reasoning_output_tokens": null,
+      "audio_input_tokens": null,
+      "audio_output_tokens": null
+    }
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
@@ -1200,7 +1204,7 @@ expression: json_pretty
           "type": "text"
         }
       ],
-      "id": "<UUID_REDACTED>",
+      "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
       "model": "claude-sonnet-4-5-20250929",
       "role": "assistant",
       "stop_reason": null,
@@ -1220,18 +1224,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:38.356Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "token_usage"
+  }
 }
 
 {
+  "id": "e1237478-9507-54f9-b88a-3665d4504012",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "cfb2637d-f4f3-57bc-8830-bcc3c4c23882",
+  "timestamp": "2025-12-09T19:48:50.228Z",
+  "type": "user",
   "content": {
     "text": "Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to."
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
@@ -1253,18 +1257,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "12baa1f9-9626-4645-9333-8fa74bfd679e",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:50.228Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "e85d9562-b4a2-5edc-8cf9-497332de20b0",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "e1237478-9507-54f9-b88a-3665d4504012",
+  "timestamp": "2025-12-09T19:48:50.204Z",
+  "type": "user",
   "content": {
     "text": "<command-name>/exit</command-name>\n            <command-message>exit</command-message>\n            <command-args></command-args>"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
@@ -1286,18 +1290,18 @@ expression: json_pretty
     "userType": "external",
     "uuid": "23a65594-5137-4355-a7a4-16857a3d7f4e",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:50.204Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }
 
 {
+  "id": "0eb92b3f-678a-5a07-b012-558efbf37884",
+  "trace_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+  "parent_id": "e85d9562-b4a2-5edc-8cf9-497332de20b0",
+  "timestamp": "2025-12-09T19:48:50.204Z",
+  "type": "user",
   "content": {
     "text": "<local-command-stdout>Goodbye!</local-command-stdout>"
   },
-  "id": "<UUID_REDACTED>",
   "metadata": {
     "cwd": "/Users/zawakin/agent-sample/myapp",
     "gitBranch": "claude",
@@ -1319,9 +1323,5 @@ expression: json_pretty
     "userType": "external",
     "uuid": "61f4ec02-d975-4eb6-89be-fbb302f1167b",
     "version": "2.0.28"
-  },
-  "parent_id": "<UUID_REDACTED>",
-  "timestamp": "2025-12-09T19:48:50.204Z",
-  "trace_id": "<UUID_REDACTED>",
-  "type": "user"
+  }
 }

@@ -2,7 +2,7 @@ use agtrace_types::*;
 use chrono::DateTime;
 use uuid::Uuid;
 
-use crate::builder::EventBuilder;
+use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
 
 /// Normalize Claude session records to events
@@ -28,17 +28,20 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             ClaudeRecord::User(user_record) => {
                 let timestamp = parse_timestamp(&user_record.timestamp);
                 let raw_value = serde_json::to_value(&user_record).ok();
+                let base_id = &user_record.uuid;
 
                 // Process user content blocks
                 for content in &user_record.message.content {
                     match content {
                         UserContent::Text { text } => {
-                            let event = builder.create_event(
+                            builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::User,
                                 timestamp,
                                 EventPayload::User(UserPayload { text: text.clone() }),
                                 raw_value.clone(),
                             );
-                            events.push(event);
                         }
 
                         UserContent::ToolResult {
@@ -55,7 +58,10 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     .unwrap_or("")
                                     .to_string();
 
-                                let event = builder.create_event(
+                                builder.build_and_push(
+                                    &mut events,
+                                    base_id,
+                                    SemanticSuffix::ToolResult,
                                     timestamp,
                                     EventPayload::ToolResult(ToolResultPayload {
                                         output,
@@ -64,7 +70,6 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     }),
                                     raw_value.clone(),
                                 );
-                                events.push(event);
                             }
                         }
 
@@ -83,6 +88,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             ClaudeRecord::Assistant(asst_record) => {
                 let timestamp = parse_timestamp(&asst_record.timestamp);
                 let raw_value = serde_json::to_value(&asst_record).ok();
+                let base_id = &asst_record.uuid;
 
                 // Track the last generation event for TokenUsage sidecar
                 let mut last_generation_event_id: Option<Uuid> = None;
@@ -92,21 +98,26 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                     match content {
                         AssistantContent::Thinking { thinking, .. } => {
                             // Thinking block -> Reasoning event
-                            let event = builder.create_event(
+                            builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::Reasoning,
                                 timestamp,
                                 EventPayload::Reasoning(ReasoningPayload {
                                     text: thinking.clone(),
                                 }),
                                 raw_value.clone(),
                             );
-                            events.push(event);
                         }
 
                         AssistantContent::ToolUse {
                             id, name, input, ..
                         } => {
                             // ToolUse -> ToolCall event
-                            let event = builder.create_event(
+                            let event_id = builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::ToolCall,
                                 timestamp,
                                 EventPayload::ToolCall(ToolCallPayload {
                                     name: name.clone(),
@@ -117,20 +128,21 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             );
 
                             // Register tool call mapping
-                            builder.register_tool_call(id.clone(), event.id);
-                            last_generation_event_id = Some(event.id);
-                            events.push(event);
+                            builder.register_tool_call(id.clone(), event_id);
+                            last_generation_event_id = Some(event_id);
                         }
 
                         AssistantContent::Text { text, .. } => {
                             // Text block -> Message event
-                            let event = builder.create_event(
+                            let event_id = builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::Message,
                                 timestamp,
                                 EventPayload::Message(MessagePayload { text: text.clone() }),
                                 raw_value.clone(),
                             );
-                            last_generation_event_id = Some(event.id);
-                            events.push(event);
+                            last_generation_event_id = Some(event_id);
                         }
 
                         AssistantContent::ToolResult {
@@ -140,7 +152,10 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         } => {
                             // ToolResult in assistant content (rare, but handle it)
                             if let Some(tool_call_id) = builder.get_tool_call_uuid(tool_use_id) {
-                                let event = builder.create_event(
+                                builder.build_and_push(
+                                    &mut events,
+                                    base_id,
+                                    SemanticSuffix::ToolResult,
                                     timestamp,
                                     EventPayload::ToolResult(ToolResultPayload {
                                         output: output.clone(),
@@ -149,7 +164,6 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     }),
                                     raw_value.clone(),
                                 );
-                                events.push(event);
                             }
                         }
 
@@ -163,7 +177,10 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 if let Some(usage) = &asst_record.message.usage {
                     // Attach to last generation event (ToolCall or Message)
                     if last_generation_event_id.is_some() {
-                        let event = builder.create_event(
+                        builder.build_and_push(
+                            &mut events,
+                            base_id,
+                            SemanticSuffix::TokenUsage,
                             timestamp,
                             EventPayload::TokenUsage(TokenUsagePayload {
                                 input_tokens: usage.input_tokens as i32,
@@ -183,7 +200,6 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             }),
                             raw_value.clone(),
                         );
-                        events.push(event);
                     }
                 }
             }

@@ -4,7 +4,7 @@ use regex::Regex;
 use std::sync::LazyLock;
 use uuid::Uuid;
 
-use crate::builder::EventBuilder;
+use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
 
@@ -62,7 +62,9 @@ pub(crate) fn normalize_codex_session(
     // Codex sends duplicate token_count events with same last_token_usage values
     let mut last_seen_token_usage: Option<(i32, i32, i32)> = None;
 
-    for record in records {
+    for (row_index, record) in records.iter().enumerate() {
+        // Generate base_id from session_id + row_index (deterministic)
+        let base_id = format!("{}:row_{}", session_id, row_index);
         match record {
             CodexRecord::SessionMeta(_meta) => {
                 // SessionMeta doesn't generate events
@@ -72,7 +74,7 @@ pub(crate) fn normalize_codex_session(
             CodexRecord::EventMsg(event_msg) => {
                 let timestamp = parse_timestamp(&event_msg.timestamp);
                 let raw_value = attach_model_metadata(
-                    serde_json::to_value(&event_msg).ok(),
+                    serde_json::to_value(event_msg).ok(),
                     last_seen_model.as_ref(),
                 );
 
@@ -109,7 +111,10 @@ pub(crate) fn normalize_codex_session(
                             }
                             last_seen_token_usage = Some(usage_triple);
 
-                            let event = builder.create_event(
+                            builder.build_and_push(
+                                &mut events,
+                                &base_id,
+                                SemanticSuffix::TokenUsage,
                                 timestamp,
                                 EventPayload::TokenUsage(TokenUsagePayload {
                                     input_tokens: usage.input_tokens as i32,
@@ -129,7 +134,6 @@ pub(crate) fn normalize_codex_session(
                                 }),
                                 raw_value.clone(),
                             );
-                            events.push(event);
                         }
                     }
 
@@ -142,7 +146,7 @@ pub(crate) fn normalize_codex_session(
             CodexRecord::ResponseItem(response_item) => {
                 let timestamp = parse_timestamp(&response_item.timestamp);
                 let raw_value = attach_model_metadata(
-                    serde_json::to_value(&response_item).ok(),
+                    serde_json::to_value(response_item).ok(),
                     last_seen_model.as_ref(),
                 );
 
@@ -151,38 +155,54 @@ pub(crate) fn normalize_codex_session(
                         // Extract text from content blocks
                         let text = extract_message_text(&message.content);
 
-                        let payload = if message.role == "user" {
-                            EventPayload::User(UserPayload { text })
+                        let (payload, suffix) = if message.role == "user" {
+                            (
+                                EventPayload::User(UserPayload { text }),
+                                SemanticSuffix::User,
+                            )
                         } else {
-                            EventPayload::Message(MessagePayload { text })
+                            (
+                                EventPayload::Message(MessagePayload { text }),
+                                SemanticSuffix::Message,
+                            )
                         };
 
-                        let event = builder.create_event(timestamp, payload, raw_value.clone());
+                        let event_id = builder.build_and_push(
+                            &mut events,
+                            &base_id,
+                            suffix,
+                            timestamp,
+                            payload,
+                            raw_value.clone(),
+                        );
 
                         if message.role == "assistant" {
-                            _last_generation_event_id = Some(event.id);
+                            _last_generation_event_id = Some(event_id);
                         }
-
-                        events.push(event);
                     }
 
                     schema::ResponseItemPayload::Reasoning(reasoning) => {
                         // Extract text from summary blocks
                         let text = extract_reasoning_text(reasoning);
 
-                        let event = builder.create_event(
+                        builder.build_and_push(
+                            &mut events,
+                            &base_id,
+                            SemanticSuffix::Reasoning,
                             timestamp,
                             EventPayload::Reasoning(ReasoningPayload { text }),
                             raw_value.clone(),
                         );
-                        events.push(event);
                     }
 
                     schema::ResponseItemPayload::FunctionCall(func_call) => {
                         // Parse JSON string arguments to Value
                         let arguments = parse_json_arguments(&func_call.arguments);
 
-                        let event = builder.create_event(
+                        let event_id = builder.build_and_push(
+                            &mut events,
+                            &base_id,
+                            SemanticSuffix::ToolCall,
                             timestamp,
                             EventPayload::ToolCall(ToolCallPayload {
                                 name: func_call.name.clone(),
@@ -193,9 +213,8 @@ pub(crate) fn normalize_codex_session(
                         );
 
                         // Register tool call mapping
-                        builder.register_tool_call(func_call.call_id.clone(), event.id);
-                        _last_generation_event_id = Some(event.id);
-                        events.push(event);
+                        builder.register_tool_call(func_call.call_id.clone(), event_id);
+                        _last_generation_event_id = Some(event_id);
                     }
 
                     schema::ResponseItemPayload::FunctionCallOutput(output) => {
@@ -203,7 +222,10 @@ pub(crate) fn normalize_codex_session(
                         let exit_code = extract_exit_code(&output.output);
 
                         if let Some(tool_call_id) = builder.get_tool_call_uuid(&output.call_id) {
-                            let event = builder.create_event(
+                            builder.build_and_push(
+                                &mut events,
+                                &base_id,
+                                SemanticSuffix::ToolResult,
                                 timestamp,
                                 EventPayload::ToolResult(ToolResultPayload {
                                     output: output.output.clone(),
@@ -212,7 +234,6 @@ pub(crate) fn normalize_codex_session(
                                 }),
                                 raw_value.clone(),
                             );
-                            events.push(event);
                         }
                     }
 
@@ -220,7 +241,10 @@ pub(crate) fn normalize_codex_session(
                         // Parse JSON string input to Value
                         let arguments = parse_json_arguments(&tool_call.input);
 
-                        let event = builder.create_event(
+                        let event_id = builder.build_and_push(
+                            &mut events,
+                            &base_id,
+                            SemanticSuffix::ToolCall,
                             timestamp,
                             EventPayload::ToolCall(ToolCallPayload {
                                 name: tool_call.name.clone(),
@@ -230,16 +254,18 @@ pub(crate) fn normalize_codex_session(
                             raw_value.clone(),
                         );
 
-                        builder.register_tool_call(tool_call.call_id.clone(), event.id);
-                        _last_generation_event_id = Some(event.id);
-                        events.push(event);
+                        builder.register_tool_call(tool_call.call_id.clone(), event_id);
+                        _last_generation_event_id = Some(event_id);
                     }
 
                     schema::ResponseItemPayload::CustomToolCallOutput(output) => {
                         let exit_code = extract_exit_code(&output.output);
 
                         if let Some(tool_call_id) = builder.get_tool_call_uuid(&output.call_id) {
-                            let event = builder.create_event(
+                            builder.build_and_push(
+                                &mut events,
+                                &base_id,
+                                SemanticSuffix::ToolResult,
                                 timestamp,
                                 EventPayload::ToolResult(ToolResultPayload {
                                     output: output.output.clone(),
@@ -248,7 +274,6 @@ pub(crate) fn normalize_codex_session(
                                 }),
                                 raw_value.clone(),
                             );
-                            events.push(event);
                         }
                     }
 
