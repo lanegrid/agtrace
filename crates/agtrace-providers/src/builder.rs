@@ -85,33 +85,6 @@ impl EventBuilder {
         event_id
     }
 
-    /// Create a new event with proper parent_id chaining
-    /// If id is None, generates a new UUID using new_v4()
-    ///
-    /// DEPRECATED: Use build_and_push for deterministic UUID generation
-    #[allow(dead_code)]
-    pub fn create_event(
-        &mut self,
-        id: Option<Uuid>,
-        timestamp: DateTime<Utc>,
-        payload: EventPayload,
-        metadata: Option<serde_json::Value>,
-    ) -> AgentEvent {
-        let id = id.unwrap_or_else(Uuid::new_v4);
-        let event = AgentEvent {
-            id,
-            trace_id: self.trace_id,
-            parent_id: self.last_event_id,
-            timestamp,
-            payload,
-            metadata,
-        };
-
-        // Update chain for next event
-        self.last_event_id = Some(id);
-        event
-    }
-
     /// Register a tool call in the map (provider ID -> UUID)
     pub fn register_tool_call(&mut self, provider_id: String, uuid: Uuid) {
         self.tool_map.insert(provider_id, uuid);
@@ -138,33 +111,40 @@ mod tests {
     fn test_event_builder_chain() {
         let trace_id = Uuid::new_v4();
         let mut builder = EventBuilder::new(trace_id);
+        let mut events = Vec::new();
 
         // First event has no parent
-        let event1 = builder.create_event(
-            None,
+        let event1_id = builder.build_and_push(
+            &mut events,
+            "test-id-1",
+            SemanticSuffix::User,
             Utc::now(),
             EventPayload::User(UserPayload {
                 text: "Hello".to_string(),
             }),
             None,
         );
-        assert_eq!(event1.parent_id, None);
-        assert_eq!(event1.trace_id, trace_id);
+        assert_eq!(events[0].parent_id, None);
+        assert_eq!(events[0].trace_id, trace_id);
 
         // Second event has first as parent
-        let event2 = builder.create_event(
-            None,
+        let event2_id = builder.build_and_push(
+            &mut events,
+            "test-id-2",
+            SemanticSuffix::Message,
             Utc::now(),
             EventPayload::Message(MessagePayload {
                 text: "Hi".to_string(),
             }),
             None,
         );
-        assert_eq!(event2.parent_id, Some(event1.id));
+        assert_eq!(events[1].parent_id, Some(event1_id));
 
         // Third event has second as parent
-        let event3 = builder.create_event(
-            None,
+        builder.build_and_push(
+            &mut events,
+            "test-id-3",
+            SemanticSuffix::ToolCall,
             Utc::now(),
             EventPayload::ToolCall(ToolCallPayload {
                 name: "bash".to_string(),
@@ -173,7 +153,7 @@ mod tests {
             }),
             None,
         );
-        assert_eq!(event3.parent_id, Some(event2.id));
+        assert_eq!(events[2].parent_id, Some(event2_id));
     }
 
     #[test]
