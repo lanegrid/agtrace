@@ -33,12 +33,6 @@ impl WatchBuffer {
         self.events.push_back(event);
     }
 
-    pub fn trim_to_fit(&mut self, max_events: usize) {
-        while self.events.len() > max_events {
-            self.events.pop_front();
-        }
-    }
-
     pub fn update_state(&mut self, state: SessionState) {
         self.state = state;
     }
@@ -303,9 +297,6 @@ impl RefreshingWatchView {
             let skip = content.len() - available_lines;
             content = content.into_iter().skip(skip).collect();
         }
-
-        // Trim buffer to reasonable size (keep last 1000 events)
-        inner.buffer.trim_to_fit(1000);
 
         for line in &header {
             inner.terminal.write_line(line);
@@ -640,20 +631,6 @@ mod tests {
 
         let lines = buffer.format_content();
         assert_eq!(lines.len(), 2);
-    }
-
-    #[test]
-    fn test_buffer_trim_to_fit() {
-        let mut buffer = WatchBuffer::new();
-        for i in 0..5 {
-            buffer.push_event(create_user_event(&format!("test{}", i)));
-        }
-
-        buffer.trim_to_fit(3);
-        let lines = buffer.format_content();
-        assert_eq!(lines.len(), 3);
-        assert!(lines[0].contains("test2"));
-        assert!(lines[2].contains("test4"));
     }
 
     #[test]
