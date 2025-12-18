@@ -305,7 +305,9 @@ impl RefreshingWatchView {
         let mut inner = self.inner.lock().unwrap();
         inner.terminal.clear_screen();
 
-        let header = inner.buffer.format_header();
+        // Combine watch header (session info) and project info
+        let mut header = inner.header.clone();
+        header.extend(inner.buffer.format_header());
         let mut content = inner.buffer.format_content();
         let footer = inner.buffer.format_footer();
 
