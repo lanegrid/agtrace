@@ -12,8 +12,8 @@ fn test_claude_end_to_end() {
     }
 
     // providers: normalize raw data → AgentEvent[]
-    let events = agtrace_providers::normalize_claude_file(path)
-        .expect("Failed to normalize Claude file");
+    let events =
+        agtrace_providers::normalize_claude_file(path).expect("Failed to normalize Claude file");
 
     assert!(!events.is_empty(), "Expected at least one event");
 
@@ -22,8 +22,7 @@ fn test_claude_end_to_end() {
     assert!(!spans.is_empty(), "Expected at least one span");
 
     // engine: assemble session
-    let session = assemble_session_from_events(&events)
-        .expect("Failed to assemble session");
+    let session = assemble_session_from_events(&events).expect("Failed to assemble session");
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 }
 
@@ -37,8 +36,8 @@ fn test_codex_end_to_end() {
     }
 
     // providers: normalize raw data → AgentEvent[]
-    let events = agtrace_providers::normalize_codex_file(path)
-        .expect("Failed to normalize Codex file");
+    let events =
+        agtrace_providers::normalize_codex_file(path).expect("Failed to normalize Codex file");
 
     assert!(!events.is_empty(), "Expected at least one event");
 
@@ -47,8 +46,7 @@ fn test_codex_end_to_end() {
     assert!(!spans.is_empty(), "Expected at least one span");
 
     // engine: assemble session
-    let session = assemble_session_from_events(&events)
-        .expect("Failed to assemble session");
+    let session = assemble_session_from_events(&events).expect("Failed to assemble session");
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 }
 
@@ -62,8 +60,8 @@ fn test_gemini_end_to_end() {
     }
 
     // providers: normalize raw data → AgentEvent[]
-    let events = agtrace_providers::normalize_gemini_file(path)
-        .expect("Failed to normalize Gemini file");
+    let events =
+        agtrace_providers::normalize_gemini_file(path).expect("Failed to normalize Gemini file");
 
     assert!(!events.is_empty(), "Expected at least one event");
 
@@ -72,7 +70,6 @@ fn test_gemini_end_to_end() {
     assert!(!spans.is_empty(), "Expected at least one span");
 
     // engine: assemble session
-    let session = assemble_session_from_events(&events)
-        .expect("Failed to assemble session");
+    let session = assemble_session_from_events(&events).expect("Failed to assemble session");
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 }

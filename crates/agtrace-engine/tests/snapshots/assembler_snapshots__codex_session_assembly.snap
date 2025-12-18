@@ -1,351 +1,351 @@
 ---
 source: crates/agtrace-engine/tests/assembler_snapshots.rs
-expression: value
+expression: session
 ---
 {
-  "end_time": "2025-12-09T19:56:06.181Z",
-  "session_id": "<UUID_REDACTED>",
+  "session_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
   "start_time": "2025-12-09T19:55:16.336Z",
-  "stats": {
-    "duration_seconds": 49,
-    "total_tokens": 23397,
-    "total_turns": 2
-  },
+  "end_time": "2025-12-09T19:56:06.181Z",
   "turns": [
     {
-      "id": "<UUID_REDACTED>",
-      "stats": {
-        "duration_ms": 15358,
-        "step_count": 2,
-        "total_tokens": 7447
+      "id": "70e34cd6-de64-4085-855e-a73a02f0effa",
+      "timestamp": "2025-12-09T19:55:18.143Z",
+      "user": {
+        "event_id": "70e34cd6-de64-4085-855e-a73a02f0effa",
+        "content": {
+          "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
+        }
       },
       "steps": [
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": null,
+          "id": "3c1de248-152d-4675-9a8b-dd49f6527060",
+          "timestamp": "2025-12-09T19:55:18.143Z",
           "reasoning": {
+            "event_id": "3c1de248-152d-4675-9a8b-dd49f6527060",
             "content": {
               "text": "**Creating directory and file using shell and patch**"
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:55:18.143Z",
+          "message": null,
           "tools": [
             {
               "call": {
+                "event_id": "44a30411-5bb9-412c-9896-5a57c75317b4",
+                "timestamp": "2025-12-09T19:55:30.116Z",
+                "provider_call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG",
                 "content": {
+                  "name": "shell_command",
                   "arguments": {
                     "command": "mkdir -p myapp",
                     "workdir": "/Users/zawakin/agent-sample"
                   },
-                  "name": "shell_command",
                   "provider_call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG",
-                "timestamp": "2025-12-09T19:55:30.116Z"
+                }
+              },
+              "result": {
+                "event_id": "01e13ad6-8473-4ca7-b8ea-268c8f9dbfb5",
+                "timestamp": "2025-12-09T19:55:30.257Z",
+                "tool_call_id": "44a30411-5bb9-412c-9896-5a57c75317b4",
+                "content": {
+                  "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n",
+                  "tool_call_id": "44a30411-5bb9-412c-9896-5a57c75317b4",
+                  "is_error": false
+                }
               },
               "duration_ms": 141,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:55:30.257Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 64
-            },
             "input_tokens": 3505,
             "output_tokens": 101,
-            "total_tokens": 3606
-          }
+            "total_tokens": 3606,
+            "details": {
+              "cache_creation_input_tokens": null,
+              "cache_read_input_tokens": 3072,
+              "reasoning_output_tokens": 64,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": {
-            "content": {
-              "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`."
-            },
-            "event_id": "<UUID_REDACTED>"
-          },
+          "id": "30c81180-bf96-4b39-b2ee-cab694a41f8b",
+          "timestamp": "2025-12-09T19:55:33.501Z",
           "reasoning": {
+            "event_id": "30c81180-bf96-4b39-b2ee-cab694a41f8b",
             "content": {
               "text": "**Creating file with patch**\n\nI'm creating a new file containing `print(1+1)` using the apply_patch method ensuring ASCII encoding."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:55:33.501Z",
+          "message": {
+            "event_id": "2c65a890-2126-4b0c-87f9-5e6559e9f18d",
+            "content": {
+              "text": "Added simple script in `myapp/hoge.py` that prints the result of `1 + 1`."
+            }
+          },
           "tools": [
             {
               "call": {
+                "event_id": "517e9d75-1ecf-4b60-ad27-17f54bcf3e77",
+                "timestamp": "2025-12-09T19:55:34.147Z",
+                "provider_call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA",
                 "content": {
+                  "name": "apply_patch",
                   "arguments": {
                     "raw": "*** Begin Patch\n*** Add File: myapp/hoge.py\n+print(1 + 1)\n*** End Patch"
                   },
-                  "name": "apply_patch",
                   "provider_call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA",
-                "timestamp": "2025-12-09T19:55:34.147Z"
+                }
+              },
+              "result": {
+                "event_id": "17dcf0ad-19c0-42d6-a6c6-0b12c8f4cdee",
+                "timestamp": "2025-12-09T19:55:35.204Z",
+                "tool_call_id": "517e9d75-1ecf-4b60-ad27-17f54bcf3e77",
+                "content": {
+                  "output": "{\"output\":\"Success. Updated the following files:\\nA myapp/hoge.py\\n\",\"metadata\":{\"exit_code\":0,\"duration_seconds\":1.0}}",
+                  "tool_call_id": "517e9d75-1ecf-4b60-ad27-17f54bcf3e77",
+                  "is_error": false
+                }
               },
               "duration_ms": 1057,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "{\"output\":\"Success. Updated the following files:\\nA myapp/hoge.py\\n\",\"metadata\":{\"exit_code\":0,\"duration_seconds\":1.0}}",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:55:35.204Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3584,
-              "reasoning_output_tokens": 0
-            },
             "input_tokens": 3815,
             "output_tokens": 40,
-            "total_tokens": 3841
-          }
+            "total_tokens": 3841,
+            "details": {
+              "cache_creation_input_tokens": null,
+              "cache_read_input_tokens": 3584,
+              "reasoning_output_tokens": 0,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         }
       ],
-      "timestamp": "2025-12-09T19:55:18.143Z",
-      "user": {
-        "content": {
-          "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
-        },
-        "event_id": "<UUID_REDACTED>"
+      "stats": {
+        "duration_ms": 15358,
+        "step_count": 2,
+        "total_tokens": 7447
       }
     },
     {
-      "id": "<UUID_REDACTED>",
-      "stats": {
-        "duration_ms": 20483,
-        "step_count": 4,
-        "total_tokens": 15950
+      "id": "1788096a-cd4f-4280-bff5-aa8aeab72caf",
+      "timestamp": "2025-12-09T19:55:45.472Z",
+      "user": {
+        "event_id": "1788096a-cd4f-4280-bff5-aa8aeab72caf",
+        "content": {
+          "text": "cd to myapp and run python hoge.py"
+        }
       },
       "steps": [
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": null,
+          "id": "c98a6e36-4a33-40e7-9503-dc4624696e27",
+          "timestamp": "2025-12-09T19:55:45.472Z",
           "reasoning": {
+            "event_id": "c98a6e36-4a33-40e7-9503-dc4624696e27",
             "content": {
               "text": "**Running Python script in workspace**"
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:55:45.472Z",
+          "message": null,
           "tools": [
             {
               "call": {
+                "event_id": "0d7bf63f-5c0d-4236-a023-e99176d630e7",
+                "timestamp": "2025-12-09T19:55:50.553Z",
+                "provider_call_id": "call_5j2yJgrbOClvto1R8nvfSoJS",
                 "content": {
+                  "name": "shell_command",
                   "arguments": {
                     "command": "python hoge.py",
                     "workdir": "/Users/zawakin/agent-sample/myapp"
                   },
-                  "name": "shell_command",
                   "provider_call_id": "call_5j2yJgrbOClvto1R8nvfSoJS"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "call_5j2yJgrbOClvto1R8nvfSoJS",
-                "timestamp": "2025-12-09T19:55:50.553Z"
+                }
+              },
+              "result": {
+                "event_id": "af2fc9af-0bf8-413b-a5a6-65f790fba22c",
+                "timestamp": "2025-12-09T19:55:50.681Z",
+                "tool_call_id": "0d7bf63f-5c0d-4236-a023-e99176d630e7",
+                "content": {
+                  "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\nerror: target shim binary not found\n",
+                  "tool_call_id": "0d7bf63f-5c0d-4236-a023-e99176d630e7",
+                  "is_error": false
+                }
               },
               "duration_ms": 128,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\nerror: target shim binary not found\n",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:55:50.681Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 0
-            },
             "input_tokens": 3708,
             "output_tokens": 37,
-            "total_tokens": 3745
-          }
+            "total_tokens": 3745,
+            "details": {
+              "cache_creation_input_tokens": null,
+              "cache_read_input_tokens": 3072,
+              "reasoning_output_tokens": 0,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": null,
+          "id": "114ed4ec-832e-4f11-bd9a-7e6286ba5b55",
+          "timestamp": "2025-12-09T19:55:54.600Z",
           "reasoning": {
+            "event_id": "114ed4ec-832e-4f11-bd9a-7e6286ba5b55",
             "content": {
               "text": "**Handling command failure with escalation**\n\nThe command failure might be due to environment issues like missing shim binaries or path problems related to nix or Homebrew; I'll implement a retry with escalated permissions that requires an approval request including a justification."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:55:54.600Z",
+          "message": null,
           "tools": [
             {
               "call": {
+                "event_id": "b195eebb-ae90-4af2-b4c2-9201f01b0b27",
+                "timestamp": "2025-12-09T19:55:55.447Z",
+                "provider_call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x",
                 "content": {
+                  "name": "shell_command",
                   "arguments": {
                     "command": "python hoge.py",
                     "justification": "Need to run python script outside sandbox because default sandbox fails to locate python shim",
                     "with_escalated_permissions": true,
                     "workdir": "/Users/zawakin/agent-sample/myapp"
                   },
-                  "name": "shell_command",
                   "provider_call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x",
-                "timestamp": "2025-12-09T19:55:55.447Z"
+                }
+              },
+              "result": {
+                "event_id": "260657ee-fb6f-4035-982e-8e5aa6046593",
+                "timestamp": "2025-12-09T19:55:59.497Z",
+                "tool_call_id": "b195eebb-ae90-4af2-b4c2-9201f01b0b27",
+                "content": {
+                  "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\nerror: target shim binary not found\n",
+                  "tool_call_id": "b195eebb-ae90-4af2-b4c2-9201f01b0b27",
+                  "is_error": false
+                }
               },
               "duration_ms": 4050,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\nerror: target shim binary not found\n",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:55:59.497Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 64
-            },
             "input_tokens": 3845,
             "output_tokens": 128,
-            "total_tokens": 3973
-          }
+            "total_tokens": 3973,
+            "details": {
+              "cache_creation_input_tokens": null,
+              "cache_read_input_tokens": 3072,
+              "reasoning_output_tokens": 64,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": null,
+          "id": "5fb10b42-21cf-4a1b-acfb-8babf21fe251",
+          "timestamp": "2025-12-09T19:56:02.412Z",
           "reasoning": {
+            "event_id": "5fb10b42-21cf-4a1b-acfb-8babf21fe251",
             "content": {
               "text": "**Considering python3 usage**\n\nNoticing possible Python shim or missing installation issues, so trying `python3` command as an alternative."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:56:02.412Z",
+          "message": null,
           "tools": [
             {
               "call": {
+                "event_id": "aa6b53ec-bf5f-4b29-87ad-51cc24a131d9",
+                "timestamp": "2025-12-09T19:56:02.618Z",
+                "provider_call_id": "call_mI2n5JLETgVMNGApYPPAjEwD",
                 "content": {
+                  "name": "shell_command",
                   "arguments": {
                     "command": "python3 hoge.py",
                     "workdir": "/Users/zawakin/agent-sample/myapp"
                   },
-                  "name": "shell_command",
                   "provider_call_id": "call_mI2n5JLETgVMNGApYPPAjEwD"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "call_mI2n5JLETgVMNGApYPPAjEwD",
-                "timestamp": "2025-12-09T19:56:02.618Z"
+                }
+              },
+              "result": {
+                "event_id": "fab9ba1c-3e1e-4005-9627-efa8549c985c",
+                "timestamp": "2025-12-09T19:56:02.744Z",
+                "tool_call_id": "aa6b53ec-bf5f-4b29-87ad-51cc24a131d9",
+                "content": {
+                  "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n2\n",
+                  "tool_call_id": "aa6b53ec-bf5f-4b29-87ad-51cc24a131d9",
+                  "is_error": false
+                }
               },
               "duration_ms": 126,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "Exit code: 0\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\n2\n",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:56:02.744Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 0
-            },
             "input_tokens": 4017,
             "output_tokens": 38,
-            "total_tokens": 4055
-          }
+            "total_tokens": 4055,
+            "details": {
+              "cache_creation_input_tokens": null,
+              "cache_read_input_tokens": 3072,
+              "reasoning_output_tokens": 0,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": {
-            "content": {
-              "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2"
-            },
-            "event_id": "<UUID_REDACTED>"
-          },
+          "id": "b72134fd-117b-4222-8684-aa6425ae7c55",
+          "timestamp": "2025-12-09T19:56:05.955Z",
           "reasoning": {
+            "event_id": "b72134fd-117b-4222-8684-aa6425ae7c55",
             "content": {
               "text": "**Noting python3 usage due to missing shim**\n\nThe output shows success but includes a shell environment message; python3 is used explicitly since the python shim is missing."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:56:05.955Z",
+          "message": {
+            "event_id": "8bbc93c9-0ca5-4822-86d5-e335361da5d9",
+            "content": {
+              "text": "Ran the script with `python3` (since `python` shim isn’t available here). Output from `myapp/hoge.py`:\n- 2"
+            }
+          },
           "tools": [],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3968,
-              "reasoning_output_tokens": 0
-            },
             "input_tokens": 4139,
             "output_tokens": 38,
-            "total_tokens": 4177
-          }
+            "total_tokens": 4177,
+            "details": {
+              "cache_creation_input_tokens": null,
+              "cache_read_input_tokens": 3968,
+              "reasoning_output_tokens": 0,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         }
       ],
-      "timestamp": "2025-12-09T19:55:45.472Z",
-      "user": {
-        "content": {
-          "text": "cd to myapp and run python hoge.py"
-        },
-        "event_id": "<UUID_REDACTED>"
+      "stats": {
+        "duration_ms": 20483,
+        "step_count": 4,
+        "total_tokens": 15950
       }
     }
-  ]
+  ],
+  "stats": {
+    "total_turns": 2,
+    "duration_seconds": 49,
+    "total_tokens": 23397
+  }
 }

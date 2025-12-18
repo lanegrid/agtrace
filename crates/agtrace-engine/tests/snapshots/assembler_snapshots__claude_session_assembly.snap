@@ -1,327 +1,327 @@
 ---
 source: crates/agtrace-engine/tests/assembler_snapshots.rs
-expression: value
+expression: session
 ---
 {
-  "end_time": "2025-12-09T19:48:50.204Z",
-  "session_id": "<UUID_REDACTED>",
+  "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "start_time": "2025-12-09T19:47:42.930Z",
-  "stats": {
-    "duration_seconds": 67,
-    "total_tokens": 918,
-    "total_turns": 2
-  },
+  "end_time": "2025-12-09T19:48:50.204Z",
   "turns": [
     {
-      "id": "<UUID_REDACTED>",
-      "stats": {
-        "duration_ms": 30283,
-        "step_count": 3,
-        "total_tokens": 711
+      "id": "90468262-5bc9-47fb-b927-65a76d986e29",
+      "timestamp": "2025-12-09T19:47:42.930Z",
+      "user": {
+        "event_id": "90468262-5bc9-47fb-b927-65a76d986e29",
+        "content": {
+          "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
+        }
       },
       "steps": [
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": {
-            "content": {
-              "text": "I'll create the myapp directory and then create the hoge.py file with the print statement."
-            },
-            "event_id": "<UUID_REDACTED>"
-          },
+          "id": "f4f0df9f-bd95-4dd3-9b29-ac65bb2b2477",
+          "timestamp": "2025-12-09T19:47:42.930Z",
           "reasoning": {
+            "event_id": "f4f0df9f-bd95-4dd3-9b29-ac65bb2b2477",
             "content": {
               "text": "The user wants me to:\n1. Add a myapp directory\n2. Create myapp/hoge.py which shows the result of print(1+1)\n\nThis is a straightforward task with two steps:\n1. Create the directory\n2. Create the file with the code\n\nThis is simple enough that I don't need a todo list - it's just 2 quick steps. Let me first check if the myapp directory exists, then create it and the file.\n\nActually, I should use the Write tool to create the file. The Write tool will create the directory if it doesn't exist. Let me just create the file directly.\n\nWait, I should verify first if the directory exists. Actually, looking at the instructions, I should prefer using the dedicated tools. I can just use Write to create the file, and it should handle creating the directory if needed. But let me check first with ls to see if myapp exists.\n\nActually, let me just create the directory first with bash, then write the file. That's clearer.\n\nActually, looking at the instructions more carefully: \"Before executing the command, please follow these steps: Directory Verification: If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\"\n\nSo I should first verify the parent directory (which is the working directory /Users/zawakin/agent-sample). I can see from the env that this is the working directory, so I know the parent exists. Let me create the directory and then the file."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:47:42.930Z",
+          "message": {
+            "event_id": "9cb216ae-d7d6-44e2-8d4c-2fe3ca1d2feb",
+            "content": {
+              "text": "I'll create the myapp directory and then create the hoge.py file with the print statement."
+            }
+          },
           "tools": [
             {
               "call": {
+                "event_id": "280aa4a0-d88c-4f3f-944d-df0b565c763e",
+                "timestamp": "2025-12-09T19:47:55.793Z",
+                "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
                 "content": {
+                  "name": "Bash",
                   "arguments": {
                     "command": "mkdir -p myapp",
                     "description": "Create myapp directory"
                   },
-                  "name": "Bash",
                   "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
-                "timestamp": "2025-12-09T19:47:55.793Z"
+                }
+              },
+              "result": {
+                "event_id": "da94c693-0289-411b-a869-848e4721937a",
+                "timestamp": "2025-12-09T19:47:59.985Z",
+                "tool_call_id": "280aa4a0-d88c-4f3f-944d-df0b565c763e",
+                "content": {
+                  "output": "",
+                  "tool_call_id": "280aa4a0-d88c-4f3f-944d-df0b565c763e",
+                  "is_error": false
+                }
               },
               "duration_ms": 4192,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:47:59.985Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": 3893,
-              "cache_read_input_tokens": 12135,
-              "reasoning_output_tokens": null
-            },
             "input_tokens": 10,
             "output_tokens": 436,
-            "total_tokens": 446
-          }
+            "total_tokens": 446,
+            "details": {
+              "cache_creation_input_tokens": 3893,
+              "cache_read_input_tokens": 12135,
+              "reasoning_output_tokens": null,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": null,
+          "id": "03a23fb7-98a9-4645-86d1-26f1d47f6229",
+          "timestamp": "2025-12-09T19:48:04.245Z",
           "reasoning": {
+            "event_id": "03a23fb7-98a9-4645-86d1-26f1d47f6229",
             "content": {
               "text": "Good, the directory has been created. Now let me create the hoge.py file with print(1+1)."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:48:04.245Z",
+          "message": null,
           "tools": [
             {
               "call": {
+                "event_id": "1496ea77-8627-4502-85ac-9105fbae293a",
+                "timestamp": "2025-12-09T19:48:05.038Z",
+                "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx",
                 "content": {
+                  "name": "Write",
                   "arguments": {
                     "content": "print(1+1)\n",
                     "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
                   },
-                  "name": "Write",
                   "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx",
-                "timestamp": "2025-12-09T19:48:05.038Z"
+                }
+              },
+              "result": {
+                "event_id": "7c1f987f-46a1-4133-9ded-27c8b96d2a18",
+                "timestamp": "2025-12-09T19:48:08.021Z",
+                "tool_call_id": "1496ea77-8627-4502-85ac-9105fbae293a",
+                "content": {
+                  "output": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
+                  "tool_call_id": "1496ea77-8627-4502-85ac-9105fbae293a",
+                  "is_error": false
+                }
               },
               "duration_ms": 2983,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "File created successfully at: /Users/zawakin/agent-sample/myapp/hoge.py",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:48:08.021Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": 458,
-              "cache_read_input_tokens": 16028,
-              "reasoning_output_tokens": null
-            },
             "input_tokens": 14,
             "output_tokens": 126,
-            "total_tokens": 140
-          }
+            "total_tokens": 140,
+            "details": {
+              "cache_creation_input_tokens": 458,
+              "cache_read_input_tokens": 16028,
+              "reasoning_output_tokens": null,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": {
-            "content": {
-              "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```"
-            },
-            "event_id": "<UUID_REDACTED>"
-          },
+          "id": "aaa01f40-7470-40d8-82c2-483786e7f15e",
+          "timestamp": "2025-12-09T19:48:13.213Z",
           "reasoning": {
+            "event_id": "aaa01f40-7470-40d8-82c2-483786e7f15e",
             "content": {
               "text": "Perfect! I've created the directory and the file. The file contains print(1+1) which will output 2 when run. Let me confirm this was done successfully."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:48:13.213Z",
+          "message": {
+            "event_id": "ff911ee3-5966-4504-8d1f-2c8286a26c74",
+            "content": {
+              "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```"
+            }
+          },
           "tools": [],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": 169,
-              "cache_read_input_tokens": 16486,
-              "reasoning_output_tokens": null
-            },
             "input_tokens": 13,
             "output_tokens": 112,
-            "total_tokens": 125
-          }
+            "total_tokens": 125,
+            "details": {
+              "cache_creation_input_tokens": 169,
+              "cache_read_input_tokens": 16486,
+              "reasoning_output_tokens": null,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         }
       ],
-      "timestamp": "2025-12-09T19:47:42.930Z",
-      "user": {
-        "content": {
-          "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
-        },
-        "event_id": "<UUID_REDACTED>"
+      "stats": {
+        "duration_ms": 30283,
+        "step_count": 3,
+        "total_tokens": 711
       }
     },
     {
-      "id": "<UUID_REDACTED>",
-      "stats": {
-        "duration_ms": 20618,
-        "step_count": 3,
-        "total_tokens": 207
+      "id": "86b538d7-13be-4e2e-aec9-8b3fc4c0f827",
+      "timestamp": "2025-12-09T19:48:17.460Z",
+      "user": {
+        "event_id": "86b538d7-13be-4e2e-aec9-8b3fc4c0f827",
+        "content": {
+          "text": "cd to myapp and run python hoge.py"
+        }
       },
       "steps": [
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": true,
-          "message": null,
+          "id": "46d7f19b-c9f1-420a-a2f6-bbba06b60c95",
+          "timestamp": "2025-12-09T19:48:17.460Z",
           "reasoning": {
+            "event_id": "46d7f19b-c9f1-420a-a2f6-bbba06b60c95",
             "content": {
               "text": "The user wants me to change directory to myapp and run the python script. I should use the Bash tool to execute this command."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:48:17.460Z",
+          "message": null,
           "tools": [
             {
               "call": {
+                "event_id": "96e9c0cd-5fc5-4473-bd4a-62375c6720c7",
+                "timestamp": "2025-12-09T19:48:23.391Z",
+                "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
                 "content": {
+                  "name": "Bash",
                   "arguments": {
                     "command": "cd myapp && python hoge.py",
                     "description": "Change to myapp directory and run hoge.py"
                   },
-                  "name": "Bash",
                   "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
-                "timestamp": "2025-12-09T19:48:23.391Z"
+                }
+              },
+              "result": {
+                "event_id": "de531542-6f89-491c-8389-fa376abf1300",
+                "timestamp": "2025-12-09T19:48:27.975Z",
+                "tool_call_id": "96e9c0cd-5fc5-4473-bd4a-62375c6720c7",
+                "content": {
+                  "output": "error: target shim binary not found",
+                  "tool_call_id": "96e9c0cd-5fc5-4473-bd4a-62375c6720c7",
+                  "is_error": true
+                }
               },
               "duration_ms": 4584,
-              "is_error": true,
-              "result": {
-                "content": {
-                  "is_error": true,
-                  "output": "error: target shim binary not found",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:48:27.975Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": true
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": 333,
-              "cache_read_input_tokens": 16028,
-              "reasoning_output_tokens": null
-            },
             "input_tokens": 10,
             "output_tokens": 123,
-            "total_tokens": 133
-          }
+            "total_tokens": 133,
+            "details": {
+              "cache_creation_input_tokens": 333,
+              "cache_read_input_tokens": 16028,
+              "reasoning_output_tokens": null,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": true
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": null,
+          "id": "785b0c4f-04af-4f88-aee5-876d4a1c50fa",
+          "timestamp": "2025-12-09T19:48:30.651Z",
           "reasoning": {
+            "event_id": "785b0c4f-04af-4f88-aee5-876d4a1c50fa",
             "content": {
               "text": "It seems there's an issue with the python command. Let me try using python3 instead, which is more commonly available on macOS systems."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:48:30.651Z",
+          "message": null,
           "tools": [
             {
               "call": {
+                "event_id": "90662eb5-9a02-4586-b095-f7b50b81320e",
+                "timestamp": "2025-12-09T19:48:31.225Z",
+                "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
                 "content": {
+                  "name": "Bash",
                   "arguments": {
                     "command": "cd myapp && python3 hoge.py",
                     "description": "Change to myapp directory and run hoge.py with python3"
                   },
-                  "name": "Bash",
                   "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
-                "timestamp": "2025-12-09T19:48:31.225Z"
+                }
+              },
+              "result": {
+                "event_id": "e5bf883c-0ae8-4cb2-8a98-16fe745fb28f",
+                "timestamp": "2025-12-09T19:48:33.883Z",
+                "tool_call_id": "90662eb5-9a02-4586-b095-f7b50b81320e",
+                "content": {
+                  "output": "2",
+                  "tool_call_id": "90662eb5-9a02-4586-b095-f7b50b81320e",
+                  "is_error": false
+                }
               },
               "duration_ms": 2658,
-              "is_error": false,
-              "result": {
-                "content": {
-                  "is_error": false,
-                  "output": "2",
-                  "tool_call_id": "<UUID_REDACTED>"
-                },
-                "event_id": "<UUID_REDACTED>",
-                "timestamp": "2025-12-09T19:48:33.883Z",
-                "tool_call_id": "<UUID_REDACTED>"
-              }
+              "is_error": false
             }
           ],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": 154,
-              "cache_read_input_tokens": 16361,
-              "reasoning_output_tokens": null
-            },
             "input_tokens": 14,
             "output_tokens": 1,
-            "total_tokens": 15
-          }
+            "total_tokens": 15,
+            "details": {
+              "cache_creation_input_tokens": 154,
+              "cache_read_input_tokens": 16361,
+              "reasoning_output_tokens": null,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         },
         {
-          "id": "<UUID_REDACTED>",
-          "is_failed": false,
-          "message": {
-            "content": {
-              "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`."
-            },
-            "event_id": "<UUID_REDACTED>"
-          },
+          "id": "a22bb94c-280b-4e21-a3c7-942117a88d1f",
+          "timestamp": "2025-12-09T19:48:38.078Z",
           "reasoning": {
+            "event_id": "a22bb94c-280b-4e21-a3c7-942117a88d1f",
             "content": {
               "text": "Great! The script ran successfully and output \"2\" as expected."
-            },
-            "event_id": "<UUID_REDACTED>"
+            }
           },
-          "timestamp": "2025-12-09T19:48:38.078Z",
+          "message": {
+            "event_id": "20b8773e-6c56-4113-a5ae-19e7c8923418",
+            "content": {
+              "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`."
+            }
+          },
           "tools": [],
           "usage": {
-            "details": {
-              "audio_input_tokens": null,
-              "audio_output_tokens": null,
-              "cache_creation_input_tokens": 151,
-              "cache_read_input_tokens": 16515,
-              "reasoning_output_tokens": null
-            },
             "input_tokens": 13,
             "output_tokens": 46,
-            "total_tokens": 59
-          }
+            "total_tokens": 59,
+            "details": {
+              "cache_creation_input_tokens": 151,
+              "cache_read_input_tokens": 16515,
+              "reasoning_output_tokens": null,
+              "audio_input_tokens": null,
+              "audio_output_tokens": null
+            }
+          },
+          "is_failed": false
         }
       ],
-      "timestamp": "2025-12-09T19:48:17.460Z",
-      "user": {
-        "content": {
-          "text": "cd to myapp and run python hoge.py"
-        },
-        "event_id": "<UUID_REDACTED>"
+      "stats": {
+        "duration_ms": 20618,
+        "step_count": 3,
+        "total_tokens": 207
       }
     }
-  ]
+  ],
+  "stats": {
+    "total_turns": 2,
+    "duration_seconds": 67,
+    "total_tokens": 918
+  }
 }

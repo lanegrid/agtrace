@@ -12,35 +12,6 @@ fn load_events_from_fixture(fixture_name: &str) -> Vec<AgentEvent> {
         .unwrap_or_else(|_| panic!("Failed to parse fixture: {}", path.display()))
 }
 
-// Helper function to redact UUIDs from JSON for snapshot testing
-fn redact_uuids(value: &mut serde_json::Value) {
-    match value {
-        serde_json::Value::Object(map) => {
-            for (key, val) in map.iter_mut() {
-                if key == "id"
-                    || key == "session_id"
-                    || key == "trace_id"
-                    || key == "parent_id"
-                    || key == "tool_call_id"
-                    || key == "event_id"
-                {
-                    if val.is_string() || val.is_null() {
-                        *val = serde_json::Value::String("<UUID_REDACTED>".to_string());
-                    }
-                } else {
-                    redact_uuids(val);
-                }
-            }
-        }
-        serde_json::Value::Array(arr) => {
-            for val in arr.iter_mut() {
-                redact_uuids(val);
-            }
-        }
-        _ => {}
-    }
-}
-
 #[test]
 fn test_gemini_session_assembly() {
     let events = load_events_from_fixture("gemini_events.json");
@@ -49,9 +20,7 @@ fn test_gemini_session_assembly() {
 
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 
-    let mut value = serde_json::to_value(&session).unwrap();
-    redact_uuids(&mut value);
-    insta::assert_json_snapshot!("gemini_session_assembly", value);
+    insta::assert_json_snapshot!("gemini_session_assembly", session);
 }
 
 #[test]
@@ -62,9 +31,7 @@ fn test_codex_session_assembly() {
 
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 
-    let mut value = serde_json::to_value(&session).unwrap();
-    redact_uuids(&mut value);
-    insta::assert_json_snapshot!("codex_session_assembly", value);
+    insta::assert_json_snapshot!("codex_session_assembly", session);
 }
 
 #[test]
@@ -75,9 +42,7 @@ fn test_claude_session_assembly() {
 
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 
-    let mut value = serde_json::to_value(&session).unwrap();
-    redact_uuids(&mut value);
-    insta::assert_json_snapshot!("claude_session_assembly", value);
+    insta::assert_json_snapshot!("claude_session_assembly", session);
 }
 
 #[test]
@@ -184,7 +149,5 @@ fn test_session_assembly_structure() {
     assert!(step.usage.is_some());
     assert_eq!(step.usage.as_ref().unwrap().total_tokens, 150);
 
-    let mut value = serde_json::to_value(&session).unwrap();
-    redact_uuids(&mut value);
-    insta::assert_json_snapshot!("session_assembly_structure", value);
+    insta::assert_json_snapshot!("session_assembly_structure", session);
 }
