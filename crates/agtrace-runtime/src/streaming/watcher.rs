@@ -11,8 +11,21 @@ use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone)]
 pub enum WatchTarget {
-    File { path: PathBuf },
-    Waiting { message: String },
+    File {
+        path: PathBuf,
+    },
+    Session {
+        session_id: String,
+        initial_path: PathBuf,
+    },
+    Waiting {
+        message: String,
+    },
+}
+
+#[derive(Debug, Clone)]
+struct FileState {
+    last_event_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -61,11 +74,15 @@ impl SessionWatcher {
             find_active_target(&log_root, &provider, project_root.as_deref())?
         };
 
-        let mut current_file: Option<PathBuf> = None;
-        let mut file_event_counts: HashMap<PathBuf, usize> = HashMap::new();
+        let mut current_session_id: Option<String> = None;
+        let mut current_file: Option<PathBuf> = None; // For File mode compatibility
+        let mut file_states: HashMap<PathBuf, FileState> = HashMap::new();
 
         let watch_dir = match &target {
             WatchTarget::File { path } => path.parent().unwrap_or(&log_root).to_path_buf(),
+            WatchTarget::Session { initial_path, .. } => {
+                initial_path.parent().unwrap_or(&log_root).to_path_buf()
+            }
             WatchTarget::Waiting { .. } => log_root.clone(),
         };
 
@@ -84,8 +101,9 @@ impl SessionWatcher {
 
         match target {
             WatchTarget::File { path } => {
+                // Legacy single-file mode (backwards compatibility)
                 current_file = Some(path.clone());
-                file_event_counts.insert(path.clone(), 0);
+
                 let _ = tx_out.send(StreamEvent::Attached {
                     path: path.clone(),
                     session_id: extract_session_id(&path),
@@ -93,7 +111,12 @@ impl SessionWatcher {
 
                 if let Ok((all_events, new_events)) = load_and_detect_changes(&path, 0, &provider) {
                     if !new_events.is_empty() {
-                        file_event_counts.insert(path.clone(), new_events.len());
+                        file_states.insert(
+                            path.clone(),
+                            FileState {
+                                last_event_count: all_events.len(),
+                            },
+                        );
 
                         let session = assemble_session_from_events(&all_events);
 
@@ -115,6 +138,61 @@ impl SessionWatcher {
                     }
                 }
             }
+            WatchTarget::Session {
+                session_id,
+                initial_path,
+            } => {
+                // Session-aware multi-file mode
+                current_session_id = Some(session_id.clone());
+
+                let _ = tx_out.send(StreamEvent::Attached {
+                    path: initial_path.clone(),
+                    session_id: Some(session_id.clone()),
+                });
+
+                // Discover all files for this session
+                if let Ok(session_files) = provider.find_session_files(&log_root, &session_id) {
+                    let mut all_events_merged = Vec::new();
+
+                    for file_path in session_files {
+                        if let Ok((all_events, _)) =
+                            load_and_detect_changes(&file_path, 0, &provider)
+                        {
+                            file_states.insert(
+                                file_path.clone(),
+                                FileState {
+                                    last_event_count: all_events.len(),
+                                },
+                            );
+                            all_events_merged.extend(all_events);
+                        }
+                    }
+
+                    // Sort by timestamp
+                    all_events_merged.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+
+                    if !all_events_merged.is_empty() {
+                        let session = assemble_session_from_events(&all_events_merged);
+
+                        let start_idx = all_events_merged
+                            .iter()
+                            .position(|e| matches!(e.payload, EventPayload::User(_)))
+                            .unwrap_or(all_events_merged.len());
+
+                        let orphaned_events =
+                            all_events_merged.iter().take(start_idx).cloned().collect();
+
+                        let update = SessionUpdate {
+                            session,
+                            new_events: all_events_merged.clone(),
+                            orphaned_events,
+                            total_events: all_events_merged.len(),
+                        };
+
+                        let _ = tx_out.send(StreamEvent::Update(update));
+                    }
+                }
+            }
             WatchTarget::Waiting { message } => {
                 let _ = tx_out.send(StreamEvent::Waiting { message });
             }
@@ -128,8 +206,10 @@ impl SessionWatcher {
                     while let Ok(event) = rx_fs.recv() {
                         if let Err(e) = handle_fs_event(
                             &event,
+                            &mut current_session_id,
                             &mut current_file,
-                            &mut file_event_counts,
+                            &mut file_states,
+                            &log_root,
                             &tx_worker,
                             &provider,
                             project_root.as_deref(),
@@ -170,14 +250,16 @@ impl SessionWatcher {
 
 fn handle_fs_event(
     event: &Event,
+    current_session_id: &mut Option<String>,
     current_file: &mut Option<PathBuf>,
-    file_event_counts: &mut HashMap<PathBuf, usize>,
+    file_states: &mut HashMap<PathBuf, FileState>,
+    log_root: &Path,
     tx: &Sender<StreamEvent>,
     provider: &Arc<dyn LogProvider>,
     project_root: Option<&Path>,
 ) -> Result<()> {
     match event.kind {
-        EventKind::Create(_) => {
+        EventKind::Create(_) | EventKind::Modify(_) => {
             for path in &event.paths {
                 if !provider.can_handle(path) {
                     continue;
@@ -189,111 +271,191 @@ fn handle_fs_event(
                     }
                 }
 
-                let should_switch = if let Some(ref current) = current_file {
-                    let new_time = std::fs::metadata(path)?.modified()?;
-                    let current_time = std::fs::metadata(current)?.modified()?;
-                    new_time > current_time
+                // Try to extract session_id for session-aware mode
+                let session_id_opt = extract_session_id_from_file(path, provider).ok();
+
+                if let Some(session_id) = session_id_opt {
+                    // ===== SESSION-AWARE MODE =====
+                    // Check if this is a different session or if we're not currently tracking this session
+                    let is_different_session = current_session_id
+                        .as_ref()
+                        .map(|current| current != &session_id)
+                        .unwrap_or(false);
+
+                    // Check if we're in File mode and this file wasn't being tracked
+                    let is_new_file_from_file_mode =
+                        current_session_id.is_none() && current_file.as_ref() != Some(path);
+
+                    if is_different_session || is_new_file_from_file_mode {
+                        // Session rotation - switch to new session or from File mode to Session mode
+                        let old_path = if let Some(old_id) = current_session_id.take() {
+                            // Rotating from another session
+                            provider
+                                .find_session_files(log_root, &old_id)
+                                .ok()
+                                .and_then(|files| files.first().cloned())
+                        } else {
+                            // Rotating from File mode
+                            current_file.take()
+                        };
+
+                        if let Some(old_p) = old_path {
+                            let _ = tx.send(StreamEvent::SessionRotated {
+                                old_path: old_p,
+                                new_path: path.clone(),
+                            });
+                        }
+
+                        *current_session_id = Some(session_id.clone());
+
+                        let _ = tx.send(StreamEvent::Attached {
+                            path: path.clone(),
+                            session_id: Some(session_id.clone()),
+                        });
+
+                        // Clear file states for the new session
+                        file_states.clear();
+                    }
+
+                    // Discover all files for the current session
+                    let session_files = provider.find_session_files(log_root, &session_id)?;
+
+                    // Load and detect changes for all files
+                    let mut all_events_merged = Vec::new();
+                    let mut all_new_events = Vec::new();
+                    let mut total_events = 0;
+
+                    for file_path in session_files {
+                        let last_event_count = file_states
+                            .get(&file_path)
+                            .map(|s| s.last_event_count)
+                            .unwrap_or(0);
+
+                        if let Ok((all_events, new_events)) =
+                            load_and_detect_changes(&file_path, last_event_count, provider)
+                        {
+                            file_states.insert(
+                                file_path.clone(),
+                                FileState {
+                                    last_event_count: all_events.len(),
+                                },
+                            );
+
+                            all_events_merged.extend(all_events);
+                            all_new_events.extend(new_events);
+                            total_events += file_states
+                                .get(&file_path)
+                                .map(|s| s.last_event_count)
+                                .unwrap_or(0);
+                        }
+                    }
+
+                    // Sort merged events by timestamp
+                    all_events_merged.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+                    all_new_events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+
+                    // Send merged update if there are new events
+                    if !all_new_events.is_empty() {
+                        let session = assemble_session_from_events(&all_events_merged);
+
+                        let start_idx = all_events_merged
+                            .iter()
+                            .position(|e| matches!(e.payload, EventPayload::User(_)))
+                            .unwrap_or(all_events_merged.len());
+
+                        let orphaned_events =
+                            all_events_merged.iter().take(start_idx).cloned().collect();
+
+                        let update = SessionUpdate {
+                            session,
+                            new_events: all_new_events,
+                            orphaned_events,
+                            total_events,
+                        };
+
+                        let _ = tx.send(StreamEvent::Update(update));
+                    }
                 } else {
-                    true
-                };
-
-                if should_switch {
-                    let old_path = current_file.clone();
-                    *current_file = Some(path.clone());
-                    file_event_counts.insert(path.clone(), 0);
-
-                    if let Some(old) = old_path {
-                        let _ = tx.send(StreamEvent::SessionRotated {
-                            old_path: old,
-                            new_path: path.clone(),
-                        });
-                        let _ = tx.send(StreamEvent::Attached {
-                            path: path.clone(),
-                            session_id: extract_session_id(path),
-                        });
+                    // ===== FILE MODE (fallback for files without session_id) =====
+                    let should_switch = if let Some(ref curr) = current_file {
+                        // Check if the new file is newer
+                        let new_time = std::fs::metadata(path).ok().and_then(|m| m.modified().ok());
+                        let current_time =
+                            std::fs::metadata(curr).ok().and_then(|m| m.modified().ok());
+                        match (new_time, current_time) {
+                            (Some(new_t), Some(curr_t)) => new_t > curr_t,
+                            _ => false,
+                        }
+                    } else if current_session_id.is_none() {
+                        // No current tracking, attach to this file
+                        true
                     } else {
+                        // Currently tracking a session, don't switch to file without session_id
+                        false
+                    };
+
+                    if should_switch {
+                        let old_path = current_file.replace(path.clone());
+                        *current_session_id = None; // Clear session tracking
+
+                        if let Some(old_p) = old_path {
+                            let _ = tx.send(StreamEvent::SessionRotated {
+                                old_path: old_p,
+                                new_path: path.clone(),
+                            });
+                        }
+
                         let _ = tx.send(StreamEvent::Attached {
                             path: path.clone(),
                             session_id: extract_session_id(path),
                         });
+
+                        file_states.clear();
                     }
 
-                    if let Ok((all_events, new_events)) = load_and_detect_changes(path, 0, provider)
-                    {
-                        if !new_events.is_empty() {
-                            file_event_counts.insert(path.clone(), new_events.len());
+                    // Process current file updates
+                    if Some(path) == current_file.as_ref() {
+                        let last_count = file_states
+                            .get(path)
+                            .map(|s| s.last_event_count)
+                            .unwrap_or(0);
 
-                            let session = assemble_session_from_events(&all_events);
+                        if let Ok((all_events, new_events)) =
+                            load_and_detect_changes(path, last_count, provider)
+                        {
+                            if !new_events.is_empty() {
+                                file_states.insert(
+                                    path.clone(),
+                                    FileState {
+                                        last_event_count: all_events.len(),
+                                    },
+                                );
 
-                            let start_idx = all_events
-                                .iter()
-                                .position(|e| matches!(e.payload, EventPayload::User(_)))
-                                .unwrap_or(all_events.len());
+                                let session = assemble_session_from_events(&all_events);
 
-                            let orphaned_events =
-                                all_events.iter().take(start_idx).cloned().collect();
+                                let start_idx = all_events
+                                    .iter()
+                                    .position(|e| matches!(e.payload, EventPayload::User(_)))
+                                    .unwrap_or(all_events.len());
 
-                            let update = SessionUpdate {
-                                session,
-                                new_events,
-                                orphaned_events,
-                                total_events: all_events.len(),
-                            };
+                                let orphaned_events =
+                                    all_events.iter().take(start_idx).cloned().collect();
 
-                            let _ = tx.send(StreamEvent::Update(update));
+                                let update = SessionUpdate {
+                                    session,
+                                    new_events,
+                                    orphaned_events,
+                                    total_events: all_events.len(),
+                                };
+
+                                let _ = tx.send(StreamEvent::Update(update));
+                            }
                         }
                     }
                 }
-            }
-        }
-        EventKind::Modify(_) => {
-            for path in &event.paths {
-                if current_file.is_none() && provider.can_handle(path) {
-                    if let Some(root) = project_root {
-                        if !provider.belongs_to_project(path, root) {
-                            continue;
-                        }
-                    }
 
-                    *current_file = Some(path.clone());
-                    file_event_counts.insert(path.clone(), 0);
-                    let _ = tx.send(StreamEvent::Attached {
-                        path: path.clone(),
-                        session_id: extract_session_id(path),
-                    });
-                }
-
-                if Some(path) == current_file.as_ref() {
-                    let last_count = *file_event_counts.get(path).unwrap_or(&0);
-
-                    if let Ok((all_events, new_events)) =
-                        load_and_detect_changes(path, last_count, provider)
-                    {
-                        if !new_events.is_empty() {
-                            let new_count = last_count + new_events.len();
-                            file_event_counts.insert(path.clone(), new_count);
-
-                            let session = assemble_session_from_events(&all_events);
-
-                            let start_idx = all_events
-                                .iter()
-                                .position(|e| matches!(e.payload, EventPayload::User(_)))
-                                .unwrap_or(all_events.len());
-
-                            let orphaned_events =
-                                all_events.iter().take(start_idx).cloned().collect();
-
-                            let update = SessionUpdate {
-                                session,
-                                new_events,
-                                orphaned_events,
-                                total_events: all_events.len(),
-                            };
-
-                            let _ = tx.send(StreamEvent::Update(update));
-                        }
-                    }
-                }
+                // Break after processing the first valid file in the event
+                break;
             }
         }
         _ => {}
@@ -328,7 +490,11 @@ fn resolve_explicit_target(
     let path_buf = PathBuf::from(id_or_path);
 
     if path_buf.exists() && path_buf.is_file() && provider.can_handle(&path_buf) {
-        return Ok(WatchTarget::File { path: path_buf });
+        let session_id = extract_session_id_from_file(&path_buf, provider)?;
+        return Ok(WatchTarget::Session {
+            session_id,
+            initial_path: path_buf,
+        });
     }
 
     for entry in walkdir::WalkDir::new(log_root)
@@ -341,8 +507,10 @@ fn resolve_explicit_target(
         if path.is_file() && provider.can_handle(path) {
             if let Some(stem) = path.file_stem() {
                 if stem.to_string_lossy().contains(id_or_path) {
-                    return Ok(WatchTarget::File {
-                        path: path.to_path_buf(),
+                    let session_id = extract_session_id_from_file(path, provider)?;
+                    return Ok(WatchTarget::Session {
+                        session_id,
+                        initial_path: path.to_path_buf(),
                     });
                 }
             }
@@ -431,7 +599,15 @@ fn find_active_target(
     }
 
     let (path, _mtime, _size) = hot_sessions[0];
-    Ok(WatchTarget::File { path: path.clone() })
+
+    // Extract session_id to enable session-aware mode
+    match provider.extract_session_id(path) {
+        Ok(session_id) => Ok(WatchTarget::Session {
+            session_id,
+            initial_path: path.clone(),
+        }),
+        Err(_) => Ok(WatchTarget::File { path: path.clone() }),
+    }
 }
 
 fn format_duration(d: Duration) -> String {
@@ -445,6 +621,10 @@ fn format_duration(d: Duration) -> String {
     } else {
         format!("{}d", secs / 86400)
     }
+}
+
+fn extract_session_id_from_file(path: &Path, provider: &Arc<dyn LogProvider>) -> Result<String> {
+    provider.extract_session_id(path)
 }
 
 fn extract_session_id(path: &Path) -> Option<String> {

@@ -206,4 +206,11 @@ impl LogProvider for ClaudeProvider {
 
         Ok(matching_files)
     }
+
+    fn extract_session_id(&self, path: &Path) -> Result<String> {
+        let header = extract_claude_header(path)?;
+        header
+            .session_id
+            .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+    }
 }

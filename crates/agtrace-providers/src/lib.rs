@@ -99,6 +99,22 @@ pub trait LogProvider: Send + Sync {
     /// - Target: <10ms for typical project directories (~100 files)
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>>;
 
+    /// Extract session ID from a log file
+    ///
+    /// This method extracts the session ID from a log file without full normalization.
+    /// Used by the watch command to identify which session a file belongs to.
+    ///
+    /// # Arguments
+    /// * `path` - Path to the log file
+    ///
+    /// # Returns
+    /// The session ID, or an error if it cannot be extracted
+    ///
+    /// # Performance
+    /// This method should only read the file header/metadata, not parse the entire file.
+    /// Target: <1ms per file
+    fn extract_session_id(&self, path: &Path) -> Result<String>;
+
     /// Parse a single line for streaming/watch mode
     ///
     /// Returns:
