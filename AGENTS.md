@@ -1,4 +1,8 @@
-# ExecPlans
-
-When writing complex features or significant refactors, use an ExecPlan (as described in .agent/PLANS.md) from design to implementation.
-Obey the rules CLAUDE.md.
+- Keep minimal comments and documents.
+- Write comments in English.
+- Read `docs`.
+- When you make a commit, the commit message must be oneline not multiline.
+- Rather than rushing to complete tasks, please focus on a quality-driven approach: reviewing implementations, running lint and fmt checks, and committing with concise, one-line messages (messages like "Claude's co-author" are unnecessary—keep them one-line).
+- Rules for snapshot tests: After running `cargo insta accept`, use `git diff` to check the differences. If there are issues, fix the implementation. If there are no issues, include it in the same commit as the implementation.
+- Use `tree2md` command for full file tree.
+- Design principle: Always choose the complete, unified solution over partial fixes. Never offer half-measures like "delete unused code" or "suppress warnings" without fixing the root cause. When facing implementation choices, default to the option that improves consistency and type safety across the codebase.
