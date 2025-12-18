@@ -418,7 +418,7 @@ mod tests {
             cache_creation: 200,
             cache_read: 800,
             total: 1500,
-            limit: Some(200_000),
+            limit: Some(155_000), // Effective limit with 22.5% buffer
             model: Some("claude-3-5-sonnet-20241022".to_string()),
             compaction_buffer_pct: Some(22.5),
         };

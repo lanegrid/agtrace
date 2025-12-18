@@ -40,10 +40,11 @@ impl TuiRenderer {
             .as_ref()
             .and_then(|m| self.token_limits.get_limit(m));
 
+        // Use effective limit (accounting for compaction buffer) for display
         let limit = ctx
             .state
             .context_window_limit
-            .or_else(|| token_spec.as_ref().map(|spec| spec.total_limit));
+            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
 
         let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
 

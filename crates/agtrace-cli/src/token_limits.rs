@@ -18,10 +18,34 @@ pub struct TokenLimit {
 
 impl TokenLimit {
     pub fn new(total_limit: u64, compaction_buffer_pct: f64) -> Self {
+        // Validate compaction_buffer_pct is in valid range
+        assert!(
+            (0.0..=100.0).contains(&compaction_buffer_pct),
+            "compaction_buffer_pct must be in range 0-100, got: {}",
+            compaction_buffer_pct
+        );
+
         Self {
             total_limit,
             compaction_buffer_pct,
         }
+    }
+
+    /// Calculate effective token limit after accounting for compaction buffer
+    ///
+    /// Example: 200K context window with 22.5% buffer = 155K effective limit
+    /// This is the actual usable limit before compaction triggers.
+    pub fn effective_limit(&self) -> u64 {
+        if self.compaction_buffer_pct == 0.0 {
+            // No buffer, full limit is usable
+            return self.total_limit;
+        }
+
+        let usable_pct = 100.0 - self.compaction_buffer_pct;
+        let effective = (self.total_limit as f64 * usable_pct / 100.0).floor() as u64;
+
+        // Ensure we never return 0 (even with 99.9% buffer, there's some usable space)
+        effective.max(1)
     }
 }
 
@@ -107,7 +131,10 @@ mod tests {
         let limits = TokenLimits::new();
         let limit = limits.get_limit("claude-3-5-sonnet-20241022");
         assert!(limit.is_some());
-        assert_eq!(limit.unwrap().total_limit, 200_000);
+        let limit = limit.unwrap();
+        assert_eq!(limit.total_limit, 200_000);
+        assert_eq!(limit.compaction_buffer_pct, 22.5);
+        assert_eq!(limit.effective_limit(), 155_000);
     }
 
     #[test]
@@ -167,5 +194,32 @@ mod tests {
         assert_eq!(input_pct, 50.0); // 100000 / 200000 * 100
         assert_eq!(output_pct, 2.0); // 4000 / 200000 * 100
         assert_eq!(total_pct, 52.0); // 104000 / 200000 * 100
+    }
+
+    #[test]
+    fn test_effective_limit() {
+        // Claude model with 22.5% buffer: 200K -> 155K effective
+        let limit = TokenLimit::new(200_000, 22.5);
+        assert_eq!(limit.effective_limit(), 155_000);
+
+        // No buffer: full limit is usable
+        let limit_no_buffer = TokenLimit::new(400_000, 0.0);
+        assert_eq!(limit_no_buffer.effective_limit(), 400_000);
+
+        // Edge case: very high buffer still returns non-zero
+        let limit_high_buffer = TokenLimit::new(1000, 99.0);
+        assert_eq!(limit_high_buffer.effective_limit(), 10);
+    }
+
+    #[test]
+    #[should_panic(expected = "compaction_buffer_pct must be in range 0-100")]
+    fn test_invalid_buffer_pct_negative() {
+        TokenLimit::new(200_000, -10.0);
+    }
+
+    #[test]
+    #[should_panic(expected = "compaction_buffer_pct must be in range 0-100")]
+    fn test_invalid_buffer_pct_over_100() {
+        TokenLimit::new(200_000, 150.0);
     }
 }

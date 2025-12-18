@@ -540,9 +540,10 @@ impl WatchView for ConsoleTraceView {
                 let token_limits = TokenLimits::new();
                 let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
 
+                // Use effective limit (accounting for compaction buffer) for display
                 let limit = state
                     .context_window_limit
-                    .or_else(|| token_spec.as_ref().map(|spec| spec.total_limit));
+                    .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
 
                 let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
 
