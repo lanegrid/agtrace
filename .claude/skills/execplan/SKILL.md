@@ -1,1 +1,0 @@
-../../../.agent/skills/execplan/SKILL.md
