@@ -92,23 +92,76 @@ impl WatchBuffer {
             }
             EventPayload::Reasoning(payload) => {
                 let text = self.truncate(&payload.text, 50);
-                format!(
-                    "{} {} {}",
-                    time.dimmed(),
-                    "🧠 Thnk:".dimmed(),
-                    text.dimmed()
-                )
+                format!("{} {} {}", time.dimmed(), "🧠 Thnk:".dimmed(), text.cyan())
             }
             EventPayload::Message(payload) => {
                 let text = self.truncate(&payload.text, 100);
-                format!("{} {} {}", time, "💬 Msg:".cyan(), text)
+                format!("{} {} {}", time.dimmed(), "💬 Msg:".cyan(), text)
             }
             EventPayload::ToolCall(payload) => {
-                format!("{} 🧪 {}", time, payload.name.magenta())
+                let (icon, color_fn) = self.categorize_tool(&payload.name);
+                let summary = self.format_tool_call(&payload.name, &payload.arguments);
+                let colored_name = color_fn(&payload.name);
+                format!("{} {} {}: {}", time.dimmed(), icon, colored_name, summary)
+            }
+            EventPayload::ToolResult(payload) => {
+                if payload.is_error {
+                    let output = self.truncate(&payload.output, 100);
+                    format!("{} {} {}", time.dimmed(), "❌ Fail:".red(), output.red())
+                } else {
+                    String::new()
+                }
             }
             EventPayload::TokenUsage(_) => String::new(),
             _ => String::new(),
         }
+    }
+
+    fn categorize_tool(&self, name: &str) -> (&'static str, fn(&str) -> String) {
+        use owo_colors::OwoColorize;
+        let lower = name.to_lowercase();
+
+        if lower.contains("read")
+            || lower.contains("ls")
+            || lower.contains("cat")
+            || lower.contains("grep")
+            || lower.contains("search")
+            || lower.contains("view")
+        {
+            ("📖", |s: &str| s.cyan().to_string())
+        } else if lower.contains("write") || lower.contains("edit") || lower.contains("replace") {
+            ("🛠️", |s: &str| s.yellow().to_string())
+        } else if lower.contains("run")
+            || lower.contains("exec")
+            || lower.contains("bash")
+            || lower.contains("python")
+            || lower.contains("test")
+        {
+            ("🧪", |s: &str| s.magenta().to_string())
+        } else {
+            ("🔧", |s: &str| s.white().to_string())
+        }
+    }
+
+    fn format_tool_call(&self, _name: &str, args: &serde_json::Value) -> String {
+        if let Some(obj) = args.as_object() {
+            if let Some(path) = obj.get("path").or_else(|| obj.get("file_path")) {
+                if let Some(path_str) = path.as_str() {
+                    return format!("(\"{}\")", self.truncate(path_str, 60));
+                }
+            }
+            if let Some(command) = obj.get("command") {
+                if let Some(cmd_str) = command.as_str() {
+                    return format!("(\"{}\")", self.truncate(cmd_str, 60));
+                }
+            }
+            if let Some(pattern) = obj.get("pattern") {
+                if let Some(pat_str) = pattern.as_str() {
+                    return format!("(\"{}\")", self.truncate(pat_str, 60));
+                }
+            }
+        }
+        String::new()
     }
 
     fn truncate(&self, text: &str, max_len: usize) -> String {
