@@ -236,7 +236,11 @@ pub fn run(cli: Cli) -> Result<()> {
             handlers::pack::handle(&ctx, &template.to_string(), limit, cli.project_root, &view)
         }
 
-        Commands::Watch { provider, id } => {
+        Commands::Watch {
+            provider,
+            id,
+            refresh,
+        } => {
             let ctx = ExecutionContext::new(data_dir, cli.project_root, cli.all_projects)?;
 
             let target = if let Some(session_id) = id {
@@ -252,7 +256,14 @@ pub fn run(cli: Cli) -> Result<()> {
                 }
             };
 
-            handlers::watch::handle(&ctx, target, &view)
+            if refresh {
+                use crate::ui::{AnsiTerminal, RefreshingWatchView};
+                let terminal = Box::new(AnsiTerminal::new());
+                let refresh_view = RefreshingWatchView::new(terminal, 50);
+                handlers::watch::handle(&ctx, target, &refresh_view)
+            } else {
+                handlers::watch::handle(&ctx, target, &view)
+            }
         }
     }
 }
