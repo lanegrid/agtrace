@@ -126,25 +126,32 @@ impl WatchView for TuiWatchView {
 
     fn on_watch_attached(&self, display_name: &str) -> Result<()> {
         let mut inner = self.inner.lock().unwrap();
-        inner.events_buffer.push_back(format!("✨ Attached to active session: {}", display_name));
+        inner
+            .events_buffer
+            .push_back(format!("✨ Attached to active session: {}", display_name));
         drop(inner);
         self.render()?;
         Ok(())
     }
 
-    fn on_watch_initial_summary(
-        &self,
-        _summary: &crate::ui::models::WatchSummary,
-    ) -> Result<()> {
+    fn on_watch_initial_summary(&self, _summary: &crate::ui::models::WatchSummary) -> Result<()> {
         // Initial summary already shown by render_watch_start
         Ok(())
     }
 
     fn on_watch_rotated(&self, old_path: &Path, new_path: &Path) -> Result<()> {
         let mut inner = self.inner.lock().unwrap();
-        let old_name = old_path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| old_path.display().to_string());
-        let new_name = new_path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| new_path.display().to_string());
-        inner.events_buffer.push_back(format!("✨ Session rotated: {} → {}", old_name, new_name));
+        let old_name = old_path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| old_path.display().to_string());
+        let new_name = new_path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| new_path.display().to_string());
+        inner
+            .events_buffer
+            .push_back(format!("✨ Session rotated: {} → {}", old_name, new_name));
         drop(inner);
         self.render()?;
         Ok(())
@@ -152,7 +159,9 @@ impl WatchView for TuiWatchView {
 
     fn on_watch_waiting(&self, message: &str) -> Result<()> {
         let mut inner = self.inner.lock().unwrap();
-        inner.events_buffer.push_back(format!("⏳ Waiting: {}", message));
+        inner
+            .events_buffer
+            .push_back(format!("⏳ Waiting: {}", message));
         drop(inner);
         self.render()?;
         Ok(())
@@ -160,7 +169,9 @@ impl WatchView for TuiWatchView {
 
     fn on_watch_error(&self, message: &str, _fatal: bool) -> Result<()> {
         let mut inner = self.inner.lock().unwrap();
-        inner.events_buffer.push_back(format!("❌ Error: {}", message));
+        inner
+            .events_buffer
+            .push_back(format!("❌ Error: {}", message));
         drop(inner);
         self.render()?;
         Ok(())

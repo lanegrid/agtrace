@@ -1,3 +1,4 @@
+use crate::views::session::event::format_event_with_start;
 use agtrace_types::{AgentEvent, EventPayload};
 use owo_colors::OwoColorize;
 
@@ -104,151 +105,36 @@ fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
 #[allow(dead_code)]
 pub fn format_events_timeline(
     events: &[AgentEvent],
-    truncate: bool,
-    enable_color: bool,
+    _truncate: bool,
+    _enable_color: bool,
 ) -> Vec<String> {
     let mut lines = Vec::new();
 
     if events.is_empty() {
-        let msg = "No events to display";
-        lines.push(if enable_color {
-            format!("{}", msg.bright_black())
-        } else {
-            msg.to_string()
-        });
-        return lines;
+        return vec!["No events to display".to_string()];
     }
 
     let session_start = events.first().map(|e| e.timestamp);
 
-    for event in events {
+    for (i, event) in events.iter().enumerate() {
         // Skip TokenUsage events in timeline display (shown in summary)
         if matches!(event.payload, EventPayload::TokenUsage(_)) {
             continue;
         }
 
-        // Calculate relative time from session start
-        let time_display = if let Some(start) = session_start {
-            let duration = event.timestamp.signed_duration_since(start);
-            let seconds = duration.num_seconds();
-            if seconds < 60 {
-                format!("[+{}s    ]", seconds)
-            } else {
-                let minutes = seconds / 60;
-                let secs = seconds % 60;
-                format!("[+{}m {:02}s]", minutes, secs)
-            }
-        } else {
-            let ts_str = event.timestamp.to_rfc3339();
-            format!("[{}]", &ts_str[11..19]) // fallback to HH:MM:SS
-        };
-
-        // Event type string with optional color
-        let (event_type_name, text_opt, tool_name_opt, is_error) = match &event.payload {
-            EventPayload::User(p) => {
-                // Skip empty user messages
-                if p.text.trim().is_empty() {
-                    continue;
-                }
-                ("UserMessage", Some(&p.text), None, false)
-            }
-            EventPayload::Message(p) => {
-                // Skip empty assistant messages (common in Gemini when only tool calls are present)
-                if p.text.trim().is_empty() {
-                    continue;
-                }
-                ("AssistantMessage", Some(&p.text), None, false)
-            }
-            EventPayload::Reasoning(p) => {
-                // Skip empty reasoning blocks
-                if p.text.trim().is_empty() {
-                    continue;
-                }
-                ("Reasoning", Some(&p.text), None, false)
-            }
-            EventPayload::ToolCall(p) => ("ToolCall", Some(&p.name), Some(&p.name), false),
-            EventPayload::ToolResult(p) => ("ToolResult", Some(&p.output), None, p.is_error),
-            EventPayload::TokenUsage(_) => continue, // Skip (already filtered above)
-            EventPayload::Notification(p) => ("Notification", Some(&p.text), None, false),
-        };
-
-        // Add status indicator for ToolResult events
-        let status_indicator = if matches!(event.payload, EventPayload::ToolResult(_)) {
-            if is_error {
-                if enable_color {
-                    format!("{} ", "✗".red())
-                } else {
-                    "✗ ".to_string()
-                }
-            } else if enable_color {
-                format!("{} ", "✓".green())
-            } else {
-                "✓ ".to_string()
-            }
-        } else {
-            String::new()
-        };
-
-        let event_type_str = if enable_color {
-            match &event.payload {
-                EventPayload::User(_) => format!("{}", event_type_name.green()),
-                EventPayload::Message(_) => format!("{}", event_type_name.blue()),
-                EventPayload::Reasoning(_) => format!("{}", event_type_name.cyan()),
-                EventPayload::ToolCall(_) => format!("{}", event_type_name.yellow()),
-                EventPayload::ToolResult(_) => {
-                    if is_error {
-                        format!("{}", event_type_name.red())
-                    } else {
-                        format!("{}", event_type_name.green())
-                    }
-                }
-                EventPayload::TokenUsage(_) => continue,
-                EventPayload::Notification(_) => format!("{}", event_type_name.cyan()),
-            }
-        } else {
-            event_type_name.to_string()
-        };
-
-        let time_colored = if enable_color {
-            format!("{}", time_display.bright_black())
-        } else {
-            time_display
-        };
-
-        lines.push(format!(
-            "{} {}{:<20}",
-            time_colored, status_indicator, event_type_str
-        ));
-
-        if let Some(text) = text_opt {
-            let preview = if truncate && text.chars().count() > 100 {
-                let truncated: String = text.chars().take(97).collect();
-                format!("{}...", truncated)
-            } else {
-                text.clone()
-            };
-
-            let text_output = if enable_color {
-                format!("{}", preview.white())
-            } else {
-                preview
-            };
-            lines.push(format!("  {}", text_output));
+        // Use the shared formatting function to ensure consistency with watch
+        if let Some(line) = format_event_with_start(
+            event,
+            i,    // turn_context
+            None, // project_root (timeline doesn't have this context)
+            session_start,
+        ) {
+            lines.push(line);
         }
-
-        if let Some(tool_name) = tool_name_opt {
-            if enable_color {
-                lines.push(format!("  tool: {}", tool_name.yellow()));
-            } else {
-                lines.push(format!("  tool: {}", tool_name));
-            }
-        }
-
-        lines.push(String::new());
     }
 
     // Add session summary
-    lines.extend(format_session_summary(events, enable_color));
+    lines.extend(format_session_summary(events, _enable_color));
 
     lines
 }

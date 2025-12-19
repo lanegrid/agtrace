@@ -27,7 +27,11 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
     }
 }
 
-pub fn handle_with_view(ctx: &ExecutionContext, target: WatchTarget, view: &dyn WatchView) -> Result<()> {
+pub fn handle_with_view(
+    ctx: &ExecutionContext,
+    target: WatchTarget,
+    view: &dyn WatchView,
+) -> Result<()> {
     let (provider, log_root, explicit_target, start_event): (
         Arc<dyn agtrace_providers::LogProvider>,
         PathBuf,
