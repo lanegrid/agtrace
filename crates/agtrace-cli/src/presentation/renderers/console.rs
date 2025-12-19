@@ -1,9 +1,8 @@
 use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::presentation::formatters::event::EventView;
-use crate::presentation::formatters::{text, time};
 use crate::presentation::formatters::token::TokenUsageView;
-use crate::presentation::formatters::{CompactView, DisplayOptions, TimelineView};
+use crate::presentation::formatters::{CompactView, DisplayOptions, SessionListView, TimelineView};
 use crate::types::OutputFormat;
 use agtrace_engine::AgentSession;
 use agtrace_engine::{DiagnoseResult, SessionDigest};
@@ -269,7 +268,7 @@ impl SessionView for ConsoleTraceView {
                 println!("{}", serde_json::to_string_pretty(sessions)?);
             }
             OutputFormat::Plain => {
-                print_sessions_table(sessions);
+                print!("{}", SessionListView::from_summaries(sessions.to_vec()));
             }
         }
         Ok(())
@@ -595,44 +594,6 @@ impl WatchView for ConsoleTraceView {
         Ok(())
     }
 }
-
-fn print_sessions_table(sessions: &[SessionSummary]) {
-    for session in sessions {
-        let id_short = if session.id.len() > 8 {
-            &session.id[..8]
-        } else {
-            &session.id
-        };
-
-        let time_str = session.start_ts.as_deref().unwrap_or("unknown");
-        let time_display = time::format_relative_time(time_str);
-
-        let snippet = session.snippet.as_deref().unwrap_or("");
-        let snippet_display = text::normalize_and_clean(snippet, 80);
-
-        let provider_display = match session.provider.as_str() {
-            "claude_code" => format!("{}", session.provider.blue()),
-            "codex" => format!("{}", session.provider.green()),
-            "gemini" => format!("{}", session.provider.red()),
-            _ => session.provider.clone(),
-        };
-
-        let snippet_final = if snippet_display.is_empty() {
-            format!("{}", "[empty]".bright_black())
-        } else {
-            snippet_display
-        };
-
-        println!(
-            "{} {} {} {}",
-            time_display.bright_black(),
-            id_short.yellow(),
-            provider_display,
-            snippet_final
-        );
-    }
-}
-
 
 
 fn create_progress_bar(percentage: f64) -> String {
