@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
-use crate::ui::models::IndexEvent;
-use crate::ui::TraceView;
+use crate::presentation::renderers::models::IndexEvent;
+use crate::presentation::renderers::TraceView;
 use agtrace_index::{LogFileRecord, ProjectRecord, SessionRecord};
 use agtrace_providers::ScanContext;
 use agtrace_types::project_hash_from_root;

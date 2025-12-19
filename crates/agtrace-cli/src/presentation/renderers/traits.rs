@@ -1,6 +1,6 @@
-use crate::display_model::{DoctorCheckDisplay, SessionDisplay};
+use crate::presentation::models::{DoctorCheckDisplay, SessionDisplay};
 use crate::types::OutputFormat;
-use crate::ui::models::{
+use super::models::{
     CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
     ProviderConfigSummary, ProviderSetResult, RawFileContent, ReportTemplate, WatchStart,
     WatchSummary,
@@ -47,7 +47,7 @@ pub trait SessionView {
     fn render_session_compact(
         &self,
         display: &SessionDisplay,
-        options: &crate::display_model::DisplayOptions,
+        options: &crate::presentation::models::DisplayOptions,
     ) -> Result<()>;
     fn render_session_timeline(
         &self,

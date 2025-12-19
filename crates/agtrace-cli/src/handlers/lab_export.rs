@@ -1,5 +1,5 @@
 use crate::types::{ExportFormat, ExportStrategy as CliExportStrategy};
-use crate::ui::TraceView;
+use crate::presentation::renderers::TraceView;
 use agtrace_engine::export::{self, ExportStrategy};
 use agtrace_index::Database;
 use agtrace_runtime::{LoadOptions, SessionRepository};

@@ -1,4 +1,4 @@
-use crate::ui::TraceView;
+use crate::presentation::renderers::TraceView;
 use agtrace_index::Database;
 use agtrace_providers::create_provider;
 use agtrace_runtime::{LoadOptions, SessionRepository};

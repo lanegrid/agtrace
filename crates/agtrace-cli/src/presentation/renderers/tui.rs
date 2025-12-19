@@ -1,5 +1,5 @@
-use crate::display_model::{DisplayOptions, TokenSummaryDisplay};
-use crate::ui::traits::WatchView;
+use crate::presentation::models::{DisplayOptions, TokenSummaryDisplay};
+use super::traits::WatchView;
 use crate::presentation::formatters::session::{format_event_with_start, format_token_summary};
 use agtrace_runtime::reactor::{Reaction, SessionState};
 use agtrace_runtime::TokenLimits;
@@ -108,13 +108,14 @@ impl Drop for TuiWatchView {
 }
 
 impl WatchView for TuiWatchView {
-    fn render_watch_start(&self, start: &crate::ui::models::WatchStart) -> Result<()> {
+    fn render_watch_start(&self, start: &super::models::WatchStart) -> Result<()> {
+        use super::models::WatchStart as WS;
         let mut inner = self.inner.lock().unwrap();
         let message = match start {
-            crate::ui::models::WatchStart::Provider { name, log_root } => {
+            WS::Provider { name, log_root } => {
                 format!("👀 Watching {} ({})", log_root.display(), name)
             }
-            crate::ui::models::WatchStart::Session { id, log_root } => {
+            WS::Session { id, log_root } => {
                 format!("👀 Watching session {} in {}", id, log_root.display())
             }
         };
@@ -134,7 +135,7 @@ impl WatchView for TuiWatchView {
         Ok(())
     }
 
-    fn on_watch_initial_summary(&self, _summary: &crate::ui::models::WatchSummary) -> Result<()> {
+    fn on_watch_initial_summary(&self, _summary: &super::models::WatchSummary) -> Result<()> {
         // Initial summary already shown by render_watch_start
         Ok(())
     }

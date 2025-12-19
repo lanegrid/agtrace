@@ -1,5 +1,5 @@
-use crate::display_model::DoctorCheckDisplay;
-use crate::ui::TraceView;
+use crate::presentation::models::DoctorCheckDisplay;
+use crate::presentation::renderers::TraceView;
 use agtrace_providers::{create_provider, detect_provider_from_path, ImportContext, LogProvider};
 use anyhow::Result;
 use std::path::Path;

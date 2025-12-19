@@ -1,5 +1,5 @@
-use crate::ui::models::{ProviderConfigSummary, ProviderSetResult};
-use crate::ui::TraceView;
+use crate::presentation::renderers::models::{ProviderConfigSummary, ProviderSetResult};
+use crate::presentation::renderers::TraceView;
 use anyhow::Result;
 use std::path::PathBuf;
 

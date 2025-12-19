@@ -1,5 +1,5 @@
 use crate::context::ExecutionContext;
-use crate::ui::TraceView;
+use crate::presentation::renderers::TraceView;
 use agtrace_engine::{analyze_and_select_sessions, assemble_session, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::{LoadOptions, SessionRepository};

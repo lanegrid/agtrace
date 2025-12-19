@@ -34,9 +34,6 @@ mod handlers;
 pub mod token_usage;
 pub mod types;
 
-// Re-export for backwards compatibility
-pub use presentation::{display_model, ui};
-
 pub use args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
     SessionCommand,

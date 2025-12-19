@@ -93,7 +93,7 @@ impl WatchBuffer {
     }
 
     pub fn format_footer(&self) -> Vec<String> {
-        use crate::display_model::{DisplayOptions, TokenSummaryDisplay};
+        use crate::presentation::models::{DisplayOptions, TokenSummaryDisplay};
         use crate::presentation::formatters::session::format_token_summary;
         use agtrace_runtime::TokenLimits;
 
@@ -445,9 +445,9 @@ impl RefreshingWatchView {
     }
 }
 
-impl crate::ui::traits::WatchView for RefreshingWatchView {
-    fn render_watch_start(&self, start: &crate::ui::models::WatchStart) -> anyhow::Result<()> {
-        use crate::ui::models::WatchStart;
+impl super::traits::WatchView for RefreshingWatchView {
+    fn render_watch_start(&self, start: &super::models::WatchStart) -> anyhow::Result<()> {
+        use super::models::WatchStart;
         use owo_colors::OwoColorize;
 
         let header = match start {
@@ -486,7 +486,7 @@ impl crate::ui::traits::WatchView for RefreshingWatchView {
 
     fn on_watch_initial_summary(
         &self,
-        _summary: &crate::ui::models::WatchSummary,
+        _summary: &super::models::WatchSummary,
     ) -> anyhow::Result<()> {
         Ok(())
     }

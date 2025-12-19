@@ -1,4 +1,4 @@
-use crate::display_model::{CheckResult, DoctorCheckDisplay};
+use crate::presentation::models::{CheckResult, DoctorCheckDisplay};
 use agtrace_engine::DiagnoseResult;
 use owo_colors::OwoColorize;
 

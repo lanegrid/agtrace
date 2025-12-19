@@ -1,4 +1,4 @@
-use crate::display_model::{
+use crate::presentation::models::{
     DisplayOptions, SessionDisplay, StepContent, TokenSummaryDisplay, ToolDisplay,
 };
 use agtrace_types::ToolStatus;

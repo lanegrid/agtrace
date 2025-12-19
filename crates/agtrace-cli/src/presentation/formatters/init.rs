@@ -1,4 +1,4 @@
-use crate::display_model::init::{InitDisplay, SkipReason, Step1Result, Step3Result};
+use crate::presentation::models::init::{InitDisplay, SkipReason, Step1Result, Step3Result};
 use chrono::Duration;
 
 fn format_duration(d: Duration) -> String {

@@ -4,8 +4,8 @@ use super::args::{
 };
 use super::handlers;
 use crate::context::ExecutionContext;
-use crate::ui::models::GuidanceContext;
-use crate::ui::{ConsoleTraceView, TraceView};
+use crate::presentation::renderers::models::GuidanceContext;
+use crate::presentation::renderers::{ConsoleTraceView, TraceView};
 use agtrace_index::Database;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
@@ -257,7 +257,7 @@ pub fn run(cli: Cli) -> Result<()> {
             };
 
             if refresh {
-                use crate::ui::{AnsiTerminal, RefreshingWatchView};
+                use crate::presentation::renderers::{AnsiTerminal, RefreshingWatchView};
                 let terminal = Box::new(AnsiTerminal::new());
                 let refresh_view = RefreshingWatchView::new(terminal);
                 handlers::watch::handle_with_view(&ctx, target, &refresh_view)

@@ -1,7 +1,7 @@
 use crate::context::ExecutionContext;
-use crate::ui::models::{WatchStart, WatchSummary};
-use crate::ui::traits::WatchView;
-use crate::ui::{ConsoleTraceView, TuiWatchView};
+use crate::presentation::renderers::models::{WatchStart, WatchSummary};
+use crate::presentation::renderers::traits::WatchView;
+use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
 use agtrace_runtime::{Runtime, RuntimeConfig, RuntimeEvent, TokenUsageMonitor};
 use anyhow::Result;
 use is_terminal::IsTerminal;

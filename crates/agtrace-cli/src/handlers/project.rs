@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
-use crate::ui::models::ProjectSummary;
-use crate::ui::TraceView;
+use crate::presentation::renderers::models::ProjectSummary;
+use crate::presentation::renderers::TraceView;
 use agtrace_types::discover_project_root;
 use anyhow::Result;
 

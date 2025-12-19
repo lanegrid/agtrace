@@ -1,5 +1,5 @@
 use crate::context::ExecutionContext;
-use crate::ui::TraceView;
+use crate::presentation::renderers::TraceView;
 use agtrace_engine::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
 use agtrace_providers::LogProvider;
 use anyhow::Result;

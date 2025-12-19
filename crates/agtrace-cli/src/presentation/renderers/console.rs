@@ -1,9 +1,9 @@
-use crate::display_model::{
+use crate::presentation::models::{
     DisplayOptions, DoctorCheckDisplay, SessionDisplay, TokenSummaryDisplay,
 };
 use crate::types::OutputFormat;
-use crate::ui::models::*;
-use crate::ui::traits::{DiagnosticView, SessionView, SystemView, WatchView};
+use super::models::*;
+use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::presentation::formatters::session::{format_event_with_start, format_token_summary};
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
