@@ -1,6 +1,6 @@
 use crate::types::{
     ExportFormat, ExportStrategy, InspectFormat, LogLevel, OutputFormat, PackTemplate,
-    ProviderFilter, ProviderName, SchemaFormat, ViewStyle,
+    ProviderFilter, ProviderName, ViewStyle,
 };
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -222,13 +222,6 @@ pub enum ProviderCommand {
 
         #[arg(long)]
         disable: bool,
-    },
-    #[command(about = "Show provider event schema")]
-    Schema {
-        provider: String,
-
-        #[arg(long, default_value = "text")]
-        format: SchemaFormat,
     },
 }
 

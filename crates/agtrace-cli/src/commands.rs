@@ -138,9 +138,6 @@ pub fn run(cli: Cli) -> Result<()> {
                     &config_path,
                     &view,
                 ),
-                ProviderCommand::Schema { provider, format } => {
-                    handlers::provider_schema::handle(provider, format, &view)
-                }
             }
         }
 

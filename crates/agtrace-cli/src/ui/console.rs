@@ -1,5 +1,5 @@
 use crate::display_model::{
-    DisplayOptions, DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay, TokenSummaryDisplay,
+    DisplayOptions, DoctorCheckDisplay, SessionDisplay, TokenSummaryDisplay,
 };
 use crate::token_limits::TokenLimits;
 use crate::types::OutputFormat;
@@ -352,11 +352,6 @@ impl DiagnosticView for ConsoleTraceView {
         }
 
         println!("{}", "─".repeat(40));
-        Ok(())
-    }
-
-    fn render_provider_schema(&self, content: &ProviderSchemaContent) -> Result<()> {
-        crate::views::provider::print_provider_schema(content);
         Ok(())
     }
 }

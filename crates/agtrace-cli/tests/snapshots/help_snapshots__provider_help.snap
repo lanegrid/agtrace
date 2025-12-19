@@ -10,7 +10,6 @@ Commands:
   list    Show configured providers
   detect  Auto-detect and configure providers
   set     Configure a provider
-  schema  Show provider event schema
   help    Print this message or the help of the given subcommand(s)
 
 Options:

@@ -161,20 +161,3 @@ impl fmt::Display for InspectFormat {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-#[value(rename_all = "lowercase")]
-pub enum SchemaFormat {
-    Text,
-    Json,
-    Rust,
-}
-
-impl fmt::Display for SchemaFormat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SchemaFormat::Text => write!(f, "text"),
-            SchemaFormat::Json => write!(f, "json"),
-            SchemaFormat::Rust => write!(f, "rust"),
-        }
-    }
-}

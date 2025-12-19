@@ -1,4 +1,4 @@
-use crate::display_model::{DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay};
+use crate::display_model::{DoctorCheckDisplay, SessionDisplay};
 use crate::types::OutputFormat;
 use crate::ui::models::{
     CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
@@ -69,7 +69,6 @@ pub trait DiagnosticView {
     fn render_doctor_check(&self, display: &DoctorCheckDisplay) -> Result<()>;
     fn render_diagnose_results(&self, results: &[DiagnoseResult], verbose: bool) -> Result<()>;
     fn render_inspect(&self, display: &InspectDisplay) -> Result<()>;
-    fn render_provider_schema(&self, content: &ProviderSchemaContent) -> Result<()>;
 }
 
 pub trait WatchView {
