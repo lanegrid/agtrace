@@ -200,24 +200,6 @@ pub struct NotificationPayload {
     pub level: Option<String>,
 }
 
-// --- Helper Methods ---
-
-impl AgentEvent {
-    /// Check if this event is a "generation event" (can have TokenUsage children)
-    pub fn is_generation_event(&self) -> bool {
-        matches!(
-            self.payload,
-            EventPayload::ToolCall(_) | EventPayload::Message(_)
-        )
-    }
-
-    /// Check if this event should be included in LLM context history
-    /// (TokenUsage is excluded from context)
-    pub fn is_context_event(&self) -> bool {
-        !matches!(self.payload, EventPayload::TokenUsage(_))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,82 +225,6 @@ mod tests {
             EventPayload::User(payload) => assert_eq!(payload.text, "Hello"),
             _ => panic!("Wrong payload type"),
         }
-    }
-
-    #[test]
-    fn test_is_generation_event() {
-        let tool_call = AgentEvent {
-            id: Uuid::new_v4(),
-            trace_id: Uuid::new_v4(),
-            parent_id: None,
-            timestamp: Utc::now(),
-            stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload {
-                name: "bash".to_string(),
-                arguments: serde_json::json!({"command": "ls"}),
-                provider_call_id: Some("call_123".to_string()),
-            }),
-            metadata: None,
-        };
-        assert!(tool_call.is_generation_event());
-
-        let message = AgentEvent {
-            id: Uuid::new_v4(),
-            trace_id: Uuid::new_v4(),
-            parent_id: None,
-            timestamp: Utc::now(),
-            stream_id: StreamId::Main,
-            payload: EventPayload::Message(MessagePayload {
-                text: "Done".to_string(),
-            }),
-            metadata: None,
-        };
-        assert!(message.is_generation_event());
-
-        let user = AgentEvent {
-            id: Uuid::new_v4(),
-            trace_id: Uuid::new_v4(),
-            parent_id: None,
-            timestamp: Utc::now(),
-            stream_id: StreamId::Main,
-            payload: EventPayload::User(UserPayload {
-                text: "Hi".to_string(),
-            }),
-            metadata: None,
-        };
-        assert!(!user.is_generation_event());
-    }
-
-    #[test]
-    fn test_is_context_event() {
-        let token_usage = AgentEvent {
-            id: Uuid::new_v4(),
-            trace_id: Uuid::new_v4(),
-            parent_id: None,
-            timestamp: Utc::now(),
-            stream_id: StreamId::Main,
-            payload: EventPayload::TokenUsage(TokenUsagePayload {
-                input_tokens: 100,
-                output_tokens: 50,
-                total_tokens: 150,
-                details: None,
-            }),
-            metadata: None,
-        };
-        assert!(!token_usage.is_context_event());
-
-        let user = AgentEvent {
-            id: Uuid::new_v4(),
-            trace_id: Uuid::new_v4(),
-            parent_id: None,
-            timestamp: Utc::now(),
-            stream_id: StreamId::Main,
-            payload: EventPayload::User(UserPayload {
-                text: "Hi".to_string(),
-            }),
-            metadata: None,
-        };
-        assert!(user.is_context_event());
     }
 
     #[test]
