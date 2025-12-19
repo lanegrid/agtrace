@@ -1,19 +1,35 @@
+use crate::tool_spec::ToolSpec;
 use agtrace_types::{ToolKind, ToolOrigin};
 use serde_json::Value;
 
+/// Registry of Gemini tools
+const GEMINI_TOOLS: &[ToolSpec] = &[
+    // Search tools
+    ToolSpec::new("google_web_search", ToolOrigin::System, ToolKind::Search),
+    // Read tools
+    ToolSpec::new("read_file", ToolOrigin::System, ToolKind::Read),
+    // Write tools
+    ToolSpec::new("replace", ToolOrigin::System, ToolKind::Write),
+    ToolSpec::new("write_file", ToolOrigin::System, ToolKind::Write),
+    // Execute tools
+    ToolSpec::new("run_shell_command", ToolOrigin::System, ToolKind::Execute),
+    // Plan tools
+    ToolSpec::new("write_todos", ToolOrigin::System, ToolKind::Plan),
+];
+
 /// Classify Gemini tool by origin and semantic kind
 pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
-    let (origin, kind) = match tool_name {
-        "google_web_search" => (ToolOrigin::System, ToolKind::Search),
-        "read_file" => (ToolOrigin::System, ToolKind::Read),
-        "replace" | "write_file" => (ToolOrigin::System, ToolKind::Write),
-        "run_shell_command" => (ToolOrigin::System, ToolKind::Execute),
-        "write_todos" => (ToolOrigin::System, ToolKind::Plan),
-        _ if tool_name.starts_with("mcp__") => (ToolOrigin::Mcp, ToolKind::Other),
-        _ => return None,
-    };
+    // Check registry first
+    if let Some(spec) = GEMINI_TOOLS.iter().find(|t| t.name == tool_name) {
+        return Some((spec.origin, spec.kind));
+    }
 
-    Some((origin, kind))
+    // Handle MCP tools
+    if tool_name.starts_with("mcp__") {
+        return Some((ToolOrigin::Mcp, ToolKind::Other));
+    }
+
+    None
 }
 
 /// Extract summary from Gemini tool arguments

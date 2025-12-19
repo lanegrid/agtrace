@@ -19,6 +19,9 @@ pub mod token_limits;
 // Tool analysis (classification and summary extraction)
 pub mod tool_analyzer;
 
+// Tool specification (shared type for tool registries)
+pub(crate) mod tool_spec;
+
 // Re-export provider types
 pub use claude::ClaudeProvider;
 pub use codex::CodexProvider;

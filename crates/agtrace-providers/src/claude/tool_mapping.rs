@@ -1,28 +1,47 @@
+use crate::tool_spec::ToolSpec;
 use agtrace_types::{ToolKind, ToolOrigin};
 use serde_json::Value;
 
+/// Registry of Claude Code tools
+const CLAUDE_TOOLS: &[ToolSpec] = &[
+    // Ask tools
+    ToolSpec::new("AskUserQuestion", ToolOrigin::System, ToolKind::Ask),
+    // Execute tools
+    ToolSpec::new("Bash", ToolOrigin::System, ToolKind::Execute),
+    ToolSpec::new("KillShell", ToolOrigin::System, ToolKind::Execute),
+    ToolSpec::new("BashOutput", ToolOrigin::System, ToolKind::Execute),
+    ToolSpec::new("Skill", ToolOrigin::System, ToolKind::Execute),
+    ToolSpec::new("SlashCommand", ToolOrigin::System, ToolKind::Execute),
+    // Write tools
+    ToolSpec::new("Edit", ToolOrigin::System, ToolKind::Write),
+    ToolSpec::new("Write", ToolOrigin::System, ToolKind::Write),
+    ToolSpec::new("NotebookEdit", ToolOrigin::System, ToolKind::Write),
+    // Read tools
+    ToolSpec::new("Read", ToolOrigin::System, ToolKind::Read),
+    // Search tools
+    ToolSpec::new("Glob", ToolOrigin::System, ToolKind::Search),
+    ToolSpec::new("Grep", ToolOrigin::System, ToolKind::Search),
+    ToolSpec::new("WebFetch", ToolOrigin::System, ToolKind::Search),
+    ToolSpec::new("WebSearch", ToolOrigin::System, ToolKind::Search),
+    // Plan tools
+    ToolSpec::new("Task", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("TodoWrite", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("ExitPlanMode", ToolOrigin::System, ToolKind::Plan),
+];
+
 /// Classify Claude Code tool by origin and semantic kind
 pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
-    let origin = if tool_name.starts_with("mcp__") {
-        ToolOrigin::Mcp
-    } else {
-        ToolOrigin::System
-    };
+    // Check registry first
+    if let Some(spec) = CLAUDE_TOOLS.iter().find(|t| t.name == tool_name) {
+        return Some((spec.origin, spec.kind));
+    }
 
-    let kind = match tool_name {
-        "AskUserQuestion" => Some(ToolKind::Ask),
-        "Bash" | "KillShell" | "BashOutput" => Some(ToolKind::Execute),
-        "Edit" | "Write" | "NotebookEdit" => Some(ToolKind::Write),
-        "Read" => Some(ToolKind::Read),
-        "Glob" | "Grep" => Some(ToolKind::Search),
-        "Task" | "TodoWrite" | "ExitPlanMode" => Some(ToolKind::Plan),
-        "Skill" | "SlashCommand" => Some(ToolKind::Execute),
-        "WebFetch" | "WebSearch" => Some(ToolKind::Search),
-        _ if tool_name.starts_with("mcp__") => Some(ToolKind::Other),
-        _ => None,
-    }?;
+    // Handle MCP tools
+    if tool_name.starts_with("mcp__") {
+        return Some((ToolOrigin::Mcp, ToolKind::Other));
+    }
 
-    Some((origin, kind))
+    None
 }
 
 /// Extract summary from Claude Code tool arguments

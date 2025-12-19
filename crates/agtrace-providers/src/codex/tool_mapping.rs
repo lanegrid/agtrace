@@ -1,18 +1,33 @@
+use crate::tool_spec::ToolSpec;
 use agtrace_types::{ToolKind, ToolOrigin};
 use serde_json::Value;
 
+/// Registry of Codex tools
+const CODEX_TOOLS: &[ToolSpec] = &[
+    // Write tools
+    ToolSpec::new("apply_patch", ToolOrigin::System, ToolKind::Write),
+    // Read tools
+    ToolSpec::new("read_mcp_resource", ToolOrigin::Mcp, ToolKind::Read),
+    // Execute tools
+    ToolSpec::new("shell", ToolOrigin::System, ToolKind::Execute),
+    ToolSpec::new("shell_command", ToolOrigin::System, ToolKind::Execute),
+    // Plan tools
+    ToolSpec::new("update_plan", ToolOrigin::System, ToolKind::Plan),
+];
+
 /// Classify Codex tool by origin and semantic kind
 pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
-    let (origin, kind) = match tool_name {
-        "apply_patch" => (ToolOrigin::System, ToolKind::Write),
-        "read_mcp_resource" => (ToolOrigin::Mcp, ToolKind::Read),
-        "shell" | "shell_command" => (ToolOrigin::System, ToolKind::Execute),
-        "update_plan" => (ToolOrigin::System, ToolKind::Plan),
-        _ if tool_name.starts_with("mcp__") => (ToolOrigin::Mcp, ToolKind::Other),
-        _ => return None,
-    };
+    // Check registry first
+    if let Some(spec) = CODEX_TOOLS.iter().find(|t| t.name == tool_name) {
+        return Some((spec.origin, spec.kind));
+    }
 
-    Some((origin, kind))
+    // Handle MCP tools
+    if tool_name.starts_with("mcp__") {
+        return Some((ToolOrigin::Mcp, ToolKind::Other));
+    }
+
+    None
 }
 
 /// Extract summary from Codex tool arguments
