@@ -1,15 +1,18 @@
-use agtrace_types::ToolKind;
+use agtrace_types::{ToolKind, ToolOrigin};
 use serde_json::Value;
 
-/// Classify Codex tool by semantic kind
-pub fn classify_tool(tool_name: &str) -> Option<ToolKind> {
-    match tool_name {
-        "apply_patch" => Some(ToolKind::Write),
-        "read_mcp_resource" => Some(ToolKind::Read),
-        "shell" | "shell_command" => Some(ToolKind::Execute),
-        "update_plan" => Some(ToolKind::Plan),
-        _ => None,
-    }
+/// Classify Codex tool by origin and semantic kind
+pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
+    let (origin, kind) = match tool_name {
+        "apply_patch" => (ToolOrigin::System, ToolKind::Write),
+        "read_mcp_resource" => (ToolOrigin::Mcp, ToolKind::Read),
+        "shell" | "shell_command" => (ToolOrigin::System, ToolKind::Execute),
+        "update_plan" => (ToolOrigin::System, ToolKind::Plan),
+        _ if tool_name.starts_with("mcp__") => (ToolOrigin::Mcp, ToolKind::Other),
+        _ => return None,
+    };
+
+    Some((origin, kind))
 }
 
 /// Extract summary from Codex tool arguments

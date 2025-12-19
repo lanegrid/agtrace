@@ -168,14 +168,7 @@ impl LogProvider for CodexProvider {
         &self,
         tool_name: &str,
     ) -> Option<(agtrace_types::ToolOrigin, agtrace_types::ToolKind)> {
-        tool_mapping::classify_tool(tool_name).map(|kind| {
-            let origin = if tool_name.starts_with("mcp__") {
-                agtrace_types::ToolOrigin::Mcp
-            } else {
-                agtrace_types::ToolOrigin::System
-            };
-            (origin, kind)
-        })
+        tool_mapping::classify_tool(tool_name)
     }
 
     fn extract_summary(

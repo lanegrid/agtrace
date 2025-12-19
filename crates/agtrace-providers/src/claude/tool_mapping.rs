@@ -1,9 +1,15 @@
-use agtrace_types::ToolKind;
+use agtrace_types::{ToolKind, ToolOrigin};
 use serde_json::Value;
 
-/// Classify Claude Code tool by semantic kind
-pub fn classify_tool(tool_name: &str) -> Option<ToolKind> {
-    match tool_name {
+/// Classify Claude Code tool by origin and semantic kind
+pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
+    let origin = if tool_name.starts_with("mcp__") {
+        ToolOrigin::Mcp
+    } else {
+        ToolOrigin::System
+    };
+
+    let kind = match tool_name {
         "AskUserQuestion" => Some(ToolKind::Ask),
         "Bash" | "KillShell" | "BashOutput" => Some(ToolKind::Execute),
         "Edit" | "Write" | "NotebookEdit" => Some(ToolKind::Write),
@@ -12,8 +18,11 @@ pub fn classify_tool(tool_name: &str) -> Option<ToolKind> {
         "Task" | "TodoWrite" | "ExitPlanMode" => Some(ToolKind::Plan),
         "Skill" | "SlashCommand" => Some(ToolKind::Execute),
         "WebFetch" | "WebSearch" => Some(ToolKind::Search),
+        _ if tool_name.starts_with("mcp__") => Some(ToolKind::Other),
         _ => None,
-    }
+    }?;
+
+    Some((origin, kind))
 }
 
 /// Extract summary from Claude Code tool arguments

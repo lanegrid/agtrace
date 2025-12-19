@@ -1,16 +1,19 @@
-use agtrace_types::ToolKind;
+use agtrace_types::{ToolKind, ToolOrigin};
 use serde_json::Value;
 
-/// Classify Gemini tool by semantic kind
-pub fn classify_tool(tool_name: &str) -> Option<ToolKind> {
-    match tool_name {
-        "google_web_search" => Some(ToolKind::Search),
-        "read_file" => Some(ToolKind::Read),
-        "replace" | "write_file" => Some(ToolKind::Write),
-        "run_shell_command" => Some(ToolKind::Execute),
-        "write_todos" => Some(ToolKind::Plan),
-        _ => None,
-    }
+/// Classify Gemini tool by origin and semantic kind
+pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
+    let (origin, kind) = match tool_name {
+        "google_web_search" => (ToolOrigin::System, ToolKind::Search),
+        "read_file" => (ToolOrigin::System, ToolKind::Read),
+        "replace" | "write_file" => (ToolOrigin::System, ToolKind::Write),
+        "run_shell_command" => (ToolOrigin::System, ToolKind::Execute),
+        "write_todos" => (ToolOrigin::System, ToolKind::Plan),
+        _ if tool_name.starts_with("mcp__") => (ToolOrigin::Mcp, ToolKind::Other),
+        _ => return None,
+    };
+
+    Some((origin, kind))
 }
 
 /// Extract summary from Gemini tool arguments
