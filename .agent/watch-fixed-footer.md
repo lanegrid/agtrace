@@ -18,10 +18,10 @@ To see it working: run `agtrace watch` in a terminal, observe events streaming i
 - [x] (2025-01-20) Create TUI module skeleton in crates/agtrace-cli/src/ui/tui.rs with TuiWatchView struct
 - [x] (2025-01-20) Add tui module to ui/mod.rs exports
 - [x] (2025-01-20) Verify compilation succeeds with stub implementation (Milestone 1 complete)
-- [ ] Implement render() method with fixed footer logic
-- [ ] Implement render_stream_update() to populate buffers
-- [ ] Add interior mutability (Mutex) for WatchView trait compatibility
-- [ ] Test rendering with sample events (Milestone 2)
+- [x] (2025-01-20) Add interior mutability (Mutex) for WatchView trait compatibility
+- [x] (2025-01-20) Implement render() method with fixed footer logic
+- [x] (2025-01-20) Implement render_stream_update() to populate buffers and update footer
+- [x] (2025-01-20) Verify compilation and all tests pass (Milestone 2 complete)
 - [ ] Integrate TUI mode into watch handler with TTY detection
 - [ ] Add ctrlc dependency for signal handling
 - [ ] Implement cleanup on Ctrl+C
@@ -34,6 +34,9 @@ To see it working: run `agtrace watch` in a terminal, observe events streaming i
 
 - Observation: Crossterm 0.28.1 was installed (latest 0.29.0 available but 0.28 series is stable)
   Evidence: Cargo output showed "Adding crossterm v0.28.1 (available: v0.29.0)"
+
+- Observation: Interior mutability pattern worked seamlessly with WatchView trait
+  Evidence: Using Mutex<TuiWatchViewInner> allowed render_stream_update(&self) to mutate state while maintaining trait compatibility. All tests pass without modification.
 
 
 ## Decision Log

@@ -12,13 +12,18 @@ use crossterm::{
 use std::collections::VecDeque;
 use std::io::{self, Write};
 use std::path::Path;
+use std::sync::Mutex;
 
-pub struct TuiWatchView {
+struct TuiWatchViewInner {
     events_buffer: VecDeque<String>,
     footer_lines: Vec<String>,
     session_start_time: Option<chrono::DateTime<chrono::Utc>>,
     turn_count: usize,
     project_root: Option<std::path::PathBuf>,
+}
+
+pub struct TuiWatchView {
+    inner: Mutex<TuiWatchViewInner>,
 }
 
 impl TuiWatchView {
@@ -28,16 +33,64 @@ impl TuiWatchView {
         terminal::enable_raw_mode()?;
 
         Ok(Self {
-            events_buffer: VecDeque::new(),
-            footer_lines: Vec::new(),
-            session_start_time: None,
-            turn_count: 0,
-            project_root: None,
+            inner: Mutex::new(TuiWatchViewInner {
+                events_buffer: VecDeque::new(),
+                footer_lines: Vec::new(),
+                session_start_time: None,
+                turn_count: 0,
+                project_root: None,
+            }),
         })
     }
 
-    fn render(&mut self) -> Result<()> {
-        // To be implemented in Milestone 2
+    fn render(&self) -> Result<()> {
+        let inner = self.inner.lock().unwrap();
+        let (term_width, term_height) = terminal::size()?;
+        let term_height = term_height as usize;
+
+        // Reserve bottom lines for footer
+        let footer_height = inner.footer_lines.len().max(1);
+        let content_height = term_height.saturating_sub(footer_height + 1); // +1 for separator
+
+        // Clear screen and move cursor to top
+        execute!(
+            io::stdout(),
+            terminal::Clear(terminal::ClearType::All),
+            cursor::MoveTo(0, 0)
+        )?;
+
+        // Render content area (recent events)
+        let start_idx = inner.events_buffer.len().saturating_sub(content_height);
+        for (i, line) in inner.events_buffer.iter().skip(start_idx).enumerate() {
+            queue!(
+                io::stdout(),
+                cursor::MoveTo(0, i as u16),
+                terminal::Clear(terminal::ClearType::CurrentLine)
+            )?;
+            print!("{}", line);
+        }
+
+        // Render separator line
+        let separator_row = content_height as u16;
+        queue!(
+            io::stdout(),
+            cursor::MoveTo(0, separator_row),
+            terminal::Clear(terminal::ClearType::CurrentLine)
+        )?;
+        println!("{}", "─".repeat(term_width as usize));
+
+        // Render footer
+        for (i, line) in inner.footer_lines.iter().enumerate() {
+            let row = (separator_row + 1 + i as u16).min(term_height as u16 - 1);
+            queue!(
+                io::stdout(),
+                cursor::MoveTo(0, row),
+                terminal::Clear(terminal::ClearType::CurrentLine)
+            )?;
+            print!("{}", line);
+        }
+
+        io::stdout().flush()?;
         Ok(())
     }
 }
@@ -99,7 +152,68 @@ impl WatchView for TuiWatchView {
         Ok(())
     }
 
-    fn render_stream_update(&self, _state: &SessionState, _new_events: &[AgentEvent]) -> Result<()> {
+    fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()> {
+        let mut inner = self.inner.lock().unwrap();
+
+        // Update tracking state
+        if inner.session_start_time.is_none() {
+            inner.session_start_time = Some(state.start_time);
+        }
+        inner.turn_count = state.turn_count;
+        inner.project_root = state.project_root.clone();
+
+        // Format and buffer new events
+        for event in new_events {
+            if let Some(line) = format_event_with_start(
+                event,
+                inner.turn_count,
+                inner.project_root.as_deref(),
+                inner.session_start_time,
+            ) {
+                inner.events_buffer.push_back(line);
+
+                // Keep buffer size manageable (last 1000 events)
+                if inner.events_buffer.len() > 1000 {
+                    inner.events_buffer.pop_front();
+                }
+            }
+
+            // Update footer on TokenUsage events
+            if matches!(event.payload, EventPayload::TokenUsage(_)) {
+                let token_limits = TokenLimits::new();
+                let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
+
+                let limit = state
+                    .context_window_limit
+                    .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
+
+                let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
+
+                let summary = TokenSummaryDisplay {
+                    input: state.total_input_side_tokens(),
+                    output: state.total_output_side_tokens(),
+                    cache_creation: state.current_usage.cache_creation.0,
+                    cache_read: state.current_usage.cache_read.0,
+                    total: state.total_context_window_tokens(),
+                    limit,
+                    model: state.model.clone(),
+                    compaction_buffer_pct,
+                };
+
+                let opts = DisplayOptions {
+                    enable_color: true,
+                    relative_time: false,
+                    truncate_text: None,
+                };
+
+                inner.footer_lines = format_token_summary(&summary, &opts);
+            }
+        }
+
+        // Drop the lock before rendering
+        drop(inner);
+
+        self.render()?;
         Ok(())
     }
 }
