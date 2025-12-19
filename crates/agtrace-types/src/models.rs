@@ -53,6 +53,36 @@ impl StreamId {
     }
 }
 
+/// Tool classification by semantic purpose
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolKind {
+    /// Read operations (files, resources, data)
+    Read,
+    /// Write operations (edit, create, patch)
+    Write,
+    /// Execute operations (shell commands, scripts)
+    Execute,
+    /// Planning operations (todo, task management)
+    Plan,
+    /// Search operations (web, file search, grep)
+    Search,
+    /// User interaction (questions, prompts)
+    Ask,
+    /// Other/unknown operations
+    Other,
+}
+
+/// Tool origin classification
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolOrigin {
+    /// System-provided tool (built-in to the provider)
+    System,
+    /// MCP (Model Context Protocol) tool (external integration)
+    Mcp,
+}
+
 /// Agent event
 /// Maps 1:1 to database table row
 #[derive(Debug, Clone, Serialize, Deserialize)]

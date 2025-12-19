@@ -2,6 +2,7 @@ pub mod io;
 pub mod models;
 pub mod normalize;
 pub mod schema;
+pub mod tool_mapping;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::paths_equal;
@@ -161,5 +162,28 @@ impl LogProvider for CodexProvider {
         header
             .session_id
             .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+    }
+
+    fn classify_tool(
+        &self,
+        tool_name: &str,
+    ) -> Option<(agtrace_types::ToolOrigin, agtrace_types::ToolKind)> {
+        tool_mapping::classify_tool(tool_name).map(|kind| {
+            let origin = if tool_name.starts_with("mcp__") {
+                agtrace_types::ToolOrigin::Mcp
+            } else {
+                agtrace_types::ToolOrigin::System
+            };
+            (origin, kind)
+        })
+    }
+
+    fn extract_summary(
+        &self,
+        tool_name: &str,
+        kind: agtrace_types::ToolKind,
+        arguments: &serde_json::Value,
+    ) -> Option<String> {
+        tool_mapping::extract_summary(tool_name, kind, arguments)
     }
 }

@@ -16,6 +16,9 @@ pub mod registry;
 // Token limits resolution
 pub mod token_limits;
 
+// Tool analysis (classification and summary extraction)
+pub mod tool_analyzer;
+
 // Re-export provider types
 pub use claude::ClaudeProvider;
 pub use codex::CodexProvider;
@@ -31,6 +34,9 @@ pub use registry::{
     create_all_providers, create_provider, detect_provider_from_path, get_all_providers,
     get_default_log_paths, get_provider_metadata, get_provider_names,
 };
+
+// Re-export tool analyzer functions for convenience
+pub use tool_analyzer::{classify_common, extract_common_summary, truncate};
 
 #[derive(Debug, Clone)]
 pub struct LogFileMetadata {
@@ -142,5 +148,27 @@ pub trait LogProvider: Send + Sync {
             Ok(event) => Ok(Some(event)),
             Err(_) => Ok(None), // Silently skip malformed lines
         }
+    }
+
+    /// Classify tool by origin and semantic kind
+    ///
+    /// Returns None if this provider doesn't recognize the tool (fallback to common logic)
+    fn classify_tool(
+        &self,
+        _tool_name: &str,
+    ) -> Option<(agtrace_types::ToolOrigin, agtrace_types::ToolKind)> {
+        None
+    }
+
+    /// Extract summary string for UI display from tool arguments
+    ///
+    /// Returns None if this provider doesn't have custom extraction logic (fallback to common logic)
+    fn extract_summary(
+        &self,
+        _tool_name: &str,
+        _kind: agtrace_types::ToolKind,
+        _arguments: &serde_json::Value,
+    ) -> Option<String> {
+        None
     }
 }
