@@ -1,4 +1,4 @@
-use crate::session::AgentSession;
+use super::types::AgentSession;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

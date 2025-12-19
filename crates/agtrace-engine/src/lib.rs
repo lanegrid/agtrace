@@ -2,23 +2,20 @@
 // This layer sits between normalized events (types) and CLI presentation
 
 pub mod analysis;
-pub mod assembler;
 pub mod diagnostics;
 pub mod export;
 pub mod session;
 pub mod state_updates;
-pub mod summary;
 pub mod token_usage;
 
 pub use analysis::{analyze_and_select_sessions, SessionDigest};
-pub use assembler::assemble_session;
 pub use diagnostics::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
 pub use session::{
-    AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionStats, ToolCallBlock,
-    ToolExecution, ToolResultBlock, TurnStats, UserMessage,
+    assemble_session, summarize, AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock,
+    SessionStats, SessionSummary, ToolCallBlock, ToolExecution, ToolResultBlock, TurnStats,
+    UserMessage,
 };
 pub use state_updates::{extract_state_updates, StateUpdates};
-pub use summary::{summarize, SessionSummary};
 pub use token_usage::{
     CacheCreationTokens, CacheReadTokens, ContextWindowUsage, FreshInputTokens, OutputTokens,
 };
@@ -28,10 +25,10 @@ pub use token_usage::{
 
 /// Assemble events into AgentSession structure
 pub fn assemble_session_from_events(events: &[agtrace_types::AgentEvent]) -> Option<AgentSession> {
-    assembler::assemble_session(events)
+    session::assemble_session(events)
 }
 
 /// Summarize session statistics from AgentSession
 pub fn summarize_session(session: &AgentSession) -> SessionSummary {
-    summary::summarize(session)
+    session::summarize(session)
 }

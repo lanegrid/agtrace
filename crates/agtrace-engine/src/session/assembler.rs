@@ -1,4 +1,4 @@
-use crate::session::*;
+use super::types::*;
 use agtrace_types::{AgentEvent, EventPayload};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;

@@ -1,5 +1,5 @@
 ---
-source: crates/agtrace-engine/tests/assembler_snapshots.rs
+source: crates/agtrace-engine/tests/session.rs
 expression: session
 ---
 {
