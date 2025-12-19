@@ -1,7 +1,7 @@
 use crate::context::ExecutionContext;
 use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor};
 use crate::ui::models::{WatchStart, WatchSummary};
-use crate::ui::TraceView;
+use crate::ui::traits::WatchView;
 use agtrace_runtime::{Runtime, RuntimeConfig, RuntimeEvent};
 use anyhow::Result;
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ pub enum WatchTarget {
     Provider { name: String },
     Session { id: String },
 }
-pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn TraceView) -> Result<()> {
+pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn WatchView) -> Result<()> {
     let (provider, log_root, explicit_target, start_event): (
         Arc<dyn agtrace_providers::LogProvider>,
         PathBuf,
