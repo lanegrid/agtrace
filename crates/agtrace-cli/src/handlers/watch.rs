@@ -2,8 +2,10 @@ use crate::context::ExecutionContext;
 use crate::reactors::TokenUsageMonitor;
 use crate::ui::models::{WatchStart, WatchSummary};
 use crate::ui::traits::WatchView;
+use crate::ui::{ConsoleTraceView, TuiWatchView};
 use agtrace_runtime::{Runtime, RuntimeConfig, RuntimeEvent};
 use anyhow::Result;
+use is_terminal::IsTerminal;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -12,7 +14,20 @@ pub enum WatchTarget {
     Provider { name: String },
     Session { id: String },
 }
-pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn WatchView) -> Result<()> {
+pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
+    // Auto-select TUI mode if stdout is a TTY
+    let use_tui = std::io::stdout().is_terminal();
+
+    if use_tui {
+        let tui_view = TuiWatchView::new()?;
+        handle_with_view(ctx, target, &tui_view)
+    } else {
+        let console_view = ConsoleTraceView::new();
+        handle_with_view(ctx, target, &console_view)
+    }
+}
+
+pub fn handle_with_view(ctx: &ExecutionContext, target: WatchTarget, view: &dyn WatchView) -> Result<()> {
     let (provider, log_root, explicit_target, start_event): (
         Arc<dyn agtrace_providers::LogProvider>,
         PathBuf,

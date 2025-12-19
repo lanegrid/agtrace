@@ -32,6 +32,13 @@ impl TuiWatchView {
         execute!(io::stdout(), EnterAlternateScreen)?;
         terminal::enable_raw_mode()?;
 
+        // Set up Ctrl+C handler to restore terminal
+        ctrlc::set_handler(move || {
+            let _ = terminal::disable_raw_mode();
+            let _ = execute!(io::stdout(), LeaveAlternateScreen);
+            std::process::exit(0);
+        })?;
+
         Ok(Self {
             inner: Mutex::new(TuiWatchViewInner {
                 events_buffer: VecDeque::new(),

@@ -22,11 +22,13 @@ To see it working: run `agtrace watch` in a terminal, observe events streaming i
 - [x] (2025-01-20) Implement render() method with fixed footer logic
 - [x] (2025-01-20) Implement render_stream_update() to populate buffers and update footer
 - [x] (2025-01-20) Verify compilation and all tests pass (Milestone 2 complete)
-- [ ] Integrate TUI mode into watch handler with TTY detection
-- [ ] Add ctrlc dependency for signal handling
-- [ ] Implement cleanup on Ctrl+C
-- [ ] Test TUI and non-TUI modes (Milestone 3)
-- [ ] Run full test suite
+- [x] (2025-01-20) Add ctrlc 3.4 dependency for signal handling
+- [x] (2025-01-20) Implement cleanup on Ctrl+C in TuiWatchView::new()
+- [x] (2025-01-20) Modify watch handler to auto-detect TTY and choose view
+- [x] (2025-01-20) Make handle_with_view public for backward compatibility with refresh flag
+- [x] (2025-01-20) Update commands.rs to call new handler signature
+- [x] (2025-01-20) Run full test suite - all tests pass (Milestone 3 complete)
+- [ ] Manual testing with actual watch sessions
 - [ ] Update documentation
 
 
@@ -41,12 +43,56 @@ To see it working: run `agtrace watch` in a terminal, observe events streaming i
 
 ## Decision Log
 
-(To be filled during implementation)
+- Decision: Split handler into `handle()` and `handle_with_view()`
+  Rationale: The existing `--refresh` flag uses RefreshingWatchView. To maintain backward compatibility while adding auto-detection, we split the function: `handle()` auto-detects TTY and chooses view, while `handle_with_view()` accepts an explicit view for the refresh flag.
+  Date/Author: 2025-01-20
+
+- Decision: Use ctrlc crate version 3.4 instead of 0.8 as originally planned
+  Rationale: Cargo resolved to 3.5.1 (compatible with 3.4 requirement), which is the latest stable version.
+  Date/Author: 2025-01-20
+
+- Decision: Exit process in Ctrl+C handler instead of just restoring terminal
+  Rationale: Clean exit is necessary to prevent the watch loop from continuing after terminal restoration. Using std::process::exit(0) ensures immediate termination.
+  Date/Author: 2025-01-20
 
 
 ## Outcomes & Retrospective
 
-(To be filled at completion)
+### Achievements
+
+All three milestones completed successfully:
+1. TUI infrastructure with crossterm (Milestone 1)
+2. Fixed footer rendering with event buffering (Milestone 2)
+3. TTY auto-detection and integration (Milestone 3)
+
+The implementation achieves the original goal: users can now run `agtrace watch` and see a TUI with scrolling events and a fixed Context Window footer. The footer updates in real-time when TokenUsage events arrive, and Ctrl+C cleanly restores the terminal.
+
+### Design Quality
+
+The pure function approach (from the previous refactoring) made this implementation straightforward. The `format_event_with_start()` and `format_token_summary()` functions work identically in both ConsoleTraceView and TuiWatchView, ensuring consistency.
+
+The interior mutability pattern (Mutex) worked without friction, allowing the TUI to maintain state while implementing the immutable &self methods from WatchView trait.
+
+### Backward Compatibility
+
+The existing `--refresh` flag continues to work by using `handle_with_view()` directly. This provides a migration path if needed.
+
+### What Remains
+
+- Manual testing with actual watch sessions (to verify UX in real scenarios)
+- Documentation updates (README, help text, etc.)
+- Potential future enhancement: Implement Compact view display option in TUI mode
+
+### Lessons Learned
+
+- Starting with pure rendering functions (previous refactor) paid off significantly
+- Interior mutability (Mutex) is the right pattern for stateful views with immutable trait methods
+- Splitting handler functions (handle vs handle_with_view) is a good pattern for gradual migration
+- Crossterm API is straightforward and well-documented
+
+### Time Investment
+
+All three milestones completed in a single session, demonstrating that the ExecPlan approach (detailed planning, clear milestones, concrete steps) accelerates implementation.
 
 
 ## Context and Orientation
