@@ -287,4 +287,13 @@ pub enum LabCommand {
         #[arg(long, default_value = "raw")]
         strategy: ExportStrategy,
     },
+
+    #[command(about = "Analyze ToolCall statistics across sessions")]
+    Stats {
+        #[arg(long)]
+        limit: Option<usize>,
+
+        #[arg(long)]
+        source: Option<String>,
+    },
 }

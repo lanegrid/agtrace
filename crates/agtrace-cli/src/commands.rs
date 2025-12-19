@@ -189,6 +189,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     format,
                     strategy,
                 } => handlers::lab_export::handle(&db, session_id, output, format, strategy, &view),
+                LabCommand::Stats { limit, source } => {
+                    handlers::lab_stats::handle(&db, limit, source, &view)
+                }
             }
         }
 
