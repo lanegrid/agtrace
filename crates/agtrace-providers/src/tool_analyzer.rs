@@ -57,6 +57,13 @@ fn classify_kind(tool_name: &str) -> ToolKind {
     }
 }
 
+/// Determine tool origin based on naming convention
+///
+/// MCP protocol tools are identified by the `mcp__` prefix. This indicates
+/// the tool is invoked via MCP protocol, not that it operates on MCP resources.
+/// For example:
+/// - `mcp__sqlite__query` → MCP (external tool via MCP protocol)
+/// - `read_mcp_resource` → System (provider-native tool that reads MCP resources)
 fn determine_origin(tool_name: &str) -> ToolOrigin {
     if tool_name.starts_with("mcp__") {
         ToolOrigin::Mcp

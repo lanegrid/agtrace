@@ -3,11 +3,19 @@ use agtrace_types::{ToolKind, ToolOrigin};
 use serde_json::Value;
 
 /// Registry of Codex tools
+///
+/// # Note on ToolOrigin classification
+/// `read_mcp_resource` is classified as System, not Mcp, because it is a
+/// provider-native tool built into Codex. The tool happens to read MCP resources,
+/// but the invocation itself is NOT via MCP protocol. Only tools invoked via
+/// MCP protocol (typically prefixed with `mcp__`) should use ToolOrigin::Mcp.
 const CODEX_TOOLS: &[ToolSpec] = &[
     // Write tools
     ToolSpec::new("apply_patch", ToolOrigin::System, ToolKind::Write),
     // Read tools
-    ToolSpec::new("read_mcp_resource", ToolOrigin::Mcp, ToolKind::Read),
+    // NOTE: read_mcp_resource is System because it's a Codex-native tool,
+    // even though it reads MCP resources. Origin is about invocation, not target.
+    ToolSpec::new("read_mcp_resource", ToolOrigin::System, ToolKind::Read),
     // Execute tools
     ToolSpec::new("shell", ToolOrigin::System, ToolKind::Execute),
     ToolSpec::new("shell_command", ToolOrigin::System, ToolKind::Execute),
@@ -22,7 +30,8 @@ pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
         return Some((spec.origin, spec.kind));
     }
 
-    // Handle MCP tools
+    // Handle MCP protocol tools (invoked via MCP, not just accessing MCP resources)
+    // These tools are prefixed with "mcp__" and are external integrations
     if tool_name.starts_with("mcp__") {
         return Some((ToolOrigin::Mcp, ToolKind::Other));
     }

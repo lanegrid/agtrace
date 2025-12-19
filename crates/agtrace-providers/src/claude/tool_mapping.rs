@@ -36,7 +36,8 @@ pub fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)> {
         return Some((spec.origin, spec.kind));
     }
 
-    // Handle MCP tools
+    // Handle MCP protocol tools (invoked via MCP, not just accessing MCP resources)
+    // These tools are prefixed with "mcp__" and are external integrations
     if tool_name.starts_with("mcp__") {
         return Some((ToolOrigin::Mcp, ToolKind::Other));
     }
