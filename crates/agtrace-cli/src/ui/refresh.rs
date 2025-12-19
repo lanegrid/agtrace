@@ -94,8 +94,8 @@ impl WatchBuffer {
 
     pub fn format_footer(&self) -> Vec<String> {
         use crate::display_model::{DisplayOptions, TokenSummaryDisplay};
-        use crate::token_limits::TokenLimits;
         use crate::views::session::format_token_summary;
+        use agtrace_runtime::TokenLimits;
 
         let token_limits = TokenLimits::new();
         let token_spec = self

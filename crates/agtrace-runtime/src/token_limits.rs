@@ -1,4 +1,4 @@
-use agtrace_runtime::reactor::SessionState;
+use crate::reactor::SessionState;
 
 // NOTE: Architecture decision - Thin CLI layer
 // This module is intentionally thin and delegates to agtrace_providers::token_limits.
@@ -152,8 +152,8 @@ mod tests {
 
     #[test]
     fn test_get_usage_percentage_from_state() {
-        use crate::token_usage::ContextWindowUsage;
-        use agtrace_runtime::reactor::SessionState;
+        use crate::reactor::SessionState;
+        use agtrace_engine::ContextWindowUsage;
         use chrono::Utc;
 
         let limits = TokenLimits::new();
@@ -176,8 +176,8 @@ mod tests {
 
     #[test]
     fn test_get_usage_percentage_from_state_no_cache() {
-        use crate::token_usage::ContextWindowUsage;
-        use agtrace_runtime::reactor::SessionState;
+        use crate::reactor::SessionState;
+        use agtrace_engine::ContextWindowUsage;
         use chrono::Utc;
 
         let limits = TokenLimits::new();
