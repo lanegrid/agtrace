@@ -3,7 +3,7 @@ use agtrace_runtime::reactor::SessionState;
 // NOTE: Architecture decision - Thin CLI layer
 // This module is intentionally thin and delegates to agtrace_providers::token_limits.
 // The CLI layer's responsibility is only to:
-// 1. Provide a stable API for existing consumers (TuiRenderer, TokenUsageMonitor)
+// 1. Provide a stable API for existing consumers (TokenUsageMonitor)
 // 2. Apply resolution priority (runtime metadata > provider knowledge)
 // 3. Bridge between provider types (ModelSpec) and CLI types (TokenLimit)
 //
