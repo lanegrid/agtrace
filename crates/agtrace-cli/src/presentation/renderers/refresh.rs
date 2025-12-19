@@ -94,34 +94,7 @@ impl WatchBuffer {
 
     pub fn format_footer(&self) -> Vec<String> {
         use crate::presentation::formatters::token::TokenUsageView;
-        use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
-        use agtrace_runtime::TokenLimits;
-
-        let token_limits = TokenLimits::new();
-        let token_spec = self
-            .state
-            .model
-            .as_ref()
-            .and_then(|m| token_limits.get_limit(m));
-
-        // Use effective limit (accounting for compaction buffer) for display
-        let limit = self
-            .state
-            .context_window_limit
-            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
-
-        let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
-
-        let summary = TokenSummaryDisplay {
-            input: self.state.total_input_side_tokens(),
-            output: self.state.total_output_side_tokens(),
-            cache_creation: self.state.current_usage.cache_creation.0,
-            cache_read: self.state.current_usage.cache_read.0,
-            total: self.state.total_context_window_tokens(),
-            limit,
-            model: self.state.model.clone(),
-            compaction_buffer_pct,
-        };
+        use crate::presentation::formatters::DisplayOptions;
 
         let opts = DisplayOptions {
             enable_color: true,
@@ -129,10 +102,7 @@ impl WatchBuffer {
             truncate_text: None,
         };
 
-        let token_view = TokenUsageView {
-            summary: &summary,
-            options: &opts,
-        };
+        let token_view = TokenUsageView::from_state(&self.state, opts);
         format!("{}", token_view)
             .lines()
             .map(|s| s.to_string())

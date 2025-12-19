@@ -1,16 +1,44 @@
 use super::{FormatOptions, TokenSummaryDisplay};
+use agtrace_runtime::reactor::SessionState;
+use agtrace_runtime::TokenLimits;
 use owo_colors::OwoColorize;
 use std::fmt;
 
 /// View for displaying token usage information
-pub struct TokenUsageView<'a> {
-    pub summary: &'a TokenSummaryDisplay,
-    pub options: &'a FormatOptions,
+pub struct TokenUsageView {
+    pub summary: TokenSummaryDisplay,
+    pub options: FormatOptions,
 }
 
-impl<'a> fmt::Display for TokenUsageView<'a> {
+impl TokenUsageView {
+    pub fn from_state(state: &SessionState, options: FormatOptions) -> Self {
+        let token_limits = TokenLimits::new();
+        let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
+
+        let limit = state
+            .context_window_limit
+            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
+
+        let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
+
+        let summary = TokenSummaryDisplay {
+            input: state.total_input_side_tokens(),
+            output: state.total_output_side_tokens(),
+            cache_creation: state.current_usage.cache_creation.0,
+            cache_read: state.current_usage.cache_read.0,
+            total: state.total_context_window_tokens(),
+            limit,
+            model: state.model.clone(),
+            compaction_buffer_pct,
+        };
+
+        Self { summary, options }
+    }
+}
+
+impl fmt::Display for TokenUsageView {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ts = self.summary;
+        let ts = &self.summary;
         let enable_color = self.options.enable_color;
 
         if enable_color {

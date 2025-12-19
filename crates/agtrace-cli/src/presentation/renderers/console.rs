@@ -2,15 +2,12 @@ use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::presentation::formatters::event::EventView;
 use crate::presentation::formatters::token::TokenUsageView;
-use crate::presentation::formatters::{
-    CompactView, DisplayOptions, TimelineView, TokenSummaryDisplay,
-};
+use crate::presentation::formatters::{CompactView, DisplayOptions, TimelineView};
 use crate::types::OutputFormat;
 use agtrace_engine::AgentSession;
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};
-use agtrace_runtime::TokenLimits;
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
@@ -589,35 +586,9 @@ impl WatchView for ConsoleTraceView {
             }
 
             if matches!(event.payload, EventPayload::TokenUsage(_)) {
-                let token_limits = TokenLimits::new();
-                let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
-
-                // Use effective limit (accounting for compaction buffer) for display
-                let limit = state
-                    .context_window_limit
-                    .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
-
-                let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
-
-                let summary = TokenSummaryDisplay {
-                    input: state.total_input_side_tokens(),
-                    output: state.total_output_side_tokens(),
-                    cache_creation: state.current_usage.cache_creation.0,
-                    cache_read: state.current_usage.cache_read.0,
-                    total: state.total_context_window_tokens(),
-                    limit,
-                    model: state.model.clone(),
-                    compaction_buffer_pct,
-                };
-
+                let token_view = TokenUsageView::from_state(state, opts.clone());
                 println!();
-                print!(
-                    "{}",
-                    TokenUsageView {
-                        summary: &summary,
-                        options: &opts,
-                    }
-                );
+                print!("{}", token_view);
             }
         }
         Ok(())

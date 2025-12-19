@@ -163,8 +163,8 @@ impl<'a> fmt::Display for TimelineSummary<'a> {
                 f,
                 "{}",
                 TokenUsageView {
-                    summary: &token_summary,
-                    options: self.options,
+                    summary: token_summary,
+                    options: self.options.clone(),
                 }
             )?;
         }
