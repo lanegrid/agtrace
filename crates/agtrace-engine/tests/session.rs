@@ -1,4 +1,4 @@
-use agtrace_engine::assemble_session_from_events;
+use agtrace_engine::assemble_session;
 use agtrace_types::AgentEvent;
 use std::fs;
 use std::path::Path;
@@ -16,7 +16,7 @@ fn load_events_from_fixture(fixture_name: &str) -> Vec<AgentEvent> {
 fn test_gemini_session_assembly() {
     let events = load_events_from_fixture("gemini_events.json");
 
-    let session = assemble_session_from_events(&events).expect("Failed to assemble session");
+    let session = assemble_session(&events).expect("Failed to assemble session");
 
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 
@@ -27,7 +27,7 @@ fn test_gemini_session_assembly() {
 fn test_codex_session_assembly() {
     let events = load_events_from_fixture("codex_events.json");
 
-    let session = assemble_session_from_events(&events).expect("Failed to assemble session");
+    let session = assemble_session(&events).expect("Failed to assemble session");
 
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 
@@ -38,7 +38,7 @@ fn test_codex_session_assembly() {
 fn test_claude_session_assembly() {
     let events = load_events_from_fixture("claude_events.json");
 
-    let session = assemble_session_from_events(&events).expect("Failed to assemble session");
+    let session = assemble_session(&events).expect("Failed to assemble session");
 
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 
@@ -139,7 +139,7 @@ fn test_session_assembly_structure() {
         },
     ];
 
-    let session = assemble_session_from_events(&events).expect("Failed to assemble session");
+    let session = assemble_session(&events).expect("Failed to assemble session");
 
     assert_eq!(session.turns.len(), 1);
     let turn = &session.turns[0];

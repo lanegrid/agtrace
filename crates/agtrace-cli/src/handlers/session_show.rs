@@ -5,7 +5,7 @@ use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::types::ViewStyle;
 use crate::ui::models::RawFileContent;
 use crate::ui::TraceView;
-use agtrace_engine::assemble_session_from_events;
+use agtrace_engine::assemble_session;
 use agtrace_index::Database;
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
@@ -62,7 +62,7 @@ pub fn handle(
     } else {
         match style {
             ViewStyle::Compact => {
-                if let Some(session) = assemble_session_from_events(&filtered_events) {
+                if let Some(session) = assemble_session(&filtered_events) {
                     let display = SessionDisplay::from_agent_session(&session);
                     let opts = DisplayOptions {
                         enable_color,

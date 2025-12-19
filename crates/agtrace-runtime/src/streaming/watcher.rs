@@ -1,4 +1,4 @@
-use agtrace_engine::{assemble_session_from_events, AgentSession};
+use agtrace_engine::{assemble_session, AgentSession};
 use agtrace_providers::LogProvider;
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
@@ -133,7 +133,7 @@ impl SessionWatcher {
                             },
                         );
 
-                        let session = assemble_session_from_events(&all_events);
+                        let session = assemble_session(&all_events);
 
                         let start_idx = all_events
                             .iter()
@@ -187,7 +187,7 @@ impl SessionWatcher {
                     all_events_merged.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
                     if !all_events_merged.is_empty() {
-                        let session = assemble_session_from_events(&all_events_merged);
+                        let session = assemble_session(&all_events_merged);
 
                         let start_idx = all_events_merged
                             .iter()
@@ -370,7 +370,7 @@ fn handle_fs_event(
 
                     // Send merged update if there are new events
                     if !all_new_events.is_empty() {
-                        let session = assemble_session_from_events(&all_events_merged);
+                        let session = assemble_session(&all_events_merged);
 
                         let start_idx = all_events_merged
                             .iter()
@@ -446,7 +446,7 @@ fn handle_fs_event(
                                     },
                                 );
 
-                                let session = assemble_session_from_events(&all_events);
+                                let session = assemble_session(&all_events);
 
                                 let start_idx = all_events
                                     .iter()

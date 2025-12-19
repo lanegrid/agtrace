@@ -19,11 +19,3 @@ pub use state_updates::{extract_state_updates, StateUpdates};
 pub use token_usage::{
     CacheCreationTokens, CacheReadTokens, ContextWindowUsage, FreshInputTokens, OutputTokens,
 };
-
-// Façade API - Stable public interface for CLI layer
-// CLI should use these functions instead of directly accessing internal modules
-
-/// Assemble events into AgentSession structure
-pub fn assemble_session_from_events(events: &[agtrace_types::AgentEvent]) -> Option<AgentSession> {
-    session::assemble_session(events)
-}

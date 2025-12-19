@@ -2,7 +2,7 @@ use crate::context::ExecutionContext;
 use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::ui::models::CorpusStats;
 use crate::ui::TraceView;
-use agtrace_engine::assemble_session_from_events;
+use agtrace_engine::assemble_session;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 
@@ -31,7 +31,7 @@ pub fn handle(
     for session in &raw_sessions {
         if let Ok(events) = loader.load_events(&session.id, &options) {
             // Just quick aggregations for the header
-            if let Some(agent_session) = assemble_session_from_events(&events) {
+            if let Some(agent_session) = assemble_session(&events) {
                 for turn in &agent_session.turns {
                     for step in &turn.steps {
                         total_tool_calls += step.tools.len();

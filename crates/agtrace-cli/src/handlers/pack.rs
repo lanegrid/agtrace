@@ -1,7 +1,7 @@
 use crate::context::ExecutionContext;
 use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::ui::TraceView;
-use agtrace_engine::{analyze_and_select_sessions, assemble_session_from_events, SessionDigest};
+use agtrace_engine::{analyze_and_select_sessions, assemble_session, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
@@ -32,7 +32,7 @@ pub fn handle(
 
     for (i, session) in balanced_sessions.iter().enumerate() {
         if let Ok(events) = loader.load_events(&session.id, &options) {
-            if let Some(agent_session) = assemble_session_from_events(&events) {
+            if let Some(agent_session) = assemble_session(&events) {
                 // Newer sessions get a small boost in scoring
                 let recency_boost = (balanced_sessions.len() - i) as u32;
                 let digest = SessionDigest::new(
