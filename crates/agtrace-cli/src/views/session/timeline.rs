@@ -8,7 +8,6 @@ use owo_colors::OwoColorize;
 #[derive(Debug, Clone)]
 struct TimelineSessionSummary {
     event_counts: TimelineEventCounts,
-    token_stats: TimelineTokenStats,
     duration: Option<TimelineDuration>,
 }
 
@@ -27,25 +26,11 @@ struct TimelineEventCounts {
     reasoning_blocks: usize,
 }
 
-#[derive(Debug, Clone)]
-struct TimelineTokenStats {
-    total: u64,
-    input: u64,
-    output: u64,
-    cached: u64,
-    thinking: u64,
-}
-
 fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
     let mut user_count = 0;
     let mut assistant_count = 0;
     let mut tool_call_count = 0;
     let mut reasoning_count = 0;
-
-    let mut total_input = 0i32;
-    let mut total_output = 0i32;
-    let mut total_cached = 0i32;
-    let mut total_thinking = 0i32;
 
     for event in events {
         match &event.payload {
@@ -53,20 +38,9 @@ fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
             EventPayload::Message(_) => assistant_count += 1,
             EventPayload::ToolCall(_) => tool_call_count += 1,
             EventPayload::Reasoning(_) => reasoning_count += 1,
-            EventPayload::ToolResult(_) => {}
-            EventPayload::TokenUsage(token) => {
-                total_input += token.input_tokens;
-                total_output += token.output_tokens;
-                if let Some(details) = &token.details {
-                    if let Some(cached) = details.cache_read_input_tokens {
-                        total_cached += cached;
-                    }
-                    if let Some(thinking) = details.reasoning_output_tokens {
-                        total_thinking += thinking;
-                    }
-                }
-            }
-            EventPayload::Notification(_) => {}
+            EventPayload::ToolResult(_)
+            | EventPayload::TokenUsage(_)
+            | EventPayload::Notification(_) => {}
         }
     }
 
@@ -93,13 +67,6 @@ fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
             tool_calls: tool_call_count,
             reasoning_blocks: reasoning_count,
         },
-        token_stats: TimelineTokenStats {
-            total: (total_input + total_output) as u64,
-            input: total_input as u64,
-            output: total_output as u64,
-            cached: total_cached as u64,
-            thinking: total_thinking as u64,
-        },
         duration,
     }
 }
@@ -120,10 +87,51 @@ pub fn format_events_timeline(
 
     // Count user messages to determine turn context
     let mut turn_count = 0;
+
+    // Track cumulative token usage for displaying at each TokenUsage event
+    let mut cumulative_input = 0i32;
+    let mut cumulative_output = 0i32;
+    let mut cumulative_cache_creation = 0i32;
+    let mut cumulative_cache_read = 0i32;
+
     for event in events.iter() {
-        // Skip TokenUsage events in timeline display (shown in summary)
-        if matches!(event.payload, EventPayload::TokenUsage(_)) {
-            continue;
+        // Accumulate token usage
+        if let EventPayload::TokenUsage(token) = &event.payload {
+            cumulative_input += token.input_tokens;
+            cumulative_output += token.output_tokens;
+            if let Some(details) = &token.details {
+                if let Some(cache_creation) = details.cache_creation_input_tokens {
+                    cumulative_cache_creation += cache_creation;
+                }
+                if let Some(cache_read) = details.cache_read_input_tokens {
+                    cumulative_cache_read += cache_read;
+                }
+            }
+
+            // Display token summary at this point (like watch does)
+            let token_summary = TokenSummaryDisplay {
+                input: cumulative_input,
+                output: cumulative_output,
+                cache_creation: cumulative_cache_creation,
+                cache_read: cumulative_cache_read,
+                total: cumulative_input + cumulative_output,
+                limit: None, // Timeline doesn't have limit info
+                model: None, // Timeline doesn't have model info
+                compaction_buffer_pct: None,
+            };
+
+            let opts = DisplayOptions {
+                enable_color: _enable_color,
+                relative_time: false,
+                truncate_text: None,
+            };
+
+            lines.push(String::new());
+            for line in format_token_summary(&token_summary, &opts) {
+                lines.push(line);
+            }
+
+            continue; // Skip rendering the TokenUsage event itself
         }
 
         // Use the shared formatting function to ensure consistency with watch
@@ -229,30 +237,8 @@ fn format_session_summary(events: &[AgentEvent], enable_color: bool) -> Vec<Stri
         ));
     }
 
-    // Use the same token summary format as watch command
-    if session_summary.token_stats.total > 0 {
-        let token_summary = TokenSummaryDisplay {
-            input: session_summary.token_stats.input as i32,
-            output: session_summary.token_stats.output as i32,
-            cache_creation: 0, // Not tracked separately in timeline
-            cache_read: session_summary.token_stats.cached as i32,
-            total: session_summary.token_stats.total as i32,
-            limit: None, // Timeline doesn't have limit info
-            model: None, // Timeline doesn't have model info
-            compaction_buffer_pct: None,
-        };
-
-        let opts = DisplayOptions {
-            enable_color,
-            relative_time: false,
-            truncate_text: None,
-        };
-
-        lines.push(String::new());
-        for line in format_token_summary(&token_summary, &opts) {
-            lines.push(line);
-        }
-    }
+    // Token usage is now displayed inline at each TokenUsage event (like watch)
+    // so we don't need to display it again in the summary
 
     if let Some(duration) = session_summary.duration {
         if enable_color {
