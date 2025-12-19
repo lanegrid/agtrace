@@ -1,6 +1,6 @@
 use agtrace_runtime::reactor::SessionState;
 use agtrace_types::AgentEvent;
-use crate::presentation::formatters::{text, time};
+use crate::presentation::formatters::{path, text, time, tool};
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
@@ -145,7 +145,7 @@ impl WatchBuffer {
                 )
             }
             EventPayload::ToolCall(payload) => {
-                let (icon, color_fn) = self.categorize_tool(&payload.name);
+                let (icon, color_fn) = tool::categorize_tool(&payload.name);
                 let summary = self.format_tool_call(&payload.name, &payload.arguments);
                 let colored_name = color_fn(&payload.name);
                 format!(
@@ -176,49 +176,11 @@ impl WatchBuffer {
         }
     }
 
-    fn categorize_tool(&self, name: &str) -> (&'static str, fn(&str) -> String) {
-        use owo_colors::OwoColorize;
-        let lower = name.to_lowercase();
-
-        if lower.contains("read")
-            || lower.contains("ls")
-            || lower.contains("cat")
-            || lower.contains("grep")
-            || lower.contains("search")
-            || lower.contains("view")
-        {
-            ("📖", |s: &str| s.cyan().to_string())
-        } else if lower.contains("write") || lower.contains("edit") || lower.contains("replace") {
-            ("🛠️", |s: &str| s.yellow().to_string())
-        } else if lower.contains("run")
-            || lower.contains("exec")
-            || lower.contains("bash")
-            || lower.contains("python")
-            || lower.contains("test")
-        {
-            ("🧪", |s: &str| s.magenta().to_string())
-        } else {
-            ("🔧", |s: &str| s.white().to_string())
-        }
-    }
-
-    fn shorten_path(&self, path: &str) -> String {
-        if let Some(root) = &self.state.project_root {
-            if let Ok(relative) = std::path::Path::new(path).strip_prefix(root) {
-                let relative_str = relative.to_string_lossy();
-                if relative_str.len() < path.len() {
-                    return relative_str.to_string();
-                }
-            }
-        }
-        path.to_string()
-    }
-
     fn format_tool_call(&self, _name: &str, args: &serde_json::Value) -> String {
         if let Some(obj) = args.as_object() {
-            if let Some(path) = obj.get("path").or_else(|| obj.get("file_path")) {
-                if let Some(path_str) = path.as_str() {
-                    let shortened = self.shorten_path(path_str);
+            if let Some(p) = obj.get("path").or_else(|| obj.get("file_path")) {
+                if let Some(path_str) = p.as_str() {
+                    let shortened = path::shorten_path(path_str, self.state.project_root.as_deref());
                     return format!("(\"{}\")", text::truncate(&shortened, 60));
                 }
             }
