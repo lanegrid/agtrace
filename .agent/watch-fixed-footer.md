@@ -40,6 +40,12 @@ To see it working: run `agtrace watch` in a terminal, observe events streaming i
 - Observation: Interior mutability pattern worked seamlessly with WatchView trait
   Evidence: Using Mutex<TuiWatchViewInner> allowed render_stream_update(&self) to mutate state while maintaining trait compatibility. All tests pass without modification.
 
+- Observation: Raw mode prevents Ctrl+C from working
+  Evidence: Initial implementation used `terminal::enable_raw_mode()` which intercepts all keyboard input, preventing Ctrl+C from being processed as a SIGINT signal. Removing raw mode (keeping only alternate screen) allows Ctrl+C to work normally while maintaining TUI display.
+
+- Observation: Initial display was blank without implementing WatchView methods
+  Evidence: Stub implementations of `render_watch_start()`, `on_watch_attached()`, etc. caused TUI to show nothing. Implementing these methods to populate the events buffer fixed the issue.
+
 
 ## Decision Log
 
