@@ -1,4 +1,3 @@
-use crate::presentation::models::DoctorCheckDisplay;
 use crate::presentation::renderers::TraceView;
 use agtrace_providers::{create_provider, detect_provider_from_path, ImportContext, LogProvider};
 use anyhow::Result;
@@ -32,15 +31,14 @@ pub fn handle(
         all_projects: true,
     };
 
-    let display = match provider.normalize_file(path, &context) {
-        Ok(events) => DoctorCheckDisplay::from_events(file_path.clone(), provider_name, events),
+    match provider.normalize_file(path, &context) {
+        Ok(events) => {
+            view.render_doctor_check(&file_path, &provider_name, Ok(&events))?;
+            Ok(())
+        }
         Err(e) => {
-            let display = DoctorCheckDisplay::from_error(file_path, provider_name, e);
-            view.render_doctor_check(&display)?;
+            view.render_doctor_check(&file_path, &provider_name, Err(&e))?;
             anyhow::bail!("Validation failed");
         }
-    };
-
-    view.render_doctor_check(&display)?;
-    Ok(())
+    }
 }

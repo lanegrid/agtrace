@@ -1,4 +1,3 @@
-use crate::presentation::models::DoctorCheckDisplay;
 use agtrace_engine::AgentSession;
 use crate::types::OutputFormat;
 use super::models::{
@@ -67,7 +66,12 @@ pub trait SessionView {
 }
 
 pub trait DiagnosticView {
-    fn render_doctor_check(&self, display: &DoctorCheckDisplay) -> Result<()>;
+    fn render_doctor_check(
+        &self,
+        file_path: &str,
+        provider_name: &str,
+        result: Result<&[AgentEvent], &anyhow::Error>,
+    ) -> Result<()>;
     fn render_diagnose_results(&self, results: &[DiagnoseResult], verbose: bool) -> Result<()>;
     fn render_inspect(&self, display: &InspectDisplay) -> Result<()>;
 }

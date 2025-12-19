@@ -1,4 +1,3 @@
-use crate::presentation::models::DoctorCheckDisplay;
 use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use crate::types::OutputFormat;
 use super::models::*;
@@ -321,8 +320,13 @@ impl SessionView for ConsoleTraceView {
 }
 
 impl DiagnosticView for ConsoleTraceView {
-    fn render_doctor_check(&self, display: &DoctorCheckDisplay) -> Result<()> {
-        crate::presentation::formatters::doctor::print_check_result(display);
+    fn render_doctor_check(
+        &self,
+        file_path: &str,
+        provider_name: &str,
+        result: Result<&[AgentEvent], &anyhow::Error>,
+    ) -> Result<()> {
+        crate::presentation::formatters::doctor::print_check_result(file_path, provider_name, result);
         Ok(())
     }
 

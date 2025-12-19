@@ -1,24 +1,46 @@
-use crate::presentation::models::{CheckResult, DoctorCheckDisplay};
 use agtrace_engine::DiagnoseResult;
+use agtrace_types::{AgentEvent, EventPayload};
 use owo_colors::OwoColorize;
+use std::collections::HashMap;
 
-pub fn print_check_result(display: &DoctorCheckDisplay) {
-    println!("File: {}", display.file_path);
-    println!("Provider: {}", display.provider_name);
+pub fn print_check_result(
+    file_path: &str,
+    provider_name: &str,
+    result: Result<&[AgentEvent], &anyhow::Error>,
+) {
+    println!("File: {}", file_path);
+    println!("Provider: {}", provider_name);
 
-    match &display.result {
-        CheckResult::Valid {
-            session_id,
-            timestamp,
-            event_count,
-            event_breakdown,
-        } => {
+    match result {
+        Ok(events) => {
+            let first_event = events.first();
+            let session_id = first_event
+                .map(|e| e.session_id.to_string())
+                .unwrap_or_default();
+            let timestamp = first_event
+                .map(|e| e.timestamp)
+                .unwrap_or_else(chrono::Utc::now);
+
+            let mut event_breakdown = HashMap::new();
+            for event in events {
+                let payload_type = match &event.payload {
+                    EventPayload::User(_) => "User",
+                    EventPayload::Message(_) => "Message",
+                    EventPayload::ToolCall(_) => "ToolCall",
+                    EventPayload::ToolResult(_) => "ToolResult",
+                    EventPayload::Reasoning(_) => "Reasoning",
+                    EventPayload::TokenUsage(_) => "TokenUsage",
+                    EventPayload::Notification(_) => "Notification",
+                };
+                *event_breakdown.entry(payload_type).or_insert(0) += 1;
+            }
+
             println!("Status: {}", "✓ Valid".green().bold());
             println!();
             println!("Parsed successfully:");
             println!("  - Session ID: {}", session_id);
             println!("  - Timestamp: {}", timestamp);
-            println!("  - Events extracted: {}", event_count);
+            println!("  - Events extracted: {}", events.len());
 
             if !event_breakdown.is_empty() {
                 println!("  - Event breakdown:");
@@ -27,10 +49,10 @@ pub fn print_check_result(display: &DoctorCheckDisplay) {
                 }
             }
         }
-        CheckResult::Invalid {
-            error_message,
-            suggestion,
-        } => {
+        Err(error) => {
+            let error_message = format!("{:#}", error);
+            let suggestion = generate_suggestion(&error_message, file_path);
+
             println!("Status: {}", "✗ Invalid".red().bold());
             println!();
             println!("Parse error:");
@@ -47,16 +69,37 @@ pub fn print_check_result(display: &DoctorCheckDisplay) {
             println!();
             println!("Next steps:");
             println!("  1. Examine the actual data:");
-            println!("       agtrace inspect {} --lines 20", display.file_path);
+            println!("       agtrace inspect {} --lines 20", file_path);
             println!("  2. Compare with expected schema:");
-            let provider_first_word = display
-                .provider_name
-                .split_whitespace()
-                .next()
-                .unwrap_or("");
+            let provider_first_word = provider_name.split_whitespace().next().unwrap_or("");
             println!("       agtrace schema {}", provider_first_word);
             println!("  3. Update schema definition if needed");
         }
+    }
+}
+
+fn generate_suggestion(error_msg: &str, file_path: &str) -> Option<String> {
+    if error_msg.contains("missing field") {
+        Some(
+            "This field may have been added in a newer version of the provider.\n\
+             Check if the schema definition needs to make this field optional."
+                .to_string(),
+        )
+    } else if error_msg.contains("invalid type") {
+        Some(format!(
+            "The field type in the schema may not match the actual data format.\n\
+             Use 'agtrace inspect {}' to examine the actual structure.\n\
+             Use 'agtrace schema <provider>' to see the expected format.",
+            file_path
+        ))
+    } else if error_msg.contains("expected") {
+        Some(
+            "The data format may have changed between provider versions.\n\
+             Consider using an enum or untagged union to support multiple formats."
+                .to_string(),
+        )
+    } else {
+        None
     }
 }
 
