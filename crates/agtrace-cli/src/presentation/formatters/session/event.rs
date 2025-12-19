@@ -2,15 +2,6 @@ use agtrace_types::{AgentEvent, EventPayload};
 use chrono::{DateTime, Local, Utc};
 use owo_colors::OwoColorize;
 
-#[allow(dead_code)]
-pub fn format_event(
-    event: &AgentEvent,
-    turn_context: usize,
-    project_root: Option<&std::path::Path>,
-) -> Option<String> {
-    format_event_with_start(event, turn_context, project_root, None)
-}
-
 pub fn format_event_with_start(
     event: &AgentEvent,
     turn_context: usize,
@@ -101,17 +92,6 @@ pub fn format_event_with_start(
             let colored_text = color_fn(&text);
             Some(format!("{} {} {}", time_display, icon, colored_text))
         }
-    }
-}
-
-#[allow(dead_code)]
-pub fn print_event(
-    event: &AgentEvent,
-    turn_context: usize,
-    project_root: Option<&std::path::Path>,
-) {
-    if let Some(line) = format_event(event, turn_context, project_root) {
-        println!("{}", line);
     }
 }
 

@@ -101,7 +101,6 @@ fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
     }
 }
 
-#[allow(dead_code)]
 pub fn format_events_timeline(
     events: &[AgentEvent],
     _truncate: bool,
