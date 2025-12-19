@@ -1,10 +1,10 @@
-use crate::presentation::models::{
-    DisplayOptions, DoctorCheckDisplay, SessionDisplay, TokenSummaryDisplay,
-};
+use crate::presentation::models::DoctorCheckDisplay;
+use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use crate::types::OutputFormat;
 use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
-use crate::presentation::formatters::session::{format_event_with_start, format_token_summary};
+use crate::presentation::formatters::session::{format_compact, format_event_with_start, format_token_summary};
+use agtrace_engine::AgentSession;
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};
@@ -275,10 +275,10 @@ impl SessionView for ConsoleTraceView {
 
     fn render_session_compact(
         &self,
-        display: &SessionDisplay,
+        session: &AgentSession,
         options: &DisplayOptions,
     ) -> Result<()> {
-        let lines = crate::presentation::formatters::session::format_compact(display, options);
+        let lines = format_compact(session, options);
         for line in lines {
             println!("{}", line);
         }

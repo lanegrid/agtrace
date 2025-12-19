@@ -1,4 +1,4 @@
-use crate::presentation::models::{DisplayOptions, TokenSummaryDisplay};
+use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use super::event::format_event_with_start;
 use super::format_token_summary;
 use agtrace_types::{AgentEvent, EventPayload};

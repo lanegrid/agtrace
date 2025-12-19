@@ -1,6 +1,6 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
-use crate::presentation::models::{DisplayOptions, SessionDisplay};
+use crate::presentation::formatters::DisplayOptions;
 use crate::types::ViewStyle;
 use crate::presentation::renderers::models::RawFileContent;
 use crate::presentation::renderers::TraceView;
@@ -63,13 +63,12 @@ pub fn handle(
         match style {
             ViewStyle::Compact => {
                 if let Some(session) = assemble_session(&filtered_events) {
-                    let display = SessionDisplay::from_agent_session(&session);
                     let opts = DisplayOptions {
                         enable_color,
                         relative_time: true,
                         truncate_text: if short { Some(100) } else { None },
                     };
-                    view.render_session_compact(&display, &opts)?;
+                    view.render_session_compact(&session, &opts)?;
                 } else {
                     view.render_session_assemble_error()?;
                 }

@@ -1,4 +1,4 @@
-use crate::presentation::models::{DisplayOptions, SessionDisplay};
+use crate::presentation::formatters::DisplayOptions;
 use super::session::format_compact;
 use agtrace_engine::SessionDigest;
 use std::collections::HashMap;
@@ -42,8 +42,7 @@ pub fn print_compact(digests: &[SessionDigest]) {
         print_digest_summary(digest);
 
         println!("Work:");
-        let display = SessionDisplay::from_agent_session(&digest.session);
-        let lines = format_compact(&display, &opts);
+        let lines = format_compact(&digest.session, &opts);
         for line in lines.iter().take(15) {
             println!("  {}", line);
         }

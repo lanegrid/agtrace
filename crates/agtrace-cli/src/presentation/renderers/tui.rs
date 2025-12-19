@@ -1,4 +1,4 @@
-use crate::presentation::models::{DisplayOptions, TokenSummaryDisplay};
+use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use super::traits::WatchView;
 use crate::presentation::formatters::session::{format_event_with_start, format_token_summary};
 use agtrace_runtime::reactor::{Reaction, SessionState};

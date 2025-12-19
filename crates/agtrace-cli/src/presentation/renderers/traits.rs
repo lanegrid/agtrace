@@ -1,4 +1,5 @@
-use crate::presentation::models::{DoctorCheckDisplay, SessionDisplay};
+use crate::presentation::models::DoctorCheckDisplay;
+use agtrace_engine::AgentSession;
 use crate::types::OutputFormat;
 use super::models::{
     CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
@@ -46,8 +47,8 @@ pub trait SessionView {
     fn render_session_events_json(&self, events: &[AgentEvent]) -> Result<()>;
     fn render_session_compact(
         &self,
-        display: &SessionDisplay,
-        options: &crate::presentation::models::DisplayOptions,
+        session: &AgentSession,
+        options: &crate::presentation::formatters::DisplayOptions,
     ) -> Result<()>;
     fn render_session_timeline(
         &self,
