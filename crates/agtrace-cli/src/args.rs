@@ -1,6 +1,6 @@
 use crate::types::{
     ExportFormat, ExportStrategy, InspectFormat, LogLevel, OutputFormat, PackTemplate,
-    ProviderFilter, ProviderName, ViewStyle,
+    ProviderFilter, ProviderName,
 };
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
@@ -181,26 +181,17 @@ pub enum SessionCommand {
         #[arg(long)]
         json: bool,
 
-        #[arg(long)]
-        timeline: bool,
-
         #[arg(long, value_delimiter = ',')]
         hide: Option<Vec<String>>,
 
         #[arg(long, value_delimiter = ',')]
         only: Option<Vec<String>>,
 
-        #[arg(
-            long,
-            help = "Display full event text without truncation (default behavior, kept for backwards compatibility)"
-        )]
-        full: bool,
-
         #[arg(long, help = "Truncate long text to ~100 chars for compact display")]
         short: bool,
 
-        #[arg(long, default_value = "timeline")]
-        style: ViewStyle,
+        #[arg(long, help = "Show detailed timeline view instead of compact summary")]
+        verbose: bool,
     },
 }
 

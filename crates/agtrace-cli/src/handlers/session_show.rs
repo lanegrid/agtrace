@@ -19,12 +19,10 @@ pub fn handle(
     session_id: String,
     raw: bool,
     json: bool,
-    _timeline: bool,
     hide: Option<Vec<String>>,
     only: Option<Vec<String>>,
-    _full: bool, // Kept for backwards compatibility, but now default
     short: bool,
-    style: ViewStyle,
+    verbose: bool,
     view: &dyn TraceView,
 ) -> Result<()> {
     // Detect if output is being piped (not a terminal)
@@ -60,6 +58,12 @@ pub fn handle(
     if json {
         view.render_session_events_json(&filtered_events)?;
     } else {
+        let style = if verbose {
+            ViewStyle::Timeline
+        } else {
+            ViewStyle::Compact
+        };
+
         match style {
             ViewStyle::Compact => {
                 if let Some(session) = assemble_session(&filtered_events) {
