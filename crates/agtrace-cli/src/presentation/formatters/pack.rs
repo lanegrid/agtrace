@@ -1,6 +1,26 @@
 use super::{CompactView, DisplayOptions};
 use agtrace_engine::SessionDigest;
 use std::collections::HashMap;
+use std::str::FromStr;
+
+#[derive(Debug, Clone, Copy)]
+pub enum ReportTemplate {
+    Compact,
+    Diagnose,
+    Tools,
+}
+
+impl FromStr for ReportTemplate {
+    type Err = std::convert::Infallible;
+
+    fn from_str(template: &str) -> Result<Self, Self::Err> {
+        Ok(match template {
+            "diagnose" => Self::Diagnose,
+            "tools" => Self::Tools,
+            _ => Self::Compact,
+        })
+    }
+}
 
 pub fn print_diagnose(digests: &[SessionDigest]) {
     println!("## Selected Sessions (Diagnose Mode)\n");

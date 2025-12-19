@@ -1,14 +1,9 @@
+use crate::presentation::formatters::{text, time, tool};
+use crate::presentation::renderers::backend::TerminalWriter;
 use agtrace_runtime::reactor::SessionState;
 use agtrace_types::AgentEvent;
-use crate::presentation::formatters::{path, text, time, tool};
 use std::collections::VecDeque;
 use std::sync::Mutex;
-
-pub trait TerminalWriter: Send {
-    fn clear_screen(&mut self);
-    fn write_line(&mut self, line: &str);
-    fn flush(&mut self);
-}
 
 pub struct WatchBuffer {
     events: VecDeque<AgentEvent>,
@@ -146,7 +141,11 @@ impl WatchBuffer {
             }
             EventPayload::ToolCall(payload) => {
                 let (icon, color_fn) = tool::categorize_tool(&payload.name);
-                let summary = self.format_tool_call(&payload.name, &payload.arguments);
+                let summary = tool::format_tool_call(
+                    &payload.name,
+                    &payload.arguments,
+                    self.state.project_root.as_deref(),
+                );
                 let colored_name = color_fn(&payload.name);
                 format!(
                     "{}{} {} {}: {}",
@@ -174,94 +173,6 @@ impl WatchBuffer {
             EventPayload::TokenUsage(_) => String::new(),
             _ => String::new(),
         }
-    }
-
-    fn format_tool_call(&self, _name: &str, args: &serde_json::Value) -> String {
-        if let Some(obj) = args.as_object() {
-            if let Some(p) = obj.get("path").or_else(|| obj.get("file_path")) {
-                if let Some(path_str) = p.as_str() {
-                    let shortened = path::shorten_path(path_str, self.state.project_root.as_deref());
-                    return format!("(\"{}\")", text::truncate(&shortened, 60));
-                }
-            }
-            if let Some(command) = obj.get("command") {
-                if let Some(cmd_str) = command.as_str() {
-                    return format!("(\"{}\")", text::truncate(cmd_str, 60));
-                }
-            }
-            if let Some(pattern) = obj.get("pattern") {
-                if let Some(pat_str) = pattern.as_str() {
-                    return format!("(\"{}\")", text::truncate(pat_str, 60));
-                }
-            }
-        }
-        String::new()
-    }
-}
-
-pub struct MockTerminal {
-    pub lines: Vec<String>,
-    pub clear_count: usize,
-    pub flush_count: usize,
-}
-
-impl Default for MockTerminal {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MockTerminal {
-    pub fn new() -> Self {
-        Self {
-            lines: Vec::new(),
-            clear_count: 0,
-            flush_count: 0,
-        }
-    }
-}
-
-impl TerminalWriter for MockTerminal {
-    fn clear_screen(&mut self) {
-        self.clear_count += 1;
-        self.lines.clear();
-    }
-
-    fn write_line(&mut self, line: &str) {
-        self.lines.push(line.to_string());
-    }
-
-    fn flush(&mut self) {
-        self.flush_count += 1;
-    }
-}
-
-pub struct AnsiTerminal;
-
-impl Default for AnsiTerminal {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AnsiTerminal {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl TerminalWriter for AnsiTerminal {
-    fn clear_screen(&mut self) {
-        print!("\x1B[2J\x1B[1;1H");
-    }
-
-    fn write_line(&mut self, line: &str) {
-        println!("{}", line);
-    }
-
-    fn flush(&mut self) {
-        use std::io::{self, Write};
-        let _ = io::stdout().flush();
     }
 }
 
@@ -491,6 +402,7 @@ impl super::traits::WatchView for RefreshingWatchView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::presentation::renderers::backend::MockTerminal;
     use agtrace_types::{EventPayload, UserPayload};
     use chrono::Utc;
 

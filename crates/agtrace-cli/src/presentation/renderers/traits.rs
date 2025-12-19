@@ -1,8 +1,8 @@
 use super::models::{
     CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
-    ProviderConfigSummary, ProviderSetResult, RawFileContent, ReportTemplate, WatchStart,
-    WatchSummary,
+    ProviderConfigSummary, ProviderSetResult, RawFileContent, WatchStart, WatchSummary,
 };
+use crate::presentation::formatters::ReportTemplate;
 use crate::types::OutputFormat;
 use agtrace_engine::AgentSession;
 use agtrace_engine::{DiagnoseResult, SessionDigest};

@@ -2,7 +2,9 @@ use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::presentation::formatters::event::EventView;
 use crate::presentation::formatters::token::TokenUsageView;
-use crate::presentation::formatters::{CompactView, DisplayOptions, SessionListView, TimelineView};
+use crate::presentation::formatters::{
+    CompactView, DisplayOptions, ReportTemplate, SessionListView, TimelineView,
+};
 use crate::types::OutputFormat;
 use agtrace_engine::AgentSession;
 use agtrace_engine::{DiagnoseResult, SessionDigest};
@@ -449,20 +451,18 @@ impl WatchView for ConsoleTraceView {
                 if let (Some(total_pct), Some(input_pct), Some(output_pct)) =
                     (usage.total_pct, usage.input_pct, usage.output_pct)
                 {
-                    let bar = create_progress_bar(total_pct);
-                    let color_fn: fn(&str) -> String = if total_pct >= 95.0 {
-                        |s: &str| s.red().to_string()
-                    } else if total_pct >= 80.0 {
-                        |s: &str| s.yellow().to_string()
-                    } else {
-                        |s: &str| s.green().to_string()
-                    };
+                    let bar = crate::presentation::formatters::token::create_progress_bar(
+                        usage.total_tokens as i32,
+                        limit as i32,
+                        20,
+                        true,
+                    );
 
                     println!(
                         "{}  {} {} {:.1}% (in: {:.1}%, out: {:.1}%) - {} used / {} tokens",
                         "📊".dimmed(),
                         "Current usage:".bright_black(),
-                        color_fn(&bar),
+                        bar,
                         total_pct,
                         input_pct,
                         output_pct,
@@ -593,14 +593,4 @@ impl WatchView for ConsoleTraceView {
         }
         Ok(())
     }
-}
-
-
-fn create_progress_bar(percentage: f64) -> String {
-    let bar_width = 20;
-    let filled = ((percentage / 100.0) * bar_width as f64) as usize;
-    let filled = filled.min(bar_width);
-    let empty = bar_width - filled;
-
-    format!("[{}{}]", "█".repeat(filled), "░".repeat(empty))
 }

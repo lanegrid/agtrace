@@ -1,3 +1,4 @@
+use super::{path, text};
 use owo_colors::OwoColorize;
 
 /// Categorize a tool by name, returning an icon and color function
@@ -24,6 +25,35 @@ pub fn categorize_tool(name: &str) -> (&'static str, fn(&str) -> String) {
     } else {
         ("🔧", |s: &str| s.white().to_string())
     }
+}
+
+/// Format tool call arguments into a summary string
+pub fn format_tool_call(
+    _name: &str,
+    args: &serde_json::Value,
+    project_root: Option<&std::path::Path>,
+) -> String {
+    if let Some(obj) = args.as_object() {
+        if let Some(p) = obj.get("path").or_else(|| obj.get("file_path")) {
+            if let Some(path_str) = p.as_str() {
+                let shortened = path::shorten_path(path_str, project_root);
+                return format!("(\"{}\")", text::truncate(&shortened, 60));
+            }
+        }
+        if let Some(command) = obj.get("command") {
+            if let Some(cmd_str) = command.as_str() {
+                return format!("(\"{}\")", text::truncate(cmd_str, 60));
+            }
+        }
+        if let Some(pattern) = obj.get("pattern") {
+            if let Some(pat_str) = pattern.as_str() {
+                return format!("(\"{}\")", text::truncate(pat_str, 60));
+            }
+        }
+    }
+
+    let json = args.to_string();
+    format!("({})", text::truncate(&json, 40))
 }
 
 #[cfg(test)]

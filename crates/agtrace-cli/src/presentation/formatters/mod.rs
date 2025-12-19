@@ -12,5 +12,6 @@ pub mod token;
 pub mod tool;
 
 pub use options::{DisplayOptions, FormatOptions, TokenSummaryDisplay};
+pub use pack::ReportTemplate;
 pub use session::{calculate_token_summary, CompactView, TimelineView};
 pub use session_list::SessionListView;

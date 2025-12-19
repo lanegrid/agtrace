@@ -221,7 +221,7 @@ impl fmt::Display for TokenUsageView {
     }
 }
 
-fn create_progress_bar(current: i32, total: i32, width: usize, enable_color: bool) -> String {
+pub fn create_progress_bar(current: i32, total: i32, width: usize, enable_color: bool) -> String {
     let filled_width = if total > 0 {
         ((current as f64 / total as f64) * width as f64) as usize
     } else {

@@ -1,7 +1,6 @@
 use crate::presentation::formatters::init::{Step1Result, Step3Result};
 use serde_json::Value;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 #[derive(Debug, Clone)]
 pub struct ProviderConfigSummary {
@@ -64,25 +63,6 @@ pub struct InspectDisplay {
     pub total_lines: usize,
     pub shown_lines: usize,
     pub lines: Vec<InspectLine>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ReportTemplate {
-    Compact,
-    Diagnose,
-    Tools,
-}
-
-impl FromStr for ReportTemplate {
-    type Err = std::convert::Infallible;
-
-    fn from_str(template: &str) -> Result<Self, Self::Err> {
-        Ok(match template {
-            "diagnose" => Self::Diagnose,
-            "tools" => Self::Tools,
-            _ => Self::Compact,
-        })
-    }
 }
 
 #[derive(Debug, Clone)]
