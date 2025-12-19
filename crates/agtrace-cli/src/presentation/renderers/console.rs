@@ -4,7 +4,7 @@ use crate::display_model::{
 use crate::types::OutputFormat;
 use crate::ui::models::*;
 use crate::ui::traits::{DiagnosticView, SessionView, SystemView, WatchView};
-use crate::views::session::{format_event_with_start, format_token_summary};
+use crate::presentation::formatters::session::{format_event_with_start, format_token_summary};
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};
@@ -221,22 +221,22 @@ impl SystemView for ConsoleTraceView {
 
     fn render_init_event(&self, event: InitRenderEvent) -> Result<()> {
         match event {
-            InitRenderEvent::Header => crate::views::init::print_init_header(),
-            InitRenderEvent::Step1Detecting => crate::views::init::print_step1_detecting(),
-            InitRenderEvent::Step1Loading => crate::views::init::print_step1_loading(),
-            InitRenderEvent::Step1Result(step) => crate::views::init::print_step1_result(&step),
-            InitRenderEvent::Step2Header => crate::views::init::print_step2_header(),
+            InitRenderEvent::Header => crate::presentation::formatters::init::print_init_header(),
+            InitRenderEvent::Step1Detecting => crate::presentation::formatters::init::print_step1_detecting(),
+            InitRenderEvent::Step1Loading => crate::presentation::formatters::init::print_step1_loading(),
+            InitRenderEvent::Step1Result(step) => crate::presentation::formatters::init::print_step1_result(&step),
+            InitRenderEvent::Step2Header => crate::presentation::formatters::init::print_step2_header(),
             InitRenderEvent::Step2Result(display) => {
-                crate::views::init::print_step2_result(&display)
+                crate::presentation::formatters::init::print_step2_result(&display)
             }
-            InitRenderEvent::Step3Header => crate::views::init::print_step3_header(),
-            InitRenderEvent::Step3Result(step) => crate::views::init::print_step3_result(&step),
-            InitRenderEvent::Step4Header => crate::views::init::print_step4_header(),
+            InitRenderEvent::Step3Header => crate::presentation::formatters::init::print_step3_header(),
+            InitRenderEvent::Step3Result(step) => crate::presentation::formatters::init::print_step3_result(&step),
+            InitRenderEvent::Step4Header => crate::presentation::formatters::init::print_step4_header(),
             InitRenderEvent::Step4NoSessions { all_projects } => {
-                crate::views::init::print_step4_no_sessions(all_projects);
+                crate::presentation::formatters::init::print_step4_no_sessions(all_projects);
             }
             InitRenderEvent::NextSteps { session_id } => {
-                crate::views::init::print_next_steps(&session_id);
+                crate::presentation::formatters::init::print_next_steps(&session_id);
             }
         }
         Ok(())
@@ -278,7 +278,7 @@ impl SessionView for ConsoleTraceView {
         display: &SessionDisplay,
         options: &DisplayOptions,
     ) -> Result<()> {
-        let lines = crate::views::session::format_compact(display, options);
+        let lines = crate::presentation::formatters::session::format_compact(display, options);
         for line in lines {
             println!("{}", line);
         }
@@ -291,7 +291,7 @@ impl SessionView for ConsoleTraceView {
         truncate: bool,
         enable_color: bool,
     ) -> Result<()> {
-        crate::views::session::print_events_timeline(events, truncate, enable_color);
+        crate::presentation::formatters::session::print_events_timeline(events, truncate, enable_color);
         Ok(())
     }
 
@@ -312,9 +312,9 @@ impl SessionView for ConsoleTraceView {
             pool_size, candidate_count
         );
         match template {
-            ReportTemplate::Compact => crate::views::pack::print_compact(digests),
-            ReportTemplate::Diagnose => crate::views::pack::print_diagnose(digests),
-            ReportTemplate::Tools => crate::views::pack::print_tools(digests),
+            ReportTemplate::Compact => crate::presentation::formatters::pack::print_compact(digests),
+            ReportTemplate::Diagnose => crate::presentation::formatters::pack::print_diagnose(digests),
+            ReportTemplate::Tools => crate::presentation::formatters::pack::print_tools(digests),
         }
         Ok(())
     }
@@ -322,12 +322,12 @@ impl SessionView for ConsoleTraceView {
 
 impl DiagnosticView for ConsoleTraceView {
     fn render_doctor_check(&self, display: &DoctorCheckDisplay) -> Result<()> {
-        crate::views::doctor::print_check_result(display);
+        crate::presentation::formatters::doctor::print_check_result(display);
         Ok(())
     }
 
     fn render_diagnose_results(&self, results: &[DiagnoseResult], verbose: bool) -> Result<()> {
-        crate::views::doctor::print_results(results, verbose);
+        crate::presentation::formatters::doctor::print_results(results, verbose);
         Ok(())
     }
 

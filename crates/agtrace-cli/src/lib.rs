@@ -29,12 +29,13 @@ mod args;
 mod commands;
 pub mod config;
 pub mod context;
-pub mod display_model;
+pub mod presentation;
 mod handlers;
 pub mod token_usage;
 pub mod types;
-pub mod ui;
-mod views;
+
+// Re-export for backwards compatibility
+pub use presentation::{display_model, ui};
 
 pub use args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
