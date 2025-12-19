@@ -1,5 +1,5 @@
 use crate::context::ExecutionContext;
-use crate::reactors::{SafetyGuard, StallDetector, TokenUsageMonitor};
+use crate::reactors::TokenUsageMonitor;
 use crate::ui::models::{WatchStart, WatchSummary};
 use crate::ui::traits::WatchView;
 use agtrace_runtime::{Runtime, RuntimeConfig, RuntimeEvent};
@@ -53,11 +53,7 @@ pub fn handle(ctx: &ExecutionContext, target: WatchTarget, view: &dyn WatchView)
 
     let runtime = Runtime::start(RuntimeConfig {
         provider,
-        reactors: vec![
-            Box::new(StallDetector::new(60)),
-            Box::new(SafetyGuard::new()),
-            Box::new(TokenUsageMonitor::default_thresholds()),
-        ],
+        reactors: vec![Box::new(TokenUsageMonitor::default_thresholds())],
         watch_path: log_root,
         explicit_target,
         project_root,

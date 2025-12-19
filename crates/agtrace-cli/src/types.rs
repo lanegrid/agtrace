@@ -160,4 +160,3 @@ impl fmt::Display for InspectFormat {
         }
     }
 }
-
