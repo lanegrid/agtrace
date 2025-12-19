@@ -1,8 +1,8 @@
-use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::types::{ExportFormat, ExportStrategy as CliExportStrategy};
 use crate::ui::TraceView;
 use agtrace_engine::export::{self, ExportStrategy};
 use agtrace_index::Database;
+use agtrace_runtime::{LoadOptions, SessionRepository};
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
 use std::fs;
@@ -17,7 +17,7 @@ pub fn handle(
     strategy: CliExportStrategy,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let loader = SessionLoader::new(db);
+    let loader = SessionRepository::new(db);
     let options = LoadOptions::default();
     let events = loader.load_events(&session_id, &options)?;
     let resolved_id = session_id.clone();

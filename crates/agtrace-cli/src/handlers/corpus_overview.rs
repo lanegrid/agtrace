@@ -1,8 +1,8 @@
 use crate::context::ExecutionContext;
-use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::ui::models::CorpusStats;
 use crate::ui::TraceView;
 use agtrace_engine::assemble_session;
+use agtrace_runtime::{LoadOptions, SessionRepository};
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 
@@ -20,7 +20,7 @@ pub fn handle(
     // Use a larger pool and balance
     let raw_sessions = db.list_sessions(effective_project_hash, 500)?;
 
-    let loader = SessionLoader::new(db);
+    let loader = SessionRepository::new(db);
     let options = LoadOptions::default();
 
     let mut total_tool_calls = 0;

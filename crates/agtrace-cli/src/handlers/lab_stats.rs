@@ -1,7 +1,7 @@
-use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::ui::TraceView;
 use agtrace_index::Database;
 use agtrace_providers::create_provider;
+use agtrace_runtime::{LoadOptions, SessionRepository};
 use agtrace_types::EventPayload;
 use anyhow::Result;
 use std::collections::{BTreeMap, HashMap};
@@ -32,7 +32,7 @@ pub fn handle(
 
     println!("Analyzing {} sessions...", sessions.len());
 
-    let loader = SessionLoader::new(db);
+    let loader = SessionRepository::new(db);
     let options = LoadOptions::default();
 
     // Map: Provider -> (ToolName -> (Count, Sample))

@@ -1,12 +1,12 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
 use crate::display_model::{DisplayOptions, SessionDisplay};
-use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::types::ViewStyle;
 use crate::ui::models::RawFileContent;
 use crate::ui::TraceView;
 use agtrace_engine::assemble_session;
 use agtrace_index::Database;
+use agtrace_runtime::{LoadOptions, SessionRepository};
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
@@ -50,7 +50,7 @@ pub fn handle(
     }
 
     // Load and normalize events
-    let loader = SessionLoader::new(db);
+    let loader = SessionRepository::new(db);
     let options = LoadOptions::default();
     let all_events = loader.load_events(&session_id, &options)?;
 

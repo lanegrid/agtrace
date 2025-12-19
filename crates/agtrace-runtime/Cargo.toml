@@ -12,6 +12,7 @@ chrono = "0.4"
 notify = "6.1"
 walkdir = "2.5"
 agtrace-engine = { path = "../agtrace-engine" }
+agtrace-index = { path = "../agtrace-index" }
 agtrace-types = { path = "../agtrace-types" }
 agtrace-providers = { path = "../agtrace-providers" }
 serde_json = "1.0"

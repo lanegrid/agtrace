@@ -1,8 +1,8 @@
 use crate::context::ExecutionContext;
-use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::ui::TraceView;
 use agtrace_engine::{analyze_and_select_sessions, assemble_session, SessionDigest};
 use agtrace_index::SessionSummary;
+use agtrace_runtime::{LoadOptions, SessionRepository};
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 use std::collections::HashMap;
@@ -27,7 +27,7 @@ pub fn handle(
 
     // 2. Summarize: Calculate metrics for all candidates
     let mut digests = Vec::new();
-    let loader = SessionLoader::new(db);
+    let loader = SessionRepository::new(db);
     let options = LoadOptions::default();
 
     for (i, session) in balanced_sessions.iter().enumerate() {

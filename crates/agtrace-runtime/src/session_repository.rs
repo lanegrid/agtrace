@@ -4,14 +4,14 @@ use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::Path;
 
-pub struct SessionLoader<'a> {
+pub struct SessionRepository<'a> {
     db: &'a Database,
 }
 
 #[derive(Default)]
 pub struct LoadOptions {}
 
-impl<'a> SessionLoader<'a> {
+impl<'a> SessionRepository<'a> {
     pub fn new(db: &'a Database) -> Self {
         Self { db }
     }

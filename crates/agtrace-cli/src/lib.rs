@@ -31,7 +31,6 @@ pub mod config;
 pub mod context;
 pub mod display_model;
 mod handlers;
-mod session_loader;
 pub mod token_usage;
 pub mod types;
 pub mod ui;
