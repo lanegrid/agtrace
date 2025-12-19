@@ -61,7 +61,7 @@ pub struct AgentEvent {
     pub id: Uuid,
 
     /// Session/trace ID (groups entire conversation)
-    pub trace_id: Uuid,
+    pub session_id: Uuid,
 
     /// Parent event ID in time-series chain (Linked List structure)
     /// None for root events (first User input)
@@ -208,7 +208,7 @@ mod tests {
     fn test_serialization() {
         let event = AgentEvent {
             id: Uuid::new_v4(),
-            trace_id: Uuid::new_v4(),
+            session_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
             stream_id: StreamId::Main,

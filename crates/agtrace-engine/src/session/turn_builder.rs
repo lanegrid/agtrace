@@ -210,7 +210,7 @@ mod tests {
 
         let msg_event = AgentEvent {
             id: Uuid::new_v4(),
-            trace_id: user_id,
+            session_id: user_id,
             parent_id: None,
             stream_id: StreamId::Main,
             timestamp,
@@ -242,7 +242,7 @@ mod tests {
 
         let reasoning1 = AgentEvent {
             id: Uuid::new_v4(),
-            trace_id: user_id,
+            session_id: user_id,
             parent_id: None,
             stream_id: StreamId::Main,
             timestamp,
@@ -254,7 +254,7 @@ mod tests {
 
         let reasoning2 = AgentEvent {
             id: Uuid::new_v4(),
-            trace_id: user_id,
+            session_id: user_id,
             parent_id: None,
             stream_id: StreamId::Main,
             timestamp,

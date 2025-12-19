@@ -8,7 +8,7 @@ pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
         return None;
     }
 
-    let session_id = events.first()?.trace_id;
+    let session_id = events.first()?.session_id;
     let start_time = events.first()?.timestamp;
     let end_time = events.last().map(|e| e.timestamp);
 

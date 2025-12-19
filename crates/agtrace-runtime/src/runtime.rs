@@ -162,7 +162,7 @@ fn handle_update(
     for event in &update.new_events {
         initialize_session_state(
             session_state,
-            event.trace_id.to_string(),
+            event.session_id.to_string(),
             project_root.clone(),
             event.timestamp,
         );
@@ -278,7 +278,7 @@ mod tests {
     fn user_event() -> AgentEvent {
         AgentEvent {
             id: Uuid::nil(),
-            trace_id: Uuid::nil(),
+            session_id: Uuid::nil(),
             parent_id: None,
             timestamp: Utc::now(),
             stream_id: agtrace_types::StreamId::Main,

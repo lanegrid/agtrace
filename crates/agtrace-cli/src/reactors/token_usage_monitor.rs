@@ -139,11 +139,11 @@ mod tests {
     fn create_token_usage_event(input_tokens: i32, output_tokens: i32) -> AgentEvent {
         use std::str::FromStr;
         let id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000001").unwrap();
-        let trace_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap();
+        let session_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap();
 
         AgentEvent {
             id,
-            trace_id,
+            session_id,
             parent_id: None,
             timestamp: Utc::now(),
             stream_id: StreamId::Main,
@@ -164,11 +164,11 @@ mod tests {
     fn create_user_event() -> AgentEvent {
         use std::str::FromStr;
         let id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000003").unwrap();
-        let trace_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000004").unwrap();
+        let session_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000004").unwrap();
 
         AgentEvent {
             id,
-            trace_id,
+            session_id,
             parent_id: None,
             timestamp: Utc::now(),
             stream_id: StreamId::Main,

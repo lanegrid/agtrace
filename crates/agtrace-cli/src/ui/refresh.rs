@@ -726,7 +726,7 @@ mod tests {
         use uuid::Uuid;
         AgentEvent {
             id: Uuid::new_v4(),
-            trace_id: Uuid::new_v4(),
+            session_id: Uuid::new_v4(),
             parent_id: None,
             timestamp: Utc::now(),
             stream_id: Default::default(),

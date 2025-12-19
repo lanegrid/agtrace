@@ -12,7 +12,7 @@ pub struct DoctorCheckDisplay {
 #[derive(Debug, Clone)]
 pub enum CheckResult {
     Valid {
-        trace_id: String,
+        session_id: String,
         timestamp: DateTime<Utc>,
         event_count: usize,
         event_breakdown: HashMap<String, usize>,
@@ -26,8 +26,8 @@ pub enum CheckResult {
 impl DoctorCheckDisplay {
     pub fn from_events(file_path: String, provider_name: String, events: Vec<AgentEvent>) -> Self {
         let first_event = events.first();
-        let trace_id = first_event
-            .map(|e| e.trace_id.to_string())
+        let session_id = first_event
+            .map(|e| e.session_id.to_string())
             .unwrap_or_default();
         let timestamp = first_event.map(|e| e.timestamp).unwrap_or_else(Utc::now);
 
@@ -49,7 +49,7 @@ impl DoctorCheckDisplay {
             file_path,
             provider_name,
             result: CheckResult::Valid {
-                trace_id,
+                session_id,
                 timestamp,
                 event_count: events.len(),
                 event_breakdown,

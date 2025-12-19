@@ -102,7 +102,7 @@ mod tests {
     fn base_event(payload: EventPayload) -> AgentEvent {
         AgentEvent {
             id: Uuid::from_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            trace_id: Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap(),
+            session_id: Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap(),
             parent_id: None,
             timestamp: Utc::now(),
             stream_id: agtrace_types::StreamId::Main,

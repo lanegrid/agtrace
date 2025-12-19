@@ -11,9 +11,9 @@ pub(crate) fn normalize_gemini_session(
     session: &GeminiSession,
     raw_messages: Vec<serde_json::Value>,
 ) -> Vec<AgentEvent> {
-    // Create trace_id from session_id (deterministic)
-    let trace_id = Uuid::new_v5(&Uuid::NAMESPACE_OID, session.session_id.as_bytes());
-    let mut builder = EventBuilder::new(trace_id);
+    // Create session_id UUID from session_id string (deterministic)
+    let session_id_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session.session_id.as_bytes());
+    let mut builder = EventBuilder::new(session_id_uuid);
     let mut events = Vec::new();
 
     for (idx, msg) in session.messages.iter().enumerate() {

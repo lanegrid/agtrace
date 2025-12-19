@@ -53,7 +53,7 @@ fn test_session_assembly_structure() {
 
     let base_time = Utc.with_ymd_and_hms(2025, 12, 14, 0, 0, 0).unwrap();
 
-    let trace_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").expect("valid uuid");
+    let session_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").expect("valid uuid");
     let user_id = Uuid::parse_str("00000000-0000-0000-0000-000000000002").expect("valid uuid");
     let reasoning_id = Uuid::parse_str("00000000-0000-0000-0000-000000000003").expect("valid uuid");
     let tool1_id = Uuid::parse_str("00000000-0000-0000-0000-000000000004").expect("valid uuid");
@@ -66,7 +66,7 @@ fn test_session_assembly_structure() {
     let events = vec![
         AgentEvent {
             id: user_id,
-            trace_id,
+            session_id,
             parent_id: None,
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
@@ -77,7 +77,7 @@ fn test_session_assembly_structure() {
         },
         AgentEvent {
             id: reasoning_id,
-            trace_id,
+            session_id,
             parent_id: Some(user_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
@@ -88,7 +88,7 @@ fn test_session_assembly_structure() {
         },
         AgentEvent {
             id: tool1_id,
-            trace_id,
+            session_id,
             parent_id: Some(reasoning_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
@@ -101,7 +101,7 @@ fn test_session_assembly_structure() {
         },
         AgentEvent {
             id: tool_result1_id,
-            trace_id,
+            session_id,
             parent_id: Some(tool1_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
@@ -114,7 +114,7 @@ fn test_session_assembly_structure() {
         },
         AgentEvent {
             id: message_id,
-            trace_id,
+            session_id,
             parent_id: Some(tool_result1_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
@@ -125,7 +125,7 @@ fn test_session_assembly_structure() {
         },
         AgentEvent {
             id: token_usage_id,
-            trace_id,
+            session_id,
             parent_id: Some(message_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,

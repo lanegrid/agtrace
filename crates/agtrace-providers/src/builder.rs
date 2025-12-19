@@ -33,8 +33,8 @@ impl SemanticSuffix {
 /// EventBuilder helps convert provider raw data to events
 /// Maintains state for proper parent_id chain and tool_call_id mapping
 pub struct EventBuilder {
-    /// Current trace/session ID
-    pub trace_id: Uuid,
+    /// Current session ID
+    pub session_id: Uuid,
 
     /// Most recent event ID per stream in time-series chain
     /// Maps stream_id -> latest event UUID for that stream
@@ -47,16 +47,16 @@ pub struct EventBuilder {
 }
 
 impl EventBuilder {
-    pub fn new(trace_id: Uuid) -> Self {
+    pub fn new(session_id: Uuid) -> Self {
         Self {
-            trace_id,
+            session_id,
             stream_tips: HashMap::new(),
             tool_map: HashMap::new(),
         }
     }
 
     /// Create and push event with deterministic UUID generation
-    /// Uses UUID v5 with trace_id as namespace and "base_id:suffix" as name
+    /// Uses UUID v5 with session_id as namespace and "base_id:suffix" as name
     /// Returns the generated event ID
     #[allow(clippy::too_many_arguments)]
     pub fn build_and_push(
@@ -69,16 +69,16 @@ impl EventBuilder {
         metadata: Option<serde_json::Value>,
         stream_id: StreamId,
     ) -> Uuid {
-        // Generate deterministic UUID: trace_id namespace + "base_id:suffix" name
+        // Generate deterministic UUID: session_id namespace + "base_id:suffix" name
         let name = format!("{}:{}", base_id, suffix.as_str());
-        let id = Uuid::new_v5(&self.trace_id, name.as_bytes());
+        let id = Uuid::new_v5(&self.session_id, name.as_bytes());
 
         // Get parent_id from stream-specific tip
         let parent_id = self.stream_tips.get(&stream_id).copied();
 
         let event = AgentEvent {
             id,
-            trace_id: self.trace_id,
+            session_id: self.session_id,
             parent_id,
             timestamp,
             stream_id: stream_id.clone(),
@@ -118,8 +118,8 @@ mod tests {
 
     #[test]
     fn test_event_builder_chain() {
-        let trace_id = Uuid::new_v4();
-        let mut builder = EventBuilder::new(trace_id);
+        let session_id = Uuid::new_v4();
+        let mut builder = EventBuilder::new(session_id);
         let mut events = Vec::new();
 
         // First event has no parent
@@ -135,7 +135,7 @@ mod tests {
             StreamId::Main,
         );
         assert_eq!(events[0].parent_id, None);
-        assert_eq!(events[0].trace_id, trace_id);
+        assert_eq!(events[0].session_id, session_id);
         assert_eq!(events[0].stream_id, StreamId::Main);
 
         // Second event has first as parent
@@ -171,8 +171,8 @@ mod tests {
 
     #[test]
     fn test_multi_stream_chains() {
-        let trace_id = Uuid::new_v4();
-        let mut builder = EventBuilder::new(trace_id);
+        let session_id = Uuid::new_v4();
+        let mut builder = EventBuilder::new(session_id);
         let mut events = Vec::new();
 
         // Main stream events

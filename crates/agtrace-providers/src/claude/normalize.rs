@@ -29,9 +29,9 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
         })
         .unwrap_or_else(|| "unknown".to_string());
 
-    // Create trace_id from session_id (deterministic)
-    let trace_id = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
-    let mut builder = EventBuilder::new(trace_id);
+    // Create session_id UUID from session_id string (deterministic)
+    let session_id_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
+    let mut builder = EventBuilder::new(session_id_uuid);
     let mut events = Vec::new();
 
     for record in records {

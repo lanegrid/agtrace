@@ -8,7 +8,7 @@ pub fn print_check_result(display: &DoctorCheckDisplay) {
 
     match &display.result {
         CheckResult::Valid {
-            trace_id,
+            session_id,
             timestamp,
             event_count,
             event_breakdown,
@@ -16,7 +16,7 @@ pub fn print_check_result(display: &DoctorCheckDisplay) {
             println!("Status: {}", "✓ Valid".green().bold());
             println!();
             println!("Parsed successfully:");
-            println!("  - Trace ID: {}", trace_id);
+            println!("  - Session ID: {}", session_id);
             println!("  - Timestamp: {}", timestamp);
             println!("  - Events extracted: {}", event_count);
 

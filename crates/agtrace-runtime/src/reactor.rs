@@ -136,11 +136,11 @@ mod tests {
     fn create_test_event() -> AgentEvent {
         use std::str::FromStr;
         let id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000001").unwrap();
-        let trace_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap();
+        let session_id = uuid::Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap();
 
         AgentEvent {
             id,
-            trace_id,
+            session_id,
             parent_id: None,
             timestamp: Utc::now(),
             stream_id: agtrace_types::StreamId::Main,
