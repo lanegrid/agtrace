@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
-use crate::types::OutputFormat;
 use crate::presentation::renderers::TraceView;
+use crate::types::OutputFormat;
 use agtrace_index::Database;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;

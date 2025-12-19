@@ -1,6 +1,6 @@
-use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use super::traits::WatchView;
 use crate::presentation::formatters::session::{format_event_with_start, format_token_summary};
+use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use agtrace_runtime::reactor::{Reaction, SessionState};
 use agtrace_runtime::TokenLimits;
 use agtrace_types::{AgentEvent, EventPayload};

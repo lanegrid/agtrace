@@ -8,10 +8,10 @@
 // - User interprets intent from facts: `Edit(schema.rs x4)` could be iteration or being stuck
 // - Trade-off: Less readable for detailed debugging, but enables quick pattern recognition
 
+use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use agtrace_engine::{AgentSession, AgentStep, AgentTurn};
 use chrono::{DateTime, Utc};
 use owo_colors::OwoColorize;
-use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 
 /// Calculate token summary from an AgentSession
 pub fn calculate_token_summary(session: &AgentSession) -> TokenSummaryDisplay {
@@ -103,7 +103,10 @@ fn format_turn(
             user_text.green()
         )
     } else {
-        format!("{} {} User: \"{}\"", time_display, dur_placeholder, user_text)
+        format!(
+            "{} {} User: \"{}\"",
+            time_display, dur_placeholder, user_text
+        )
     };
     lines.push(line);
 
@@ -138,7 +141,10 @@ fn format_step(
                 reasoning_text.cyan()
             )
         } else {
-            format!("{} {} Reasoning: \"{}\"", time_display, dur_placeholder, reasoning_text)
+            format!(
+                "{} {} Reasoning: \"{}\"",
+                time_display, dur_placeholder, reasoning_text
+            )
         };
         lines.push(line);
     }
@@ -192,7 +198,10 @@ fn format_step(
                 msg_text.blue()
             )
         } else {
-            format!("{} {} Message: \"{}\"", time_display, dur_placeholder, msg_text)
+            format!(
+                "{} {} Message: \"{}\"",
+                time_display, dur_placeholder, msg_text
+            )
         };
         lines.push(line);
     }
@@ -205,9 +214,15 @@ fn format_tool_executions(tools: &[agtrace_engine::ToolExecution], enable_color:
             let name = &t.call.content.name;
             let args_summary = format_tool_args(name, &t.call.content.arguments);
             let status_indicator = if t.is_error {
-                if enable_color { "✗" } else { "ERR" }
+                if enable_color {
+                    "✗"
+                } else {
+                    "ERR"
+                }
+            } else if enable_color {
+                "✓"
             } else {
-                if enable_color { "✓" } else { "OK" }
+                "OK"
             };
 
             if enable_color {
@@ -280,18 +295,37 @@ pub fn format_token_summary(summary: &TokenSummaryDisplay, opts: &DisplayOptions
             let free_str = format_token_count(free_tokens);
 
             if opts.enable_color {
-                lines.push(format!("{} Input:   {} ({:.1}%)", "⛁".cyan(), input_str, input_pct));
-                lines.push(format!("{} Output:  {} ({:.1}%)", "⛁".cyan(), output_str, output_pct));
+                lines.push(format!(
+                    "{} Input:   {} ({:.1}%)",
+                    "⛁".cyan(),
+                    input_str,
+                    input_pct
+                ));
+                lines.push(format!(
+                    "{} Output:  {} ({:.1}%)",
+                    "⛁".cyan(),
+                    output_str,
+                    output_pct
+                ));
 
                 if summary.cache_creation > 0 || summary.cache_read > 0 {
                     let cache_total = summary.cache_creation + summary.cache_read;
                     let cache_pct = (cache_total as f64 / limit as f64) * 100.0;
                     let cache_total_str = format_token_count(cache_total as u64);
-                    lines.push(format!("{} Cache:   {} ({:.1}%)", "⛁".cyan(), cache_total_str, cache_pct));
+                    lines.push(format!(
+                        "{} Cache:   {} ({:.1}%)",
+                        "⛁".cyan(),
+                        cache_total_str,
+                        cache_pct
+                    ));
 
                     if summary.cache_creation > 0 {
                         let cache_creation_str = format_token_count(summary.cache_creation as u64);
-                        lines.push(format!("  {} Creation: {}", "↳".dimmed(), cache_creation_str));
+                        lines.push(format!(
+                            "  {} Creation: {}",
+                            "↳".dimmed(),
+                            cache_creation_str
+                        ));
                     }
                     if summary.cache_read > 0 {
                         let cache_read_str = format_token_count(summary.cache_read as u64);
@@ -299,7 +333,12 @@ pub fn format_token_summary(summary: &TokenSummaryDisplay, opts: &DisplayOptions
                     }
                 }
 
-                lines.push(format!("{} Free:    {} ({:.1}%)", "⛶".dimmed(), free_str, free_pct));
+                lines.push(format!(
+                    "{} Free:    {} ({:.1}%)",
+                    "⛶".dimmed(),
+                    free_str,
+                    free_pct
+                ));
             } else {
                 lines.push(format!("⛁ Input:   {} ({:.1}%)", input_str, input_pct));
                 lines.push(format!("⛁ Output:  {} ({:.1}%)", output_str, output_pct));
@@ -315,12 +354,10 @@ pub fn format_token_summary(summary: &TokenSummaryDisplay, opts: &DisplayOptions
                         } else {
                             "TRIGGERED".to_string()
                         }
+                    } else if opts.enable_color {
+                        format!("at {:.0}%", trigger_pct).dimmed().to_string()
                     } else {
-                        if opts.enable_color {
-                            format!("at {:.0}%", trigger_pct).dimmed().to_string()
-                        } else {
-                            format!("at {:.0}%", trigger_pct)
-                        }
+                        format!("at {:.0}%", trigger_pct)
                     };
                     lines.push(format!("  Compaction buffer: {}", status));
                 }
@@ -407,7 +444,6 @@ fn format_tool_args(name: &str, args: &serde_json::Value) -> String {
     }
     String::new()
 }
-
 
 fn create_progress_bar(percentage: f64) -> String {
     let bar_width = 20;

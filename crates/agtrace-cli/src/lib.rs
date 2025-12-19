@@ -29,8 +29,8 @@ mod args;
 mod commands;
 pub mod config;
 pub mod context;
-pub mod presentation;
 mod handlers;
+pub mod presentation;
 pub mod token_usage;
 pub mod types;
 

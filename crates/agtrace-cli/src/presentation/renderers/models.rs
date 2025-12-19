@@ -1,4 +1,4 @@
-use crate::presentation::models::init::{InitDisplay, Step1Result, Step3Result};
+use crate::presentation::formatters::init::{Step1Result, Step3Result};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -92,7 +92,7 @@ pub enum InitRenderEvent {
     Step1Loading,
     Step1Result(Step1Result),
     Step2Header,
-    Step2Result(InitDisplay),
+    Step2Result { db_path: PathBuf },
     Step3Header,
     Step3Result(Step3Result),
     Step4Header,

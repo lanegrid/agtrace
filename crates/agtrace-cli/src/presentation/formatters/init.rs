@@ -1,5 +1,34 @@
-use crate::presentation::models::init::{InitDisplay, SkipReason, Step1Result, Step3Result};
 use chrono::Duration;
+use std::collections::HashMap;
+use std::path::PathBuf;
+
+#[derive(Debug, Clone)]
+pub enum Step1Result {
+    DetectedProviders {
+        providers: HashMap<String, PathBuf>,
+        config_saved: bool,
+    },
+    LoadedConfig {
+        config_path: PathBuf,
+    },
+    NoProvidersDetected,
+}
+
+#[derive(Debug, Clone)]
+pub enum Step3Result {
+    Scanned {
+        success: bool,
+        error: Option<String>,
+    },
+    Skipped {
+        reason: SkipReason,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum SkipReason {
+    RecentlyScanned { elapsed: Duration },
+}
 
 fn format_duration(d: Duration) -> String {
     let seconds = d.num_seconds();
@@ -62,8 +91,8 @@ pub fn print_step2_header() {
     println!("\nStep 2/4: Setting up database...");
 }
 
-pub fn print_step2_result(display: &InitDisplay) {
-    println!("  Database ready at {}", display.step2.db_path.display());
+pub fn print_step2_result(db_path: &std::path::Path) {
+    println!("  Database ready at {}", db_path.display());
 }
 
 pub fn print_step3_header() {

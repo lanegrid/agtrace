@@ -1,10 +1,10 @@
-use agtrace_engine::AgentSession;
-use crate::types::OutputFormat;
 use super::models::{
     CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
     ProviderConfigSummary, ProviderSetResult, RawFileContent, ReportTemplate, WatchStart,
     WatchSummary,
 };
+use crate::types::OutputFormat;
+use agtrace_engine::AgentSession;
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};

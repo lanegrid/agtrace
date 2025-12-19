@@ -1,5 +1,5 @@
-use crate::presentation::formatters::DisplayOptions;
 use super::session::format_compact;
+use crate::presentation::formatters::DisplayOptions;
 use agtrace_engine::SessionDigest;
 use std::collections::HashMap;
 

@@ -1,9 +1,9 @@
 use crate::config::Config;
 use crate::context::ExecutionContext;
-use crate::presentation::models::init::{InitDisplay, SkipReason, Step1Result, Step3Result};
-use crate::types::OutputFormat;
+use crate::presentation::formatters::init::{SkipReason, Step1Result, Step3Result};
 use crate::presentation::renderers::models::InitRenderEvent;
 use crate::presentation::renderers::TraceView;
+use crate::types::OutputFormat;
 use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
@@ -17,15 +17,13 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
     let config_path = data_dir.join("config.toml");
     let db_path = data_dir.join("agtrace.db");
 
-    let mut display = InitDisplay::new(config_path.clone(), db_path.clone());
-
     let _config = if !config_path.exists() {
         view.render_init_event(InitRenderEvent::Step1Detecting)?;
         let detected = Config::detect_providers()?;
 
         if detected.providers.is_empty() {
-            display = display.with_step1(Step1Result::NoProvidersDetected);
-            view.render_init_event(InitRenderEvent::Step1Result(display.step1.clone()))?;
+            let step1_result = Step1Result::NoProvidersDetected;
+            view.render_init_event(InitRenderEvent::Step1Result(step1_result))?;
             return Ok(());
         }
 
@@ -36,26 +34,28 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
             .collect();
 
         detected.save_to(&config_path)?;
-        display = display.with_step1(Step1Result::DetectedProviders {
+        let step1_result = Step1Result::DetectedProviders {
             providers,
             config_saved: true,
-        });
-        view.render_init_event(InitRenderEvent::Step1Result(display.step1.clone()))?;
+        };
+        view.render_init_event(InitRenderEvent::Step1Result(step1_result))?;
 
         detected
     } else {
         view.render_init_event(InitRenderEvent::Step1Loading)?;
         let cfg = Config::load_from(&config_path)?;
-        display = display.with_step1(Step1Result::LoadedConfig {
+        let step1_result = Step1Result::LoadedConfig {
             config_path: config_path.clone(),
-        });
-        view.render_init_event(InitRenderEvent::Step1Result(display.step1.clone()))?;
+        };
+        view.render_init_event(InitRenderEvent::Step1Result(step1_result))?;
         cfg
     };
 
     view.render_init_event(InitRenderEvent::Step2Header)?;
     let db = Database::open(&db_path)?;
-    view.render_init_event(InitRenderEvent::Step2Result(display.clone()))?;
+    view.render_init_event(InitRenderEvent::Step2Result {
+        db_path: db_path.clone(),
+    })?;
 
     let current_project_root = if let Some(root) = &ctx.project_root {
         root.display().to_string()
@@ -72,10 +72,10 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
                 let elapsed = Utc::now().signed_duration_since(last_time.with_timezone(&Utc));
                 if elapsed < Duration::minutes(5) {
                     view.render_init_event(InitRenderEvent::Step3Header)?;
-                    display = display.with_step3(Step3Result::Skipped {
+                    let step3_result = Step3Result::Skipped {
                         reason: SkipReason::RecentlyScanned { elapsed },
-                    });
-                    view.render_init_event(InitRenderEvent::Step3Result(display.step3.clone()))?;
+                    };
+                    view.render_init_event(InitRenderEvent::Step3Result(step3_result))?;
                     false
                 } else {
                     true
@@ -97,11 +97,11 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
         match scan_result {
             Ok(_) => {}
             Err(e) => {
-                display = display.with_step3(Step3Result::Scanned {
+                let step3_result = Step3Result::Scanned {
                     success: false,
                     error: Some(format!("{}", e)),
-                });
-                view.render_init_event(InitRenderEvent::Step3Result(display.step3.clone()))?;
+                };
+                view.render_init_event(InitRenderEvent::Step3Result(step3_result))?;
             }
         }
     }
