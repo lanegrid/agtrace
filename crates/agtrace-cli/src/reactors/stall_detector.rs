@@ -1,4 +1,4 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext};
+use agtrace_runtime::reactor::{Reaction, Reactor, ReactorContext};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 

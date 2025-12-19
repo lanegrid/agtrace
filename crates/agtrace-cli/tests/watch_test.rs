@@ -1,5 +1,5 @@
-use agtrace_cli::streaming::{SessionWatcher, StreamEvent};
 use agtrace_providers::{create_provider, LogProvider};
+use agtrace_runtime::streaming::{SessionWatcher, StreamEvent};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;

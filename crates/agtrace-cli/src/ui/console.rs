@@ -1,7 +1,6 @@
 use crate::display_model::{
     DisplayOptions, DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay, TokenSummaryDisplay,
 };
-use crate::reactor::{Reaction, SessionState};
 use crate::token_limits::TokenLimits;
 use crate::types::OutputFormat;
 use crate::ui::models::*;
@@ -9,6 +8,7 @@ use crate::ui::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::views::session::{format_token_summary, print_event};
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
+use agtrace_runtime::reactor::{Reaction, SessionState};
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;

@@ -1,4 +1,4 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext};
+use agtrace_runtime::reactor::{Reaction, Reactor, ReactorContext};
 use agtrace_types::EventPayload;
 use anyhow::Result;
 
@@ -115,7 +115,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "/Users/test/project/file.rs"
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -131,7 +132,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "../../../etc/passwd"
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -152,7 +154,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "/etc/passwd"
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -173,7 +176,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "/"
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -194,7 +198,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "/opt/secret/file"
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -213,7 +218,8 @@ mod tests {
     fn test_non_tool_call_event_ignored() {
         let mut guard = SafetyGuard::new();
         let event = create_user_event();
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -229,7 +235,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "src/main.rs"
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -246,7 +253,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "/Users/test/reactor...md"
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,
@@ -263,7 +271,8 @@ mod tests {
         let event = create_tool_call_event(serde_json::json!({
             "path": "/Users/zawakin/go/src/github.com/lanegrid/agtrace/docs/react..."
         }));
-        let state = crate::reactor::SessionState::new("test".to_string(), None, Utc::now());
+        let state =
+            agtrace_runtime::reactor::SessionState::new("test".to_string(), None, Utc::now());
         let ctx = ReactorContext {
             event: &event,
             state: &state,

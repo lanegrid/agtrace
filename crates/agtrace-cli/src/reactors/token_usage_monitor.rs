@@ -1,5 +1,5 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext};
 use crate::token_limits::TokenLimits;
+use agtrace_runtime::reactor::{Reaction, Reactor, ReactorContext, SessionState};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 
@@ -45,7 +45,7 @@ impl TokenUsageMonitor {
         Self::new(80.0, 95.0)
     }
 
-    fn check_threshold(&mut self, state: &crate::reactor::SessionState) -> Option<Reaction> {
+    fn check_threshold(&mut self, state: &SessionState) -> Option<Reaction> {
         let (input_pct, output_pct, total_pct) =
             self.limits.get_usage_percentage_from_state(state)?;
 
@@ -129,8 +129,8 @@ impl Reactor for TokenUsageMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::reactor::SessionState;
     use crate::token_usage::ContextWindowUsage;
+    use agtrace_runtime::reactor::SessionState;
     use agtrace_types::{
         AgentEvent, EventPayload, StreamId, TokenUsageDetails, TokenUsagePayload, UserPayload,
     };

@@ -1,5 +1,4 @@
 use crate::display_model::{DoctorCheckDisplay, ProviderSchemaContent, SessionDisplay};
-use crate::reactor::{Reaction, SessionState};
 use crate::types::OutputFormat;
 use crate::ui::models::{
     CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
@@ -8,6 +7,7 @@ use crate::ui::models::{
 };
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
+use agtrace_runtime::reactor::{Reaction, SessionState};
 use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::Path;

@@ -1,4 +1,4 @@
-use crate::reactor::SessionState;
+use agtrace_runtime::reactor::SessionState;
 use agtrace_types::AgentEvent;
 use std::collections::VecDeque;
 use std::sync::Mutex;
@@ -553,7 +553,10 @@ impl crate::ui::traits::WatchView for RefreshingWatchView {
         Ok(())
     }
 
-    fn on_watch_reaction(&self, _reaction: &crate::reactor::Reaction) -> anyhow::Result<()> {
+    fn on_watch_reaction(
+        &self,
+        _reaction: &agtrace_runtime::reactor::Reaction,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
