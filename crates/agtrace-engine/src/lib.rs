@@ -6,7 +6,6 @@ pub mod assembler;
 pub mod diagnostics;
 pub mod export;
 pub mod session;
-pub mod span;
 pub mod state_updates;
 pub mod summary;
 pub mod token_usage;
@@ -18,7 +17,6 @@ pub use session::{
     AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionStats, ToolCallBlock,
     ToolExecution, ToolResultBlock, TurnStats, UserMessage,
 };
-pub use span::{build_spans, Message, Span, SpanStats, SystemEvent, TokenBundle, ToolAction};
 pub use state_updates::{extract_state_updates, StateUpdates};
 pub use summary::{summarize, SessionSummary};
 pub use token_usage::{
@@ -31,11 +29,6 @@ pub use token_usage::{
 /// Assemble events into AgentSession structure
 pub fn assemble_session_from_events(events: &[agtrace_types::AgentEvent]) -> Option<AgentSession> {
     assembler::assemble_session(events)
-}
-
-/// Build spans from events - improved tool matching and token tracking
-pub fn build_spans_from_events(events: &[agtrace_types::AgentEvent]) -> Vec<Span> {
-    span::build_spans(events)
 }
 
 /// Summarize session statistics from AgentSession

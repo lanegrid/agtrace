@@ -1,5 +1,5 @@
 // Integration tests for the complete flow: raw provider data → normalized events → engine processing
-use agtrace_engine::{assemble_session_from_events, build_spans_from_events};
+use agtrace_engine::assemble_session_from_events;
 use std::path::Path;
 
 #[test]
@@ -16,10 +16,6 @@ fn test_claude_end_to_end() {
         agtrace_providers::normalize_claude_file(path).expect("Failed to normalize Claude file");
 
     assert!(!events.is_empty(), "Expected at least one event");
-
-    // engine: build spans
-    let spans = build_spans_from_events(&events);
-    assert!(!spans.is_empty(), "Expected at least one span");
 
     // engine: assemble session
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
@@ -41,10 +37,6 @@ fn test_codex_end_to_end() {
 
     assert!(!events.is_empty(), "Expected at least one event");
 
-    // engine: build spans
-    let spans = build_spans_from_events(&events);
-    assert!(!spans.is_empty(), "Expected at least one span");
-
     // engine: assemble session
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");
     assert!(!session.turns.is_empty(), "Expected at least one turn");
@@ -64,10 +56,6 @@ fn test_gemini_end_to_end() {
         agtrace_providers::normalize_gemini_file(path).expect("Failed to normalize Gemini file");
 
     assert!(!events.is_empty(), "Expected at least one event");
-
-    // engine: build spans
-    let spans = build_spans_from_events(&events);
-    assert!(!spans.is_empty(), "Expected at least one span");
 
     // engine: assemble session
     let session = assemble_session_from_events(&events).expect("Failed to assemble session");

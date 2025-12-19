@@ -281,6 +281,7 @@ mod tests {
             trace_id: Uuid::nil(),
             parent_id: None,
             timestamp: Utc::now(),
+            stream_id: agtrace_types::StreamId::Main,
             payload: EventPayload::User(UserPayload { text: "hi".into() }),
             metadata: None,
         }
