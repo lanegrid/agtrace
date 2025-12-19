@@ -1,9 +1,10 @@
 use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
-use crate::presentation::formatters::session::{
-    format_compact, format_event_with_start, format_token_summary,
+use crate::presentation::formatters::event::EventView;
+use crate::presentation::formatters::token::TokenUsageView;
+use crate::presentation::formatters::{
+    CompactView, DisplayOptions, TimelineView, TokenSummaryDisplay,
 };
-use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use crate::types::OutputFormat;
 use agtrace_engine::AgentSession;
 use agtrace_engine::{DiagnoseResult, SessionDigest};
@@ -293,23 +294,28 @@ impl SessionView for ConsoleTraceView {
         session: &AgentSession,
         options: &DisplayOptions,
     ) -> Result<()> {
-        let lines = format_compact(session, options);
-        for line in lines {
-            println!("{}", line);
-        }
+        print!("{}", CompactView { session, options });
         Ok(())
     }
 
     fn render_session_timeline(
         &self,
         events: &[AgentEvent],
-        truncate: bool,
+        _truncate: bool,
         enable_color: bool,
     ) -> Result<()> {
-        crate::presentation::formatters::session::print_events_timeline(
-            events,
-            truncate,
+        let options = DisplayOptions {
             enable_color,
+            relative_time: true,
+            truncate_text: None,
+        };
+        print!(
+            "{}",
+            TimelineView {
+                events,
+                options: &options,
+                project_root: None,
+            }
         );
         Ok(())
     }
@@ -560,14 +566,26 @@ impl WatchView for ConsoleTraceView {
     }
 
     fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()> {
+        let opts = DisplayOptions {
+            enable_color: true,
+            relative_time: false,
+            truncate_text: None,
+        };
+
         for event in new_events {
-            if let Some(line) = format_event_with_start(
+            let event_view = EventView {
                 event,
-                state.turn_count,
-                state.project_root.as_deref(),
-                Some(state.start_time),
-            ) {
-                println!("{}", line);
+                options: &opts,
+                session_start: Some(state.start_time),
+                turn_context: state.turn_count,
+                project_root: state.project_root.as_deref(),
+            };
+
+            // EventView returns Ok(()) for events that shouldn't be displayed
+            // We need to format to a string to check if it produced output
+            let formatted = format!("{}", event_view);
+            if !formatted.is_empty() {
+                println!("{}", formatted);
             }
 
             if matches!(event.payload, EventPayload::TokenUsage(_)) {
@@ -592,16 +610,14 @@ impl WatchView for ConsoleTraceView {
                     compaction_buffer_pct,
                 };
 
-                let opts = DisplayOptions {
-                    enable_color: true,
-                    relative_time: false,
-                    truncate_text: None,
-                };
-
                 println!();
-                for line in format_token_summary(&summary, &opts) {
-                    println!("{}", line);
-                }
+                print!(
+                    "{}",
+                    TokenUsageView {
+                        summary: &summary,
+                        options: &opts,
+                    }
+                );
             }
         }
         Ok(())

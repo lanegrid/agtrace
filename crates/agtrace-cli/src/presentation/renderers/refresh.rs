@@ -93,7 +93,7 @@ impl WatchBuffer {
     }
 
     pub fn format_footer(&self) -> Vec<String> {
-        use crate::presentation::formatters::session::format_token_summary;
+        use crate::presentation::formatters::token::TokenUsageView;
         use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
         use agtrace_runtime::TokenLimits;
 
@@ -129,7 +129,14 @@ impl WatchBuffer {
             truncate_text: None,
         };
 
-        format_token_summary(&summary, &opts)
+        let token_view = TokenUsageView {
+            summary: &summary,
+            options: &opts,
+        };
+        format!("{}", token_view)
+            .lines()
+            .map(|s| s.to_string())
+            .collect()
     }
 
     fn format_event(&self, event: &AgentEvent, delta: Option<String>) -> String {

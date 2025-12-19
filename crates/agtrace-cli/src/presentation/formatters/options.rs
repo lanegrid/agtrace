@@ -1,20 +1,23 @@
 /// Display formatting options
 #[derive(Debug, Clone)]
-pub struct DisplayOptions {
+pub struct FormatOptions {
     pub enable_color: bool,
     pub relative_time: bool,
     pub truncate_text: Option<usize>,
 }
 
-impl Default for DisplayOptions {
+impl Default for FormatOptions {
     fn default() -> Self {
         Self {
             enable_color: true,
-            relative_time: true,
+            relative_time: false,
             truncate_text: None,
         }
     }
 }
+
+// Backwards compatibility alias
+pub type DisplayOptions = FormatOptions;
 
 /// Token usage summary for display
 #[derive(Debug, Clone)]

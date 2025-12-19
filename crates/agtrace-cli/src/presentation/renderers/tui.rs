@@ -1,5 +1,6 @@
 use super::traits::WatchView;
-use crate::presentation::formatters::session::{format_event_with_start, format_token_summary};
+use crate::presentation::formatters::event::EventView;
+use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::{DisplayOptions, TokenSummaryDisplay};
 use agtrace_runtime::reactor::{Reaction, SessionState};
 use agtrace_runtime::TokenLimits;
@@ -210,13 +211,23 @@ impl WatchView for TuiWatchView {
 
         // Format and buffer new events
         for event in new_events {
-            if let Some(line) = format_event_with_start(
+            let opts = DisplayOptions {
+                enable_color: true,
+                relative_time: true,
+                truncate_text: None,
+            };
+
+            let event_view = EventView {
                 event,
-                inner.turn_count,
-                inner.project_root.as_deref(),
-                inner.session_start_time,
-            ) {
-                inner.events_buffer.push_back(line);
+                options: &opts,
+                session_start: inner.session_start_time,
+                turn_context: inner.turn_count,
+                project_root: inner.project_root.as_deref(),
+            };
+
+            let formatted = format!("{}", event_view);
+            if !formatted.is_empty() {
+                inner.events_buffer.push_back(formatted);
 
                 // Keep buffer size manageable (last 1000 events)
                 if inner.events_buffer.len() > 1000 {
@@ -252,7 +263,12 @@ impl WatchView for TuiWatchView {
                     truncate_text: None,
                 };
 
-                inner.footer_lines = format_token_summary(&summary, &opts);
+                let token_view = TokenUsageView {
+                    summary: &summary,
+                    options: &opts,
+                };
+                let footer_output = format!("{}", token_view);
+                inner.footer_lines = footer_output.lines().map(|s| s.to_string()).collect();
             }
         }
 

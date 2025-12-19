@@ -1,5 +1,4 @@
-use super::session::format_compact;
-use crate::presentation::formatters::DisplayOptions;
+use super::{CompactView, DisplayOptions};
 use agtrace_engine::SessionDigest;
 use std::collections::HashMap;
 
@@ -42,7 +41,14 @@ pub fn print_compact(digests: &[SessionDigest]) {
         print_digest_summary(digest);
 
         println!("Work:");
-        let lines = format_compact(&digest.session, &opts);
+        let output = format!(
+            "{}",
+            CompactView {
+                session: &digest.session,
+                options: &opts,
+            }
+        );
+        let lines: Vec<&str> = output.lines().collect();
         for line in lines.iter().take(15) {
             println!("  {}", line);
         }
