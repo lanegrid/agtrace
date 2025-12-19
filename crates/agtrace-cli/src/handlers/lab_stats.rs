@@ -1,6 +1,7 @@
 use crate::session_loader::{LoadOptions, SessionLoader};
 use crate::ui::TraceView;
 use agtrace_index::Database;
+use agtrace_providers::create_provider;
 use agtrace_types::EventPayload;
 use anyhow::Result;
 use std::collections::{BTreeMap, HashMap};
@@ -86,7 +87,7 @@ pub fn handle(
         .collect();
 
     println!("\n=== ToolCall Statistics by Provider ===");
-    for (provider, tools) in sorted_stats {
+    for (provider, tools) in &sorted_stats {
         println!("\n{}", "=".repeat(80));
         println!("Provider: {}", provider);
         println!("{}", "=".repeat(80));
@@ -100,6 +101,53 @@ pub fn handle(
                     println!("      {}", truncate_text(result, 200));
                 } else {
                     println!("    Output: (no result found)");
+                }
+            }
+        }
+    }
+
+    // Show tool mapping verification
+    println!("\n\n{}", "=".repeat(80));
+    println!("=== Tool Name → Classification Mapping ===");
+    println!("{}", "=".repeat(80));
+    print_tool_mappings(&sorted_stats)?;
+
+    Ok(())
+}
+
+fn print_tool_mappings(
+    stats: &BTreeMap<String, BTreeMap<String, (usize, Option<ToolCallSample>)>>,
+) -> Result<()> {
+    for (provider_name, tools) in stats {
+        println!("\nProvider: {}", provider_name);
+        println!("{}", "-".repeat(80));
+
+        let provider = create_provider(provider_name)?;
+
+        // Collect tool names
+        let tool_names: Vec<_> = tools.keys().collect();
+
+        // Find max tool name length for alignment
+        let max_len = tool_names.iter().map(|n| n.len()).max().unwrap_or(0);
+
+        for tool_name in tool_names {
+            let classification = provider.classify_tool(tool_name);
+            match classification {
+                Some((origin, kind)) => {
+                    println!(
+                        "  {:width$} → Origin: {:6} Kind: {:8}",
+                        tool_name,
+                        format!("{:?}", origin),
+                        format!("{:?}", kind),
+                        width = max_len
+                    );
+                }
+                None => {
+                    println!(
+                        "  {:width$} → (unmapped - fallback to common classifier)",
+                        tool_name,
+                        width = max_len
+                    );
                 }
             }
         }
