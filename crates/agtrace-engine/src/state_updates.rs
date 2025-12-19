@@ -132,8 +132,6 @@ mod tests {
                 cache_creation_input_tokens: Some(5),
                 cache_read_input_tokens: Some(20),
                 reasoning_output_tokens: Some(7),
-                audio_input_tokens: None,
-                audio_output_tokens: None,
             }),
         }));
 
@@ -222,8 +220,6 @@ mod tests {
                 cache_creation_input_tokens: Some(10),
                 cache_read_input_tokens: Some(5),
                 reasoning_output_tokens: Some(3),
-                audio_input_tokens: None,
-                audio_output_tokens: None,
             }),
         }));
         let mut meta = serde_json::Map::new();

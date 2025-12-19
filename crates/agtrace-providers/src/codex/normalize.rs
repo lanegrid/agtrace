@@ -128,8 +128,6 @@ pub(crate) fn normalize_codex_session(
                                         reasoning_output_tokens: Some(
                                             usage.reasoning_output_tokens as i32,
                                         ),
-                                        audio_input_tokens: None,
-                                        audio_output_tokens: None,
                                     }),
                                 }),
                                 raw_value.clone(),

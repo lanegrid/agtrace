@@ -142,8 +142,6 @@ pub(crate) fn normalize_gemini_session(
                             cache_creation_input_tokens: None, // Gemini doesn't track cache creation separately
                             cache_read_input_tokens: Some(gemini_msg.tokens.cached as i32),
                             reasoning_output_tokens: Some(gemini_msg.tokens.thoughts as i32),
-                            audio_input_tokens: None,
-                            audio_output_tokens: None,
                         }),
                     }),
                     Some(raw_value),

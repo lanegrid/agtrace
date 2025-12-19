@@ -219,8 +219,6 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         .cache_read_input_tokens
                                         .map(|t| t as i32),
                                     reasoning_output_tokens: None, // Claude doesn't separate reasoning tokens
-                                    audio_input_tokens: None,
-                                    audio_output_tokens: None,
                                 }),
                             }),
                             raw_value.clone(),

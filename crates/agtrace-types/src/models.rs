@@ -189,10 +189,6 @@ pub struct TokenUsageDetails {
     pub cache_read_input_tokens: Option<i32>,
     /// Reasoning output tokens (o1/Gemini)
     pub reasoning_output_tokens: Option<i32>,
-    /// Audio input tokens (future-proofing for multimodal)
-    pub audio_input_tokens: Option<i32>,
-    /// Audio output tokens (future-proofing for multimodal)
-    pub audio_output_tokens: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

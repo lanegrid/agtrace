@@ -155,8 +155,6 @@ mod tests {
                     cache_creation_input_tokens: None,
                     cache_read_input_tokens: None,
                     reasoning_output_tokens: None,
-                    audio_input_tokens: None,
-                    audio_output_tokens: None,
                 }),
             }),
             metadata: None,

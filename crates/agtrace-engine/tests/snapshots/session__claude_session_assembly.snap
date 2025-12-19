@@ -68,9 +68,7 @@ expression: session
             "details": {
               "cache_creation_input_tokens": 3893,
               "cache_read_input_tokens": 12135,
-              "reasoning_output_tokens": null,
-              "audio_input_tokens": null,
-              "audio_output_tokens": null
+              "reasoning_output_tokens": null
             }
           },
           "is_failed": false
@@ -121,9 +119,7 @@ expression: session
             "details": {
               "cache_creation_input_tokens": 458,
               "cache_read_input_tokens": 16028,
-              "reasoning_output_tokens": null,
-              "audio_input_tokens": null,
-              "audio_output_tokens": null
+              "reasoning_output_tokens": null
             }
           },
           "is_failed": false
@@ -151,9 +147,7 @@ expression: session
             "details": {
               "cache_creation_input_tokens": 169,
               "cache_read_input_tokens": 16486,
-              "reasoning_output_tokens": null,
-              "audio_input_tokens": null,
-              "audio_output_tokens": null
+              "reasoning_output_tokens": null
             }
           },
           "is_failed": false
@@ -221,9 +215,7 @@ expression: session
             "details": {
               "cache_creation_input_tokens": 333,
               "cache_read_input_tokens": 16028,
-              "reasoning_output_tokens": null,
-              "audio_input_tokens": null,
-              "audio_output_tokens": null
+              "reasoning_output_tokens": null
             }
           },
           "is_failed": true
@@ -274,9 +266,7 @@ expression: session
             "details": {
               "cache_creation_input_tokens": 154,
               "cache_read_input_tokens": 16361,
-              "reasoning_output_tokens": null,
-              "audio_input_tokens": null,
-              "audio_output_tokens": null
+              "reasoning_output_tokens": null
             }
           },
           "is_failed": false
@@ -304,9 +294,7 @@ expression: session
             "details": {
               "cache_creation_input_tokens": 151,
               "cache_read_input_tokens": 16515,
-              "reasoning_output_tokens": null,
-              "audio_input_tokens": null,
-              "audio_output_tokens": null
+              "reasoning_output_tokens": null
             }
           },
           "is_failed": false
