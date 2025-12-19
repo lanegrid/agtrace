@@ -152,6 +152,7 @@ pub fn format_token_summary(summary: &TokenSummaryDisplay, opts: &DisplayOptions
         return lines;
     }
 
+    // Display token usage even without limit
     if let Some(limit) = summary.limit {
         let total_pct = (summary.total as f64 / limit as f64) * 100.0;
         let input_pct = (summary.input as f64 / limit as f64) * 100.0;
@@ -279,6 +280,54 @@ pub fn format_token_summary(summary: &TokenSummaryDisplay, opts: &DisplayOptions
                 } else {
                     warning.to_string()
                 });
+            }
+        }
+    } else {
+        // Display without limit info
+        let model_name = summary.model.as_deref().unwrap_or("unknown");
+        let header = format!("Token Usage ({})", model_name);
+        lines.push(if opts.enable_color {
+            format!("{}", header.bright_black())
+        } else {
+            header
+        });
+
+        let total_str = format_token_count(summary.total as u64);
+        let input_str = format_token_count(summary.input as u64);
+        let output_str = format_token_count(summary.output as u64);
+
+        lines.push(format!("Total: {}", total_str));
+
+        if opts.enable_color {
+            lines.push(format!("{} Input:  {}", "⛁".cyan(), input_str));
+            lines.push(format!("{} Output: {}", "⛁".cyan(), output_str));
+
+            if summary.cache_creation > 0 || summary.cache_read > 0 {
+                let cache_creation_str = format_token_count(summary.cache_creation as u64);
+                let cache_read_str = format_token_count(summary.cache_read as u64);
+
+                if summary.cache_creation > 0 {
+                    lines.push(format!(
+                        "{} Cache Creation: {}",
+                        "⛁".cyan(),
+                        cache_creation_str
+                    ));
+                }
+                if summary.cache_read > 0 {
+                    lines.push(format!("{} Cache Read: {}", "⛁".cyan(), cache_read_str));
+                }
+            }
+        } else {
+            lines.push(format!("⛁ Input:  {}", input_str));
+            lines.push(format!("⛁ Output: {}", output_str));
+
+            if summary.cache_creation > 0 {
+                let cache_creation_str = format_token_count(summary.cache_creation as u64);
+                lines.push(format!("⛁ Cache Creation: {}", cache_creation_str));
+            }
+            if summary.cache_read > 0 {
+                let cache_read_str = format_token_count(summary.cache_read as u64);
+                lines.push(format!("⛁ Cache Read: {}", cache_read_str));
             }
         }
     }

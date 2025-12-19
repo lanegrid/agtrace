@@ -1,4 +1,6 @@
+use crate::display_model::{DisplayOptions, TokenSummaryDisplay};
 use crate::views::session::event::format_event_with_start;
+use crate::views::session::format_token_summary;
 use agtrace_types::{AgentEvent, EventPayload};
 use owo_colors::OwoColorize;
 
@@ -227,64 +229,28 @@ fn format_session_summary(events: &[AgentEvent], enable_color: bool) -> Vec<Stri
         ));
     }
 
+    // Use the same token summary format as watch command
     if session_summary.token_stats.total > 0 {
-        if enable_color {
-            lines.push(format!(
-                "  {}: {}",
-                "Tokens".cyan(),
-                session_summary.token_stats.total.to_string().bright_white()
-            ));
-            lines.push(format!(
-                "    Input: {}",
-                session_summary.token_stats.input.to_string().bright_white()
-            ));
-            lines.push(format!(
-                "    Output: {}",
-                session_summary
-                    .token_stats
-                    .output
-                    .to_string()
-                    .bright_white()
-            ));
-            if session_summary.token_stats.cached > 0 {
-                lines.push(format!(
-                    "    Cached: {}",
-                    session_summary
-                        .token_stats
-                        .cached
-                        .to_string()
-                        .bright_yellow()
-                ));
-            }
-            if session_summary.token_stats.thinking > 0 {
-                lines.push(format!(
-                    "    Thinking: {}",
-                    session_summary
-                        .token_stats
-                        .thinking
-                        .to_string()
-                        .bright_cyan()
-                ));
-            }
-        } else {
-            lines.push(format!("  Tokens: {}", session_summary.token_stats.total));
-            lines.push(format!("    Input: {}", session_summary.token_stats.input));
-            lines.push(format!(
-                "    Output: {}",
-                session_summary.token_stats.output
-            ));
-            if session_summary.token_stats.cached > 0 {
-                lines.push(format!(
-                    "    Cached: {}",
-                    session_summary.token_stats.cached
-                ));
-            }
-            if session_summary.token_stats.thinking > 0 {
-                lines.push(format!(
-                    "    Thinking: {}",
-                    session_summary.token_stats.thinking
-                ));
-            }
+        let token_summary = TokenSummaryDisplay {
+            input: session_summary.token_stats.input as i32,
+            output: session_summary.token_stats.output as i32,
+            cache_creation: 0, // Not tracked separately in timeline
+            cache_read: session_summary.token_stats.cached as i32,
+            total: session_summary.token_stats.total as i32,
+            limit: None, // Timeline doesn't have limit info
+            model: None, // Timeline doesn't have model info
+            compaction_buffer_pct: None,
+        };
+
+        let opts = DisplayOptions {
+            enable_color,
+            relative_time: false,
+            truncate_text: None,
+        };
+
+        lines.push(String::new());
+        for line in format_token_summary(&token_summary, &opts) {
+            lines.push(line);
         }
     }
 
