@@ -4,6 +4,8 @@ pub mod init;
 pub mod options;
 pub mod pack;
 pub mod session;
+pub mod text;
+pub mod time;
 pub mod token;
 
 pub use options::{DisplayOptions, FormatOptions, TokenSummaryDisplay};

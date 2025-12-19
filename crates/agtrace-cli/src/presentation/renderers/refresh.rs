@@ -1,5 +1,6 @@
 use agtrace_runtime::reactor::SessionState;
 use agtrace_types::AgentEvent;
+use crate::presentation::formatters::{text, time};
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
@@ -62,7 +63,7 @@ impl WatchBuffer {
         for event in &self.events {
             let delta = if let Some(prev) = prev_time {
                 let diff = event.timestamp.signed_duration_since(prev);
-                self.format_delta_time(diff)
+                time::format_delta_time(diff)
             } else {
                 None
             };
@@ -71,25 +72,6 @@ impl WatchBuffer {
         }
 
         lines
-    }
-
-    fn format_delta_time(&self, duration: chrono::Duration) -> Option<String> {
-        let seconds = duration.num_seconds();
-        if seconds < 2 {
-            return None; // Don't show deltas less than 2 seconds (noise)
-        }
-
-        if seconds < 60 {
-            Some(format!("+{}s", seconds))
-        } else {
-            let minutes = seconds / 60;
-            let remaining_secs = seconds % 60;
-            if remaining_secs == 0 {
-                Some(format!("+{}m", minutes))
-            } else {
-                Some(format!("+{}m{}s", minutes, remaining_secs))
-            }
-        }
     }
 
     pub fn format_footer(&self) -> Vec<String> {
@@ -133,33 +115,33 @@ impl WatchBuffer {
 
         match &event.payload {
             EventPayload::User(payload) => {
-                let text = self.truncate(&payload.text, 100);
+                let txt = text::truncate(&payload.text, 100);
                 format!(
                     "{}{} {} \"{}\"",
                     time.dimmed(),
                     delta_str,
                     "👤 User:".bold(),
-                    text
+                    txt
                 )
             }
             EventPayload::Reasoning(payload) => {
-                let text = self.truncate(&payload.text, 50);
+                let txt = text::truncate(&payload.text, 50);
                 format!(
                     "{}{} {} {}",
                     time.dimmed(),
                     delta_str,
                     "🧠 Thnk:".dimmed(),
-                    text.cyan()
+                    txt.cyan()
                 )
             }
             EventPayload::Message(payload) => {
-                let text = self.truncate(&payload.text, 100);
+                let txt = text::truncate(&payload.text, 100);
                 format!(
                     "{}{} {} {}",
                     time.dimmed(),
                     delta_str,
                     "💬 Msg:".cyan(),
-                    text
+                    txt
                 )
             }
             EventPayload::ToolCall(payload) => {
@@ -177,7 +159,7 @@ impl WatchBuffer {
             }
             EventPayload::ToolResult(payload) => {
                 if payload.is_error {
-                    let output = self.truncate(&payload.output, 100);
+                    let output = text::truncate(&payload.output, 100);
                     format!(
                         "{}{} {} {}",
                         time.dimmed(),
@@ -237,30 +219,21 @@ impl WatchBuffer {
             if let Some(path) = obj.get("path").or_else(|| obj.get("file_path")) {
                 if let Some(path_str) = path.as_str() {
                     let shortened = self.shorten_path(path_str);
-                    return format!("(\"{}\")", self.truncate(&shortened, 60));
+                    return format!("(\"{}\")", text::truncate(&shortened, 60));
                 }
             }
             if let Some(command) = obj.get("command") {
                 if let Some(cmd_str) = command.as_str() {
-                    return format!("(\"{}\")", self.truncate(cmd_str, 60));
+                    return format!("(\"{}\")", text::truncate(cmd_str, 60));
                 }
             }
             if let Some(pattern) = obj.get("pattern") {
                 if let Some(pat_str) = pattern.as_str() {
-                    return format!("(\"{}\")", self.truncate(pat_str, 60));
+                    return format!("(\"{}\")", text::truncate(pat_str, 60));
                 }
             }
         }
         String::new()
-    }
-
-    fn truncate(&self, text: &str, max_len: usize) -> String {
-        if text.chars().count() <= max_len {
-            text.to_string()
-        } else {
-            let chars: Vec<char> = text.chars().take(max_len - 3).collect();
-            format!("{}...", chars.iter().collect::<String>())
-        }
     }
 }
 

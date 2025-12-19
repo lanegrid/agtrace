@@ -1,6 +1,7 @@
 use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::presentation::formatters::event::EventView;
+use crate::presentation::formatters::{text, time};
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::{CompactView, DisplayOptions, TimelineView};
 use crate::types::OutputFormat;
@@ -604,10 +605,10 @@ fn print_sessions_table(sessions: &[SessionSummary]) {
         };
 
         let time_str = session.start_ts.as_deref().unwrap_or("unknown");
-        let time_display = format_relative_time(time_str);
+        let time_display = time::format_relative_time(time_str);
 
         let snippet = session.snippet.as_deref().unwrap_or("");
-        let snippet_display = truncate_for_display(snippet, 80);
+        let snippet_display = text::normalize_and_clean(snippet, 80);
 
         let provider_display = match session.provider.as_str() {
             "claude_code" => format!("{}", session.provider.blue()),
@@ -632,64 +633,7 @@ fn print_sessions_table(sessions: &[SessionSummary]) {
     }
 }
 
-fn truncate_for_display(s: &str, max_chars: usize) -> String {
-    let normalized = s
-        .replace(['\n', '\r'], " ")
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
 
-    let cleaned = normalized
-        .trim_start_matches("<command-name>/clear</command-name>")
-        .trim_start_matches("<command-message>clear</command-message>")
-        .trim()
-        .to_string();
-
-    if cleaned.chars().count() <= max_chars {
-        cleaned
-    } else {
-        let truncated: String = cleaned.chars().take(max_chars - 3).collect();
-        format!("{}...", truncated)
-    }
-}
-
-fn format_relative_time(ts: &str) -> String {
-    use chrono::{DateTime, Utc};
-
-    let parsed = match DateTime::parse_from_rfc3339(ts) {
-        Ok(dt) => dt.with_timezone(&Utc),
-        Err(_) => return ts.to_string(),
-    };
-
-    let now = Utc::now();
-    let duration = now.signed_duration_since(parsed);
-
-    let seconds = duration.num_seconds();
-    let minutes = duration.num_minutes();
-    let hours = duration.num_hours();
-    let days = duration.num_days();
-
-    if seconds < 60 {
-        "just now".to_string()
-    } else if minutes < 60 {
-        format!("{} min ago", minutes)
-    } else if hours < 24 {
-        format!("{} hours ago", hours)
-    } else if days == 1 {
-        "yesterday".to_string()
-    } else if days < 7 {
-        format!("{} days ago", days)
-    } else if days < 30 {
-        let weeks = days / 7;
-        format!("{} weeks ago", weeks)
-    } else if days < 365 {
-        let months = days / 30;
-        format!("{} months ago", months)
-    } else {
-        let years = days / 365;
-        format!("{} years ago", years)
-    }
-}
 
 fn create_progress_bar(percentage: f64) -> String {
     let bar_width = 20;
