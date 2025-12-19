@@ -101,15 +101,22 @@ fn summarize_events(events: &[AgentEvent]) -> TimelineSessionSummary {
     }
 }
 
-pub fn print_events_timeline(events: &[AgentEvent], truncate: bool, enable_color: bool) {
+#[allow(dead_code)]
+pub fn format_events_timeline(
+    events: &[AgentEvent],
+    truncate: bool,
+    enable_color: bool,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+
     if events.is_empty() {
         let msg = "No events to display";
-        if enable_color {
-            println!("{}", msg.bright_black());
+        lines.push(if enable_color {
+            format!("{}", msg.bright_black())
         } else {
-            println!("{}", msg);
-        }
-        return;
+            msg.to_string()
+        });
+        return lines;
     }
 
     let session_start = events.first().map(|e| e.timestamp);
@@ -208,10 +215,10 @@ pub fn print_events_timeline(events: &[AgentEvent], truncate: bool, enable_color
             time_display
         };
 
-        println!(
+        lines.push(format!(
             "{} {}{:<20}",
             time_colored, status_indicator, event_type_str
-        );
+        ));
 
         if let Some(text) = text_opt {
             let preview = if truncate && text.chars().count() > 100 {
@@ -226,41 +233,51 @@ pub fn print_events_timeline(events: &[AgentEvent], truncate: bool, enable_color
             } else {
                 preview
             };
-            println!("  {}", text_output);
+            lines.push(format!("  {}", text_output));
         }
 
         if let Some(tool_name) = tool_name_opt {
             if enable_color {
-                println!("  tool: {}", tool_name.yellow());
+                lines.push(format!("  tool: {}", tool_name.yellow()));
             } else {
-                println!("  tool: {}", tool_name);
+                lines.push(format!("  tool: {}", tool_name));
             }
         }
 
-        println!();
+        lines.push(String::new());
     }
 
-    // Print session summary
-    print_session_summary(events, enable_color);
+    // Add session summary
+    lines.extend(format_session_summary(events, enable_color));
+
+    lines
 }
 
-fn print_session_summary(events: &[AgentEvent], enable_color: bool) {
+pub fn print_events_timeline(events: &[AgentEvent], truncate: bool, enable_color: bool) {
+    for line in format_events_timeline(events, truncate, enable_color) {
+        println!("{}", line);
+    }
+}
+
+fn format_session_summary(events: &[AgentEvent], enable_color: bool) -> Vec<String> {
+    let mut lines = Vec::new();
+
     if events.is_empty() {
-        return;
+        return lines;
     }
 
     let session_summary = summarize_events(events);
 
     if enable_color {
-        println!("{}", "---".bright_black());
-        println!("{}", "Session Summary:".bright_white().bold());
+        lines.push(format!("{}", "---".bright_black()));
+        lines.push(format!("{}", "Session Summary:".bright_white().bold()));
     } else {
-        println!("---");
-        println!("Session Summary:");
+        lines.push("---".to_string());
+        lines.push("Session Summary:".to_string());
     }
 
     if enable_color {
-        println!(
+        lines.push(format!(
             "  {}: {}",
             "Events".cyan(),
             session_summary
@@ -268,117 +285,131 @@ fn print_session_summary(events: &[AgentEvent], enable_color: bool) {
                 .total
                 .to_string()
                 .bright_white()
-        );
-        println!(
+        ));
+        lines.push(format!(
             "    User messages: {}",
             session_summary
                 .event_counts
                 .user_messages
                 .to_string()
                 .green()
-        );
-        println!(
+        ));
+        lines.push(format!(
             "    Assistant messages: {}",
             session_summary
                 .event_counts
                 .assistant_messages
                 .to_string()
                 .blue()
-        );
-        println!(
+        ));
+        lines.push(format!(
             "    Tool calls: {}",
             session_summary.event_counts.tool_calls.to_string().yellow()
-        );
-        println!(
+        ));
+        lines.push(format!(
             "    Reasoning blocks: {}",
             session_summary
                 .event_counts
                 .reasoning_blocks
                 .to_string()
                 .cyan()
-        );
+        ));
     } else {
-        println!("  Events: {}", session_summary.event_counts.total);
-        println!(
+        lines.push(format!("  Events: {}", session_summary.event_counts.total));
+        lines.push(format!(
             "    User messages: {}",
             session_summary.event_counts.user_messages
-        );
-        println!(
+        ));
+        lines.push(format!(
             "    Assistant messages: {}",
             session_summary.event_counts.assistant_messages
-        );
-        println!(
+        ));
+        lines.push(format!(
             "    Tool calls: {}",
             session_summary.event_counts.tool_calls
-        );
-        println!(
+        ));
+        lines.push(format!(
             "    Reasoning blocks: {}",
             session_summary.event_counts.reasoning_blocks
-        );
+        ));
     }
 
     if session_summary.token_stats.total > 0 {
         if enable_color {
-            println!(
+            lines.push(format!(
                 "  {}: {}",
                 "Tokens".cyan(),
                 session_summary.token_stats.total.to_string().bright_white()
-            );
-            println!(
+            ));
+            lines.push(format!(
                 "    Input: {}",
                 session_summary.token_stats.input.to_string().bright_white()
-            );
-            println!(
+            ));
+            lines.push(format!(
                 "    Output: {}",
                 session_summary
                     .token_stats
                     .output
                     .to_string()
                     .bright_white()
-            );
+            ));
             if session_summary.token_stats.cached > 0 {
-                println!(
+                lines.push(format!(
                     "    Cached: {}",
                     session_summary
                         .token_stats
                         .cached
                         .to_string()
                         .bright_yellow()
-                );
+                ));
             }
             if session_summary.token_stats.thinking > 0 {
-                println!(
+                lines.push(format!(
                     "    Thinking: {}",
                     session_summary
                         .token_stats
                         .thinking
                         .to_string()
                         .bright_cyan()
-                );
+                ));
             }
         } else {
-            println!("  Tokens: {}", session_summary.token_stats.total);
-            println!("    Input: {}", session_summary.token_stats.input);
-            println!("    Output: {}", session_summary.token_stats.output);
+            lines.push(format!("  Tokens: {}", session_summary.token_stats.total));
+            lines.push(format!("    Input: {}", session_summary.token_stats.input));
+            lines.push(format!(
+                "    Output: {}",
+                session_summary.token_stats.output
+            ));
             if session_summary.token_stats.cached > 0 {
-                println!("    Cached: {}", session_summary.token_stats.cached);
+                lines.push(format!(
+                    "    Cached: {}",
+                    session_summary.token_stats.cached
+                ));
             }
             if session_summary.token_stats.thinking > 0 {
-                println!("    Thinking: {}", session_summary.token_stats.thinking);
+                lines.push(format!(
+                    "    Thinking: {}",
+                    session_summary.token_stats.thinking
+                ));
             }
         }
     }
 
     if let Some(duration) = session_summary.duration {
         if enable_color {
-            println!(
+            lines.push(format!(
                 "  {}: {}m {}s",
                 "Duration".cyan(),
                 duration.minutes,
                 duration.seconds
-            );
+            ));
         } else {
-            println!("  Duration: {}m {}s", duration.minutes, duration.seconds);
+            lines.push(format!(
+                "  Duration: {}m {}s",
+                duration.minutes, duration.seconds
+            ));
         }
     }
+
+    lines
 }

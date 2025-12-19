@@ -5,7 +5,7 @@ use crate::token_limits::TokenLimits;
 use crate::types::OutputFormat;
 use crate::ui::models::*;
 use crate::ui::traits::{DiagnosticView, SessionView, SystemView, WatchView};
-use crate::views::session::{format_token_summary, print_event};
+use crate::views::session::{format_event_with_start, format_token_summary};
 use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};
@@ -529,7 +529,14 @@ impl WatchView for ConsoleTraceView {
 
     fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()> {
         for event in new_events {
-            print_event(event, state.turn_count, state.project_root.as_deref());
+            if let Some(line) = format_event_with_start(
+                event,
+                state.turn_count,
+                state.project_root.as_deref(),
+                Some(state.start_time),
+            ) {
+                println!("{}", line);
+            }
 
             if matches!(event.payload, EventPayload::TokenUsage(_)) {
                 let token_limits = TokenLimits::new();

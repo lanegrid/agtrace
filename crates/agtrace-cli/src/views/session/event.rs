@@ -1,61 +1,96 @@
 use agtrace_types::{AgentEvent, EventPayload};
-use chrono::Local;
+use chrono::{DateTime, Local, Utc};
 use owo_colors::OwoColorize;
 
-pub fn print_event(
+#[allow(dead_code)]
+pub fn format_event(
     event: &AgentEvent,
     turn_context: usize,
     project_root: Option<&std::path::Path>,
-) {
-    let time = event.timestamp.with_timezone(&Local).format("%H:%M:%S");
+) -> Option<String> {
+    format_event_with_start(event, turn_context, project_root, None)
+}
+
+pub fn format_event_with_start(
+    event: &AgentEvent,
+    turn_context: usize,
+    project_root: Option<&std::path::Path>,
+    session_start: Option<DateTime<Utc>>,
+) -> Option<String> {
+    let time = if let Some(start) = session_start {
+        let duration = event.timestamp.signed_duration_since(start);
+        let seconds = duration.num_seconds();
+        if seconds < 60 {
+            format!("[+{:02}s  ]", seconds)
+        } else {
+            let minutes = seconds / 60;
+            let secs = seconds % 60;
+            format!("[+{}m {:02}s]", minutes, secs)
+        }
+    } else {
+        let ts = event.timestamp.with_timezone(&Local).format("%H:%M:%S");
+        format!("[{}]", ts)
+    };
+
+    let time_display = format!("{}", time.bright_black());
 
     match &event.payload {
         EventPayload::User(payload) => {
             if payload.text.trim().is_empty() {
-                return;
+                return None;
             }
             let text = truncate(&payload.text, 100);
-            println!(
+            Some(format!(
                 "{} {} [T{}] \"{}\"",
-                time.dimmed(),
+                time_display,
                 "👤 User:".bold(),
                 turn_context + 1,
                 text
-            );
+            ))
         }
         EventPayload::Reasoning(payload) => {
             if payload.text.trim().is_empty() {
-                return;
+                return None;
             }
             let text = truncate(&payload.text, 50);
-            println!(
+            Some(format!(
                 "{} {} {}",
-                time.dimmed(),
+                time_display,
                 "🧠 Thnk:".dimmed(),
                 text.dimmed()
-            );
+            ))
         }
         EventPayload::ToolCall(payload) => {
             let (icon, color_fn) = categorize_tool(&payload.name);
             let summary = format_tool_call(&payload.name, &payload.arguments, project_root);
 
             let colored_name = color_fn(&payload.name);
-            println!("{} {} {}: {}", time.dimmed(), icon, colored_name, summary);
+            Some(format!(
+                "{} {} {}: {}",
+                time_display, icon, colored_name, summary
+            ))
         }
         EventPayload::ToolResult(payload) => {
             if payload.is_error {
                 let output = truncate(&payload.output, 100);
-                println!("{} {} {}", time.dimmed(), "❌ Fail:".red(), output.red());
+                Some(format!(
+                    "{} {} {}",
+                    time_display,
+                    "❌ Fail:".red(),
+                    output.red()
+                ))
+            } else {
+                None
             }
         }
         EventPayload::Message(payload) => {
             if payload.text.trim().is_empty() {
-                return;
+                return None;
             }
             let text = truncate(&payload.text, 100);
-            println!("{} {} {}", time.dimmed(), "💬 Msg:".cyan(), text);
+            Some(format!("{} {} {}", time_display, "💬 Msg:".cyan(), text))
         }
-        EventPayload::TokenUsage(_) => {}
+        EventPayload::TokenUsage(_) => None,
         EventPayload::Notification(payload) => {
             let (icon, color_fn): (&str, fn(&str) -> String) = match payload.level.as_deref() {
                 Some("warning") => ("⚠️", |s: &str| s.yellow().to_string()),
@@ -64,8 +99,19 @@ pub fn print_event(
             };
             let text = truncate(&payload.text, 100);
             let colored_text = color_fn(&text);
-            println!("{} {} {}", time.dimmed(), icon, colored_text);
+            Some(format!("{} {} {}", time_display, icon, colored_text))
         }
+    }
+}
+
+#[allow(dead_code)]
+pub fn print_event(
+    event: &AgentEvent,
+    turn_context: usize,
+    project_root: Option<&std::path::Path>,
+) {
+    if let Some(line) = format_event(event, turn_context, project_root) {
+        println!("{}", line);
     }
 }
 

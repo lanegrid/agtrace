@@ -3,5 +3,5 @@ pub mod event;
 pub mod timeline;
 
 pub use compact::{format_compact, format_token_summary};
-pub use event::print_event;
+pub use event::format_event_with_start;
 pub use timeline::print_events_timeline;
