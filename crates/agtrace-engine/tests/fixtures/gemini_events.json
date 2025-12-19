@@ -1,7 +1,7 @@
 [
   {
     "id": "cc757acb-0f83-4a31-ad2c-70c85d9a72c5",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": null,
     "timestamp": "2025-12-09T19:51:29.418Z",
     "type": "user",
@@ -17,7 +17,7 @@
   },
   {
     "id": "63950965-e0ce-43e9-9d4d-ff315e99cd02",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "cc757acb-0f83-4a31-ad2c-70c85d9a72c5",
     "timestamp": "2025-12-09T19:51:50.106Z",
     "type": "reasoning",
@@ -81,7 +81,7 @@
   },
   {
     "id": "d2604ff7-d62a-4762-ba10-98c2856c4b2f",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "63950965-e0ce-43e9-9d4d-ff315e99cd02",
     "timestamp": "2025-12-09T19:51:50.106Z",
     "type": "reasoning",
@@ -145,7 +145,7 @@
   },
   {
     "id": "3b4e7373-2c9a-48e6-8242-6eb3db05e883",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "d2604ff7-d62a-4762-ba10-98c2856c4b2f",
     "timestamp": "2025-12-09T19:51:50.106Z",
     "type": "tool_call",
@@ -214,7 +214,7 @@
   },
   {
     "id": "ceeeb947-c85f-488e-a21b-c883e7592e46",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "3b4e7373-2c9a-48e6-8242-6eb3db05e883",
     "timestamp": "2025-12-09T19:51:50.106Z",
     "type": "tool_result",
@@ -280,7 +280,7 @@
   },
   {
     "id": "b36ad63b-cd5c-442c-89f4-6cc98bf246c2",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "ceeeb947-c85f-488e-a21b-c883e7592e46",
     "timestamp": "2025-12-09T19:51:50.106Z",
     "type": "message",
@@ -344,7 +344,7 @@
   },
   {
     "id": "a2aa0c99-9b17-4e16-a776-f04bc84d4198",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "b36ad63b-cd5c-442c-89f4-6cc98bf246c2",
     "timestamp": "2025-12-09T19:51:50.106Z",
     "type": "token_usage",
@@ -417,7 +417,7 @@
   },
   {
     "id": "56bb8634-198a-44a0-91c8-1151278bcb93",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "a2aa0c99-9b17-4e16-a776-f04bc84d4198",
     "timestamp": "2025-12-09T19:52:16.623Z",
     "type": "reasoning",
@@ -475,7 +475,7 @@
   },
   {
     "id": "f7259e4e-a3ed-4531-aff8-a7a00011898a",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "56bb8634-198a-44a0-91c8-1151278bcb93",
     "timestamp": "2025-12-09T19:52:16.623Z",
     "type": "tool_call",
@@ -538,7 +538,7 @@
   },
   {
     "id": "3886fd42-6ec8-4018-95b9-322d60271191",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "f7259e4e-a3ed-4531-aff8-a7a00011898a",
     "timestamp": "2025-12-09T19:52:16.623Z",
     "type": "tool_result",
@@ -598,7 +598,7 @@
   },
   {
     "id": "88e62873-9a54-41c7-86fa-6fad5f8dab79",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "3886fd42-6ec8-4018-95b9-322d60271191",
     "timestamp": "2025-12-09T19:52:16.623Z",
     "type": "message",
@@ -656,7 +656,7 @@
   },
   {
     "id": "20a8887e-7440-4b69-a4e2-51fe38969b5a",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "88e62873-9a54-41c7-86fa-6fad5f8dab79",
     "timestamp": "2025-12-09T19:52:16.623Z",
     "type": "token_usage",
@@ -723,7 +723,7 @@
   },
   {
     "id": "0d1f0387-131c-4268-8ee4-25a95f630d29",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "20a8887e-7440-4b69-a4e2-51fe38969b5a",
     "timestamp": "2025-12-09T19:52:21.382Z",
     "type": "reasoning",
@@ -782,7 +782,7 @@
   },
   {
     "id": "f6475f41-d7ba-480e-8922-095d8b2bd00a",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "0d1f0387-131c-4268-8ee4-25a95f630d29",
     "timestamp": "2025-12-09T19:52:21.382Z",
     "type": "tool_call",
@@ -846,7 +846,7 @@
   },
   {
     "id": "22ff89be-04ed-4cc5-9ae7-9b8080602bac",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "f6475f41-d7ba-480e-8922-095d8b2bd00a",
     "timestamp": "2025-12-09T19:52:21.382Z",
     "type": "tool_result",
@@ -907,7 +907,7 @@
   },
   {
     "id": "37732e47-2724-4b52-9846-d5b88f2392be",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "22ff89be-04ed-4cc5-9ae7-9b8080602bac",
     "timestamp": "2025-12-09T19:52:21.382Z",
     "type": "message",
@@ -966,7 +966,7 @@
   },
   {
     "id": "8ed4dd3e-7674-4508-bea2-38a2c55002ca",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "37732e47-2724-4b52-9846-d5b88f2392be",
     "timestamp": "2025-12-09T19:52:21.382Z",
     "type": "token_usage",
@@ -1034,7 +1034,7 @@
   },
   {
     "id": "aa7bd400-ae47-4283-8736-80a4f849b2bd",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "8ed4dd3e-7674-4508-bea2-38a2c55002ca",
     "timestamp": "2025-12-09T19:52:26.013Z",
     "type": "reasoning",
@@ -1066,7 +1066,7 @@
   },
   {
     "id": "e6780f21-4150-4a0e-8d76-f8ff9bff5397",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "aa7bd400-ae47-4283-8736-80a4f849b2bd",
     "timestamp": "2025-12-09T19:52:26.013Z",
     "type": "message",
@@ -1098,7 +1098,7 @@
   },
   {
     "id": "ac4746c8-8b22-4ccb-ae98-438ec924a8dc",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "e6780f21-4150-4a0e-8d76-f8ff9bff5397",
     "timestamp": "2025-12-09T19:52:26.013Z",
     "type": "token_usage",
@@ -1139,7 +1139,7 @@
   },
   {
     "id": "8142ec33-397a-4fc0-ac0f-94fdfcc0ba74",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "ac4746c8-8b22-4ccb-ae98-438ec924a8dc",
     "timestamp": "2025-12-09T19:52:58.592Z",
     "type": "user",
@@ -1155,7 +1155,7 @@
   },
   {
     "id": "fbe51378-70fd-418c-82b8-21dc8152b8c5",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "8142ec33-397a-4fc0-ac0f-94fdfcc0ba74",
     "timestamp": "2025-12-09T19:53:16.156Z",
     "type": "reasoning",
@@ -1214,7 +1214,7 @@
   },
   {
     "id": "ff2c1a6c-ec94-4206-a7a4-cc63492a9a25",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "fbe51378-70fd-418c-82b8-21dc8152b8c5",
     "timestamp": "2025-12-09T19:53:16.156Z",
     "type": "tool_call",
@@ -1278,7 +1278,7 @@
   },
   {
     "id": "246489cc-e407-4876-880b-f33aca4a0ad1",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "ff2c1a6c-ec94-4206-a7a4-cc63492a9a25",
     "timestamp": "2025-12-09T19:53:16.156Z",
     "type": "tool_result",
@@ -1339,7 +1339,7 @@
   },
   {
     "id": "b2d91d66-8913-4aa5-aae4-88b2b94d6bf6",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "246489cc-e407-4876-880b-f33aca4a0ad1",
     "timestamp": "2025-12-09T19:53:16.156Z",
     "type": "message",
@@ -1398,7 +1398,7 @@
   },
   {
     "id": "b70ab4bc-6907-4765-923a-8397dda01365",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "b2d91d66-8913-4aa5-aae4-88b2b94d6bf6",
     "timestamp": "2025-12-09T19:53:16.156Z",
     "type": "token_usage",
@@ -1466,7 +1466,7 @@
   },
   {
     "id": "e681433d-b3b4-4ae2-bd9a-605ca154c918",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "b70ab4bc-6907-4765-923a-8397dda01365",
     "timestamp": "2025-12-09T19:54:17.694Z",
     "type": "reasoning",
@@ -1530,7 +1530,7 @@
   },
   {
     "id": "ac9d69fe-c30a-4b13-bf38-3837b1b28f67",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "e681433d-b3b4-4ae2-bd9a-605ca154c918",
     "timestamp": "2025-12-09T19:54:17.694Z",
     "type": "reasoning",
@@ -1594,7 +1594,7 @@
   },
   {
     "id": "672e951f-37b7-42b8-8719-39af19f5386a",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "ac9d69fe-c30a-4b13-bf38-3837b1b28f67",
     "timestamp": "2025-12-09T19:54:17.694Z",
     "type": "tool_call",
@@ -1663,7 +1663,7 @@
   },
   {
     "id": "c9f91bfb-82d0-46f7-833b-1b63f94a5e97",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "672e951f-37b7-42b8-8719-39af19f5386a",
     "timestamp": "2025-12-09T19:54:17.694Z",
     "type": "tool_result",
@@ -1729,7 +1729,7 @@
   },
   {
     "id": "d8228837-42c1-4b00-bac7-6bf9b39339f9",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "c9f91bfb-82d0-46f7-833b-1b63f94a5e97",
     "timestamp": "2025-12-09T19:54:17.694Z",
     "type": "message",
@@ -1793,7 +1793,7 @@
   },
   {
     "id": "06021301-c6a8-4369-a4b4-24d21889d0c2",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "d8228837-42c1-4b00-bac7-6bf9b39339f9",
     "timestamp": "2025-12-09T19:54:17.694Z",
     "type": "token_usage",
@@ -1866,7 +1866,7 @@
   },
   {
     "id": "f5bbde22-4af8-45e1-a254-5e495fe6fd21",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "06021301-c6a8-4369-a4b4-24d21889d0c2",
     "timestamp": "2025-12-09T19:54:21.715Z",
     "type": "reasoning",
@@ -1898,7 +1898,7 @@
   },
   {
     "id": "f830e088-cd79-4a50-966a-90ef47652e2c",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "f5bbde22-4af8-45e1-a254-5e495fe6fd21",
     "timestamp": "2025-12-09T19:54:21.715Z",
     "type": "message",
@@ -1930,7 +1930,7 @@
   },
   {
     "id": "92af4d27-5081-4853-a5b7-1fcbc53b59cb",
-    "trace_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
+    "session_id": "4fe1f6a2-e7df-5f76-96ed-1f032509f10d",
     "parent_id": "f830e088-cd79-4a50-966a-90ef47652e2c",
     "timestamp": "2025-12-09T19:54:21.715Z",
     "type": "token_usage",
