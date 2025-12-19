@@ -1,3 +1,3 @@
 mod watcher;
 
-pub use watcher::{SessionUpdate, SessionWatcher, StreamEvent};
+pub use watcher::{SessionUpdate, SessionWatcher, WatchEvent};

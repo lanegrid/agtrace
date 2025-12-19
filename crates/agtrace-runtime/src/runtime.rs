@@ -1,5 +1,5 @@
 use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState};
-use crate::streaming::{SessionUpdate, SessionWatcher, StreamEvent};
+use crate::streaming::{SessionUpdate, SessionWatcher, WatchEvent};
 use agtrace_engine::extract_state_updates;
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
@@ -76,13 +76,13 @@ impl Runtime {
                 loop {
                     match watcher.receiver().recv() {
                         Ok(event) => match event {
-                            StreamEvent::Attached { path, session_id } => {
+                            WatchEvent::Attached { path, session_id } => {
                                 just_attached = true;
                                 let display_name =
                                     format_session_display_name(&path, session_id.as_deref());
                                 let _ = tx.send(RuntimeEvent::SessionAttached { display_name });
                             }
-                            StreamEvent::Update(update) => {
+                            WatchEvent::Update(update) => {
                                 if let Err(e) = handle_update(
                                     &update,
                                     &mut session_state,
@@ -96,15 +96,15 @@ impl Runtime {
                                 }
                                 just_attached = false;
                             }
-                            StreamEvent::SessionRotated { old_path, new_path } => {
+                            WatchEvent::SessionRotated { old_path, new_path } => {
                                 session_state = None;
                                 let _ =
                                     tx.send(RuntimeEvent::SessionRotated { old_path, new_path });
                             }
-                            StreamEvent::Waiting { message } => {
+                            WatchEvent::Waiting { message } => {
                                 let _ = tx.send(RuntimeEvent::Waiting { message });
                             }
-                            StreamEvent::Error(msg) => {
+                            WatchEvent::Error(msg) => {
                                 if msg.starts_with("FATAL:") {
                                     let _ = tx.send(RuntimeEvent::FatalError(msg));
                                     return;

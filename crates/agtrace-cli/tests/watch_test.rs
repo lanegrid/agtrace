@@ -1,5 +1,5 @@
 use agtrace_providers::{create_provider, LogProvider};
-use agtrace_runtime::streaming::{SessionWatcher, StreamEvent};
+use agtrace_runtime::streaming::{SessionWatcher, WatchEvent};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -32,7 +32,7 @@ fn test_waiting_mode_to_active_file_sends_update() {
         .expect("Should receive Waiting event");
 
     match event {
-        StreamEvent::Waiting { .. } => {}
+        WatchEvent::Waiting { .. } => {}
         other => panic!("Expected Waiting event, got: {:?}", other),
     }
 
@@ -55,7 +55,7 @@ fn test_waiting_mode_to_active_file_sends_update() {
         .expect("Should receive Attached event after file creation");
 
     match event {
-        StreamEvent::Attached { path, .. } => {
+        WatchEvent::Attached { path, .. } => {
             assert_eq!(path, session_file);
         }
         other => panic!("Expected Attached event, got: {:?}", other),
@@ -65,7 +65,7 @@ fn test_waiting_mode_to_active_file_sends_update() {
     let event = rx.recv_timeout(Duration::from_secs(2));
 
     match event {
-        Ok(StreamEvent::Update(update)) => {
+        Ok(WatchEvent::Update(update)) => {
             assert!(
                 !update.new_events.is_empty(),
                 "Should receive Update with existing events from newly attached file"

@@ -32,7 +32,7 @@ struct EventHandlerState {
 
 struct EventHandlerContext<'a> {
     log_root: &'a Path,
-    tx: &'a Sender<StreamEvent>,
+    tx: &'a Sender<WatchEvent>,
     provider: &'a Arc<dyn LogProvider>,
     project_root: Option<&'a Path>,
 }
@@ -46,7 +46,7 @@ pub struct SessionUpdate {
 }
 
 #[derive(Debug, Clone)]
-pub enum StreamEvent {
+pub enum WatchEvent {
     Attached {
         path: PathBuf,
         session_id: Option<String>,
@@ -64,7 +64,7 @@ pub enum StreamEvent {
 
 pub struct SessionWatcher {
     _watcher: PollWatcher,
-    rx: Receiver<StreamEvent>,
+    rx: Receiver<WatchEvent>,
 }
 
 impl SessionWatcher {
@@ -115,7 +115,7 @@ impl SessionWatcher {
             } => {
                 state.current_session_id = Some(session_id.clone());
 
-                let _ = tx_out.send(StreamEvent::Attached {
+                let _ = tx_out.send(WatchEvent::Attached {
                     path: initial_path.clone(),
                     session_id: Some(session_id.clone()),
                 });
@@ -132,12 +132,12 @@ impl SessionWatcher {
                 {
                     if !new_events.is_empty() {
                         let update = build_session_update(all_events, new_events, total_events);
-                        let _ = tx_out.send(StreamEvent::Update(update));
+                        let _ = tx_out.send(WatchEvent::Update(update));
                     }
                 }
             }
             WatchTarget::Waiting { message } => {
-                let _ = tx_out.send(StreamEvent::Waiting { message });
+                let _ = tx_out.send(WatchEvent::Waiting { message });
             }
         }
 
@@ -155,7 +155,7 @@ impl SessionWatcher {
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     while let Ok(event) = rx_fs.recv() {
                         if let Err(e) = handle_fs_event(&event, &mut state, &context) {
-                            let _ = tx_worker.send(StreamEvent::Error(format!(
+                            let _ = tx_worker.send(WatchEvent::Error(format!(
                                 "File system event handling error: {}",
                                 e
                             )));
@@ -171,7 +171,7 @@ impl SessionWatcher {
                     } else {
                         "Worker thread panicked with unknown error".to_string()
                     };
-                    let _ = tx_worker.send(StreamEvent::Error(format!(
+                    let _ = tx_worker.send(WatchEvent::Error(format!(
                         "FATAL: Worker thread panicked: {}",
                         panic_msg
                     )));
@@ -184,7 +184,7 @@ impl SessionWatcher {
         })
     }
 
-    pub fn receiver(&self) -> &Receiver<StreamEvent> {
+    pub fn receiver(&self) -> &Receiver<WatchEvent> {
         &self.rx
     }
 }
@@ -228,7 +228,7 @@ fn handle_fs_event(
                     });
 
                     if let Some(old_p) = old_path {
-                        let _ = context.tx.send(StreamEvent::SessionRotated {
+                        let _ = context.tx.send(WatchEvent::SessionRotated {
                             old_path: old_p,
                             new_path: path.clone(),
                         });
@@ -236,7 +236,7 @@ fn handle_fs_event(
 
                     state.current_session_id = Some(session_id.clone());
 
-                    let _ = context.tx.send(StreamEvent::Attached {
+                    let _ = context.tx.send(WatchEvent::Attached {
                         path: path.clone(),
                         session_id: Some(session_id.clone()),
                     });
@@ -249,7 +249,7 @@ fn handle_fs_event(
                 {
                     if !new_events.is_empty() {
                         let update = build_session_update(all_events, new_events, total_events);
-                        let _ = context.tx.send(StreamEvent::Update(update));
+                        let _ = context.tx.send(WatchEvent::Update(update));
                     }
                 }
 
