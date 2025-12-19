@@ -116,7 +116,9 @@ pub fn format_events_timeline(
 
     let session_start = events.first().map(|e| e.timestamp);
 
-    for (i, event) in events.iter().enumerate() {
+    // Count user messages to determine turn context
+    let mut turn_count = 0;
+    for event in events.iter() {
         // Skip TokenUsage events in timeline display (shown in summary)
         if matches!(event.payload, EventPayload::TokenUsage(_)) {
             continue;
@@ -125,11 +127,16 @@ pub fn format_events_timeline(
         // Use the shared formatting function to ensure consistency with watch
         if let Some(line) = format_event_with_start(
             event,
-            i,    // turn_context
-            None, // project_root (timeline doesn't have this context)
+            turn_count, // turn_context (0-indexed)
+            None,       // project_root (timeline doesn't have this context)
             session_start,
         ) {
             lines.push(line);
+        }
+
+        // Increment turn count after processing user messages
+        if matches!(event.payload, EventPayload::User(_)) {
+            turn_count += 1;
         }
     }
 
