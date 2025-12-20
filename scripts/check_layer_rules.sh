@@ -451,7 +451,8 @@ if [ -f "$traits_file" ]; then
 
     # Check trait method signatures for domain types (handles multi-line signatures)
     # Scan entire file for domain type usage in trait contexts
-    domain_type_usage=$(grep -n "SessionSummary\|SessionState\|&Reaction\|: Reaction" "$traits_file" | grep -v "^[[:space:]]*/" | grep -v "^[[:space:]]*//" || true)
+    # Use word boundaries to avoid matching ViewModels (e.g., ReactionViewModel)
+    domain_type_usage=$(grep -n "SessionSummary\|SessionState\|&Reaction[^V]\|: Reaction[^V]\|&Reaction>\|: Reaction>" "$traits_file" | grep -v "^[[:space:]]*/" | grep -v "^[[:space:]]*//" || true)
     if [ -n "$domain_type_usage" ]; then
         echo -e "${RED}❌ VIOLATION: Renderer Trait methods use domain types${NC}"
         echo -e "   File: ${BLUE}$traits_file${NC}"
