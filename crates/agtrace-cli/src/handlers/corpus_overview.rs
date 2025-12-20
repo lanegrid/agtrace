@@ -1,4 +1,4 @@
-use crate::context::ExecutionContext;
+use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::CorpusStats;
 use agtrace_types::resolve_effective_project_hash;

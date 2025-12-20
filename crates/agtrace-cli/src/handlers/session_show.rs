@@ -1,7 +1,7 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
 use crate::args::ViewStyle;
-use crate::context::ExecutionContext;
+use super::context::ExecutionContext;
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{DisplayOptions, RawFileContent};

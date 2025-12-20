@@ -3,7 +3,7 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::context::ExecutionContext;
+use crate::handlers::ExecutionContext;
 use crate::presentation::renderers::{ConsoleTraceView, TraceView};
 use crate::presentation::view_models::GuidanceContext;
 use anyhow::Result;

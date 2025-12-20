@@ -1,5 +1,5 @@
 use crate::args::OutputFormat;
-use crate::context::ExecutionContext;
+use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::SessionListEntryViewModel;
 use agtrace_runtime::SessionFilter;

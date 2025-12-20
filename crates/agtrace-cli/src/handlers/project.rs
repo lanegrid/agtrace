@@ -1,4 +1,4 @@
-use crate::context::ExecutionContext;
+use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::ProjectSummary;
 use agtrace_types::discover_project_root;

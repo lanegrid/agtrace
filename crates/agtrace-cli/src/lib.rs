@@ -27,7 +27,6 @@
 
 mod args;
 mod commands;
-pub mod context;
 mod handlers;
 pub mod presentation;
 mod services;

@@ -1,4 +1,4 @@
-use crate::context::ExecutionContext;
+use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use agtrace_runtime::{AgTrace, InitConfig, InitProgress};
 use anyhow::Result;
