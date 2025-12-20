@@ -71,8 +71,8 @@ pub fn print_init_result(result: &InitResult) {
         }
     }
 
-    println!("\nRecent sessions:");
-    if result.recent_sessions.is_empty() {
+    println!("\nSessions:");
+    if result.session_count == 0 {
         if result.all_projects {
             println!("  No sessions found.");
             println!("\nTips:");
@@ -84,23 +84,12 @@ pub fn print_init_result(result: &InitResult) {
             println!("  - Scan all projects: agtrace init --all-projects");
             println!("  - Or: agtrace index update --all-projects");
         }
-    } else if let Some(first_session) = result.recent_sessions.first() {
-        let session_prefix = if first_session.id.len() > 8 {
-            &first_session.id[..8]
-        } else {
-            &first_session.id
-        };
-
+    } else {
+        println!("  Found {} sessions", result.session_count);
         println!("\nNext steps:");
-        println!("  View session in compact style (see bottlenecks and tool chains):");
-        println!(
-            "    agtrace session show {} --style compact",
-            session_prefix
-        );
-        println!("\n  View conversation only (for LLM consumption):");
-        println!(
-            "    agtrace session show {} --only user,assistant --full",
-            session_prefix
-        );
+        println!("  View recent sessions:");
+        println!("    agtrace list");
+        println!("\n  View specific session:");
+        println!("    agtrace session show <id> --style compact");
     }
 }

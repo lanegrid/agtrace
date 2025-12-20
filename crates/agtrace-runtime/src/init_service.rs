@@ -1,5 +1,5 @@
 use crate::config_service::Config;
-use agtrace_index::{Database, SessionSummary};
+use agtrace_index::Database;
 use agtrace_providers::get_all_providers;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
@@ -44,7 +44,7 @@ pub struct InitResult {
     pub config_status: ConfigStatus,
     pub db_path: PathBuf,
     pub scan_outcome: ScanOutcome,
-    pub recent_sessions: Vec<SessionSummary>,
+    pub session_count: usize,
     pub all_projects: bool,
     pub scan_needed: bool,
 }
@@ -78,7 +78,7 @@ impl InitService {
                 scan_outcome: ScanOutcome::Skipped {
                     elapsed: Duration::zero(),
                 },
-                recent_sessions: vec![],
+                session_count: 0,
                 all_projects: config.all_projects,
                 scan_needed: false,
             });
@@ -105,14 +105,13 @@ impl InitService {
         if let Some(ref mut f) = progress_fn {
             f(InitProgress::SessionPhase);
         }
-        let recent_sessions =
-            Self::step4_sessions(&db, &current_project_hash, config.all_projects)?;
+        let session_count = Self::step4_sessions(&db, &current_project_hash, config.all_projects)?;
 
         Ok(InitResult {
             config_status,
             db_path: db_path.clone(),
             scan_outcome,
-            recent_sessions,
+            session_count,
             all_projects: config.all_projects,
             scan_needed,
         })
@@ -194,18 +193,15 @@ impl InitService {
         }
     }
 
-    fn step4_sessions(
-        db: &Database,
-        project_hash: &str,
-        all_projects: bool,
-    ) -> Result<Vec<SessionSummary>> {
+    fn step4_sessions(db: &Database, project_hash: &str, all_projects: bool) -> Result<usize> {
         let effective_hash = if all_projects {
             None
         } else {
             Some(project_hash)
         };
 
-        db.list_sessions(effective_hash, 10)
+        let sessions = db.list_sessions(effective_hash, 10)?;
+        Ok(sessions.len())
     }
 }
 
