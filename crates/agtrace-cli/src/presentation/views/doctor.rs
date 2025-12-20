@@ -1,5 +1,6 @@
 use crate::presentation::view_models::{
-    DiagnoseResultViewModel, EventPayloadViewModel, EventViewModel,
+    DiagnoseResultViewModel, DoctorCheckResultViewModel, DoctorCheckStatus, EventPayloadViewModel,
+    EventViewModel,
 };
 use owo_colors::OwoColorize;
 use std::collections::HashMap;
@@ -73,6 +74,77 @@ pub fn print_check_result(
             println!("       agtrace inspect {} --lines 20", file_path);
             println!("  2. Compare with expected schema:");
             let provider_first_word = provider_name.split_whitespace().next().unwrap_or("");
+            println!("       agtrace schema {}", provider_first_word);
+            println!("  3. Update schema definition if needed");
+        }
+    }
+}
+
+pub fn print_check_result_vm(result: &DoctorCheckResultViewModel) {
+    println!("File: {}", result.file_path);
+    println!("Provider: {}", result.provider_name);
+
+    match result.status {
+        DoctorCheckStatus::Success => {
+            let first_event = result.events.first();
+            let session_id = first_event
+                .map(|e| e.session_id.clone())
+                .unwrap_or_default();
+            let timestamp = first_event
+                .map(|e| e.timestamp)
+                .unwrap_or_else(chrono::Utc::now);
+
+            let mut event_breakdown = HashMap::new();
+            for event in &result.events {
+                let payload_type = match &event.payload {
+                    EventPayloadViewModel::User { .. } => "User",
+                    EventPayloadViewModel::Message { .. } => "Message",
+                    EventPayloadViewModel::ToolCall { .. } => "ToolCall",
+                    EventPayloadViewModel::ToolResult { .. } => "ToolResult",
+                    EventPayloadViewModel::Reasoning { .. } => "Reasoning",
+                    EventPayloadViewModel::TokenUsage { .. } => "TokenUsage",
+                    EventPayloadViewModel::Notification { .. } => "Notification",
+                };
+                *event_breakdown.entry(payload_type).or_insert(0) += 1;
+            }
+
+            println!("Status: {}", "✓ Valid".green().bold());
+            println!();
+            println!("Parsed successfully:");
+            println!("  - Session ID: {}", session_id);
+            println!("  - Timestamp: {}", timestamp);
+            println!("  - Events extracted: {}", result.events.len());
+
+            if !event_breakdown.is_empty() {
+                println!("  - Event breakdown:");
+                for (payload_type, count) in event_breakdown {
+                    println!("      {}: {}", payload_type, count);
+                }
+            }
+        }
+        DoctorCheckStatus::Failure => {
+            let error_message = result.error_message.as_deref().unwrap_or("Unknown error");
+            let suggestion = generate_suggestion(error_message, &result.file_path);
+
+            println!("Status: {}", "✗ Invalid".red().bold());
+            println!();
+            println!("Parse error:");
+            println!("  {}", error_message.red());
+            println!();
+
+            if let Some(suggestion_text) = suggestion {
+                println!("{}", "Suggestion:".cyan().bold());
+                for line in suggestion_text.lines() {
+                    println!("  {}", line);
+                }
+            }
+
+            println!();
+            println!("Next steps:");
+            println!("  1. Examine the actual data:");
+            println!("       agtrace inspect {} --lines 20", result.file_path);
+            println!("  2. Compare with expected schema:");
+            let provider_first_word = result.provider_name.split_whitespace().next().unwrap_or("");
             println!("       agtrace schema {}", provider_first_word);
             println!("  3. Update schema definition if needed");
         }

@@ -2,10 +2,10 @@ use super::traits::WatchView;
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::DisplayOptions;
 use crate::presentation::view_models::{
-    EventPayloadViewModel, EventViewModel, WatchStart, WatchSummary,
+    EventPayloadViewModel, EventViewModel, ReactionViewModel, StreamStateViewModel, WatchStart,
+    WatchSummary,
 };
 use crate::presentation::views::EventView;
-use agtrace_runtime::reactor::{Reaction, SessionState};
 use anyhow::Result;
 use crossterm::{
     cursor, execute, queue, terminal,
@@ -196,13 +196,13 @@ impl WatchView for TuiWatchView {
         Ok(())
     }
 
-    fn on_watch_reaction(&self, _reaction: &Reaction) -> Result<()> {
+    fn on_watch_reaction(&self, _reaction: &ReactionViewModel) -> Result<()> {
         Ok(())
     }
 
     fn render_stream_update(
         &self,
-        state: &SessionState,
+        state: &StreamStateViewModel,
         new_events: &[EventViewModel],
     ) -> Result<()> {
         let mut inner = self.inner.lock().unwrap();
@@ -212,7 +212,7 @@ impl WatchView for TuiWatchView {
             inner.session_start_time = Some(state.start_time);
         }
         inner.turn_count = state.turn_count;
-        inner.project_root = state.project_root.clone();
+        inner.project_root = state.project_root.as_ref().map(|s| s.into());
 
         // Format and buffer new events
         for event in new_events {
@@ -247,7 +247,16 @@ impl WatchView for TuiWatchView {
                     truncate_text: None,
                 };
 
-                let token_view = TokenUsageView::from_state(state, opts);
+                let token_view = TokenUsageView::from_usage_data(
+                    state.current_usage.fresh_input,
+                    state.current_usage.cache_creation,
+                    state.current_usage.cache_read,
+                    state.current_usage.output,
+                    state.current_reasoning_tokens,
+                    state.model.clone(),
+                    state.context_window_limit,
+                    opts,
+                );
                 let footer_output = format!("{}", token_view);
                 inner.footer_lines = footer_output.lines().map(|s| s.to_string()).collect();
             }

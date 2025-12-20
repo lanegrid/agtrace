@@ -1,12 +1,12 @@
 use crate::presentation::view_models::{
-    CorpusStats, DiagnoseResultViewModel, EventViewModel, GuidanceContext, IndexEvent,
-    InitRenderEvent, InspectDisplay, ProjectSummary, ProviderConfigSummary, ProviderSetResult,
-    RawFileContent, SessionDigestViewModel, SessionViewModel, WatchStart, WatchSummary,
+    CorpusStats, DiagnoseResultViewModel, DoctorCheckResultViewModel, EventViewModel,
+    GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
+    ProviderConfigSummary, ProviderSetResult, RawFileContent, ReactionViewModel,
+    SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel, StreamStateViewModel,
+    WatchStart, WatchSummary,
 };
 use crate::presentation::views::ReportTemplate;
 use crate::types::OutputFormat;
-use agtrace_index::SessionSummary;
-use agtrace_runtime::reactor::{Reaction, SessionState};
 use anyhow::Result;
 use std::path::Path;
 
@@ -39,7 +39,11 @@ pub trait SystemView {
 }
 
 pub trait SessionView {
-    fn render_session_list(&self, sessions: &[SessionSummary], format: OutputFormat) -> Result<()>;
+    fn render_session_list(
+        &self,
+        sessions: &[SessionListEntryViewModel],
+        format: OutputFormat,
+    ) -> Result<()>;
     fn render_session_raw_files(&self, files: &[RawFileContent]) -> Result<()>;
     fn render_session_events_json(&self, events: &[EventViewModel]) -> Result<()>;
     fn render_session_compact(
@@ -64,12 +68,7 @@ pub trait SessionView {
 }
 
 pub trait DiagnosticView {
-    fn render_doctor_check(
-        &self,
-        file_path: &str,
-        provider_name: &str,
-        result: Result<&[EventViewModel], &anyhow::Error>,
-    ) -> Result<()>;
+    fn render_doctor_check(&self, result: &DoctorCheckResultViewModel) -> Result<()>;
     fn render_diagnose_results(
         &self,
         results: &[DiagnoseResultViewModel],
@@ -89,10 +88,10 @@ pub trait WatchView {
     fn on_watch_token_warning(&self, warning: &str) -> Result<()>;
     fn on_watch_reactor_error(&self, reactor_name: &str, error: &str) -> Result<()>;
     fn on_watch_reaction_error(&self, error: &str) -> Result<()>;
-    fn on_watch_reaction(&self, reaction: &Reaction) -> Result<()>;
+    fn on_watch_reaction(&self, reaction: &ReactionViewModel) -> Result<()>;
     fn render_stream_update(
         &self,
-        state: &SessionState,
+        state: &StreamStateViewModel,
         new_events: &[EventViewModel],
     ) -> Result<()>;
 }

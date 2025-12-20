@@ -2,7 +2,9 @@ use crate::context::ExecutionContext;
 use crate::presentation::presenters;
 use crate::presentation::renderers::traits::WatchView;
 use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
-use crate::presentation::view_models::{WatchStart, WatchSummary};
+use crate::presentation::view_models::{
+    ContextWindowUsageViewModel, ReactionViewModel, StreamStateViewModel, WatchStart, WatchSummary,
+};
 use agtrace_runtime::{Runtime, RuntimeConfig, RuntimeEvent, TokenUsageMonitor};
 use anyhow::Result;
 use is_terminal::IsTerminal;
@@ -14,6 +16,37 @@ pub enum WatchTarget {
     Provider { name: String },
     Session { id: String },
 }
+
+fn convert_session_state_to_vm(
+    state: &agtrace_runtime::reactor::SessionState,
+) -> StreamStateViewModel {
+    StreamStateViewModel {
+        session_id: state.session_id.clone(),
+        project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
+        start_time: state.start_time,
+        last_activity: state.last_activity,
+        model: state.model.clone(),
+        context_window_limit: state.context_window_limit,
+        current_usage: ContextWindowUsageViewModel {
+            fresh_input: state.current_usage.fresh_input.0,
+            cache_creation: state.current_usage.cache_creation.0,
+            cache_read: state.current_usage.cache_read.0,
+            output: state.current_usage.output.0,
+        },
+        current_reasoning_tokens: state.current_reasoning_tokens,
+        error_count: state.error_count,
+        event_count: state.event_count,
+        turn_count: state.turn_count,
+    }
+}
+
+fn convert_reaction_to_vm(reaction: &agtrace_runtime::reactor::Reaction) -> ReactionViewModel {
+    match reaction {
+        agtrace_runtime::reactor::Reaction::Continue => ReactionViewModel::Continue,
+        agtrace_runtime::reactor::Reaction::Warn(msg) => ReactionViewModel::Warn(msg.clone()),
+    }
+}
+
 pub fn handle(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
     // Auto-select TUI mode if stdout is a TTY
     let use_tui = std::io::stdout().is_terminal();
@@ -96,10 +129,12 @@ pub fn handle_with_view(
                     initialized = true;
                 }
                 let event_vms = presenters::present_events(&new_events);
-                view.render_stream_update(&state, &event_vms)?;
+                let state_vm = convert_session_state_to_vm(&state);
+                view.render_stream_update(&state_vm, &event_vms)?;
             }
             RuntimeEvent::ReactionTriggered { reaction, .. } => {
-                view.on_watch_reaction(&reaction)?
+                let reaction_vm = convert_reaction_to_vm(&reaction);
+                view.on_watch_reaction(&reaction_vm)?
             }
             RuntimeEvent::SessionRotated { old_path, new_path } => {
                 initialized = false;

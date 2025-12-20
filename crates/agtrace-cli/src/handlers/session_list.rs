@@ -1,5 +1,6 @@
 use crate::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
+use crate::presentation::view_models::SessionListEntryViewModel;
 use crate::types::OutputFormat;
 use agtrace_index::Database;
 use agtrace_types::resolve_effective_project_hash;
@@ -79,7 +80,19 @@ pub fn handle(
     // Apply limit after filtering
     sessions.truncate(limit);
 
-    view.render_session_list(&sessions, format)?;
+    // Convert to ViewModels
+    let session_vms: Vec<SessionListEntryViewModel> = sessions
+        .into_iter()
+        .map(|s| SessionListEntryViewModel {
+            id: s.id,
+            provider: s.provider,
+            project_hash: s.project_hash,
+            start_ts: s.start_ts,
+            snippet: s.snippet,
+        })
+        .collect();
+
+    view.render_session_list(&session_vms, format)?;
 
     Ok(())
 }

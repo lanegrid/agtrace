@@ -77,3 +77,41 @@ pub struct SessionDigestViewModel {
     pub recency_boost: u32,
     pub selection_reason: Option<String>,
 }
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SessionListEntryViewModel {
+    pub id: String,
+    pub provider: String,
+    pub project_hash: String,
+    pub start_ts: Option<String>,
+    pub snippet: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ReactionViewModel {
+    Continue,
+    Warn(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct ContextWindowUsageViewModel {
+    pub fresh_input: i32,
+    pub cache_creation: i32,
+    pub cache_read: i32,
+    pub output: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct StreamStateViewModel {
+    pub session_id: String,
+    pub project_root: Option<String>,
+    pub start_time: DateTime<Utc>,
+    pub last_activity: DateTime<Utc>,
+    pub model: Option<String>,
+    pub context_window_limit: Option<u64>,
+    pub current_usage: ContextWindowUsageViewModel,
+    pub current_reasoning_tokens: i32,
+    pub error_count: u32,
+    pub event_count: usize,
+    pub turn_count: usize,
+}

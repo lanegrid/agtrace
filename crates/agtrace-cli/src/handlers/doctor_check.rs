@@ -1,5 +1,6 @@
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
+use crate::presentation::view_models::{DoctorCheckResultViewModel, DoctorCheckStatus};
 use agtrace_providers::{create_provider, detect_provider_from_path, ImportContext, LogProvider};
 use anyhow::Result;
 use std::path::Path;
@@ -32,15 +33,31 @@ pub fn handle(
         all_projects: true,
     };
 
-    match provider.normalize_file(path, &context) {
+    let result_vm = match provider.normalize_file(path, &context) {
         Ok(events) => {
             let event_vms = presenters::present_events(&events);
-            view.render_doctor_check(&file_path, &provider_name, Ok(&event_vms))?;
-            Ok(())
+            DoctorCheckResultViewModel {
+                file_path: file_path.clone(),
+                provider_name: provider_name.clone(),
+                status: DoctorCheckStatus::Success,
+                events: event_vms,
+                error_message: None,
+            }
         }
-        Err(e) => {
-            view.render_doctor_check(&file_path, &provider_name, Err(&e))?;
-            anyhow::bail!("Validation failed");
-        }
+        Err(e) => DoctorCheckResultViewModel {
+            file_path: file_path.clone(),
+            provider_name: provider_name.clone(),
+            status: DoctorCheckStatus::Failure,
+            events: vec![],
+            error_message: Some(format!("{:#}", e)),
+        },
+    };
+
+    view.render_doctor_check(&result_vm)?;
+
+    if matches!(result_vm.status, DoctorCheckStatus::Failure) {
+        anyhow::bail!("Validation failed");
     }
+
+    Ok(())
 }

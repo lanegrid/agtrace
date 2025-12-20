@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::presentation::view_models::EventViewModel;
+
 #[derive(Debug, Clone)]
 pub struct DiagnoseResultViewModel {
     pub provider_name: String,
@@ -12,4 +14,19 @@ pub struct DiagnoseResultViewModel {
 pub struct FailureExampleViewModel {
     pub path: String,
     pub reason: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum DoctorCheckStatus {
+    Success,
+    Failure,
+}
+
+#[derive(Debug, Clone)]
+pub struct DoctorCheckResultViewModel {
+    pub file_path: String,
+    pub provider_name: String,
+    pub status: DoctorCheckStatus,
+    pub events: Vec<EventViewModel>,
+    pub error_message: Option<String>,
 }

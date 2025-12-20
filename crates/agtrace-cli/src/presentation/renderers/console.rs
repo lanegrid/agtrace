@@ -1,17 +1,17 @@
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
+use crate::presentation::formatters::session_list::SessionEntry;
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::{DisplayOptions, SessionListView};
 use crate::presentation::view_models::{
-    CorpusStats, DiagnoseResultViewModel, EventPayloadViewModel, EventViewModel, GuidanceContext,
-    IndexEvent, InitRenderEvent, InspectContent, InspectDisplay, ProjectSummary,
-    ProviderConfigSummary, ProviderSetResult, RawFileContent, SessionDigestViewModel,
-    SessionViewModel, WatchStart, WatchSummary,
+    CorpusStats, DiagnoseResultViewModel, DoctorCheckResultViewModel, EventPayloadViewModel,
+    EventViewModel, GuidanceContext, IndexEvent, InitRenderEvent, InspectContent, InspectDisplay,
+    ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent, ReactionViewModel,
+    SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel, StreamStateViewModel,
+    WatchStart, WatchSummary,
 };
 use crate::presentation::views::ReportTemplate;
 use crate::presentation::views::{CompactSessionView, EventView, TimelineView};
 use crate::types::OutputFormat;
-use agtrace_index::SessionSummary;
-use agtrace_runtime::reactor::{Reaction, SessionState};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;
@@ -265,13 +265,26 @@ impl SystemView for ConsoleTraceView {
 }
 
 impl SessionView for ConsoleTraceView {
-    fn render_session_list(&self, sessions: &[SessionSummary], format: OutputFormat) -> Result<()> {
+    fn render_session_list(
+        &self,
+        sessions: &[SessionListEntryViewModel],
+        format: OutputFormat,
+    ) -> Result<()> {
         match format {
             OutputFormat::Json => {
                 println!("{}", serde_json::to_string_pretty(sessions)?);
             }
             OutputFormat::Plain => {
-                print!("{}", SessionListView::from_summaries(sessions.to_vec()));
+                let entries: Vec<SessionEntry> = sessions
+                    .iter()
+                    .map(|s| SessionEntry {
+                        id: s.id.clone(),
+                        provider: s.provider.clone(),
+                        start_ts: s.start_ts.clone(),
+                        snippet: s.snippet.clone(),
+                    })
+                    .collect();
+                print!("{}", SessionListView::from_entries(entries));
             }
         }
         Ok(())
@@ -345,13 +358,8 @@ impl SessionView for ConsoleTraceView {
 }
 
 impl DiagnosticView for ConsoleTraceView {
-    fn render_doctor_check(
-        &self,
-        file_path: &str,
-        provider_name: &str,
-        result: Result<&[EventViewModel], &anyhow::Error>,
-    ) -> Result<()> {
-        crate::presentation::views::doctor::print_check_result(file_path, provider_name, result);
+    fn render_doctor_check(&self, result: &DoctorCheckResultViewModel) -> Result<()> {
+        crate::presentation::views::doctor::print_check_result_vm(result);
         Ok(())
     }
 
@@ -548,10 +556,10 @@ impl WatchView for ConsoleTraceView {
         Ok(())
     }
 
-    fn on_watch_reaction(&self, reaction: &Reaction) -> Result<()> {
+    fn on_watch_reaction(&self, reaction: &ReactionViewModel) -> Result<()> {
         match reaction {
-            Reaction::Continue => {}
-            Reaction::Warn(message) => {
+            ReactionViewModel::Continue => {}
+            ReactionViewModel::Warn(message) => {
                 eprintln!("{} {}", "⚠️  Warning:".yellow(), message);
             }
         }
@@ -560,7 +568,7 @@ impl WatchView for ConsoleTraceView {
 
     fn render_stream_update(
         &self,
-        state: &SessionState,
+        state: &StreamStateViewModel,
         new_events: &[EventViewModel],
     ) -> Result<()> {
         let opts = DisplayOptions {
@@ -585,7 +593,16 @@ impl WatchView for ConsoleTraceView {
             }
 
             if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
-                let token_view = TokenUsageView::from_state(state, opts.clone());
+                let token_view = TokenUsageView::from_usage_data(
+                    state.current_usage.fresh_input,
+                    state.current_usage.cache_creation,
+                    state.current_usage.cache_read,
+                    state.current_usage.output,
+                    state.current_reasoning_tokens,
+                    state.model.clone(),
+                    state.context_window_limit,
+                    opts.clone(),
+                );
                 println!();
                 print!("{}", token_view);
             }

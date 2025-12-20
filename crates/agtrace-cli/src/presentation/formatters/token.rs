@@ -34,6 +34,41 @@ impl TokenUsageView {
 
         Self { summary, options }
     }
+
+    pub fn from_usage_data(
+        fresh_input: i32,
+        cache_creation: i32,
+        cache_read: i32,
+        output: i32,
+        reasoning_tokens: i32,
+        model: Option<String>,
+        context_window_limit: Option<u64>,
+        options: FormatOptions,
+    ) -> Self {
+        let token_limits = TokenLimits::new();
+        let token_spec = model.as_ref().and_then(|m| token_limits.get_limit(m));
+
+        let limit =
+            context_window_limit.or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
+
+        let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
+
+        let input = fresh_input + cache_creation + cache_read;
+        let total = input + output + reasoning_tokens;
+
+        let summary = TokenSummaryDisplay {
+            input,
+            output,
+            cache_creation,
+            cache_read,
+            total,
+            limit,
+            model,
+            compaction_buffer_pct,
+        };
+
+        Self { summary, options }
+    }
 }
 
 impl fmt::Display for TokenUsageView {

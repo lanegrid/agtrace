@@ -1,15 +1,15 @@
 use crate::presentation::formatters::{text, time, tool};
 use crate::presentation::renderers::backend::TerminalWriter;
 use crate::presentation::view_models::{
-    EventPayloadViewModel, EventViewModel, WatchStart, WatchSummary,
+    EventPayloadViewModel, EventViewModel, ReactionViewModel, StreamStateViewModel, WatchStart,
+    WatchSummary,
 };
-use agtrace_runtime::reactor::SessionState;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
 pub struct WatchBuffer {
     events: VecDeque<EventViewModel>,
-    state: SessionState,
+    state: StreamStateViewModel,
 }
 
 impl Default for WatchBuffer {
@@ -20,10 +20,28 @@ impl Default for WatchBuffer {
 
 impl WatchBuffer {
     pub fn new() -> Self {
+        use crate::presentation::view_models::ContextWindowUsageViewModel;
         use chrono::Utc;
         Self {
             events: VecDeque::new(),
-            state: SessionState::new("test".to_string(), None, Utc::now()),
+            state: StreamStateViewModel {
+                session_id: "test".to_string(),
+                project_root: None,
+                start_time: Utc::now(),
+                last_activity: Utc::now(),
+                model: None,
+                context_window_limit: None,
+                current_usage: ContextWindowUsageViewModel {
+                    fresh_input: 0,
+                    cache_creation: 0,
+                    cache_read: 0,
+                    output: 0,
+                },
+                current_reasoning_tokens: 0,
+                error_count: 0,
+                event_count: 0,
+                turn_count: 0,
+            },
         }
     }
 
@@ -31,7 +49,7 @@ impl WatchBuffer {
         self.events.push_back(event);
     }
 
-    pub fn update_state(&mut self, state: SessionState) {
+    pub fn update_state(&mut self, state: StreamStateViewModel) {
         self.state = state;
     }
 
@@ -40,12 +58,11 @@ impl WatchBuffer {
         let mut lines = Vec::new();
 
         // Project info
-        if let Some(root) = &self.state.project_root {
-            let root_str = root.display().to_string();
+        if let Some(root_str) = &self.state.project_root {
             lines.push(format!("{} {}", "📁 Project:".bold(), root_str.cyan()));
 
             // Calculate project hash
-            let hash = agtrace_types::project_hash_from_root(&root_str);
+            let hash = agtrace_types::project_hash_from_root(root_str);
             let short_hash = &hash[..8];
             lines.push(format!("{} {}", "🔖 Hash:".bold(), short_hash.dimmed()));
         }
@@ -81,7 +98,16 @@ impl WatchBuffer {
             truncate_text: None,
         };
 
-        let token_view = TokenUsageView::from_state(&self.state, opts);
+        let token_view = TokenUsageView::from_usage_data(
+            self.state.current_usage.fresh_input,
+            self.state.current_usage.cache_creation,
+            self.state.current_usage.cache_read,
+            self.state.current_usage.output,
+            self.state.current_reasoning_tokens,
+            self.state.model.clone(),
+            self.state.context_window_limit,
+            opts,
+        );
         format!("{}", token_view)
             .lines()
             .map(|s| s.to_string())
@@ -130,8 +156,11 @@ impl WatchBuffer {
             }
             EventPayloadViewModel::ToolCall { name, arguments } => {
                 let (icon, color_fn) = tool::categorize_tool(name);
-                let summary =
-                    tool::format_tool_call(name, arguments, self.state.project_root.as_deref());
+                let summary = tool::format_tool_call(
+                    name,
+                    arguments,
+                    self.state.project_root.as_ref().map(|s| s.as_ref()),
+                );
                 let colored_name = color_fn(name);
                 format!(
                     "{}{} {} {}: {}",
@@ -187,7 +216,7 @@ impl RefreshingWatchView {
         self.inner.lock().unwrap().buffer.push_event(event);
     }
 
-    fn on_state_update(&self, state: SessionState) {
+    fn on_state_update(&self, state: StreamStateViewModel) {
         self.inner.lock().unwrap().buffer.update_state(state);
     }
 
@@ -359,16 +388,13 @@ impl super::traits::WatchView for RefreshingWatchView {
         Ok(())
     }
 
-    fn on_watch_reaction(
-        &self,
-        _reaction: &agtrace_runtime::reactor::Reaction,
-    ) -> anyhow::Result<()> {
+    fn on_watch_reaction(&self, _reaction: &ReactionViewModel) -> anyhow::Result<()> {
         Ok(())
     }
 
     fn render_stream_update(
         &self,
-        state: &SessionState,
+        state: &StreamStateViewModel,
         new_events: &[EventViewModel],
     ) -> anyhow::Result<()> {
         for event in new_events {

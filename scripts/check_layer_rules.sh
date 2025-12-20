@@ -215,6 +215,21 @@ suggest_refactoring() {
                 echo "   → ViewModels are data contracts, not rendering logic"
             fi
             ;;
+        "views")
+            if [[ "$forbidden" == *"agtrace_engine"* ]] || [[ "$forbidden" == *"agtrace_runtime"* ]] || [[ "$forbidden" == *"agtrace_index"* ]] || [[ "$forbidden" == *"agtrace_providers"* ]]; then
+                echo "   Views should not have domain knowledge (similar to renderers)."
+                echo "   → Views consume ViewModels only, not domain types"
+                echo "   → Create a ViewModel in presentation/view_models/"
+                echo "   → Create a Presenter to convert domain model to ViewModel"
+                echo "   → Update View to accept only ViewModel types"
+            elif [[ "$forbidden" == *"agtrace_types"* ]]; then
+                echo "   Views should avoid complex domain types from agtrace_types."
+                echo "   → Use ViewModels with primitive types instead"
+            elif [[ "$forbidden" == *"presenters"* ]]; then
+                echo "   Views should not call presenters directly."
+                echo "   → Handler should call Presenter first, then pass ViewModel to View"
+            fi
+            ;;
         "renderers")
             if [[ "$forbidden" == *"agtrace_engine"* ]] || [[ "$forbidden" == *"agtrace_providers"* ]]; then
                 echo "   Renderer should not have domain knowledge (Level 2: Renderer Ignorance)."
@@ -313,6 +328,21 @@ check_forbidden_deps \
     "renderers" \
     "crates/agtrace-cli/src/presentation/renderers" \
     "agtrace_engine::" \
+    "agtrace_runtime::" \
+    "agtrace_index::" \
+    "agtrace_providers::" \
+    "agtrace_types::" \
+    "crate::presentation::presenters" \
+    "crate::handlers"
+
+# Check views layer (similar to renderers)
+echo "👁️  Checking crates/agtrace-cli/src/presentation/views/..."
+check_forbidden_deps \
+    "views" \
+    "crates/agtrace-cli/src/presentation/views" \
+    "agtrace_engine::" \
+    "agtrace_runtime::" \
+    "agtrace_index::" \
     "agtrace_providers::" \
     "agtrace_types::" \
     "crate::presentation::presenters" \
@@ -357,6 +387,95 @@ check_forbidden_reexports \
     "agtrace_engine::" \
     "agtrace_providers::" \
     "agtrace_types::"
+
+# Check Renderer Traits for domain type contamination
+echo "🎭 Checking Renderer Traits for domain type contamination..."
+traits_file="crates/agtrace-cli/src/presentation/renderers/traits.rs"
+if [ -f "$traits_file" ]; then
+    # Check for forbidden use statements in traits.rs
+    forbidden_imports=$(grep -n "^use agtrace_engine::\|^use agtrace_runtime::\|^use agtrace_index::\|^use agtrace_providers::" "$traits_file" 2>/dev/null || true)
+    if [ -n "$forbidden_imports" ]; then
+        echo -e "${RED}❌ VIOLATION: Renderer Traits import domain types${NC}"
+        echo -e "   File: ${BLUE}$traits_file${NC}"
+        echo "   Issue: Renderer traits must not import domain/runtime/DB types"
+        echo ""
+        echo "$forbidden_imports" | while IFS= read -r line; do
+            echo -e "   ${YELLOW}$line${NC}"
+        done
+        echo ""
+        echo -e "${BLUE}💡 Refactoring Suggestion:${NC}"
+        echo "   Renderer Trait Invariant Violation Detected"
+        echo "   → Remove imports of agtrace_engine, agtrace_runtime, agtrace_index, agtrace_providers"
+        echo "   → Create corresponding ViewModels in presentation/view_models/"
+        echo "   → Example violations and fixes:"
+        echo "      ❌ fn render_session_list(&self, sessions: &[SessionSummary]) -> Result<()>"
+        echo "      ✅ fn render_session_list(&self, sessions: &[SessionListEntryViewModel]) -> Result<()>"
+        echo ""
+        echo "      ❌ fn on_watch_reaction(&self, reaction: &Reaction) -> Result<()>"
+        echo "      ✅ fn on_watch_reaction(&self, reaction: &ReactionViewModel) -> Result<()>"
+        echo ""
+        echo "      ❌ fn render_stream_update(&self, state: &SessionState, ...) -> Result<()>"
+        echo "      ✅ fn render_stream_update(&self, state: &StreamStateViewModel, ...) -> Result<()>"
+        echo ""
+        ((violation_count++))
+    fi
+
+    # Check for Result<...> types as parameters (not return types) - indicates logic contamination
+    # Look for lines with "result:" or similar parameter names with Result type
+    result_params=$(grep -n "result:.*Result<\|Result<.*> *," "$traits_file" | grep -v "^[[:space:]]*/" | grep -v "^[[:space:]]*//" | grep -v ") -> Result<" || true)
+    if [ -n "$result_params" ]; then
+        echo -e "${RED}❌ VIOLATION: Renderer Traits contain Result<...> parameters${NC}"
+        echo -e "   File: ${BLUE}$traits_file${NC}"
+        echo "   Issue: Renderer traits must not accept Result<...> as parameters"
+        echo "   Reason: This forces Renderer to perform logic (match/if on Ok/Err)"
+        echo ""
+        echo "$result_params" | while IFS= read -r line; do
+            echo -e "   ${YELLOW}$line${NC}"
+        done
+        echo ""
+        echo -e "${BLUE}💡 Refactoring Suggestion:${NC}"
+        echo "   → Replace Result<T, E> parameters with ViewModels containing status fields"
+        echo "   → Example:"
+        echo "      ❌ fn render_doctor_check(&self, result: Result<&[EventViewModel], &Error>) -> Result<()>"
+        echo "      ✅ fn render_doctor_check(&self, result: &DoctorCheckResultViewModel) -> Result<()>"
+        echo ""
+        echo "      where DoctorCheckResultViewModel contains:"
+        echo "      pub struct DoctorCheckResultViewModel {"
+        echo "          pub status: CheckStatus,  // enum { Success, Failure }"
+        echo "          pub events: Vec<EventViewModel>,"
+        echo "          pub error_message: Option<String>,"
+        echo "      }"
+        echo ""
+        ((violation_count++))
+    fi
+
+    # Check trait method signatures for domain types (handles multi-line signatures)
+    # Scan entire file for domain type usage in trait contexts
+    domain_type_usage=$(grep -n "SessionSummary\|SessionState\|&Reaction\|: Reaction" "$traits_file" | grep -v "^[[:space:]]*/" | grep -v "^[[:space:]]*//" || true)
+    if [ -n "$domain_type_usage" ]; then
+        echo -e "${RED}❌ VIOLATION: Renderer Trait methods use domain types${NC}"
+        echo -e "   File: ${BLUE}$traits_file${NC}"
+        echo "   Issue: Trait method signatures contain domain/runtime/DB types"
+        echo ""
+        echo "$domain_type_usage" | while IFS= read -r line; do
+            echo -e "   ${YELLOW}$line${NC}"
+        done
+        echo ""
+        echo -e "${BLUE}💡 Architectural Invariant:${NC}"
+        echo "   Renderer Trait Invariants:"
+        echo "   1. Parameter types must be crate::presentation::view_models::* or std primitives only"
+        echo "   2. Must NOT accept types from agtrace_engine, agtrace_runtime, agtrace_index, agtrace_providers"
+        echo "   3. Must NOT introduce control flow (Result, Option parameters for branching)"
+        echo ""
+        echo "   → Presenter converts Domain → ViewModel"
+        echo "   → Renderer only knows ViewModels (keep it dumb)"
+        echo ""
+        ((violation_count++))
+    fi
+else
+    echo -e "${YELLOW}⚠️  Renderer traits.rs not found (expected at $traits_file)${NC}"
+    echo ""
+fi
 
 # Additional checks for common anti-patterns
 echo "🔎 Checking for anti-patterns..."
