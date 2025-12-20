@@ -8,15 +8,24 @@ use crate::presentation::view_models::{
 use crate::presentation::views::EventView;
 use anyhow::Result;
 use crossterm::{
-    cursor, execute, queue, terminal,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Style},
+    text::{Line, Text},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
+    Frame, Terminal,
 };
 use std::collections::VecDeque;
-use std::io::{self, Write};
+use std::io::{self, Stdout};
 use std::path::Path;
 use std::sync::Mutex;
 
 struct TuiWatchViewInner {
+    terminal: Terminal<CrosstermBackend<Stdout>>,
     events_buffer: VecDeque<String>,
     footer_lines: Vec<String>,
     session_start_time: Option<chrono::DateTime<chrono::Utc>>,
@@ -30,17 +39,23 @@ pub struct TuiWatchView {
 
 impl TuiWatchView {
     pub fn new() -> Result<Self> {
-        // Enter alternate screen so we don't mess up the user's shell history
-        execute!(io::stdout(), EnterAlternateScreen)?;
+        // Setup terminal
+        enable_raw_mode()?;
+        let mut stdout = io::stdout();
+        execute!(stdout, EnterAlternateScreen)?;
+        let backend = CrosstermBackend::new(stdout);
+        let terminal = Terminal::new(backend)?;
 
         // Set up Ctrl+C handler to restore terminal
         ctrlc::set_handler(move || {
+            let _ = disable_raw_mode();
             let _ = execute!(io::stdout(), LeaveAlternateScreen);
             std::process::exit(0);
         })?;
 
         Ok(Self {
             inner: Mutex::new(TuiWatchViewInner {
+                terminal,
                 events_buffer: VecDeque::new(),
                 footer_lines: Vec::new(),
                 session_start_time: None,
@@ -51,60 +66,59 @@ impl TuiWatchView {
     }
 
     fn render(&self) -> Result<()> {
-        let inner = self.inner.lock().unwrap();
-        let (term_width, term_height) = terminal::size()?;
-        let term_height = term_height as usize;
+        let mut inner = self.inner.lock().unwrap();
 
-        // Reserve bottom lines for footer
-        let footer_height = inner.footer_lines.len().max(1);
-        let content_height = term_height.saturating_sub(footer_height + 1); // +1 for separator
+        // Clone data for rendering to avoid borrow checker issues
+        let events = inner.events_buffer.clone();
+        let footer = inner.footer_lines.clone();
 
-        // Clear screen and move cursor to top
-        execute!(
-            io::stdout(),
-            terminal::Clear(terminal::ClearType::All),
-            cursor::MoveTo(0, 0)
-        )?;
+        // Draw using Ratatui
+        inner.terminal.draw(|f| {
+            ui(f, &events, &footer);
+        })?;
 
-        // Render content area (recent events)
-        let start_idx = inner.events_buffer.len().saturating_sub(content_height);
-        for (i, line) in inner.events_buffer.iter().skip(start_idx).enumerate() {
-            queue!(
-                io::stdout(),
-                cursor::MoveTo(0, i as u16),
-                terminal::Clear(terminal::ClearType::CurrentLine)
-            )?;
-            print!("{}", line);
-        }
-
-        // Render separator line
-        let separator_row = content_height as u16;
-        queue!(
-            io::stdout(),
-            cursor::MoveTo(0, separator_row),
-            terminal::Clear(terminal::ClearType::CurrentLine)
-        )?;
-        println!("{}", "─".repeat(term_width as usize));
-
-        // Render footer
-        for (i, line) in inner.footer_lines.iter().enumerate() {
-            let row = (separator_row + 1 + i as u16).min(term_height as u16 - 1);
-            queue!(
-                io::stdout(),
-                cursor::MoveTo(0, row),
-                terminal::Clear(terminal::ClearType::CurrentLine)
-            )?;
-            print!("{}", line);
-        }
-
-        io::stdout().flush()?;
         Ok(())
     }
+}
+
+/// Render UI using Ratatui widgets
+fn ui(f: &mut Frame, events: &VecDeque<String>, footer: &[String]) {
+    // Split screen into main area and footer
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(0),           // Main content area
+            Constraint::Length(footer.len().max(1) as u16), // Footer
+        ])
+        .split(f.area());
+
+    // Render events as a List
+    let items: Vec<ListItem> = events
+        .iter()
+        .map(|line| ListItem::new(Line::from(line.as_str())))
+        .collect();
+
+    let events_list = List::new(items)
+        .block(Block::default().borders(Borders::NONE));
+
+    f.render_widget(events_list, chunks[0]);
+
+    // Render footer
+    let footer_text: Vec<Line> = footer
+        .iter()
+        .map(|line| Line::from(line.as_str()))
+        .collect();
+
+    let footer_widget = Paragraph::new(Text::from(footer_text))
+        .block(Block::default().borders(Borders::TOP).border_style(Style::default().fg(Color::DarkGray)));
+
+    f.render_widget(footer_widget, chunks[1]);
 }
 
 impl Drop for TuiWatchView {
     fn drop(&mut self) {
         // Restore terminal state when view is dropped
+        let _ = disable_raw_mode();
         let _ = execute!(io::stdout(), LeaveAlternateScreen);
     }
 }
