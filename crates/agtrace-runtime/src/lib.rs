@@ -18,7 +18,8 @@ pub use services::{
     CheckResult, CheckStatus, CorpusService, CorpusStats, DoctorService, EventFilters,
     ExportService, IndexProgress, IndexService, InspectContentType, InspectLine, InspectResult,
     ListSessionsRequest, PackResult, PackService, ProjectInfo, ProjectService, ProviderStats,
-    RawFileContent, SessionService, StatsResult, StatsService, ToolInfo, ToolSample, WatchService,
+    RawFileContent, SessionService, StatsResult, StatsService, ToolInfo, ToolSample, WatchConfig,
+    WatchService,
 };
 pub use session_repository::{LoadOptions, SessionRepository};
 pub use streaming::{SessionUpdate, SessionWatcher, WatchEvent};

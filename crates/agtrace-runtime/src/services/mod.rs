@@ -18,4 +18,4 @@ pub use pack::{PackResult, PackService};
 pub use project::{ProjectInfo, ProjectService};
 pub use session::{EventFilters, ListSessionsRequest, RawFileContent, SessionService};
 pub use stats::{ProviderStats, StatsResult, StatsService, ToolInfo, ToolSample};
-pub use watch::WatchService;
+pub use watch::{WatchConfig, WatchService};
