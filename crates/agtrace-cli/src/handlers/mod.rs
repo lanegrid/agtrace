@@ -1,4 +1,3 @@
-pub mod corpus_overview;
 pub mod doctor_check;
 pub mod doctor_inspect;
 pub mod doctor_run;

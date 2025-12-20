@@ -3,39 +3,18 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::presentation::renderers::{ConsoleTraceView, TraceView};
-use crate::presentation::view_models::GuidanceContext;
+use crate::presentation::renderers::ConsoleTraceView;
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
-use std::path::{Path, PathBuf};
+use clap::CommandFactory;
+use std::path::PathBuf;
 
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
     let view = ConsoleTraceView::new();
 
     let Some(command) = cli.command else {
-        // Check if we should show corpus overview or guidance
-        let db_path = data_dir.join("agtrace.db");
-        if db_path.exists() {
-            // Try to open workspace to check if we have sessions
-            if let Ok(workspace) = AgTrace::open(data_dir.clone()) {
-                if let Ok(sessions) = workspace
-                    .sessions()
-                    .list(agtrace_runtime::SessionFilter::new().limit(1))
-                {
-                    if !sessions.is_empty() {
-                        // Show corpus overview instead of guidance
-                        return handlers::corpus_overview::handle(
-                            &workspace,
-                            cli.project_root,
-                            cli.all_projects,
-                            &view,
-                        );
-                    }
-                }
-            }
-        }
-        show_guidance(&data_dir, &view)?;
+        Cli::command().print_help()?;
         return Ok(());
     };
 
@@ -280,38 +259,4 @@ fn expand_tilde(path: &str) -> PathBuf {
         }
     }
     PathBuf::from(path)
-}
-
-fn show_guidance(data_dir: &Path, view: &dyn TraceView) -> Result<()> {
-    let config_path = data_dir.join("config.toml");
-    let db_path = data_dir.join("agtrace.db");
-
-    let config_exists = config_path.exists();
-    let db_exists = db_path.exists();
-
-    let session_count = if config_exists && db_exists {
-        // Try to open workspace to count sessions
-        match agtrace_runtime::AgTrace::open(data_dir.to_path_buf()) {
-            Ok(workspace) => {
-                match workspace
-                    .sessions()
-                    .list(agtrace_runtime::SessionFilter::new().limit(1))
-                {
-                    Ok(sessions) => sessions.len(),
-                    Err(_) => 0,
-                }
-            }
-            Err(_) => 0,
-        }
-    } else {
-        0
-    };
-
-    let context = GuidanceContext {
-        config_exists,
-        db_exists,
-        session_count,
-    };
-
-    view.render_guidance(&context)
 }
