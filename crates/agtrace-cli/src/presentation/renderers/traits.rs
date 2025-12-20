@@ -2,7 +2,7 @@ use super::models::{
     CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
     ProviderConfigSummary, ProviderSetResult, RawFileContent, WatchStart, WatchSummary,
 };
-use crate::presentation::formatters::ReportTemplate;
+use crate::presentation::views::ReportTemplate;
 use crate::presentation::view_models::{
     DiagnoseResultViewModel, EventViewModel, SessionDigestViewModel, SessionViewModel,
 };

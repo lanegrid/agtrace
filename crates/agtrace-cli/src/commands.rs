@@ -4,7 +4,7 @@ use super::args::{
 };
 use super::handlers;
 use crate::context::ExecutionContext;
-use crate::presentation::renderers::models::GuidanceContext;
+use crate::presentation::view_models::GuidanceContext;
 use crate::presentation::renderers::{ConsoleTraceView, TraceView};
 use agtrace_index::Database;
 use anyhow::Result;

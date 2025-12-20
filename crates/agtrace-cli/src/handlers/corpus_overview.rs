@@ -1,5 +1,5 @@
 use crate::context::ExecutionContext;
-use crate::presentation::renderers::models::CorpusStats;
+use crate::presentation::view_models::CorpusStats;
 use crate::presentation::renderers::TraceView;
 use agtrace_engine::assemble_session;
 use agtrace_runtime::{LoadOptions, SessionRepository};

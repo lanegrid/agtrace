@@ -1,4 +1,4 @@
-use crate::presentation::renderers::models::{InspectContent, InspectDisplay, InspectLine};
+use crate::presentation::view_models::{InspectContent, InspectDisplay, InspectLine};
 use crate::presentation::renderers::TraceView;
 use crate::types::InspectFormat;
 use anyhow::{Context, Result};

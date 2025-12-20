@@ -1,5 +1,5 @@
 use crate::context::ExecutionContext;
-use crate::presentation::renderers::models::IndexEvent;
+use crate::presentation::view_models::IndexEvent;
 use crate::presentation::renderers::TraceView;
 use agtrace_index::{LogFileRecord, ProjectRecord, SessionRecord};
 use agtrace_providers::ScanContext;

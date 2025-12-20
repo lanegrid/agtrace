@@ -1,7 +1,8 @@
 use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::presentation::formatters::token::TokenUsageView;
-use crate::presentation::formatters::{DisplayOptions, ReportTemplate, SessionListView};
+use crate::presentation::formatters::{DisplayOptions, SessionListView};
+use crate::presentation::views::ReportTemplate;
 use crate::presentation::view_models::{
     DiagnoseResultViewModel, EventPayloadViewModel, EventViewModel, SessionDigestViewModel,
     SessionViewModel,
