@@ -3,7 +3,7 @@ use agtrace_index::{Database, SessionSummary};
 use anyhow::Result;
 use std::collections::HashMap;
 
-use crate::session_repository::{LoadOptions, SessionRepository};
+use crate::storage::{LoadOptions, SessionRepository};
 
 pub struct PackResult {
     pub selections: Vec<SessionDigest>,

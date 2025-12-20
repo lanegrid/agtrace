@@ -1,5 +1,5 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState};
-use crate::token_limits::TokenLimits;
+use crate::domain::{SessionState, TokenLimits};
+use crate::runtime::reactor::{Reaction, Reactor, ReactorContext};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 
@@ -129,7 +129,7 @@ impl Reactor for TokenUsageMonitor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::reactor::SessionState;
+    use crate::domain::SessionState;
     use agtrace_engine::ContextWindowUsage;
     use agtrace_types::{
         AgentEvent, EventPayload, StreamId, TokenUsageDetails, TokenUsagePayload, UserPayload,

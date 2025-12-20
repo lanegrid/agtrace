@@ -29,7 +29,6 @@ impl<'a> SessionRepository<'a> {
         for log_file in &log_files {
             let path = Path::new(&log_file.path);
 
-            // Call provider-specific normalization functions
             let result = if log_file.path.contains(".claude/") {
                 normalize_claude_file(path)
             } else if log_file.path.contains(".codex/") {

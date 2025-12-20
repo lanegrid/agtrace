@@ -1,4 +1,4 @@
-use crate::config_service::Config;
+use crate::config::Config;
 use agtrace_index::Database;
 use agtrace_providers::get_all_providers;
 use anyhow::Result;

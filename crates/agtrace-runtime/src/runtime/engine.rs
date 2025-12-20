@@ -1,5 +1,6 @@
-use crate::reactor::{Reaction, Reactor, ReactorContext, SessionState};
-use crate::streaming::{SessionUpdate, SessionWatcher, WatchEvent};
+use crate::domain::SessionState;
+use crate::runtime::reactor::{Reaction, Reactor, ReactorContext};
+use crate::runtime::watcher::{SessionUpdate, SessionWatcher, WatchEvent};
 use agtrace_engine::extract_state_updates;
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
@@ -257,8 +258,8 @@ fn update_session_state(state: &mut SessionState, event: &AgentEvent) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::reactor::{Reactor, ReactorContext};
-    use crate::streaming::SessionUpdate;
+    use crate::runtime::reactor::{Reactor, ReactorContext};
+    use crate::runtime::watcher::SessionUpdate;
     use agtrace_types::{AgentEvent, EventPayload, UserPayload};
     use chrono::Utc;
     use std::sync::mpsc::channel;

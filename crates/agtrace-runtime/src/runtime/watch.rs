@@ -1,5 +1,5 @@
-use crate::runtime::{Runtime, RuntimeConfig};
-use crate::token_usage_monitor::TokenUsageMonitor;
+use crate::runtime::engine::{Runtime, RuntimeConfig};
+use crate::runtime::monitors::TokenUsageMonitor;
 use agtrace_providers::LogProvider;
 use anyhow::Result;
 use std::path::PathBuf;
@@ -18,7 +18,7 @@ pub struct WatchService;
 
 impl WatchService {
     pub fn start(config: WatchConfig) -> Result<Runtime> {
-        let mut reactors: Vec<Box<dyn crate::Reactor>> = vec![];
+        let mut reactors: Vec<Box<dyn crate::runtime::reactor::Reactor>> = vec![];
 
         if config.enable_token_monitor {
             reactors.push(Box::new(TokenUsageMonitor::default_thresholds()));

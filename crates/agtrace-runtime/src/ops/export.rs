@@ -3,7 +3,7 @@ use agtrace_index::Database;
 use agtrace_types::AgentEvent;
 use anyhow::Result;
 
-use crate::session_repository::{LoadOptions, SessionRepository};
+use crate::storage::{LoadOptions, SessionRepository};
 
 pub struct ExportService<'a> {
     db: &'a Database,

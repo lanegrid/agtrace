@@ -1,27 +1,23 @@
-pub mod config_service;
-pub mod init_service;
-pub mod reactor;
+pub mod config;
+pub mod domain;
+pub mod init;
+pub mod ops;
 pub mod runtime;
-pub mod services;
-pub mod session_repository;
-pub mod streaming;
-pub mod token_limits;
-pub mod token_usage_monitor;
+pub mod storage;
 
-pub use config_service::{Config, ProviderConfig};
-pub use init_service::{
+pub use config::{Config, ProviderConfig};
+pub use domain::{filter_events, EventFilters, SessionState, TokenLimit, TokenLimits};
+pub use init::{
     ConfigStatus, InitConfig, InitProgress, InitResult, InitService, ProviderInfo, ScanOutcome,
 };
-pub use reactor::{Reaction, Reactor, ReactorContext, SessionState};
-pub use runtime::{Runtime, RuntimeConfig, RuntimeEvent};
-pub use services::{
-    CheckResult, CheckStatus, CorpusService, CorpusStats, DoctorService, EventFilters,
+pub use ops::{
+    collect_tool_stats, get_corpus_overview, CheckResult, CheckStatus, CorpusStats, DoctorService,
     ExportService, IndexProgress, IndexService, InspectContentType, InspectLine, InspectResult,
     ListSessionsRequest, PackResult, PackService, ProjectInfo, ProjectService, ProviderStats,
-    RawFileContent, SessionService, StatsResult, StatsService, ToolInfo, ToolSample, WatchConfig,
-    WatchService,
+    SessionService, StatsResult, ToolInfo, ToolSample,
 };
-pub use session_repository::{LoadOptions, SessionRepository};
-pub use streaming::{SessionUpdate, SessionWatcher, WatchEvent};
-pub use token_limits::{TokenLimit, TokenLimits};
-pub use token_usage_monitor::TokenUsageMonitor;
+pub use runtime::{
+    Reaction, Reactor, ReactorContext, Runtime, RuntimeConfig, RuntimeEvent, SessionUpdate,
+    SessionWatcher, TokenUsageMonitor, WatchConfig, WatchEvent, WatchService,
+};
+pub use storage::{get_raw_files, LoadOptions, RawFileContent, SessionRepository};
