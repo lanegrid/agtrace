@@ -9,7 +9,6 @@ use crate::presentation::view_models::DisplayOptions;
 use crate::presentation::view_models::{
     EventPayloadViewModel, EventViewModel, ReactionViewModel, WatchStart, WatchSummary,
 };
-use crate::presentation::views::EventView;
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -98,26 +97,26 @@ impl TuiWatchView {
                                 format!("👀 Watching session {} in {}", id, log_root.display())
                             }
                         };
-                        app_state.events_buffer.push_back(message);
+                        app_state.system_messages.push_back(message);
                     }
                     TuiEvent::WatchAttached(display_name) => {
                         app_state
-                            .events_buffer
+                            .system_messages
                             .push_back(format!("✨ Attached to active session: {}", display_name));
                     }
                     TuiEvent::WatchRotated(old_name, new_name) => {
                         app_state
-                            .events_buffer
+                            .system_messages
                             .push_back(format!("✨ Session rotated: {} → {}", old_name, new_name));
                     }
                     TuiEvent::WatchWaiting(message) => {
                         app_state
-                            .events_buffer
+                            .system_messages
                             .push_back(format!("⏳ Waiting: {}", message));
                     }
                     TuiEvent::WatchError(message, fatal) => {
                         app_state
-                            .events_buffer
+                            .system_messages
                             .push_back(format!("❌ Error: {}", message));
                         if fatal {
                             should_quit = true;
@@ -130,31 +129,15 @@ impl TuiWatchView {
                         app_state.turn_count = state.turn_count;
 
                         for event in new_events {
-                            let opts = DisplayOptions {
-                                enable_color: true,
-                                relative_time: true,
-                                truncate_text: None,
-                            };
+                            app_state.events_buffer.push_back(event.clone());
 
-                            let event_view = EventView {
-                                event: &event,
-                                options: &opts,
-                                session_start: app_state.session_start_time,
-                                turn_context: app_state.turn_count,
-                            };
-
-                            let formatted = format!("{}", event_view);
-                            if !formatted.is_empty() {
-                                app_state.events_buffer.push_back(formatted);
-
-                                if app_state.events_buffer.len() > 1000 {
-                                    app_state.events_buffer.pop_front();
-                                }
+                            if app_state.events_buffer.len() > 1000 {
+                                app_state.events_buffer.pop_front();
                             }
 
                             if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
                                 let opts = DisplayOptions {
-                                    enable_color: true,
+                                    enable_color: false,
                                     relative_time: false,
                                     truncate_text: None,
                                 };

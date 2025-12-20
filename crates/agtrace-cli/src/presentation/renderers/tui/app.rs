@@ -1,3 +1,4 @@
+use crate::presentation::view_models::EventViewModel;
 use ratatui::widgets::ListState;
 use std::collections::VecDeque;
 
@@ -20,7 +21,8 @@ pub(crate) struct ContextUsageState {
 pub(crate) struct AppState {
     pub mode: WatchMode,
     pub session_title: String,
-    pub events_buffer: VecDeque<String>,
+    pub events_buffer: VecDeque<EventViewModel>,
+    pub system_messages: VecDeque<String>,
     pub footer_lines: Vec<String>,
     pub context_usage: Option<ContextUsageState>,
     pub session_start_time: Option<chrono::DateTime<chrono::Utc>>,
@@ -34,6 +36,7 @@ impl Default for AppState {
             mode: WatchMode::AutoFollow,
             session_title: String::new(),
             events_buffer: VecDeque::new(),
+            system_messages: VecDeque::new(),
             footer_lines: Vec::new(),
             context_usage: None,
             session_start_time: None,
@@ -48,10 +51,15 @@ impl AppState {
         Self::default()
     }
 
+    pub fn total_items(&self) -> usize {
+        self.system_messages.len() + self.events_buffer.len()
+    }
+
     pub fn select_next(&mut self) {
+        let total = self.total_items();
         let i = match self.list_state.selected() {
             Some(i) => {
-                if i >= self.events_buffer.len().saturating_sub(1) {
+                if i >= total.saturating_sub(1) {
                     i
                 } else {
                     i + 1
@@ -61,7 +69,7 @@ impl AppState {
         };
         self.list_state.select(Some(i));
 
-        if i >= self.events_buffer.len().saturating_sub(1) {
+        if i >= total.saturating_sub(1) {
             self.mode = WatchMode::AutoFollow;
         } else {
             self.mode = WatchMode::Fixed;
@@ -84,9 +92,9 @@ impl AppState {
     }
 
     pub fn on_tick(&mut self) {
-        if self.mode == WatchMode::AutoFollow && !self.events_buffer.is_empty() {
-            self.list_state
-                .select(Some(self.events_buffer.len().saturating_sub(1)));
+        let total = self.total_items();
+        if self.mode == WatchMode::AutoFollow && total > 0 {
+            self.list_state.select(Some(total.saturating_sub(1)));
         }
     }
 }
