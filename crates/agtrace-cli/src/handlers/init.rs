@@ -3,12 +3,12 @@ use crate::presentation::renderers::TraceView;
 use agtrace_runtime::{InitConfig, InitProgress, InitService};
 use anyhow::Result;
 
-pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Result<()> {
+pub fn handle(ctx: &ExecutionContext, view: &dyn TraceView) -> Result<()> {
     let config = InitConfig {
         data_dir: ctx.data_dir().to_path_buf(),
         project_root: ctx.project_root.clone(),
         all_projects: ctx.all_projects,
-        refresh,
+        refresh: false,
     };
 
     let result = InitService::run(

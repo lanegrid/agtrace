@@ -112,16 +112,10 @@ pub enum Commands {
             help = "Explicit session ID or file path to watch (bypasses liveness detection)"
         )]
         id: Option<String>,
-
-        #[arg(long, help = "Use refreshing UI with context window at bottom")]
-        refresh: bool,
     },
 
     #[command(about = "Initialize agtrace configuration")]
-    Init {
-        #[arg(long)]
-        refresh: bool,
-    },
+    Init,
 }
 
 #[derive(Subcommand)]

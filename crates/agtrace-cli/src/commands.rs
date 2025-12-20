@@ -37,13 +37,13 @@ pub fn run(cli: Cli) -> Result<()> {
     };
 
     match command {
-        Commands::Init { refresh } => {
+        Commands::Init => {
             let ctx = ExecutionContext::new(
                 data_dir.clone(),
                 cli.project_root.clone(),
                 cli.all_projects,
             )?;
-            handlers::init::handle(&ctx, refresh, &view)
+            handlers::init::handle(&ctx, &view)
         }
 
         Commands::Index { command } => {
@@ -234,11 +234,7 @@ pub fn run(cli: Cli) -> Result<()> {
             handlers::pack::handle(&ctx, &template.to_string(), limit, cli.project_root, &view)
         }
 
-        Commands::Watch {
-            provider,
-            id,
-            refresh,
-        } => {
+        Commands::Watch { provider, id } => {
             let ctx = ExecutionContext::new(data_dir, cli.project_root, cli.all_projects)?;
 
             let target = if let Some(session_id) = id {
@@ -254,14 +250,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 }
             };
 
-            if refresh {
-                use crate::presentation::renderers::{AnsiTerminal, RefreshingWatchView};
-                let terminal = Box::new(AnsiTerminal::new());
-                let refresh_view = RefreshingWatchView::new(terminal);
-                handlers::watch::handle_with_view(&ctx, target, &refresh_view)
-            } else {
-                handlers::watch::handle(&ctx, target)
-            }
+            handlers::watch::handle(&ctx, target)
         }
     }
 }
