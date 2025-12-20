@@ -1,27 +1,26 @@
 use crate::presentation::presenters;
 use crate::presentation::renderers::traits::WatchView;
+use crate::presentation::renderers::tui::TuiEvent;
 use crate::presentation::renderers::TuiWatchView;
 use crate::presentation::view_models::{WatchStart, WatchSummary};
 use agtrace_runtime::{AgTrace, RuntimeEvent};
 use anyhow::Result;
-use is_terminal::IsTerminal;
 use std::path::Path;
+use std::sync::mpsc::Receiver;
 
 pub enum WatchTarget {
     Provider { name: String },
     Session { id: String },
 }
 
-pub fn handle(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
+pub fn handle(
+    workspace: &AgTrace,
+    project_root: Option<&Path>,
+    target: WatchTarget,
+    tui_view: TuiWatchView,
+    rx: Receiver<TuiEvent>,
+) -> Result<()> {
     use std::thread;
-
-    // Watch command requires a TTY for TUI
-    if !std::io::stdout().is_terminal() {
-        anyhow::bail!("watch command requires a TTY (interactive terminal). For non-interactive use, try 'agtrace session show' instead.");
-    }
-
-    // Create TUI view and get receiver for event loop
-    let (tui_view, rx) = TuiWatchView::new()?;
 
     // Prepare RuntimeBuilder configuration
     let (runtime, start_event) = match target {

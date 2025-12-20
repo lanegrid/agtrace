@@ -3,10 +3,11 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::presentation::renderers::ConsoleTraceView;
+use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 use clap::CommandFactory;
+use is_terminal::IsTerminal;
 use std::path::PathBuf;
 
 pub fn run(cli: Cli) -> Result<()> {
@@ -221,7 +222,15 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Watch { provider, id } => {
+            // Watch command requires a TTY for TUI
+            if !std::io::stdout().is_terminal() {
+                anyhow::bail!("watch command requires a TTY (interactive terminal). For non-interactive use, try 'agtrace session show' instead.");
+            }
+
             let workspace = AgTrace::open(data_dir)?;
+
+            // Create TUI view and get receiver for event loop
+            let (tui_view, rx) = TuiWatchView::new()?;
 
             let target = if let Some(session_id) = id {
                 handlers::watch::WatchTarget::Session { id: session_id }
@@ -247,7 +256,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 }
             };
 
-            handlers::watch::handle(&workspace, project_root.as_deref(), target)
+            handlers::watch::handle(&workspace, project_root.as_deref(), target, tui_view, rx)
         }
     }
 }

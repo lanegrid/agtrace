@@ -23,14 +23,14 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
 
 use app::{AppState, ContextUsageState};
-use tui_event::TuiEvent;
+pub use tui_event::TuiEvent;
 
 pub struct TuiWatchView {
     tx: Sender<TuiEvent>,
 }
 
 impl TuiWatchView {
-    pub(crate) fn new() -> Result<(Self, Receiver<TuiEvent>)> {
+    pub fn new() -> Result<(Self, Receiver<TuiEvent>)> {
         let (tx, rx) = mpsc::channel();
         Ok((Self { tx }, rx))
     }
@@ -40,7 +40,7 @@ impl TuiWatchView {
         self.tx.clone()
     }
 
-    pub(crate) fn run(rx: Receiver<TuiEvent>) -> Result<()> {
+    pub fn run(rx: Receiver<TuiEvent>) -> Result<()> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;

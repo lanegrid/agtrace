@@ -2,7 +2,7 @@ use crate::presentation::view_models::{EventViewModel, StreamStateViewModel, Wat
 use crossterm::event::KeyEvent;
 
 #[derive(Debug, Clone)]
-pub(crate) enum TuiEvent {
+pub enum TuiEvent {
     #[allow(dead_code)]
     Input(KeyEvent),
     #[allow(dead_code)]
