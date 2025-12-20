@@ -11,9 +11,10 @@ pub mod client;
 
 // Main facade and operations (workspace-oriented interface)
 pub use client::{
-    ActiveRuntime, AgTrace, InsightOps, ProjectOps, RuntimeBuilder, SessionFilter, SessionHandle,
-    SessionOps,
+    AgTrace, InsightOps, MonitorBuilder, ProjectOps, SessionFilter, SessionHandle, SessionOps,
+    StreamHandle, WorkspaceMonitor,
 };
+pub use runtime::SessionStreamer;
 
 // Data types used as inputs/outputs in public APIs
 pub use config::{Config, ProviderConfig};
@@ -23,4 +24,4 @@ pub use ops::{
     CheckResult, CheckStatus, CorpusStats, IndexProgress, InspectContentType, InspectLine,
     InspectResult, PackResult, ProjectInfo, StatsResult,
 };
-pub use runtime::{Reaction, RuntimeEvent};
+pub use runtime::{DiscoveryEvent, StreamEvent, WorkspaceEvent};

@@ -1,8 +1,7 @@
-pub mod engine;
-pub mod monitors;
-pub mod reactor;
-pub mod watcher;
+pub mod events;
+pub mod streamer;
+pub mod supervisor;
 
-pub use engine::{Runtime, RuntimeConfig, RuntimeEvent};
-pub use monitors::TokenUsageMonitor;
-pub use reactor::Reaction;
+pub use events::{DiscoveryEvent, StreamEvent, WorkspaceEvent};
+pub use streamer::SessionStreamer;
+pub use supervisor::WorkspaceSupervisor;

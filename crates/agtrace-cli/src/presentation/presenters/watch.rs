@@ -1,6 +1,4 @@
-use crate::presentation::view_models::{
-    ContextWindowUsageViewModel, ReactionViewModel, StreamStateViewModel,
-};
+use crate::presentation::view_models::{ContextWindowUsageViewModel, StreamStateViewModel};
 
 pub fn present_session_state(state: &agtrace_runtime::SessionState) -> StreamStateViewModel {
     let token_limits = agtrace_runtime::TokenLimits::new();
@@ -32,9 +30,4 @@ pub fn present_session_state(state: &agtrace_runtime::SessionState) -> StreamSta
     }
 }
 
-pub fn present_reaction(reaction: &agtrace_runtime::Reaction) -> ReactionViewModel {
-    match reaction {
-        agtrace_runtime::Reaction::Continue => ReactionViewModel::Continue,
-        agtrace_runtime::Reaction::Warn(msg) => ReactionViewModel::Warn(msg.clone()),
-    }
-}
+// TODO: Re-implement token usage warnings with new Reactor system integration
