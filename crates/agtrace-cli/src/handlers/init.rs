@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{
@@ -7,9 +6,9 @@ use crate::presentation::view_models::{
 use crate::types::OutputFormat;
 use agtrace_index::Database;
 use agtrace_providers::get_all_providers;
+use agtrace_runtime::{Config, InitService, ScanDecision};
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 
 pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Result<()> {
@@ -75,45 +74,32 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
     };
     let current_project_hash = project_hash_from_root(&current_project_root);
 
-    let should_scan = if refresh {
-        true
-    } else if let Ok(Some(project)) = db.get_project(&current_project_hash) {
-        if let Some(last_scanned) = &project.last_scanned_at {
-            if let Ok(last_time) = DateTime::parse_from_rfc3339(last_scanned) {
-                let elapsed = Utc::now().signed_duration_since(last_time.with_timezone(&Utc));
-                if elapsed < Duration::minutes(5) {
-                    view.render_init_event(InitRenderEvent::Step3Header)?;
-                    let step3_result = Step3Result::Skipped {
-                        reason: SkipReason::RecentlyScanned { elapsed },
+    let scan_decision = InitService::should_rescan(&db, &current_project_hash, refresh)?;
+
+    match scan_decision {
+        ScanDecision::ShouldScan => {
+            view.render_init_event(InitRenderEvent::Step3Header)?;
+            let scan_result = super::index::handle(ctx, "all".to_string(), false, true, view);
+
+            match scan_result {
+                Ok(_) => {}
+                Err(e) => {
+                    let step3_result = Step3Result::Scanned {
+                        success: false,
+                        error: Some(format!("{}", e)),
                     };
                     view.render_init_event(InitRenderEvent::Step3Result(step3_result))?;
-                    false
-                } else {
-                    true
                 }
-            } else {
-                true
             }
-        } else {
-            true
         }
-    } else {
-        true
-    };
-
-    if should_scan {
-        view.render_init_event(InitRenderEvent::Step3Header)?;
-        let scan_result = super::index::handle(ctx, "all".to_string(), false, true, view);
-
-        match scan_result {
-            Ok(_) => {}
-            Err(e) => {
-                let step3_result = Step3Result::Scanned {
-                    success: false,
-                    error: Some(format!("{}", e)),
-                };
-                view.render_init_event(InitRenderEvent::Step3Result(step3_result))?;
-            }
+        ScanDecision::Skip {
+            reason: agtrace_runtime::SkipReason::RecentlyScanned { elapsed },
+        } => {
+            view.render_init_event(InitRenderEvent::Step3Header)?;
+            let step3_result = Step3Result::Skipped {
+                reason: SkipReason::RecentlyScanned { elapsed },
+            };
+            view.render_init_event(InitRenderEvent::Step3Result(step3_result))?;
         }
     }
 
