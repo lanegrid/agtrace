@@ -13,20 +13,25 @@ pub struct ScanSummary {
 }
 
 pub struct ProjectOps {
-    db: Arc<Database>,
+    db_path: PathBuf,
     provider_configs: Arc<Vec<(String, PathBuf)>>,
 }
 
 impl ProjectOps {
-    pub fn new(db: Arc<Database>, provider_configs: Arc<Vec<(String, PathBuf)>>) -> Self {
+    pub fn new(db_path: PathBuf, provider_configs: Arc<Vec<(String, PathBuf)>>) -> Self {
         Self {
-            db,
+            db_path,
             provider_configs,
         }
     }
 
+    fn open_db(&self) -> Result<Database> {
+        Database::open(&self.db_path)
+    }
+
     pub fn list(&self) -> Result<Vec<ProjectInfo>> {
-        let service = ProjectService::new(&self.db);
+        let db = self.open_db()?;
+        let service = ProjectService::new(&db);
         service.list_projects()
     }
 
@@ -39,6 +44,7 @@ impl ProjectOps {
     where
         F: FnMut(IndexProgress),
     {
+        let db = self.open_db()?;
         let providers: Vec<(Box<dyn LogProvider>, PathBuf)> = self
             .provider_configs
             .iter()
@@ -48,7 +54,7 @@ impl ProjectOps {
                     .map(|p| (p, path.clone()))
             })
             .collect();
-        let service = IndexService::new(&self.db, providers);
+        let service = IndexService::new(&db, providers);
 
         let mut total_sessions = 0;
         let mut scanned_files = 0;

@@ -12,7 +12,7 @@ pub mod client;
 // Main facade and operations (workspace-oriented interface)
 pub use client::{
     AgTrace, InsightOps, MonitorBuilder, ProjectOps, SessionFilter, SessionHandle, SessionOps,
-    StreamHandle, WorkspaceMonitor,
+    StreamHandle, WatchService, WorkspaceMonitor,
 };
 pub use runtime::SessionStreamer;
 

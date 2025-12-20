@@ -81,6 +81,10 @@ pub struct StreamHandle {
 }
 
 impl StreamHandle {
+    pub(crate) fn new(streamer: SessionStreamer) -> Self {
+        Self { streamer }
+    }
+
     pub fn receiver(&self) -> &Receiver<WorkspaceEvent> {
         self.streamer.receiver()
     }

@@ -4,7 +4,7 @@ use agtrace_engine::export::ExportStrategy;
 use agtrace_index::{Database, SessionSummary};
 use agtrace_types::AgentEvent;
 use anyhow::Result;
-use std::sync::Arc;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Default)]
 pub struct SessionFilter {
@@ -56,16 +56,21 @@ impl SessionFilter {
 }
 
 pub struct SessionOps {
-    db: Arc<Database>,
+    db_path: PathBuf,
 }
 
 impl SessionOps {
-    pub fn new(db: Arc<Database>) -> Self {
-        Self { db }
+    pub fn new(db_path: PathBuf) -> Self {
+        Self { db_path }
+    }
+
+    fn open_db(&self) -> Result<Database> {
+        Database::open(&self.db_path)
     }
 
     pub fn list(&self, filter: SessionFilter) -> Result<Vec<SessionSummary>> {
-        let service = SessionService::new(&self.db);
+        let db = self.open_db()?;
+        let service = SessionService::new(&db);
         let request = ListSessionsRequest {
             project_hash: filter.project_hash,
             limit: filter.limit,
@@ -80,33 +85,41 @@ impl SessionOps {
     pub fn find(&self, session_id: &str) -> Result<SessionHandle> {
         Ok(SessionHandle {
             id: session_id.to_string(),
-            db: self.db.clone(),
+            db_path: self.db_path.clone(),
         })
     }
 
     pub fn pack_context(&self, project_hash: Option<&str>, limit: usize) -> Result<PackResult> {
-        let service = PackService::new(&self.db);
+        let db = self.open_db()?;
+        let service = PackService::new(&db);
         service.select_sessions(project_hash, limit)
     }
 }
 
 pub struct SessionHandle {
     id: String,
-    db: Arc<Database>,
+    db_path: PathBuf,
 }
 
 impl SessionHandle {
+    fn open_db(&self) -> Result<Database> {
+        Database::open(&self.db_path)
+    }
+
     pub fn events(&self) -> Result<Vec<AgentEvent>> {
-        let service = SessionService::new(&self.db);
+        let db = self.open_db()?;
+        let service = SessionService::new(&db);
         service.get_session_events(&self.id)
     }
 
     pub fn raw_files(&self) -> Result<Vec<RawFileContent>> {
-        get_raw_files(&self.db, &self.id)
+        let db = self.open_db()?;
+        get_raw_files(&db, &self.id)
     }
 
     pub fn export(&self, strategy: ExportStrategy) -> Result<Vec<AgentEvent>> {
-        let service = ExportService::new(&self.db);
+        let db = self.open_db()?;
+        let service = ExportService::new(&db);
         service.export_session(&self.id, strategy)
     }
 

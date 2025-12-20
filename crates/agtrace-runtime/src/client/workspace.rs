@@ -1,4 +1,4 @@
-use crate::client::{InsightOps, MonitorBuilder, ProjectOps, SessionOps};
+use crate::client::{InsightOps, MonitorBuilder, ProjectOps, SessionOps, WatchService};
 use crate::config::Config;
 use crate::init::{InitConfig, InitProgress, InitResult, InitService};
 use crate::ops::{CheckResult, DoctorService, InspectResult};
@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 pub struct AgTrace {
-    db: Arc<Database>,
     db_path: PathBuf,
     config: Arc<Config>,
     provider_configs: Arc<Vec<(String, PathBuf)>>,
@@ -28,7 +27,9 @@ impl AgTrace {
         let db_path = data_dir.join("agtrace.db");
         let config_path = data_dir.join("config.toml");
 
-        let db = Database::open(&db_path)?;
+        // Verify DB exists and is accessible
+        let _ = Database::open(&db_path)?;
+
         let config = if config_path.exists() {
             Config::load_from(&config_path)?
         } else {
@@ -43,10 +44,8 @@ impl AgTrace {
             .map(|(name, cfg)| (name.clone(), cfg.log_root.clone()))
             .collect();
 
-        #[allow(clippy::arc_with_non_send_sync)]
         Ok(Self {
-            db: Arc::new(db),
-            db_path: db_path.clone(),
+            db_path,
             config: Arc::new(config),
             provider_configs: Arc::new(provider_configs),
         })
@@ -66,26 +65,29 @@ impl AgTrace {
     }
 
     pub fn projects(&self) -> ProjectOps {
-        ProjectOps::new(self.db.clone(), self.provider_configs.clone())
+        ProjectOps::new(self.db_path.clone(), self.provider_configs.clone())
     }
 
     pub fn sessions(&self) -> SessionOps {
-        SessionOps::new(self.db.clone())
+        SessionOps::new(self.db_path.clone())
     }
 
     pub fn insights(&self) -> InsightOps {
-        InsightOps::new(self.db.clone())
+        InsightOps::new(self.db_path.clone())
+    }
+
+    pub fn watch_service(&self) -> WatchService {
+        WatchService::new(
+            self.db_path.clone(),
+            self.config.clone(),
+            self.provider_configs.clone(),
+        )
     }
 
     pub fn workspace_monitor(&self) -> Result<MonitorBuilder> {
-        // Open a new database connection for thread-safe access
         let db = Database::open(&self.db_path)?;
         let db_mutex = Arc::new(Mutex::new(db));
         Ok(MonitorBuilder::new(db_mutex, self.provider_configs.clone()))
-    }
-
-    pub fn database(&self) -> &Database {
-        &self.db
     }
 
     pub fn database_path(&self) -> &PathBuf {
