@@ -1,5 +1,4 @@
 use crate::presentation::formatters::{text, time};
-use agtrace_index::SessionSummary;
 use owo_colors::OwoColorize;
 use std::fmt;
 
@@ -16,19 +15,6 @@ pub struct SessionListView {
 }
 
 impl SessionListView {
-    pub fn from_summaries(sessions: Vec<SessionSummary>) -> Self {
-        let entries = sessions
-            .into_iter()
-            .map(|s| SessionEntry {
-                id: s.id,
-                provider: s.provider,
-                start_ts: s.start_ts,
-                snippet: s.snippet,
-            })
-            .collect();
-        Self { sessions: entries }
-    }
-
     pub fn from_entries(sessions: Vec<SessionEntry>) -> Self {
         Self { sessions }
     }

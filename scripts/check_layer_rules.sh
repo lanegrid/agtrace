@@ -253,13 +253,15 @@ suggest_refactoring() {
             fi
             ;;
         "formatters")
-            if [[ "$forbidden" == *"agtrace_engine"* ]] || [[ "$forbidden" == *"agtrace_types"* ]]; then
+            if [[ "$forbidden" == *"agtrace_engine"* ]] || [[ "$forbidden" == *"agtrace_types"* ]] || [[ "$forbidden" == *"agtrace_index"* ]] || [[ "$forbidden" == *"agtrace_runtime"* ]] || [[ "$forbidden" == *"agtrace_providers"* ]]; then
                 echo "   Formatters should be pure utility functions (no domain knowledge)."
                 echo "   → Current: Formatter knows about domain types"
                 echo "   → Target: Formatter accepts only primitive types (String, &str, usize, etc.)"
                 echo "   → Move domain-to-primitive conversion to presenters/"
-                echo "   → Example: Instead of format_session(session: &AgentSession)"
-                echo "            Use: format_session_line(id: &str, status: &str, timestamp: &str)"
+                echo "   → Example: Instead of from_summaries(sessions: Vec<SessionSummary>)"
+                echo "            Use: from_entries(entries: Vec<SessionEntry>) where SessionEntry is in formatters/"
+                echo "            Presenter converts SessionSummary → SessionListEntryViewModel"
+                echo "            Renderer converts SessionListEntryViewModel → SessionEntry (primitive struct)"
             elif [[ "$forbidden" == *"view_models"* ]]; then
                 echo "   Formatters should not depend on ViewModels to avoid circular dependency."
                 echo "   → Use primitive types or define shared types in formatters/"
@@ -362,6 +364,9 @@ check_forbidden_deps \
     "formatters" \
     "crates/agtrace-cli/src/presentation/formatters" \
     "agtrace_engine::" \
+    "agtrace_runtime::" \
+    "agtrace_index::" \
+    "agtrace_providers::" \
     "agtrace_types::" \
     "crate::presentation::view_models"
 
