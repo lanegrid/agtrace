@@ -1,8 +1,8 @@
 use crate::context::ExecutionContext;
 use crate::presentation::presenters;
 use crate::presentation::renderers::traits::WatchView;
-use crate::presentation::view_models::{WatchStart, WatchSummary};
 use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
+use crate::presentation::view_models::{WatchStart, WatchSummary};
 use agtrace_runtime::{Runtime, RuntimeConfig, RuntimeEvent, TokenUsageMonitor};
 use anyhow::Result;
 use is_terminal::IsTerminal;

@@ -1,6 +1,8 @@
 use crate::presentation::formatters::{text, time, tool};
 use crate::presentation::renderers::backend::TerminalWriter;
-use crate::presentation::view_models::{EventPayloadViewModel, EventViewModel};
+use crate::presentation::view_models::{
+    EventPayloadViewModel, EventViewModel, WatchStart, WatchSummary,
+};
 use agtrace_runtime::reactor::SessionState;
 use std::collections::VecDeque;
 use std::sync::Mutex;
@@ -253,9 +255,9 @@ impl RefreshingWatchView {
 }
 
 impl super::traits::WatchView for RefreshingWatchView {
-    fn render_watch_start(&self, start: &super::models::WatchStart) -> anyhow::Result<()> {
-        use super::models::WatchStart;
+    fn render_watch_start(&self, start: &WatchStart) -> anyhow::Result<()> {
         use owo_colors::OwoColorize;
+        use WatchStart;
 
         let header = match start {
             WatchStart::Provider { name, log_root } => {
@@ -291,10 +293,7 @@ impl super::traits::WatchView for RefreshingWatchView {
         Ok(())
     }
 
-    fn on_watch_initial_summary(
-        &self,
-        _summary: &super::models::WatchSummary,
-    ) -> anyhow::Result<()> {
+    fn on_watch_initial_summary(&self, _summary: &WatchSummary) -> anyhow::Result<()> {
         Ok(())
     }
 

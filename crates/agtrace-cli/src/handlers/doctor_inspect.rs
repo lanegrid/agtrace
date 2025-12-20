@@ -1,5 +1,5 @@
-use crate::presentation::view_models::{InspectContent, InspectDisplay, InspectLine};
 use crate::presentation::renderers::TraceView;
+use crate::presentation::view_models::{InspectContent, InspectDisplay, InspectLine};
 use crate::types::InspectFormat;
 use anyhow::{Context, Result};
 use std::fs::File;

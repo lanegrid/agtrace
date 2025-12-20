@@ -1,12 +1,13 @@
-use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::{DisplayOptions, SessionListView};
-use crate::presentation::views::ReportTemplate;
 use crate::presentation::view_models::{
-    DiagnoseResultViewModel, EventPayloadViewModel, EventViewModel, SessionDigestViewModel,
-    SessionViewModel,
+    CorpusStats, DiagnoseResultViewModel, EventPayloadViewModel, EventViewModel, GuidanceContext,
+    IndexEvent, InitRenderEvent, InspectContent, InspectDisplay, ProjectSummary,
+    ProviderConfigSummary, ProviderSetResult, RawFileContent, SessionDigestViewModel,
+    SessionViewModel, WatchStart, WatchSummary,
 };
+use crate::presentation::views::ReportTemplate;
 use crate::presentation::views::{CompactSessionView, EventView, TimelineView};
 use crate::types::OutputFormat;
 use agtrace_index::SessionSummary;

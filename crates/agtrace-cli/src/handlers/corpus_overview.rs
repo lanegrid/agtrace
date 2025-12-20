@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
-use crate::presentation::view_models::CorpusStats;
 use crate::presentation::renderers::TraceView;
+use crate::presentation::view_models::CorpusStats;
 use agtrace_engine::assemble_session;
 use agtrace_runtime::{LoadOptions, SessionRepository};
 use agtrace_types::resolve_effective_project_hash;

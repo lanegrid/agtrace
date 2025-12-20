@@ -1,11 +1,9 @@
-use super::models::{
-    CorpusStats, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
-    ProviderConfigSummary, ProviderSetResult, RawFileContent, WatchStart, WatchSummary,
+use crate::presentation::view_models::{
+    CorpusStats, DiagnoseResultViewModel, EventViewModel, GuidanceContext, IndexEvent,
+    InitRenderEvent, InspectDisplay, ProjectSummary, ProviderConfigSummary, ProviderSetResult,
+    RawFileContent, SessionDigestViewModel, SessionViewModel, WatchStart, WatchSummary,
 };
 use crate::presentation::views::ReportTemplate;
-use crate::presentation::view_models::{
-    DiagnoseResultViewModel, EventViewModel, SessionDigestViewModel, SessionViewModel,
-};
 use crate::types::OutputFormat;
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};

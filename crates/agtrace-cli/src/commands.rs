@@ -4,8 +4,8 @@ use super::args::{
 };
 use super::handlers;
 use crate::context::ExecutionContext;
-use crate::presentation::view_models::GuidanceContext;
 use crate::presentation::renderers::{ConsoleTraceView, TraceView};
+use crate::presentation::view_models::GuidanceContext;
 use agtrace_index::Database;
 use anyhow::Result;
 use std::path::{Path, PathBuf};

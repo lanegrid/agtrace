@@ -1,6 +1,5 @@
 pub mod backend;
 pub mod console;
-pub mod models;
 pub mod refresh;
 pub mod traits;
 pub mod tui;

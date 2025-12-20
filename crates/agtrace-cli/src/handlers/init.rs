@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::context::ExecutionContext;
 use crate::presentation::formatters::init::{SkipReason, Step1Result, Step3Result};
-use crate::presentation::view_models::InitRenderEvent;
 use crate::presentation::renderers::TraceView;
+use crate::presentation::view_models::InitRenderEvent;
 use crate::types::OutputFormat;
 use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;

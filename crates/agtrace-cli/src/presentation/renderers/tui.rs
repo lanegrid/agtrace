@@ -1,7 +1,9 @@
 use super::traits::WatchView;
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::DisplayOptions;
-use crate::presentation::view_models::{EventPayloadViewModel, EventViewModel};
+use crate::presentation::view_models::{
+    EventPayloadViewModel, EventViewModel, WatchStart, WatchSummary,
+};
 use crate::presentation::views::EventView;
 use agtrace_runtime::reactor::{Reaction, SessionState};
 use anyhow::Result;
@@ -108,8 +110,8 @@ impl Drop for TuiWatchView {
 }
 
 impl WatchView for TuiWatchView {
-    fn render_watch_start(&self, start: &super::models::WatchStart) -> Result<()> {
-        use super::models::WatchStart as WS;
+    fn render_watch_start(&self, start: &WatchStart) -> Result<()> {
+        use WatchStart as WS;
         let mut inner = self.inner.lock().unwrap();
         let message = match start {
             WS::Provider { name, log_root } => {
@@ -135,7 +137,7 @@ impl WatchView for TuiWatchView {
         Ok(())
     }
 
-    fn on_watch_initial_summary(&self, _summary: &super::models::WatchSummary) -> Result<()> {
+    fn on_watch_initial_summary(&self, _summary: &WatchSummary) -> Result<()> {
         // Initial summary already shown by render_watch_start
         Ok(())
     }
