@@ -20,6 +20,13 @@ pub enum WatchTarget {
 fn convert_session_state_to_vm(
     state: &agtrace_runtime::reactor::SessionState,
 ) -> StreamStateViewModel {
+    let token_limits = agtrace_runtime::TokenLimits::new();
+    let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
+    let token_limit = state
+        .context_window_limit
+        .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
+    let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
+
     StreamStateViewModel {
         session_id: state.session_id.clone(),
         project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
@@ -37,6 +44,8 @@ fn convert_session_state_to_vm(
         error_count: state.error_count,
         event_count: state.event_count,
         turn_count: state.turn_count,
+        token_limit,
+        compaction_buffer_pct,
     }
 }
 

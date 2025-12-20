@@ -487,6 +487,67 @@ fi
 echo "🔎 Checking for anti-patterns..."
 echo ""
 
+# Check for large renderer files (Large Class smell)
+MAX_RENDERER_LINES=400
+renderer_files=$(find crates/agtrace-cli/src/presentation/renderers -name "*.rs" -not -name "mod.rs" -not -name "traits.rs" 2>/dev/null || true)
+for file in $renderer_files; do
+    line_count=$(wc -l < "$file" | tr -d ' ')
+    if [ "$line_count" -gt "$MAX_RENDERER_LINES" ]; then
+        echo -e "${YELLOW}⚠️  WARNING: Large Renderer File${NC}"
+        echo -e "   File: ${BLUE}$file${NC}"
+        echo "   Issue: File has $line_count lines (threshold: $MAX_RENDERER_LINES)"
+        echo "   → Consider splitting by View Trait (e.g., console/session.rs, console/watch.rs)"
+        echo "   → Each file should implement only one View Trait"
+        echo ""
+    fi
+done
+
+# Check for multiple trait implementations in one renderer file (ISP violation)
+for file in $renderer_files; do
+    impl_count=$(grep -c "^impl.*View for" "$file" 2>/dev/null | head -n 1 || echo 0)
+    impl_count=$(echo "$impl_count" | tr -d '[:space:]')
+    if [ "$impl_count" -gt 1 ] 2>/dev/null; then
+        echo -e "${YELLOW}⚠️  WARNING: Multiple View Trait implementations${NC}"
+        echo -e "   File: ${BLUE}$file${NC}"
+        echo "   Issue: File implements $impl_count View Traits (violates Interface Segregation Principle)"
+        echo "   → Split into separate files: one file per Trait implementation"
+        echo "   → Example: console/session.rs for SessionView, console/watch.rs for WatchView"
+        echo ""
+    fi
+done
+
+# Check for domain computation logic in renderers (agtrace_runtime::TokenLimits, etc.)
+for file in $renderer_files; do
+    # Check for TokenLimits instantiation (computation logic)
+    if grep -n "TokenLimits::new()" "$file" | grep -v "^[[:space:]]*/" | grep -v "^[[:space:]]*//" >/dev/null 2>&1; then
+        echo -e "${RED}❌ VIOLATION: Domain Computation in Renderer${NC}"
+        echo -e "   File: ${BLUE}$file${NC}"
+        echo "   Issue: Renderer is computing token limits (should be done in Presenter)"
+        echo ""
+        grep -n "TokenLimits::new()" "$file" | grep -v "^[[:space:]]*/" | grep -v "^[[:space:]]*//" | while IFS= read -r line; do
+            echo -e "   ${YELLOW}$line${NC}"
+        done
+        echo ""
+        echo -e "${BLUE}💡 Refactoring Suggestion:${NC}"
+        echo "   → Move TokenLimits computation to Presenter layer"
+        echo "   → Add 'limit' and 'compaction_buffer_pct' fields to StreamStateViewModel"
+        echo "   → Presenter computes these values from domain logic"
+        echo "   → Renderer uses pre-computed values from ViewModel"
+        echo ""
+        ((violation_count++))
+    fi
+
+    # Check for other domain computations
+    if grep -n "SessionState::new\|AgentSession::from\|SessionSummary::from" "$file" | grep -v "^[[:space:]]*/" | grep -v "^[[:space:]]*//" >/dev/null 2>&1; then
+        echo -e "${RED}❌ VIOLATION: Domain Object Construction in Renderer${NC}"
+        echo -e "   File: ${BLUE}$file${NC}"
+        echo "   Issue: Renderer is constructing domain objects"
+        echo "   → This is Presenter responsibility"
+        echo ""
+        ((violation_count++))
+    fi
+done
+
 # Check if renderers have domain logic
 renderer_files=$(find crates/agtrace-cli/src/presentation/renderers -name "*.rs" 2>/dev/null || true)
 for file in $renderer_files; do

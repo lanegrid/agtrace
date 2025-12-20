@@ -41,6 +41,8 @@ impl WatchBuffer {
                 error_count: 0,
                 event_count: 0,
                 turn_count: 0,
+                token_limit: None,
+                compaction_buffer_pct: None,
             },
         }
     }
@@ -98,19 +100,6 @@ impl WatchBuffer {
             truncate_text: None,
         };
 
-        // Compute token limits
-        let token_limits = agtrace_runtime::TokenLimits::new();
-        let token_spec = self
-            .state
-            .model
-            .as_ref()
-            .and_then(|m| token_limits.get_limit(m));
-        let limit = self
-            .state
-            .context_window_limit
-            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
-        let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
-
         let token_view = TokenUsageView::from_usage_data(
             self.state.current_usage.fresh_input,
             self.state.current_usage.cache_creation,
@@ -118,8 +107,8 @@ impl WatchBuffer {
             self.state.current_usage.output,
             self.state.current_reasoning_tokens,
             self.state.model.clone(),
-            limit,
-            compaction_buffer_pct,
+            self.state.token_limit,
+            self.state.compaction_buffer_pct,
             opts,
         );
         format!("{}", token_view)

@@ -593,14 +593,6 @@ impl WatchView for ConsoleTraceView {
             }
 
             if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
-                // Compute token limits
-                let token_limits = agtrace_runtime::TokenLimits::new();
-                let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
-                let limit = state
-                    .context_window_limit
-                    .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
-                let compaction_buffer_pct = token_spec.map(|spec| spec.compaction_buffer_pct);
-
                 let token_view = TokenUsageView::from_usage_data(
                     state.current_usage.fresh_input,
                     state.current_usage.cache_creation,
@@ -608,8 +600,8 @@ impl WatchView for ConsoleTraceView {
                     state.current_usage.output,
                     state.current_reasoning_tokens,
                     state.model.clone(),
-                    limit,
-                    compaction_buffer_pct,
+                    state.token_limit,
+                    state.compaction_buffer_pct,
                     opts.clone(),
                 );
                 println!();

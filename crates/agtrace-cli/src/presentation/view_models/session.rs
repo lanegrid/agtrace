@@ -114,4 +114,6 @@ pub struct StreamStateViewModel {
     pub error_count: u32,
     pub event_count: usize,
     pub turn_count: usize,
+    pub token_limit: Option<u64>,
+    pub compaction_buffer_pct: Option<f64>,
 }
