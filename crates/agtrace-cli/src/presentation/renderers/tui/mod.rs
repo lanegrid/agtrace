@@ -1,110 +1,73 @@
+mod app;
+mod components;
+mod tui_event;
+mod ui;
+
 use super::traits::WatchView;
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::view_models::DisplayOptions;
 use crate::presentation::view_models::{
-    EventPayloadViewModel, EventViewModel, ReactionViewModel, StreamStateViewModel, WatchStart,
-    WatchSummary,
+    EventPayloadViewModel, EventViewModel, ReactionViewModel, WatchStart, WatchSummary,
 };
 use crate::presentation::views::EventView;
 use anyhow::Result;
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEvent},
+    event::{self, Event, KeyCode},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
-    text::{Line, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
-    Frame, Terminal,
-};
-use std::collections::VecDeque;
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use std::path::Path;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
 
-/// Events that the TUI can handle
-#[derive(Debug, Clone)]
-pub(crate) enum TuiEvent {
-    /// User keyboard input (reserved for future scroll/filter features)
-    #[allow(dead_code)]
-    Input(KeyEvent),
-    /// Periodic tick for updates (reserved for future features)
-    #[allow(dead_code)]
-    Tick,
-    /// Watch service events forwarded from WatchView trait
-    WatchStart(WatchStart),
-    WatchAttached(String),
-    WatchRotated(String, String), // old_name, new_name
-    WatchWaiting(String),
-    WatchError(String, bool), // message, fatal
-    StreamUpdate(StreamStateViewModel, Vec<EventViewModel>),
-}
+use app::{AppState, ContextUsageState};
+use tui_event::TuiEvent;
 
-/// The TUI view for watch command
-/// This is the public API that implements WatchView trait
 pub struct TuiWatchView {
-    /// Channel to send events to the event loop
     tx: Sender<TuiEvent>,
 }
 
 impl TuiWatchView {
-    /// Create a new TUI view
-    /// Returns the view (for WatchView trait) and a receiver (for event loop)
     pub(crate) fn new() -> Result<(Self, Receiver<TuiEvent>)> {
         let (tx, rx) = mpsc::channel();
         Ok((Self { tx }, rx))
     }
 
-    /// Get a clone of the sender (useful for passing to background threads)
     #[allow(dead_code)]
     pub(crate) fn sender(&self) -> Sender<TuiEvent> {
         self.tx.clone()
     }
 
-    /// Run the TUI event loop
-    /// This is the main entry point for the TUI, called from the handler
     pub(crate) fn run(rx: Receiver<TuiEvent>) -> Result<()> {
-        // Setup terminal
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
-        // Set up Ctrl+C handler to restore terminal
         ctrlc::set_handler(move || {
             let _ = disable_raw_mode();
             let _ = execute!(io::stdout(), LeaveAlternateScreen);
             std::process::exit(0);
         })?;
 
-        // Application state
-        let mut events_buffer: VecDeque<String> = VecDeque::new();
-        let mut footer_lines: Vec<String> = Vec::new();
-        let mut session_start_time: Option<chrono::DateTime<chrono::Utc>> = None;
-        let mut _turn_count: usize = 0; // Will be used when implementing scroll features
+        let mut app_state = AppState::new();
         let mut should_quit = false;
 
         let tick_rate = Duration::from_millis(250);
         let mut last_tick = std::time::Instant::now();
 
-        // Event loop
         while !should_quit {
-            // Handle terminal drawing
             terminal.draw(|f| {
-                ui(f, &events_buffer, &footer_lines);
+                ui::draw(f, &app_state);
             })?;
 
-            // Poll for events with timeout
             let timeout = tick_rate
                 .checked_sub(last_tick.elapsed())
                 .unwrap_or_else(|| Duration::from_secs(0));
 
-            // Check for keyboard input
             if event::poll(timeout)? {
                 if let Event::Key(key) = event::read()? {
                     match key.code {
@@ -116,45 +79,50 @@ impl TuiWatchView {
                 }
             }
 
-            // Check for events from WatchService
             while let Ok(tui_event) = rx.try_recv() {
                 match tui_event {
                     TuiEvent::WatchStart(start) => {
                         let message = match start {
                             WatchStart::Provider { name, log_root } => {
+                                app_state.session_title = name.clone();
                                 format!("👀 Watching {} ({})", log_root.display(), name)
                             }
                             WatchStart::Session { id, log_root } => {
+                                app_state.session_title = id.clone();
                                 format!("👀 Watching session {} in {}", id, log_root.display())
                             }
                         };
-                        events_buffer.push_back(message);
+                        app_state.events_buffer.push_back(message);
                     }
                     TuiEvent::WatchAttached(display_name) => {
-                        events_buffer
+                        app_state
+                            .events_buffer
                             .push_back(format!("✨ Attached to active session: {}", display_name));
                     }
                     TuiEvent::WatchRotated(old_name, new_name) => {
-                        events_buffer
+                        app_state
+                            .events_buffer
                             .push_back(format!("✨ Session rotated: {} → {}", old_name, new_name));
                     }
                     TuiEvent::WatchWaiting(message) => {
-                        events_buffer.push_back(format!("⏳ Waiting: {}", message));
+                        app_state
+                            .events_buffer
+                            .push_back(format!("⏳ Waiting: {}", message));
                     }
                     TuiEvent::WatchError(message, fatal) => {
-                        events_buffer.push_back(format!("❌ Error: {}", message));
+                        app_state
+                            .events_buffer
+                            .push_back(format!("❌ Error: {}", message));
                         if fatal {
                             should_quit = true;
                         }
                     }
                     TuiEvent::StreamUpdate(state, new_events) => {
-                        // Update tracking state
-                        if session_start_time.is_none() {
-                            session_start_time = Some(state.start_time);
+                        if app_state.session_start_time.is_none() {
+                            app_state.session_start_time = Some(state.start_time);
                         }
-                        _turn_count = state.turn_count;
+                        app_state.turn_count = state.turn_count;
 
-                        // Format and buffer new events
                         for event in new_events {
                             let opts = DisplayOptions {
                                 enable_color: true,
@@ -165,21 +133,19 @@ impl TuiWatchView {
                             let event_view = EventView {
                                 event: &event,
                                 options: &opts,
-                                session_start: session_start_time,
-                                turn_context: _turn_count,
+                                session_start: app_state.session_start_time,
+                                turn_context: app_state.turn_count,
                             };
 
                             let formatted = format!("{}", event_view);
                             if !formatted.is_empty() {
-                                events_buffer.push_back(formatted);
+                                app_state.events_buffer.push_back(formatted);
 
-                                // Keep buffer size manageable
-                                if events_buffer.len() > 1000 {
-                                    events_buffer.pop_front();
+                                if app_state.events_buffer.len() > 1000 {
+                                    app_state.events_buffer.pop_front();
                                 }
                             }
 
-                            // Update footer on TokenUsage events
                             if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
                                 let opts = DisplayOptions {
                                     enable_color: true,
@@ -199,24 +165,46 @@ impl TuiWatchView {
                                     opts,
                                 );
                                 let footer_output = format!("{}", token_view);
-                                footer_lines =
+                                app_state.footer_lines =
                                     footer_output.lines().map(|s| s.to_string()).collect();
+
+                                let total_used = state.current_usage.fresh_input
+                                    + state.current_usage.cache_creation
+                                    + state.current_usage.cache_read
+                                    + state.current_usage.output;
+
+                                let input_total = state.current_usage.fresh_input
+                                    + state.current_usage.cache_creation
+                                    + state.current_usage.cache_read;
+                                let input_pct = if total_used > 0 {
+                                    input_total as f64 / total_used as f64
+                                } else {
+                                    0.0
+                                };
+                                let output_pct = if total_used > 0 {
+                                    state.current_usage.output as f64 / total_used as f64
+                                } else {
+                                    0.0
+                                };
+
+                                app_state.context_usage = Some(ContextUsageState {
+                                    used: total_used as u64,
+                                    limit: state.token_limit.unwrap_or(0),
+                                    input_pct,
+                                    output_pct,
+                                });
                             }
                         }
                     }
-                    TuiEvent::Input(_) | TuiEvent::Tick => {
-                        // Handled separately
-                    }
+                    TuiEvent::Input(_) | TuiEvent::Tick => {}
                 }
             }
 
-            // Send tick if needed
             if last_tick.elapsed() >= tick_rate {
                 last_tick = std::time::Instant::now();
             }
         }
 
-        // Cleanup
         disable_raw_mode()?;
         execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
         terminal.show_cursor()?;
@@ -225,43 +213,6 @@ impl TuiWatchView {
     }
 }
 
-/// Render UI using Ratatui widgets
-fn ui(f: &mut Frame, events: &VecDeque<String>, footer: &[String]) {
-    // Split screen into main area and footer
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(0),                             // Main content area
-            Constraint::Length(footer.len().max(1) as u16), // Footer
-        ])
-        .split(f.area());
-
-    // Render events as a List
-    let items: Vec<ListItem> = events
-        .iter()
-        .map(|line| ListItem::new(Line::from(line.as_str())))
-        .collect();
-
-    let events_list = List::new(items).block(Block::default().borders(Borders::NONE));
-
-    f.render_widget(events_list, chunks[0]);
-
-    // Render footer
-    let footer_text: Vec<Line> = footer
-        .iter()
-        .map(|line| Line::from(line.as_str()))
-        .collect();
-
-    let footer_widget = Paragraph::new(Text::from(footer_text)).block(
-        Block::default()
-            .borders(Borders::TOP)
-            .border_style(Style::default().fg(Color::DarkGray)),
-    );
-
-    f.render_widget(footer_widget, chunks[1]);
-}
-
-/// WatchView trait implementation - sends events to the event loop
 impl WatchView for TuiWatchView {
     fn render_watch_start(&self, start: &WatchStart) -> Result<()> {
         self.tx
@@ -276,7 +227,6 @@ impl WatchView for TuiWatchView {
     }
 
     fn on_watch_initial_summary(&self, _summary: &WatchSummary) -> Result<()> {
-        // Initial summary already shown by render_watch_start
         Ok(())
     }
 
@@ -329,7 +279,7 @@ impl WatchView for TuiWatchView {
 
     fn render_stream_update(
         &self,
-        state: &StreamStateViewModel,
+        state: &crate::presentation::view_models::StreamStateViewModel,
         new_events: &[EventViewModel],
     ) -> Result<()> {
         self.tx
