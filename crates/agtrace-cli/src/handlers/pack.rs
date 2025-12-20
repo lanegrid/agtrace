@@ -1,18 +1,17 @@
-use super::context::ExecutionContext;
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
+use agtrace_runtime::AgTrace;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 
 pub fn handle(
-    ctx: &ExecutionContext,
+    workspace: &AgTrace,
     template: &str,
     limit: usize,
     project_hash: Option<String>,
+    all_projects: bool,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let workspace = ctx.workspace()?;
-    let all_projects = ctx.all_projects;
     let (effective_hash_string, _all_projects) =
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();

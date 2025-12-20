@@ -1,19 +1,18 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
 use crate::args::ViewStyle;
-use super::context::ExecutionContext;
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{DisplayOptions, RawFileContent};
 use agtrace_engine::assemble_session;
-use agtrace_runtime::EventFilters;
+use agtrace_runtime::{AgTrace, EventFilters};
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
 use std::io;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
-    ctx: &ExecutionContext,
+    workspace: &AgTrace,
     session_id: String,
     raw: bool,
     json: bool,
@@ -27,7 +26,6 @@ pub fn handle(
     let is_tty = io::stdout().is_terminal();
     let enable_color = is_tty;
 
-    let workspace = ctx.workspace()?;
     let session = workspace.sessions().find(&session_id)?;
 
     // Handle raw mode (display raw files without normalization)

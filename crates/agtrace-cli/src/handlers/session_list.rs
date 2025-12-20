@@ -1,13 +1,15 @@
 use crate::args::OutputFormat;
-use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::SessionListEntryViewModel;
-use agtrace_runtime::SessionFilter;
+use agtrace_runtime::{AgTrace, SessionFilter};
 use anyhow::Result;
+use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
-    ctx: &ExecutionContext,
+    workspace: &AgTrace,
+    project_root: Option<&Path>,
+    all_projects: bool,
     project_hash: Option<String>,
     limit: usize,
     format: OutputFormat,
@@ -17,12 +19,18 @@ pub fn handle(
     no_auto_refresh: bool,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let workspace = ctx.workspace()?;
-
     // Auto-refresh index before listing (unless disabled)
     if !no_auto_refresh {
         // Run incremental scan quietly (verbose=false)
-        if let Err(e) = crate::handlers::index::handle(ctx, "all".to_string(), false, false, view) {
+        if let Err(e) = crate::handlers::index::handle(
+            workspace,
+            project_root,
+            all_projects,
+            "all".to_string(),
+            false,
+            false,
+            view,
+        ) {
             // Don't fail the list command if refresh fails - just warn
             view.render_warning(&format!("Warning: auto-refresh failed: {}", e))?;
         }
@@ -35,7 +43,7 @@ pub fn handle(
         filter = filter.project(hash);
     }
 
-    if ctx.all_projects {
+    if all_projects {
         filter = filter.all_projects();
     }
 

@@ -1,22 +1,21 @@
-use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::IndexEvent;
 use agtrace_providers::ScanContext;
-use agtrace_runtime::IndexProgress;
+use agtrace_runtime::{AgTrace, IndexProgress};
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
+use std::path::Path;
 
 pub fn handle(
-    ctx: &ExecutionContext,
+    workspace: &AgTrace,
+    project_root: Option<&Path>,
+    all_projects: bool,
     _provider: String,
     force: bool,
     verbose: bool,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let workspace = ctx.workspace()?;
-
-    let current_project_root = ctx.project_root.as_ref().map(|p| p.display().to_string());
-    let all_projects = ctx.all_projects;
+    let current_project_root = project_root.map(|p| p.display().to_string());
 
     let project_hash = if let Some(root) = &current_project_root {
         project_hash_from_root(root)

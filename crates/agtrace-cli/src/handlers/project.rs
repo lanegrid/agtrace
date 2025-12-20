@@ -1,15 +1,14 @@
-use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::ProjectSummary;
+use agtrace_runtime::AgTrace;
 use agtrace_types::discover_project_root;
 use anyhow::Result;
 
 pub fn handle(
-    ctx: &ExecutionContext,
+    workspace: &AgTrace,
     project_root: Option<String>,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let workspace = ctx.workspace()?;
     let project_root_path = discover_project_root(project_root.as_deref())?;
     let project_hash = agtrace_types::project_hash_from_root(&project_root_path.to_string_lossy());
 

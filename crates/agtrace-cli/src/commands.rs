@@ -3,9 +3,9 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::handlers::ExecutionContext;
 use crate::presentation::renderers::{ConsoleTraceView, TraceView};
 use crate::presentation::view_models::GuidanceContext;
+use agtrace_runtime::AgTrace;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -18,22 +18,19 @@ pub fn run(cli: Cli) -> Result<()> {
         let db_path = data_dir.join("agtrace.db");
         if db_path.exists() {
             // Try to open workspace to check if we have sessions
-            if let Ok(ctx) =
-                ExecutionContext::new(data_dir.clone(), cli.project_root.clone(), cli.all_projects)
-            {
-                if let Ok(workspace) = ctx.workspace() {
-                    if let Ok(sessions) = workspace
-                        .sessions()
-                        .list(agtrace_runtime::SessionFilter::new().limit(1))
-                    {
-                        if !sessions.is_empty() {
-                            // Show corpus overview instead of guidance
-                            return handlers::corpus_overview::handle(
-                                &ctx,
-                                cli.project_root,
-                                &view,
-                            );
-                        }
+            if let Ok(workspace) = AgTrace::open(data_dir.clone()) {
+                if let Ok(sessions) = workspace
+                    .sessions()
+                    .list(agtrace_runtime::SessionFilter::new().limit(1))
+                {
+                    if !sessions.is_empty() {
+                        // Show corpus overview instead of guidance
+                        return handlers::corpus_overview::handle(
+                            &workspace,
+                            cli.project_root,
+                            cli.all_projects,
+                            &view,
+                        );
                     }
                 }
             }
@@ -42,43 +39,48 @@ pub fn run(cli: Cli) -> Result<()> {
         return Ok(());
     };
 
+    let project_root = cli
+        .project_root
+        .map(PathBuf::from)
+        .or_else(|| std::env::current_dir().ok());
+
     match command {
-        Commands::Init { refresh } => {
-            let ctx = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            )?;
-            handlers::init::handle(&ctx, refresh, &view)
-        }
+        Commands::Init { refresh } => handlers::init::handle(
+            &data_dir,
+            project_root.clone(),
+            cli.all_projects,
+            refresh,
+            &view,
+        ),
 
         Commands::Index { command } => {
-            let ctx = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            )?;
+            let workspace = AgTrace::open(data_dir.clone())?;
 
             match command {
-                IndexCommand::Update { provider, verbose } => {
-                    handlers::index::handle(&ctx, provider.to_string(), false, verbose, &view)
-                }
-                IndexCommand::Rebuild { provider, verbose } => {
-                    handlers::index::handle(&ctx, provider.to_string(), true, verbose, &view)
-                }
-                IndexCommand::Vacuum => {
-                    let workspace = ctx.workspace()?;
-                    workspace.database().vacuum()
-                }
+                IndexCommand::Update { provider, verbose } => handlers::index::handle(
+                    &workspace,
+                    project_root.as_deref(),
+                    cli.all_projects,
+                    provider.to_string(),
+                    false,
+                    verbose,
+                    &view,
+                ),
+                IndexCommand::Rebuild { provider, verbose } => handlers::index::handle(
+                    &workspace,
+                    project_root.as_deref(),
+                    cli.all_projects,
+                    provider.to_string(),
+                    true,
+                    verbose,
+                    &view,
+                ),
+                IndexCommand::Vacuum => workspace.database().vacuum(),
             }
         }
 
         Commands::Session { command } => {
-            let ctx = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            )?;
+            let workspace = AgTrace::open(data_dir.clone())?;
 
             match command {
                 SessionCommand::List {
@@ -89,16 +91,18 @@ pub fn run(cli: Cli) -> Result<()> {
                     until,
                     no_auto_refresh,
                 } => {
-                    let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
-                        Some(agtrace_types::project_hash_from_root(
-                            cli.project_root.as_ref().unwrap(),
-                        ))
+                    let effective_hash = if project_hash.is_none() {
+                        project_root.as_ref().map(|p| {
+                            agtrace_types::project_hash_from_root(&p.display().to_string())
+                        })
                     } else {
                         project_hash
                     };
 
                     handlers::session_list::handle(
-                        &ctx,
+                        &workspace,
+                        project_root.as_deref(),
+                        cli.all_projects,
                         effective_hash,
                         limit,
                         cli.format,
@@ -118,7 +122,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     short,
                     verbose,
                 } => handlers::session_show::handle(
-                    &ctx, session_id, raw, json, hide, only, short, verbose, &view,
+                    &workspace, session_id, raw, json, hide, only, short, verbose, &view,
                 ),
             }
         }
@@ -147,12 +151,8 @@ pub fn run(cli: Cli) -> Result<()> {
 
         Commands::Doctor { command } => match command {
             DoctorCommand::Run { provider, verbose } => {
-                let ctx = ExecutionContext::new(
-                    data_dir.clone(),
-                    cli.project_root.clone(),
-                    cli.all_projects,
-                )?;
-                handlers::doctor_run::handle(&ctx, provider.to_string(), verbose, &view)
+                let workspace = AgTrace::open(data_dir)?;
+                handlers::doctor_run::handle(&workspace, provider.to_string(), verbose, &view)
             }
             DoctorCommand::Inspect {
                 file_path,
@@ -166,25 +166,17 @@ pub fn run(cli: Cli) -> Result<()> {
         },
 
         Commands::Project { command } => {
-            let ctx = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            )?;
+            let workspace = AgTrace::open(data_dir)?;
 
             match command {
-                ProjectCommand::List { project_root } => {
-                    handlers::project::handle(&ctx, project_root, &view)
-                }
+                ProjectCommand::List {
+                    project_root: proj_root,
+                } => handlers::project::handle(&workspace, proj_root, &view),
             }
         }
 
         Commands::Lab { command } => {
-            let ctx = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            )?;
+            let workspace = AgTrace::open(data_dir)?;
 
             match command {
                 LabCommand::Export {
@@ -192,11 +184,11 @@ pub fn run(cli: Cli) -> Result<()> {
                     output,
                     format,
                     strategy,
-                } => {
-                    handlers::lab_export::handle(&ctx, session_id, output, format, strategy, &view)
-                }
+                } => handlers::lab_export::handle(
+                    &workspace, session_id, output, format, strategy, &view,
+                ),
                 LabCommand::Stats { limit, source } => {
-                    handlers::lab_stats::handle(&ctx, limit, source, &view)
+                    handlers::lab_stats::handle(&workspace, limit, source, &view)
                 }
             }
         }
@@ -208,22 +200,20 @@ pub fn run(cli: Cli) -> Result<()> {
             since,
             until,
         } => {
-            let ctx = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            )?;
+            let workspace = AgTrace::open(data_dir)?;
 
-            let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
-                Some(agtrace_types::project_hash_from_root(
-                    cli.project_root.as_ref().unwrap(),
-                ))
+            let effective_hash = if project_hash.is_none() {
+                project_root
+                    .as_ref()
+                    .map(|p| agtrace_types::project_hash_from_root(&p.display().to_string()))
             } else {
                 project_hash
             };
 
             handlers::session_list::handle(
-                &ctx,
+                &workspace,
+                project_root.as_deref(),
+                cli.all_projects,
                 effective_hash,
                 limit,
                 cli.format,
@@ -236,17 +226,23 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Pack { template, limit } => {
-            let ctx = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            )?;
+            let workspace = AgTrace::open(data_dir)?;
+            let project_hash = project_root
+                .as_ref()
+                .map(|p| agtrace_types::project_hash_from_root(&p.display().to_string()));
 
-            handlers::pack::handle(&ctx, &template.to_string(), limit, cli.project_root, &view)
+            handlers::pack::handle(
+                &workspace,
+                &template.to_string(),
+                limit,
+                project_hash,
+                cli.all_projects,
+                &view,
+            )
         }
 
         Commands::Watch { provider, id } => {
-            let ctx = ExecutionContext::new(data_dir, cli.project_root, cli.all_projects)?;
+            let workspace = AgTrace::open(data_dir)?;
 
             let target = if let Some(session_id) = id {
                 handlers::watch::WatchTarget::Session { id: session_id }
@@ -255,19 +251,24 @@ pub fn run(cli: Cli) -> Result<()> {
                     name.to_string()
                 } else {
                     // Get default provider from workspace config
-                    let workspace = ctx.workspace()?;
-                    workspace.config().enabled_providers()
+                    workspace
+                        .config()
+                        .enabled_providers()
                         .into_iter()
                         .next()
                         .map(|(name, _)| name.clone())
-                        .ok_or_else(|| anyhow::anyhow!("No enabled provider found. Run 'agtrace init' to configure providers."))?
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "No enabled provider found. Run 'agtrace init' to configure providers."
+                            )
+                        })?
                 };
                 handlers::watch::WatchTarget::Provider {
                     name: provider_name,
                 }
             };
 
-            handlers::watch::handle(&ctx, target)
+            handlers::watch::handle(&workspace, project_root.as_deref(), target)
         }
     }
 }

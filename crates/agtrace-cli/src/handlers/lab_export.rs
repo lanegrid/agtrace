@@ -1,13 +1,13 @@
 use crate::args::{ExportFormat, ExportStrategy as CliExportStrategy};
-use super::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::services::writer;
 use agtrace_engine::export::ExportStrategy;
+use agtrace_runtime::AgTrace;
 use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn handle(
-    ctx: &ExecutionContext,
+    workspace: &AgTrace,
     session_id: String,
     output: Option<PathBuf>,
     format: ExportFormat,
@@ -19,7 +19,6 @@ pub fn handle(
         .parse()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let workspace = ctx.workspace()?;
     let session = workspace.sessions().find(&session_id)?;
     let processed_events = session.export(export_strategy)?;
 

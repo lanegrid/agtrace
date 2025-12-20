@@ -1,4 +1,3 @@
-pub(crate) mod context;
 pub mod corpus_overview;
 pub mod doctor_check;
 pub mod doctor_inspect;
@@ -13,5 +12,3 @@ pub mod provider;
 pub mod session_list;
 pub mod session_show;
 pub mod watch;
-
-pub(crate) use context::ExecutionContext;

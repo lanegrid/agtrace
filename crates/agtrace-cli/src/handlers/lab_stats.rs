@@ -1,15 +1,14 @@
-use super::context::ExecutionContext;
 use crate::presentation::presenters::{present_lab_stats, ToolCallSample, ToolClassification};
 use crate::presentation::renderers::TraceView;
+use agtrace_runtime::AgTrace;
 use anyhow::Result;
 
 pub fn handle(
-    ctx: &ExecutionContext,
+    workspace: &AgTrace,
     limit: Option<usize>,
     source: Option<String>,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let workspace = ctx.workspace()?;
     let result = workspace.insights().tool_usage(limit, source)?;
 
     let sorted_stats = result
