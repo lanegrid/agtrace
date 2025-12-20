@@ -6,7 +6,6 @@ use crate::presentation::view_models::{DisplayOptions, RawFileContent};
 use crate::types::ViewStyle;
 use agtrace_engine::assemble_session;
 use agtrace_index::Database;
-use agtrace_runtime::{LoadOptions, SessionRepository};
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
 use std::io;
@@ -27,9 +26,10 @@ pub fn handle(
     let is_tty = io::stdout().is_terminal();
     let enable_color = is_tty;
 
+    let service = agtrace_runtime::SessionService::new(db);
+
     // Handle raw mode (display raw files without normalization)
     if raw {
-        let service = agtrace_runtime::SessionService::new(db);
         let contents = service
             .get_raw_files(&session_id)
             .with_context(|| format!("Failed to load raw files for session: {}", session_id))?;
@@ -47,12 +47,9 @@ pub fn handle(
     }
 
     // Load and normalize events
-    let loader = SessionRepository::new(db);
-    let options = LoadOptions::default();
-    let all_events = loader.load_events(&session_id, &options)?;
+    let all_events = service.get_session_events(&session_id)?;
 
     // Filter events based on --hide and --only options
-    let service = agtrace_runtime::SessionService::new(db);
     let filtered_events =
         service.filter_events(&all_events, agtrace_runtime::EventFilters { hide, only });
 

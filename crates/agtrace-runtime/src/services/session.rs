@@ -1,3 +1,4 @@
+use crate::session_repository::{LoadOptions, SessionRepository};
 use agtrace_index::{Database, SessionSummary};
 use agtrace_types::{resolve_effective_project_hash, AgentEvent, EventPayload};
 use anyhow::Result;
@@ -126,6 +127,12 @@ impl<'a> SessionService<'a> {
         }
 
         filtered
+    }
+
+    pub fn get_session_events(&self, session_id: &str) -> Result<Vec<AgentEvent>> {
+        let loader = SessionRepository::new(self.db);
+        let options = LoadOptions::default();
+        loader.load_events(session_id, &options)
     }
 
     pub fn get_raw_files(&self, session_id: &str) -> Result<Vec<RawFileContent>> {
