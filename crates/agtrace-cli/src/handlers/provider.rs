@@ -1,10 +1,11 @@
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{ProviderConfigSummary, ProviderSetResult};
+use agtrace_runtime::{Config, ProviderConfig};
 use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn list(config_path: &PathBuf, view: &dyn TraceView) -> Result<()> {
-    let config = crate::config::Config::load_from(config_path)?;
+    let config = Config::load_from(config_path)?;
 
     let providers = config
         .providers
@@ -22,7 +23,7 @@ pub fn list(config_path: &PathBuf, view: &dyn TraceView) -> Result<()> {
 }
 
 pub fn detect(config_path: &PathBuf, view: &dyn TraceView) -> Result<()> {
-    let config = crate::config::Config::detect_providers()?;
+    let config = Config::detect_providers()?;
     config.save_to(config_path)?;
 
     let providers = config
@@ -52,13 +53,13 @@ pub fn set(
         anyhow::bail!("Cannot specify both --enable and --disable");
     }
 
-    let mut config = crate::config::Config::load_from(config_path)?;
+    let mut config = Config::load_from(config_path)?;
 
     let enabled = if enable { true } else { !disable };
 
     config.set_provider(
         provider.clone(),
-        crate::config::ProviderConfig {
+        ProviderConfig {
             enabled,
             log_root: log_root.clone(),
             context_window_override: None,

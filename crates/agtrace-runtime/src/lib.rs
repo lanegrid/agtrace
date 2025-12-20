@@ -15,8 +15,10 @@ pub use init_service::{
 pub use reactor::{Reaction, Reactor, ReactorContext, SessionState};
 pub use runtime::{Runtime, RuntimeConfig, RuntimeEvent};
 pub use services::{
-    DoctorService, EventFilters, IndexProgress, IndexService, ListSessionsRequest, RawFileContent,
-    SessionService, WatchService,
+    CheckResult, CheckStatus, CorpusService, CorpusStats, DoctorService, EventFilters,
+    ExportService, IndexProgress, IndexService, InspectContentType, InspectLine, InspectResult,
+    ListSessionsRequest, PackResult, PackService, ProjectInfo, ProjectService, ProviderStats,
+    RawFileContent, SessionService, StatsResult, StatsService, ToolInfo, ToolSample, WatchService,
 };
 pub use session_repository::{LoadOptions, SessionRepository};
 pub use streaming::{SessionUpdate, SessionWatcher, WatchEvent};
