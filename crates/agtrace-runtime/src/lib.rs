@@ -14,7 +14,10 @@ pub use init_service::{
 };
 pub use reactor::{Reaction, Reactor, ReactorContext, SessionState};
 pub use runtime::{Runtime, RuntimeConfig, RuntimeEvent};
-pub use services::{DoctorService, IndexProgress, IndexService, SessionService, WatchService};
+pub use services::{
+    DoctorService, EventFilters, IndexProgress, IndexService, ListSessionsRequest, RawFileContent,
+    SessionService, WatchService,
+};
 pub use session_repository::{LoadOptions, SessionRepository};
 pub use streaming::{SessionUpdate, SessionWatcher, WatchEvent};
 pub use token_limits::{TokenLimit, TokenLimits};

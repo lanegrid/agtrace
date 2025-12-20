@@ -5,5 +5,5 @@ pub mod watch;
 
 pub use doctor::DoctorService;
 pub use index::{IndexProgress, IndexService};
-pub use session::SessionService;
+pub use session::{EventFilters, ListSessionsRequest, RawFileContent, SessionService};
 pub use watch::WatchService;

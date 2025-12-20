@@ -7,10 +7,8 @@ use crate::types::ViewStyle;
 use agtrace_engine::assemble_session;
 use agtrace_index::Database;
 use agtrace_runtime::{LoadOptions, SessionRepository};
-use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
-use std::fs;
 use std::io;
 
 #[allow(clippy::too_many_arguments)]
@@ -31,19 +29,20 @@ pub fn handle(
 
     // Handle raw mode (display raw files without normalization)
     if raw {
-        let log_files = db.get_session_files(&session_id)?;
+        let service = agtrace_runtime::SessionService::new(db);
+        let contents = service
+            .get_raw_files(&session_id)
+            .with_context(|| format!("Failed to load raw files for session: {}", session_id))?;
 
-        let mut contents = Vec::new();
+        let view_contents: Vec<RawFileContent> = contents
+            .into_iter()
+            .map(|c| RawFileContent {
+                path: c.path,
+                content: c.content,
+            })
+            .collect();
 
-        for log_file in &log_files {
-            let content = fs::read_to_string(&log_file.path)
-                .with_context(|| format!("Failed to read file: {}", log_file.path))?;
-            contents.push(RawFileContent {
-                path: log_file.path.clone(),
-                content,
-            });
-        }
-        view.render_session_raw_files(&contents)?;
+        view.render_session_raw_files(&view_contents)?;
         return Ok(());
     }
 
@@ -53,7 +52,9 @@ pub fn handle(
     let all_events = loader.load_events(&session_id, &options)?;
 
     // Filter events based on --hide and --only options
-    let filtered_events = filter_events(&all_events, hide.as_ref(), only.as_ref());
+    let service = agtrace_runtime::SessionService::new(db);
+    let filtered_events =
+        service.filter_events(&all_events, agtrace_runtime::EventFilters { hide, only });
 
     if json {
         let event_vms = presenters::present_events(&filtered_events);
@@ -88,65 +89,4 @@ pub fn handle(
     }
 
     Ok(())
-}
-
-/// Filter events based on hide/only patterns
-fn filter_events(
-    events: &[AgentEvent],
-    hide: Option<&Vec<String>>,
-    only: Option<&Vec<String>>,
-) -> Vec<AgentEvent> {
-    let mut filtered = events.to_vec();
-
-    // Apply --only filter (whitelist)
-    if let Some(only_patterns) = only {
-        filtered.retain(|e| {
-            only_patterns.iter().any(|pattern| {
-                let pattern_lower = pattern.to_lowercase();
-                match &e.payload {
-                    EventPayload::User(_) => pattern_lower == "user",
-                    EventPayload::Message(_) => {
-                        pattern_lower == "assistant" || pattern_lower == "message"
-                    }
-                    EventPayload::ToolCall(_) | EventPayload::ToolResult(_) => {
-                        pattern_lower == "tool"
-                    }
-                    EventPayload::Reasoning(_) => pattern_lower == "reasoning",
-                    EventPayload::TokenUsage(_) => {
-                        pattern_lower == "token" || pattern_lower == "tokenusage"
-                    }
-                    EventPayload::Notification(_) => {
-                        pattern_lower == "notification" || pattern_lower == "info"
-                    }
-                }
-            })
-        });
-    }
-
-    // Apply --hide filter (blacklist)
-    if let Some(hide_patterns) = hide {
-        filtered.retain(|e| {
-            !hide_patterns.iter().any(|pattern| {
-                let pattern_lower = pattern.to_lowercase();
-                match &e.payload {
-                    EventPayload::User(_) => pattern_lower == "user",
-                    EventPayload::Message(_) => {
-                        pattern_lower == "assistant" || pattern_lower == "message"
-                    }
-                    EventPayload::ToolCall(_) | EventPayload::ToolResult(_) => {
-                        pattern_lower == "tool"
-                    }
-                    EventPayload::Reasoning(_) => pattern_lower == "reasoning",
-                    EventPayload::TokenUsage(_) => {
-                        pattern_lower == "token" || pattern_lower == "tokenusage"
-                    }
-                    EventPayload::Notification(_) => {
-                        pattern_lower == "notification" || pattern_lower == "info"
-                    }
-                }
-            })
-        });
-    }
-
-    filtered
 }
