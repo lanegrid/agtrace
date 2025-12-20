@@ -159,6 +159,40 @@ check_forbidden_deps() {
     done
 }
 
+# Helper function to check forbidden re-exports
+check_forbidden_reexports() {
+    local layer="$1"
+    local layer_path="$2"
+    shift 2
+    local forbidden_patterns=("$@")
+
+    local files=$(find "$layer_path" -name "*.rs" 2>/dev/null || true)
+
+    if [ -z "$files" ]; then
+        return
+    fi
+
+    for file in $files; do
+        for pattern in "${forbidden_patterns[@]}"; do
+            local matches=$(grep -n "pub use.*$pattern" "$file" 2>/dev/null || true)
+            if [ -n "$matches" ]; then
+                echo -e "${RED}❌ VIOLATION in $layer${NC}"
+                echo -e "   File: ${BLUE}$file${NC}"
+                echo -e "   Issue: Forbidden re-export detected: ${YELLOW}$pattern${NC}"
+                echo "$matches" | while IFS= read -r line; do
+                    echo -e "   ${YELLOW}$line${NC}"
+                done
+                echo ""
+
+                # Provide refactoring suggestion for re-exports
+                suggest_reexport_refactoring "$layer" "$pattern" "$file"
+                echo ""
+                ((violation_count++))
+            fi
+        done
+    done
+}
+
 # Suggest refactoring based on violation
 suggest_refactoring() {
     local layer="$1"
@@ -220,6 +254,47 @@ suggest_refactoring() {
     esac
 }
 
+# Suggest refactoring for re-export violations
+suggest_reexport_refactoring() {
+    local layer="$1"
+    local forbidden="$2"
+    local file="$3"
+
+    echo -e "${BLUE}💡 Refactoring Suggestion:${NC}"
+    echo "   Re-exporting types breaks layer boundaries."
+
+    case "$layer" in
+        "formatters")
+            if [[ "$forbidden" == *"view_models"* ]]; then
+                echo "   → ALLOWED ONLY for backward compatibility during migration"
+                echo "   → Temporary re-exports should have a comment explaining why"
+                echo "   → Plan to remove re-exports once callers are updated"
+                echo "   → Example comment: // Re-export for backward compatibility"
+            elif [[ "$forbidden" == *"agtrace_engine"* ]] || [[ "$forbidden" == *"agtrace_types"* ]]; then
+                echo "   → Remove re-export of domain types from formatters"
+                echo "   → Formatters should only work with primitives"
+                echo "   → Use views/ for complex formatting with ViewModels"
+            fi
+            ;;
+        "view_models")
+            echo "   → ViewModels should not re-export domain types"
+            echo "   → Define primitive equivalents instead"
+            echo "   → Presenters handle the conversion from domain to ViewModel"
+            ;;
+        "renderers")
+            if [[ "$forbidden" == *"agtrace_engine"* ]] || [[ "$forbidden" == *"agtrace_types"* ]]; then
+                echo "   → Renderers should not re-export domain types"
+                echo "   → Update trait signatures to use ViewModels"
+                echo "   → Remove re-exports once all callers updated"
+            fi
+            ;;
+        *)
+            echo "   → Remove the re-export and use the type directly where needed"
+            echo "   → Re-exports can hide architectural violations"
+            ;;
+    esac
+}
+
 # Check view_models layer
 echo "📦 Checking crates/agtrace-cli/src/presentation/view_models/..."
 check_forbidden_deps \
@@ -259,6 +334,29 @@ check_forbidden_deps \
     "agtrace_engine::" \
     "agtrace_types::" \
     "crate::presentation::view_models"
+
+# Check for forbidden re-exports
+echo "🔁 Checking for forbidden re-exports..."
+
+check_forbidden_reexports \
+    "formatters" \
+    "crates/agtrace-cli/src/presentation/formatters" \
+    "agtrace_engine::" \
+    "agtrace_types::"
+
+check_forbidden_reexports \
+    "view_models" \
+    "crates/agtrace-cli/src/presentation/view_models" \
+    "agtrace_engine::" \
+    "agtrace_providers::" \
+    "agtrace_types::"
+
+check_forbidden_reexports \
+    "renderers" \
+    "crates/agtrace-cli/src/presentation/renderers" \
+    "agtrace_engine::" \
+    "agtrace_providers::" \
+    "agtrace_types::"
 
 # Additional checks for common anti-patterns
 echo "🔎 Checking for anti-patterns..."
@@ -340,6 +438,36 @@ for file in $presenter_files; do
         echo ""
     fi
 done
+
+# Check for temporary backward compatibility re-exports (technical debt)
+echo "🔧 Checking for temporary backward compatibility re-exports..."
+temp_reexport_count=0
+presentation_files=$(find crates/agtrace-cli/src/presentation -name "*.rs" 2>/dev/null || true)
+for file in $presentation_files; do
+    # Look for re-export comments mentioning backward compatibility
+    if grep -qi "re-export.*backward compatibility\|backward compatibility.*re-export" "$file" 2>/dev/null; then
+        # Count the re-export lines near these comments
+        local_count=$(grep -A 5 -i "re-export.*backward compatibility\|backward compatibility.*re-export" "$file" 2>/dev/null | grep "pub use" | wc -l | tr -d ' ')
+        if [ "$local_count" -gt 0 ]; then
+            temp_reexport_count=$((temp_reexport_count + local_count))
+            echo -e "${YELLOW}⚠️  TECHNICAL DEBT${NC}"
+            echo -e "   File: ${BLUE}$file${NC}"
+            echo "   Temporary re-exports for backward compatibility: $local_count"
+            grep -n -A 3 -i "re-export.*backward compatibility\|backward compatibility.*re-export" "$file" 2>/dev/null | grep -E "^[0-9]+[-:].*pub use" | while IFS= read -r line; do
+                echo -e "   ${YELLOW}$line${NC}"
+            done
+            echo ""
+        fi
+    fi
+done
+
+if [ $temp_reexport_count -gt 0 ]; then
+    echo -e "${YELLOW}📊 Total temporary re-exports for backward compatibility: $temp_reexport_count${NC}"
+    echo "   → These should be reduced over time"
+    echo "   → Update callers to import directly from the correct layer"
+    echo "   → Remove re-exports once migration is complete"
+    echo ""
+fi
 
 # Summary
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
