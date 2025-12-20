@@ -1,6 +1,6 @@
 use super::traits::WatchView;
 use crate::presentation::formatters::token::TokenUsageView;
-use crate::presentation::formatters::DisplayOptions;
+use crate::presentation::view_models::DisplayOptions;
 use crate::presentation::view_models::{
     EventPayloadViewModel, EventViewModel, ReactionViewModel, StreamStateViewModel, WatchStart,
     WatchSummary,

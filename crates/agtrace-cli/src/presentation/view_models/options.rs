@@ -1,17 +1,3 @@
-/// Display formatting options
-#[derive(Debug, Clone)]
-pub struct DisplayOptions {
-    pub enable_color: bool,
-    pub relative_time: bool,
-    pub truncate_text: Option<usize>,
-}
-
-impl Default for DisplayOptions {
-    fn default() -> Self {
-        Self {
-            enable_color: true,
-            relative_time: false,
-            truncate_text: None,
-        }
-    }
-}
+// DisplayOptions has been moved to presentation/shared/options.rs
+// Re-export for backward compatibility during migration
+pub use crate::presentation::shared::DisplayOptions;

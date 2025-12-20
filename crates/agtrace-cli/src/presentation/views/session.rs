@@ -1,5 +1,9 @@
-use crate::presentation::formatters::{text, tool, FormatOptions, TokenSummaryDisplay};
-use crate::presentation::view_models::{SessionViewModel, StepViewModel, TurnViewModel};
+use crate::presentation::formatters::{text, tool, TokenSummaryDisplay};
+use crate::presentation::view_models::{
+    DisplayOptions, SessionViewModel, StepViewModel, TurnViewModel,
+};
+
+type FormatOptions = DisplayOptions;
 use chrono::{DateTime, Utc};
 use owo_colors::OwoColorize;
 use std::fmt;

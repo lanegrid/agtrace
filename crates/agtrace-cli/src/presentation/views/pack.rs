@@ -1,4 +1,4 @@
-use crate::presentation::formatters::DisplayOptions;
+use crate::presentation::view_models::DisplayOptions;
 use crate::presentation::view_models::SessionDigestViewModel;
 use std::collections::HashMap;
 use std::str::FromStr;

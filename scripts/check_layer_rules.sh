@@ -312,6 +312,22 @@ suggest_reexport_refactoring() {
     esac
 }
 
+# Check shared layer (cross-cutting concerns)
+echo "🔗 Checking crates/agtrace-cli/src/presentation/shared/..."
+check_forbidden_deps \
+    "shared" \
+    "crates/agtrace-cli/src/presentation/shared" \
+    "agtrace_engine::" \
+    "agtrace_providers::" \
+    "agtrace_index::" \
+    "agtrace_runtime::" \
+    "agtrace_types::" \
+    "crate::handlers" \
+    "crate::presentation::renderers" \
+    "crate::presentation::presenters" \
+    "crate::presentation::view_models" \
+    "crate::presentation::formatters"
+
 # Check view_models layer
 echo "📦 Checking crates/agtrace-cli/src/presentation/view_models/..."
 check_forbidden_deps \
@@ -367,8 +383,26 @@ check_forbidden_deps \
     "agtrace_runtime::" \
     "agtrace_index::" \
     "agtrace_providers::" \
-    "agtrace_types::" \
-    "crate::presentation::view_models"
+    "agtrace_types::"
+
+# Check formatters -> view_models dependencies (WARNING level for pragmatic cases)
+echo "⚠️  Checking formatters for view_models dependencies (pragmatic allowance)..."
+formatter_viewmodel_deps=$(find crates/agtrace-cli/src/presentation/formatters -name "*.rs" -exec grep -l "use.*crate::presentation::view_models" {} \; 2>/dev/null || true)
+if [ -n "$formatter_viewmodel_deps" ]; then
+    echo -e "${YELLOW}⚠️  TECHNICAL DEBT: formatters importing view_models${NC}"
+    for file in $formatter_viewmodel_deps; do
+        echo -e "   File: ${BLUE}$file${NC}"
+        grep -n "use.*crate::presentation::view_models" "$file" | while IFS= read -r line; do
+            echo -e "   ${YELLOW}$line${NC}"
+        done
+    done
+    echo ""
+    echo -e "${BLUE}💡 Note:${NC}"
+    echo "   → Allowed for init.rs and similar command-specific helpers"
+    echo "   → These types are tightly coupled to specific commands"
+    echo "   → For generic formatting, use shared/ types instead"
+    echo ""
+fi
 
 # Check for forbidden re-exports
 echo "🔁 Checking for forbidden re-exports..."

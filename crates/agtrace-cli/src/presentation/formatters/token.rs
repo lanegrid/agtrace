@@ -1,11 +1,12 @@
-use super::{FormatOptions, TokenSummaryDisplay};
+use super::TokenSummaryDisplay;
+use crate::presentation::shared::DisplayOptions;
 use owo_colors::OwoColorize;
 use std::fmt;
 
 /// View for displaying token usage information
 pub struct TokenUsageView {
     pub summary: TokenSummaryDisplay,
-    pub options: FormatOptions,
+    pub options: DisplayOptions,
 }
 
 impl TokenUsageView {
@@ -19,7 +20,7 @@ impl TokenUsageView {
         model: Option<String>,
         limit: Option<u64>,
         compaction_buffer_pct: Option<f64>,
-        options: FormatOptions,
+        options: DisplayOptions,
     ) -> Self {
         let input = fresh_input + cache_creation + cache_read;
         let total = input + output + reasoning_tokens;

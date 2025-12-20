@@ -7,5 +7,5 @@ pub mod time;
 pub mod token;
 pub mod tool;
 
-pub use options::{DisplayOptions, FormatOptions, TokenSummaryDisplay};
+pub use options::TokenSummaryDisplay;
 pub use session_list::SessionListView;

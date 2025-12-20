@@ -1,5 +1,7 @@
-use crate::presentation::formatters::{text, tool, FormatOptions};
-use crate::presentation::view_models::{EventPayloadViewModel, EventViewModel};
+use crate::presentation::formatters::{text, tool};
+use crate::presentation::view_models::{DisplayOptions, EventPayloadViewModel, EventViewModel};
+
+type FormatOptions = DisplayOptions;
 use chrono::{DateTime, Local, Utc};
 use owo_colors::OwoColorize;
 use std::fmt;

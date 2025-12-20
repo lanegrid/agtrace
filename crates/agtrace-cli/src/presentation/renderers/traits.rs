@@ -1,9 +1,9 @@
 use crate::presentation::view_models::{
-    CorpusStats, DiagnoseResultViewModel, DoctorCheckResultViewModel, EventViewModel,
-    GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, LabStatsViewModel,
-    ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent, ReactionViewModel,
-    SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel, StreamStateViewModel,
-    WatchStart, WatchSummary,
+    CorpusStats, DiagnoseResultViewModel, DisplayOptions, DoctorCheckResultViewModel,
+    EventViewModel, GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay,
+    LabStatsViewModel, ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent,
+    ReactionViewModel, SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel,
+    StreamStateViewModel, WatchStart, WatchSummary,
 };
 use crate::presentation::views::ReportTemplate;
 use crate::types::OutputFormat;
@@ -50,7 +50,7 @@ pub trait SessionView {
     fn render_session_compact(
         &self,
         session: &SessionViewModel,
-        options: &crate::presentation::formatters::DisplayOptions,
+        options: &DisplayOptions,
     ) -> Result<()>;
     fn render_session_timeline(
         &self,

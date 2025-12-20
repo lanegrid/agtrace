@@ -1,8 +1,5 @@
-// Re-export DisplayOptions from view_models
-pub use crate::presentation::view_models::DisplayOptions;
-
-// Backwards compatibility alias
-pub type FormatOptions = DisplayOptions;
+// DisplayOptions has been moved to view_models/options.rs
+// Import directly from crate::presentation::view_models::DisplayOptions
 
 /// Token usage summary for display
 #[derive(Debug, Clone)]

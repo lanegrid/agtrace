@@ -92,7 +92,7 @@ impl WatchBuffer {
 
     pub fn format_footer(&self) -> Vec<String> {
         use crate::presentation::formatters::token::TokenUsageView;
-        use crate::presentation::formatters::DisplayOptions;
+        use crate::presentation::view_models::DisplayOptions;
 
         let opts = DisplayOptions {
             enable_color: true,
