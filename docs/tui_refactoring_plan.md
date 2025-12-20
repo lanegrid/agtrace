@@ -193,9 +193,78 @@ impl WatchView for TuiWatchView { ... }
 - Integration tests for event flow
 - Manual testing for UI/UX
 
-## Next Steps
+## Completion Status
 
-1. Start with Phase 1
-2. Test thoroughly
-3. Move to Phase 2 only after Phase 1 is stable
-4. Document lessons learned
+### ✅ Phase 1: COMPLETED (2025-12-21)
+- Replaced raw `crossterm` with Ratatui widgets
+- Implemented `ui()` function using `List` and `Paragraph` widgets
+- Added `Terminal<CrosstermBackend>` management
+- Same behavior as before, better rendering foundation
+- Commit: 4515e73
+
+**Results:**
+- ✅ All tests passing
+- ✅ No flicker during rendering
+- ✅ Foundation for advanced UI features
+
+### ✅ Phase 2+3: COMPLETED (2025-12-21)
+- Added `TuiEvent` enum for event handling
+- Implemented event loop with keyboard input polling
+- Moved WatchService to background thread
+- Used `mpsc::channel` for communication
+- TUI now owns the event loop (Pull型)
+- Keyboard handling: 'q' or 'Esc' to quit
+- Commit: bcac1b5
+
+**Results:**
+- ✅ All tests passing
+- ✅ Non-blocking UI
+- ✅ User can quit with 'q'
+- ✅ Events processed smoothly from background thread
+
+**Architecture Changes:**
+```rust
+// Before (Push型)
+WatchService → handler loop → view.render_*() → TUI
+
+// After (Pull型)
+TUI event loop ← {Keyboard, WatchService thread} → TUI draws
+```
+
+### 🔄 Phase 4: OPTIONAL (Future Enhancement)
+Extract App state management into cleaner MVU pattern. Current implementation is already functional with state management integrated into the event loop.
+
+**If implemented later:**
+- Create dedicated `App` struct
+- Separate `update()` and `ui()` functions
+- Make code more testable
+
+### 🔄 Phase 5: OPTIONAL (Future Enhancement)
+Add advanced user interactions:
+- Scroll up/down with arrow keys
+- Auto-scroll toggle with space
+- Pause/resume with 'p'
+- Filter events with '/'
+- Status bar with indicators
+
+**Current Status:**
+- Basic keyboard handling implemented ('q' to quit)
+- Foundation ready for additional keybindings
+
+## Lessons Learned
+
+1. **Incremental Approach Works:** Merging Phase 2+3 was efficient since they were closely related
+2. **Privacy Levels Matter:** Used `pub(crate)` for `TuiEvent` to keep it internal while allowing cross-module usage
+3. **Borrow Checker:** Cloning data before passing to `terminal.draw()` closure avoided borrow conflicts
+4. **Threading:** `mpsc::channel` worked seamlessly for Watch Service communication
+5. **Testing:** All existing tests passed without modification, proving backward compatibility
+
+## Next Steps (Optional)
+
+1. Phase 4-5 can be implemented incrementally as needed
+2. Current implementation meets all review requirements:
+   - ✅ Event-driven architecture (Pull型)
+   - ✅ Ratatui widgets usage
+   - ✅ User input handling
+   - ✅ Background thread for data processing
+3. Future enhancements (scroll, filter, etc.) can be added without major refactoring
