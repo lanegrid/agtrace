@@ -1,3 +1,4 @@
+pub mod client;
 pub mod config;
 pub mod domain;
 pub mod init;
@@ -5,6 +6,13 @@ pub mod ops;
 pub mod runtime;
 pub mod storage;
 
+// New workspace-oriented interface (recommended)
+pub use client::{
+    ActiveRuntime, AgTrace, InsightOps, ProjectOps, RuntimeBuilder, SessionFilter, SessionHandle,
+    SessionOps,
+};
+
+// Legacy exports (for backward compatibility)
 pub use config::{Config, ProviderConfig};
 pub use domain::{filter_events, EventFilters, SessionState, TokenLimit, TokenLimits};
 pub use init::{
