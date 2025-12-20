@@ -37,6 +37,3 @@ pub use args::{
     SessionCommand,
 };
 pub use commands::run;
-
-// Re-exports from agtrace_runtime for convenience
-pub use agtrace_runtime::{Config, ProviderConfig};
