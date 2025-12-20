@@ -18,16 +18,21 @@ pub fn run(cli: Cli) -> Result<()> {
         let db_path = data_dir.join("agtrace.db");
         if db_path.exists() {
             // Try to open workspace to check if we have sessions
-            if let Ok(ctx) = ExecutionContext::new(
-                data_dir.clone(),
-                cli.project_root.clone(),
-                cli.all_projects,
-            ) {
+            if let Ok(ctx) =
+                ExecutionContext::new(data_dir.clone(), cli.project_root.clone(), cli.all_projects)
+            {
                 if let Ok(workspace) = ctx.workspace() {
-                    if let Ok(sessions) = workspace.sessions().list(agtrace_runtime::SessionFilter::new().limit(1)) {
+                    if let Ok(sessions) = workspace
+                        .sessions()
+                        .list(agtrace_runtime::SessionFilter::new().limit(1))
+                    {
                         if !sessions.is_empty() {
                             // Show corpus overview instead of guidance
-                            return handlers::corpus_overview::handle(&ctx, cli.project_root, &view);
+                            return handlers::corpus_overview::handle(
+                                &ctx,
+                                cli.project_root,
+                                &view,
+                            );
                         }
                     }
                 }
@@ -187,7 +192,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     output,
                     format,
                     strategy,
-                } => handlers::lab_export::handle(&ctx, session_id, output, format, strategy, &view),
+                } => {
+                    handlers::lab_export::handle(&ctx, session_id, output, format, strategy, &view)
+                }
                 LabCommand::Stats { limit, source } => {
                     handlers::lab_stats::handle(&ctx, limit, source, &view)
                 }
@@ -285,7 +292,10 @@ fn show_guidance(data_dir: &Path, view: &dyn TraceView) -> Result<()> {
         // Try to open workspace to count sessions
         match agtrace_runtime::AgTrace::open(data_dir.to_path_buf()) {
             Ok(workspace) => {
-                match workspace.sessions().list(agtrace_runtime::SessionFilter::new().limit(1)) {
+                match workspace
+                    .sessions()
+                    .list(agtrace_runtime::SessionFilter::new().limit(1))
+                {
                     Ok(sessions) => sessions.len(),
                     Err(_) => 0,
                 }

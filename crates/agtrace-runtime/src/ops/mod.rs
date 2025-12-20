@@ -6,10 +6,7 @@ pub mod pack;
 pub mod project;
 pub mod session;
 
-pub use analyze::{
-    collect_tool_stats, get_corpus_overview, CorpusStats, ProviderStats, StatsResult, ToolInfo,
-    ToolSample,
-};
+pub use analyze::{collect_tool_stats, get_corpus_overview, CorpusStats, StatsResult};
 pub use doctor::{
     CheckResult, CheckStatus, DoctorService, InspectContentType, InspectLine, InspectResult,
 };

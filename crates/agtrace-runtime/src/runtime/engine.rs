@@ -8,7 +8,6 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver};
 use std::sync::Arc;
 use std::thread::JoinHandle;
-use std::time::Duration;
 #[derive(Debug)]
 pub enum RuntimeEvent {
     SessionAttached {
@@ -38,7 +37,6 @@ pub struct RuntimeConfig {
     pub watch_path: PathBuf,
     pub explicit_target: Option<String>,
     pub project_root: Option<PathBuf>,
-    pub poll_interval: Duration,
 }
 
 pub struct Runtime {
@@ -298,8 +296,6 @@ mod tests {
         let update = SessionUpdate {
             session: None,
             new_events: vec![user_event()],
-            orphaned_events: vec![],
-            total_events: 1,
         };
 
         handle_update(

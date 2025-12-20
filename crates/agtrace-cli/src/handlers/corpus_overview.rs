@@ -15,7 +15,9 @@ pub fn handle(
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();
 
-    let stats = workspace.insights().corpus_stats(effective_project_hash, 500)?;
+    let stats = workspace
+        .insights()
+        .corpus_stats(effective_project_hash, 500)?;
 
     view.render_corpus_overview(&CorpusStats {
         sample_size: stats.sample_size,

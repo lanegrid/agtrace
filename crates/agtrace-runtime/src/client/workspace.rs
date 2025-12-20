@@ -1,6 +1,7 @@
 use crate::client::{InsightOps, ProjectOps, RuntimeBuilder, SessionOps};
 use crate::config::Config;
-use crate::ops::DoctorService;
+use crate::init::{InitConfig, InitProgress, InitResult, InitService};
+use crate::ops::{CheckResult, DoctorService, InspectResult};
 use agtrace_engine::DiagnoseResult;
 use agtrace_index::Database;
 use agtrace_providers::LogProvider;
@@ -15,6 +16,13 @@ pub struct AgTrace {
 }
 
 impl AgTrace {
+    pub fn setup<F>(config: InitConfig, progress_fn: Option<F>) -> Result<InitResult>
+    where
+        F: FnMut(InitProgress),
+    {
+        InitService::run(config, progress_fn)
+    }
+
     pub fn open(data_dir: PathBuf) -> Result<Self> {
         let db_path = data_dir.join("agtrace.db");
         let config_path = data_dir.join("config.toml");
@@ -34,6 +42,7 @@ impl AgTrace {
             .map(|(name, cfg)| (name.clone(), cfg.log_root.clone()))
             .collect();
 
+        #[allow(clippy::arc_with_non_send_sync)]
         Ok(Self {
             db: Arc::new(db),
             config: Arc::new(config),
@@ -76,5 +85,17 @@ impl AgTrace {
 
     pub fn config(&self) -> &Config {
         &self.config
+    }
+
+    pub fn check_file(
+        file_path: &str,
+        provider: &dyn LogProvider,
+        provider_name: &str,
+    ) -> Result<CheckResult> {
+        DoctorService::check_file(file_path, provider, provider_name)
+    }
+
+    pub fn inspect_file(file_path: &str, lines: usize, json_format: bool) -> Result<InspectResult> {
+        DoctorService::inspect_file(file_path, lines, json_format)
     }
 }

@@ -1,7 +1,7 @@
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{InspectContent, InspectDisplay, InspectLine};
 use crate::types::InspectFormat;
-use agtrace_runtime::{DoctorService, InspectContentType};
+use agtrace_runtime::{AgTrace, InspectContentType};
 use anyhow::Result;
 
 pub fn handle(
@@ -11,7 +11,7 @@ pub fn handle(
     view: &dyn TraceView,
 ) -> Result<()> {
     let json_format = matches!(format, InspectFormat::Json);
-    let result = DoctorService::inspect_file(&file_path, lines, json_format)?;
+    let result = AgTrace::inspect_file(&file_path, lines, json_format)?;
 
     let display = InspectDisplay {
         file_path: result.file_path,

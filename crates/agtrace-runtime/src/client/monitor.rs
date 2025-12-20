@@ -4,7 +4,6 @@ use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
-use std::time::Duration;
 
 pub struct RuntimeBuilder {
     #[allow(dead_code)]
@@ -83,7 +82,6 @@ impl RuntimeBuilder {
             watch_path: log_root,
             explicit_target: self.explicit_target,
             project_root: self.project_root,
-            poll_interval: Duration::from_millis(500),
         })?;
 
         Ok(ActiveRuntime { runtime })

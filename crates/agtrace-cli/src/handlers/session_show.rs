@@ -6,7 +6,7 @@ use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{DisplayOptions, RawFileContent};
 use crate::types::ViewStyle;
 use agtrace_engine::assemble_session;
-use agtrace_runtime::domain::EventFilters;
+use agtrace_runtime::EventFilters;
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
 use std::io;
@@ -52,8 +52,7 @@ pub fn handle(
     let all_events = session.events()?;
 
     // Filter events based on --hide and --only options
-    let filtered_events =
-        agtrace_runtime::domain::filter_events(&all_events, EventFilters { hide, only });
+    let filtered_events = agtrace_runtime::filter_events(&all_events, EventFilters { hide, only });
 
     if json {
         let event_vms = presenters::present_events(&filtered_events);

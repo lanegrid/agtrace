@@ -17,7 +17,9 @@ pub fn handle(
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();
 
-    let result = workspace.sessions().pack_context(effective_project_hash, limit)?;
+    let result = workspace
+        .sessions()
+        .pack_context(effective_project_hash, limit)?;
 
     let report_template = template
         .parse()

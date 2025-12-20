@@ -2,7 +2,7 @@ use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{DoctorCheckResultViewModel, DoctorCheckStatus};
 use agtrace_providers::{create_provider, detect_provider_from_path};
-use agtrace_runtime::{CheckStatus, DoctorService};
+use agtrace_runtime::{AgTrace, CheckStatus};
 use anyhow::Result;
 
 pub fn handle(
@@ -19,7 +19,7 @@ pub fn handle(
         (provider, name)
     };
 
-    let result = DoctorService::check_file(&file_path, provider.as_ref(), &provider_name)?;
+    let result = AgTrace::check_file(&file_path, provider.as_ref(), &provider_name)?;
 
     let result_vm = DoctorCheckResultViewModel {
         file_path: result.file_path,

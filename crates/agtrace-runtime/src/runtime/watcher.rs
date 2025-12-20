@@ -1,6 +1,6 @@
 use agtrace_engine::{assemble_session, AgentSession};
 use agtrace_providers::LogProvider;
-use agtrace_types::{AgentEvent, EventPayload};
+use agtrace_types::AgentEvent;
 use anyhow::Result;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
@@ -41,8 +41,6 @@ struct EventHandlerContext<'a> {
 pub struct SessionUpdate {
     pub session: Option<AgentSession>,
     pub new_events: Vec<AgentEvent>,
-    pub orphaned_events: Vec<AgentEvent>,
-    pub total_events: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -127,11 +125,11 @@ impl SessionWatcher {
                     project_root: project_root.as_deref(),
                 };
 
-                if let Ok((all_events, new_events, total_events)) =
+                if let Ok((all_events, new_events)) =
                     process_session_files(&session_id, &mut state.file_states, &ctx)
                 {
                     if !new_events.is_empty() {
-                        let update = build_session_update(all_events, new_events, total_events);
+                        let update = build_session_update(all_events, new_events);
                         let _ = tx_out.send(WatchEvent::Update(update));
                     }
                 }
@@ -244,11 +242,11 @@ fn handle_fs_event(
                     state.file_states.clear();
                 }
 
-                if let Ok((all_events, new_events, total_events)) =
+                if let Ok((all_events, new_events)) =
                     process_session_files(&session_id, &mut state.file_states, context)
                 {
                     if !new_events.is_empty() {
-                        let update = build_session_update(all_events, new_events, total_events);
+                        let update = build_session_update(all_events, new_events);
                         let _ = context.tx.send(WatchEvent::Update(update));
                     }
                 }
@@ -280,25 +278,12 @@ fn load_and_detect_changes(
     Ok((all_events, new_events))
 }
 
-fn build_session_update(
-    all_events: Vec<AgentEvent>,
-    new_events: Vec<AgentEvent>,
-    total_events: usize,
-) -> SessionUpdate {
+fn build_session_update(all_events: Vec<AgentEvent>, new_events: Vec<AgentEvent>) -> SessionUpdate {
     let session = assemble_session(&all_events);
-
-    let start_idx = all_events
-        .iter()
-        .position(|e| matches!(e.payload, EventPayload::User(_)))
-        .unwrap_or(all_events.len());
-
-    let orphaned_events = all_events.iter().take(start_idx).cloned().collect();
 
     SessionUpdate {
         session,
         new_events,
-        orphaned_events,
-        total_events,
     }
 }
 
@@ -306,14 +291,13 @@ fn process_session_files(
     session_id: &str,
     file_states: &mut HashMap<PathBuf, FileState>,
     context: &EventHandlerContext,
-) -> Result<(Vec<AgentEvent>, Vec<AgentEvent>, usize)> {
+) -> Result<(Vec<AgentEvent>, Vec<AgentEvent>)> {
     let session_files = context
         .provider
         .find_session_files(context.log_root, session_id)?;
 
     let mut all_events_merged = Vec::new();
     let mut all_new_events = Vec::new();
-    let mut total_events = 0;
 
     for file_path in session_files {
         let last_event_count = file_states
@@ -333,17 +317,13 @@ fn process_session_files(
 
             all_events_merged.extend(all_events);
             all_new_events.extend(new_events);
-            total_events += file_states
-                .get(&file_path)
-                .map(|s| s.last_event_count)
-                .unwrap_or(0);
         }
     }
 
     all_events_merged.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
     all_new_events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
-    Ok((all_events_merged, all_new_events, total_events))
+    Ok((all_events_merged, all_new_events))
 }
 
 fn resolve_explicit_target(

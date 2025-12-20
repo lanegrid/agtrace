@@ -1,31 +1,26 @@
-pub mod client;
-pub mod config;
-pub mod domain;
-pub mod init;
-pub mod ops;
-pub mod runtime;
-pub mod storage;
+// Internal modules (not exposed to external crates)
+pub(crate) mod config;
+pub(crate) mod domain;
+pub(crate) mod init;
+pub(crate) mod ops;
+pub(crate) mod runtime;
+pub(crate) mod storage;
 
-// New workspace-oriented interface (recommended)
+// Public client interface
+pub mod client;
+
+// Main facade and operations (workspace-oriented interface)
 pub use client::{
     ActiveRuntime, AgTrace, InsightOps, ProjectOps, RuntimeBuilder, SessionFilter, SessionHandle,
     SessionOps,
 };
 
-// Legacy exports (for backward compatibility)
+// Data types used as inputs/outputs in public APIs
 pub use config::{Config, ProviderConfig};
 pub use domain::{filter_events, EventFilters, SessionState, TokenLimit, TokenLimits};
-pub use init::{
-    ConfigStatus, InitConfig, InitProgress, InitResult, InitService, ProviderInfo, ScanOutcome,
-};
+pub use init::{ConfigStatus, InitConfig, InitProgress, InitResult, ScanOutcome};
 pub use ops::{
-    collect_tool_stats, get_corpus_overview, CheckResult, CheckStatus, CorpusStats, DoctorService,
-    ExportService, IndexProgress, IndexService, InspectContentType, InspectLine, InspectResult,
-    ListSessionsRequest, PackResult, PackService, ProjectInfo, ProjectService, ProviderStats,
-    SessionService, StatsResult, ToolInfo, ToolSample,
+    CheckResult, CheckStatus, CorpusStats, IndexProgress, InspectContentType, InspectLine,
+    InspectResult, PackResult, ProjectInfo, StatsResult,
 };
-pub use runtime::{
-    Reaction, Reactor, ReactorContext, Runtime, RuntimeConfig, RuntimeEvent, SessionUpdate,
-    SessionWatcher, TokenUsageMonitor, WatchConfig, WatchEvent, WatchService,
-};
-pub use storage::{get_raw_files, LoadOptions, RawFileContent, SessionRepository};
+pub use runtime::{Reaction, RuntimeEvent};

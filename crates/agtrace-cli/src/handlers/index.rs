@@ -33,12 +33,14 @@ pub fn handle(
         },
     };
 
-    workspace.projects().scan(&scan_context, force, |progress| {
-        if verbose || matches!(progress, IndexProgress::Completed { .. }) {
-            let event = map_progress_to_view_model(progress, verbose);
-            let _ = view.render_index_event(event);
-        }
-    })?;
+    workspace
+        .projects()
+        .scan(&scan_context, force, |progress| {
+            if verbose || matches!(progress, IndexProgress::Completed { .. }) {
+                let event = map_progress_to_view_model(progress, verbose);
+                let _ = view.render_index_event(event);
+            }
+        })?;
 
     Ok(())
 }

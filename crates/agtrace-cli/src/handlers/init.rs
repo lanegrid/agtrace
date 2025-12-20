@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
-use agtrace_runtime::init::{InitConfig, InitProgress, InitService};
+use agtrace_runtime::{AgTrace, InitConfig, InitProgress};
 use anyhow::Result;
 
 pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Result<()> {
@@ -11,7 +11,7 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
         refresh,
     };
 
-    let result = InitService::run(
+    let result = AgTrace::setup(
         config,
         Some(|progress: InitProgress| {
             let _ = view.render_init_progress(&progress);

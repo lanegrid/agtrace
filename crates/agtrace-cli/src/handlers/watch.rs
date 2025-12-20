@@ -47,21 +47,18 @@ fn handle_tui(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
 
             let runtime = builder.start()?;
 
-            let log_root = workspace.config().providers.get(&name)
+            let log_root = workspace
+                .config()
+                .providers
+                .get(&name)
                 .map(|p| p.log_root.clone())
                 .unwrap_or_default();
 
-            let start = WatchStart::Provider {
-                name,
-                log_root,
-            };
+            let start = WatchStart::Provider { name, log_root };
             (runtime, start)
         }
         WatchTarget::Session { id } => {
-            let runtime = workspace
-                .monitor()
-                .watch_session(&id)
-                .start()?;
+            let runtime = workspace.monitor().watch_session(&id).start()?;
 
             let log_root = std::path::PathBuf::new();
             let start = WatchStart::Session { id, log_root };
@@ -142,21 +139,18 @@ pub fn handle_with_view(
 
             let runtime = builder.start()?;
 
-            let log_root = workspace.config().providers.get(&name)
+            let log_root = workspace
+                .config()
+                .providers
+                .get(&name)
                 .map(|p| p.log_root.clone())
                 .unwrap_or_default();
 
-            let start = WatchStart::Provider {
-                name,
-                log_root,
-            };
+            let start = WatchStart::Provider { name, log_root };
             (runtime, start)
         }
         WatchTarget::Session { id } => {
-            let runtime = workspace
-                .monitor()
-                .watch_session(&id)
-                .start()?;
+            let runtime = workspace.monitor().watch_session(&id).start()?;
 
             let log_root = std::path::PathBuf::new();
             let start = WatchStart::Session { id, log_root };
