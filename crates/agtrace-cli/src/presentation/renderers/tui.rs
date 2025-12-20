@@ -29,9 +29,11 @@ use std::time::Duration;
 /// Events that the TUI can handle
 #[derive(Debug, Clone)]
 pub(crate) enum TuiEvent {
-    /// User keyboard input
+    /// User keyboard input (reserved for future scroll/filter features)
+    #[allow(dead_code)]
     Input(KeyEvent),
-    /// Periodic tick for updates
+    /// Periodic tick for updates (reserved for future features)
+    #[allow(dead_code)]
     Tick,
     /// Watch service events forwarded from WatchView trait
     WatchStart(WatchStart),
@@ -52,19 +54,20 @@ pub struct TuiWatchView {
 impl TuiWatchView {
     /// Create a new TUI view
     /// Returns the view (for WatchView trait) and a receiver (for event loop)
-    pub fn new() -> Result<(Self, Receiver<TuiEvent>)> {
+    pub(crate) fn new() -> Result<(Self, Receiver<TuiEvent>)> {
         let (tx, rx) = mpsc::channel();
         Ok((Self { tx }, rx))
     }
 
     /// Get a clone of the sender (useful for passing to background threads)
-    pub fn sender(&self) -> Sender<TuiEvent> {
+    #[allow(dead_code)]
+    pub(crate) fn sender(&self) -> Sender<TuiEvent> {
         self.tx.clone()
     }
 
     /// Run the TUI event loop
     /// This is the main entry point for the TUI, called from the handler
-    pub fn run(rx: Receiver<TuiEvent>) -> Result<()> {
+    pub(crate) fn run(rx: Receiver<TuiEvent>) -> Result<()> {
         // Setup terminal
         enable_raw_mode()?;
         let mut stdout = io::stdout();
@@ -83,7 +86,7 @@ impl TuiWatchView {
         let mut events_buffer: VecDeque<String> = VecDeque::new();
         let mut footer_lines: Vec<String> = Vec::new();
         let mut session_start_time: Option<chrono::DateTime<chrono::Utc>> = None;
-        let mut _turn_count: usize = 0;  // Will be used when implementing scroll features
+        let mut _turn_count: usize = 0; // Will be used when implementing scroll features
         let mut should_quit = false;
 
         let tick_rate = Duration::from_millis(250);
@@ -196,7 +199,8 @@ impl TuiWatchView {
                                     opts,
                                 );
                                 let footer_output = format!("{}", token_view);
-                                footer_lines = footer_output.lines().map(|s| s.to_string()).collect();
+                                footer_lines =
+                                    footer_output.lines().map(|s| s.to_string()).collect();
                             }
                         }
                     }
@@ -227,7 +231,7 @@ fn ui(f: &mut Frame, events: &VecDeque<String>, footer: &[String]) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(0),           // Main content area
+            Constraint::Min(0),                             // Main content area
             Constraint::Length(footer.len().max(1) as u16), // Footer
         ])
         .split(f.area());
@@ -238,8 +242,7 @@ fn ui(f: &mut Frame, events: &VecDeque<String>, footer: &[String]) {
         .map(|line| ListItem::new(Line::from(line.as_str())))
         .collect();
 
-    let events_list = List::new(items)
-        .block(Block::default().borders(Borders::NONE));
+    let events_list = List::new(items).block(Block::default().borders(Borders::NONE));
 
     f.render_widget(events_list, chunks[0]);
 
@@ -249,8 +252,11 @@ fn ui(f: &mut Frame, events: &VecDeque<String>, footer: &[String]) {
         .map(|line| Line::from(line.as_str()))
         .collect();
 
-    let footer_widget = Paragraph::new(Text::from(footer_text))
-        .block(Block::default().borders(Borders::TOP).border_style(Style::default().fg(Color::DarkGray)));
+    let footer_widget = Paragraph::new(Text::from(footer_text)).block(
+        Block::default()
+            .borders(Borders::TOP)
+            .border_style(Style::default().fg(Color::DarkGray)),
+    );
 
     f.render_widget(footer_widget, chunks[1]);
 }
