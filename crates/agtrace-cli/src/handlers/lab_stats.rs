@@ -1,3 +1,4 @@
+use crate::presentation::presenters::{present_lab_stats, ToolCallSample, ToolClassification};
 use crate::presentation::renderers::TraceView;
 use agtrace_index::Database;
 use agtrace_providers::create_provider;
@@ -6,17 +7,11 @@ use agtrace_types::EventPayload;
 use anyhow::Result;
 use std::collections::{BTreeMap, HashMap};
 
-#[derive(Clone)]
-struct ToolCallSample {
-    arguments: String,
-    result: Option<String>,
-}
-
 pub fn handle(
     db: &Database,
     limit: Option<usize>,
     source: Option<String>,
-    _view: &dyn TraceView,
+    view: &dyn TraceView,
 ) -> Result<()> {
     let sessions = db.list_sessions(None, limit.unwrap_or(100000))?;
     let sessions: Vec<_> = sessions
@@ -30,7 +25,7 @@ pub fn handle(
         })
         .collect();
 
-    println!("Analyzing {} sessions...", sessions.len());
+    let total_sessions = sessions.len();
 
     let loader = SessionRepository::new(db);
     let options = LoadOptions::default();
@@ -42,8 +37,7 @@ pub fn handle(
     for session in &sessions {
         let events = match loader.load_events(&session.id, &options) {
             Ok(events) => events,
-            Err(e) => {
-                eprintln!("Warning: Failed to load session {}: {}", session.id, e);
+            Err(_e) => {
                 continue;
             }
         };
@@ -80,87 +74,36 @@ pub fn handle(
     // Sort providers and tool names for consistent output
     let sorted_stats: BTreeMap<_, _> = stats
         .into_iter()
-        .map(|(provider, tools)| {
+        .map(|(provider_name, tools)| {
             let sorted_tools: BTreeMap<_, _> = tools.into_iter().collect();
-            (provider, sorted_tools)
+
+            // Compute classifications for each tool
+            let classifications: Vec<ToolClassification> = sorted_tools
+                .keys()
+                .map(|tool_name| {
+                    let (origin, kind) = if let Ok(provider) = create_provider(&provider_name) {
+                        provider
+                            .classify_tool(tool_name)
+                            .map(|(o, k)| (Some(format!("{:?}", o)), Some(format!("{:?}", k))))
+                            .unwrap_or((None, None))
+                    } else {
+                        (None, None)
+                    };
+
+                    ToolClassification {
+                        tool_name: tool_name.clone(),
+                        origin,
+                        kind,
+                    }
+                })
+                .collect();
+
+            (provider_name, (sorted_tools, classifications))
         })
         .collect();
 
-    println!("\n=== ToolCall Statistics by Provider ===");
-    for (provider, tools) in &sorted_stats {
-        println!("\n{}", "=".repeat(80));
-        println!("Provider: {}", provider);
-        println!("{}", "=".repeat(80));
-        for (tool_name, (count, sample)) in tools {
-            println!("\n  Tool: {} (count: {})", tool_name, count);
-            if let Some(sample) = sample {
-                println!("    Input:");
-                println!("      {}", truncate_text(&sample.arguments, 200));
-                if let Some(result) = &sample.result {
-                    println!("    Output:");
-                    println!("      {}", truncate_text(result, 200));
-                } else {
-                    println!("    Output: (no result found)");
-                }
-            }
-        }
-    }
-
-    // Show tool mapping verification
-    println!("\n\n{}", "=".repeat(80));
-    println!("=== Tool Name → Classification Mapping ===");
-    println!("{}", "=".repeat(80));
-    print_tool_mappings(&sorted_stats)?;
+    let stats_vm = present_lab_stats(total_sessions, sorted_stats);
+    view.render_lab_stats(&stats_vm)?;
 
     Ok(())
-}
-
-fn print_tool_mappings(
-    stats: &BTreeMap<String, BTreeMap<String, (usize, Option<ToolCallSample>)>>,
-) -> Result<()> {
-    for (provider_name, tools) in stats {
-        println!("\nProvider: {}", provider_name);
-        println!("{}", "-".repeat(80));
-
-        let provider = create_provider(provider_name)?;
-
-        // Collect tool names
-        let tool_names: Vec<_> = tools.keys().collect();
-
-        // Find max tool name length for alignment
-        let max_len = tool_names.iter().map(|n| n.len()).max().unwrap_or(0);
-
-        for tool_name in tool_names {
-            let classification = provider.classify_tool(tool_name);
-            match classification {
-                Some((origin, kind)) => {
-                    println!(
-                        "  {:width$} → Origin: {:6} Kind: {:8}",
-                        tool_name,
-                        format!("{:?}", origin),
-                        format!("{:?}", kind),
-                        width = max_len
-                    );
-                }
-                None => {
-                    println!(
-                        "  {:width$} → (unmapped - fallback to common classifier)",
-                        tool_name,
-                        width = max_len
-                    );
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn truncate_text(text: &str, max_len: usize) -> String {
-    let text = text.replace('\n', " ");
-    if text.len() <= max_len {
-        text
-    } else {
-        format!("{}...", &text[..max_len])
-    }
 }

@@ -1,10 +1,12 @@
 use crate::config::Config;
 use crate::context::ExecutionContext;
-use crate::presentation::formatters::init::{SkipReason, Step1Result, Step3Result};
 use crate::presentation::renderers::TraceView;
-use crate::presentation::view_models::InitRenderEvent;
+use crate::presentation::view_models::{
+    InitRenderEvent, ProviderInfo, SkipReason, Step1Result, Step3Result,
+};
 use crate::types::OutputFormat;
 use agtrace_index::Database;
+use agtrace_providers::get_all_providers;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
@@ -22,7 +24,16 @@ pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Re
         let detected = Config::detect_providers()?;
 
         if detected.providers.is_empty() {
-            let step1_result = Step1Result::NoProvidersDetected;
+            let available_providers = get_all_providers()
+                .iter()
+                .map(|p| ProviderInfo {
+                    name: p.name.to_string(),
+                    default_log_path: p.default_log_path.to_string(),
+                })
+                .collect();
+            let step1_result = Step1Result::NoProvidersDetected {
+                available_providers,
+            };
             view.render_init_event(InitRenderEvent::Step1Result(step1_result))?;
             return Ok(());
         }

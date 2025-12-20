@@ -1,23 +1,8 @@
-/// Display formatting options
-#[derive(Debug, Clone)]
-pub struct FormatOptions {
-    pub enable_color: bool,
-    pub relative_time: bool,
-    pub truncate_text: Option<usize>,
-}
-
-impl Default for FormatOptions {
-    fn default() -> Self {
-        Self {
-            enable_color: true,
-            relative_time: false,
-            truncate_text: None,
-        }
-    }
-}
+// Re-export DisplayOptions from view_models
+pub use crate::presentation::view_models::DisplayOptions;
 
 // Backwards compatibility alias
-pub type DisplayOptions = FormatOptions;
+pub type FormatOptions = DisplayOptions;
 
 /// Token usage summary for display
 #[derive(Debug, Clone)]

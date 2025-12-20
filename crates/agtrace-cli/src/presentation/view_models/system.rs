@@ -1,5 +1,6 @@
-use crate::presentation::formatters::init::{Step1Result, Step3Result};
+use chrono::Duration;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -66,6 +67,42 @@ pub struct InspectDisplay {
 }
 
 #[derive(Debug, Clone)]
+pub struct ProviderInfo {
+    pub name: String,
+    pub default_log_path: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum Step1Result {
+    DetectedProviders {
+        providers: HashMap<String, PathBuf>,
+        config_saved: bool,
+    },
+    LoadedConfig {
+        config_path: PathBuf,
+    },
+    NoProvidersDetected {
+        available_providers: Vec<ProviderInfo>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum Step3Result {
+    Scanned {
+        success: bool,
+        error: Option<String>,
+    },
+    Skipped {
+        reason: SkipReason,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum SkipReason {
+    RecentlyScanned { elapsed: Duration },
+}
+
+#[derive(Debug, Clone)]
 pub enum InitRenderEvent {
     Header,
     Step1Detecting,
@@ -129,4 +166,37 @@ pub struct WatchSummary {
     pub recent_lines: Vec<String>,
     pub token_usage: Option<WatchTokenUsage>,
     pub turn_count: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct ToolCallSampleViewModel {
+    pub arguments: String,
+    pub result: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ToolStatsEntry {
+    pub tool_name: String,
+    pub count: usize,
+    pub sample: Option<ToolCallSampleViewModel>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ToolClassificationViewModel {
+    pub tool_name: String,
+    pub origin: Option<String>,
+    pub kind: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ProviderStatsViewModel {
+    pub provider_name: String,
+    pub tools: Vec<ToolStatsEntry>,
+    pub classifications: Vec<ToolClassificationViewModel>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LabStatsViewModel {
+    pub total_sessions: usize,
+    pub providers: Vec<ProviderStatsViewModel>,
 }

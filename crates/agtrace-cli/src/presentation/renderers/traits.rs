@@ -1,7 +1,7 @@
 use crate::presentation::view_models::{
     CorpusStats, DiagnoseResultViewModel, DoctorCheckResultViewModel, EventViewModel,
-    GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, ProjectSummary,
-    ProviderConfigSummary, ProviderSetResult, RawFileContent, ReactionViewModel,
+    GuidanceContext, IndexEvent, InitRenderEvent, InspectDisplay, LabStatsViewModel,
+    ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent, ReactionViewModel,
     SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel, StreamStateViewModel,
     WatchStart, WatchSummary,
 };
@@ -36,6 +36,7 @@ pub trait SystemView {
     fn render_index_event(&self, event: IndexEvent) -> Result<()>;
     fn render_init_event(&self, event: InitRenderEvent) -> Result<()>;
     fn render_lab_export(&self, exported: usize, output_path: &Path) -> Result<()>;
+    fn render_lab_stats(&self, stats: &LabStatsViewModel) -> Result<()>;
 }
 
 pub trait SessionView {

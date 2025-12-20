@@ -1,9 +1,8 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
-use crate::presentation::formatters::DisplayOptions;
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
-use crate::presentation::view_models::RawFileContent;
+use crate::presentation::view_models::{DisplayOptions, RawFileContent};
 use crate::types::ViewStyle;
 use agtrace_engine::assemble_session;
 use agtrace_index::Database;

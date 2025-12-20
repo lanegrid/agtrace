@@ -1,34 +1,7 @@
 use chrono::Duration;
-use std::collections::HashMap;
-use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
-pub enum Step1Result {
-    DetectedProviders {
-        providers: HashMap<String, PathBuf>,
-        config_saved: bool,
-    },
-    LoadedConfig {
-        config_path: PathBuf,
-    },
-    NoProvidersDetected,
-}
-
-#[derive(Debug, Clone)]
-pub enum Step3Result {
-    Scanned {
-        success: bool,
-        error: Option<String>,
-    },
-    Skipped {
-        reason: SkipReason,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum SkipReason {
-    RecentlyScanned { elapsed: Duration },
-}
+// Re-export from view_models
+pub use crate::presentation::view_models::{SkipReason, Step1Result, Step3Result};
 
 fn format_duration(d: Duration) -> String {
     let seconds = d.num_seconds();
@@ -72,12 +45,14 @@ pub fn print_step1_result(result: &Step1Result) {
         Step1Result::LoadedConfig { config_path } => {
             println!("  Configuration loaded from {}", config_path.display());
         }
-        Step1Result::NoProvidersDetected => {
+        Step1Result::NoProvidersDetected {
+            available_providers,
+        } => {
             println!("  No providers detected automatically.");
             println!("\n  To manually configure a provider:");
             println!("    agtrace provider set <name> --log-root <PATH> --enable");
             println!("\n  Supported providers:");
-            for provider in agtrace_providers::get_all_providers() {
+            for provider in available_providers {
                 println!(
                     "    - {}  (default: {})",
                     provider.name, provider.default_log_path

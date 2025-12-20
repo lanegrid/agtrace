@@ -5,9 +5,9 @@ use crate::presentation::formatters::{DisplayOptions, SessionListView};
 use crate::presentation::view_models::{
     CorpusStats, DiagnoseResultViewModel, DoctorCheckResultViewModel, EventPayloadViewModel,
     EventViewModel, GuidanceContext, IndexEvent, InitRenderEvent, InspectContent, InspectDisplay,
-    ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent, ReactionViewModel,
-    SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel, StreamStateViewModel,
-    WatchStart, WatchSummary,
+    LabStatsViewModel, ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent,
+    ReactionViewModel, SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel,
+    StreamStateViewModel, WatchStart, WatchSummary,
 };
 use crate::presentation::views::ReportTemplate;
 use crate::presentation::views::{CompactSessionView, EventView, TimelineView};
@@ -260,6 +260,72 @@ impl SystemView for ConsoleTraceView {
 
     fn render_lab_export(&self, exported: usize, output_path: &Path) -> Result<()> {
         println!("Exported {} events to {}", exported, output_path.display());
+        Ok(())
+    }
+
+    fn render_lab_stats(&self, stats: &LabStatsViewModel) -> Result<()> {
+        println!("Analyzing {} sessions...", stats.total_sessions);
+
+        println!("\n=== ToolCall Statistics by Provider ===");
+        for provider_stats in &stats.providers {
+            println!("\n{}", "=".repeat(80));
+            println!("Provider: {}", provider_stats.provider_name);
+            println!("{}", "=".repeat(80));
+            for tool_entry in &provider_stats.tools {
+                println!(
+                    "\n  Tool: {} (count: {})",
+                    tool_entry.tool_name, tool_entry.count
+                );
+                if let Some(sample) = &tool_entry.sample {
+                    println!("    Input:");
+                    println!("      {}", sample.arguments);
+                    if let Some(result) = &sample.result {
+                        println!("    Output:");
+                        println!("      {}", result);
+                    } else {
+                        println!("    Output: (no result found)");
+                    }
+                }
+            }
+        }
+
+        println!("\n\n{}", "=".repeat(80));
+        println!("=== Tool Name → Classification Mapping ===");
+        println!("{}", "=".repeat(80));
+
+        for provider_stats in &stats.providers {
+            println!("\nProvider: {}", provider_stats.provider_name);
+            println!("{}", "-".repeat(80));
+
+            let max_len = provider_stats
+                .classifications
+                .iter()
+                .map(|c| c.tool_name.len())
+                .max()
+                .unwrap_or(0);
+
+            for classification in &provider_stats.classifications {
+                match (&classification.origin, &classification.kind) {
+                    (Some(origin), Some(kind)) => {
+                        println!(
+                            "  {:width$} → Origin: {:6} Kind: {:8}",
+                            classification.tool_name,
+                            origin,
+                            kind,
+                            width = max_len
+                        );
+                    }
+                    _ => {
+                        println!(
+                            "  {:width$} → (unmapped - fallback to common classifier)",
+                            classification.tool_name,
+                            width = max_len
+                        );
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 }
