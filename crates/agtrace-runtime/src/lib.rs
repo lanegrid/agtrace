@@ -2,6 +2,7 @@ pub mod config_service;
 pub mod init_service;
 pub mod reactor;
 pub mod runtime;
+pub mod services;
 pub mod session_repository;
 pub mod streaming;
 pub mod token_limits;
@@ -13,6 +14,7 @@ pub use init_service::{
 };
 pub use reactor::{Reaction, Reactor, ReactorContext, SessionState};
 pub use runtime::{Runtime, RuntimeConfig, RuntimeEvent};
+pub use services::{DoctorService, IndexProgress, IndexService, SessionService, WatchService};
 pub use session_repository::{LoadOptions, SessionRepository};
 pub use streaming::{SessionUpdate, SessionWatcher, WatchEvent};
 pub use token_limits::{TokenLimit, TokenLimits};
