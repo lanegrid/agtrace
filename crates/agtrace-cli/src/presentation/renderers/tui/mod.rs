@@ -1,5 +1,6 @@
 mod app;
 mod components;
+mod mapper;
 mod tui_event;
 mod ui;
 
@@ -97,27 +98,25 @@ impl TuiWatchView {
                                 format!("👀 Watching session {} in {}", id, log_root.display())
                             }
                         };
-                        app_state.system_messages.push_back(message);
+                        app_state.add_system_message(message);
                     }
                     TuiEvent::WatchAttached(display_name) => {
-                        app_state
-                            .system_messages
-                            .push_back(format!("✨ Attached to active session: {}", display_name));
+                        app_state.add_system_message(format!(
+                            "✨ Attached to active session: {}",
+                            display_name
+                        ));
                     }
                     TuiEvent::WatchRotated(old_name, new_name) => {
-                        app_state
-                            .system_messages
-                            .push_back(format!("✨ Session rotated: {} → {}", old_name, new_name));
+                        app_state.add_system_message(format!(
+                            "✨ Session rotated: {} → {}",
+                            old_name, new_name
+                        ));
                     }
                     TuiEvent::WatchWaiting(message) => {
-                        app_state
-                            .system_messages
-                            .push_back(format!("⏳ Waiting: {}", message));
+                        app_state.add_system_message(format!("⏳ Waiting: {}", message));
                     }
                     TuiEvent::WatchError(message, fatal) => {
-                        app_state
-                            .system_messages
-                            .push_back(format!("❌ Error: {}", message));
+                        app_state.add_system_message(format!("❌ Error: {}", message));
                         if fatal {
                             should_quit = true;
                         }
@@ -129,11 +128,7 @@ impl TuiWatchView {
                         app_state.turn_count = state.turn_count;
 
                         for event in new_events {
-                            app_state.events_buffer.push_back(event.clone());
-
-                            if app_state.events_buffer.len() > 1000 {
-                                app_state.events_buffer.pop_front();
-                            }
+                            app_state.add_event(&event);
 
                             if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
                                 let opts = DisplayOptions {

@@ -1,5 +1,5 @@
 use crate::presentation::view_models::EventViewModel;
-use ratatui::widgets::ListState;
+use ratatui::widgets::{ListItem, ListState};
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +23,7 @@ pub(crate) struct AppState {
     pub session_title: String,
     pub events_buffer: VecDeque<EventViewModel>,
     pub system_messages: VecDeque<String>,
+    pub timeline_items: Vec<ListItem<'static>>,
     pub footer_lines: Vec<String>,
     pub context_usage: Option<ContextUsageState>,
     pub session_start_time: Option<chrono::DateTime<chrono::Utc>>,
@@ -37,6 +38,7 @@ impl Default for AppState {
             session_title: String::new(),
             events_buffer: VecDeque::new(),
             system_messages: VecDeque::new(),
+            timeline_items: Vec::new(),
             footer_lines: Vec::new(),
             context_usage: None,
             session_start_time: None,
@@ -52,7 +54,30 @@ impl AppState {
     }
 
     pub fn total_items(&self) -> usize {
-        self.system_messages.len() + self.events_buffer.len()
+        self.timeline_items.len()
+    }
+
+    pub fn add_event(&mut self, event: &EventViewModel) {
+        let item =
+            super::mapper::event_to_list_item(event, self.turn_count, self.session_start_time);
+
+        self.events_buffer.push_back(event.clone());
+        self.timeline_items.push(item);
+
+        if self.events_buffer.len() > 1000 {
+            self.events_buffer.pop_front();
+        }
+        if self.timeline_items.len() > 1000 {
+            self.timeline_items.remove(self.system_messages.len());
+        }
+    }
+
+    pub fn add_system_message(&mut self, message: String) {
+        let item = super::mapper::system_message_to_list_item(&message);
+
+        self.system_messages.push_back(message);
+        self.timeline_items
+            .insert(self.system_messages.len().saturating_sub(1), item);
     }
 
     pub fn select_next(&mut self) {
