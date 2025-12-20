@@ -1,4 +1,4 @@
-use crate::presentation::view_models::{SkipReason, Step1Result, Step3Result};
+use crate::presentation::view_models::{ConfigStatus, InitProgress, InitResult, ScanOutcome};
 use chrono::Duration;
 
 fn format_duration(d: Duration) -> String {
@@ -14,38 +14,35 @@ fn format_duration(d: Duration) -> String {
     }
 }
 
-pub fn print_init_header() {
+pub fn print_init_progress(progress: &InitProgress) {
+    match progress {
+        InitProgress::ConfigPhase => println!("Step 1/4: Configuration..."),
+        InitProgress::DatabasePhase => println!("Step 2/4: Database..."),
+        InitProgress::ScanPhase => println!("Step 3/4: Scanning..."),
+        InitProgress::SessionPhase => println!("Step 4/4: Sessions..."),
+    }
+}
+
+pub fn print_init_result(result: &InitResult) {
     println!("Initializing agtrace...\n");
-}
 
-pub fn print_step1_detecting() {
-    println!("Step 1/4: Detecting providers...");
-}
-
-pub fn print_step1_loading() {
-    println!("Step 1/4: Loading configuration...");
-}
-
-pub fn print_step1_result(result: &Step1Result) {
-    match result {
-        Step1Result::DetectedProviders {
-            providers,
-            config_saved,
-        } => {
+    match &result.config_status {
+        ConfigStatus::DetectedAndSaved { providers } => {
+            println!("Configuration:");
             println!("  Detected {} provider(s):", providers.len());
             for (name, log_root) in providers {
                 println!("    {} -> {}", name, log_root.display());
             }
-            if *config_saved {
-                println!("  Configuration saved");
-            }
+            println!("  Configuration saved");
         }
-        Step1Result::LoadedConfig { config_path } => {
-            println!("  Configuration loaded from {}", config_path.display());
+        ConfigStatus::LoadedExisting { config_path } => {
+            println!("Configuration:");
+            println!("  Loaded from {}", config_path.display());
         }
-        Step1Result::NoProvidersDetected {
+        ConfigStatus::NoProvidersDetected {
             available_providers,
         } => {
+            println!("Configuration:");
             println!("  No providers detected automatically.");
             println!("\n  To manually configure a provider:");
             println!("    agtrace provider set <name> --log-root <PATH> --enable");
@@ -56,79 +53,54 @@ pub fn print_step1_result(result: &Step1Result) {
                     provider.name, provider.default_log_path
                 );
             }
+            return;
         }
     }
-}
 
-pub fn print_step2_header() {
-    println!("\nStep 2/4: Setting up database...");
-}
+    println!("\nDatabase:");
+    println!("  Ready at {}", result.db_path.display());
 
-pub fn print_step2_result(db_path: &std::path::Path) {
-    println!("  Database ready at {}", db_path.display());
-}
-
-pub fn print_step3_header() {
-    println!("\nStep 3/4: Scanning for sessions...");
-}
-
-pub fn print_step3_result(result: &Step3Result) {
-    match result {
-        Step3Result::Scanned { success, error } => {
-            if !success {
-                if let Some(err_msg) = error {
-                    println!("  Warning: Scan completed with errors: {}", err_msg);
-                    println!("\n  If you encounter compatibility issues, run:");
-                    println!("    agtrace doctor run");
-                }
-            }
+    println!("\nScan:");
+    match &result.scan_outcome {
+        ScanOutcome::Scanned => {
+            println!("  Completed");
         }
-        Step3Result::Skipped { reason } => match reason {
-            SkipReason::RecentlyScanned { elapsed } => {
-                println!(
-                    "  Recently scanned ({}). Skipping.",
-                    format_duration(*elapsed)
-                );
-                println!("  Use `agtrace init --refresh` to force re-scan.");
-            }
-        },
+        ScanOutcome::Skipped { elapsed } => {
+            println!("  Skipped (scanned {})", format_duration(*elapsed));
+            println!("  Use `agtrace init --refresh` to force re-scan.");
+        }
     }
-}
 
-pub fn print_step4_header() {
-    println!("\nStep 4/4: Recent sessions...\n");
-}
+    println!("\nRecent sessions:");
+    if result.recent_sessions.is_empty() {
+        if result.all_projects {
+            println!("  No sessions found.");
+            println!("\nTips:");
+            println!("  - Check provider configuration: agtrace provider list");
+            println!("  - Run diagnostics: agtrace doctor run");
+        } else {
+            println!("  No sessions found for the current project.");
+            println!("\nTips:");
+            println!("  - Scan all projects: agtrace init --all-projects");
+            println!("  - Or: agtrace index update --all-projects");
+        }
+    } else if let Some(first_session) = result.recent_sessions.first() {
+        let session_prefix = if first_session.id.len() > 8 {
+            &first_session.id[..8]
+        } else {
+            &first_session.id
+        };
 
-pub fn print_step4_no_sessions(all_projects: bool) {
-    if all_projects {
-        println!("No sessions found.");
-        println!("\nTips:");
-        println!("  - Check provider configuration: agtrace provider list");
-        println!("  - Run diagnostics: agtrace doctor run");
-    } else {
-        println!("No sessions found for the current project.");
-        println!("\nTips:");
-        println!("  - Scan all projects: agtrace init --all-projects");
-        println!("  - Or: agtrace index update --all-projects");
+        println!("\nNext steps:");
+        println!("  View session in compact style (see bottlenecks and tool chains):");
+        println!(
+            "    agtrace session show {} --style compact",
+            session_prefix
+        );
+        println!("\n  View conversation only (for LLM consumption):");
+        println!(
+            "    agtrace session show {} --only user,assistant --full",
+            session_prefix
+        );
     }
-}
-
-pub fn print_next_steps(first_session_id: &str) {
-    let session_prefix = if first_session_id.len() > 8 {
-        &first_session_id[..8]
-    } else {
-        first_session_id
-    };
-
-    println!("\nNext steps:");
-    println!("  View session in compact style (see bottlenecks and tool chains):");
-    println!(
-        "    agtrace session show {} --style compact",
-        session_prefix
-    );
-    println!("\n  View conversation only (for LLM consumption):");
-    println!(
-        "    agtrace session show {} --only user,assistant --full",
-        session_prefix
-    );
 }

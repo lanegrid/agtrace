@@ -4,7 +4,7 @@ use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::SessionListView;
 use crate::presentation::view_models::{
     CorpusStats, DiagnoseResultViewModel, DisplayOptions, DoctorCheckResultViewModel,
-    EventPayloadViewModel, EventViewModel, GuidanceContext, IndexEvent, InitRenderEvent,
+    EventPayloadViewModel, EventViewModel, GuidanceContext, IndexEvent, InitProgress, InitResult,
     InspectContent, InspectDisplay, LabStatsViewModel, ProjectSummary, ProviderConfigSummary,
     ProviderSetResult, RawFileContent, ReactionViewModel, SessionDigestViewModel,
     SessionListEntryViewModel, SessionViewModel, StreamStateViewModel, WatchStart, WatchSummary,
@@ -221,40 +221,13 @@ impl SystemView for ConsoleTraceView {
         Ok(())
     }
 
-    fn render_init_event(&self, event: InitRenderEvent) -> Result<()> {
-        match event {
-            InitRenderEvent::Header => crate::presentation::formatters::init::print_init_header(),
-            InitRenderEvent::Step1Detecting => {
-                crate::presentation::formatters::init::print_step1_detecting()
-            }
-            InitRenderEvent::Step1Loading => {
-                crate::presentation::formatters::init::print_step1_loading()
-            }
-            InitRenderEvent::Step1Result(step) => {
-                crate::presentation::formatters::init::print_step1_result(&step)
-            }
-            InitRenderEvent::Step2Header => {
-                crate::presentation::formatters::init::print_step2_header()
-            }
-            InitRenderEvent::Step2Result { db_path } => {
-                crate::presentation::formatters::init::print_step2_result(&db_path)
-            }
-            InitRenderEvent::Step3Header => {
-                crate::presentation::formatters::init::print_step3_header()
-            }
-            InitRenderEvent::Step3Result(step) => {
-                crate::presentation::formatters::init::print_step3_result(&step)
-            }
-            InitRenderEvent::Step4Header => {
-                crate::presentation::formatters::init::print_step4_header()
-            }
-            InitRenderEvent::Step4NoSessions { all_projects } => {
-                crate::presentation::formatters::init::print_step4_no_sessions(all_projects);
-            }
-            InitRenderEvent::NextSteps { session_id } => {
-                crate::presentation::formatters::init::print_next_steps(&session_id);
-            }
-        }
+    fn render_init_progress(&self, progress: &InitProgress) -> Result<()> {
+        crate::presentation::formatters::init::print_init_progress(progress);
+        Ok(())
+    }
+
+    fn render_init_result(&self, result: &InitResult) -> Result<()> {
+        crate::presentation::formatters::init::print_init_result(result);
         Ok(())
     }
 

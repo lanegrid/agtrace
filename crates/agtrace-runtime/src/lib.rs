@@ -8,7 +8,9 @@ pub mod token_limits;
 pub mod token_usage_monitor;
 
 pub use config_service::{Config, ProviderConfig};
-pub use init_service::{InitConfig, InitEvent, InitService, ProviderInfo, SkipReason};
+pub use init_service::{
+    ConfigStatus, InitConfig, InitProgress, InitResult, InitService, ProviderInfo, ScanOutcome,
+};
 pub use reactor::{Reaction, Reactor, ReactorContext, SessionState};
 pub use runtime::{Runtime, RuntimeConfig, RuntimeEvent};
 pub use session_repository::{LoadOptions, SessionRepository};

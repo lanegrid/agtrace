@@ -1,7 +1,7 @@
-use chrono::Duration;
 use serde_json::Value;
-use std::collections::HashMap;
 use std::path::PathBuf;
+
+pub use agtrace_runtime::{ConfigStatus, InitProgress, InitResult, ScanOutcome};
 
 #[derive(Debug, Clone)]
 pub struct ProviderConfigSummary {
@@ -64,57 +64,6 @@ pub struct InspectDisplay {
     pub total_lines: usize,
     pub shown_lines: usize,
     pub lines: Vec<InspectLine>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ProviderInfo {
-    pub name: String,
-    pub default_log_path: String,
-}
-
-#[derive(Debug, Clone)]
-pub enum Step1Result {
-    DetectedProviders {
-        providers: HashMap<String, PathBuf>,
-        config_saved: bool,
-    },
-    LoadedConfig {
-        config_path: PathBuf,
-    },
-    NoProvidersDetected {
-        available_providers: Vec<ProviderInfo>,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum Step3Result {
-    Scanned {
-        success: bool,
-        error: Option<String>,
-    },
-    Skipped {
-        reason: SkipReason,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum SkipReason {
-    RecentlyScanned { elapsed: Duration },
-}
-
-#[derive(Debug, Clone)]
-pub enum InitRenderEvent {
-    Header,
-    Step1Detecting,
-    Step1Loading,
-    Step1Result(Step1Result),
-    Step2Header,
-    Step2Result { db_path: PathBuf },
-    Step3Header,
-    Step3Result(Step3Result),
-    Step4Header,
-    Step4NoSessions { all_projects: bool },
-    NextSteps { session_id: String },
 }
 
 #[derive(Debug, Clone)]
