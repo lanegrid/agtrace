@@ -115,7 +115,10 @@ pub enum Commands {
     },
 
     #[command(about = "Initialize agtrace configuration")]
-    Init,
+    Init {
+        #[arg(long)]
+        refresh: bool,
+    },
 }
 
 #[derive(Subcommand)]
