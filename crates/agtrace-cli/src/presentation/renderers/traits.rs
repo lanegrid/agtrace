@@ -3,12 +3,12 @@ use super::models::{
     ProviderConfigSummary, ProviderSetResult, RawFileContent, WatchStart, WatchSummary,
 };
 use crate::presentation::formatters::ReportTemplate;
+use crate::presentation::view_models::{
+    DiagnoseResultViewModel, EventViewModel, SessionDigestViewModel, SessionViewModel,
+};
 use crate::types::OutputFormat;
-use agtrace_engine::AgentSession;
-use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};
-use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::Path;
 
@@ -43,22 +43,22 @@ pub trait SystemView {
 pub trait SessionView {
     fn render_session_list(&self, sessions: &[SessionSummary], format: OutputFormat) -> Result<()>;
     fn render_session_raw_files(&self, files: &[RawFileContent]) -> Result<()>;
-    fn render_session_events_json(&self, events: &[AgentEvent]) -> Result<()>;
+    fn render_session_events_json(&self, events: &[EventViewModel]) -> Result<()>;
     fn render_session_compact(
         &self,
-        session: &AgentSession,
+        session: &SessionViewModel,
         options: &crate::presentation::formatters::DisplayOptions,
     ) -> Result<()>;
     fn render_session_timeline(
         &self,
-        events: &[AgentEvent],
+        events: &[EventViewModel],
         truncate: bool,
         enable_color: bool,
     ) -> Result<()>;
     fn render_session_assemble_error(&self) -> Result<()>;
     fn render_pack_report(
         &self,
-        digests: &[SessionDigest],
+        digests: &[SessionDigestViewModel],
         template: ReportTemplate,
         pool_size: usize,
         candidate_count: usize,
@@ -70,9 +70,13 @@ pub trait DiagnosticView {
         &self,
         file_path: &str,
         provider_name: &str,
-        result: Result<&[AgentEvent], &anyhow::Error>,
+        result: Result<&[EventViewModel], &anyhow::Error>,
     ) -> Result<()>;
-    fn render_diagnose_results(&self, results: &[DiagnoseResult], verbose: bool) -> Result<()>;
+    fn render_diagnose_results(
+        &self,
+        results: &[DiagnoseResultViewModel],
+        verbose: bool,
+    ) -> Result<()>;
     fn render_inspect(&self, display: &InspectDisplay) -> Result<()>;
 }
 
@@ -88,5 +92,9 @@ pub trait WatchView {
     fn on_watch_reactor_error(&self, reactor_name: &str, error: &str) -> Result<()>;
     fn on_watch_reaction_error(&self, error: &str) -> Result<()>;
     fn on_watch_reaction(&self, reaction: &Reaction) -> Result<()>;
-    fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()>;
+    fn render_stream_update(
+        &self,
+        state: &SessionState,
+        new_events: &[EventViewModel],
+    ) -> Result<()>;
 }

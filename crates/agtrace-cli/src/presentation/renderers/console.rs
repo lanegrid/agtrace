@@ -1,16 +1,15 @@
 use super::models::*;
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
-use crate::presentation::formatters::event::EventView;
 use crate::presentation::formatters::token::TokenUsageView;
-use crate::presentation::formatters::{
-    CompactView, DisplayOptions, ReportTemplate, SessionListView, TimelineView,
+use crate::presentation::formatters::{DisplayOptions, ReportTemplate, SessionListView};
+use crate::presentation::view_models::{
+    DiagnoseResultViewModel, EventPayloadViewModel, EventViewModel, SessionDigestViewModel,
+    SessionViewModel,
 };
+use crate::presentation::views::{CompactSessionView, EventView, TimelineView};
 use crate::types::OutputFormat;
-use agtrace_engine::AgentSession;
-use agtrace_engine::{DiagnoseResult, SessionDigest};
 use agtrace_index::SessionSummary;
 use agtrace_runtime::reactor::{Reaction, SessionState};
-use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;
@@ -283,23 +282,23 @@ impl SessionView for ConsoleTraceView {
         Ok(())
     }
 
-    fn render_session_events_json(&self, events: &[AgentEvent]) -> Result<()> {
+    fn render_session_events_json(&self, events: &[EventViewModel]) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(events)?);
         Ok(())
     }
 
     fn render_session_compact(
         &self,
-        session: &AgentSession,
+        session: &SessionViewModel,
         options: &DisplayOptions,
     ) -> Result<()> {
-        print!("{}", CompactView { session, options });
+        print!("{}", CompactSessionView { session, options });
         Ok(())
     }
 
     fn render_session_timeline(
         &self,
-        events: &[AgentEvent],
+        events: &[EventViewModel],
         _truncate: bool,
         enable_color: bool,
     ) -> Result<()> {
@@ -313,7 +312,6 @@ impl SessionView for ConsoleTraceView {
             TimelineView {
                 events,
                 options: &options,
-                project_root: None,
             }
         );
         Ok(())
@@ -326,7 +324,7 @@ impl SessionView for ConsoleTraceView {
 
     fn render_pack_report(
         &self,
-        digests: &[SessionDigest],
+        digests: &[SessionDigestViewModel],
         template: ReportTemplate,
         pool_size: usize,
         candidate_count: usize,
@@ -336,13 +334,9 @@ impl SessionView for ConsoleTraceView {
             pool_size, candidate_count
         );
         match template {
-            ReportTemplate::Compact => {
-                crate::presentation::formatters::pack::print_compact(digests)
-            }
-            ReportTemplate::Diagnose => {
-                crate::presentation::formatters::pack::print_diagnose(digests)
-            }
-            ReportTemplate::Tools => crate::presentation::formatters::pack::print_tools(digests),
+            ReportTemplate::Compact => crate::presentation::views::pack::print_compact(digests),
+            ReportTemplate::Diagnose => crate::presentation::views::pack::print_diagnose(digests),
+            ReportTemplate::Tools => crate::presentation::views::pack::print_tools(digests),
         }
         Ok(())
     }
@@ -353,18 +347,18 @@ impl DiagnosticView for ConsoleTraceView {
         &self,
         file_path: &str,
         provider_name: &str,
-        result: Result<&[AgentEvent], &anyhow::Error>,
+        result: Result<&[EventViewModel], &anyhow::Error>,
     ) -> Result<()> {
-        crate::presentation::formatters::doctor::print_check_result(
-            file_path,
-            provider_name,
-            result,
-        );
+        crate::presentation::views::doctor::print_check_result(file_path, provider_name, result);
         Ok(())
     }
 
-    fn render_diagnose_results(&self, results: &[DiagnoseResult], verbose: bool) -> Result<()> {
-        crate::presentation::formatters::doctor::print_results(results, verbose);
+    fn render_diagnose_results(
+        &self,
+        results: &[DiagnoseResultViewModel],
+        verbose: bool,
+    ) -> Result<()> {
+        crate::presentation::views::doctor::print_results(results, verbose);
         Ok(())
     }
 
@@ -562,7 +556,11 @@ impl WatchView for ConsoleTraceView {
         Ok(())
     }
 
-    fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()> {
+    fn render_stream_update(
+        &self,
+        state: &SessionState,
+        new_events: &[EventViewModel],
+    ) -> Result<()> {
         let opts = DisplayOptions {
             enable_color: true,
             relative_time: false,
@@ -575,7 +573,6 @@ impl WatchView for ConsoleTraceView {
                 options: &opts,
                 session_start: Some(state.start_time),
                 turn_context: state.turn_count,
-                project_root: state.project_root.as_deref(),
             };
 
             // EventView returns Ok(()) for events that shouldn't be displayed
@@ -585,7 +582,7 @@ impl WatchView for ConsoleTraceView {
                 println!("{}", formatted);
             }
 
-            if matches!(event.payload, EventPayload::TokenUsage(_)) {
+            if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
                 let token_view = TokenUsageView::from_state(state, opts.clone());
                 println!();
                 print!("{}", token_view);

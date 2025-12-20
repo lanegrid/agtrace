@@ -1,5 +1,5 @@
-use super::{CompactView, DisplayOptions};
-use agtrace_engine::SessionDigest;
+use crate::presentation::formatters::DisplayOptions;
+use crate::presentation::view_models::SessionDigestViewModel;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -22,10 +22,10 @@ impl FromStr for ReportTemplate {
     }
 }
 
-pub fn print_diagnose(digests: &[SessionDigest]) {
+pub fn print_diagnose(digests: &[SessionDigestViewModel]) {
     println!("## Selected Sessions (Diagnose Mode)\n");
 
-    let mut by_reason: HashMap<String, Vec<&SessionDigest>> = HashMap::new();
+    let mut by_reason: HashMap<String, Vec<&SessionDigestViewModel>> = HashMap::new();
     for d in digests {
         let key = d
             .selection_reason
@@ -46,12 +46,12 @@ pub fn print_diagnose(digests: &[SessionDigest]) {
     }
 }
 
-pub fn print_tools(digests: &[SessionDigest]) {
+pub fn print_tools(digests: &[SessionDigestViewModel]) {
     print_compact(digests);
 }
 
-pub fn print_compact(digests: &[SessionDigest]) {
-    let opts = DisplayOptions {
+pub fn print_compact(digests: &[SessionDigestViewModel]) {
+    let _opts = DisplayOptions {
         enable_color: false,
         relative_time: false,
         truncate_text: None,
@@ -61,25 +61,14 @@ pub fn print_compact(digests: &[SessionDigest]) {
         print_digest_summary(digest);
 
         println!("Work:");
-        let output = format!(
-            "{}",
-            CompactView {
-                session: &digest.session,
-                options: &opts,
-            }
-        );
-        let lines: Vec<&str> = output.lines().collect();
-        for line in lines.iter().take(15) {
-            println!("  {}", line);
-        }
-        if lines.len() > 15 {
-            println!("  ... ({} more lines)", lines.len() - 15);
-        }
+        // TODO: Need to render session content from digest
+        // For now, just show a placeholder
+        println!("  (Session content rendering requires SessionViewModel)");
         println!();
     }
 }
 
-fn print_digest_summary(digest: &SessionDigest) {
+fn print_digest_summary(digest: &SessionDigestViewModel) {
     let id_short = &digest.session_id[..8.min(digest.session_id.len())];
     let reason = digest.selection_reason.as_deref().unwrap_or("");
 

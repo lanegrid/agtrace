@@ -1,4 +1,5 @@
 use crate::context::ExecutionContext;
+use crate::presentation::presenters;
 use crate::presentation::renderers::models::{WatchStart, WatchSummary};
 use crate::presentation::renderers::traits::WatchView;
 use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
@@ -94,7 +95,8 @@ pub fn handle_with_view(
                     })?;
                     initialized = true;
                 }
-                view.render_stream_update(&state, &new_events)?;
+                let event_vms = presenters::present_events(&new_events);
+                view.render_stream_update(&state, &event_vms)?;
             }
             RuntimeEvent::ReactionTriggered { reaction, .. } => {
                 view.on_watch_reaction(&reaction)?

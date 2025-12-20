@@ -1,4 +1,5 @@
 use crate::context::ExecutionContext;
+use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use agtrace_engine::{analyze_and_select_sessions, assemble_session, SessionDigest};
 use agtrace_index::SessionSummary;
@@ -52,8 +53,9 @@ pub fn handle(
     let report_template = template
         .parse()
         .expect("ReportTemplate parsing is infallible");
+    let selection_vms: Vec<_> = selections.iter().map(presenters::present_digest).collect();
     view.render_pack_report(
-        &selections,
+        &selection_vms,
         report_template,
         balanced_sessions.len(),
         raw_sessions.len(),

@@ -1,12 +1,13 @@
-use agtrace_engine::DiagnoseResult;
-use agtrace_types::{AgentEvent, EventPayload};
+use crate::presentation::view_models::{
+    DiagnoseResultViewModel, EventPayloadViewModel, EventViewModel,
+};
 use owo_colors::OwoColorize;
 use std::collections::HashMap;
 
 pub fn print_check_result(
     file_path: &str,
     provider_name: &str,
-    result: Result<&[AgentEvent], &anyhow::Error>,
+    result: Result<&[EventViewModel], &anyhow::Error>,
 ) {
     println!("File: {}", file_path);
     println!("Provider: {}", provider_name);
@@ -15,7 +16,7 @@ pub fn print_check_result(
         Ok(events) => {
             let first_event = events.first();
             let session_id = first_event
-                .map(|e| e.session_id.to_string())
+                .map(|e| e.session_id.clone())
                 .unwrap_or_default();
             let timestamp = first_event
                 .map(|e| e.timestamp)
@@ -24,13 +25,13 @@ pub fn print_check_result(
             let mut event_breakdown = HashMap::new();
             for event in events {
                 let payload_type = match &event.payload {
-                    EventPayload::User(_) => "User",
-                    EventPayload::Message(_) => "Message",
-                    EventPayload::ToolCall(_) => "ToolCall",
-                    EventPayload::ToolResult(_) => "ToolResult",
-                    EventPayload::Reasoning(_) => "Reasoning",
-                    EventPayload::TokenUsage(_) => "TokenUsage",
-                    EventPayload::Notification(_) => "Notification",
+                    EventPayloadViewModel::User { .. } => "User",
+                    EventPayloadViewModel::Message { .. } => "Message",
+                    EventPayloadViewModel::ToolCall { .. } => "ToolCall",
+                    EventPayloadViewModel::ToolResult { .. } => "ToolResult",
+                    EventPayloadViewModel::Reasoning { .. } => "Reasoning",
+                    EventPayloadViewModel::TokenUsage { .. } => "TokenUsage",
+                    EventPayloadViewModel::Notification { .. } => "Notification",
                 };
                 *event_breakdown.entry(payload_type).or_insert(0) += 1;
             }
@@ -103,7 +104,7 @@ fn generate_suggestion(error_msg: &str, file_path: &str) -> Option<String> {
     }
 }
 
-pub fn print_results(results: &[DiagnoseResult], verbose: bool) {
+pub fn print_results(results: &[DiagnoseResultViewModel], verbose: bool) {
     println!("{}", "=== Diagnose Results ===".bold());
     println!();
 

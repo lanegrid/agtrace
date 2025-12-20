@@ -1,12 +1,12 @@
 use crate::presentation::formatters::{text, time, tool};
 use crate::presentation::renderers::backend::TerminalWriter;
+use crate::presentation::view_models::{EventPayloadViewModel, EventViewModel};
 use agtrace_runtime::reactor::SessionState;
-use agtrace_types::AgentEvent;
 use std::collections::VecDeque;
 use std::sync::Mutex;
 
 pub struct WatchBuffer {
-    events: VecDeque<AgentEvent>,
+    events: VecDeque<EventViewModel>,
     state: SessionState,
 }
 
@@ -25,7 +25,7 @@ impl WatchBuffer {
         }
     }
 
-    pub fn push_event(&mut self, event: AgentEvent) {
+    pub fn push_event(&mut self, event: EventViewModel) {
         self.events.push_back(event);
     }
 
@@ -86,8 +86,7 @@ impl WatchBuffer {
             .collect()
     }
 
-    fn format_event(&self, event: &AgentEvent, delta: Option<String>) -> String {
-        use agtrace_types::{EventPayload, StreamId};
+    fn format_event(&self, event: &EventViewModel, delta: Option<String>) -> String {
         use chrono::Local;
         use owo_colors::OwoColorize;
 
@@ -96,21 +95,9 @@ impl WatchBuffer {
             .map(|d| format!(" {}", d.dimmed()))
             .unwrap_or_default();
 
-        // Check if this is a sidechain event
-        if let StreamId::Sidechain { agent_id } = &event.stream_id {
-            let short_id = &agent_id.chars().take(6).collect::<String>();
-            return format!(
-                "{}{} {} Sidechain #{} spawned",
-                time.dimmed(),
-                delta_str,
-                "⛓️".yellow(),
-                short_id.yellow()
-            );
-        }
-
         match &event.payload {
-            EventPayload::User(payload) => {
-                let txt = text::truncate(&payload.text, 100);
+            EventPayloadViewModel::User { text } => {
+                let txt = text::truncate(text, 100);
                 format!(
                     "{}{} {} \"{}\"",
                     time.dimmed(),
@@ -119,8 +106,8 @@ impl WatchBuffer {
                     txt
                 )
             }
-            EventPayload::Reasoning(payload) => {
-                let txt = text::truncate(&payload.text, 50);
+            EventPayloadViewModel::Reasoning { text } => {
+                let txt = text::truncate(text, 50);
                 format!(
                     "{}{} {} {}",
                     time.dimmed(),
@@ -129,8 +116,8 @@ impl WatchBuffer {
                     txt.cyan()
                 )
             }
-            EventPayload::Message(payload) => {
-                let txt = text::truncate(&payload.text, 100);
+            EventPayloadViewModel::Message { text } => {
+                let txt = text::truncate(text, 100);
                 format!(
                     "{}{} {} {}",
                     time.dimmed(),
@@ -139,14 +126,11 @@ impl WatchBuffer {
                     txt
                 )
             }
-            EventPayload::ToolCall(payload) => {
-                let (icon, color_fn) = tool::categorize_tool(&payload.name);
-                let summary = tool::format_tool_call(
-                    &payload.name,
-                    &payload.arguments,
-                    self.state.project_root.as_deref(),
-                );
-                let colored_name = color_fn(&payload.name);
+            EventPayloadViewModel::ToolCall { name, arguments } => {
+                let (icon, color_fn) = tool::categorize_tool(name);
+                let summary =
+                    tool::format_tool_call(name, arguments, self.state.project_root.as_deref());
+                let colored_name = color_fn(name);
                 format!(
                     "{}{} {} {}: {}",
                     time.dimmed(),
@@ -156,22 +140,22 @@ impl WatchBuffer {
                     summary
                 )
             }
-            EventPayload::ToolResult(payload) => {
-                if payload.is_error {
-                    let output = text::truncate(&payload.output, 100);
+            EventPayloadViewModel::ToolResult { output, is_error } => {
+                if *is_error {
+                    let output_text = text::truncate(output, 100);
                     format!(
                         "{}{} {} {}",
                         time.dimmed(),
                         delta_str,
                         "❌ Fail:".red(),
-                        output.red()
+                        output_text.red()
                     )
                 } else {
                     String::new()
                 }
             }
-            EventPayload::TokenUsage(_) => String::new(),
-            _ => String::new(),
+            EventPayloadViewModel::TokenUsage { .. } => String::new(),
+            EventPayloadViewModel::Notification { .. } => String::new(),
         }
     }
 }
@@ -197,7 +181,7 @@ impl RefreshingWatchView {
         }
     }
 
-    fn on_event(&self, event: AgentEvent) {
+    fn on_event(&self, event: EventViewModel) {
         self.inner.lock().unwrap().buffer.push_event(event);
     }
 
@@ -386,7 +370,7 @@ impl super::traits::WatchView for RefreshingWatchView {
     fn render_stream_update(
         &self,
         state: &SessionState,
-        new_events: &[AgentEvent],
+        new_events: &[EventViewModel],
     ) -> anyhow::Result<()> {
         for event in new_events {
             self.on_event(event.clone());
@@ -403,20 +387,19 @@ impl super::traits::WatchView for RefreshingWatchView {
 mod tests {
     use super::*;
     use crate::presentation::renderers::backend::MockTerminal;
-    use agtrace_types::{EventPayload, UserPayload};
     use chrono::Utc;
 
-    fn create_user_event(text: &str) -> AgentEvent {
+    fn create_user_event(text: &str) -> EventViewModel {
         use uuid::Uuid;
-        AgentEvent {
-            id: Uuid::new_v4(),
-            session_id: Uuid::new_v4(),
+        EventViewModel {
+            id: Uuid::new_v4().to_string(),
+            session_id: Uuid::new_v4().to_string(),
             parent_id: None,
             timestamp: Utc::now(),
-            stream_id: Default::default(),
-            payload: EventPayload::User(UserPayload {
+            stream_id: "main".to_string(),
+            payload: EventPayloadViewModel::User {
                 text: text.to_string(),
-            }),
+            },
             metadata: None,
         }
     }

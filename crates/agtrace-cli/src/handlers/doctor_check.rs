@@ -1,3 +1,4 @@
+use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use agtrace_providers::{create_provider, detect_provider_from_path, ImportContext, LogProvider};
 use anyhow::Result;
@@ -33,7 +34,8 @@ pub fn handle(
 
     match provider.normalize_file(path, &context) {
         Ok(events) => {
-            view.render_doctor_check(&file_path, &provider_name, Ok(&events))?;
+            let event_vms = presenters::present_events(&events);
+            view.render_doctor_check(&file_path, &provider_name, Ok(&event_vms))?;
             Ok(())
         }
         Err(e) => {

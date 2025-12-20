@@ -1,4 +1,5 @@
 use crate::context::ExecutionContext;
+use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use agtrace_engine::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
 use agtrace_providers::LogProvider;
@@ -31,7 +32,8 @@ pub fn handle(
         results.push(result);
     }
 
-    view.render_diagnose_results(&results, verbose)?;
+    let result_vms = presenters::present_diagnose_results(&results);
+    view.render_diagnose_results(&result_vms, verbose)?;
 
     Ok(())
 }

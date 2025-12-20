@@ -1,9 +1,9 @@
 use super::traits::WatchView;
-use crate::presentation::formatters::event::EventView;
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::DisplayOptions;
+use crate::presentation::view_models::{EventPayloadViewModel, EventViewModel};
+use crate::presentation::views::EventView;
 use agtrace_runtime::reactor::{Reaction, SessionState};
-use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::Result;
 use crossterm::{
     cursor, execute, queue, terminal,
@@ -198,7 +198,11 @@ impl WatchView for TuiWatchView {
         Ok(())
     }
 
-    fn render_stream_update(&self, state: &SessionState, new_events: &[AgentEvent]) -> Result<()> {
+    fn render_stream_update(
+        &self,
+        state: &SessionState,
+        new_events: &[EventViewModel],
+    ) -> Result<()> {
         let mut inner = self.inner.lock().unwrap();
 
         // Update tracking state
@@ -221,7 +225,6 @@ impl WatchView for TuiWatchView {
                 options: &opts,
                 session_start: inner.session_start_time,
                 turn_context: inner.turn_count,
-                project_root: inner.project_root.as_deref(),
             };
 
             let formatted = format!("{}", event_view);
@@ -235,7 +238,7 @@ impl WatchView for TuiWatchView {
             }
 
             // Update footer on TokenUsage events
-            if matches!(event.payload, EventPayload::TokenUsage(_)) {
+            if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
                 let opts = DisplayOptions {
                     enable_color: true,
                     relative_time: false,

@@ -1,6 +1,7 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
 use crate::presentation::formatters::DisplayOptions;
+use crate::presentation::presenters;
 use crate::presentation::renderers::models::RawFileContent;
 use crate::presentation::renderers::TraceView;
 use crate::types::ViewStyle;
@@ -56,7 +57,8 @@ pub fn handle(
     let filtered_events = filter_events(&all_events, hide.as_ref(), only.as_ref());
 
     if json {
-        view.render_session_events_json(&filtered_events)?;
+        let event_vms = presenters::present_events(&filtered_events);
+        view.render_session_events_json(&event_vms)?;
     } else {
         let style = if verbose {
             ViewStyle::Timeline
@@ -67,19 +69,21 @@ pub fn handle(
         match style {
             ViewStyle::Compact => {
                 if let Some(session) = assemble_session(&filtered_events) {
+                    let session_vm = presenters::present_session(&session);
                     let opts = DisplayOptions {
                         enable_color,
                         relative_time: true,
                         truncate_text: if short { Some(100) } else { None },
                     };
-                    view.render_session_compact(&session, &opts)?;
+                    view.render_session_compact(&session_vm, &opts)?;
                 } else {
                     view.render_session_assemble_error()?;
                 }
             }
             ViewStyle::Timeline => {
                 let truncate = short;
-                view.render_session_timeline(&filtered_events, truncate, enable_color)?;
+                let event_vms = presenters::present_events(&filtered_events);
+                view.render_session_timeline(&event_vms, truncate, enable_color)?;
             }
         }
     }
