@@ -1,6 +1,6 @@
 use crate::presentation::presenters;
 use crate::presentation::renderers::traits::WatchView;
-use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
+use crate::presentation::renderers::TuiWatchView;
 use crate::presentation::view_models::{WatchStart, WatchSummary};
 use agtrace_runtime::{AgTrace, RuntimeEvent};
 use anyhow::Result;
@@ -13,20 +13,12 @@ pub enum WatchTarget {
 }
 
 pub fn handle(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
-    // Auto-select TUI mode if stdout is a TTY
-    let use_tui = std::io::stdout().is_terminal();
-
-    if use_tui {
-        handle_tui(workspace, project_root, target)
-    } else {
-        let console_view = ConsoleTraceView::new();
-        handle_with_view(workspace, project_root, target, &console_view)
-    }
-}
-
-/// Handle watch command in TUI mode
-fn handle_tui(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
     use std::thread;
+
+    // Watch command requires a TTY for TUI
+    if !std::io::stdout().is_terminal() {
+        anyhow::bail!("watch command requires a TTY (interactive terminal). For non-interactive use, try 'agtrace session show' instead.");
+    }
 
     // Create TUI view and get receiver for event loop
     let (tui_view, rx) = TuiWatchView::new()?;
@@ -115,87 +107,4 @@ fn handle_tui(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTar
 
     // Run the TUI event loop on the main thread
     TuiWatchView::run(rx)
-}
-
-pub fn handle_with_view(
-    workspace: &AgTrace,
-    project_root: Option<&Path>,
-    target: WatchTarget,
-    view: &dyn WatchView,
-) -> Result<()> {
-    let (runtime, start_event) = match target {
-        WatchTarget::Provider { name } => {
-            let mut builder = workspace
-                .monitor()
-                .with_provider(&name)
-                .with_token_monitor()
-                .watch_latest();
-
-            if let Some(root) = project_root {
-                builder = builder.with_project_root(root.to_path_buf());
-            }
-
-            let runtime = builder.start()?;
-
-            let log_root = workspace
-                .config()
-                .providers
-                .get(&name)
-                .map(|p| p.log_root.clone())
-                .unwrap_or_default();
-
-            let start = WatchStart::Provider { name, log_root };
-            (runtime, start)
-        }
-        WatchTarget::Session { id } => {
-            let runtime = workspace.monitor().watch_session(&id).start()?;
-
-            let log_root = std::path::PathBuf::new();
-            let start = WatchStart::Session { id, log_root };
-            (runtime, start)
-        }
-    };
-
-    view.render_watch_start(&start_event)?;
-
-    let mut initialized = false;
-
-    while let Some(event) = runtime.next_event() {
-        match event {
-            RuntimeEvent::SessionAttached { display_name } => {
-                view.on_watch_attached(&display_name)?
-            }
-            RuntimeEvent::StateUpdated { state, new_events } => {
-                if !initialized {
-                    view.on_watch_initial_summary(&WatchSummary {
-                        recent_lines: Vec::new(),
-                        token_usage: None,
-                        turn_count: state.turn_count,
-                    })?;
-                    initialized = true;
-                }
-                let event_vms = presenters::present_events(&new_events);
-                let state_vm = presenters::present_session_state(&state);
-                view.render_stream_update(&state_vm, &event_vms)?;
-            }
-            RuntimeEvent::ReactionTriggered { reaction, .. } => {
-                let reaction_vm = presenters::present_reaction(&reaction);
-                view.on_watch_reaction(&reaction_vm)?
-            }
-            RuntimeEvent::SessionRotated { old_path, new_path } => {
-                initialized = false;
-                view.on_watch_rotated(&old_path, &new_path)?;
-            }
-            RuntimeEvent::Waiting { message } => view.on_watch_waiting(&message)?,
-            RuntimeEvent::FatalError(msg) => {
-                let fatal = msg.starts_with("FATAL:");
-                view.on_watch_error(&msg, fatal)?;
-                if fatal {
-                    break;
-                }
-            }
-        }
-    }
-
-    Ok(())
 }
