@@ -418,13 +418,14 @@ mod tests {
     use chrono::Utc;
 
     fn create_user_event(text: &str) -> EventViewModel {
+        use agtrace_types::StreamId;
         use uuid::Uuid;
         EventViewModel {
             id: Uuid::new_v4().to_string(),
             session_id: Uuid::new_v4().to_string(),
             parent_id: None,
             timestamp: Utc::now(),
-            stream_id: "main".to_string(),
+            stream_id: StreamId::Main,
             payload: EventPayloadViewModel::User {
                 text: text.to_string(),
             },

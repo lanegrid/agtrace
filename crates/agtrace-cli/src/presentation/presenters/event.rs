@@ -7,7 +7,7 @@ pub fn present_event(event: &AgentEvent) -> EventViewModel {
         session_id: event.session_id.to_string(),
         parent_id: event.parent_id.map(|id| id.to_string()),
         timestamp: event.timestamp,
-        stream_id: format!("{:?}", event.stream_id),
+        stream_id: event.stream_id.clone(),
         payload: present_payload(&event.payload),
         metadata: event.metadata.clone(),
     }

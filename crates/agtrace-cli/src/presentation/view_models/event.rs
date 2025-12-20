@@ -1,3 +1,4 @@
+use agtrace_types::StreamId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -8,7 +9,7 @@ pub struct EventViewModel {
     pub session_id: String,
     pub parent_id: Option<String>,
     pub timestamp: DateTime<Utc>,
-    pub stream_id: String,
+    pub stream_id: StreamId,
     pub payload: EventPayloadViewModel,
     pub metadata: Option<Value>,
 }
