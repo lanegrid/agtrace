@@ -6,3 +6,4 @@
 - Rules for snapshot tests: After running `cargo insta accept`, use `git diff` to check the differences. If there are issues, fix the implementation. If there are no issues, include it in the same commit as the implementation.
 - Use `tree2md` command for full file tree.
 - Design principle: Always choose the complete, unified solution over partial fixes. Never offer half-measures like "delete unused code" or "suppress warnings" without fixing the root cause. When facing implementation choices, default to the option that improves consistency and type safety across the codebase.
+- Leave a TODO when you are consciously deferring a specific, necessary action due to immediate constraints like scope or dependencies.
