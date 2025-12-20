@@ -1,4 +1,5 @@
 use super::traits::{DiagnosticView, SessionView, SystemView, WatchView};
+use crate::args::OutputFormat;
 use crate::presentation::formatters::session_list::SessionEntry;
 use crate::presentation::formatters::token::TokenUsageView;
 use crate::presentation::formatters::SessionListView;
@@ -11,7 +12,6 @@ use crate::presentation::view_models::{
 };
 use crate::presentation::views::ReportTemplate;
 use crate::presentation::views::{CompactSessionView, EventView, TimelineView};
-use crate::types::OutputFormat;
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;

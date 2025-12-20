@@ -1,7 +1,7 @@
+use crate::args::OutputFormat;
 use crate::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::SessionListEntryViewModel;
-use crate::types::OutputFormat;
 use agtrace_runtime::SessionFilter;
 use anyhow::Result;
 

@@ -1,3 +1,4 @@
+use crate::args::OutputFormat;
 use crate::presentation::view_models::{
     CorpusStats, DiagnoseResultViewModel, DisplayOptions, DoctorCheckResultViewModel,
     EventViewModel, GuidanceContext, IndexEvent, InitProgress, InitResult, InspectDisplay,
@@ -6,7 +7,6 @@ use crate::presentation::view_models::{
     StreamStateViewModel, WatchStart, WatchSummary,
 };
 use crate::presentation::views::ReportTemplate;
-use crate::types::OutputFormat;
 use anyhow::Result;
 use std::path::Path;
 

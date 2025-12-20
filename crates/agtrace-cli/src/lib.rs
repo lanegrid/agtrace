@@ -27,16 +27,16 @@
 
 mod args;
 mod commands;
-pub mod config;
 pub mod context;
 mod handlers;
 pub mod presentation;
 mod services;
-pub mod token_usage;
-pub mod types;
 
 pub use args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
     SessionCommand,
 };
 pub use commands::run;
+
+// Re-exports from agtrace_runtime for convenience
+pub use agtrace_runtime::{Config, ProviderConfig};

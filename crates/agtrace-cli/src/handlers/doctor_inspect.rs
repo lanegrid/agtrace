@@ -1,6 +1,6 @@
+use crate::args::InspectFormat;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{InspectContent, InspectDisplay, InspectLine};
-use crate::types::InspectFormat;
 use agtrace_runtime::{AgTrace, InspectContentType};
 use anyhow::Result;
 
