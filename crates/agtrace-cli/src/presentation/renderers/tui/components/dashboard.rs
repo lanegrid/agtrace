@@ -11,7 +11,7 @@ use crate::presentation::renderers::tui::app::{AppState, WatchMode};
 pub(crate) struct DashboardComponent;
 
 impl Component for DashboardComponent {
-    fn render(&self, f: &mut Frame, area: Rect, state: &AppState) {
+    fn render(&self, f: &mut Frame, area: Rect, state: &mut AppState) {
         let has_context = state.context_usage.is_some();
         let header_height = if has_context { 2 } else { 1 };
 

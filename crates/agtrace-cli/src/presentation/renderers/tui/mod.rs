@@ -61,7 +61,7 @@ impl TuiWatchView {
 
         while !should_quit {
             terminal.draw(|f| {
-                ui::draw(f, &app_state);
+                ui::draw(f, &mut app_state);
             })?;
 
             let timeout = tick_rate
@@ -73,6 +73,12 @@ impl TuiWatchView {
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Esc => {
                             should_quit = true;
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            app_state.select_next();
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            app_state.select_previous();
                         }
                         _ => {}
                     }
@@ -195,6 +201,8 @@ impl TuiWatchView {
                                 });
                             }
                         }
+
+                        app_state.on_tick();
                     }
                     TuiEvent::Input(_) | TuiEvent::Tick => {}
                 }
