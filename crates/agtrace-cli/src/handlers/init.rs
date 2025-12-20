@@ -1,6 +1,6 @@
 use crate::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
-use agtrace_runtime::{InitConfig, InitProgress, InitService};
+use agtrace_runtime::init::{InitConfig, InitProgress, InitService};
 use anyhow::Result;
 
 pub fn handle(ctx: &ExecutionContext, refresh: bool, view: &dyn TraceView) -> Result<()> {

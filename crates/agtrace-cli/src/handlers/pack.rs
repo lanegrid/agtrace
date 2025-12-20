@@ -1,7 +1,6 @@
 use crate::context::ExecutionContext;
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
-use agtrace_runtime::PackService;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
 
@@ -12,14 +11,13 @@ pub fn handle(
     project_hash: Option<String>,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let db = ctx.db()?;
+    let workspace = ctx.workspace()?;
     let all_projects = ctx.all_projects;
     let (effective_hash_string, _all_projects) =
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
     let effective_project_hash = effective_hash_string.as_deref();
 
-    let service = PackService::new(db);
-    let result = service.select_sessions(effective_project_hash, limit)?;
+    let result = workspace.sessions().pack_context(effective_project_hash, limit)?;
 
     let report_template = template
         .parse()

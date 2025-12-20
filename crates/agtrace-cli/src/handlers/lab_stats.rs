@@ -1,17 +1,16 @@
+use crate::context::ExecutionContext;
 use crate::presentation::presenters::{present_lab_stats, ToolCallSample, ToolClassification};
 use crate::presentation::renderers::TraceView;
-use agtrace_index::Database;
-use agtrace_runtime::StatsService;
 use anyhow::Result;
 
 pub fn handle(
-    db: &Database,
+    ctx: &ExecutionContext,
     limit: Option<usize>,
     source: Option<String>,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let service = StatsService::new(db);
-    let result = service.collect_tool_stats(limit, source)?;
+    let workspace = ctx.workspace()?;
+    let result = workspace.insights().tool_usage(limit, source)?;
 
     let sorted_stats = result
         .provider_stats

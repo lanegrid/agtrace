@@ -6,7 +6,6 @@ use super::handlers;
 use crate::context::ExecutionContext;
 use crate::presentation::renderers::{ConsoleTraceView, TraceView};
 use crate::presentation::view_models::GuidanceContext;
-use agtrace_index::Database;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -18,16 +17,18 @@ pub fn run(cli: Cli) -> Result<()> {
         // Check if we should show corpus overview or guidance
         let db_path = data_dir.join("agtrace.db");
         if db_path.exists() {
-            if let Ok(db) = Database::open(&db_path) {
-                if let Ok(sessions) = db.list_sessions(None, 1) {
-                    if !sessions.is_empty() {
-                        // Show corpus overview instead of guidance
-                        let ctx = ExecutionContext::new(
-                            data_dir.clone(),
-                            cli.project_root.clone(),
-                            cli.all_projects,
-                        )?;
-                        return handlers::corpus_overview::handle(&ctx, cli.project_root, &view);
+            // Try to open workspace to check if we have sessions
+            if let Ok(ctx) = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            ) {
+                if let Ok(workspace) = ctx.workspace() {
+                    if let Ok(sessions) = workspace.sessions().list(agtrace_runtime::SessionFilter::new().limit(1)) {
+                        if !sessions.is_empty() {
+                            // Show corpus overview instead of guidance
+                            return handlers::corpus_overview::handle(&ctx, cli.project_root, &view);
+                        }
                     }
                 }
             }
@@ -61,15 +62,18 @@ pub fn run(cli: Cli) -> Result<()> {
                     handlers::index::handle(&ctx, provider.to_string(), true, verbose, &view)
                 }
                 IndexCommand::Vacuum => {
-                    let db = ctx.db()?;
-                    db.vacuum()
+                    let workspace = ctx.workspace()?;
+                    workspace.database().vacuum()
                 }
             }
         }
 
         Commands::Session { command } => {
-            let db_path = data_dir.join("agtrace.db");
-            let db = Database::open(&db_path)?;
+            let ctx = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            )?;
 
             match command {
                 SessionCommand::List {
@@ -89,17 +93,14 @@ pub fn run(cli: Cli) -> Result<()> {
                     };
 
                     handlers::session_list::handle(
-                        &db,
+                        &ctx,
                         effective_hash,
                         limit,
-                        cli.all_projects,
                         cli.format,
                         source.map(|s| s.to_string()),
                         since.clone(),
                         until.clone(),
                         no_auto_refresh,
-                        &data_dir,
-                        cli.project_root.clone(),
                         &view,
                     )
                 }
@@ -112,7 +113,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     short,
                     verbose,
                 } => handlers::session_show::handle(
-                    &db, session_id, raw, json, hide, only, short, verbose, &view,
+                    &ctx, session_id, raw, json, hide, only, short, verbose, &view,
                 ),
             }
         }
@@ -174,8 +175,11 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Lab { command } => {
-            let db_path = data_dir.join("agtrace.db");
-            let db = Database::open(&db_path)?;
+            let ctx = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            )?;
 
             match command {
                 LabCommand::Export {
@@ -183,9 +187,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     output,
                     format,
                     strategy,
-                } => handlers::lab_export::handle(&db, session_id, output, format, strategy, &view),
+                } => handlers::lab_export::handle(&ctx, session_id, output, format, strategy, &view),
                 LabCommand::Stats { limit, source } => {
-                    handlers::lab_stats::handle(&db, limit, source, &view)
+                    handlers::lab_stats::handle(&ctx, limit, source, &view)
                 }
             }
         }
@@ -197,8 +201,11 @@ pub fn run(cli: Cli) -> Result<()> {
             since,
             until,
         } => {
-            let db_path = data_dir.join("agtrace.db");
-            let db = Database::open(&db_path)?;
+            let ctx = ExecutionContext::new(
+                data_dir.clone(),
+                cli.project_root.clone(),
+                cli.all_projects,
+            )?;
 
             let effective_hash = if project_hash.is_none() && cli.project_root.is_some() {
                 Some(agtrace_types::project_hash_from_root(
@@ -209,17 +216,14 @@ pub fn run(cli: Cli) -> Result<()> {
             };
 
             handlers::session_list::handle(
-                &db,
+                &ctx,
                 effective_hash,
                 limit,
-                cli.all_projects,
                 cli.format,
                 source.map(|s| s.to_string()),
                 since,
                 until,
                 false, // no_auto_refresh - default to auto-refresh for Sessions command
-                &data_dir,
-                cli.project_root.clone(),
                 &view,
             )
         }
@@ -243,7 +247,13 @@ pub fn run(cli: Cli) -> Result<()> {
                 let provider_name = if let Some(name) = provider {
                     name.to_string()
                 } else {
-                    ctx.default_provider()?
+                    // Get default provider from workspace config
+                    let workspace = ctx.workspace()?;
+                    workspace.config().enabled_providers()
+                        .into_iter()
+                        .next()
+                        .map(|(name, _)| name.clone())
+                        .ok_or_else(|| anyhow::anyhow!("No enabled provider found. Run 'agtrace init' to configure providers."))?
                 };
                 handlers::watch::WatchTarget::Provider {
                     name: provider_name,
@@ -272,8 +282,16 @@ fn show_guidance(data_dir: &Path, view: &dyn TraceView) -> Result<()> {
     let db_exists = db_path.exists();
 
     let session_count = if config_exists && db_exists {
-        let db = Database::open(&db_path)?;
-        db.list_sessions(None, 1)?.len()
+        // Try to open workspace to count sessions
+        match agtrace_runtime::AgTrace::open(data_dir.to_path_buf()) {
+            Ok(workspace) => {
+                match workspace.sessions().list(agtrace_runtime::SessionFilter::new().limit(1)) {
+                    Ok(sessions) => sessions.len(),
+                    Err(_) => 0,
+                }
+            }
+            Err(_) => 0,
+        }
     } else {
         0
     };

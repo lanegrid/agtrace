@@ -2,19 +2,18 @@ use crate::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::IndexEvent;
 use agtrace_providers::ScanContext;
-use agtrace_runtime::services::index::{IndexProgress, IndexService};
+use agtrace_runtime::IndexProgress;
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 
 pub fn handle(
     ctx: &ExecutionContext,
-    provider: String,
+    _provider: String,
     force: bool,
     verbose: bool,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let db = ctx.db()?;
-    let providers_with_roots = ctx.resolve_providers(&provider)?;
+    let workspace = ctx.workspace()?;
 
     let current_project_root = ctx.project_root.as_ref().map(|p| p.display().to_string());
     let all_projects = ctx.all_projects;
@@ -34,9 +33,7 @@ pub fn handle(
         },
     };
 
-    let service = IndexService::new(db, providers_with_roots);
-
-    service.run(&scan_context, force, |progress| {
+    workspace.projects().scan(&scan_context, force, |progress| {
         if verbose || matches!(progress, IndexProgress::Completed { .. }) {
             let event = map_progress_to_view_model(progress, verbose);
             let _ = view.render_index_event(event);

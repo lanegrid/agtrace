@@ -1,7 +1,6 @@
 use crate::context::ExecutionContext;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::ProjectSummary;
-use agtrace_runtime::ProjectService;
 use agtrace_types::discover_project_root;
 use anyhow::Result;
 
@@ -10,12 +9,11 @@ pub fn handle(
     project_root: Option<String>,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let db = ctx.db()?;
+    let workspace = ctx.workspace()?;
     let project_root_path = discover_project_root(project_root.as_deref())?;
     let project_hash = agtrace_types::project_hash_from_root(&project_root_path.to_string_lossy());
 
-    let service = ProjectService::new(db);
-    let projects = service.list_projects()?;
+    let projects = workspace.projects().list()?;
 
     let summaries: Vec<ProjectSummary> = projects
         .into_iter()

@@ -3,10 +3,9 @@ use crate::presentation::presenters;
 use crate::presentation::renderers::traits::WatchView;
 use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
 use crate::presentation::view_models::{WatchStart, WatchSummary};
-use agtrace_runtime::{RuntimeEvent, WatchConfig, WatchService};
+use agtrace_runtime::RuntimeEvent;
 use anyhow::Result;
 use is_terminal::IsTerminal;
-use std::sync::Arc;
 
 pub enum WatchTarget {
     Provider { name: String },
@@ -31,57 +30,54 @@ fn handle_tui(ctx: &ExecutionContext, target: WatchTarget) -> Result<()> {
 
     // Create TUI view and get receiver for event loop
     let (tui_view, rx) = TuiWatchView::new()?;
+    let workspace = ctx.workspace()?;
 
-    // Prepare WatchService configuration
-    let (config, start_event) = match target {
+    // Prepare RuntimeBuilder configuration
+    let (runtime, start_event) = match target {
         WatchTarget::Provider { name } => {
-            let (provider, log_root) = ctx.resolve_provider(&name)?;
-            let config = WatchConfig {
-                provider: Arc::from(provider),
-                log_root: log_root.clone(),
-                explicit_target: None,
-                project_root: ctx.project_root.clone(),
-                enable_token_monitor: true,
-            };
+            let mut builder = workspace
+                .monitor()
+                .with_provider(&name)
+                .with_token_monitor()
+                .watch_latest();
+
+            if let Some(root) = ctx.project_root.clone() {
+                builder = builder.with_project_root(root);
+            }
+
+            let runtime = builder.start()?;
+
+            let log_root = workspace.config().providers.get(&name)
+                .map(|p| p.log_root.clone())
+                .unwrap_or_default();
+
             let start = WatchStart::Provider {
                 name,
-                log_root: log_root.clone(),
+                log_root,
             };
-            (config, start)
+            (runtime, start)
         }
         WatchTarget::Session { id } => {
-            let provider_name = ctx.default_provider()?;
-            let (provider, log_root) = ctx.resolve_provider(&provider_name)?;
-            let config = WatchConfig {
-                provider: Arc::from(provider),
-                log_root: log_root.clone(),
-                explicit_target: Some(id.clone()),
-                project_root: None,
-                enable_token_monitor: true,
-            };
+            let runtime = workspace
+                .monitor()
+                .watch_session(&id)
+                .start()?;
+
+            let log_root = std::path::PathBuf::new();
             let start = WatchStart::Session { id, log_root };
-            (config, start)
+            (runtime, start)
         }
     };
 
-    // Start WatchService in background thread
+    // Start runtime in background thread
     thread::spawn(move || {
         // Send initial start event
         let _ = tui_view.render_watch_start(&start_event);
 
-        // Start the watch service
-        let runtime = match WatchService::start(config) {
-            Ok(r) => r,
-            Err(e) => {
-                let _ = tui_view.on_watch_error(&format!("FATAL: {}", e), true);
-                return;
-            }
-        };
-
         let mut initialized = false;
 
-        // Process events from WatchService
-        for event in runtime.receiver().iter() {
+        // Process events from RuntimeBuilder
+        while let Some(event) = runtime.next_event() {
             match event {
                 RuntimeEvent::SessionAttached { display_name } => {
                     let _ = tui_view.on_watch_attached(&display_name);
@@ -130,43 +126,49 @@ pub fn handle_with_view(
     target: WatchTarget,
     view: &dyn WatchView,
 ) -> Result<()> {
-    let (config, start_event) = match target {
+    let workspace = ctx.workspace()?;
+
+    let (runtime, start_event) = match target {
         WatchTarget::Provider { name } => {
-            let (provider, log_root) = ctx.resolve_provider(&name)?;
-            let config = WatchConfig {
-                provider: Arc::from(provider),
-                log_root: log_root.clone(),
-                explicit_target: None,
-                project_root: ctx.project_root.clone(),
-                enable_token_monitor: true,
-            };
+            let mut builder = workspace
+                .monitor()
+                .with_provider(&name)
+                .with_token_monitor()
+                .watch_latest();
+
+            if let Some(root) = ctx.project_root.clone() {
+                builder = builder.with_project_root(root);
+            }
+
+            let runtime = builder.start()?;
+
+            let log_root = workspace.config().providers.get(&name)
+                .map(|p| p.log_root.clone())
+                .unwrap_or_default();
+
             let start = WatchStart::Provider {
                 name,
-                log_root: log_root.clone(),
+                log_root,
             };
-            (config, start)
+            (runtime, start)
         }
         WatchTarget::Session { id } => {
-            let provider_name = ctx.default_provider()?;
-            let (provider, log_root) = ctx.resolve_provider(&provider_name)?;
-            let config = WatchConfig {
-                provider: Arc::from(provider),
-                log_root: log_root.clone(),
-                explicit_target: Some(id.clone()),
-                project_root: None,
-                enable_token_monitor: true,
-            };
+            let runtime = workspace
+                .monitor()
+                .watch_session(&id)
+                .start()?;
+
+            let log_root = std::path::PathBuf::new();
             let start = WatchStart::Session { id, log_root };
-            (config, start)
+            (runtime, start)
         }
     };
 
     view.render_watch_start(&start_event)?;
 
-    let runtime = WatchService::start(config)?;
     let mut initialized = false;
 
-    for event in runtime.receiver().iter() {
+    while let Some(event) = runtime.next_event() {
         match event {
             RuntimeEvent::SessionAttached { display_name } => {
                 view.on_watch_attached(&display_name)?

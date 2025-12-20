@@ -1,18 +1,19 @@
 #![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
 
+use crate::context::ExecutionContext;
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{DisplayOptions, RawFileContent};
 use crate::types::ViewStyle;
 use agtrace_engine::assemble_session;
-use agtrace_index::Database;
+use agtrace_runtime::domain::EventFilters;
 use anyhow::{Context, Result};
 use is_terminal::IsTerminal;
 use std::io;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
-    db: &Database,
+    ctx: &ExecutionContext,
     session_id: String,
     raw: bool,
     json: bool,
@@ -26,12 +27,13 @@ pub fn handle(
     let is_tty = io::stdout().is_terminal();
     let enable_color = is_tty;
 
-    let service = agtrace_runtime::SessionService::new(db);
+    let workspace = ctx.workspace()?;
+    let session = workspace.sessions().find(&session_id)?;
 
     // Handle raw mode (display raw files without normalization)
     if raw {
-        let contents = service
-            .get_raw_files(&session_id)
+        let contents = session
+            .raw_files()
             .with_context(|| format!("Failed to load raw files for session: {}", session_id))?;
 
         let view_contents: Vec<RawFileContent> = contents
@@ -47,11 +49,11 @@ pub fn handle(
     }
 
     // Load and normalize events
-    let all_events = service.get_session_events(&session_id)?;
+    let all_events = session.events()?;
 
     // Filter events based on --hide and --only options
     let filtered_events =
-        service.filter_events(&all_events, agtrace_runtime::EventFilters { hide, only });
+        agtrace_runtime::domain::filter_events(&all_events, EventFilters { hide, only });
 
     if json {
         let event_vms = presenters::present_events(&filtered_events);
