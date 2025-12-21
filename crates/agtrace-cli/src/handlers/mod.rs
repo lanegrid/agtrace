@@ -4,6 +4,7 @@ pub mod doctor_run;
 pub mod index;
 pub mod init;
 pub mod lab_export;
+pub mod lab_grep;
 pub mod lab_stats;
 pub mod pack;
 pub mod project;

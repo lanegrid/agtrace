@@ -38,6 +38,12 @@ pub trait SystemView {
     fn render_init_result(&self, result: &InitResult) -> Result<()>;
     fn render_lab_export(&self, exported: usize, output_path: &Path) -> Result<()>;
     fn render_lab_stats(&self, stats: &LabStatsViewModel) -> Result<()>;
+    fn render_lab_grep(
+        &self,
+        matches: &[EventViewModel],
+        pattern: &str,
+        json_output: bool,
+    ) -> Result<()>;
 }
 
 pub trait SessionView {

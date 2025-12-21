@@ -301,6 +301,83 @@ impl SystemView for ConsoleTraceView {
 
         Ok(())
     }
+
+    fn render_lab_grep(
+        &self,
+        matches: &[EventViewModel],
+        pattern: &str,
+        json_output: bool,
+    ) -> Result<()> {
+        println!("Searching for pattern '{}'...", pattern.cyan());
+        println!("Found {} matches:\n", matches.len());
+
+        for (i, event) in matches.iter().enumerate() {
+            println!("{}", "=".repeat(80).bright_black());
+            println!(
+                "Match #{} | Session: {} | Stream: {:?}",
+                i + 1,
+                event.session_id.yellow(),
+                event.stream_id
+            );
+
+            if json_output {
+                let json = serde_json::to_string_pretty(&event.payload)?;
+                println!("{}", json);
+            } else {
+                match &event.payload {
+                    EventPayloadViewModel::ToolCall { name, arguments } => {
+                        println!("Type: {}", "ToolCall".bright_magenta());
+                        println!("Tool: {}", name.bold());
+                        println!("Args: {}", arguments);
+                    }
+                    EventPayloadViewModel::ToolResult { output, is_error } => {
+                        println!("Type: {}", "ToolResult".bright_blue());
+                        let output_preview: String = output.trim().chars().take(200).collect();
+                        println!("Error: {}", is_error);
+                        println!("Out : {}", output_preview);
+                    }
+                    EventPayloadViewModel::User { text } => {
+                        println!("Type: {}", "User".bright_green());
+                        println!("Text: {}", text);
+                    }
+                    EventPayloadViewModel::Message { text } => {
+                        println!("Type: {}", "Message".bright_cyan());
+                        println!("Text: {}", text);
+                    }
+                    EventPayloadViewModel::Reasoning { text } => {
+                        println!("Type: {}", "Reasoning".bright_yellow());
+                        let text_preview: String = text.chars().take(200).collect();
+                        println!("Text: {}", text_preview);
+                    }
+                    EventPayloadViewModel::TokenUsage {
+                        input,
+                        output,
+                        total,
+                        cache_creation,
+                        cache_read,
+                    } => {
+                        println!("Type: {}", "TokenUsage".bright_white());
+                        println!("Input: {}, Output: {}, Total: {}", input, output, total);
+                        if let Some(cc) = cache_creation {
+                            println!("Cache Creation: {}", cc);
+                        }
+                        if let Some(cr) = cache_read {
+                            println!("Cache Read: {}", cr);
+                        }
+                    }
+                    EventPayloadViewModel::Notification { text, level } => {
+                        println!("Type: {}", "Notification".bright_red());
+                        if let Some(lvl) = level {
+                            println!("Level: {}", lvl);
+                        }
+                        println!("Text: {}", text);
+                    }
+                }
+            }
+        }
+        println!("{}", "=".repeat(80).bright_black());
+        Ok(())
+    }
 }
 
 impl SessionView for ConsoleTraceView {

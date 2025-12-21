@@ -434,4 +434,19 @@ pub enum LabCommand {
         #[arg(long)]
         source: Option<String>,
     },
+
+    #[command(about = "Search for patterns in event payloads across sessions")]
+    Grep {
+        #[arg(help = "String pattern to search for (e.g. 'write_file', 'mcp')")]
+        pattern: String,
+
+        #[arg(long, help = "Limit the number of matching events")]
+        limit: Option<usize>,
+
+        #[arg(long, help = "Filter by provider")]
+        source: Option<String>,
+
+        #[arg(long, help = "Show raw JSON of the matching event")]
+        json: bool,
+    },
 }

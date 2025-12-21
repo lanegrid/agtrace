@@ -173,6 +173,12 @@ pub fn run(cli: Cli) -> Result<()> {
                 LabCommand::Stats { limit, source } => {
                     handlers::lab_stats::handle(&workspace, limit, source, &view)
                 }
+                LabCommand::Grep {
+                    pattern,
+                    limit,
+                    source,
+                    json,
+                } => handlers::lab_grep::handle(&workspace, pattern, limit, source, json, &view),
             }
         }
 
