@@ -37,7 +37,36 @@ pub fn handle(
 
             let start_event = WatchStart::Provider {
                 name: name.clone(),
-                log_root,
+                log_root: log_root.clone(),
+            };
+
+            // Quick scan to ensure DB has latest sessions
+            let latest_session = {
+                use agtrace_providers::ScanContext;
+                use agtrace_runtime::SessionFilter;
+                use agtrace_types::project_hash_from_root;
+
+                let current_project_root = project_root.map(|p| p.display().to_string());
+                let project_hash = if let Some(root) = &current_project_root {
+                    project_hash_from_root(root)
+                } else {
+                    "unknown".to_string()
+                };
+
+                let scan_context = ScanContext {
+                    project_hash,
+                    project_root: current_project_root,
+                };
+
+                // Lightweight scan (incremental by default)
+                let _ = workspace.projects().scan(&scan_context, false, |_| {});
+
+                // Get latest session from updated DB
+                let filter = SessionFilter::new()
+                    .source(name.clone())
+                    .limit(1);
+                workspace.sessions().list(filter).ok()
+                    .and_then(|sessions| sessions.into_iter().next())
             };
 
             // Start workspace monitoring
@@ -60,12 +89,11 @@ pub fn handle(
             // Clone watch_service for thread (cheap Arc clone)
             let watch_service_clone = watch_service.clone();
 
-            // Stream thread: wait for session discovery and stream events with automatic rotation
+            // Stream thread: attach to latest session or wait for new one
             thread::spawn(move || {
                 let _ = tui_view.render_watch_start(&start_event);
-                let _ = tui_view.on_watch_waiting("Waiting for new session...");
 
-                process_provider_events(&watch_service_clone, rx_discovery, &tui_view);
+                process_provider_events(&watch_service_clone, rx_discovery, &tui_view, latest_session);
             });
         }
         WatchTarget::Session { id } => {
@@ -93,12 +121,29 @@ fn process_provider_events(
     watch_service: &agtrace_runtime::WatchService,
     rx_discovery: Receiver<WorkspaceEvent>,
     tui_view: &TuiWatchView,
+    initial_session: Option<agtrace_index::SessionSummary>,
 ) {
     let mut current_handle: Option<agtrace_runtime::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
     let mut session_state: Option<SessionState> = None;
     let mut initialized = false;
     let poll_timeout = Duration::from_millis(100);
+
+    // Attach to initial session if available
+    if let Some(session) = initial_session {
+        let _ = tui_view.on_watch_attached(&format!("Session {}", session.id));
+        match watch_service.watch_session(&session.id) {
+            Ok(handle) => {
+                current_handle = Some(handle);
+                current_session_id = Some(session.id.clone());
+            }
+            Err(e) => {
+                let _ = tui_view.on_watch_error(&format!("Failed to attach: {}", e), false);
+            }
+        }
+    } else {
+        let _ = tui_view.on_watch_waiting("Waiting for new session...");
+    }
 
     loop {
         // Check for new session discoveries (non-blocking)
