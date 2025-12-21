@@ -444,7 +444,8 @@ containing the specified pattern. Useful for investigating tool call structures,
 discovering actual argument formats, and debugging event data.
 
 By default, shows a compact view with syntax highlighting. Use --json to see
-the full JSON structure of matching events.",
+the full JSON structure of matching events. Use --raw to see complete AgentEvent
+including provider-specific metadata for normalization verification.",
         after_long_help = "EXAMPLES:
   # Find all ToolCall events containing 'Read'
   agtrace lab grep \"Read\" --limit 5
@@ -457,6 +458,12 @@ the full JSON structure of matching events.",
 
   # Investigate write operations structure
   agtrace lab grep \"write_file\" --json
+
+  # Verify normalization: compare raw provider schema with normalized content
+  agtrace lab grep '\"name\":\"Read\"' --raw --limit 1
+
+  # Debug MCP tool parsing
+  agtrace lab grep '\"name\":\"mcp__o3__o3-search\"' --raw --limit 1
 
 OUTPUT FORMAT (compact mode):
   ================================================================================
@@ -483,11 +490,69 @@ OUTPUT FORMAT (JSON mode):
   }
   ================================================================================
 
+OUTPUT FORMAT (raw mode):
+  ================================================================================
+  Match #1 | Session: d9967bbc | Stream: Main
+  {
+    \"id\": \"01a17cbe-fcc9-5670-9bb5-462918bbe3cb\",
+    \"session_id\": \"d9967bbc-70cc-5624-bcd6-7e70824b84cb\",
+    \"parent_id\": \"c4f8ccbf-f602-5d61-9c46-c594c6fb2aca\",
+    \"timestamp\": \"2025-12-21T22:56:17.441Z\",
+    \"stream_id\": { \"stream_type\": \"main\" },
+    \"type\": \"tool_call\",
+    \"content\": {
+      \"name\": \"Read\",
+      \"arguments\": { \"file_path\": \"/path/to/file.rs\" },
+      \"provider_call_id\": \"toolu_017YauBeoeW2xdwPiMAebtsD\"
+    },
+    \"metadata\": {
+      \"message\": {
+        \"content\": [{
+          \"id\": \"toolu_017YauBeoeW2xdwPiMAebtsD\",
+          \"input\": { \"file_path\": \"/path/to/file.rs\" },
+          \"name\": \"Read\",
+          \"type\": \"tool_use\"
+        }],
+        \"model\": \"claude-sonnet-4-5-20250929\",
+        ...
+      }
+    }
+  }
+  ================================================================================
+
 NOTES:
   - Searches up to 1000 recent sessions by default
   - Pattern matching is case-sensitive substring search
   - Default limit is 50 matches
-  - Use --source to filter by provider (claude_code, codex, gemini)"
+  - Use --source to filter by provider (claude_code, codex, gemini)
+
+RAW MODE RATIONALE:
+  The --raw flag outputs complete AgentEvent including metadata. This enables:
+
+  1. NORMALIZATION VERIFICATION
+     Compare provider-specific schemas with normalized content:
+     - Claude: metadata.message.content[].input vs content.arguments
+     - Codex: metadata.payload.arguments (stringified) vs content.arguments (parsed)
+     - Gemini: metadata.payload vs content
+
+  2. DEBUGGING TOOL PARSING
+     Inspect how ToolCallPayload::from_raw() determines variants:
+     - FileRead, FileEdit, FileWrite (file operations)
+     - Execute (Bash, shell_command)
+     - Search (Grep, WebSearch)
+     - Mcp (mcp__server__tool format)
+     - Generic (fallback)
+
+  3. INVESTIGATION WITHOUT FILESYSTEM ACCESS
+     Without --raw, verifying normalization requires:
+     - Navigate ~/.claude/sessions/*.jsonl or ~/.codex/sessions/*.jsonl
+     - Manually correlate timestamps and event IDs
+     - Parse provider-specific log formats
+
+     With --raw, verification is streamlined:
+     - Single command to inspect normalized + raw data
+     - Session/stream context preserved
+     - No filesystem traversal needed"
     )]
     Grep {
         #[arg(help = "String pattern to search for (e.g. 'write_file', 'mcp')")]
@@ -501,5 +566,8 @@ NOTES:
 
         #[arg(long, help = "Show raw JSON of the matching event")]
         json: bool,
+
+        #[arg(long, help = "Show complete AgentEvent including metadata")]
+        raw: bool,
     },
 }
