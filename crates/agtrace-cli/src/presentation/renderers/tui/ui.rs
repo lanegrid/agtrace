@@ -8,7 +8,16 @@ use super::components::{Component, DashboardComponent, FooterComponent, Timeline
 
 pub(crate) fn draw(f: &mut Frame, state: &mut AppState) {
     let has_context = state.context_usage.is_some();
-    let dashboard_height = if has_context { 2 } else { 1 };
+    let has_session = state.attached_session_id.is_some();
+
+    let mut dashboard_height = 1; // Title bar
+    if has_session {
+        dashboard_height += 1; // Status line
+    }
+    if has_context {
+        dashboard_height += 3; // Context gauge + 2 lines of details
+    }
+
     let footer_height = state.footer_lines.len().max(1) as u16;
 
     let main_chunks = Layout::default()

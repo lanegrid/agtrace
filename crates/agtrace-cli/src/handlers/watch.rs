@@ -62,10 +62,11 @@ pub fn handle(
                 let _ = workspace.projects().scan(&scan_context, false, |_| {});
 
                 // Get latest session from updated DB
-                let filter = SessionFilter::new()
-                    .source(name.clone())
-                    .limit(1);
-                workspace.sessions().list(filter).ok()
+                let filter = SessionFilter::new().source(name.clone()).limit(1);
+                workspace
+                    .sessions()
+                    .list(filter)
+                    .ok()
                     .and_then(|sessions| sessions.into_iter().next())
             };
 
@@ -93,7 +94,12 @@ pub fn handle(
             thread::spawn(move || {
                 let _ = tui_view.render_watch_start(&start_event);
 
-                process_provider_events(&watch_service_clone, rx_discovery, &tui_view, latest_session);
+                process_provider_events(
+                    &watch_service_clone,
+                    rx_discovery,
+                    &tui_view,
+                    latest_session,
+                );
             });
         }
         WatchTarget::Session { id } => {

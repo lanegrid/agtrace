@@ -16,11 +16,19 @@ pub(crate) struct ContextUsageState {
     pub input_pct: f64,
     #[allow(dead_code)]
     pub output_pct: f64,
+    pub fresh_input: i32,
+    pub cache_creation: i32,
+    pub cache_read: i32,
+    pub output: i32,
 }
 
 pub(crate) struct AppState {
     pub mode: WatchMode,
     pub session_title: String,
+    pub provider_name: Option<String>,
+    pub attached_session_id: Option<String>,
+    pub model: Option<String>,
+    pub compaction_buffer_pct: Option<f64>,
     pub events_buffer: VecDeque<EventViewModel>,
     pub system_messages: VecDeque<String>,
     pub timeline_items: Vec<ListItem<'static>>,
@@ -36,6 +44,10 @@ impl Default for AppState {
         Self {
             mode: WatchMode::AutoFollow,
             session_title: String::new(),
+            provider_name: None,
+            attached_session_id: None,
+            model: None,
+            compaction_buffer_pct: None,
             events_buffer: VecDeque::new(),
             system_messages: VecDeque::new(),
             timeline_items: Vec::new(),

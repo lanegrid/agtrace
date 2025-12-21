@@ -88,19 +88,22 @@ impl TuiWatchView {
             while let Ok(tui_event) = rx.try_recv() {
                 match tui_event {
                     TuiEvent::WatchStart(start) => {
-                        let message = match start {
+                        let message = match &start {
                             WatchStart::Provider { name, log_root } => {
                                 app_state.session_title = name.clone();
+                                app_state.provider_name = Some(name.clone());
                                 format!("👀 Watching {} ({})", log_root.display(), name)
                             }
                             WatchStart::Session { id, log_root } => {
                                 app_state.session_title = id.clone();
+                                app_state.attached_session_id = Some(id.clone());
                                 format!("👀 Watching session {} in {}", id, log_root.display())
                             }
                         };
                         app_state.add_system_message(message);
                     }
                     TuiEvent::WatchAttached(display_name) => {
+                        app_state.attached_session_id = Some(display_name.clone());
                         app_state.add_system_message(format!(
                             "✨ Attached to active session: {}",
                             display_name
@@ -126,6 +129,8 @@ impl TuiWatchView {
                             app_state.session_start_time = Some(state.start_time);
                         }
                         app_state.turn_count = state.turn_count;
+                        app_state.model = state.model.clone();
+                        app_state.compaction_buffer_pct = state.compaction_buffer_pct;
 
                         for event in new_events {
                             app_state.add_event(&event);
@@ -176,6 +181,10 @@ impl TuiWatchView {
                                     limit: state.token_limit.unwrap_or(0),
                                     input_pct,
                                     output_pct,
+                                    fresh_input: state.current_usage.fresh_input,
+                                    cache_creation: state.current_usage.cache_creation,
+                                    cache_read: state.current_usage.cache_read,
+                                    output: state.current_usage.output,
                                 });
                             }
                         }
