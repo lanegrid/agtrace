@@ -7,7 +7,8 @@ use agtrace_engine::assemble_session;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 use anyhow::Result;
 use std::path::Path;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{channel, Receiver, RecvTimeoutError};
+use std::time::Duration;
 
 pub enum WatchTarget {
     Provider { name: String },
@@ -59,25 +60,12 @@ pub fn handle(
             // Clone watch_service for thread (cheap Arc clone)
             let watch_service_clone = watch_service.clone();
 
-            // Stream thread: wait for session discovery and stream events
+            // Stream thread: wait for session discovery and stream events with automatic rotation
             thread::spawn(move || {
                 let _ = tui_view.render_watch_start(&start_event);
                 let _ = tui_view.on_watch_waiting("Waiting for new session...");
 
-                // TODO: Implement SessionRotated functionality (automatic session switching)
-                // TODO: Implement Reactor system (TokenUsageMonitor, etc.)
-
-                while let Ok(event) = rx_discovery.recv() {
-                    if let WorkspaceEvent::Discovery(DiscoveryEvent::NewSession { summary }) = event
-                    {
-                        let _ = tui_view.on_watch_attached(&format!("Session {}", summary.id));
-
-                        if let Ok(handle) = watch_service_clone.watch_session(&summary.id) {
-                            process_stream_events(handle.receiver(), &tui_view, summary.id.clone());
-                        }
-                        break; // TODO: Remove this to support SessionRotated
-                    }
-                }
+                process_provider_events(&watch_service_clone, rx_discovery, &tui_view);
             });
         }
         WatchTarget::Session { id } => {
@@ -99,6 +87,129 @@ pub fn handle(
 
     // Run the TUI event loop on the main thread
     TuiWatchView::run(rx)
+}
+
+fn process_provider_events(
+    watch_service: &agtrace_runtime::WatchService,
+    rx_discovery: Receiver<WorkspaceEvent>,
+    tui_view: &TuiWatchView,
+) {
+    let mut current_handle: Option<agtrace_runtime::StreamHandle> = None;
+    let mut current_session_id: Option<String> = None;
+    let mut session_state: Option<SessionState> = None;
+    let mut initialized = false;
+    let poll_timeout = Duration::from_millis(100);
+
+    loop {
+        // Check for new session discoveries (non-blocking)
+        match rx_discovery.try_recv() {
+            Ok(WorkspaceEvent::Discovery(DiscoveryEvent::NewSession { summary })) => {
+                let _ = tui_view.on_watch_attached(&format!("Session {}", summary.id));
+
+                // Create new session handle (replaces old one if exists)
+                match watch_service.watch_session(&summary.id) {
+                    Ok(handle) => {
+                        current_handle = Some(handle);
+                        current_session_id = Some(summary.id.clone());
+                        session_state = None;
+                        initialized = false;
+                    }
+                    Err(e) => {
+                        let _ = tui_view.on_watch_error(&format!("Failed to attach: {}", e), false);
+                    }
+                }
+            }
+            Ok(WorkspaceEvent::Error(msg)) => {
+                let fatal = msg.starts_with("FATAL:");
+                let _ = tui_view.on_watch_error(&msg, fatal);
+                if fatal {
+                    break;
+                }
+            }
+            Ok(_) => {}  // Other discovery events
+            Err(_) => {} // Channel empty or disconnected
+        }
+
+        // Process stream events from current session
+        if let Some(ref handle) = current_handle {
+            match handle.receiver().recv_timeout(poll_timeout) {
+                Ok(WorkspaceEvent::Stream(StreamEvent::Attached { session_id, .. })) => {
+                    let _ = tui_view.on_watch_attached(&session_id);
+                }
+                Ok(WorkspaceEvent::Stream(StreamEvent::Events { events })) => {
+                    if session_state.is_none() && !events.is_empty() {
+                        let session_id = current_session_id
+                            .clone()
+                            .unwrap_or_else(|| "unknown".to_string());
+
+                        session_state =
+                            Some(SessionState::new(session_id, None, events[0].timestamp));
+                    }
+
+                    if let Some(state) = &mut session_state {
+                        for event in &events {
+                            state.last_activity = event.timestamp;
+                            state.event_count += 1;
+
+                            let updates = agtrace_engine::extract_state_updates(event);
+                            if updates.is_new_turn {
+                                state.turn_count += 1;
+                            }
+                            if let Some(usage) = updates.usage {
+                                state.current_usage = usage;
+                            }
+                            if let Some(model) = updates.model {
+                                if state.model.is_none() {
+                                    state.model = Some(model);
+                                }
+                            }
+                        }
+
+                        if !initialized {
+                            let turn_count = if let Some(assembled) = assemble_session(&events) {
+                                assembled.turns.len()
+                            } else {
+                                state.turn_count
+                            };
+
+                            let _ = tui_view.on_watch_initial_summary(&WatchSummary {
+                                recent_lines: Vec::new(),
+                                token_usage: None,
+                                turn_count,
+                            });
+                            initialized = true;
+                        }
+
+                        let event_vms = presenters::present_events(&events);
+                        let state_vm = presenters::present_session_state(state);
+                        let _ = tui_view.render_stream_update(&state_vm, &event_vms);
+                    }
+                }
+                Ok(WorkspaceEvent::Stream(StreamEvent::Disconnected { reason })) => {
+                    let _ = tui_view.on_watch_error(&reason, false);
+                    current_handle = None;
+                    let _ = tui_view.on_watch_waiting("Waiting for new session...");
+                }
+                Ok(WorkspaceEvent::Error(msg)) => {
+                    let fatal = msg.starts_with("FATAL:");
+                    let _ = tui_view.on_watch_error(&msg, fatal);
+                    if fatal {
+                        break;
+                    }
+                }
+                Ok(_) => {}
+                Err(RecvTimeoutError::Timeout) => {
+                    // Continue to check for new sessions
+                }
+                Err(RecvTimeoutError::Disconnected) => {
+                    current_handle = None;
+                }
+            }
+        } else {
+            // No active session, wait a bit before checking for new sessions
+            std::thread::sleep(poll_timeout);
+        }
+    }
 }
 
 fn process_stream_events(
@@ -166,8 +277,6 @@ fn process_stream_events(
                     let event_vms = presenters::present_events(&events);
                     let state_vm = presenters::present_session_state(state);
                     let _ = tui_view.render_stream_update(&state_vm, &event_vms);
-
-                    // TODO: Implement token usage warnings (requires Reactor system integration)
                 }
             }
             WorkspaceEvent::Stream(StreamEvent::Disconnected { reason }) => {
