@@ -1,4 +1,5 @@
 use crate::runtime::events::{StreamEvent, WorkspaceEvent};
+use agtrace_engine::{assemble_session, AgentSession};
 use agtrace_index::Database;
 use agtrace_providers::LogProvider;
 use agtrace_types::AgentEvent;
@@ -14,6 +15,8 @@ use std::time::Duration;
 struct StreamContext {
     provider: Arc<dyn LogProvider>,
     file_states: HashMap<PathBuf, usize>,
+    all_events: Vec<AgentEvent>,
+    session: Option<AgentSession>,
 }
 
 impl StreamContext {
@@ -21,35 +24,53 @@ impl StreamContext {
         Self {
             provider,
             file_states: HashMap::new(),
+            all_events: Vec::new(),
+            session: None,
         }
     }
 
     fn load_all_events(&mut self, session_files: &[PathBuf]) -> Result<Vec<AgentEvent>> {
-        let mut all_events = Vec::new();
+        let mut events = Vec::new();
 
         for path in session_files {
-            let events = Self::load_file(path, &self.provider)?;
-            self.file_states.insert(path.clone(), events.len());
-            all_events.extend(events);
+            let file_events = Self::load_file(path, &self.provider)?;
+            self.file_states.insert(path.clone(), file_events.len());
+            events.extend(file_events);
         }
 
-        all_events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-        Ok(all_events)
+        events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+
+        self.all_events = events.clone();
+        self.session = assemble_session(&self.all_events);
+
+        Ok(events)
     }
 
     fn handle_change(&mut self, path: &Path) -> Result<Vec<AgentEvent>> {
-        let all_events = Self::load_file(path, &self.provider)?;
+        let all_file_events = Self::load_file(path, &self.provider)?;
         let last_count = *self.file_states.get(path).unwrap_or(&0);
 
-        if all_events.len() < last_count {
+        if all_file_events.len() < last_count {
             self.file_states
-                .insert(path.to_path_buf(), all_events.len());
-            return Ok(all_events);
+                .insert(path.to_path_buf(), all_file_events.len());
+            self.all_events = all_file_events.clone();
+            self.session = assemble_session(&self.all_events);
+            return Ok(all_file_events);
         }
 
-        let new_events: Vec<AgentEvent> = all_events.into_iter().skip(last_count).collect();
+        let new_events: Vec<AgentEvent> = all_file_events
+            .into_iter()
+            .skip(last_count)
+            .collect();
+
         self.file_states
             .insert(path.to_path_buf(), last_count + new_events.len());
+
+        self.all_events.extend(new_events.clone());
+        self.all_events
+            .sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        self.session = assemble_session(&self.all_events);
+
         Ok(new_events)
     }
 
@@ -151,6 +172,7 @@ impl SessionStreamer {
             if !events.is_empty() {
                 let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
                     events: events.clone(),
+                    session: context.session.clone(),
                 }));
             }
         }
@@ -198,6 +220,7 @@ fn handle_fs_event(
                     if !new_events.is_empty() {
                         let _ = tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
                             events: new_events,
+                            session: context.session.clone(),
                         }));
                     }
                 }

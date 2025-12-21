@@ -1,3 +1,4 @@
+use agtrace_engine::AgentSession;
 use agtrace_index::SessionSummary;
 use agtrace_types::AgentEvent;
 use std::path::PathBuf;
@@ -19,9 +20,17 @@ pub enum DiscoveryEvent {
 
 #[derive(Debug, Clone)]
 pub enum StreamEvent {
-    Attached { session_id: String, path: PathBuf },
-    Events { events: Vec<AgentEvent> },
-    Disconnected { reason: String },
+    Attached {
+        session_id: String,
+        path: PathBuf,
+    },
+    Events {
+        events: Vec<AgentEvent>,
+        session: Option<AgentSession>,
+    },
+    Disconnected {
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone)]
