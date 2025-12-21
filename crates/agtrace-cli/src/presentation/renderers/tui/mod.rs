@@ -139,8 +139,6 @@ impl TuiWatchView {
                             app_state.max_context = Some(state.token_limit.unwrap() as u32);
                         }
 
-                        let mut current_user_message = String::new();
-
                         for event in new_events {
                             app_state.add_event(&event);
                             app_state.current_step_number += 1;
@@ -157,7 +155,7 @@ impl TuiWatchView {
                                         app_state.intent_events.pop_front();
                                     }
 
-                                    current_user_message = text.clone();
+                                    app_state.current_user_message = text.clone();
                                     let input_total = (state.current_usage.fresh_input
                                         + state.current_usage.cache_creation
                                         + state.current_usage.cache_read)
@@ -186,12 +184,15 @@ impl TuiWatchView {
                                     let delta = input_total
                                         .saturating_sub(app_state.current_turn_start_tokens);
 
-                                    if delta > 0 && !current_user_message.is_empty() {
+                                    if delta > 0 && !app_state.current_user_message.is_empty() {
                                         let heavy_threshold = 10000;
 
                                         let turn_usage = TurnUsageViewModel {
                                             turn_id: app_state.turns_usage.len() + 1,
-                                            title: truncate_text(&current_user_message, 60),
+                                            title: truncate_text(
+                                                &app_state.current_user_message,
+                                                60,
+                                            ),
                                             prev_total: app_state.current_turn_start_tokens,
                                             delta,
                                             is_heavy: delta >= heavy_threshold,
@@ -228,7 +229,7 @@ impl TuiWatchView {
                                         output: state.current_usage.output,
                                     });
 
-                                    current_user_message.clear();
+                                    app_state.current_user_message.clear();
                                 }
                                 _ => {}
                             }

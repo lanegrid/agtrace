@@ -48,6 +48,7 @@ pub(crate) struct AppState {
     pub current_step_number: usize,
     pub activity_timestamps: VecDeque<chrono::DateTime<chrono::Utc>>,
     pub intent_events: VecDeque<EventViewModel>,
+    pub current_user_message: String,
 }
 
 impl Default for AppState {
@@ -74,6 +75,7 @@ impl Default for AppState {
             current_step_number: 0,
             activity_timestamps: VecDeque::new(),
             intent_events: VecDeque::new(),
+            current_user_message: String::new(),
         }
     }
 }
@@ -169,6 +171,7 @@ impl AppState {
         self.current_step_number = 0;
         self.activity_timestamps.clear();
         self.intent_events.clear();
+        self.current_user_message.clear();
 
         let system_msg_count = self.system_messages.len();
         self.timeline_items = self.timeline_items.drain(..system_msg_count).collect();
