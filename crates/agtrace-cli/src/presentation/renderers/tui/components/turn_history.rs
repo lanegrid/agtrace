@@ -156,13 +156,29 @@ fn create_stacked_bar(
 ) -> Line<'static> {
     let bar_width = bar_width.saturating_sub(20).min(60);
 
-    let prev_ratio = prev_total as f64 / max_context as f64;
-    let delta_ratio = delta as f64 / max_context as f64;
+    // Calculate total usage and clamp to max_context
+    let total = (prev_total + delta).min(max_context);
+    let total_ratio = total as f64 / max_context as f64;
+    let total_chars = ((total_ratio * bar_width as f64) as usize).min(bar_width);
 
-    let prev_chars = (prev_ratio * bar_width as f64) as usize;
-    let delta_chars =
-        (delta_ratio * bar_width as f64).max(if delta > 0 { 1.0 } else { 0.0 }) as usize;
-    let remaining_chars = bar_width.saturating_sub(prev_chars + delta_chars);
+    // Calculate prev_total portion
+    let prev_chars = if total > 0 {
+        ((prev_total as f64 / total as f64) * total_chars as f64) as usize
+    } else {
+        0
+    };
+
+    // Calculate delta portion (ensure at least 1 char if delta > 0)
+    let delta_chars = if delta > 0 {
+        total_chars.saturating_sub(prev_chars).max(1)
+    } else {
+        0
+    };
+
+    // Adjust prev_chars if delta_chars was bumped to 1
+    let prev_chars = total_chars.saturating_sub(delta_chars);
+
+    let remaining_chars = bar_width.saturating_sub(total_chars);
 
     let history_bar = "█".repeat(prev_chars);
     let delta_bar = "▓".repeat(delta_chars);
