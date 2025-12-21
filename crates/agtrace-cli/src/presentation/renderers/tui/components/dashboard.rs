@@ -247,9 +247,9 @@ fn render_context_box(f: &mut Frame, area: Rect, state: &AppState) {
                 let current_input_pct = (input_total as f64 / ctx.limit as f64) * 100.0;
 
                 let (icon, text, color) = if current_input_pct >= trigger_threshold {
-                    ("⚠️", "Compaction ACTIVE", Color::LightRed)
+                    ("⚠️", "Near limit", Color::Rgb(255, 165, 0)) // Orange
                 } else {
-                    ("✨", "Plenty of room", Color::Green)
+                    ("✓", "OK", Color::Green)
                 };
 
                 let status_line = Line::from(vec![
