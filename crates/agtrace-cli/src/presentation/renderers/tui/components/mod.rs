@@ -9,5 +9,5 @@ pub(crate) trait Component {
 pub(crate) mod dashboard;
 pub(crate) mod turn_history;
 
-pub(crate) use dashboard::{GlobalLifeGaugeComponent, SessionHeaderComponent};
+pub(crate) use dashboard::DashboardComponent;
 pub(crate) use turn_history::TurnHistoryComponent;

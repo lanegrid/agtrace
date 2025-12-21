@@ -9,22 +9,15 @@ use ratatui::{
 use super::Component;
 use crate::presentation::renderers::tui::app::{AppState, WatchMode};
 
-pub(crate) struct SessionHeaderComponent;
-pub(crate) struct GlobalLifeGaugeComponent;
+pub(crate) struct DashboardComponent;
 
-impl Component for SessionHeaderComponent {
+impl Component for DashboardComponent {
     fn render(&self, f: &mut Frame, area: Rect, state: &mut AppState) {
-        render_session_header(f, area, state);
+        render_dashboard(f, area, state);
     }
 }
 
-impl Component for GlobalLifeGaugeComponent {
-    fn render(&self, f: &mut Frame, area: Rect, state: &mut AppState) {
-        render_global_life_gauge(f, area, state);
-    }
-}
-
-fn render_session_header(f: &mut Frame, area: Rect, state: &AppState) {
+fn render_dashboard(f: &mut Frame, area: Rect, state: &AppState) {
     let mut title_spans = vec![Span::styled(
         "AGTRACE",
         Style::default()
@@ -71,14 +64,6 @@ fn render_session_header(f: &mut Frame, area: Rect, state: &AppState) {
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan))
         .title(Line::from(title_spans));
-
-    f.render_widget(block, area);
-}
-
-fn render_global_life_gauge(f: &mut Frame, area: Rect, state: &AppState) {
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
 
     let inner = block.inner(area);
     f.render_widget(block, area);
