@@ -34,6 +34,18 @@ pub fn handle(
             .raw_files()
             .with_context(|| format!("Failed to load raw files for session: {}", session_id))?;
 
+        if contents.is_empty() {
+            anyhow::bail!(
+                "No raw log files found for session '{}'. \
+                This may occur if:\n\
+                1. The session was indexed but log files were not registered\n\
+                2. The original log files have been deleted\n\
+                3. The session needs to be re-indexed\n\n\
+                Try running: agtrace index update --verbose",
+                session_id
+            );
+        }
+
         let view_contents: Vec<RawFileContent> = contents
             .into_iter()
             .map(|c| RawFileContent {
