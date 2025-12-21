@@ -28,13 +28,40 @@ impl WatchService {
 
     pub fn watch_session(&self, session_id: &str) -> Result<StreamHandle> {
         let db = Database::open(&self.db_path)?;
-        let db_mutex = Arc::new(Mutex::new(db));
 
-        // TODO: Support provider selection instead of hardcoding "claude"
-        let provider = agtrace_providers::create_provider("claude")?;
+        // Try to get the provider name from the database
+        let session_opt = db.get_session_by_id(session_id)?;
 
-        let streamer =
-            SessionStreamer::attach(session_id.to_string(), db_mutex, Arc::from(provider))?;
+        let streamer = if let Some(session) = session_opt {
+            // Session exists in database, use normal attach
+            let provider = agtrace_providers::create_provider(&session.provider)?;
+            let db_mutex = Arc::new(Mutex::new(db));
+            SessionStreamer::attach(session_id.to_string(), db_mutex, Arc::from(provider))?
+        } else {
+            // Session not in database yet, scan filesystem directly
+            // Try each configured provider until we find the session
+            let mut last_error = None;
+
+            for (provider_name, log_root) in self.provider_configs.iter() {
+                match agtrace_providers::create_provider(provider_name) {
+                    Ok(provider) => {
+                        match SessionStreamer::attach_from_filesystem(
+                            session_id.to_string(),
+                            log_root.clone(),
+                            Arc::from(provider),
+                        ) {
+                            Ok(streamer) => return Ok(StreamHandle::new(streamer)),
+                            Err(e) => last_error = Some(e),
+                        }
+                    }
+                    Err(e) => last_error = Some(e),
+                }
+            }
+
+            return Err(last_error
+                .unwrap_or_else(|| anyhow::anyhow!("No providers configured"))
+                .context(format!("Session not found: {}", session_id)));
+        };
 
         Ok(StreamHandle::new(streamer))
     }

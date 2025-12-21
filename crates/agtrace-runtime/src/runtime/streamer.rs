@@ -26,6 +26,92 @@ impl SessionStreamer {
         &self.rx
     }
 
+    /// Attach to a session by scanning the filesystem for session files
+    /// This is used when the session is not yet indexed in the database
+    pub fn attach_from_filesystem(
+        session_id: String,
+        log_root: PathBuf,
+        provider: Arc<dyn LogProvider>,
+    ) -> Result<Self> {
+        let (tx_out, rx_out) = channel();
+        let (tx_fs, rx_fs) = channel();
+
+        // Scan the log root for files belonging to this session
+        let session_files = find_session_files(&log_root, &session_id, &provider)?;
+
+        if session_files.is_empty() {
+            anyhow::bail!("No files found for session: {}", session_id);
+        }
+
+        let watch_dir = session_files
+            .first()
+            .and_then(|p| p.parent())
+            .ok_or_else(|| anyhow::anyhow!("Cannot determine watch directory"))?
+            .to_path_buf();
+
+        let config = notify::Config::default().with_poll_interval(Duration::from_millis(500));
+
+        let mut watcher = PollWatcher::new(
+            move |res: Result<Event, _>| {
+                if let Ok(event) = res {
+                    let _ = tx_fs.send(event);
+                }
+            },
+            config,
+        )?;
+
+        watcher.watch(&watch_dir, RecursiveMode::Recursive)?;
+
+        let tx_attached = tx_out.clone();
+        let first_file = session_files.first().cloned().unwrap();
+        let _ = tx_attached.send(WorkspaceEvent::Stream(StreamEvent::Attached {
+            session_id: session_id.clone(),
+            path: first_file.clone(),
+        }));
+
+        let mut file_states: HashMap<PathBuf, FileState> = HashMap::new();
+
+        if let Ok(events) = load_all_events(&session_files, &provider, &mut file_states) {
+            if !events.is_empty() {
+                let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
+                    events: events.clone(),
+                }));
+            }
+        }
+
+        let tx_worker = tx_out.clone();
+        let handle = std::thread::Builder::new()
+            .name("session-streamer".to_string())
+            .spawn(move || loop {
+                match rx_fs.recv() {
+                    Ok(event) => {
+                        if let Err(e) = handle_fs_event(
+                            &event,
+                            &session_files,
+                            &provider,
+                            &mut file_states,
+                            &tx_worker,
+                        ) {
+                            let _ = tx_worker
+                                .send(WorkspaceEvent::Error(format!("Stream error: {}", e)));
+                        }
+                    }
+                    Err(_) => {
+                        let _ = tx_worker.send(WorkspaceEvent::Stream(StreamEvent::Disconnected {
+                            reason: "Stream ended".to_string(),
+                        }));
+                        break;
+                    }
+                }
+            })?;
+
+        Ok(Self {
+            _watcher: watcher,
+            _handle: handle,
+            rx: rx_out,
+        })
+    }
+
     pub fn attach(
         session_id: String,
         db: Arc<Mutex<Database>>,
@@ -192,4 +278,45 @@ fn load_file(path: &Path, provider: &Arc<dyn LogProvider>) -> Result<Vec<AgentEv
     };
 
     provider.normalize_file(path, &context)
+}
+
+fn find_session_files(
+    log_root: &Path,
+    session_id: &str,
+    provider: &Arc<dyn LogProvider>,
+) -> Result<Vec<PathBuf>> {
+    use std::fs;
+
+    let mut session_files = Vec::new();
+
+    fn visit_dir(
+        dir: &Path,
+        session_id: &str,
+        provider: &Arc<dyn LogProvider>,
+        files: &mut Vec<PathBuf>,
+    ) -> Result<()> {
+        if !dir.is_dir() {
+            return Ok(());
+        }
+
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                visit_dir(&path, session_id, provider, files)?;
+            } else if provider.can_handle(&path) {
+                if let Ok(id) = provider.extract_session_id(&path) {
+                    if id == session_id {
+                        files.push(path);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    visit_dir(log_root, session_id, provider, &mut session_files)?;
+    Ok(session_files)
 }
