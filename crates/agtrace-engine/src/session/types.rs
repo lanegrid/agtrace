@@ -176,7 +176,8 @@ impl TurnMetrics {
 
 impl AgentTurn {
     /// Calculate cumulative input tokens at the end of this turn
-    pub fn cumulative_input_tokens(&self) -> u32 {
+    /// Falls back to `fallback` if no usage data found
+    pub fn cumulative_input_tokens(&self, fallback: u32) -> u32 {
         self.steps
             .iter()
             .rev()
@@ -194,7 +195,7 @@ impl AgentTurn {
                         .and_then(|d| d.cache_read_input_tokens)
                         .unwrap_or(0)) as u32
             })
-            .unwrap_or(0)
+            .unwrap_or(fallback)
     }
 
     /// Check if this turn is currently active (last step is in progress)
@@ -214,7 +215,7 @@ impl AgentSession {
         let total_turns = self.turns.len();
 
         for (idx, turn) in self.turns.iter().enumerate() {
-            let turn_end_cumulative = turn.cumulative_input_tokens();
+            let turn_end_cumulative = turn.cumulative_input_tokens(cumulative_input);
             let delta = turn_end_cumulative.saturating_sub(cumulative_input);
             let prev_total = cumulative_input;
 
