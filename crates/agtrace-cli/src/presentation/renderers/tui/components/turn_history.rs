@@ -39,40 +39,111 @@ impl Component for TurnHistoryComponent {
         let max_context = state.max_context.unwrap() as f64;
         let inner_width = area.width.saturating_sub(4) as usize;
 
+        let total_turns = state.turns_usage.len();
         let items: Vec<ListItem> = state
             .turns_usage
             .iter()
-            .flat_map(|turn| {
-                let mut lines = Vec::new();
-
-                lines.push(ListItem::new(Line::from("")));
-
-                let title_line = Line::from(vec![
-                    Span::styled(
-                        format!("#{:02} | ", turn.turn_id),
-                        Style::default().fg(Color::DarkGray),
-                    ),
-                    Span::styled("User: ", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(format!("\"{}\"", truncate_text(&turn.title, 50))),
-                ]);
-                lines.push(ListItem::new(title_line));
-
-                let bar_line = create_stacked_bar(
-                    turn.prev_total,
-                    turn.delta,
-                    max_context as u32,
-                    turn.is_heavy,
-                    inner_width,
-                );
-                lines.push(ListItem::new(bar_line));
-
-                lines
+            .enumerate()
+            .flat_map(|(idx, turn)| {
+                let is_active = idx == total_turns.saturating_sub(1) && total_turns > 0;
+                render_turn(turn, is_active, state, max_context as u32, inner_width)
             })
             .collect();
 
         let list = List::new(items).block(block);
         f.render_widget(list, area);
     }
+}
+
+fn render_turn(
+    turn: &crate::presentation::view_models::TurnUsageViewModel,
+    is_active: bool,
+    state: &AppState,
+    max_context: u32,
+    inner_width: usize,
+) -> Vec<ListItem<'static>> {
+    let mut lines = Vec::new();
+
+    if is_active {
+        lines.push(ListItem::new(Line::from(vec![Span::styled(
+            "├─ CURRENT TURN (Active) ────────────────────────────────────",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )])));
+    } else {
+        lines.push(ListItem::new(Line::from("")));
+    }
+
+    let title_line = Line::from(vec![
+        Span::styled(
+            format!("#{:02} | ", turn.turn_id),
+            Style::default().fg(Color::DarkGray),
+        ),
+        Span::styled("User: ", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(format!("\"{}\"", truncate_text(&turn.title, 50))),
+    ]);
+    lines.push(ListItem::new(title_line));
+
+    let bar_line = create_stacked_bar(
+        turn.prev_total,
+        turn.delta,
+        max_context,
+        turn.is_heavy,
+        inner_width,
+    );
+    lines.push(ListItem::new(bar_line));
+
+    if is_active {
+        lines.push(ListItem::new(Line::from("")));
+        lines.push(ListItem::new(Line::from(vec![Span::styled(
+            "Recent Steps:",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        )])));
+
+        let steps: Vec<ListItem> = state
+            .intent_events
+            .iter()
+            .rev()
+            .take(5)
+            .rev()
+            .map(|event| {
+                use crate::presentation::view_models::EventPayloadViewModel;
+                let (icon, text) = match &event.payload {
+                    EventPayloadViewModel::User { text } => {
+                        ("👤", format!("User: {}", truncate_text(text, 40)))
+                    }
+                    EventPayloadViewModel::Reasoning { text } => {
+                        ("🤔", format!("Thinking: {}", truncate_text(text, 40)))
+                    }
+                    EventPayloadViewModel::Message { text } => {
+                        ("💬", format!("Message: {}", truncate_text(text, 40)))
+                    }
+                    EventPayloadViewModel::ToolCall { name, .. } => {
+                        ("🔧", format!("Tool: {}", truncate_text(name, 40)))
+                    }
+                    _ => ("•", "Event".to_string()),
+                };
+
+                let time_str = event.timestamp.format("%H:%M:%S").to_string();
+
+                ListItem::new(Line::from(vec![
+                    Span::styled(
+                        format!("  {} ", time_str),
+                        Style::default().fg(Color::DarkGray),
+                    ),
+                    Span::raw(format!("{} ", icon)),
+                    Span::raw(text),
+                ]))
+            })
+            .collect();
+
+        lines.extend(steps);
+    }
+
+    lines
 }
 
 fn create_stacked_bar(

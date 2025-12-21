@@ -245,7 +245,10 @@ fn process_provider_events(
                         }
 
                         if !initialized {
-                            let turn_count = session.as_ref().map(|s| s.turns.len()).unwrap_or(state.turn_count);
+                            let turn_count = session
+                                .as_ref()
+                                .map(|s| s.turns.len())
+                                .unwrap_or(state.turn_count);
 
                             let _ = tui_view.on_watch_initial_summary(&WatchSummary {
                                 recent_lines: Vec::new(),
@@ -262,7 +265,11 @@ fn process_provider_events(
 
                         let event_vms = presenters::present_events(&events);
                         let state_vm = presenters::present_session_state(state);
-                        let _ = tui_view.render_stream_update(&state_vm, &event_vms, turns_data.as_deref());
+                        let _ = tui_view.render_stream_update(
+                            &state_vm,
+                            &event_vms,
+                            turns_data.as_deref(),
+                        );
                     }
                 }
                 Ok(WorkspaceEvent::Stream(StreamEvent::Disconnected { reason })) => {
@@ -340,7 +347,10 @@ fn process_stream_events(
 
                     // Show initial summary on first batch
                     if !initialized {
-                        let turn_count = session.as_ref().map(|s| s.turns.len()).unwrap_or(state.turn_count);
+                        let turn_count = session
+                            .as_ref()
+                            .map(|s| s.turns.len())
+                            .unwrap_or(state.turn_count);
 
                         let _ = tui_view.on_watch_initial_summary(&WatchSummary {
                             recent_lines: Vec::new(),
@@ -351,17 +361,14 @@ fn process_stream_events(
                     }
 
                     // Build turns data from assembled session
-                    let turns_data = session.as_ref().map(|s| {
-                        crate::presentation::renderers::tui::build_turns_from_session(s)
-                    });
+                    let turns_data = session
+                        .as_ref()
+                        .map(crate::presentation::renderers::tui::build_turns_from_session);
 
                     let event_vms = presenters::present_events(&events);
                     let state_vm = presenters::present_session_state(state);
-                    let _ = tui_view.render_stream_update(
-                        &state_vm,
-                        &event_vms,
-                        turns_data.as_deref(),
-                    );
+                    let _ =
+                        tui_view.render_stream_update(&state_vm, &event_vms, turns_data.as_deref());
                 }
             }
             WorkspaceEvent::Stream(StreamEvent::Disconnected { reason }) => {

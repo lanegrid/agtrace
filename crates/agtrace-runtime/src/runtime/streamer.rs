@@ -58,10 +58,7 @@ impl StreamContext {
             return Ok(all_file_events);
         }
 
-        let new_events: Vec<AgentEvent> = all_file_events
-            .into_iter()
-            .skip(last_count)
-            .collect();
+        let new_events: Vec<AgentEvent> = all_file_events.into_iter().skip(last_count).collect();
 
         self.file_states
             .insert(path.to_path_buf(), last_count + new_events.len());
