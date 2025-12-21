@@ -83,8 +83,8 @@ impl StepBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::types::StepStatus;
+    use super::*;
 
     #[test]
     fn test_step_builder_empty() {
@@ -401,7 +401,11 @@ mod tests {
         });
 
         let step = builder.build();
-        assert_eq!(step.status, StepStatus::InProgress, "Step with message + tool without result should be InProgress");
+        assert_eq!(
+            step.status,
+            StepStatus::InProgress,
+            "Step with message + tool without result should be InProgress"
+        );
     }
 
     #[test]
@@ -452,6 +456,10 @@ mod tests {
         });
 
         let step = builder.build();
-        assert_eq!(step.status, StepStatus::Done, "Step with message + tool with result should be Done");
+        assert_eq!(
+            step.status,
+            StepStatus::Done,
+            "Step with message + tool with result should be Done"
+        );
     }
 }

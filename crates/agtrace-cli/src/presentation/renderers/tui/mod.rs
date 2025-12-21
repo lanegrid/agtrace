@@ -202,11 +202,11 @@ impl TuiWatchView {
                                             .saturating_sub(app_state.current_turn_start_tokens);
 
                                         if delta > 0 && !app_state.current_user_message.is_empty() {
-                                            // Heavy threshold: 10% of max context, or fallback to 15k tokens
-                                            let heavy_threshold = app_state
-                                                .max_context
-                                                .map(|mc| mc / 10)
-                                                .unwrap_or(15000);
+                                            let is_heavy =
+                                                agtrace_engine::TurnMetrics::is_delta_heavy(
+                                                    delta,
+                                                    app_state.max_context,
+                                                );
 
                                             let turn_usage = TurnUsageViewModel {
                                                 turn_id: app_state.turns_usage.len() + 1,
@@ -216,7 +216,7 @@ impl TuiWatchView {
                                                 ),
                                                 prev_total: app_state.current_turn_start_tokens,
                                                 delta,
-                                                is_heavy: delta >= heavy_threshold,
+                                                is_heavy,
                                                 is_active: true,
                                                 recent_steps: Vec::new(),
                                                 start_time: Some(chrono::Utc::now()),
@@ -374,110 +374,70 @@ pub(crate) fn build_turns_from_session(
 ) -> Vec<crate::presentation::view_models::TurnUsageViewModel> {
     use crate::presentation::view_models::{StepItemViewModel, TurnUsageViewModel};
 
-    let mut turns = Vec::new();
-    let mut cumulative_input = 0u32;
+    let metrics = session.compute_turn_metrics(max_context);
 
-    // Heavy threshold: 10% of max context, or fallback to 15k tokens
-    let heavy_threshold = max_context.map(|mc| mc / 10).unwrap_or(15000);
-    let total_turns = session.turns.len();
+    session
+        .turns
+        .iter()
+        .zip(metrics.iter())
+        .map(|(turn, metric)| {
+            let user_message = &turn.user.content.text;
+            let title = truncate_text(user_message, 60);
 
-    for (idx, turn) in session.turns.iter().enumerate() {
-        // Get the last step's cumulative token count for this turn
-        let turn_end_cumulative: u32 = turn
-            .steps
-            .iter()
-            .rev()
-            .find_map(|step| step.usage.as_ref())
-            .map(|usage| {
-                (usage.input_tokens
-                    + usage
-                        .details
-                        .as_ref()
-                        .and_then(|d| d.cache_creation_input_tokens)
-                        .unwrap_or(0)
-                    + usage
-                        .details
-                        .as_ref()
-                        .and_then(|d| d.cache_read_input_tokens)
-                        .unwrap_or(0)) as u32
-            })
-            .unwrap_or(cumulative_input);
+            let recent_steps = if metric.is_active {
+                turn.steps
+                    .iter()
+                    .rev()
+                    .take(5)
+                    .rev()
+                    .map(|step| {
+                        let (emoji, description) = if let Some(reasoning) = &step.reasoning {
+                            ("🤔".to_string(), truncate_text(&reasoning.content.text, 40))
+                        } else if let Some(message) = &step.message {
+                            ("💬".to_string(), truncate_text(&message.content.text, 40))
+                        } else if !step.tools.is_empty() {
+                            let tool_name = &step.tools[0].call.content.name;
+                            ("🔧".to_string(), format!("Tool: {}", tool_name))
+                        } else {
+                            ("•".to_string(), "Event".to_string())
+                        };
 
-        let delta = turn_end_cumulative.saturating_sub(cumulative_input);
-        let prev_total = cumulative_input;
+                        let token_usage = step.usage.as_ref().map(|u| {
+                            (u.input_tokens
+                                + u.details
+                                    .as_ref()
+                                    .and_then(|d| d.cache_creation_input_tokens)
+                                    .unwrap_or(0)
+                                + u.details
+                                    .as_ref()
+                                    .and_then(|d| d.cache_read_input_tokens)
+                                    .unwrap_or(0)) as u32
+                        });
 
-        let user_message = &turn.user.content.text;
-        let title = truncate_text(user_message, 60);
+                        StepItemViewModel {
+                            timestamp: step.timestamp,
+                            emoji,
+                            description,
+                            token_usage,
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
 
-        // Check if this turn is active based on the last step's status
-        let is_active = if idx == total_turns.saturating_sub(1) {
-            // For the last turn, check if the last step is InProgress
-            turn.steps
-                .last()
-                .map(|step| matches!(step.status, agtrace_engine::session::types::StepStatus::InProgress))
-                .unwrap_or(false)
-        } else {
-            false
-        };
+            let start_time = turn.steps.first().map(|s| s.timestamp);
 
-        let recent_steps = if is_active {
-            turn.steps
-                .iter()
-                .rev()
-                .take(5)
-                .rev()
-                .map(|step| {
-                    let (emoji, description) = if let Some(reasoning) = &step.reasoning {
-                        ("🤔".to_string(), truncate_text(&reasoning.content.text, 40))
-                    } else if let Some(message) = &step.message {
-                        ("💬".to_string(), truncate_text(&message.content.text, 40))
-                    } else if !step.tools.is_empty() {
-                        let tool_name = &step.tools[0].call.content.name;
-                        ("🔧".to_string(), format!("Tool: {}", tool_name))
-                    } else {
-                        ("•".to_string(), "Event".to_string())
-                    };
-
-                    let token_usage = step.usage.as_ref().map(|u| {
-                        (u.input_tokens
-                            + u.details
-                                .as_ref()
-                                .and_then(|d| d.cache_creation_input_tokens)
-                                .unwrap_or(0)
-                            + u.details
-                                .as_ref()
-                                .and_then(|d| d.cache_read_input_tokens)
-                                .unwrap_or(0)) as u32
-                    });
-
-                    StepItemViewModel {
-                        timestamp: step.timestamp,
-                        emoji,
-                        description,
-                        token_usage,
-                    }
-                })
-                .collect()
-        } else {
-            Vec::new()
-        };
-
-        let start_time = turn.steps.first().map(|s| s.timestamp);
-
-        let turn_usage = TurnUsageViewModel {
-            turn_id: idx + 1,
-            title,
-            prev_total,
-            delta,
-            is_heavy: delta >= heavy_threshold,
-            is_active,
-            recent_steps,
-            start_time,
-        };
-
-        turns.push(turn_usage);
-        cumulative_input += delta;
-    }
-
-    turns
+            TurnUsageViewModel {
+                turn_id: metric.turn_index + 1,
+                title,
+                prev_total: metric.prev_total,
+                delta: metric.delta,
+                is_heavy: metric.is_heavy,
+                is_active: metric.is_active,
+                recent_steps,
+                start_time,
+            }
+        })
+        .collect()
 }

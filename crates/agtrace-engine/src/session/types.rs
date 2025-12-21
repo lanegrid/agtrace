@@ -147,3 +147,94 @@ pub struct TurnStats {
     pub step_count: usize,
     pub total_tokens: i32,
 }
+
+// ==========================================
+// Computed Metrics (for presentation)
+// ==========================================
+
+/// Computed metrics for a turn, used for presentation layer
+#[derive(Debug, Clone)]
+pub struct TurnMetrics {
+    pub turn_index: usize,
+    pub prev_total: u32,
+    pub delta: u32,
+    pub is_heavy: bool,
+    pub is_active: bool,
+}
+
+impl TurnMetrics {
+    /// Calculate heavy threshold: 10% of max context, or fallback to 15k tokens
+    pub fn heavy_threshold(max_context: Option<u32>) -> u32 {
+        max_context.map(|mc| mc / 10).unwrap_or(15000)
+    }
+
+    /// Check if a delta is considered heavy
+    pub fn is_delta_heavy(delta: u32, max_context: Option<u32>) -> bool {
+        delta >= Self::heavy_threshold(max_context)
+    }
+}
+
+impl AgentTurn {
+    /// Calculate cumulative input tokens at the end of this turn
+    pub fn cumulative_input_tokens(&self) -> u32 {
+        self.steps
+            .iter()
+            .rev()
+            .find_map(|step| step.usage.as_ref())
+            .map(|usage| {
+                (usage.input_tokens
+                    + usage
+                        .details
+                        .as_ref()
+                        .and_then(|d| d.cache_creation_input_tokens)
+                        .unwrap_or(0)
+                    + usage
+                        .details
+                        .as_ref()
+                        .and_then(|d| d.cache_read_input_tokens)
+                        .unwrap_or(0)) as u32
+            })
+            .unwrap_or(0)
+    }
+
+    /// Check if this turn is currently active (last step is in progress)
+    pub fn is_active(&self) -> bool {
+        self.steps
+            .last()
+            .map(|step| matches!(step.status, StepStatus::InProgress))
+            .unwrap_or(false)
+    }
+}
+
+impl AgentSession {
+    /// Compute presentation metrics for all turns
+    pub fn compute_turn_metrics(&self, max_context: Option<u32>) -> Vec<TurnMetrics> {
+        let mut cumulative_input = 0u32;
+        let mut metrics = Vec::new();
+        let total_turns = self.turns.len();
+
+        for (idx, turn) in self.turns.iter().enumerate() {
+            let turn_end_cumulative = turn.cumulative_input_tokens();
+            let delta = turn_end_cumulative.saturating_sub(cumulative_input);
+            let prev_total = cumulative_input;
+
+            let is_active = if idx == total_turns.saturating_sub(1) {
+                turn.is_active()
+            } else {
+                false
+            };
+
+            metrics.push(TurnMetrics {
+                turn_index: idx,
+                prev_total,
+                delta,
+                is_heavy: TurnMetrics::is_delta_heavy(delta, max_context),
+                is_active,
+            });
+
+            cumulative_input = turn_end_cumulative;
+        }
+
+        metrics
+    }
+}
