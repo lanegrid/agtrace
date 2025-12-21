@@ -6,7 +6,7 @@ mod ui;
 
 use super::traits::WatchView;
 use crate::presentation::view_models::{
-    EventPayloadViewModel, EventViewModel, ReactionViewModel, WatchStart, WatchSummary,
+    EventViewModel, ReactionViewModel, WatchStart, WatchSummary,
 };
 use anyhow::Result;
 use crossterm::{
@@ -124,6 +124,10 @@ impl TuiWatchView {
                         }
                     }
                     TuiEvent::StreamUpdate(state, new_events) => {
+                        use crate::presentation::view_models::{
+                            EventPayloadViewModel, TurnUsageViewModel,
+                        };
+
                         if app_state.session_start_time.is_none() {
                             app_state.session_start_time = Some(state.start_time);
                         }
@@ -131,39 +135,102 @@ impl TuiWatchView {
                         app_state.model = state.model.clone();
                         app_state.compaction_buffer_pct = state.compaction_buffer_pct;
 
+                        if app_state.max_context.is_none() && state.token_limit.is_some() {
+                            app_state.max_context = Some(state.token_limit.unwrap() as u32);
+                        }
+
+                        let mut current_user_message = String::new();
+
                         for event in new_events {
                             app_state.add_event(&event);
+                            app_state.current_step_number += 1;
+                            app_state.last_activity = Some(event.timestamp);
+                            app_state.activity_timestamps.push_back(event.timestamp);
+                            if app_state.activity_timestamps.len() > 20 {
+                                app_state.activity_timestamps.pop_front();
+                            }
 
-                            if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
-                                let total_used = state.current_usage.fresh_input
-                                    + state.current_usage.cache_creation
-                                    + state.current_usage.cache_read
-                                    + state.current_usage.output;
+                            match &event.payload {
+                                EventPayloadViewModel::User { text } => {
+                                    app_state.intent_events.push_back(event.clone());
+                                    if app_state.intent_events.len() > 5 {
+                                        app_state.intent_events.pop_front();
+                                    }
 
-                                let input_total = state.current_usage.fresh_input
-                                    + state.current_usage.cache_creation
-                                    + state.current_usage.cache_read;
-                                let input_pct = if total_used > 0 {
-                                    input_total as f64 / total_used as f64
-                                } else {
-                                    0.0
-                                };
-                                let output_pct = if total_used > 0 {
-                                    state.current_usage.output as f64 / total_used as f64
-                                } else {
-                                    0.0
-                                };
+                                    current_user_message = text.clone();
+                                    let input_total = (state.current_usage.fresh_input
+                                        + state.current_usage.cache_creation
+                                        + state.current_usage.cache_read)
+                                        as u32;
+                                    app_state.current_turn_start_tokens = input_total;
+                                }
+                                EventPayloadViewModel::Reasoning { .. }
+                                | EventPayloadViewModel::Message { .. }
+                                | EventPayloadViewModel::ToolCall { .. } => {
+                                    app_state.intent_events.push_back(event.clone());
+                                    if app_state.intent_events.len() > 5 {
+                                        app_state.intent_events.pop_front();
+                                    }
+                                }
+                                EventPayloadViewModel::TokenUsage { .. } => {
+                                    let total_used = state.current_usage.fresh_input
+                                        + state.current_usage.cache_creation
+                                        + state.current_usage.cache_read
+                                        + state.current_usage.output;
 
-                                app_state.context_usage = Some(ContextUsageState {
-                                    used: total_used as u64,
-                                    limit: state.token_limit.unwrap_or(0),
-                                    input_pct,
-                                    output_pct,
-                                    fresh_input: state.current_usage.fresh_input,
-                                    cache_creation: state.current_usage.cache_creation,
-                                    cache_read: state.current_usage.cache_read,
-                                    output: state.current_usage.output,
-                                });
+                                    let input_total = (state.current_usage.fresh_input
+                                        + state.current_usage.cache_creation
+                                        + state.current_usage.cache_read)
+                                        as u32;
+
+                                    let delta = input_total
+                                        .saturating_sub(app_state.current_turn_start_tokens);
+
+                                    if delta > 0 && !current_user_message.is_empty() {
+                                        let heavy_threshold = 10000;
+
+                                        let turn_usage = TurnUsageViewModel {
+                                            turn_id: app_state.turns_usage.len() + 1,
+                                            title: truncate_text(&current_user_message, 60),
+                                            prev_total: app_state.current_turn_start_tokens,
+                                            delta,
+                                            is_heavy: delta >= heavy_threshold,
+                                        };
+
+                                        app_state.turns_usage.push(turn_usage);
+
+                                        if app_state.turns_usage.len() > 50 {
+                                            app_state.turns_usage.remove(0);
+                                        }
+                                    }
+
+                                    app_state.previous_token_total = total_used as u32;
+
+                                    let input_pct = if total_used > 0 {
+                                        input_total as f64 / total_used as f64
+                                    } else {
+                                        0.0
+                                    };
+                                    let output_pct = if total_used > 0 {
+                                        state.current_usage.output as f64 / total_used as f64
+                                    } else {
+                                        0.0
+                                    };
+
+                                    app_state.context_usage = Some(ContextUsageState {
+                                        used: total_used as u64,
+                                        limit: state.token_limit.unwrap_or(0),
+                                        input_pct,
+                                        output_pct,
+                                        fresh_input: state.current_usage.fresh_input,
+                                        cache_creation: state.current_usage.cache_creation,
+                                        cache_read: state.current_usage.cache_read,
+                                        output: state.current_usage.output,
+                                    });
+
+                                    current_user_message.clear();
+                                }
+                                _ => {}
                             }
                         }
 
@@ -258,5 +325,14 @@ impl WatchView for TuiWatchView {
         self.tx
             .send(TuiEvent::StreamUpdate(state.clone(), new_events.to_vec()))
             .map_err(|e| anyhow::anyhow!("Failed to send event: {}", e))
+    }
+}
+
+fn truncate_text(text: &str, max_len: usize) -> String {
+    if text.chars().count() <= max_len {
+        text.to_string()
+    } else {
+        let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
+        format!("{}...", truncated)
     }
 }

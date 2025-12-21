@@ -1,4 +1,4 @@
-use crate::presentation::view_models::EventViewModel;
+use crate::presentation::view_models::{EventViewModel, TurnUsageViewModel};
 use ratatui::widgets::{ListItem, ListState};
 use std::collections::VecDeque;
 
@@ -36,6 +36,14 @@ pub(crate) struct AppState {
     pub session_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub turn_count: usize,
     pub list_state: ListState,
+    pub turns_usage: Vec<TurnUsageViewModel>,
+    pub max_context: Option<u32>,
+    pub current_turn_start_tokens: u32,
+    pub previous_token_total: u32,
+    pub last_activity: Option<chrono::DateTime<chrono::Utc>>,
+    pub current_step_number: usize,
+    pub activity_timestamps: VecDeque<chrono::DateTime<chrono::Utc>>,
+    pub intent_events: VecDeque<EventViewModel>,
 }
 
 impl Default for AppState {
@@ -54,6 +62,14 @@ impl Default for AppState {
             session_start_time: None,
             turn_count: 0,
             list_state: ListState::default(),
+            turns_usage: Vec::new(),
+            max_context: None,
+            current_turn_start_tokens: 0,
+            previous_token_total: 0,
+            last_activity: None,
+            current_step_number: 0,
+            activity_timestamps: VecDeque::new(),
+            intent_events: VecDeque::new(),
         }
     }
 }
@@ -141,6 +157,14 @@ impl AppState {
         self.session_start_time = None;
         self.turn_count = 0;
         self.events_buffer.clear();
+        self.turns_usage.clear();
+        self.max_context = None;
+        self.current_turn_start_tokens = 0;
+        self.previous_token_total = 0;
+        self.last_activity = None;
+        self.current_step_number = 0;
+        self.activity_timestamps.clear();
+        self.intent_events.clear();
 
         let system_msg_count = self.system_messages.len();
         self.timeline_items = self.timeline_items.drain(..system_msg_count).collect();

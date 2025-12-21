@@ -117,3 +117,12 @@ pub struct StreamStateViewModel {
     pub token_limit: Option<u64>,
     pub compaction_buffer_pct: Option<f64>,
 }
+
+#[derive(Debug, Clone)]
+pub struct TurnUsageViewModel {
+    pub turn_id: usize,
+    pub title: String,
+    pub prev_total: u32,
+    pub delta: u32,
+    pub is_heavy: bool,
+}

@@ -8,6 +8,8 @@ pub(crate) trait Component {
 
 pub(crate) mod dashboard;
 pub(crate) mod timeline;
+pub(crate) mod turn_history;
 
 pub(crate) use dashboard::DashboardComponent;
 pub(crate) use timeline::TimelineComponent;
+pub(crate) use turn_history::TurnHistoryComponent;
