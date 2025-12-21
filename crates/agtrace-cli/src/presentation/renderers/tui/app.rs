@@ -16,9 +16,13 @@ pub(crate) struct ContextUsageState {
     pub input_pct: f64,
     #[allow(dead_code)]
     pub output_pct: f64,
+    #[allow(dead_code)]
     pub fresh_input: i32,
+    #[allow(dead_code)]
     pub cache_creation: i32,
+    #[allow(dead_code)]
     pub cache_read: i32,
+    #[allow(dead_code)]
     pub output: i32,
 }
 

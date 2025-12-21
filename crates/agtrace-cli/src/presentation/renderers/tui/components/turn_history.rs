@@ -2,7 +2,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem},
+    widgets::{List, ListItem},
     Frame,
 };
 
@@ -14,20 +14,15 @@ pub(crate) struct TurnHistoryComponent;
 impl Component for TurnHistoryComponent {
     fn render(&self, f: &mut Frame, area: Rect, state: &mut AppState) {
         if state.turns_usage.is_empty() || state.max_context.is_none() {
+            let empty_list = List::new(vec![ListItem::new(Line::from(vec![Span::styled(
+                "Waiting for turn data...",
+                Style::default().fg(Color::DarkGray),
+            )]))]);
+            f.render_widget(empty_list, area);
             return;
         }
 
         let max_context = state.max_context.unwrap() as f64;
-
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(Color::Cyan))
-            .title(Span::styled(
-                " SATURATION HISTORY (Delta Highlight) ",
-                Style::default()
-                    .fg(Color::LightCyan)
-                    .add_modifier(Modifier::BOLD),
-            ));
 
         let items: Vec<ListItem> = state
             .turns_usage
@@ -50,7 +45,7 @@ impl Component for TurnHistoryComponent {
                     turn.delta,
                     max_context as u32,
                     turn.is_heavy,
-                    area.width.saturating_sub(4) as usize,
+                    area.width as usize,
                 );
                 lines.push(ListItem::new(bar_line));
 
@@ -80,7 +75,7 @@ impl Component for TurnHistoryComponent {
             })
             .collect();
 
-        let list = List::new(items).block(block);
+        let list = List::new(items);
         f.render_widget(list, area);
     }
 }

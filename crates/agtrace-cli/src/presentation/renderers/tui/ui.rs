@@ -4,51 +4,26 @@ use ratatui::{
 };
 
 use super::app::AppState;
-use super::components::{Component, DashboardComponent, TimelineComponent, TurnHistoryComponent};
+use super::components::{
+    Component, GlobalLifeGaugeComponent, SessionHeaderComponent, TurnHistoryComponent,
+};
 
 pub(crate) fn draw(f: &mut Frame, state: &mut AppState) {
-    let has_context = state.context_usage.is_some();
-    let has_session = state.attached_session_id.is_some();
-    let has_turn_history = !state.turns_usage.is_empty() && state.max_context.is_some();
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(1), // Session Header (1-2 lines)
+            Constraint::Length(3), // Global Life Gauge (3 lines)
+            Constraint::Min(0),    // Consumption History (remaining)
+        ])
+        .split(f.area());
 
-    let mut dashboard_height = 1; // Title bar
-    if has_session {
-        dashboard_height += 3; // Status box (with borders)
-    }
-    if has_context {
-        dashboard_height += 6; // Context box (with borders)
-    }
+    let session_header = SessionHeaderComponent;
+    session_header.render(f, chunks[0], state);
 
-    let main_chunks = if has_turn_history {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Length(dashboard_height),
-                Constraint::Percentage(40),
-                Constraint::Min(0),
-            ])
-            .split(f.area());
+    let life_gauge = GlobalLifeGaugeComponent;
+    life_gauge.render(f, chunks[1], state);
 
-        let dashboard = DashboardComponent;
-        dashboard.render(f, chunks[0], state);
-
-        let turn_history = TurnHistoryComponent;
-        turn_history.render(f, chunks[1], state);
-
-        let timeline = TimelineComponent;
-        timeline.render(f, chunks[2], state);
-
-        return;
-    } else {
-        Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Length(dashboard_height), Constraint::Min(0)])
-            .split(f.area())
-    };
-
-    let dashboard = DashboardComponent;
-    dashboard.render(f, main_chunks[0], state);
-
-    let timeline = TimelineComponent;
-    timeline.render(f, main_chunks[1], state);
+    let turn_history = TurnHistoryComponent;
+    turn_history.render(f, chunks[2], state);
 }
