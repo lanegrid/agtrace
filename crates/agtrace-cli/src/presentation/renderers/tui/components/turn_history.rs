@@ -45,8 +45,13 @@ impl Component for TurnHistoryComponent {
             .flat_map(|turn| render_turn(turn, max_context as u32, inner_width))
             .collect();
 
-        let list = List::new(items).block(block);
-        f.render_widget(list, area);
+        let list = List::new(items).block(block).highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        );
+
+        f.render_stateful_widget(list, area, &mut state.turn_history_state);
     }
 }
 

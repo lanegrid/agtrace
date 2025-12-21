@@ -72,11 +72,17 @@ impl TuiWatchView {
                         KeyCode::Char('q') | KeyCode::Esc => {
                             should_quit = true;
                         }
-                        KeyCode::Down | KeyCode::Char('j') => {
+                        KeyCode::Down => {
                             app_state.select_next();
                         }
-                        KeyCode::Up | KeyCode::Char('k') => {
+                        KeyCode::Up => {
                             app_state.select_previous();
+                        }
+                        KeyCode::Char('j') => {
+                            app_state.scroll_turn_history_down();
+                        }
+                        KeyCode::Char('k') => {
+                            app_state.scroll_turn_history_up();
                         }
                         _ => {}
                     }

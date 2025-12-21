@@ -40,6 +40,7 @@ pub(crate) struct AppState {
     pub session_start_time: Option<chrono::DateTime<chrono::Utc>>,
     pub turn_count: usize,
     pub list_state: ListState,
+    pub turn_history_state: ListState,
     pub turns_usage: Vec<TurnUsageViewModel>,
     pub max_context: Option<u32>,
     pub previous_token_total: u32,
@@ -65,6 +66,7 @@ impl Default for AppState {
             session_start_time: None,
             turn_count: 0,
             list_state: ListState::default(),
+            turn_history_state: ListState::default(),
             turns_usage: Vec::new(),
             max_context: None,
             previous_token_total: 0,
@@ -149,6 +151,45 @@ impl AppState {
         if self.mode == WatchMode::AutoFollow && total > 0 {
             self.list_state.select(Some(total.saturating_sub(1)));
         }
+
+        // Auto-scroll turn history to show latest turn
+        self.scroll_turn_history_to_latest();
+    }
+
+    pub fn scroll_turn_history_to_latest(&mut self) {
+        if !self.turns_usage.is_empty() {
+            self.turn_history_state
+                .select(Some(self.turns_usage.len().saturating_sub(1)));
+        }
+    }
+
+    pub fn scroll_turn_history_up(&mut self) {
+        let i = match self.turn_history_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    0
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.turn_history_state.select(Some(i));
+    }
+
+    pub fn scroll_turn_history_down(&mut self) {
+        let total = self.turns_usage.len();
+        let i = match self.turn_history_state.selected() {
+            Some(i) => {
+                if i >= total.saturating_sub(1) {
+                    i
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.turn_history_state.select(Some(i));
     }
 
     pub fn reset_session_state(&mut self, session_id: String) {
@@ -170,6 +211,7 @@ impl AppState {
         let system_msg_count = self.system_messages.len();
         self.timeline_items = self.timeline_items.drain(..system_msg_count).collect();
         self.list_state = ListState::default();
+        self.turn_history_state = ListState::default();
         self.mode = WatchMode::AutoFollow;
     }
 }
