@@ -3,6 +3,7 @@ use agtrace_runtime::{AgTrace, DiscoveryEvent, StreamEvent, WorkspaceEvent};
 use chrono::Local;
 use clap::Parser;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[derive(Parser)]
 #[command(name = "agtrace-debug")]
@@ -43,10 +44,10 @@ fn run() -> Result<()> {
     }
 
     let monitor = builder.start_background_scan()?;
-    eprintln!("[DEBUG] Monitor started, listening for events...\n");
+    eprintln!("[DEBUG] Monitor started, listening for events... (Ctrl+C to exit)\n");
 
     loop {
-        match monitor.receiver().recv() {
+        match monitor.receiver().recv_timeout(Duration::from_millis(500)) {
             Ok(event) => {
                 let timestamp = Local::now().format("%H:%M:%S%.3f");
                 match event {
@@ -107,6 +108,10 @@ fn run() -> Result<()> {
                         println!("[{}] ERROR: {}", timestamp, msg);
                     }
                 }
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                // Continue checking for events
+                continue;
             }
             Err(e) => {
                 eprintln!("[DEBUG] Receiver error: {}", e);
