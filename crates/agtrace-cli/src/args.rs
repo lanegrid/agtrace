@@ -435,7 +435,60 @@ pub enum LabCommand {
         source: Option<String>,
     },
 
-    #[command(about = "Search for patterns in event payloads across sessions")]
+    #[command(
+        about = "Search for patterns in event payloads across sessions",
+        long_about = "Search for patterns in event payloads across sessions.
+
+This command scans event payloads from recent sessions and finds matches
+containing the specified pattern. Useful for investigating tool call structures,
+discovering actual argument formats, and debugging event data.
+
+By default, shows a compact view with syntax highlighting. Use --json to see
+the full JSON structure of matching events.",
+        after_long_help = "EXAMPLES:
+  # Find all ToolCall events containing 'Read'
+  agtrace lab grep \"Read\" --limit 5
+
+  # Search for file operations with JSON output
+  agtrace lab grep \"file_path\" --json --limit 10
+
+  # Find MCP-related calls from specific provider
+  agtrace lab grep \"mcp\" --source claude_code
+
+  # Investigate write operations structure
+  agtrace lab grep \"write_file\" --json
+
+OUTPUT FORMAT (compact mode):
+  ================================================================================
+  Match #1 | Session: abc123def456... | Stream: Main
+  Type: ToolCall
+  Tool: Read
+  Args: {\"file_path\":\"/path/to/project/src/main.rs\"}
+  ================================================================================
+  Match #2 | Session: abc123def456... | Stream: Main
+  Type: Reasoning
+  Text: Let me analyze the code structure...
+  ================================================================================
+
+OUTPUT FORMAT (JSON mode):
+  ================================================================================
+  Match #1 | Session: abc123def456... | Stream: Main
+  {
+    \"ToolCall\": {
+      \"name\": \"Read\",
+      \"arguments\": {
+        \"file_path\": \"/path/to/project/src/main.rs\"
+      }
+    }
+  }
+  ================================================================================
+
+NOTES:
+  - Searches up to 1000 recent sessions by default
+  - Pattern matching is case-sensitive substring search
+  - Default limit is 50 matches
+  - Use --source to filter by provider (claude_code, codex, gemini)"
+    )]
     Grep {
         #[arg(help = "String pattern to search for (e.g. 'write_file', 'mcp')")]
         pattern: String,
