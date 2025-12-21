@@ -42,13 +42,11 @@ pub(crate) struct AppState {
     pub list_state: ListState,
     pub turns_usage: Vec<TurnUsageViewModel>,
     pub max_context: Option<u32>,
-    pub current_turn_start_tokens: u32,
     pub previous_token_total: u32,
     pub last_activity: Option<chrono::DateTime<chrono::Utc>>,
     pub current_step_number: usize,
     pub activity_timestamps: VecDeque<chrono::DateTime<chrono::Utc>>,
     pub intent_events: VecDeque<EventViewModel>,
-    pub current_user_message: String,
 }
 
 impl Default for AppState {
@@ -69,13 +67,11 @@ impl Default for AppState {
             list_state: ListState::default(),
             turns_usage: Vec::new(),
             max_context: None,
-            current_turn_start_tokens: 0,
             previous_token_total: 0,
             last_activity: None,
             current_step_number: 0,
             activity_timestamps: VecDeque::new(),
             intent_events: VecDeque::new(),
-            current_user_message: String::new(),
         }
     }
 }
@@ -165,13 +161,11 @@ impl AppState {
         self.events_buffer.clear();
         self.turns_usage.clear();
         self.max_context = None;
-        self.current_turn_start_tokens = 0;
         self.previous_token_total = 0;
         self.last_activity = None;
         self.current_step_number = 0;
         self.activity_timestamps.clear();
         self.intent_events.clear();
-        self.current_user_message.clear();
 
         let system_msg_count = self.system_messages.len();
         self.timeline_items = self.timeline_items.drain(..system_msg_count).collect();

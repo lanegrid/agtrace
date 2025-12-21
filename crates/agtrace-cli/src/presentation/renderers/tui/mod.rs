@@ -124,9 +124,7 @@ impl TuiWatchView {
                         }
                     }
                     TuiEvent::StreamUpdate(state, new_events, turns_data) => {
-                        use crate::presentation::view_models::{
-                            EventPayloadViewModel, TurnUsageViewModel,
-                        };
+                        use crate::presentation::view_models::EventPayloadViewModel;
 
                         if app_state.session_start_time.is_none() {
                             app_state.session_start_time = Some(state.start_time);
@@ -143,15 +141,11 @@ impl TuiWatchView {
                         if let Some(turns) = turns_data {
                             app_state.turns_usage = turns;
 
-                            // Set current_turn_start_tokens and previous_token_total from the last turn
                             if let Some(last_turn) = app_state.turns_usage.last() {
                                 let last_total = last_turn.prev_total + last_turn.delta;
                                 app_state.previous_token_total = last_total;
-                                app_state.current_turn_start_tokens = last_total;
                             }
                         }
-
-                        let is_initial_load = false; // No longer needed
 
                         for event in new_events {
                             app_state.add_event(&event);
@@ -163,19 +157,10 @@ impl TuiWatchView {
                             }
 
                             match &event.payload {
-                                EventPayloadViewModel::User { text } => {
+                                EventPayloadViewModel::User { .. } => {
                                     app_state.intent_events.push_back(event.clone());
                                     if app_state.intent_events.len() > 5 {
                                         app_state.intent_events.pop_front();
-                                    }
-
-                                    if !is_initial_load {
-                                        app_state.current_user_message = text.clone();
-                                        let input_total = (state.current_usage.fresh_input
-                                            + state.current_usage.cache_creation
-                                            + state.current_usage.cache_read)
-                                            as u32;
-                                        app_state.current_turn_start_tokens = input_total;
                                     }
                                 }
                                 EventPayloadViewModel::Reasoning { .. }
@@ -196,41 +181,6 @@ impl TuiWatchView {
                                         + state.current_usage.cache_creation
                                         + state.current_usage.cache_read)
                                         as u32;
-
-                                    if !is_initial_load {
-                                        let delta = input_total
-                                            .saturating_sub(app_state.current_turn_start_tokens);
-
-                                        if delta > 0 && !app_state.current_user_message.is_empty() {
-                                            let is_heavy =
-                                                agtrace_engine::TurnMetrics::is_delta_heavy(
-                                                    delta,
-                                                    app_state.max_context,
-                                                );
-
-                                            let turn_usage = TurnUsageViewModel {
-                                                turn_id: app_state.turns_usage.len() + 1,
-                                                title: truncate_text(
-                                                    &app_state.current_user_message,
-                                                    60,
-                                                ),
-                                                prev_total: app_state.current_turn_start_tokens,
-                                                delta,
-                                                is_heavy,
-                                                is_active: true,
-                                                recent_steps: Vec::new(),
-                                                start_time: Some(chrono::Utc::now()),
-                                            };
-
-                                            app_state.turns_usage.push(turn_usage);
-
-                                            if app_state.turns_usage.len() > 50 {
-                                                app_state.turns_usage.remove(0);
-                                            }
-                                        }
-
-                                        app_state.current_user_message.clear();
-                                    }
 
                                     app_state.previous_token_total = total_used as u32;
 
