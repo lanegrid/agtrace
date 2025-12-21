@@ -7,5 +7,4 @@
 - Use `tree2md` command for full file tree.
 - Design principle: Always choose the complete, unified solution over partial fixes. Never offer half-measures like "delete unused code" or "suppress warnings" without fixing the root cause. When facing implementation choices, default to the option that improves consistency and type safety across the codebase.
 - Leave a TODO when you are consciously deferring a specific, necessary action due to immediate constraints like scope or dependencies.
-- When investigating actual event/tool structures: Run `agtrace lab grep "pattern" --json --limit 5` to see real data instead of reading raw files.
-- Before implementing types in agtrace-types: Verify actual argument formats with `agtrace lab grep "tool_name" --json`.
+- When investigating actual event/tool structures: Run `cargo build --release && ./target/release/agtrace lab grep "pattern" --json --limit 5` to see real data instead of reading raw files. `./target/release/agtrace lab grep -h` helps to learn how to use it.
