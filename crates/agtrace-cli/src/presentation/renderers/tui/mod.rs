@@ -202,7 +202,11 @@ impl TuiWatchView {
                                             .saturating_sub(app_state.current_turn_start_tokens);
 
                                         if delta > 0 && !app_state.current_user_message.is_empty() {
-                                            let heavy_threshold = 10000;
+                                            // Heavy threshold: 10% of max context, or fallback to 15k tokens
+                                            let heavy_threshold = app_state
+                                                .max_context
+                                                .map(|mc| mc / 10)
+                                                .unwrap_or(15000);
 
                                             let turn_usage = TurnUsageViewModel {
                                                 turn_id: app_state.turns_usage.len() + 1,
@@ -366,12 +370,15 @@ fn truncate_text(text: &str, max_len: usize) -> String {
 
 pub(crate) fn build_turns_from_session(
     session: &agtrace_engine::AgentSession,
+    max_context: Option<u32>,
 ) -> Vec<crate::presentation::view_models::TurnUsageViewModel> {
     use crate::presentation::view_models::{StepItemViewModel, TurnUsageViewModel};
 
     let mut turns = Vec::new();
     let mut cumulative_input = 0u32;
-    let heavy_threshold = 10000;
+
+    // Heavy threshold: 10% of max context, or fallback to 15k tokens
+    let heavy_threshold = max_context.map(|mc| mc / 10).unwrap_or(15000);
     let total_turns = session.turns.len();
 
     for (idx, turn) in session.turns.iter().enumerate() {

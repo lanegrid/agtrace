@@ -259,8 +259,12 @@ fn process_provider_events(
                         }
 
                         // Build turns data from assembled session
+                        let max_context = state.context_window_limit.map(|tl| tl as u32);
                         let turns_data = session.as_ref().map(|s| {
-                            crate::presentation::renderers::tui::build_turns_from_session(s)
+                            crate::presentation::renderers::tui::build_turns_from_session(
+                                s,
+                                max_context,
+                            )
                         });
 
                         let event_vms = presenters::present_events(&events);
@@ -361,9 +365,13 @@ fn process_stream_events(
                     }
 
                     // Build turns data from assembled session
-                    let turns_data = session
-                        .as_ref()
-                        .map(crate::presentation::renderers::tui::build_turns_from_session);
+                    let max_context = state.context_window_limit.map(|tl| tl as u32);
+                    let turns_data = session.as_ref().map(|s| {
+                        crate::presentation::renderers::tui::build_turns_from_session(
+                            s,
+                            max_context,
+                        )
+                    });
 
                     let event_vms = presenters::present_events(&events);
                     let state_vm = presenters::present_session_state(state);
