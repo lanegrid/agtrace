@@ -198,12 +198,19 @@ impl AgentTurn {
             .unwrap_or(fallback)
     }
 
-    /// Check if this turn is currently active (last step is in progress)
+    /// Check if this turn is currently active
+    ///
+    /// A turn is active if any of the recent steps are in progress.
+    /// Looking at multiple steps provides stability during step transitions
+    /// (e.g., when a step completes but the next one hasn't started yet).
     pub fn is_active(&self) -> bool {
+        const LOOKBACK_STEPS: usize = 3;
+
         self.steps
-            .last()
-            .map(|step| matches!(step.status, StepStatus::InProgress))
-            .unwrap_or(false)
+            .iter()
+            .rev()
+            .take(LOOKBACK_STEPS)
+            .any(|step| matches!(step.status, StepStatus::InProgress))
     }
 }
 
@@ -219,8 +226,12 @@ impl AgentSession {
             let delta = turn_end_cumulative.saturating_sub(cumulative_input);
             let prev_total = cumulative_input;
 
+            // Last turn is always active during streaming to avoid flicker
+            // when steps transition between InProgress and Done
             let is_active = if idx == total_turns.saturating_sub(1) {
-                turn.is_active()
+                // For streaming sessions, last turn is active regardless of step status
+                // This prevents "CURRENT TURN" display from flickering during step transitions
+                true
             } else {
                 false
             };

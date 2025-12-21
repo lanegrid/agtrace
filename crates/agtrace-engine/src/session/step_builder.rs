@@ -48,35 +48,42 @@ impl StepBuilder {
         }
     }
 
+    /// Determine step completion status based on content and tool execution state
+    ///
+    /// Status logic:
+    /// - Failed: Any tool has error
+    /// - InProgress: Tools exist but results incomplete, or reasoning-only waiting for action
+    /// - Done: All content complete (message present, or all tools have results)
     fn determine_status(&self) -> super::types::StepStatus {
         use super::types::StepStatus;
 
-        // 1. Error check (highest priority)
+        // Priority 1: Error check
         if self.tool_executions.iter().any(|t| t.is_error) {
             return StepStatus::Failed;
         }
 
-        // 2. Tool execution status (highest priority for completion)
+        // Priority 2: Tool execution status
+        // If tools exist, their completion determines status
         if !self.tool_executions.is_empty() {
-            // If any tool is missing result, step is in progress
             if self.tool_executions.iter().any(|t| t.result.is_none()) {
                 return StepStatus::InProgress;
             }
-            // All tools have results -> Done
             return StepStatus::Done;
         }
 
-        // 3. No tools: check message
+        // Priority 3: Content completion (no tools)
+        // Message indicates completion
         if self.message.is_some() {
             return StepStatus::Done;
         }
 
-        // 4. In progress: reasoning only (waiting for next action)
+        // Priority 4: Reasoning-only state
+        // Still waiting for message or tools
         if self.reasoning.is_some() {
             return StepStatus::InProgress;
         }
 
-        // Default: Done (safe side)
+        // Default: Empty or incomplete step
         StepStatus::Done
     }
 }
