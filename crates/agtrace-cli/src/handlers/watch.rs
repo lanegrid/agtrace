@@ -104,6 +104,12 @@ fn process_provider_events(
         // Check for new session discoveries (non-blocking)
         match rx_discovery.try_recv() {
             Ok(WorkspaceEvent::Discovery(DiscoveryEvent::NewSession { summary })) => {
+                // TODO: Allow manual session selection via TUI
+                // Currently auto-attaches to newly discovered sessions
+                // Future: Show session list, allow user to select with keyboard
+                // - Press 's' to toggle session list
+                // - Press number to select session
+                // - Maintain discovered_sessions: HashMap<String, SessionSummary>
                 let _ = tui_view.on_watch_attached(&format!("Session {}", summary.id));
 
                 // Create new session handle (replaces old one if exists)
@@ -122,9 +128,10 @@ fn process_provider_events(
             Ok(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
                 session_id,
                 provider_name: _,
+                is_new,
             })) => {
-                // Switch to new session if it's different from current
-                if current_session_id.as_ref() != Some(&session_id) {
+                // Switch to new session only if it's marked as new
+                if is_new && current_session_id.as_ref() != Some(&session_id) {
                     let _ = tui_view.on_watch_attached(&format!("Session {}", session_id));
 
                     match watch_service.watch_session(&session_id) {
