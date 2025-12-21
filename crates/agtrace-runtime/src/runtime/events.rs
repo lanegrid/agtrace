@@ -10,6 +10,7 @@ pub enum DiscoveryEvent {
     SessionUpdated {
         session_id: String,
         provider_name: String,
+        is_new: bool,
     },
     SessionRemoved {
         session_id: String,

@@ -180,6 +180,29 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_session_by_id(&self, session_id: &str) -> Result<Option<SessionSummary>> {
+        let mut stmt = self.conn.prepare(
+            r#"
+            SELECT id, provider, project_hash, start_ts, snippet
+            FROM sessions
+            WHERE id = ?1 AND is_valid = 1
+            "#,
+        )?;
+
+        let mut rows = stmt.query([session_id])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(SessionSummary {
+                id: row.get(0)?,
+                provider: row.get(1)?,
+                project_hash: row.get(2)?,
+                start_ts: row.get(3)?,
+                snippet: row.get(4)?,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn list_sessions(
         &self,
         project_hash: Option<&str>,

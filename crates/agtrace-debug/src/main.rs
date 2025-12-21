@@ -61,10 +61,11 @@ fn run() -> Result<()> {
                         DiscoveryEvent::SessionUpdated {
                             session_id,
                             provider_name,
+                            is_new,
                         } => {
                             println!(
-                                "[{}] DISCOVERY::SessionUpdated {{ id: {}, provider: {} }}",
-                                timestamp, session_id, provider_name
+                                "[{}] DISCOVERY::SessionUpdated {{ id: {}, provider: {}, is_new: {} }}",
+                                timestamp, session_id, provider_name, is_new
                             );
                         }
                         DiscoveryEvent::SessionRemoved { session_id } => {
