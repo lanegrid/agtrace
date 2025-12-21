@@ -279,6 +279,19 @@ impl ToolCallPayload {
         }
     }
 
+    /// Derive semantic ToolKind from ToolCallPayload variant
+    pub fn kind(&self) -> ToolKind {
+        match self {
+            ToolCallPayload::FileRead { .. } => ToolKind::Read,
+            ToolCallPayload::FileEdit { .. } => ToolKind::Write,
+            ToolCallPayload::FileWrite { .. } => ToolKind::Write,
+            ToolCallPayload::Execute { .. } => ToolKind::Execute,
+            ToolCallPayload::Search { .. } => ToolKind::Search,
+            ToolCallPayload::Mcp { .. } => ToolKind::Other,
+            ToolCallPayload::Generic { .. } => ToolKind::Other,
+        }
+    }
+
     /// Create a normalized ToolCallPayload from raw name and arguments
     pub fn from_raw(name: String, arguments: Value, provider_call_id: Option<String>) -> Self {
         // Try to parse into specific variants based on name
@@ -841,5 +854,83 @@ mod tests {
             McpArgs::tool_name("mcp__o3__o3-search"),
             Some("o3-search".to_string())
         );
+    }
+
+    #[test]
+    fn test_tool_call_kind_derivation() {
+        let read_payload = ToolCallPayload::FileRead {
+            name: "Read".to_string(),
+            arguments: FileReadArgs {
+                file_path: Some("/path".to_string()),
+                path: None,
+                pattern: None,
+                extra: serde_json::json!({}),
+            },
+            provider_call_id: None,
+        };
+        assert_eq!(read_payload.kind(), ToolKind::Read);
+
+        let edit_payload = ToolCallPayload::FileEdit {
+            name: "Edit".to_string(),
+            arguments: FileEditArgs {
+                file_path: "/path".to_string(),
+                old_string: "old".to_string(),
+                new_string: "new".to_string(),
+                replace_all: false,
+            },
+            provider_call_id: None,
+        };
+        assert_eq!(edit_payload.kind(), ToolKind::Write);
+
+        let write_payload = ToolCallPayload::FileWrite {
+            name: "Write".to_string(),
+            arguments: FileWriteArgs {
+                file_path: "/path".to_string(),
+                content: "content".to_string(),
+            },
+            provider_call_id: None,
+        };
+        assert_eq!(write_payload.kind(), ToolKind::Write);
+
+        let exec_payload = ToolCallPayload::Execute {
+            name: "Bash".to_string(),
+            arguments: ExecuteArgs {
+                command: Some("ls".to_string()),
+                description: None,
+                timeout: None,
+                extra: serde_json::json!({}),
+            },
+            provider_call_id: None,
+        };
+        assert_eq!(exec_payload.kind(), ToolKind::Execute);
+
+        let search_payload = ToolCallPayload::Search {
+            name: "Grep".to_string(),
+            arguments: SearchArgs {
+                pattern: Some("pattern".to_string()),
+                query: None,
+                input: None,
+                path: None,
+                extra: serde_json::json!({}),
+            },
+            provider_call_id: None,
+        };
+        assert_eq!(search_payload.kind(), ToolKind::Search);
+
+        let mcp_payload = ToolCallPayload::Mcp {
+            name: "mcp__o3__search".to_string(),
+            arguments: McpArgs {
+                inner: serde_json::json!({}),
+            },
+            provider_call_id: None,
+        };
+        assert_eq!(mcp_payload.kind(), ToolKind::Other);
+
+        let generic_payload = ToolCallPayload::Generic {
+            name: "CustomTool".to_string(),
+            arguments: serde_json::json!({}),
+            provider_call_id: None,
+        };
+        assert_eq!(generic_payload.kind(), ToolKind::Other);
     }
 }
