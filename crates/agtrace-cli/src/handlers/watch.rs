@@ -4,6 +4,7 @@ use crate::presentation::renderers::tui::TuiEvent;
 use crate::presentation::renderers::TuiWatchView;
 use crate::presentation::view_models::{WatchStart, WatchSummary};
 use agtrace_engine::assemble_session;
+use agtrace_types::AgentEvent;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 use anyhow::Result;
 use std::path::Path;
@@ -262,7 +263,8 @@ fn process_provider_events(
 
                         let event_vms = presenters::present_events(&events);
                         let state_vm = presenters::present_session_state(state);
-                        let _ = tui_view.render_stream_update(&state_vm, &event_vms);
+                        // TODO: Accumulate events and build turns data for provider watch
+                        let _ = tui_view.render_stream_update(&state_vm, &event_vms, None);
                     }
                 }
                 Ok(WorkspaceEvent::Stream(StreamEvent::Disconnected { reason })) => {
@@ -299,6 +301,7 @@ fn process_stream_events(
 ) {
     let mut session_state: Option<SessionState> = None;
     let mut initialized = false;
+    let mut all_events: Vec<AgentEvent> = Vec::new();
 
     while let Ok(event) = receiver.recv() {
         match event {
@@ -317,6 +320,9 @@ fn process_stream_events(
                         events[0].timestamp,
                     ));
                 }
+
+                // Accumulate all events
+                all_events.extend(events.clone());
 
                 if let Some(state) = &mut session_state {
                     // Update state from events
@@ -340,7 +346,7 @@ fn process_stream_events(
 
                     // Show initial summary on first batch
                     if !initialized {
-                        let turn_count = if let Some(assembled) = assemble_session(&events) {
+                        let turn_count = if let Some(assembled) = assemble_session(&all_events) {
                             assembled.turns.len()
                         } else {
                             state.turn_count
@@ -354,9 +360,18 @@ fn process_stream_events(
                         initialized = true;
                     }
 
+                    // Assemble session and build turns data
+                    let turns_data = assemble_session(&all_events).map(|session| {
+                        crate::presentation::renderers::tui::build_turns_from_session(&session)
+                    });
+
                     let event_vms = presenters::present_events(&events);
                     let state_vm = presenters::present_session_state(state);
-                    let _ = tui_view.render_stream_update(&state_vm, &event_vms);
+                    let _ = tui_view.render_stream_update(
+                        &state_vm,
+                        &event_vms,
+                        turns_data.as_deref(),
+                    );
                 }
             }
             WorkspaceEvent::Stream(StreamEvent::Disconnected { reason }) => {

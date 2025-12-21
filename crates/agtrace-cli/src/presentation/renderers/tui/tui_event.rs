@@ -1,4 +1,6 @@
-use crate::presentation::view_models::{EventViewModel, StreamStateViewModel, WatchStart};
+use crate::presentation::view_models::{
+    EventViewModel, StreamStateViewModel, TurnUsageViewModel, WatchStart,
+};
 use crossterm::event::KeyEvent;
 
 #[derive(Debug, Clone)]
@@ -12,5 +14,9 @@ pub enum TuiEvent {
     WatchRotated(String, String),
     WatchWaiting(String),
     WatchError(String, bool),
-    StreamUpdate(StreamStateViewModel, Vec<EventViewModel>),
+    StreamUpdate(
+        StreamStateViewModel,
+        Vec<EventViewModel>,
+        Option<Vec<TurnUsageViewModel>>,
+    ),
 }

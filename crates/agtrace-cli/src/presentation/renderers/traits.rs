@@ -95,5 +95,6 @@ pub trait WatchView {
         &self,
         state: &StreamStateViewModel,
         new_events: &[EventViewModel],
+        turns: Option<&[crate::presentation::view_models::TurnUsageViewModel]>,
     ) -> Result<()>;
 }

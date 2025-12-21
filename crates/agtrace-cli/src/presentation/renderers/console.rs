@@ -609,6 +609,7 @@ impl WatchView for ConsoleTraceView {
         &self,
         state: &StreamStateViewModel,
         new_events: &[EventViewModel],
+        _turns: Option<&[crate::presentation::view_models::TurnUsageViewModel]>,
     ) -> Result<()> {
         let opts = DisplayOptions {
             enable_color: true,

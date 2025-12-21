@@ -123,7 +123,7 @@ impl TuiWatchView {
                             should_quit = true;
                         }
                     }
-                    TuiEvent::StreamUpdate(state, new_events) => {
+                    TuiEvent::StreamUpdate(state, new_events, turns_data) => {
                         use crate::presentation::view_models::{
                             EventPayloadViewModel, TurnUsageViewModel,
                         };
@@ -138,6 +138,20 @@ impl TuiWatchView {
                         if app_state.max_context.is_none() && state.token_limit.is_some() {
                             app_state.max_context = Some(state.token_limit.unwrap() as u32);
                         }
+
+                        // Update turns data from assembled session (if provided)
+                        if let Some(turns) = turns_data {
+                            app_state.turns_usage = turns;
+
+                            // Set current_turn_start_tokens and previous_token_total from the last turn
+                            if let Some(last_turn) = app_state.turns_usage.last() {
+                                let last_total = last_turn.prev_total + last_turn.delta;
+                                app_state.previous_token_total = last_total;
+                                app_state.current_turn_start_tokens = last_total;
+                            }
+                        }
+
+                        let is_initial_load = false; // No longer needed
 
                         for event in new_events {
                             app_state.add_event(&event);
@@ -155,12 +169,14 @@ impl TuiWatchView {
                                         app_state.intent_events.pop_front();
                                     }
 
-                                    app_state.current_user_message = text.clone();
-                                    let input_total = (state.current_usage.fresh_input
-                                        + state.current_usage.cache_creation
-                                        + state.current_usage.cache_read)
-                                        as u32;
-                                    app_state.current_turn_start_tokens = input_total;
+                                    if !is_initial_load {
+                                        app_state.current_user_message = text.clone();
+                                        let input_total = (state.current_usage.fresh_input
+                                            + state.current_usage.cache_creation
+                                            + state.current_usage.cache_read)
+                                            as u32;
+                                        app_state.current_turn_start_tokens = input_total;
+                                    }
                                 }
                                 EventPayloadViewModel::Reasoning { .. }
                                 | EventPayloadViewModel::Message { .. }
@@ -181,28 +197,32 @@ impl TuiWatchView {
                                         + state.current_usage.cache_read)
                                         as u32;
 
-                                    let delta = input_total
-                                        .saturating_sub(app_state.current_turn_start_tokens);
+                                    if !is_initial_load {
+                                        let delta = input_total
+                                            .saturating_sub(app_state.current_turn_start_tokens);
 
-                                    if delta > 0 && !app_state.current_user_message.is_empty() {
-                                        let heavy_threshold = 10000;
+                                        if delta > 0 && !app_state.current_user_message.is_empty() {
+                                            let heavy_threshold = 10000;
 
-                                        let turn_usage = TurnUsageViewModel {
-                                            turn_id: app_state.turns_usage.len() + 1,
-                                            title: truncate_text(
-                                                &app_state.current_user_message,
-                                                60,
-                                            ),
-                                            prev_total: app_state.current_turn_start_tokens,
-                                            delta,
-                                            is_heavy: delta >= heavy_threshold,
-                                        };
+                                            let turn_usage = TurnUsageViewModel {
+                                                turn_id: app_state.turns_usage.len() + 1,
+                                                title: truncate_text(
+                                                    &app_state.current_user_message,
+                                                    60,
+                                                ),
+                                                prev_total: app_state.current_turn_start_tokens,
+                                                delta,
+                                                is_heavy: delta >= heavy_threshold,
+                                            };
 
-                                        app_state.turns_usage.push(turn_usage);
+                                            app_state.turns_usage.push(turn_usage);
 
-                                        if app_state.turns_usage.len() > 50 {
-                                            app_state.turns_usage.remove(0);
+                                            if app_state.turns_usage.len() > 50 {
+                                                app_state.turns_usage.remove(0);
+                                            }
                                         }
+
+                                        app_state.current_user_message.clear();
                                     }
 
                                     app_state.previous_token_total = total_used as u32;
@@ -228,8 +248,6 @@ impl TuiWatchView {
                                         cache_read: state.current_usage.cache_read,
                                         output: state.current_usage.output,
                                     });
-
-                                    app_state.current_user_message.clear();
                                 }
                                 _ => {}
                             }
@@ -322,9 +340,14 @@ impl WatchView for TuiWatchView {
         &self,
         state: &crate::presentation::view_models::StreamStateViewModel,
         new_events: &[EventViewModel],
+        turns: Option<&[crate::presentation::view_models::TurnUsageViewModel]>,
     ) -> Result<()> {
         self.tx
-            .send(TuiEvent::StreamUpdate(state.clone(), new_events.to_vec()))
+            .send(TuiEvent::StreamUpdate(
+                state.clone(),
+                new_events.to_vec(),
+                turns.map(|t| t.to_vec()),
+            ))
             .map_err(|e| anyhow::anyhow!("Failed to send event: {}", e))
     }
 }
@@ -336,4 +359,54 @@ fn truncate_text(text: &str, max_len: usize) -> String {
         let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
         format!("{}...", truncated)
     }
+}
+
+pub(crate) fn build_turns_from_session(
+    session: &agtrace_engine::AgentSession,
+) -> Vec<crate::presentation::view_models::TurnUsageViewModel> {
+    use crate::presentation::view_models::TurnUsageViewModel;
+
+    let mut turns = Vec::new();
+    let mut cumulative_input = 0u32;
+    let heavy_threshold = 10000;
+
+    for (idx, turn) in session.turns.iter().enumerate() {
+        let turn_input: i32 = turn
+            .steps
+            .iter()
+            .filter_map(|step| step.usage.as_ref())
+            .map(|usage| {
+                usage.input_tokens
+                    + usage
+                        .details
+                        .as_ref()
+                        .and_then(|d| d.cache_creation_input_tokens)
+                        .unwrap_or(0)
+                    + usage
+                        .details
+                        .as_ref()
+                        .and_then(|d| d.cache_read_input_tokens)
+                        .unwrap_or(0)
+            })
+            .sum();
+
+        let delta = turn_input as u32;
+        let prev_total = cumulative_input;
+
+        let user_message = &turn.user.content.text;
+        let title = truncate_text(user_message, 60);
+
+        let turn_usage = TurnUsageViewModel {
+            turn_id: idx + 1,
+            title,
+            prev_total,
+            delta,
+            is_heavy: delta >= heavy_threshold,
+        };
+
+        turns.push(turn_usage);
+        cumulative_input += delta;
+    }
+
+    turns
 }
