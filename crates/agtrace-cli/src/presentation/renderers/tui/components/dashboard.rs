@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, Paragraph},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
@@ -63,7 +63,7 @@ fn render_title_bar(f: &mut Frame, area: Rect, state: &AppState) {
         if !state.session_title.is_empty() {
             Span::styled(
                 format!(" → {}", state.session_title),
-                Style::default().fg(Color::Yellow),
+                Style::default().fg(Color::White),
             )
         } else {
             Span::raw("")
@@ -123,7 +123,7 @@ fn render_status_box(f: &mut Frame, area: Rect, state: &AppState) {
             spans.push(Span::styled(
                 provider.clone(),
                 Style::default()
-                    .fg(Color::LightBlue)
+                    .fg(Color::LightCyan)
                     .add_modifier(Modifier::BOLD),
             ));
             spans.push(Span::raw(" │ "));
@@ -139,7 +139,7 @@ fn render_status_box(f: &mut Frame, area: Rect, state: &AppState) {
             spans.push(Span::styled(
                 short_id.to_string(),
                 Style::default()
-                    .fg(Color::Yellow)
+                    .fg(Color::White)
                     .add_modifier(Modifier::BOLD),
             ));
             spans.push(Span::raw(" │ "));
@@ -150,7 +150,7 @@ fn render_status_box(f: &mut Frame, area: Rect, state: &AppState) {
             spans.push(Span::styled(
                 model.clone(),
                 Style::default()
-                    .fg(Color::Magenta)
+                    .fg(Color::LightMagenta)
                     .add_modifier(Modifier::BOLD),
             ));
         }
@@ -170,21 +170,14 @@ fn render_status_box(f: &mut Frame, area: Rect, state: &AppState) {
 fn render_context_box(f: &mut Frame, area: Rect, state: &AppState) {
     if let Some(ctx) = &state.context_usage {
         let ratio = ctx.used as f64 / ctx.limit as f64;
+        let usage_pct = ratio * 100.0;
 
-        let gauge_color = if ratio > 0.9 {
-            Color::Red
+        let (gauge_color, border_color) = if ratio > 0.9 {
+            (Color::Red, Color::LightRed)
         } else if ratio > 0.7 {
-            Color::Yellow
+            (Color::Rgb(255, 165, 0), Color::Rgb(255, 200, 100)) // Orange instead of yellow
         } else {
-            Color::Green
-        };
-
-        let border_color = if ratio > 0.9 {
-            Color::LightRed
-        } else if ratio > 0.7 {
-            Color::LightYellow
-        } else {
-            Color::Cyan
+            (Color::Green, Color::Cyan)
         };
 
         let block = Block::default()
@@ -203,99 +196,69 @@ fn render_context_box(f: &mut Frame, area: Rect, state: &AppState) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(1), // Gauge
-                Constraint::Length(1), // Breakdown line 1
-                Constraint::Length(1), // Breakdown line 2
+                Constraint::Length(1), // Usage percentage (big)
+                Constraint::Length(1), // Progress bar
+                Constraint::Length(1), // Token counts
                 Constraint::Length(1), // Compaction status
             ])
             .split(inner);
 
-        // Gauge
-        let usage_pct = ratio * 100.0;
-        let label = format!(
-            "{}/{} tokens ({:.1}%)",
-            format_tokens(ctx.used as i32),
-            format_tokens(ctx.limit as i32),
-            usage_pct
-        );
-        let gauge = Gauge::default()
-            .gauge_style(
-                Style::default()
-                    .fg(gauge_color)
-                    .add_modifier(Modifier::BOLD),
-            )
-            .label(label)
-            .ratio(ratio.min(1.0));
-        f.render_widget(gauge, chunks[0]);
+        // Usage percentage (large and prominent)
+        let pct_line = Line::from(vec![Span::styled(
+            format!("{:.0}% used", usage_pct),
+            Style::default()
+                .fg(gauge_color)
+                .add_modifier(Modifier::BOLD),
+        )]);
+        f.render_widget(Paragraph::new(pct_line), chunks[0]);
 
-        // Breakdown
+        // Compact progress bar (40 chars max)
+        let bar_width = 40;
+        let filled = ((ratio * bar_width as f64) as usize).min(bar_width);
+        let empty = bar_width.saturating_sub(filled);
+        let bar = format!("[{}{}]", "█".repeat(filled), "░".repeat(empty));
+
+        let bar_line = Line::from(vec![Span::styled(bar, Style::default().fg(gauge_color))]);
+        f.render_widget(Paragraph::new(bar_line), chunks[1]);
+
+        // Token counts (simplified)
         let input_total = ctx.fresh_input + ctx.cache_creation + ctx.cache_read;
-
-        let line1 = Line::from(vec![
-            Span::styled("Input: ", Style::default().fg(Color::Gray)),
-            Span::styled(
-                format_tokens(input_total),
-                Style::default()
-                    .fg(Color::LightCyan)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(" (Fresh: ", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                format_tokens(ctx.fresh_input),
-                Style::default().fg(Color::Cyan),
-            ),
-            Span::styled(" / Cache: ", Style::default().fg(Color::DarkGray)),
+        let counts_line = Line::from(vec![
             Span::styled(
                 format!(
-                    "{}+{}",
-                    format_tokens(ctx.cache_creation),
-                    format_tokens(ctx.cache_read)
+                    "{} / {} tokens",
+                    format_tokens(ctx.used as i32),
+                    format_tokens(ctx.limit as i32)
                 ),
-                Style::default().fg(Color::Blue),
+                Style::default().fg(Color::White),
             ),
-            Span::styled(")", Style::default().fg(Color::DarkGray)),
+            Span::styled("  •  ", Style::default().fg(Color::DarkGray)),
+            Span::styled("In: ", Style::default().fg(Color::Gray)),
+            Span::styled(format_tokens(input_total), Style::default().fg(Color::Cyan)),
+            Span::styled("  Out: ", Style::default().fg(Color::Gray)),
+            Span::styled(format_tokens(ctx.output), Style::default().fg(Color::Green)),
         ]);
+        f.render_widget(Paragraph::new(counts_line), chunks[2]);
 
-        let line2 = Line::from(vec![
-            Span::styled("Output: ", Style::default().fg(Color::Gray)),
-            Span::styled(
-                format_tokens(ctx.output),
-                Style::default()
-                    .fg(Color::LightGreen)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        ]);
-
-        f.render_widget(Paragraph::new(line1), chunks[1]);
-        f.render_widget(Paragraph::new(line2), chunks[2]);
-
-        // Compaction status
+        // Compaction status (simplified)
         if let Some(buffer_pct) = state.compaction_buffer_pct {
             if buffer_pct > 0.0 {
                 let trigger_threshold = 100.0 - buffer_pct;
                 let current_input_pct = (input_total as f64 / ctx.limit as f64) * 100.0;
 
-                let (status_text, status_color) = if current_input_pct >= trigger_threshold {
-                    (
-                        format!("⚠️  Compaction TRIGGERED (buffer: {:.0}%)", buffer_pct),
-                        Color::LightRed,
-                    )
+                let (icon, text, color) = if current_input_pct >= trigger_threshold {
+                    ("⚠️", "Compaction ACTIVE", Color::LightRed)
                 } else {
-                    (
-                        format!(
-                            "✓ Compaction OK (triggers at {:.0}%, current: {:.1}%)",
-                            trigger_threshold, current_input_pct
-                        ),
-                        Color::Green,
-                    )
+                    ("✓", "Compaction ready", Color::Green)
                 };
 
-                let status_line = Line::from(vec![Span::styled(
-                    status_text,
-                    Style::default()
-                        .fg(status_color)
-                        .add_modifier(Modifier::BOLD),
-                )]);
+                let status_line = Line::from(vec![
+                    Span::raw(format!("{} ", icon)),
+                    Span::styled(
+                        text,
+                        Style::default().fg(color).add_modifier(Modifier::BOLD),
+                    ),
+                ]);
 
                 f.render_widget(Paragraph::new(status_line), chunks[3]);
             }

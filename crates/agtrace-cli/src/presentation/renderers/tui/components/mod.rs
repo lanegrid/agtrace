@@ -7,9 +7,7 @@ pub(crate) trait Component {
 }
 
 pub(crate) mod dashboard;
-pub(crate) mod footer;
 pub(crate) mod timeline;
 
 pub(crate) use dashboard::DashboardComponent;
-pub(crate) use footer::FooterComponent;
 pub(crate) use timeline::TimelineComponent;

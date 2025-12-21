@@ -5,8 +5,6 @@ mod tui_event;
 mod ui;
 
 use super::traits::WatchView;
-use crate::presentation::formatters::token::TokenUsageView;
-use crate::presentation::view_models::DisplayOptions;
 use crate::presentation::view_models::{
     EventPayloadViewModel, EventViewModel, ReactionViewModel, WatchStart, WatchSummary,
 };
@@ -136,27 +134,6 @@ impl TuiWatchView {
                             app_state.add_event(&event);
 
                             if matches!(event.payload, EventPayloadViewModel::TokenUsage { .. }) {
-                                let opts = DisplayOptions {
-                                    enable_color: false,
-                                    relative_time: false,
-                                    truncate_text: None,
-                                };
-
-                                let token_view = TokenUsageView::from_usage_data(
-                                    state.current_usage.fresh_input,
-                                    state.current_usage.cache_creation,
-                                    state.current_usage.cache_read,
-                                    state.current_usage.output,
-                                    state.current_reasoning_tokens,
-                                    state.model.clone(),
-                                    state.token_limit,
-                                    state.compaction_buffer_pct,
-                                    opts,
-                                );
-                                let footer_output = format!("{}", token_view);
-                                app_state.footer_lines =
-                                    footer_output.lines().map(|s| s.to_string()).collect();
-
                                 let total_used = state.current_usage.fresh_input
                                     + state.current_usage.cache_creation
                                     + state.current_usage.cache_read
