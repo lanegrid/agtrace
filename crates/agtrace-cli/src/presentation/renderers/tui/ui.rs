@@ -12,10 +12,10 @@ pub(crate) fn draw(f: &mut Frame, state: &mut AppState) {
 
     let mut dashboard_height = 1; // Title bar
     if has_session {
-        dashboard_height += 1; // Status line
+        dashboard_height += 3; // Status box (with borders)
     }
     if has_context {
-        dashboard_height += 3; // Context gauge + 2 lines of details
+        dashboard_height += 6; // Context box (with borders)
     }
 
     let footer_height = state.footer_lines.len().max(1) as u16;
