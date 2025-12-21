@@ -375,12 +375,14 @@ pub(crate) fn build_turns_from_session(
     let total_turns = session.turns.len();
 
     for (idx, turn) in session.turns.iter().enumerate() {
-        let turn_input: i32 = turn
+        // Get the last step's cumulative token count for this turn
+        let turn_end_cumulative: u32 = turn
             .steps
             .iter()
-            .filter_map(|step| step.usage.as_ref())
+            .rev()
+            .find_map(|step| step.usage.as_ref())
             .map(|usage| {
-                usage.input_tokens
+                (usage.input_tokens
                     + usage
                         .details
                         .as_ref()
@@ -390,11 +392,11 @@ pub(crate) fn build_turns_from_session(
                         .details
                         .as_ref()
                         .and_then(|d| d.cache_read_input_tokens)
-                        .unwrap_or(0)
+                        .unwrap_or(0)) as u32
             })
-            .sum();
+            .unwrap_or(cumulative_input);
 
-        let delta = turn_input as u32;
+        let delta = turn_end_cumulative.saturating_sub(cumulative_input);
         let prev_total = cumulative_input;
 
         let user_message = &turn.user.content.text;
