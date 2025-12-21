@@ -1,5 +1,5 @@
-use anyhow::Result;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, StreamEvent, WorkspaceEvent};
+use anyhow::Result;
 use chrono::Local;
 use clap::Parser;
 use std::path::PathBuf;

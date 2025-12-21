@@ -119,6 +119,28 @@ fn process_provider_events(
                     }
                 }
             }
+            Ok(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
+                session_id,
+                provider_name: _,
+            })) => {
+                // Switch to new session if it's different from current
+                if current_session_id.as_ref() != Some(&session_id) {
+                    let _ = tui_view.on_watch_attached(&format!("Session {}", session_id));
+
+                    match watch_service.watch_session(&session_id) {
+                        Ok(handle) => {
+                            current_handle = Some(handle);
+                            current_session_id = Some(session_id.clone());
+                            session_state = None;
+                            initialized = false;
+                        }
+                        Err(e) => {
+                            let _ =
+                                tui_view.on_watch_error(&format!("Failed to attach: {}", e), false);
+                        }
+                    }
+                }
+            }
             Ok(WorkspaceEvent::Error(msg)) => {
                 let fatal = msg.starts_with("FATAL:");
                 let _ = tui_view.on_watch_error(&msg, fatal);
