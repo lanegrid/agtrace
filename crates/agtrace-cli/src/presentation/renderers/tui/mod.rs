@@ -213,6 +213,9 @@ impl TuiWatchView {
                                                 prev_total: app_state.current_turn_start_tokens,
                                                 delta,
                                                 is_heavy: delta >= heavy_threshold,
+                                                is_active: true,
+                                                recent_steps: Vec::new(),
+                                                start_time: Some(chrono::Utc::now()),
                                             };
 
                                             app_state.turns_usage.push(turn_usage);
@@ -364,11 +367,12 @@ fn truncate_text(text: &str, max_len: usize) -> String {
 pub(crate) fn build_turns_from_session(
     session: &agtrace_engine::AgentSession,
 ) -> Vec<crate::presentation::view_models::TurnUsageViewModel> {
-    use crate::presentation::view_models::TurnUsageViewModel;
+    use crate::presentation::view_models::{StepItemViewModel, TurnUsageViewModel};
 
     let mut turns = Vec::new();
     let mut cumulative_input = 0u32;
     let heavy_threshold = 10000;
+    let total_turns = session.turns.len();
 
     for (idx, turn) in session.turns.iter().enumerate() {
         let turn_input: i32 = turn
@@ -396,12 +400,61 @@ pub(crate) fn build_turns_from_session(
         let user_message = &turn.user.content.text;
         let title = truncate_text(user_message, 60);
 
+        let is_active = idx == total_turns.saturating_sub(1);
+
+        let recent_steps = if is_active {
+            turn.steps
+                .iter()
+                .rev()
+                .take(5)
+                .rev()
+                .map(|step| {
+                    let (emoji, description) = if let Some(reasoning) = &step.reasoning {
+                        ("🤔".to_string(), truncate_text(&reasoning.content.text, 40))
+                    } else if let Some(message) = &step.message {
+                        ("💬".to_string(), truncate_text(&message.content.text, 40))
+                    } else if !step.tools.is_empty() {
+                        let tool_name = &step.tools[0].call.content.name;
+                        ("🔧".to_string(), format!("Tool: {}", tool_name))
+                    } else {
+                        ("•".to_string(), "Event".to_string())
+                    };
+
+                    let token_usage = step.usage.as_ref().map(|u| {
+                        (u.input_tokens
+                            + u.details
+                                .as_ref()
+                                .and_then(|d| d.cache_creation_input_tokens)
+                                .unwrap_or(0)
+                            + u.details
+                                .as_ref()
+                                .and_then(|d| d.cache_read_input_tokens)
+                                .unwrap_or(0)) as u32
+                    });
+
+                    StepItemViewModel {
+                        timestamp: step.timestamp,
+                        emoji,
+                        description,
+                        token_usage,
+                    }
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        let start_time = turn.steps.first().map(|s| s.timestamp);
+
         let turn_usage = TurnUsageViewModel {
             turn_id: idx + 1,
             title,
             prev_total,
             delta,
             is_heavy: delta >= heavy_threshold,
+            is_active,
+            recent_steps,
+            start_time,
         };
 
         turns.push(turn_usage);

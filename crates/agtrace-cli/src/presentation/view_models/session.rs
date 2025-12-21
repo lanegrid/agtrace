@@ -125,4 +125,15 @@ pub struct TurnUsageViewModel {
     pub prev_total: u32,
     pub delta: u32,
     pub is_heavy: bool,
+    pub is_active: bool,
+    pub recent_steps: Vec<StepItemViewModel>,
+    pub start_time: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StepItemViewModel {
+    pub timestamp: DateTime<Utc>,
+    pub emoji: String,
+    pub description: String,
+    pub token_usage: Option<u32>,
 }
