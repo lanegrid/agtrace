@@ -156,29 +156,28 @@ fn create_stacked_bar(
 ) -> Line<'static> {
     let bar_width = bar_width.saturating_sub(20).min(60);
 
-    // Calculate total usage and clamp to max_context
-    let total = (prev_total + delta).min(max_context);
-    let total_ratio = total as f64 / max_context as f64;
-    let total_chars = ((total_ratio * bar_width as f64) as usize).min(bar_width);
+    // Calculate prev_total and delta as absolute ratios against max_context
+    let prev_ratio = prev_total as f64 / max_context as f64;
+    let delta_ratio = delta as f64 / max_context as f64;
 
-    // Calculate prev_total portion
-    let prev_chars = if total > 0 {
-        ((prev_total as f64 / total as f64) * total_chars as f64) as usize
-    } else {
-        0
-    };
+    let mut prev_chars = (prev_ratio * bar_width as f64) as usize;
+    let mut delta_chars = (delta_ratio * bar_width as f64) as usize;
 
-    // Calculate delta portion (ensure at least 1 char if delta > 0)
-    let delta_chars = if delta > 0 {
-        total_chars.saturating_sub(prev_chars).max(1)
-    } else {
-        0
-    };
+    // Ensure at least 1 char for delta if delta > 0
+    if delta > 0 && delta_chars == 0 {
+        delta_chars = 1;
+    }
 
-    // Adjust prev_chars if delta_chars was bumped to 1
-    let prev_chars = total_chars.saturating_sub(delta_chars);
+    // Clamp total to bar_width
+    let total_chars = prev_chars + delta_chars;
+    if total_chars > bar_width {
+        // Scale down proportionally
+        let scale = bar_width as f64 / total_chars as f64;
+        prev_chars = (prev_chars as f64 * scale) as usize;
+        delta_chars = bar_width.saturating_sub(prev_chars);
+    }
 
-    let remaining_chars = bar_width.saturating_sub(total_chars);
+    let remaining_chars = bar_width.saturating_sub(prev_chars + delta_chars);
 
     let history_bar = "█".repeat(prev_chars);
     let delta_bar = "▓".repeat(delta_chars);
