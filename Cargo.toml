@@ -6,6 +6,7 @@ members = [
     "crates/agtrace-engine",
     "crates/agtrace-runtime",
     "crates/agtrace-cli",
+    "crates/agtrace-debug",
 ]
 default-members = ["crates/agtrace-cli"]
 resolver = "2"
