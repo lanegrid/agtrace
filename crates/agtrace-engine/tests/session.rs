@@ -92,11 +92,11 @@ fn test_session_assembly_structure() {
             parent_id: Some(reasoning_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload {
-                name: "bash".to_string(),
-                arguments: serde_json::json!({"command": "echo hello"}),
-                provider_call_id: Some("call_1".to_string()),
-            }),
+            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+                "bash".to_string(),
+                serde_json::json!({"command": "echo hello"}),
+                Some("call_1".to_string()),
+            )),
             metadata: None,
         },
         AgentEvent {
@@ -150,7 +150,7 @@ fn test_session_assembly_structure() {
     assert!(step.reasoning.is_some());
     assert!(step.message.is_some());
     assert_eq!(step.tools.len(), 1);
-    assert_eq!(step.tools[0].call.content.name, "bash");
+    assert_eq!(step.tools[0].call.content.name(), "bash");
     assert!(step.tools[0].result.is_some());
     assert!(step.usage.is_some());
     assert_eq!(step.usage.as_ref().unwrap().total_tokens, 150);
@@ -232,11 +232,11 @@ fn test_step_status_determination() {
             parent_id: Some(user2_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload {
-                name: "bash".to_string(),
-                arguments: serde_json::json!({"command": "ls"}),
-                provider_call_id: Some("call_2".to_string()),
-            }),
+            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+                "bash".to_string(),
+                serde_json::json!({"command": "ls"}),
+                Some("call_2".to_string()),
+            )),
             metadata: None,
         },
         // Turn 3: Tool with result -> Done
@@ -257,11 +257,11 @@ fn test_step_status_determination() {
             parent_id: Some(user3_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload {
-                name: "read".to_string(),
-                arguments: serde_json::json!({"file": "test.txt"}),
-                provider_call_id: Some("call_3".to_string()),
-            }),
+            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+                "read".to_string(),
+                serde_json::json!({"file": "test.txt"}),
+                Some("call_3".to_string()),
+            )),
             metadata: None,
         },
         AgentEvent {
@@ -318,11 +318,11 @@ fn test_step_status_determination() {
             parent_id: Some(user5_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload {
-                name: "bash".to_string(),
-                arguments: serde_json::json!({"command": "invalid"}),
-                provider_call_id: Some("call_5".to_string()),
-            }),
+            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+                "bash".to_string(),
+                serde_json::json!({"command": "invalid"}),
+                Some("call_5".to_string()),
+            )),
             metadata: None,
         },
         AgentEvent {

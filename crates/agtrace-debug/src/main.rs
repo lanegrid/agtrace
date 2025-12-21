@@ -84,7 +84,7 @@ fn run() -> Result<()> {
                                 path.display()
                             );
                         }
-                        StreamEvent::Events { events } => {
+                        StreamEvent::Events { events, .. } => {
                             println!(
                                 "[{}] STREAM::Events {{ count: {} }}",
                                 timestamp,

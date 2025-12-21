@@ -158,11 +158,11 @@ mod tests {
             "test-id-3",
             SemanticSuffix::ToolCall,
             Utc::now(),
-            EventPayload::ToolCall(ToolCallPayload {
-                name: "bash".to_string(),
-                arguments: serde_json::json!({"command": "ls"}),
-                provider_call_id: Some("call_123".to_string()),
-            }),
+            EventPayload::ToolCall(ToolCallPayload::from_raw(
+                "bash".to_string(),
+                serde_json::json!({"command": "ls"}),
+                Some("call_123".to_string()),
+            )),
             None,
             StreamId::Main,
         );

@@ -413,8 +413,8 @@ expression: json_pretty
   "content": {
     "name": "Write",
     "arguments": {
-      "content": "print(1+1)\n",
-      "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py"
+      "file_path": "/Users/zawakin/agent-sample/myapp/hoge.py",
+      "content": "print(1+1)\n"
     },
     "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx"
   },

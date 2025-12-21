@@ -255,13 +255,27 @@ impl ToolCallPayload {
     /// Get provider call ID regardless of variant
     pub fn provider_call_id(&self) -> Option<&str> {
         match self {
-            ToolCallPayload::FileRead { provider_call_id, .. } => provider_call_id.as_deref(),
-            ToolCallPayload::FileEdit { provider_call_id, .. } => provider_call_id.as_deref(),
-            ToolCallPayload::FileWrite { provider_call_id, .. } => provider_call_id.as_deref(),
-            ToolCallPayload::Execute { provider_call_id, .. } => provider_call_id.as_deref(),
-            ToolCallPayload::Search { provider_call_id, .. } => provider_call_id.as_deref(),
-            ToolCallPayload::Mcp { provider_call_id, .. } => provider_call_id.as_deref(),
-            ToolCallPayload::Generic { provider_call_id, .. } => provider_call_id.as_deref(),
+            ToolCallPayload::FileRead {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
+            ToolCallPayload::FileEdit {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
+            ToolCallPayload::FileWrite {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
+            ToolCallPayload::Execute {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
+            ToolCallPayload::Search {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
+            ToolCallPayload::Mcp {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
+            ToolCallPayload::Generic {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
         }
     }
 
@@ -271,39 +285,67 @@ impl ToolCallPayload {
         match name.as_str() {
             "Read" | "Glob" => {
                 if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                    return ToolCallPayload::FileRead { name, arguments: args, provider_call_id };
+                    return ToolCallPayload::FileRead {
+                        name,
+                        arguments: args,
+                        provider_call_id,
+                    };
                 }
             }
             "Edit" => {
                 if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                    return ToolCallPayload::FileEdit { name, arguments: args, provider_call_id };
+                    return ToolCallPayload::FileEdit {
+                        name,
+                        arguments: args,
+                        provider_call_id,
+                    };
                 }
             }
             "Write" => {
                 if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                    return ToolCallPayload::FileWrite { name, arguments: args, provider_call_id };
+                    return ToolCallPayload::FileWrite {
+                        name,
+                        arguments: args,
+                        provider_call_id,
+                    };
                 }
             }
             "Bash" | "KillShell" | "BashOutput" => {
                 if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                    return ToolCallPayload::Execute { name, arguments: args, provider_call_id };
+                    return ToolCallPayload::Execute {
+                        name,
+                        arguments: args,
+                        provider_call_id,
+                    };
                 }
             }
             "Grep" | "WebSearch" | "WebFetch" => {
                 if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                    return ToolCallPayload::Search { name, arguments: args, provider_call_id };
+                    return ToolCallPayload::Search {
+                        name,
+                        arguments: args,
+                        provider_call_id,
+                    };
                 }
             }
             _ if name.starts_with("mcp__") => {
                 if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                    return ToolCallPayload::Mcp { name, arguments: args, provider_call_id };
+                    return ToolCallPayload::Mcp {
+                        name,
+                        arguments: args,
+                        provider_call_id,
+                    };
                 }
             }
             _ => {}
         }
 
         // Fallback to generic
-        ToolCallPayload::Generic { name, arguments, provider_call_id }
+        ToolCallPayload::Generic {
+            name,
+            arguments,
+            provider_call_id,
+        }
     }
 }
 
@@ -378,7 +420,8 @@ pub struct SearchArgs {
 impl SearchArgs {
     /// Get search pattern from various field names
     pub fn pattern(&self) -> Option<&str> {
-        self.pattern.as_deref()
+        self.pattern
+            .as_deref()
             .or(self.query.as_deref())
             .or(self.input.as_deref())
     }
@@ -515,5 +558,288 @@ mod tests {
             name: "review".to_string(),
         };
         assert_eq!(subagent_stream.as_str(), "subagent:review");
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_file_read() {
+        let args = serde_json::json!({
+            "file_path": "/path/to/file.rs"
+        });
+        let payload =
+            ToolCallPayload::from_raw("Read".to_string(), args, Some("call_123".to_string()));
+
+        assert_eq!(payload.name(), "Read");
+        assert_eq!(payload.provider_call_id(), Some("call_123"));
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "Read");
+                assert_eq!(arguments.file_path, Some("/path/to/file.rs".to_string()));
+                assert_eq!(provider_call_id, Some("call_123".to_string()));
+            }
+            _ => panic!("Expected FileRead variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_glob() {
+        let args = serde_json::json!({
+            "pattern": "**/*.rs"
+        });
+        let payload = ToolCallPayload::from_raw("Glob".to_string(), args, None);
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "Glob");
+                assert_eq!(arguments.pattern, Some("**/*.rs".to_string()));
+                assert_eq!(provider_call_id, None);
+            }
+            _ => panic!("Expected FileRead variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_file_edit() {
+        let args = serde_json::json!({
+            "file_path": "/path/to/file.rs",
+            "old_string": "old",
+            "new_string": "new",
+            "replace_all": true
+        });
+        let payload = ToolCallPayload::from_raw("Edit".to_string(), args, None);
+
+        match payload {
+            ToolCallPayload::FileEdit {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "Edit");
+                assert_eq!(arguments.file_path, "/path/to/file.rs");
+                assert_eq!(arguments.old_string, "old");
+                assert_eq!(arguments.new_string, "new");
+                assert!(arguments.replace_all);
+            }
+            _ => panic!("Expected FileEdit variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_file_write() {
+        let args = serde_json::json!({
+            "file_path": "/path/to/file.rs",
+            "content": "fn main() {}"
+        });
+        let payload = ToolCallPayload::from_raw("Write".to_string(), args, None);
+
+        match payload {
+            ToolCallPayload::FileWrite {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "Write");
+                assert_eq!(arguments.file_path, "/path/to/file.rs");
+                assert_eq!(arguments.content, "fn main() {}");
+            }
+            _ => panic!("Expected FileWrite variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_execute() {
+        let args = serde_json::json!({
+            "command": "cargo test",
+            "description": "Run tests",
+            "timeout": 30000
+        });
+        let payload = ToolCallPayload::from_raw("Bash".to_string(), args, None);
+
+        match payload {
+            ToolCallPayload::Execute {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "Bash");
+                assert_eq!(arguments.command(), Some("cargo test"));
+                assert_eq!(arguments.description, Some("Run tests".to_string()));
+                assert_eq!(arguments.timeout, Some(30000));
+            }
+            _ => panic!("Expected Execute variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_search() {
+        let args = serde_json::json!({
+            "pattern": "ToolCallPayload",
+            "path": "src/"
+        });
+        let payload = ToolCallPayload::from_raw("Grep".to_string(), args, None);
+
+        match payload {
+            ToolCallPayload::Search {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "Grep");
+                assert_eq!(arguments.pattern(), Some("ToolCallPayload"));
+                assert_eq!(arguments.path, Some("src/".to_string()));
+            }
+            _ => panic!("Expected Search variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_mcp() {
+        let args = serde_json::json!({
+            "input": "search query"
+        });
+        let payload = ToolCallPayload::from_raw("mcp__o3__o3-search".to_string(), args, None);
+
+        match payload {
+            ToolCallPayload::Mcp {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "mcp__o3__o3-search");
+                assert_eq!(arguments.inner["input"], "search query");
+            }
+            _ => panic!("Expected Mcp variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_from_raw_generic_fallback() {
+        let args = serde_json::json!({
+            "custom_field": "value"
+        });
+        let payload = ToolCallPayload::from_raw("CustomTool".to_string(), args.clone(), None);
+
+        match payload {
+            ToolCallPayload::Generic {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "CustomTool");
+                assert_eq!(arguments, args);
+            }
+            _ => panic!("Expected Generic variant"),
+        }
+    }
+
+    #[test]
+    fn test_tool_call_serialization_roundtrip() {
+        let original = ToolCallPayload::FileRead {
+            name: "Read".to_string(),
+            arguments: FileReadArgs {
+                file_path: Some("/path/to/file.rs".to_string()),
+                path: None,
+                pattern: None,
+                extra: serde_json::json!({}),
+            },
+            provider_call_id: Some("call_123".to_string()),
+        };
+
+        let json = serde_json::to_string(&original).unwrap();
+        let deserialized: ToolCallPayload = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            ToolCallPayload::FileRead {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "Read");
+                assert_eq!(arguments.file_path, Some("/path/to/file.rs".to_string()));
+                assert_eq!(provider_call_id, Some("call_123".to_string()));
+            }
+            _ => panic!("Expected FileRead variant"),
+        }
+    }
+
+    #[test]
+    fn test_file_read_args_path_helper() {
+        let args1 = FileReadArgs {
+            file_path: Some("/path1".to_string()),
+            path: None,
+            pattern: None,
+            extra: serde_json::json!({}),
+        };
+        assert_eq!(args1.path(), Some("/path1"));
+
+        let args2 = FileReadArgs {
+            file_path: None,
+            path: Some("/path2".to_string()),
+            pattern: None,
+            extra: serde_json::json!({}),
+        };
+        assert_eq!(args2.path(), Some("/path2"));
+
+        let args3 = FileReadArgs {
+            file_path: Some("/path1".to_string()),
+            path: Some("/path2".to_string()),
+            pattern: None,
+            extra: serde_json::json!({}),
+        };
+        assert_eq!(args3.path(), Some("/path1"));
+    }
+
+    #[test]
+    fn test_search_args_pattern_helper() {
+        let args1 = SearchArgs {
+            pattern: Some("pattern1".to_string()),
+            query: None,
+            input: None,
+            path: None,
+            extra: serde_json::json!({}),
+        };
+        assert_eq!(args1.pattern(), Some("pattern1"));
+
+        let args2 = SearchArgs {
+            pattern: None,
+            query: Some("query2".to_string()),
+            input: None,
+            path: None,
+            extra: serde_json::json!({}),
+        };
+        assert_eq!(args2.pattern(), Some("query2"));
+
+        let args3 = SearchArgs {
+            pattern: None,
+            query: None,
+            input: Some("input3".to_string()),
+            path: None,
+            extra: serde_json::json!({}),
+        };
+        assert_eq!(args3.pattern(), Some("input3"));
+    }
+
+    #[test]
+    fn test_mcp_args_parse_name() {
+        assert_eq!(
+            McpArgs::parse_name("mcp__o3__o3-search"),
+            Some(("o3".to_string(), "o3-search".to_string()))
+        );
+
+        assert_eq!(
+            McpArgs::parse_name("mcp__sqlite__query"),
+            Some(("sqlite".to_string(), "query".to_string()))
+        );
+
+        assert_eq!(McpArgs::parse_name("not_mcp_tool"), None);
+        assert_eq!(McpArgs::parse_name("mcp__only_server"), None);
+    }
+
+    #[test]
+    fn test_mcp_args_server_and_tool_name() {
+        assert_eq!(
+            McpArgs::server_name("mcp__o3__o3-search"),
+            Some("o3".to_string())
+        );
+        assert_eq!(
+            McpArgs::tool_name("mcp__o3__o3-search"),
+            Some("o3-search".to_string())
+        );
     }
 }

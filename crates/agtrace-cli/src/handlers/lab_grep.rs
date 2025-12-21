@@ -70,10 +70,12 @@ pub fn handle(
 
                     count += 1;
                     println!("\x1b[90m{}\x1b[39m", "=".repeat(80));
-                    println!("Match #{} | Session: \x1b[33m{}\x1b[39m | Stream: {:?}",
-                             count,
-                             session_summary.id.to_string()[..8].to_string(),
-                             event.stream_id);
+                    println!(
+                        "Match #{} | Session: \x1b[33m{}\x1b[39m | Stream: {:?}",
+                        count,
+                        &session_summary.id.to_string()[..8],
+                        event.stream_id
+                    );
 
                     let json = serde_json::to_string_pretty(&event)?;
                     println!("{}", json);

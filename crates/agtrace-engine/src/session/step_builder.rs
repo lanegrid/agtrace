@@ -143,11 +143,11 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("call-1".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("call-1".to_string()),
-                    name: "test".to_string(),
-                    arguments: serde_json::json!({}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "test".to_string(),
+                    serde_json::json!({}),
+                    Some("call-1".to_string()),
+                ),
             },
             result: None,
             duration_ms: None,
@@ -224,11 +224,11 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("toolu_123".to_string()),
-                    name: "bash".to_string(),
-                    arguments: serde_json::json!({"command": "ls"}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "bash".to_string(),
+                    serde_json::json!({"command": "ls"}),
+                    Some("toolu_123".to_string()),
+                ),
             },
             result: None,
             duration_ms: None,
@@ -252,11 +252,11 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("toolu_123".to_string()),
-                    name: "bash".to_string(),
-                    arguments: serde_json::json!({"command": "ls"}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "bash".to_string(),
+                    serde_json::json!({"command": "ls"}),
+                    Some("toolu_123".to_string()),
+                ),
             },
             result: Some(ToolResultBlock {
                 event_id: result_event_id,
@@ -289,11 +289,11 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("toolu_123".to_string()),
-                    name: "bash".to_string(),
-                    arguments: serde_json::json!({"command": "invalid"}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "bash".to_string(),
+                    serde_json::json!({"command": "invalid"}),
+                    Some("toolu_123".to_string()),
+                ),
             },
             result: Some(ToolResultBlock {
                 event_id: result_event_id,
@@ -328,11 +328,11 @@ mod tests {
                 event_id: call1_id,
                 timestamp,
                 provider_call_id: Some("toolu_1".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("toolu_1".to_string()),
-                    name: "read".to_string(),
-                    arguments: serde_json::json!({}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "read".to_string(),
+                    serde_json::json!({}),
+                    Some("toolu_1".to_string()),
+                ),
             },
             result: Some(ToolResultBlock {
                 event_id: Uuid::new_v4(),
@@ -354,11 +354,11 @@ mod tests {
                 event_id: call2_id,
                 timestamp,
                 provider_call_id: Some("toolu_2".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("toolu_2".to_string()),
-                    name: "bash".to_string(),
-                    arguments: serde_json::json!({}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "bash".to_string(),
+                    serde_json::json!({}),
+                    Some("toolu_2".to_string()),
+                ),
             },
             result: None,
             duration_ms: None,
@@ -396,11 +396,11 @@ mod tests {
                 event_id: tool_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("toolu_123".to_string()),
-                    name: "bash".to_string(),
-                    arguments: serde_json::json!({"command": "ls"}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "bash".to_string(),
+                    serde_json::json!({"command": "ls"}),
+                    Some("toolu_123".to_string()),
+                ),
             },
             result: None,
             duration_ms: None,
@@ -442,11 +442,11 @@ mod tests {
                 event_id: tool_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload {
-                    provider_call_id: Some("toolu_123".to_string()),
-                    name: "bash".to_string(),
-                    arguments: serde_json::json!({"command": "ls"}),
-                },
+                content: agtrace_types::ToolCallPayload::from_raw(
+                    "bash".to_string(),
+                    serde_json::json!({"command": "ls"}),
+                    Some("toolu_123".to_string()),
+                ),
             },
             result: Some(ToolResultBlock {
                 event_id: Uuid::new_v4(),

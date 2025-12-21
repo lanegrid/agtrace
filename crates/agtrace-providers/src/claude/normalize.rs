@@ -401,8 +401,8 @@ mod tests {
 
         match &events[0].payload {
             EventPayload::ToolCall(payload) => {
-                assert_eq!(payload.name, "bash");
-                assert_eq!(payload.provider_call_id, Some("toolu_123".to_string()));
+                assert_eq!(payload.name(), "bash");
+                assert_eq!(payload.provider_call_id(), Some("toolu_123"));
             }
             _ => panic!("Expected ToolCall payload"),
         }

@@ -179,7 +179,9 @@ pub fn run(cli: Cli) -> Result<()> {
                     source,
                     json,
                     raw,
-                } => handlers::lab_grep::handle(&workspace, pattern, limit, source, json, raw, &view),
+                } => {
+                    handlers::lab_grep::handle(&workspace, pattern, limit, source, json, raw, &view)
+                }
             }
         }
 
