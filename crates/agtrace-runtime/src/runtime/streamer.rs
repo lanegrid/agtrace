@@ -11,8 +11,57 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-struct FileState {
-    last_event_count: usize,
+struct StreamContext {
+    provider: Arc<dyn LogProvider>,
+    file_states: HashMap<PathBuf, usize>,
+}
+
+impl StreamContext {
+    fn new(provider: Arc<dyn LogProvider>) -> Self {
+        Self {
+            provider,
+            file_states: HashMap::new(),
+        }
+    }
+
+    fn load_all_events(&mut self, session_files: &[PathBuf]) -> Result<Vec<AgentEvent>> {
+        let mut all_events = Vec::new();
+
+        for path in session_files {
+            let events = Self::load_file(path, &self.provider)?;
+            self.file_states.insert(path.clone(), events.len());
+            all_events.extend(events);
+        }
+
+        all_events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        Ok(all_events)
+    }
+
+    fn handle_change(&mut self, path: &Path) -> Result<Vec<AgentEvent>> {
+        let all_events = Self::load_file(path, &self.provider)?;
+        let last_count = *self.file_states.get(path).unwrap_or(&0);
+
+        if all_events.len() < last_count {
+            self.file_states
+                .insert(path.to_path_buf(), all_events.len());
+            return Ok(all_events);
+        }
+
+        let new_events: Vec<AgentEvent> = all_events.into_iter().skip(last_count).collect();
+        self.file_states
+            .insert(path.to_path_buf(), last_count + new_events.len());
+        Ok(new_events)
+    }
+
+    fn load_file(path: &Path, provider: &Arc<dyn LogProvider>) -> Result<Vec<AgentEvent>> {
+        let context = agtrace_providers::ImportContext {
+            project_root_override: None,
+            session_id_prefix: None,
+            all_projects: false,
+        };
+
+        provider.normalize_file(path, &context)
+    }
 }
 
 pub struct SessionStreamer {
@@ -26,100 +75,11 @@ impl SessionStreamer {
         &self.rx
     }
 
-    /// Attach to a session by scanning the filesystem for session files
-    /// This is used when the session is not yet indexed in the database
-    pub fn attach_from_filesystem(
-        session_id: String,
-        log_root: PathBuf,
-        provider: Arc<dyn LogProvider>,
-    ) -> Result<Self> {
-        let (tx_out, rx_out) = channel();
-        let (tx_fs, rx_fs) = channel();
-
-        // Scan the log root for files belonging to this session
-        let session_files = find_session_files(&log_root, &session_id, &provider)?;
-
-        if session_files.is_empty() {
-            anyhow::bail!("No files found for session: {}", session_id);
-        }
-
-        let watch_dir = session_files
-            .first()
-            .and_then(|p| p.parent())
-            .ok_or_else(|| anyhow::anyhow!("Cannot determine watch directory"))?
-            .to_path_buf();
-
-        let config = notify::Config::default().with_poll_interval(Duration::from_millis(500));
-
-        let mut watcher = PollWatcher::new(
-            move |res: Result<Event, _>| {
-                if let Ok(event) = res {
-                    let _ = tx_fs.send(event);
-                }
-            },
-            config,
-        )?;
-
-        watcher.watch(&watch_dir, RecursiveMode::Recursive)?;
-
-        let tx_attached = tx_out.clone();
-        let first_file = session_files.first().cloned().unwrap();
-        let _ = tx_attached.send(WorkspaceEvent::Stream(StreamEvent::Attached {
-            session_id: session_id.clone(),
-            path: first_file.clone(),
-        }));
-
-        let mut file_states: HashMap<PathBuf, FileState> = HashMap::new();
-
-        if let Ok(events) = load_all_events(&session_files, &provider, &mut file_states) {
-            if !events.is_empty() {
-                let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
-                    events: events.clone(),
-                }));
-            }
-        }
-
-        let tx_worker = tx_out.clone();
-        let handle = std::thread::Builder::new()
-            .name("session-streamer".to_string())
-            .spawn(move || loop {
-                match rx_fs.recv() {
-                    Ok(event) => {
-                        if let Err(e) = handle_fs_event(
-                            &event,
-                            &session_files,
-                            &provider,
-                            &mut file_states,
-                            &tx_worker,
-                        ) {
-                            let _ = tx_worker
-                                .send(WorkspaceEvent::Error(format!("Stream error: {}", e)));
-                        }
-                    }
-                    Err(_) => {
-                        let _ = tx_worker.send(WorkspaceEvent::Stream(StreamEvent::Disconnected {
-                            reason: "Stream ended".to_string(),
-                        }));
-                        break;
-                    }
-                }
-            })?;
-
-        Ok(Self {
-            _watcher: watcher,
-            _handle: handle,
-            rx: rx_out,
-        })
-    }
-
     pub fn attach(
         session_id: String,
         db: Arc<Mutex<Database>>,
         provider: Arc<dyn LogProvider>,
     ) -> Result<Self> {
-        let (tx_out, rx_out) = channel();
-        let (tx_fs, rx_fs) = channel();
-
         let session_files = {
             let db_lock = db.lock().unwrap();
             let files = db_lock.get_session_files(&session_id)?;
@@ -132,6 +92,33 @@ impl SessionStreamer {
                 .collect::<Vec<_>>()
         };
 
+        Self::start_core(session_id, session_files, provider)
+    }
+
+    /// Attach to a session by scanning the filesystem for session files
+    /// This is used when the session is not yet indexed in the database
+    pub fn attach_from_filesystem(
+        session_id: String,
+        log_root: PathBuf,
+        provider: Arc<dyn LogProvider>,
+    ) -> Result<Self> {
+        let session_files = find_session_files(&log_root, &session_id, &provider)?;
+
+        if session_files.is_empty() {
+            anyhow::bail!("No files found for session: {}", session_id);
+        }
+
+        Self::start_core(session_id, session_files, provider)
+    }
+
+    fn start_core(
+        session_id: String,
+        session_files: Vec<PathBuf>,
+        provider: Arc<dyn LogProvider>,
+    ) -> Result<Self> {
+        let (tx_out, rx_out) = channel();
+        let (tx_fs, rx_fs) = channel();
+
         let watch_dir = session_files
             .first()
             .and_then(|p| p.parent())
@@ -158,9 +145,9 @@ impl SessionStreamer {
             path: first_file.clone(),
         }));
 
-        let mut file_states: HashMap<PathBuf, FileState> = HashMap::new();
+        let mut context = StreamContext::new(provider);
 
-        if let Ok(events) = load_all_events(&session_files, &provider, &mut file_states) {
+        if let Ok(events) = context.load_all_events(&session_files) {
             if !events.is_empty() {
                 let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
                     events: events.clone(),
@@ -174,13 +161,9 @@ impl SessionStreamer {
             .spawn(move || loop {
                 match rx_fs.recv() {
                     Ok(event) => {
-                        if let Err(e) = handle_fs_event(
-                            &event,
-                            &session_files,
-                            &provider,
-                            &mut file_states,
-                            &tx_worker,
-                        ) {
+                        if let Err(e) =
+                            handle_fs_event(&event, &session_files, &mut context, &tx_worker)
+                        {
                             let _ = tx_worker
                                 .send(WorkspaceEvent::Error(format!("Stream error: {}", e)));
                         }
@@ -205,14 +188,13 @@ impl SessionStreamer {
 fn handle_fs_event(
     event: &Event,
     session_files: &[PathBuf],
-    provider: &Arc<dyn LogProvider>,
-    file_states: &mut HashMap<PathBuf, FileState>,
+    context: &mut StreamContext,
     tx: &Sender<WorkspaceEvent>,
 ) -> Result<()> {
     if let EventKind::Modify(_) = event.kind {
         for path in &event.paths {
             if session_files.contains(path) {
-                if let Ok(new_events) = load_new_events(path, provider, file_states) {
+                if let Ok(new_events) = context.handle_change(path) {
                     if !new_events.is_empty() {
                         let _ = tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
                             events: new_events,
@@ -223,61 +205,6 @@ fn handle_fs_event(
         }
     }
     Ok(())
-}
-
-fn load_all_events(
-    session_files: &[PathBuf],
-    provider: &Arc<dyn LogProvider>,
-    file_states: &mut HashMap<PathBuf, FileState>,
-) -> Result<Vec<AgentEvent>> {
-    let mut all_events = Vec::new();
-
-    for path in session_files {
-        let events = load_file(path, provider)?;
-        file_states.insert(
-            path.clone(),
-            FileState {
-                last_event_count: events.len(),
-            },
-        );
-        all_events.extend(events);
-    }
-
-    all_events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-    Ok(all_events)
-}
-
-fn load_new_events(
-    path: &Path,
-    provider: &Arc<dyn LogProvider>,
-    file_states: &mut HashMap<PathBuf, FileState>,
-) -> Result<Vec<AgentEvent>> {
-    let all_events = load_file(path, provider)?;
-    let last_count = file_states
-        .get(path)
-        .map(|s| s.last_event_count)
-        .unwrap_or(0);
-
-    let new_events: Vec<AgentEvent> = all_events.iter().skip(last_count).cloned().collect();
-
-    file_states.insert(
-        path.to_path_buf(),
-        FileState {
-            last_event_count: all_events.len(),
-        },
-    );
-
-    Ok(new_events)
-}
-
-fn load_file(path: &Path, provider: &Arc<dyn LogProvider>) -> Result<Vec<AgentEvent>> {
-    let context = agtrace_providers::ImportContext {
-        project_root_override: None,
-        session_id_prefix: None,
-        all_projects: false,
-    };
-
-    provider.normalize_file(path, &context)
 }
 
 fn find_session_files(
