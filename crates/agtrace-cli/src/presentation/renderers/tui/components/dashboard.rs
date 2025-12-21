@@ -2,12 +2,12 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::Paragraph,
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
 use super::Component;
-use crate::presentation::renderers::tui::app::AppState;
+use crate::presentation::renderers::tui::app::{AppState, WatchMode};
 
 pub(crate) struct SessionHeaderComponent;
 pub(crate) struct GlobalLifeGaugeComponent;
@@ -25,16 +25,19 @@ impl Component for GlobalLifeGaugeComponent {
 }
 
 fn render_session_header(f: &mut Frame, area: Rect, state: &AppState) {
-    let mut spans = Vec::new();
+    let mut title_spans = vec![Span::styled(
+        "AGTRACE",
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD),
+    )];
 
     if let Some(provider) = &state.provider_name {
-        spans.push(Span::styled(
+        title_spans.push(Span::raw(" :: "));
+        title_spans.push(Span::styled(
             provider.clone(),
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
+            Style::default().fg(Color::LightCyan),
         ));
-        spans.push(Span::raw(" / "));
     }
 
     if let Some(session_id) = &state.attached_session_id {
@@ -43,37 +46,43 @@ fn render_session_header(f: &mut Frame, area: Rect, state: &AppState) {
         } else {
             session_id
         };
-        spans.push(Span::styled(
+        title_spans.push(Span::raw(" :: "));
+        title_spans.push(Span::styled(
             short_id.to_string(),
             Style::default().fg(Color::Yellow),
         ));
-        spans.push(Span::raw(" / "));
     }
 
-    let status_text = if state.last_activity.is_some() {
-        "Active"
-    } else {
-        "Inactive"
+    let mode_text = match state.mode {
+        WatchMode::AutoFollow => " [LIVE]",
+        WatchMode::Fixed => " [PAUSED]",
     };
-    let status_color = if state.last_activity.is_some() {
-        Color::Green
-    } else {
-        Color::DarkGray
+    let mode_color = match state.mode {
+        WatchMode::AutoFollow => Color::LightRed,
+        WatchMode::Fixed => Color::Yellow,
     };
-    spans.push(Span::styled(status_text, Style::default().fg(status_color)));
+    title_spans.push(Span::raw(" "));
+    title_spans.push(Span::styled(
+        mode_text,
+        Style::default().fg(mode_color).add_modifier(Modifier::BOLD),
+    ));
 
-    if spans.is_empty() {
-        spans.push(Span::styled(
-            "Waiting for session...",
-            Style::default().fg(Color::DarkGray),
-        ));
-    }
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan))
+        .title(Line::from(title_spans));
 
-    let line = Line::from(spans);
-    f.render_widget(Paragraph::new(line), area);
+    f.render_widget(block, area);
 }
 
 fn render_global_life_gauge(f: &mut Frame, area: Rect, state: &AppState) {
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let inner = block.inner(area);
+    f.render_widget(block, area);
+
     if let Some(ctx) = &state.context_usage {
         let ratio = ctx.used as f64 / ctx.limit as f64;
 
@@ -82,45 +91,34 @@ fn render_global_life_gauge(f: &mut Frame, area: Rect, state: &AppState) {
         } else if ratio > 0.8 {
             Color::Yellow
         } else {
-            Color::Cyan
+            Color::Green
         };
 
-        let bar_width = area.width.saturating_sub(2) as usize;
+        let bar_width = inner.width.saturating_sub(4) as usize;
         let filled = ((ratio * bar_width as f64) as usize).min(bar_width);
         let empty = bar_width.saturating_sub(filled);
-        let bar = format!("[{}{}]", "=".repeat(filled), ".".repeat(empty));
+        let bar = format!("[{}{}]", "█".repeat(filled), "░".repeat(empty));
 
         let lines = vec![
             Line::from(vec![Span::styled(
-                "LIFE:",
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
+                format!(
+                    "LIFE: {} / {} ({:.0}%)",
+                    format_tokens(ctx.used as i32),
+                    format_tokens(ctx.limit as i32),
+                    ratio * 100.0
+                ),
+                Style::default().fg(Color::White),
             )]),
             Line::from(vec![Span::styled(bar, Style::default().fg(gauge_color))]),
-            Line::from(vec![
-                Span::styled(
-                    format!(
-                        "{} / {} ",
-                        format_tokens(ctx.used as i32),
-                        format_tokens(ctx.limit as i32)
-                    ),
-                    Style::default().fg(Color::White),
-                ),
-                Span::styled(
-                    format!("({:.1}%)", ratio * 100.0),
-                    Style::default().fg(gauge_color),
-                ),
-            ]),
         ];
 
-        f.render_widget(Paragraph::new(lines), area);
+        f.render_widget(Paragraph::new(lines), inner);
     } else {
         let lines = vec![
-            Line::from("LIFE:"),
-            Line::from("Waiting for context data..."),
+            Line::from("LIFE: Waiting for context data..."),
+            Line::from(""),
         ];
-        f.render_widget(Paragraph::new(lines), area);
+        f.render_widget(Paragraph::new(lines), inner);
     }
 }
 

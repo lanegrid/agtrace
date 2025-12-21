@@ -2,7 +2,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{List, ListItem},
+    widgets::{Block, Borders, List, ListItem},
     Frame,
 };
 
@@ -13,16 +13,31 @@ pub(crate) struct TurnHistoryComponent;
 
 impl Component for TurnHistoryComponent {
     fn render(&self, f: &mut Frame, area: Rect, state: &mut AppState) {
+        let block = Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Cyan))
+            .title(Span::styled(
+                " SATURATION HISTORY (Delta Highlight) ",
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ));
+
         if state.turns_usage.is_empty() || state.max_context.is_none() {
-            let empty_list = List::new(vec![ListItem::new(Line::from(vec![Span::styled(
-                "Waiting for turn data...",
-                Style::default().fg(Color::DarkGray),
-            )]))]);
+            let empty_list = List::new(vec![
+                ListItem::new(Line::from("")),
+                ListItem::new(Line::from(vec![Span::styled(
+                    "Waiting for turn data...",
+                    Style::default().fg(Color::DarkGray),
+                )])),
+            ])
+            .block(block);
             f.render_widget(empty_list, area);
             return;
         }
 
         let max_context = state.max_context.unwrap() as f64;
+        let inner_width = area.width.saturating_sub(4) as usize;
 
         let items: Vec<ListItem> = state
             .turns_usage
@@ -30,13 +45,15 @@ impl Component for TurnHistoryComponent {
             .flat_map(|turn| {
                 let mut lines = Vec::new();
 
+                lines.push(ListItem::new(Line::from("")));
+
                 let title_line = Line::from(vec![
                     Span::styled(
-                        format!("#{}  ", turn.turn_id),
+                        format!("#{:02} | ", turn.turn_id),
                         Style::default().fg(Color::DarkGray),
                     ),
                     Span::styled("User: ", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(format!("\"{}\"", truncate_text(&turn.title, 60))),
+                    Span::raw(format!("\"{}\"", truncate_text(&turn.title, 50))),
                 ]);
                 lines.push(ListItem::new(title_line));
 
@@ -45,37 +62,15 @@ impl Component for TurnHistoryComponent {
                     turn.delta,
                     max_context as u32,
                     turn.is_heavy,
-                    area.width as usize,
+                    inner_width,
                 );
                 lines.push(ListItem::new(bar_line));
-
-                let pct = (turn.delta as f64 / max_context) * 100.0;
-                let pct_text = if turn.is_heavy {
-                    format!("+{:.1}% (HEAVY!)", pct)
-                } else {
-                    format!("+{:.1}%", pct)
-                };
-
-                let stats_line = Line::from(vec![
-                    Span::raw("      "),
-                    Span::styled(
-                        pct_text,
-                        Style::default().fg(if turn.is_heavy {
-                            Color::Red
-                        } else {
-                            Color::White
-                        }),
-                    ),
-                ]);
-                lines.push(ListItem::new(stats_line));
-
-                lines.push(ListItem::new(Line::from("")));
 
                 lines
             })
             .collect();
 
-        let list = List::new(items);
+        let list = List::new(items).block(block);
         f.render_widget(list, area);
     }
 }
@@ -87,11 +82,10 @@ fn create_stacked_bar(
     is_heavy: bool,
     bar_width: usize,
 ) -> Line<'static> {
-    let bar_width = bar_width.min(80);
+    let bar_width = bar_width.saturating_sub(20).min(60);
 
     let prev_ratio = prev_total as f64 / max_context as f64;
     let delta_ratio = delta as f64 / max_context as f64;
-    let total_ratio = (prev_total + delta) as f64 / max_context as f64;
 
     let prev_chars = (prev_ratio * bar_width as f64) as usize;
     let delta_chars =
@@ -102,7 +96,18 @@ fn create_stacked_bar(
     let delta_bar = "▓".repeat(delta_chars);
     let void_bar = "░".repeat(remaining_chars);
 
-    let delta_color = if is_heavy { Color::Red } else { Color::Cyan };
+    let delta_color = if is_heavy {
+        Color::Red
+    } else {
+        Color::LightCyan
+    };
+
+    let pct = (delta as f64 / max_context as f64) * 100.0;
+    let pct_text = if is_heavy {
+        format!(" +{:.1}% (HEAVY!)", pct)
+    } else {
+        format!(" +{:.1}%", pct)
+    };
 
     let mut spans = vec![Span::raw("      [")];
 
@@ -114,14 +119,26 @@ fn create_stacked_bar(
     }
 
     if !delta_bar.is_empty() {
-        spans.push(Span::styled(delta_bar, Style::default().fg(delta_color)));
+        spans.push(Span::styled(
+            delta_bar,
+            Style::default()
+                .fg(delta_color)
+                .add_modifier(Modifier::BOLD),
+        ));
     }
 
     if !void_bar.is_empty() {
-        spans.push(Span::styled(void_bar, Style::default().fg(Color::Black)));
+        spans.push(Span::styled(
+            void_bar,
+            Style::default().fg(Color::Rgb(60, 60, 60)),
+        ));
     }
 
-    spans.push(Span::raw(format!("] {:.0}%", total_ratio * 100.0)));
+    spans.push(Span::raw("]"));
+    spans.push(Span::styled(
+        pct_text,
+        Style::default().fg(if is_heavy { Color::Red } else { Color::White }),
+    ));
 
     Line::from(spans)
 }

@@ -12,8 +12,8 @@ pub(crate) fn draw(f: &mut Frame, state: &mut AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1), // Session Header (1-2 lines)
-            Constraint::Length(3), // Global Life Gauge (3 lines)
+            Constraint::Length(3), // Session Header with border
+            Constraint::Length(4), // Global Life Gauge with border
             Constraint::Min(0),    // Consumption History (remaining)
         ])
         .split(f.area());
