@@ -89,6 +89,13 @@ fn extract_context_window_limit(metadata: &Value) -> Option<u64> {
         .get("info")
         .and_then(|info| info.get("model_context_window"))
         .and_then(|v| v.as_u64())
+        .or_else(|| {
+            metadata
+                .get("payload")
+                .and_then(|payload| payload.get("info"))
+                .and_then(|info| info.get("model_context_window"))
+                .and_then(|v| v.as_u64())
+        })
 }
 
 #[cfg(test)]
@@ -161,6 +168,25 @@ mod tests {
             Some("claude-3-5-sonnet-20241022".to_string())
         );
         assert_eq!(updates.context_window_limit, Some(200_000));
+    }
+
+    #[test]
+    fn extracts_context_window_limit_from_payload_info() {
+        let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload {
+            input_tokens: 10,
+            output_tokens: 5,
+            total_tokens: 15,
+            details: None,
+        }));
+
+        event.metadata = Some(serde_json::json!({
+            "payload": {
+                "info": { "model_context_window": 123_000 }
+            }
+        }));
+
+        let updates = extract_state_updates(&event);
+        assert_eq!(updates.context_window_limit, Some(123_000));
     }
 
     #[test]

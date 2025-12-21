@@ -101,13 +101,14 @@ impl TuiWatchView {
                         app_state.add_system_message(message);
                     }
                     TuiEvent::WatchAttached(display_name) => {
-                        app_state.attached_session_id = Some(display_name.clone());
+                        app_state.reset_session_state(display_name.clone());
                         app_state.add_system_message(format!(
                             "✨ Attached to active session: {}",
                             display_name
                         ));
                     }
                     TuiEvent::WatchRotated(old_name, new_name) => {
+                        app_state.reset_session_state(new_name.clone());
                         app_state.add_system_message(format!(
                             "✨ Session rotated: {} → {}",
                             old_name, new_name

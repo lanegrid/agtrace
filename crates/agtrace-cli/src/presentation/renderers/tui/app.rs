@@ -132,4 +132,19 @@ impl AppState {
             self.list_state.select(Some(total.saturating_sub(1)));
         }
     }
+
+    pub fn reset_session_state(&mut self, session_id: String) {
+        self.attached_session_id = Some(session_id);
+        self.model = None;
+        self.compaction_buffer_pct = None;
+        self.context_usage = None;
+        self.session_start_time = None;
+        self.turn_count = 0;
+        self.events_buffer.clear();
+
+        let system_msg_count = self.system_messages.len();
+        self.timeline_items = self.timeline_items.drain(..system_msg_count).collect();
+        self.list_state = ListState::default();
+        self.mode = WatchMode::AutoFollow;
+    }
 }
