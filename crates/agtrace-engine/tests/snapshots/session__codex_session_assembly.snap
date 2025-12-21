@@ -66,7 +66,8 @@ expression: session
               "reasoning_output_tokens": 64
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "30c81180-bf96-4b39-b2ee-cab694a41f8b",
@@ -121,7 +122,8 @@ expression: session
               "reasoning_output_tokens": 0
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         }
       ],
       "stats": {
@@ -189,7 +191,8 @@ expression: session
               "reasoning_output_tokens": 0
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "114ed4ec-832e-4f11-bd9a-7e6286ba5b55",
@@ -242,7 +245,8 @@ expression: session
               "reasoning_output_tokens": 64
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "5fb10b42-21cf-4a1b-acfb-8babf21fe251",
@@ -293,7 +297,8 @@ expression: session
               "reasoning_output_tokens": 0
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "b72134fd-117b-4222-8684-aa6425ae7c55",
@@ -321,7 +326,8 @@ expression: session
               "reasoning_output_tokens": 0
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         }
       ],
       "stats": {

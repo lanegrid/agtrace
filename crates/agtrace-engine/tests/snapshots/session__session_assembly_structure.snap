@@ -65,7 +65,8 @@ expression: session
             "output_tokens": 50,
             "total_tokens": 150
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         }
       ],
       "stats": {

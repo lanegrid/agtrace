@@ -29,7 +29,8 @@ expression: session
           "message": null,
           "tools": [],
           "usage": null,
-          "is_failed": false
+          "is_failed": false,
+          "status": "in_progress"
         },
         {
           "id": "d2604ff7-d62a-4762-ba10-98c2856c4b2f",
@@ -85,7 +86,8 @@ expression: session
               "reasoning_output_tokens": 86
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "56bb8634-198a-44a0-91c8-1151278bcb93",
@@ -141,7 +143,8 @@ expression: session
               "reasoning_output_tokens": 33
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "0d1f0387-131c-4268-8ee4-25a95f630d29",
@@ -197,7 +200,8 @@ expression: session
               "reasoning_output_tokens": 34
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "aa7bd400-ae47-4283-8736-80a4f849b2bd",
@@ -225,7 +229,8 @@ expression: session
               "reasoning_output_tokens": 39
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         }
       ],
       "stats": {
@@ -298,7 +303,8 @@ expression: session
               "reasoning_output_tokens": 28
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "e681433d-b3b4-4ae2-bd9a-605ca154c918",
@@ -312,7 +318,8 @@ expression: session
           "message": null,
           "tools": [],
           "usage": null,
-          "is_failed": false
+          "is_failed": false,
+          "status": "in_progress"
         },
         {
           "id": "ac9d69fe-c30a-4b13-bf38-3837b1b28f67",
@@ -368,7 +375,8 @@ expression: session
               "reasoning_output_tokens": 127
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         },
         {
           "id": "f5bbde22-4af8-45e1-a254-5e495fe6fd21",
@@ -396,7 +404,8 @@ expression: session
               "reasoning_output_tokens": 30
             }
           },
-          "is_failed": false
+          "is_failed": false,
+          "status": "done"
         }
       ],
       "stats": {

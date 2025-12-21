@@ -62,6 +62,19 @@ pub struct AgentStep {
     // --- Meta ---
     pub usage: Option<TokenUsagePayload>,
     pub is_failed: bool,
+    pub status: StepStatus,
+}
+
+/// Step completion status
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StepStatus {
+    /// Step completed successfully (has Message or all tools have results)
+    Done,
+    /// Step is waiting for tool results or next action
+    InProgress,
+    /// Step failed with errors
+    Failed,
 }
 
 // ==========================================

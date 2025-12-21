@@ -409,7 +409,16 @@ pub(crate) fn build_turns_from_session(
         let user_message = &turn.user.content.text;
         let title = truncate_text(user_message, 60);
 
-        let is_active = idx == total_turns.saturating_sub(1);
+        // Check if this turn is active based on the last step's status
+        let is_active = if idx == total_turns.saturating_sub(1) {
+            // For the last turn, check if the last step is InProgress
+            turn.steps
+                .last()
+                .map(|step| matches!(step.status, agtrace_engine::session::types::StepStatus::InProgress))
+                .unwrap_or(false)
+        } else {
+            false
+        };
 
         let recent_steps = if is_active {
             turn.steps
