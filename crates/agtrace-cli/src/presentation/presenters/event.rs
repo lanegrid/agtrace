@@ -25,10 +25,16 @@ fn present_payload(payload: &EventPayload) -> EventPayloadViewModel {
         EventPayload::Reasoning(p) => EventPayloadViewModel::Reasoning {
             text: p.text.clone(),
         },
-        EventPayload::ToolCall(p) => EventPayloadViewModel::ToolCall {
-            name: p.name.clone(),
-            arguments: p.arguments.clone(),
-        },
+        EventPayload::ToolCall(p) => {
+            let arguments = serde_json::to_value(p)
+                .ok()
+                .and_then(|v| v.get("arguments").cloned())
+                .unwrap_or(serde_json::Value::Null);
+            EventPayloadViewModel::ToolCall {
+                name: p.name().to_string(),
+                arguments,
+            }
+        }
         EventPayload::ToolResult(p) => EventPayloadViewModel::ToolResult {
             output: p.output.clone(),
             is_error: p.is_error,

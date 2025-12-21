@@ -352,7 +352,7 @@ pub(crate) fn build_turns_from_session(
                         } else if let Some(message) = &step.message {
                             ("💬".to_string(), truncate_text(&message.content.text, 40))
                         } else if !step.tools.is_empty() {
-                            let tool_name = &step.tools[0].call.content.name;
+                            let tool_name = step.tools[0].call.content.name();
                             ("🔧".to_string(), format!("Tool: {}", tool_name))
                         } else {
                             ("•".to_string(), "Event".to_string())

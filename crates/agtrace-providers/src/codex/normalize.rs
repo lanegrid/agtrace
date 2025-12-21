@@ -205,11 +205,11 @@ pub(crate) fn normalize_codex_session(
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
-                            EventPayload::ToolCall(ToolCallPayload {
-                                name: func_call.name.clone(),
+                            EventPayload::ToolCall(ToolCallPayload::from_raw(
+                                func_call.name.clone(),
                                 arguments,
-                                provider_call_id: Some(func_call.call_id.clone()),
-                            }),
+                                Some(func_call.call_id.clone()),
+                            )),
                             raw_value.clone(),
                             StreamId::Main,
                         );
@@ -249,11 +249,11 @@ pub(crate) fn normalize_codex_session(
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
-                            EventPayload::ToolCall(ToolCallPayload {
-                                name: tool_call.name.clone(),
+                            EventPayload::ToolCall(ToolCallPayload::from_raw(
+                                tool_call.name.clone(),
                                 arguments,
-                                provider_call_id: Some(tool_call.call_id.clone()),
-                            }),
+                                Some(tool_call.call_id.clone()),
+                            )),
                             raw_value.clone(),
                             StreamId::Main,
                         );

@@ -73,11 +73,11 @@ pub(crate) fn normalize_gemini_session(
                         &indexed_base_id,
                         SemanticSuffix::ToolCall,
                         timestamp,
-                        EventPayload::ToolCall(ToolCallPayload {
-                            name: tool_call.name.clone(),
-                            arguments: tool_call.args.clone(),
-                            provider_call_id: Some(tool_call.id.clone()),
-                        }),
+                        EventPayload::ToolCall(ToolCallPayload::from_raw(
+                            tool_call.name.clone(),
+                            tool_call.args.clone(),
+                            Some(tool_call.id.clone()),
+                        )),
                         Some(raw_value.clone()),
                         StreamId::Main,
                     );

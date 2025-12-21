@@ -45,8 +45,12 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
                 writeln!(file, "{}", p.text)?;
             }
             EventPayload::ToolCall(p) => {
-                writeln!(file, "Tool: {}", p.name)?;
-                writeln!(file, "Args: {}", p.arguments)?;
+                writeln!(file, "Tool: {}", p.name())?;
+                let arguments = serde_json::to_value(p)
+                    .ok()
+                    .and_then(|v| v.get("arguments").cloned())
+                    .unwrap_or(serde_json::Value::Null);
+                writeln!(file, "Args: {}", arguments)?;
             }
             EventPayload::ToolResult(p) => {
                 writeln!(file, "{}", p.output)?;

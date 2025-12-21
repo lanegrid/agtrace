@@ -45,12 +45,18 @@ pub fn present_step(step: &AgentStep) -> StepViewModel {
         tools: step
             .tools
             .iter()
-            .map(|t| ToolExecutionViewModel {
-                name: t.call.content.name.clone(),
-                arguments: t.call.content.arguments.clone(),
-                output: t.result.as_ref().map(|r| r.content.output.clone()),
-                duration_ms: t.duration_ms,
-                is_error: t.is_error,
+            .map(|t| {
+                let arguments = serde_json::to_value(&t.call.content)
+                    .ok()
+                    .and_then(|v| v.get("arguments").cloned())
+                    .unwrap_or(serde_json::Value::Null);
+                ToolExecutionViewModel {
+                    name: t.call.content.name().to_string(),
+                    arguments,
+                    output: t.result.as_ref().map(|r| r.content.output.clone()),
+                    duration_ms: t.duration_ms,
+                    is_error: t.is_error,
+                }
             })
             .collect(),
         usage: step.usage.as_ref().map(|u| TokenUsageViewModel {

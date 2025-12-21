@@ -119,15 +119,19 @@ pub fn collect_tool_stats(
             if let EventPayload::ToolCall(tool_call) = &event.payload {
                 let provider_stats = stats.entry(provider.clone()).or_default();
                 let tool_entry = provider_stats
-                    .entry(tool_call.name.clone())
+                    .entry(tool_call.name().to_string())
                     .or_insert((0, None));
 
                 tool_entry.0 += 1;
 
                 if tool_entry.1.is_none() {
                     let result = tool_results.get(&event.id).cloned();
-                    let arguments = serde_json::to_string(&tool_call.arguments)
-                        .unwrap_or_else(|_| String::from("(failed to serialize)"));
+                    // Serialize entire tool_call to extract arguments field
+                    let arguments = serde_json::to_value(tool_call)
+                        .ok()
+                        .and_then(|v| v.get("arguments").cloned())
+                        .and_then(|v| serde_json::to_string(&v).ok())
+                        .unwrap_or_else(|| String::from("(failed to serialize)"));
                     tool_entry.1 = Some(ToolSample { arguments, result });
                 }
             }

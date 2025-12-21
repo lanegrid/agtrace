@@ -74,7 +74,7 @@ impl TurnBuilder {
                 let call_block = ToolCallBlock {
                     event_id: event.id,
                     timestamp: event.timestamp,
-                    provider_call_id: tool_call.provider_call_id.clone(),
+                    provider_call_id: tool_call.provider_call_id().map(|s| s.to_string()),
                     content: tool_call.clone(),
                 };
 

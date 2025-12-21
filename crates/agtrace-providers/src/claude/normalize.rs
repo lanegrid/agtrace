@@ -141,11 +141,11 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 &indexed_base_id,
                                 SemanticSuffix::ToolCall,
                                 timestamp,
-                                EventPayload::ToolCall(ToolCallPayload {
-                                    name: name.clone(),
-                                    arguments: input.clone(),
-                                    provider_call_id: Some(id.clone()),
-                                }),
+                                EventPayload::ToolCall(ToolCallPayload::from_raw(
+                                    name.clone(),
+                                    input.clone(),
+                                    Some(id.clone()),
+                                )),
                                 raw_value.clone(),
                                 stream_id.clone(),
                             );

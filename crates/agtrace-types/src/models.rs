@@ -174,19 +174,248 @@ pub struct ReasoningPayload {
     pub text: String,
 }
 
+/// Normalized tool call with structured arguments
+///
+/// This enum provides type-safe access to common tool call patterns while
+/// maintaining compatibility with the original JSON structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ToolCallPayload {
-    /// Tool name to execute (e.g., "bash", "write_file")
-    pub name: String,
+#[serde(untagged)]
+pub enum ToolCallPayload {
+    /// File read operation (Read, Glob, etc.)
+    FileRead {
+        name: String,
+        arguments: FileReadArgs,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
 
-    /// Tool arguments (JSON Value)
-    /// Codex's stringified JSON should be parsed into Value object
-    pub arguments: Value,
+    /// File edit operation (Edit)
+    FileEdit {
+        name: String,
+        arguments: FileEditArgs,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
 
-    /// Provider-assigned call ID (e.g., "call_Dyh...", "toolu_01...")
-    /// Essential for linking with ToolResult and log tracing
+    /// File write operation (Write)
+    FileWrite {
+        name: String,
+        arguments: FileWriteArgs,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
+
+    /// Execute/shell command (Bash, etc.)
+    Execute {
+        name: String,
+        arguments: ExecuteArgs,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
+
+    /// Search operation (Grep, WebSearch, etc.)
+    Search {
+        name: String,
+        arguments: SearchArgs,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
+
+    /// MCP (Model Context Protocol) tool call
+    Mcp {
+        name: String,
+        arguments: McpArgs,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
+
+    /// Generic/fallback for unknown or custom tools
+    Generic {
+        name: String,
+        arguments: Value,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
+}
+
+impl ToolCallPayload {
+    /// Get tool name regardless of variant
+    pub fn name(&self) -> &str {
+        match self {
+            ToolCallPayload::FileRead { name, .. } => name,
+            ToolCallPayload::FileEdit { name, .. } => name,
+            ToolCallPayload::FileWrite { name, .. } => name,
+            ToolCallPayload::Execute { name, .. } => name,
+            ToolCallPayload::Search { name, .. } => name,
+            ToolCallPayload::Mcp { name, .. } => name,
+            ToolCallPayload::Generic { name, .. } => name,
+        }
+    }
+
+    /// Get provider call ID regardless of variant
+    pub fn provider_call_id(&self) -> Option<&str> {
+        match self {
+            ToolCallPayload::FileRead { provider_call_id, .. } => provider_call_id.as_deref(),
+            ToolCallPayload::FileEdit { provider_call_id, .. } => provider_call_id.as_deref(),
+            ToolCallPayload::FileWrite { provider_call_id, .. } => provider_call_id.as_deref(),
+            ToolCallPayload::Execute { provider_call_id, .. } => provider_call_id.as_deref(),
+            ToolCallPayload::Search { provider_call_id, .. } => provider_call_id.as_deref(),
+            ToolCallPayload::Mcp { provider_call_id, .. } => provider_call_id.as_deref(),
+            ToolCallPayload::Generic { provider_call_id, .. } => provider_call_id.as_deref(),
+        }
+    }
+
+    /// Create a normalized ToolCallPayload from raw name and arguments
+    pub fn from_raw(name: String, arguments: Value, provider_call_id: Option<String>) -> Self {
+        // Try to parse into specific variants based on name
+        match name.as_str() {
+            "Read" | "Glob" => {
+                if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                    return ToolCallPayload::FileRead { name, arguments: args, provider_call_id };
+                }
+            }
+            "Edit" => {
+                if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                    return ToolCallPayload::FileEdit { name, arguments: args, provider_call_id };
+                }
+            }
+            "Write" => {
+                if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                    return ToolCallPayload::FileWrite { name, arguments: args, provider_call_id };
+                }
+            }
+            "Bash" | "KillShell" | "BashOutput" => {
+                if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                    return ToolCallPayload::Execute { name, arguments: args, provider_call_id };
+                }
+            }
+            "Grep" | "WebSearch" | "WebFetch" => {
+                if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                    return ToolCallPayload::Search { name, arguments: args, provider_call_id };
+                }
+            }
+            _ if name.starts_with("mcp__") => {
+                if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                    return ToolCallPayload::Mcp { name, arguments: args, provider_call_id };
+                }
+            }
+            _ => {}
+        }
+
+        // Fallback to generic
+        ToolCallPayload::Generic { name, arguments, provider_call_id }
+    }
+}
+
+// --- Tool Arguments ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileReadArgs {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub provider_call_id: Option<String>,
+    pub file_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    #[serde(flatten)]
+    pub extra: Value,
+}
+
+impl FileReadArgs {
+    /// Get file path from various field names
+    pub fn path(&self) -> Option<&str> {
+        self.file_path.as_deref().or(self.path.as_deref())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileEditArgs {
+    pub file_path: String,
+    pub old_string: String,
+    pub new_string: String,
+    #[serde(default)]
+    pub replace_all: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileWriteArgs {
+    pub file_path: String,
+    pub content: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecuteArgs {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
+    #[serde(flatten)]
+    pub extra: Value,
+}
+
+impl ExecuteArgs {
+    pub fn command(&self) -> Option<&str> {
+        self.command.as_deref()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchArgs {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pattern: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(flatten)]
+    pub extra: Value,
+}
+
+impl SearchArgs {
+    /// Get search pattern from various field names
+    pub fn pattern(&self) -> Option<&str> {
+        self.pattern.as_deref()
+            .or(self.query.as_deref())
+            .or(self.input.as_deref())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpArgs {
+    #[serde(flatten)]
+    pub inner: Value,
+}
+
+impl McpArgs {
+    /// Parse MCP tool name from full name (e.g., "mcp__o3__o3-search" -> ("o3", "o3-search"))
+    pub fn parse_name(full_name: &str) -> Option<(String, String)> {
+        if !full_name.starts_with("mcp__") {
+            return None;
+        }
+
+        let rest = &full_name[5..]; // Remove "mcp__"
+        let parts: Vec<&str> = rest.splitn(2, "__").collect();
+
+        if parts.len() == 2 {
+            Some((parts[0].to_string(), parts[1].to_string()))
+        } else {
+            None
+        }
+    }
+
+    /// Get server name from full MCP tool name
+    pub fn server_name(full_name: &str) -> Option<String> {
+        Self::parse_name(full_name).map(|(server, _)| server)
+    }
+
+    /// Get tool name from full MCP tool name
+    pub fn tool_name(full_name: &str) -> Option<String> {
+        Self::parse_name(full_name).map(|(_, tool)| tool)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
