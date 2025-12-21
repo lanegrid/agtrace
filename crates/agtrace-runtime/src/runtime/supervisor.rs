@@ -1,10 +1,18 @@
 use crate::runtime::events::{DiscoveryEvent, WorkspaceEvent};
+use agtrace_providers::LogProvider;
 use anyhow::Result;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
+
+pub struct WatchContext {
+    pub provider_name: String,
+    pub provider: Arc<dyn LogProvider>,
+    pub root: PathBuf,
+}
 
 pub struct WorkspaceSupervisor {
     _watcher: PollWatcher,
@@ -13,7 +21,7 @@ pub struct WorkspaceSupervisor {
 }
 
 impl WorkspaceSupervisor {
-    pub fn start(watch_paths: Vec<PathBuf>) -> Result<Self> {
+    pub fn start(contexts: Vec<WatchContext>) -> Result<Self> {
         let (tx_out, rx_out) = channel();
         let (tx_fs, rx_fs) = channel();
 
@@ -28,9 +36,9 @@ impl WorkspaceSupervisor {
             config,
         )?;
 
-        for path in &watch_paths {
-            if path.exists() {
-                watcher.watch(path, RecursiveMode::Recursive)?;
+        for context in &contexts {
+            if context.root.exists() {
+                watcher.watch(&context.root, RecursiveMode::Recursive)?;
             }
         }
 
@@ -40,7 +48,7 @@ impl WorkspaceSupervisor {
             .spawn(move || loop {
                 match rx_fs.recv_timeout(Duration::from_secs(5)) {
                     Ok(event) => {
-                        handle_fs_event(&event, &tx_worker);
+                        handle_fs_event(&event, &contexts, &tx_worker);
                     }
                     Err(_) => {
                         // Periodic tick
@@ -60,17 +68,40 @@ impl WorkspaceSupervisor {
     }
 }
 
-fn handle_fs_event(event: &Event, tx: &Sender<WorkspaceEvent>) {
+fn handle_fs_event(event: &Event, contexts: &[WatchContext], tx: &Sender<WorkspaceEvent>) {
     match event.kind {
         EventKind::Create(_) | EventKind::Modify(_) => {
             for path in &event.paths {
-                if let Some(file_name) = path.file_name() {
-                    let _ = tx.send(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
-                        session_id: file_name.to_string_lossy().to_string(),
-                    }));
+                // Find matching provider for this path
+                if let Some(context) = find_provider_for_path(path, contexts) {
+                    // Use provider to validate and extract session ID
+                    if context.provider.can_handle(path) {
+                        match context.provider.extract_session_id(path) {
+                            Ok(session_id) => {
+                                let _ = tx.send(WorkspaceEvent::Discovery(
+                                    DiscoveryEvent::SessionUpdated {
+                                        session_id,
+                                        provider_name: context.provider_name.clone(),
+                                    },
+                                ));
+                            }
+                            Err(_) => {
+                                // Ignore files that can't be parsed (e.g., .DS_Store)
+                            }
+                        }
+                    }
                 }
             }
         }
         _ => {}
     }
+}
+
+fn find_provider_for_path<'a>(
+    path: &Path,
+    contexts: &'a [WatchContext],
+) -> Option<&'a WatchContext> {
+    contexts
+        .iter()
+        .find(|context| path.starts_with(&context.root))
 }

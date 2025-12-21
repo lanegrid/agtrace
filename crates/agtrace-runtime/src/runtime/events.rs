@@ -4,9 +4,16 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub enum DiscoveryEvent {
-    NewSession { summary: SessionSummary },
-    SessionUpdated { session_id: String },
-    SessionRemoved { session_id: String },
+    NewSession {
+        summary: SessionSummary,
+    },
+    SessionUpdated {
+        session_id: String,
+        provider_name: String,
+    },
+    SessionRemoved {
+        session_id: String,
+    },
 }
 
 #[derive(Debug, Clone)]

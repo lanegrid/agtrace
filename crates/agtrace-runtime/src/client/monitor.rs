@@ -1,4 +1,4 @@
-use crate::runtime::{SessionStreamer, WorkspaceEvent, WorkspaceSupervisor};
+use crate::runtime::{SessionStreamer, WatchContext, WorkspaceEvent, WorkspaceSupervisor};
 use agtrace_index::Database;
 use anyhow::Result;
 use std::path::PathBuf;
@@ -26,13 +26,19 @@ impl MonitorBuilder {
     }
 
     pub fn start_background_scan(self) -> Result<WorkspaceMonitor> {
-        let watch_paths: Vec<PathBuf> = self
-            .provider_configs
-            .iter()
-            .map(|(_, path)| path.clone())
-            .collect();
+        let mut contexts = Vec::new();
 
-        let supervisor = WorkspaceSupervisor::start(watch_paths)?;
+        for (provider_name, root) in self.provider_configs.iter() {
+            if let Ok(provider) = agtrace_providers::create_provider(provider_name) {
+                contexts.push(WatchContext {
+                    provider_name: provider_name.clone(),
+                    provider: Arc::from(provider),
+                    root: root.clone(),
+                });
+            }
+        }
+
+        let supervisor = WorkspaceSupervisor::start(contexts)?;
 
         Ok(WorkspaceMonitor {
             db: self.db,
