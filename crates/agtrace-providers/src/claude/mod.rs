@@ -16,17 +16,6 @@ pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normaliz
 pub use self::mapper::ClaudeToolMapper;
 pub use self::parser::ClaudeParser;
 
-/// Encode project_root path to Claude Code directory name format
-/// Claude Code replaces both '/' and '.' with '-'
-fn encode_claude_project_dir(project_root: &Path) -> String {
-    let path_str = project_root.to_string_lossy();
-    let encoded = path_str
-        .replace(['/', '.'], "-")
-        .trim_start_matches('-')
-        .to_string();
-    format!("-{}", encoded)
-}
-
 // --- New trait-based architecture ---
 
 /// Claude discovery and lifecycle management
