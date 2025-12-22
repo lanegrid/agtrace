@@ -2,7 +2,9 @@
 ///
 /// These structs represent the exact schema that Codex uses, before normalization
 /// to the domain model in agtrace-types.
+use agtrace_types::ExecuteArgs;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 /// Codex apply_patch tool arguments
 ///
@@ -92,6 +94,53 @@ impl ApplyPatchArgs {
     }
 }
 
+/// Codex shell tool arguments
+///
+/// Codex uses array command format instead of string format.
+///
+/// # Format
+/// ```json
+/// {
+///   "command": ["bash", "-lc", "ls"],
+///   "timeout_ms": 10000,
+///   "workdir": "/path/to/dir"
+/// }
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ShellArgs {
+    /// Command as array of strings (e.g., ["bash", "-lc", "ls"])
+    pub command: Vec<String>,
+    /// Timeout in milliseconds
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_ms: Option<u64>,
+    /// Working directory
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workdir: Option<String>,
+}
+
+impl ShellArgs {
+    /// Convert Codex shell args to standard ExecuteArgs
+    ///
+    /// - Joins command array into a single string
+    /// - Converts timeout_ms to timeout
+    /// - Preserves workdir in extra field
+    pub fn to_execute_args(&self) -> ExecuteArgs {
+        let command_str = self.command.join(" ");
+
+        let mut extra = json!({});
+        if let Some(workdir) = &self.workdir {
+            extra["workdir"] = json!(workdir);
+        }
+
+        ExecuteArgs {
+            command: Some(command_str),
+            description: None,
+            timeout: self.timeout_ms,
+            extra,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +188,36 @@ mod tests {
         };
 
         assert!(args.parse().is_err());
+    }
+
+    #[test]
+    fn test_shell_args_to_execute_args() {
+        let shell_args = ShellArgs {
+            command: vec!["bash".to_string(), "-lc".to_string(), "ls".to_string()],
+            timeout_ms: Some(10000),
+            workdir: Some("/path/to/dir".to_string()),
+        };
+
+        let execute_args = shell_args.to_execute_args();
+        assert_eq!(execute_args.command, Some("bash -lc ls".to_string()));
+        assert_eq!(execute_args.timeout, Some(10000));
+        assert_eq!(
+            execute_args.extra.get("workdir"),
+            Some(&json!("/path/to/dir"))
+        );
+    }
+
+    #[test]
+    fn test_shell_args_without_optional_fields() {
+        let shell_args = ShellArgs {
+            command: vec!["echo".to_string(), "hello".to_string()],
+            timeout_ms: None,
+            workdir: None,
+        };
+
+        let execute_args = shell_args.to_execute_args();
+        assert_eq!(execute_args.command, Some("echo hello".to_string()));
+        assert_eq!(execute_args.timeout, None);
+        assert_eq!(execute_args.extra, json!({}));
     }
 }

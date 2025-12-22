@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
-use crate::codex::tools::{ApplyPatchArgs, PatchOperation};
+use crate::codex::tools::{ApplyPatchArgs, PatchOperation, ShellArgs};
 use crate::normalization::normalize_tool_call;
 
 /// Regex for extracting exit codes from Codex output
@@ -95,6 +95,18 @@ fn normalize_codex_tool_call(
                         // Parsing failed, fall back to generic
                     }
                 }
+            }
+        }
+        "shell" => {
+            // Try to parse as ShellArgs
+            if let Ok(shell_args) = serde_json::from_value::<ShellArgs>(arguments.clone()) {
+                // Convert to standard ExecuteArgs
+                let execute_args = shell_args.to_execute_args();
+                return ToolCallPayload::Execute {
+                    name: tool_name,
+                    arguments: execute_args,
+                    provider_call_id,
+                };
             }
         }
         _ => {
@@ -535,6 +547,61 @@ mod tests {
                 assert!(arguments.content.contains("*** Add File"));
             }
             _ => panic!("Expected FileWrite variant for Add File"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_with_all_fields() {
+        let arguments = serde_json::json!({
+            "command": ["bash", "-lc", "ls"],
+            "timeout_ms": 10000,
+            "workdir": "/path/to/dir"
+        });
+
+        let payload =
+            normalize_codex_tool_call("shell".to_string(), arguments, Some("call_789".to_string()));
+
+        match payload {
+            ToolCallPayload::Execute {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "shell");
+                assert_eq!(arguments.command, Some("bash -lc ls".to_string()));
+                assert_eq!(arguments.timeout, Some(10000));
+                assert_eq!(
+                    arguments.extra.get("workdir"),
+                    Some(&serde_json::json!("/path/to/dir"))
+                );
+                assert_eq!(provider_call_id, Some("call_789".to_string()));
+            }
+            _ => panic!("Expected Execute variant for shell"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_minimal() {
+        let arguments = serde_json::json!({
+            "command": ["echo", "hello"]
+        });
+
+        let payload =
+            normalize_codex_tool_call("shell".to_string(), arguments, Some("call_abc".to_string()));
+
+        match payload {
+            ToolCallPayload::Execute {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "shell");
+                assert_eq!(arguments.command, Some("echo hello".to_string()));
+                assert_eq!(arguments.timeout, None);
+                assert_eq!(arguments.extra, serde_json::json!({}));
+                assert_eq!(provider_call_id, Some("call_abc".to_string()));
+            }
+            _ => panic!("Expected Execute variant for shell"),
         }
     }
 }
