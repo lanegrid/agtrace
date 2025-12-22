@@ -1,6 +1,7 @@
 pub mod io;
+pub mod mapper;
 pub mod models;
-pub mod normalize;
+pub mod parser;
 pub mod schema;
 pub mod tool_mapping;
 pub mod tools;
@@ -8,11 +9,8 @@ pub mod tools;
 use crate::traits::{ProbeResult, SessionIndex};
 use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::AgentEvent;
-use agtrace_types::{
-    is_64_char_hex, project_hash_from_root, ToolCallPayload, ToolKind, ToolOrigin,
-};
+use agtrace_types::{is_64_char_hex, project_hash_from_root};
 use anyhow::Result;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -20,6 +18,8 @@ use walkdir::WalkDir;
 pub use self::io::{
     extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file,
 };
+pub use self::mapper::GeminiToolMapper;
+pub use self::parser::GeminiParser;
 
 // --- New trait-based architecture ---
 
@@ -129,41 +129,6 @@ impl crate::traits::LogDiscovery for GeminiDiscovery {
         }
 
         Ok(matching_files)
-    }
-}
-
-/// Gemini session parser
-pub struct GeminiParser;
-
-impl crate::traits::SessionParser for GeminiParser {
-    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
-        normalize_gemini_file(path)
-    }
-
-    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
-        // Gemini uses JSON format, parse as AgentEvent
-        match serde_json::from_str::<AgentEvent>(content) {
-            Ok(event) => Ok(Some(event)),
-            Err(_) => Ok(None), // Skip malformed lines
-        }
-    }
-}
-
-/// Gemini tool mapper
-pub struct GeminiToolMapper;
-
-impl crate::traits::ToolMapper for GeminiToolMapper {
-    fn classify(&self, tool_name: &str) -> (ToolOrigin, ToolKind) {
-        tool_mapping::classify_tool(tool_name)
-            .unwrap_or_else(|| crate::tool_analyzer::classify_common(tool_name))
-    }
-
-    fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>) -> ToolCallPayload {
-        normalize::normalize_gemini_tool_call(name.to_string(), args, call_id)
-    }
-
-    fn summarize(&self, kind: ToolKind, args: &Value) -> String {
-        crate::tool_analyzer::extract_common_summary(kind, args)
     }
 }
 

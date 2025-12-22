@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::normalize::normalize_codex_session;
+use super::parser::normalize_codex_session;
 use super::schema::CodexRecord;
 
 /// Parse Codex JSONL file and normalize to AgentEvent

@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
-use super::normalize::normalize_gemini_session;
+use super::parser::normalize_gemini_session;
 use super::schema::GeminiSession;
 
 /// Parse Gemini CLI JSON file and normalize to AgentEvent

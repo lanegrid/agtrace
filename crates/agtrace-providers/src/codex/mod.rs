@@ -1,16 +1,16 @@
 pub mod io;
+pub mod mapper;
 pub mod models;
-pub mod normalize;
+pub mod parser;
 pub mod schema;
 pub mod tool_mapping;
 pub mod tools;
 
 use crate::traits::{ProbeResult, SessionIndex};
 use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
+use agtrace_types::paths_equal;
 use agtrace_types::AgentEvent;
-use agtrace_types::{paths_equal, ToolCallPayload, ToolKind, ToolOrigin};
 use anyhow::Result;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -18,6 +18,8 @@ use walkdir::WalkDir;
 pub use self::io::{
     extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session, normalize_codex_file,
 };
+pub use self::mapper::CodexToolMapper;
+pub use self::parser::CodexParser;
 
 // --- New trait-based architecture ---
 
@@ -120,41 +122,6 @@ impl crate::traits::LogDiscovery for CodexDiscovery {
         }
 
         Ok(matching_files)
-    }
-}
-
-/// Codex session parser
-pub struct CodexParser;
-
-impl crate::traits::SessionParser for CodexParser {
-    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
-        normalize_codex_file(path)
-    }
-
-    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
-        // Codex uses JSONL format, parse as AgentEvent
-        match serde_json::from_str::<AgentEvent>(content) {
-            Ok(event) => Ok(Some(event)),
-            Err(_) => Ok(None), // Skip malformed lines
-        }
-    }
-}
-
-/// Codex tool mapper
-pub struct CodexToolMapper;
-
-impl crate::traits::ToolMapper for CodexToolMapper {
-    fn classify(&self, tool_name: &str) -> (ToolOrigin, ToolKind) {
-        tool_mapping::classify_tool(tool_name)
-            .unwrap_or_else(|| crate::tool_analyzer::classify_common(tool_name))
-    }
-
-    fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>) -> ToolCallPayload {
-        normalize::normalize_codex_tool_call(name.to_string(), args, call_id)
-    }
-
-    fn summarize(&self, kind: ToolKind, args: &Value) -> String {
-        crate::tool_analyzer::extract_common_summary(kind, args)
     }
 }
 

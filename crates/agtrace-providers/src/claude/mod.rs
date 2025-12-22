@@ -1,21 +1,23 @@
 pub mod io;
+pub mod mapper;
 pub mod models;
-pub mod normalize;
+pub mod parser;
 pub mod schema;
 pub mod tool_mapping;
 pub mod tools;
 
 use crate::traits::{ProbeResult, SessionIndex};
 use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
+use agtrace_types::paths_equal;
 use agtrace_types::AgentEvent;
-use agtrace_types::{paths_equal, ToolCallPayload, ToolKind, ToolOrigin};
 use anyhow::Result;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub use self::io::{extract_claude_header, extract_cwd_from_claude_file, normalize_claude_file};
+pub use self::mapper::ClaudeToolMapper;
+pub use self::parser::ClaudeParser;
 
 /// Encode project_root path to Claude Code directory name format
 /// Claude Code replaces both '/' and '.' with '-'
@@ -155,41 +157,6 @@ impl crate::traits::LogDiscovery for ClaudeDiscovery {
         }
 
         Ok(matching_files)
-    }
-}
-
-/// Claude session parser
-pub struct ClaudeParser;
-
-impl crate::traits::SessionParser for ClaudeParser {
-    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
-        normalize_claude_file(path)
-    }
-
-    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
-        // Claude uses JSONL format, parse as AgentEvent
-        match serde_json::from_str::<AgentEvent>(content) {
-            Ok(event) => Ok(Some(event)),
-            Err(_) => Ok(None), // Skip malformed lines
-        }
-    }
-}
-
-/// Claude tool mapper
-pub struct ClaudeToolMapper;
-
-impl crate::traits::ToolMapper for ClaudeToolMapper {
-    fn classify(&self, tool_name: &str) -> (ToolOrigin, ToolKind) {
-        tool_mapping::classify_tool(tool_name)
-            .unwrap_or_else(|| crate::tool_analyzer::classify_common(tool_name))
-    }
-
-    fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>) -> ToolCallPayload {
-        normalize::normalize_claude_tool_call(name.to_string(), args, call_id)
-    }
-
-    fn summarize(&self, kind: ToolKind, args: &Value) -> String {
-        crate::tool_analyzer::extract_common_summary(kind, args)
     }
 }
 

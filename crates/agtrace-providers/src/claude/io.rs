@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::normalize::normalize_claude_session;
+use super::parser::normalize_claude_session;
 use super::schema::ClaudeRecord;
 
 /// Parse Claude Code JSONL file and normalize to AgentEvent

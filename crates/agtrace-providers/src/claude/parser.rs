@@ -1,138 +1,11 @@
 use agtrace_types::*;
+use anyhow::Result;
 use chrono::DateTime;
+use std::path::Path;
 use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
-use crate::claude::tools::{
-    ClaudeBashArgs, ClaudeEditArgs, ClaudeGlobArgs, ClaudeGrepArgs, ClaudeReadArgs,
-    ClaudeTodoWriteArgs, ClaudeWriteArgs,
-};
-
-/// Normalize Claude-specific tool calls
-///
-/// Handles Claude Code provider-specific tool names and maps them to domain variants.
-/// Uses provider-specific Args structs for proper schema parsing and conversion.
-pub(crate) fn normalize_claude_tool_call(
-    tool_name: String,
-    arguments: serde_json::Value,
-    provider_call_id: Option<String>,
-) -> ToolCallPayload {
-    // Handle Claude Code-specific tools with provider-specific types
-    match tool_name.as_str() {
-        "Read" => {
-            // Parse as Claude-specific Args, then convert to domain model
-            if let Ok(claude_args) = serde_json::from_value::<ClaudeReadArgs>(arguments.clone()) {
-                return ToolCallPayload::FileRead {
-                    name: tool_name,
-                    arguments: claude_args.to_file_read_args(),
-                    provider_call_id,
-                };
-            }
-        }
-        "Glob" => {
-            // Parse as Claude-specific Args, then convert to domain model
-            if let Ok(claude_args) = serde_json::from_value::<ClaudeGlobArgs>(arguments.clone()) {
-                return ToolCallPayload::FileRead {
-                    name: tool_name,
-                    arguments: claude_args.to_file_read_args(),
-                    provider_call_id,
-                };
-            }
-        }
-        "Edit" => {
-            // Parse as Claude-specific Args, then convert to domain model
-            if let Ok(claude_args) = serde_json::from_value::<ClaudeEditArgs>(arguments.clone()) {
-                return ToolCallPayload::FileEdit {
-                    name: tool_name,
-                    arguments: claude_args.to_file_edit_args(),
-                    provider_call_id,
-                };
-            }
-        }
-        "Write" => {
-            // Parse as Claude-specific Args, then convert to domain model
-            if let Ok(claude_args) = serde_json::from_value::<ClaudeWriteArgs>(arguments.clone()) {
-                return ToolCallPayload::FileWrite {
-                    name: tool_name,
-                    arguments: claude_args.to_file_write_args(),
-                    provider_call_id,
-                };
-            }
-        }
-        "Bash" => {
-            // Parse as Claude-specific Args (with timeout, sandbox flags), then convert
-            if let Ok(claude_args) = serde_json::from_value::<ClaudeBashArgs>(arguments.clone()) {
-                return ToolCallPayload::Execute {
-                    name: tool_name,
-                    arguments: claude_args.to_execute_args(),
-                    provider_call_id,
-                };
-            }
-        }
-        "KillShell" | "BashOutput" => {
-            // KillShell/BashOutput → Execute (use domain model directly for simpler tools)
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                return ToolCallPayload::Execute {
-                    name: tool_name,
-                    arguments: args,
-                    provider_call_id,
-                };
-            }
-        }
-        "Grep" => {
-            // Parse as Claude-specific Args (with many grep-specific options), then convert
-            if let Ok(claude_args) = serde_json::from_value::<ClaudeGrepArgs>(arguments.clone()) {
-                return ToolCallPayload::Search {
-                    name: tool_name,
-                    arguments: claude_args.to_search_args(),
-                    provider_call_id,
-                };
-            }
-        }
-        "WebSearch" | "WebFetch" => {
-            // WebSearch/WebFetch → Search (use domain model directly)
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                return ToolCallPayload::Search {
-                    name: tool_name,
-                    arguments: args,
-                    provider_call_id,
-                };
-            }
-        }
-        "TodoWrite" => {
-            // Validate as Claude-specific Args, then keep as Generic
-            // (no unified Plan variant exists yet in domain model)
-            if serde_json::from_value::<ClaudeTodoWriteArgs>(arguments.clone()).is_ok() {
-                return ToolCallPayload::Generic {
-                    name: tool_name,
-                    arguments,
-                    provider_call_id,
-                };
-            }
-        }
-        _ if tool_name.starts_with("mcp__") => {
-            // MCP tools
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
-                return ToolCallPayload::Mcp {
-                    name: tool_name,
-                    arguments: args,
-                    provider_call_id,
-                };
-            }
-        }
-        _ => {
-            // Unknown Claude tool, fall through to Generic
-        }
-    }
-
-    // Fallback to generic
-    ToolCallPayload::Generic {
-        name: tool_name,
-        arguments,
-        provider_call_id,
-    }
-}
 
 /// Determine StreamId from Claude record fields
 fn determine_stream_id(is_sidechain: bool, agent_id: &Option<String>) -> StreamId {
@@ -143,6 +16,13 @@ fn determine_stream_id(is_sidechain: bool, agent_id: &Option<String>) -> StreamI
     } else {
         StreamId::Main
     }
+}
+
+/// Parse Claude timestamp to DateTime<Utc>
+fn parse_timestamp(ts: &str) -> DateTime<chrono::Utc> {
+    DateTime::parse_from_rfc3339(ts)
+        .map(|dt| dt.with_timezone(&chrono::Utc))
+        .unwrap_or_else(|_| chrono::Utc::now())
 }
 
 /// Normalize Claude session records to events
@@ -270,7 +150,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 &indexed_base_id,
                                 SemanticSuffix::ToolCall,
                                 timestamp,
-                                EventPayload::ToolCall(normalize_claude_tool_call(
+                                EventPayload::ToolCall(super::mapper::normalize_claude_tool_call(
                                     name.clone(),
                                     input.clone(),
                                     Some(id.clone()),
@@ -370,11 +250,21 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
     events
 }
 
-/// Parse Claude timestamp to DateTime<Utc>
-fn parse_timestamp(ts: &str) -> DateTime<chrono::Utc> {
-    DateTime::parse_from_rfc3339(ts)
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-        .unwrap_or_else(|_| chrono::Utc::now())
+/// Claude session parser implementation
+pub struct ClaudeParser;
+
+impl crate::traits::SessionParser for ClaudeParser {
+    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
+        super::io::normalize_claude_file(path)
+    }
+
+    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
+        // Claude uses JSONL format, parse as AgentEvent
+        match serde_json::from_str::<AgentEvent>(content) {
+            Ok(event) => Ok(Some(event)),
+            Err(_) => Ok(None), // Skip malformed lines
+        }
+    }
 }
 
 #[cfg(test)]
@@ -539,73 +429,6 @@ mod tests {
         match &events[1].payload {
             EventPayload::TokenUsage(_) => {}
             _ => panic!("Expected TokenUsage payload"),
-        }
-    }
-
-    #[test]
-    fn test_normalize_read() {
-        let payload = normalize_claude_tool_call(
-            "Read".to_string(),
-            serde_json::json!({"file_path": "src/main.rs"}),
-            Some("call_123".to_string()),
-        );
-
-        match payload {
-            ToolCallPayload::FileRead {
-                name,
-                arguments,
-                provider_call_id,
-            } => {
-                assert_eq!(name, "Read");
-                assert_eq!(arguments.file_path, Some("src/main.rs".to_string()));
-                assert_eq!(provider_call_id, Some("call_123".to_string()));
-            }
-            _ => panic!("Expected FileRead variant"),
-        }
-    }
-
-    #[test]
-    fn test_normalize_write() {
-        let payload = normalize_claude_tool_call(
-            "Write".to_string(),
-            serde_json::json!({"file_path": "test.txt", "content": "hello"}),
-            Some("call_456".to_string()),
-        );
-
-        match payload {
-            ToolCallPayload::FileWrite {
-                name,
-                arguments,
-                provider_call_id,
-            } => {
-                assert_eq!(name, "Write");
-                assert_eq!(arguments.file_path, "test.txt");
-                assert_eq!(arguments.content, "hello");
-                assert_eq!(provider_call_id, Some("call_456".to_string()));
-            }
-            _ => panic!("Expected FileWrite variant"),
-        }
-    }
-
-    #[test]
-    fn test_normalize_bash() {
-        let payload = normalize_claude_tool_call(
-            "Bash".to_string(),
-            serde_json::json!({"command": "ls -la"}),
-            Some("call_789".to_string()),
-        );
-
-        match payload {
-            ToolCallPayload::Execute {
-                name,
-                arguments,
-                provider_call_id,
-            } => {
-                assert_eq!(name, "Bash");
-                assert_eq!(arguments.command, Some("ls -la".to_string()));
-                assert_eq!(provider_call_id, Some("call_789".to_string()));
-            }
-            _ => panic!("Expected Execute variant"),
         }
     }
 }
