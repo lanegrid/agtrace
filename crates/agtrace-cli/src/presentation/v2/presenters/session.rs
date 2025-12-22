@@ -13,6 +13,18 @@ pub fn present_session_list(
     time_range: Option<String>,
     limit: usize,
 ) -> CommandResultViewModel<SessionListViewModel> {
+    let view = build_session_list_view(sessions, project_filter, source_filter, time_range, limit);
+    let result = CommandResultViewModel::new(view);
+    add_session_list_guidance(result)
+}
+
+fn build_session_list_view(
+    sessions: Vec<SessionSummary>,
+    project_filter: Option<String>,
+    source_filter: Option<String>,
+    time_range: Option<String>,
+    limit: usize,
+) -> SessionListViewModel {
     let total_count = sessions.len();
 
     let entries: Vec<SessionListEntry> = sessions
@@ -26,7 +38,7 @@ pub fn present_session_list(
         })
         .collect();
 
-    let content = SessionListViewModel {
+    SessionListViewModel {
         sessions: entries,
         total_count,
         applied_filters: FilterSummary {
@@ -35,9 +47,14 @@ pub fn present_session_list(
             time_range,
             limit,
         },
-    };
+    }
+}
 
-    let mut result = CommandResultViewModel::new(content);
+fn add_session_list_guidance(
+    mut result: CommandResultViewModel<SessionListViewModel>,
+) -> CommandResultViewModel<SessionListViewModel> {
+    let total_count = result.content.total_count;
+    let limit = result.content.applied_filters.limit;
 
     if total_count == 0 {
         result = result
@@ -79,6 +96,17 @@ pub fn present_session_analysis(
     model: &str,
     max_context: Option<u32>,
 ) -> CommandResultViewModel<SessionAnalysisViewModel> {
+    let view = build_session_analysis_view(session, provider, model, max_context);
+    let result = CommandResultViewModel::new(view);
+    add_session_analysis_guidance(result)
+}
+
+fn build_session_analysis_view(
+    session: &AgentSession,
+    provider: &str,
+    model: &str,
+    max_context: Option<u32>,
+) -> SessionAnalysisViewModel {
     use crate::presentation::v2::formatters::time;
 
     let metrics = session.compute_turn_metrics(max_context);
@@ -136,13 +164,17 @@ pub fn present_session_analysis(
         .map(|(turn, metric)| build_turn_analysis(turn, metric, max_context))
         .collect();
 
-    let content = SessionAnalysisViewModel {
+    SessionAnalysisViewModel {
         header,
         context_summary,
         turns,
-    };
+    }
+}
 
-    CommandResultViewModel::new(content).with_badge(StatusBadge::success("Session Analysis"))
+fn add_session_analysis_guidance(
+    result: CommandResultViewModel<SessionAnalysisViewModel>,
+) -> CommandResultViewModel<SessionAnalysisViewModel> {
+    result.with_badge(StatusBadge::success("Session Analysis"))
 }
 
 fn build_turn_analysis(
