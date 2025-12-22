@@ -25,41 +25,6 @@ pub struct FilterSummary {
     pub limit: usize,
 }
 
-fn build_progress_bar_string(current: u32, max: u32, percent: f64) -> String {
-    let bar_width = 20;
-    let filled = ((percent / 100.0) * bar_width as f64) as usize;
-    let filled = filled.min(bar_width);
-    let empty = bar_width - filled;
-
-    format!(
-        "[{}{}] {:.1}% ({} / {})",
-        "█".repeat(filled),
-        "░".repeat(empty),
-        percent,
-        format_tokens(current as i64),
-        format_tokens(max as i64)
-    )
-}
-
-fn format_tokens(count: i64) -> String {
-    if count >= 1_000_000 {
-        format!("{:.1}M", count as f64 / 1_000_000.0)
-    } else if count >= 1_000 {
-        format!("{:.1}k", count as f64 / 1_000.0)
-    } else {
-        count.to_string()
-    }
-}
-
-fn truncate_text(text: &str, max_len: usize) -> String {
-    if text.chars().count() <= max_len {
-        text.to_string()
-    } else {
-        let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
-        format!("{}...", truncated)
-    }
-}
-
 impl fmt::Display for SessionListViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::formatters::session_list::SessionEntry;
@@ -130,10 +95,8 @@ pub struct SessionHeader {
 
 #[derive(Debug, Serialize)]
 pub struct ContextWindowSummary {
-    pub progress_bar: String,
-    pub usage_percent: String,
-    pub usage_fraction: String,
-    pub warning: Option<String>,
+    pub current_tokens: u32,
+    pub max_tokens: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
@@ -165,14 +128,20 @@ pub enum AgentStepViewModel {
     },
     ToolCall {
         name: String,
-        args: String,
+        #[serde(skip)]
+        arguments: agtrace_types::ToolCallPayload,
+        #[serde(rename = "args")]
+        args_formatted: Option<String>, // For JSON serialization compatibility
         result: String,
         is_error: bool,
     },
     ToolCallSequence {
         name: String,
         count: usize,
-        sample_args: String,
+        #[serde(skip)]
+        sample_arguments: agtrace_types::ToolCallPayload,
+        #[serde(rename = "sample_args")]
+        sample_args_formatted: Option<String>, // For JSON serialization compatibility
         has_errors: bool,
     },
     Message {
@@ -193,6 +162,8 @@ pub struct TurnMetrics {
 
 impl fmt::Display for SessionAnalysisViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::presentation::v2::formatters::{display, number};
+
         // Header
         writeln!(f, "{}", "=".repeat(80))?;
         write!(f, "SESSION: {}", self.header.session_id)?;
@@ -201,7 +172,24 @@ impl fmt::Display for SessionAnalysisViewModel {
         }
         writeln!(f)?;
         writeln!(f, "STATUS:  {}", self.header.status)?;
-        writeln!(f, "CONTEXT: {}", self.context_summary.progress_bar)?;
+
+        // Context summary
+        let context_display = if let Some(max) = self.context_summary.max_tokens {
+            let bar = display::build_progress_bar(self.context_summary.current_tokens, max, 40);
+            format!(
+                "{} ({} / {})",
+                bar,
+                number::format_compact(self.context_summary.current_tokens as i64),
+                number::format_compact(max as i64)
+            )
+        } else {
+            format!(
+                "Total: {}",
+                number::format_compact(self.context_summary.current_tokens as i64)
+            )
+        };
+        writeln!(f, "CONTEXT: {}", context_display)?;
+
         writeln!(f, "{}", "=".repeat(80))?;
         writeln!(f)?;
 
@@ -216,6 +204,8 @@ impl fmt::Display for SessionAnalysisViewModel {
 
 impl fmt::Display for TurnAnalysisViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::presentation::v2::formatters::{display, number, text};
+
         let status_icon = if self.is_heavy_load { "⚠️" } else { "🟢" };
         let status_label = if self.is_heavy_load {
             "Heavy Load"
@@ -227,8 +217,8 @@ impl fmt::Display for TurnAnalysisViewModel {
         let delta_indicator = self.extract_delta_indicator();
 
         // Build context transition display
-        let prev_str = format_tokens(self.prev_tokens as i64);
-        let curr_str = format_tokens(self.current_tokens as i64);
+        let prev_str = number::format_compact(self.prev_tokens as i64);
+        let curr_str = number::format_compact(self.current_tokens as i64);
         let context_transition = format!("{} -> {}", prev_str, curr_str);
 
         writeln!(
@@ -239,9 +229,14 @@ impl fmt::Display for TurnAnalysisViewModel {
 
         // Show progress bar if context usage data is available
         if let Some(ref usage) = self.context_usage {
-            let progress_bar =
-                build_progress_bar_string(usage.current_tokens, usage.max_tokens, usage.percentage);
-            writeln!(f, "│ {}", progress_bar)?;
+            let bar = display::build_progress_bar(usage.current_tokens, usage.max_tokens, 20);
+            writeln!(
+                f,
+                "│ {} ({} / {})",
+                bar,
+                number::format_compact(usage.current_tokens as i64),
+                number::format_compact(usage.max_tokens as i64)
+            )?;
         }
         writeln!(f, "│")?;
 
@@ -254,7 +249,7 @@ impl fmt::Display for TurnAnalysisViewModel {
         let is_last = current_index == total_items;
         let prefix = if is_last { "└──" } else { "├──" };
         writeln!(f, "{} 👤 User", prefix)?;
-        let truncated_query = truncate_text(&self.user_query, 80);
+        let truncated_query = text::truncate(&self.user_query, 80);
         self.write_indented(f, &truncated_query, is_last, "   ")?;
 
         // Steps
@@ -267,13 +262,16 @@ impl fmt::Display for TurnAnalysisViewModel {
         writeln!(f)?;
 
         // Format metrics
-        let delta_str = format!("+{}", format_tokens(self.metrics.total_delta as i64));
-        let input_str = format_tokens(self.metrics.input_tokens);
-        let output_str = format_tokens(self.metrics.output_tokens);
+        let delta_str = format!(
+            "+{}",
+            number::format_compact(self.metrics.total_delta as i64)
+        );
+        let input_str = number::format_compact(self.metrics.input_tokens);
+        let output_str = number::format_compact(self.metrics.output_tokens);
         let cache_str = self
             .metrics
             .cache_read_tokens
-            .map(|c| format!(", Cache: {}", format_tokens(c)))
+            .map(|c| format!(", Cache: {}", number::format_compact(c)))
             .unwrap_or_default();
 
         writeln!(
@@ -307,6 +305,8 @@ impl TurnAnalysisViewModel {
         step: &AgentStepViewModel,
         is_last: bool,
     ) -> fmt::Result {
+        use crate::presentation::v2::formatters::text;
+
         let prefix = if is_last { "└──" } else { "├──" };
         let continuation = if is_last { "   " } else { "│  " };
 
@@ -323,12 +323,16 @@ impl TurnAnalysisViewModel {
             }
             AgentStepViewModel::ToolCall {
                 name,
-                args,
+                arguments,
                 result,
                 is_error,
+                ..
             } => {
                 writeln!(f, "{} 🔧 Tool: {}", prefix, name)?;
-                self.write_indented(f, args, is_last, "   ")?;
+
+                // Format arguments
+                let args_str = format_tool_args(arguments);
+                self.write_indented(f, &args_str, is_last, "   ")?;
 
                 if *is_error {
                     write!(f, "{}   ↳ ❌ Error: ", continuation)?;
@@ -340,8 +344,9 @@ impl TurnAnalysisViewModel {
             AgentStepViewModel::ToolCallSequence {
                 name,
                 count,
-                sample_args,
+                sample_arguments,
                 has_errors,
+                ..
             } => {
                 let status = if *has_errors { "⚠️" } else { "✓" };
                 writeln!(
@@ -349,11 +354,14 @@ impl TurnAnalysisViewModel {
                     "{} 🔧 Tool: {} (x{} calls) {}",
                     prefix, name, count, status
                 )?;
-                self.write_indented(f, sample_args, is_last, "   ")?;
+
+                // Format sample arguments
+                let sample_args_str = format_tool_args(sample_arguments);
+                self.write_indented(f, &sample_args_str, is_last, "   ")?;
             }
             AgentStepViewModel::Message { text } => {
                 writeln!(f, "{} 💬 Message", prefix)?;
-                let truncated = truncate_text(text, 80);
+                let truncated = text::truncate(text, 80);
                 self.write_indented(f, &truncated, is_last, "   ")?;
             }
             AgentStepViewModel::SystemEvent { description } => {
@@ -374,10 +382,12 @@ impl TurnAnalysisViewModel {
         preview: &str,
         is_last: bool,
     ) -> fmt::Result {
+        use crate::presentation::v2::formatters::text;
+
         let continuation = if is_last { "   " } else { "│  " };
 
         // Truncate and show first line prominently
-        let truncated = truncate_text(preview, 60);
+        let truncated = text::truncate(preview, 60);
         let lines: Vec<&str> = truncated.lines().collect();
         if let Some(first_line) = lines.first() {
             writeln!(f, "{}   {}", continuation, first_line)?;
@@ -403,8 +413,40 @@ impl TurnAnalysisViewModel {
     }
 
     fn write_truncated_result(&self, f: &mut fmt::Formatter, result: &str) -> fmt::Result {
-        let truncated = truncate_text(result, 60);
+        use crate::presentation::v2::formatters::text;
+
+        let truncated = text::truncate(result, 60);
         writeln!(f, "{}", truncated)?;
         Ok(())
+    }
+}
+
+// Helper function to format tool arguments
+fn format_tool_args(tool_call: &agtrace_types::ToolCallPayload) -> String {
+    use crate::presentation::v2::formatters::json;
+    use agtrace_types::ToolCallPayload;
+
+    match tool_call {
+        ToolCallPayload::FileRead { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::FileEdit { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::FileWrite { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Execute { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Search { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Mcp { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Generic { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
     }
 }

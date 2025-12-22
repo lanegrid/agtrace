@@ -79,7 +79,33 @@ pub fn present_session_analysis(
     model: &str,
     max_context: Option<u32>,
 ) -> CommandResultViewModel<SessionAnalysisViewModel> {
+    use crate::presentation::v2::formatters::time;
+
     let metrics = session.compute_turn_metrics(max_context);
+
+    // Compute duration
+    let duration = if let (Some(first_turn), Some(last_turn)) =
+        (session.turns.first(), session.turns.last())
+    {
+        if let (Some(first_step), Some(last_step)) =
+            (first_turn.steps.first(), last_turn.steps.last())
+        {
+            Some(time::format_duration(
+                first_step.timestamp,
+                last_step.timestamp,
+            ))
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Compute start time
+    let start_time = session
+        .turns
+        .first()
+        .and_then(|t| t.steps.first().map(|s| time::format_time(s.timestamp)));
 
     // Build header
     let header = SessionHeader {
@@ -91,16 +117,16 @@ pub fn present_session_analysis(
         } else {
             "Complete".to_string()
         },
-        duration: compute_duration(session),
-        start_time: session
-            .turns
-            .first()
-            .and_then(|t| t.steps.first().map(|s| format_timestamp(s.timestamp))),
+        duration,
+        start_time,
     };
 
-    // Build context summary
+    // Build context summary (raw data only)
     let total_tokens = metrics.last().map(|m| m.prev_total + m.delta).unwrap_or(0);
-    let context_summary = build_context_summary(total_tokens, max_context);
+    let context_summary = ContextWindowSummary {
+        current_tokens: total_tokens,
+        max_tokens: max_context,
+    };
 
     // Build turns
     let turns = session
@@ -119,61 +145,13 @@ pub fn present_session_analysis(
     CommandResultViewModel::new(content).with_badge(StatusBadge::success("Session Analysis"))
 }
 
-fn build_context_summary(total_tokens: u32, max_context: Option<u32>) -> ContextWindowSummary {
-    let (usage_percent, usage_fraction, progress_bar, warning) = if let Some(max) = max_context {
-        let percent = (total_tokens as f64 / max as f64) * 100.0;
-        let bar_width = 40;
-        let filled = ((percent / 100.0) * bar_width as f64) as usize;
-        let filled = filled.min(bar_width);
-        let empty = bar_width - filled;
-
-        let bar = format!(
-            "[{}{}] {:.1}% Used ({} / {} limit)",
-            "█".repeat(filled),
-            "░".repeat(empty),
-            percent,
-            format_tokens(total_tokens as i64),
-            format_tokens(max as i64)
-        );
-
-        let warning = if percent > 90.0 {
-            Some("Warning: Context window nearly full".to_string())
-        } else {
-            None
-        };
-
-        (
-            format!("{:.1}%", percent),
-            format!(
-                "{} / {}",
-                format_tokens(total_tokens as i64),
-                format_tokens(max as i64)
-            ),
-            bar,
-            warning,
-        )
-    } else {
-        (
-            "N/A".to_string(),
-            format_tokens(total_tokens as i64),
-            format!("Total: {}", format_tokens(total_tokens as i64)),
-            None,
-        )
-    };
-
-    ContextWindowSummary {
-        progress_bar,
-        usage_percent,
-        usage_fraction,
-        warning,
-    }
-}
-
 fn build_turn_analysis(
     turn: &agtrace_engine::AgentTurn,
     metric: &agtrace_engine::TurnMetrics,
     max_context: Option<u32>,
 ) -> TurnAnalysisViewModel {
+    use crate::presentation::v2::formatters::time;
+
     let user_query = turn.user.content.text.clone();
     let prev_tokens = metric.prev_total;
     let current_tokens = metric.prev_total + metric.delta;
@@ -253,7 +231,7 @@ fn build_turn_analysis(
 
     TurnAnalysisViewModel {
         turn_number: metric.turn_index + 1,
-        timestamp: turn.steps.first().map(|s| format_timestamp(s.timestamp)),
+        timestamp: turn.steps.first().map(|s| time::format_time(s.timestamp)),
         prev_tokens,
         current_tokens,
         context_usage,
@@ -270,98 +248,6 @@ fn build_turn_analysis(
                 None
             },
         },
-    }
-}
-
-fn compute_duration(session: &AgentSession) -> Option<String> {
-    let start = session.turns.first()?.steps.first()?.timestamp;
-    let end = session.turns.last()?.steps.last()?.timestamp;
-    let duration = end.signed_duration_since(start);
-
-    let minutes = duration.num_minutes();
-    let seconds = duration.num_seconds() % 60;
-
-    if minutes > 0 {
-        Some(format!("{}m {}s", minutes, seconds))
-    } else {
-        Some(format!("{}s", seconds))
-    }
-}
-
-fn format_timestamp(ts: chrono::DateTime<chrono::Utc>) -> String {
-    ts.with_timezone(&chrono::Local)
-        .format("%H:%M:%S")
-        .to_string()
-}
-
-fn format_tokens(count: i64) -> String {
-    if count >= 1_000_000 {
-        format!("{:.1}M", count as f64 / 1_000_000.0)
-    } else if count >= 1_000 {
-        format!("{:.1}k", count as f64 / 1_000.0)
-    } else {
-        count.to_string()
-    }
-}
-
-fn format_tool_args(tool_call: &agtrace_types::ToolCallPayload) -> String {
-    use agtrace_types::ToolCallPayload;
-
-    match tool_call {
-        ToolCallPayload::FileRead { arguments, .. } => {
-            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
-        }
-        ToolCallPayload::FileEdit { arguments, .. } => {
-            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
-        }
-        ToolCallPayload::FileWrite { arguments, .. } => {
-            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
-        }
-        ToolCallPayload::Execute { arguments, .. } => {
-            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
-        }
-        ToolCallPayload::Search { arguments, .. } => {
-            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
-        }
-        ToolCallPayload::Mcp { arguments, .. } => {
-            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
-        }
-        ToolCallPayload::Generic { arguments, .. } => {
-            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
-        }
-    }
-}
-
-fn format_args_compact(args: &serde_json::Value) -> String {
-    if let Some(obj) = args.as_object() {
-        let pairs: Vec<String> = obj
-            .iter()
-            .map(|(k, v)| {
-                let value_str = match v {
-                    serde_json::Value::String(s) => {
-                        if s.len() > 50 {
-                            format!("\"{}...\"", s.chars().take(47).collect::<String>())
-                        } else {
-                            format!("\"{}\"", s)
-                        }
-                    }
-                    serde_json::Value::Number(n) => n.to_string(),
-                    serde_json::Value::Bool(b) => b.to_string(),
-                    serde_json::Value::Null => "null".to_string(),
-                    serde_json::Value::Array(_) => "[...]".to_string(),
-                    serde_json::Value::Object(_) => "{...}".to_string(),
-                };
-                format!("{}: {}", k, value_str)
-            })
-            .collect();
-
-        if pairs.is_empty() {
-            "{}".to_string()
-        } else {
-            pairs.join(", ")
-        }
-    } else {
-        serde_json::to_string(args).unwrap_or_else(|_| "{}".to_string())
     }
 }
 
@@ -404,7 +290,7 @@ fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<Agen
     // If 3+ consecutive calls with same name, create a ToolCallSequence
     if tools.len() >= 3 {
         let name = tools[0].call.content.name().to_string();
-        let sample_args = format_tool_args(&tools[0].call.content);
+        let sample_arguments = tools[0].call.content.clone();
         let has_errors = tools.iter().any(|t| {
             t.result
                 .as_ref()
@@ -415,7 +301,8 @@ fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<Agen
         vec![AgentStepViewModel::ToolCallSequence {
             name,
             count: tools.len(),
-            sample_args,
+            sample_arguments,
+            sample_args_formatted: None,
             has_errors,
         }]
     } else {
@@ -424,7 +311,7 @@ fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<Agen
             .iter()
             .map(|tool| {
                 let name = tool.call.content.name().to_string();
-                let args = format_tool_args(&tool.call.content);
+                let arguments = tool.call.content.clone();
                 let is_error = tool
                     .result
                     .as_ref()
@@ -438,7 +325,8 @@ fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<Agen
 
                 AgentStepViewModel::ToolCall {
                     name,
-                    args,
+                    arguments,
+                    args_formatted: None,
                     result: result_text,
                     is_error,
                 }

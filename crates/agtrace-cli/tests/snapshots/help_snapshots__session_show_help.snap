@@ -2,7 +2,7 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Display detailed session timeline and events
+Display session analysis with context usage and turn metrics
 
 Usage: agtrace session show [OPTIONS] <SESSION_ID>
 
@@ -11,14 +11,9 @@ Arguments:
 
 Options:
       --data-dir <DATA_DIR>          [default: ~/.agtrace]
-      --raw                          
+      --json                         Output as JSON
       --format <FORMAT>              [default: plain] [possible values: plain, json]
-      --json                         
-      --hide <HIDE>                  
       --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --only <ONLY>                  
       --project-root <PROJECT_ROOT>  
       --all-projects                 
-      --short                        Truncate long text to ~100 chars for compact display
-      --verbose                      Show detailed timeline view instead of compact summary
   -h, --help                         Print help
