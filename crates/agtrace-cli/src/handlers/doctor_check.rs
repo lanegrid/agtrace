@@ -1,15 +1,16 @@
-use crate::presentation::presenters;
-use crate::presentation::renderers::TraceView;
-use crate::presentation::view_models::{DoctorCheckResultViewModel, DoctorCheckStatus};
+use crate::args::OutputFormat;
 use agtrace_providers::{create_adapter, detect_adapter_from_path};
-use agtrace_runtime::{AgTrace, CheckStatus};
+use agtrace_runtime::AgTrace;
 use anyhow::Result;
 
-pub fn handle(
+pub fn handle_v2(
     file_path: String,
     provider_override: Option<String>,
-    view: &dyn TraceView,
+    format: OutputFormat,
 ) -> Result<()> {
+    use crate::presentation::v2::presenters;
+    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+
     let (adapter, provider_name) = if let Some(name) = provider_override {
         let adapter = create_adapter(&name)?;
         (adapter, name)
@@ -21,20 +22,18 @@ pub fn handle(
 
     let result = AgTrace::check_file(&file_path, &adapter, &provider_name)?;
 
-    let result_vm = DoctorCheckResultViewModel {
-        file_path: result.file_path,
-        provider_name: result.provider_name,
-        status: match result.status {
-            CheckStatus::Success => DoctorCheckStatus::Success,
-            CheckStatus::Failure => DoctorCheckStatus::Failure,
-        },
-        events: presenters::present_events(&result.events),
-        error_message: result.error_message,
-    };
+    let view_model = presenters::present_check_result(
+        result.file_path,
+        result.provider_name,
+        result.status.clone(),
+        result.events.len(),
+        result.error_message,
+    );
 
-    view.render_doctor_check(&result_vm)?;
+    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    renderer.render(view_model)?;
 
-    if matches!(result_vm.status, DoctorCheckStatus::Failure) {
+    if matches!(result.status, agtrace_runtime::CheckStatus::Failure) {
         anyhow::bail!("Validation failed");
     }
 

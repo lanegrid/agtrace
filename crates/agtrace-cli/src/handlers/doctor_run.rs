@@ -1,18 +1,22 @@
-use crate::presentation::presenters;
-use crate::presentation::renderers::TraceView;
+use crate::args::OutputFormat;
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 
-pub fn handle(
+pub fn handle_v2(
     workspace: &AgTrace,
     _provider_filter: String,
-    verbose: bool,
-    view: &dyn TraceView,
+    _verbose: bool,
+    format: OutputFormat,
 ) -> Result<()> {
+    use crate::presentation::v2::presenters;
+    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+
     let results = workspace.diagnose()?;
 
-    let result_vms = presenters::present_diagnose_results(&results);
-    view.render_diagnose_results(&result_vms, verbose)?;
+    let view_model = presenters::present_diagnose_results(results);
+
+    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    renderer.render(view_model)?;
 
     Ok(())
 }

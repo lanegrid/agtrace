@@ -26,12 +26,14 @@ fn test_session_show_filtering() {
         .expect("Failed to run session list");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let sessions: serde_json::Value = serde_json::from_str(&stdout).expect("Failed to parse");
-    let sessions_array = sessions.as_array().expect("Expected array");
+    let result: serde_json::Value = serde_json::from_str(&stdout).expect("Failed to parse");
+    let sessions = result["content"]["sessions"]
+        .as_array()
+        .expect("Expected sessions array in content");
 
-    assert!(!sessions_array.is_empty(), "Expected at least one session");
+    assert!(!sessions.is_empty(), "Expected at least one session");
 
-    let session_id = sessions_array[0]["id"]
+    let session_id = sessions[0]["id"]
         .as_str()
         .expect("Expected session id");
 

@@ -131,17 +131,26 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Doctor { command } => match command {
             DoctorCommand::Run { provider, verbose } => {
                 let workspace = AgTrace::open(data_dir)?;
-                handlers::doctor_run::handle(&workspace, provider.to_string(), verbose, &view)
+                handlers::doctor_run::handle_v2(
+                    &workspace,
+                    provider.to_string(),
+                    verbose,
+                    cli.format,
+                )
             }
             DoctorCommand::Inspect {
                 file_path,
                 lines,
                 format,
-            } => handlers::doctor_inspect::handle(file_path, lines, format, &view),
+            } => handlers::doctor_inspect::handle_v2(file_path, lines, format, cli.format),
             DoctorCommand::Check {
                 file_path,
                 provider,
-            } => handlers::doctor_check::handle(file_path, provider.map(|p| p.to_string()), &view),
+            } => handlers::doctor_check::handle_v2(
+                file_path,
+                provider.map(|p| p.to_string()),
+                cli.format,
+            ),
         },
 
         Commands::Project { command } => {

@@ -36,23 +36,20 @@ fn test_index_scan_and_query() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let sessions: serde_json::Value =
+    let result: serde_json::Value =
         serde_json::from_str(&stdout).expect("Failed to parse JSON output");
 
-    assert!(
-        sessions.is_array(),
-        "Expected JSON array of sessions, got: {}",
-        stdout
-    );
+    let sessions = result["content"]["sessions"]
+        .as_array()
+        .expect("Expected sessions array in content");
 
-    let sessions_array = sessions.as_array().unwrap();
     assert!(
-        !sessions_array.is_empty(),
+        !sessions.is_empty(),
         "Expected at least 1 session, found {}",
-        sessions_array.len()
+        sessions.len()
     );
 
-    for session in sessions_array {
+    for session in sessions {
         let session_id = session["id"]
             .as_str()
             .expect("Session should have string id");

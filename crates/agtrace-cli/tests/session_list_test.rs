@@ -32,10 +32,12 @@ fn test_session_list_filtering() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let sessions: serde_json::Value = serde_json::from_str(&stdout).expect("Parse failed");
-    let sessions_array = sessions.as_array().expect("Expected array");
+    let result: serde_json::Value = serde_json::from_str(&stdout).expect("Parse failed");
+    let sessions = result["content"]["sessions"]
+        .as_array()
+        .expect("Expected sessions array in content");
 
-    assert!(!sessions_array.is_empty(), "Expected at least 1 session");
+    assert!(!sessions.is_empty(), "Expected at least 1 session");
 
     // Test 2: List with source filter
     let mut cmd = fixture.command();
@@ -52,10 +54,12 @@ fn test_session_list_filtering() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let filtered: serde_json::Value = serde_json::from_str(&stdout).expect("Parse failed");
-    let filtered_array = filtered.as_array().expect("Expected array");
+    let result: serde_json::Value = serde_json::from_str(&stdout).expect("Parse failed");
+    let filtered = result["content"]["sessions"]
+        .as_array()
+        .expect("Expected sessions array in content");
 
-    for session in filtered_array {
+    for session in filtered {
         let provider = session["provider"]
             .as_str()
             .expect("Session should have provider field");
@@ -77,10 +81,12 @@ fn test_session_list_filtering() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let limited: serde_json::Value = serde_json::from_str(&stdout).expect("Parse failed");
-    let limited_array = limited.as_array().expect("Expected array");
+    let result: serde_json::Value = serde_json::from_str(&stdout).expect("Parse failed");
+    let limited = result["content"]["sessions"]
+        .as_array()
+        .expect("Expected sessions array in content");
 
-    assert!(limited_array.len() <= 1, "Limit should restrict results");
+    assert!(limited.len() <= 1, "Limit should restrict results");
 
     // Test 4: Plain format output (should not be JSON)
     let mut cmd = fixture.command();

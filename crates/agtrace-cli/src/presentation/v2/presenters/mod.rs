@@ -1,8 +1,10 @@
+pub mod doctor;
 pub mod index;
 pub mod project;
 pub mod provider;
 pub mod session;
 
+pub use doctor::{present_check_result, present_diagnose_results, present_inspect_result};
 pub use index::{present_index_result, present_vacuum_result};
 pub use project::present_project_list;
 pub use provider::{present_provider_detected, present_provider_list, present_provider_set};

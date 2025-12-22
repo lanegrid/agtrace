@@ -57,14 +57,15 @@ fn test_init_full_workflow() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let sessions: serde_json::Value =
+    let result: serde_json::Value =
         serde_json::from_str(&stdout).expect("Failed to parse JSON output");
 
-    assert!(sessions.is_array(), "Expected JSON array, got: {}", stdout);
+    let sessions = result["content"]["sessions"]
+        .as_array()
+        .expect("Expected sessions array in content");
 
-    let sessions_array = sessions.as_array().unwrap();
     assert!(
-        !sessions_array.is_empty(),
+        !sessions.is_empty(),
         "Expected at least one session to be indexed"
     );
 }
