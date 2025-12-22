@@ -8,7 +8,7 @@ use std::path::Path;
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
     workspace: &AgTrace,
-    project_root: Option<&Path>,
+    _project_root: Option<&Path>,
     all_projects: bool,
     project_hash: Option<String>,
     limit: usize,
@@ -16,7 +16,7 @@ pub fn handle(
     source: Option<String>,
     since: Option<String>,
     until: Option<String>,
-    no_auto_refresh: bool,
+    _no_auto_refresh: bool,
     view: &dyn TraceView,
 ) -> Result<()> {
     // Note: index::handle call removed - Read-Through Indexing handles this automatically

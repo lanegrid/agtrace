@@ -1,0 +1,75 @@
+use serde::Serialize;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StatusBadge {
+    pub level: StatusLevel,
+    pub label: String,
+}
+
+impl StatusBadge {
+    pub fn success(label: impl Into<String>) -> Self {
+        Self {
+            level: StatusLevel::Success,
+            label: label.into(),
+        }
+    }
+
+    pub fn info(label: impl Into<String>) -> Self {
+        Self {
+            level: StatusLevel::Info,
+            label: label.into(),
+        }
+    }
+
+    pub fn warning(label: impl Into<String>) -> Self {
+        Self {
+            level: StatusLevel::Warning,
+            label: label.into(),
+        }
+    }
+
+    pub fn error(label: impl Into<String>) -> Self {
+        Self {
+            level: StatusLevel::Error,
+            label: label.into(),
+        }
+    }
+
+    pub fn icon(&self) -> &str {
+        match self.level {
+            StatusLevel::Success => "✅",
+            StatusLevel::Info => "ℹ️",
+            StatusLevel::Warning => "⚠️",
+            StatusLevel::Error => "❌",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum StatusLevel {
+    Success,
+    Info,
+    Warning,
+    Error,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Guidance {
+    pub description: String,
+    pub command: Option<String>,
+}
+
+impl Guidance {
+    pub fn new(description: impl Into<String>) -> Self {
+        Self {
+            description: description.into(),
+            command: None,
+        }
+    }
+
+    pub fn with_command(mut self, command: impl Into<String>) -> Self {
+        self.command = Some(command.into());
+        self
+    }
+}

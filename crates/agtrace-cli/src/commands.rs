@@ -155,7 +155,7 @@ pub fn run(cli: Cli) -> Result<()> {
             match command {
                 ProjectCommand::List {
                     project_root: proj_root,
-                } => handlers::project::handle(&workspace, proj_root, &view),
+                } => handlers::project::handle_v2(&workspace, proj_root, cli.format),
             }
         }
 
