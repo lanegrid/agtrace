@@ -29,14 +29,14 @@ pub fn handle(
     if result.scan_needed {
         // Open workspace after init to run index
         let workspace = AgTrace::open(data_dir.to_path_buf())?;
-        super::index::handle(
+        super::index::handle_v2(
             &workspace,
             project_root.as_deref(),
             all_projects,
             "all".to_string(),
             false,
             false,
-            view,
+            crate::args::OutputFormat::Plain,
         )?;
 
         // Check session count to provide helpful guidance

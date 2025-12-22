@@ -1,10 +1,12 @@
 pub mod common;
+pub mod index;
 pub mod project;
 pub mod provider;
 pub mod result;
 pub mod session;
 
 pub use common::{Guidance, StatusBadge, StatusLevel};
+pub use index::{IndexMode, IndexResultViewModel, VacuumResultViewModel};
 pub use project::{ProjectEntryViewModel, ProjectListViewModel};
 pub use provider::{
     ProviderDetectedViewModel, ProviderEntry, ProviderListViewModel, ProviderSetViewModel,

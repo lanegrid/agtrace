@@ -37,29 +37,25 @@ pub fn run(cli: Cli) -> Result<()> {
             let workspace = AgTrace::open(data_dir.clone())?;
 
             match command {
-                IndexCommand::Update { provider, verbose } => handlers::index::handle(
+                IndexCommand::Update { provider, verbose } => handlers::index::handle_v2(
                     &workspace,
                     project_root.as_deref(),
                     cli.all_projects,
                     provider.to_string(),
                     false,
                     verbose,
-                    &view,
+                    cli.format,
                 ),
-                IndexCommand::Rebuild { provider, verbose } => handlers::index::handle(
+                IndexCommand::Rebuild { provider, verbose } => handlers::index::handle_v2(
                     &workspace,
                     project_root.as_deref(),
                     cli.all_projects,
                     provider.to_string(),
                     true,
                     verbose,
-                    &view,
+                    cli.format,
                 ),
-                IndexCommand::Vacuum => {
-                    let db = workspace.database();
-                    let db = db.lock().unwrap();
-                    db.vacuum()
-                }
+                IndexCommand::Vacuum => handlers::index::handle_vacuum_v2(&workspace, cli.format),
             }
         }
 
