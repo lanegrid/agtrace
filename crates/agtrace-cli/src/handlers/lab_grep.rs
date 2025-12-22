@@ -1,7 +1,9 @@
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use agtrace_runtime::{AgTrace, SessionFilter};
-use anyhow::Result;
+use agtrace_types::{AgentEvent, EventPayload};
+use anyhow::{Context, Result};
+use regex::Regex;
 
 // Rationale: lab grep with --raw option
 //
@@ -34,24 +36,137 @@ use anyhow::Result;
 //   - Session/stream context preserved
 //   - No filesystem traversal required
 
-pub fn handle(
-    workspace: &AgTrace,
-    pattern: String,
-    limit: Option<usize>,
-    source: Option<String>,
-    json_output: bool,
-    raw_output: bool,
-    view: &dyn TraceView,
-) -> Result<()> {
+/// Configuration for grep operation
+pub struct GrepOptions {
+    pub pattern: String,
+    pub limit: Option<usize>,
+    pub source: Option<String>,
+    pub json_output: bool,
+    pub raw_output: bool,
+    pub use_regex: bool,
+    pub ignore_case: bool,
+    pub event_type: Option<String>,
+    pub tool_name: Option<String>,
+}
+
+/// Matcher for searching events with various filters
+struct EventMatcher {
+    pattern_regex: Option<Regex>,
+    pattern_str: String,
+    ignore_case: bool,
+    event_type_filter: Option<String>,
+    tool_name_filter: Option<String>,
+}
+
+impl EventMatcher {
+    fn new(
+        pattern: String,
+        use_regex: bool,
+        ignore_case: bool,
+        event_type: Option<String>,
+        tool_name: Option<String>,
+    ) -> Result<Self> {
+        let pattern_regex = if use_regex {
+            let regex_str = if ignore_case {
+                format!("(?i){}", pattern)
+            } else {
+                pattern.clone()
+            };
+            Some(Regex::new(&regex_str).context("Invalid regex pattern")?)
+        } else {
+            None
+        };
+
+        let pattern_str = if ignore_case && !use_regex {
+            pattern.to_lowercase()
+        } else {
+            pattern
+        };
+
+        Ok(Self {
+            pattern_regex,
+            pattern_str,
+            ignore_case,
+            event_type_filter: event_type,
+            tool_name_filter: tool_name,
+        })
+    }
+
+    /// Check if event matches all filters
+    fn matches(&self, event: &AgentEvent) -> Result<bool> {
+        // Event type filter (early return for performance)
+        if let Some(ref event_type) = self.event_type_filter {
+            if !self.matches_event_type(event, event_type) {
+                return Ok(false);
+            }
+        }
+
+        // Tool name filter (for ToolCall events)
+        if let Some(ref tool_name) = self.tool_name_filter {
+            if !self.matches_tool_name(event, tool_name) {
+                return Ok(false);
+            }
+        }
+
+        // Pattern matching on payload
+        let payload_str = serde_json::to_string(&event.payload)?;
+
+        if let Some(ref regex) = self.pattern_regex {
+            Ok(regex.is_match(&payload_str))
+        } else if self.ignore_case {
+            Ok(payload_str.to_lowercase().contains(&self.pattern_str))
+        } else {
+            Ok(payload_str.contains(&self.pattern_str))
+        }
+    }
+
+    fn matches_event_type(&self, event: &AgentEvent, event_type: &str) -> bool {
+        let actual_type = match &event.payload {
+            EventPayload::ToolCall(_) => "ToolCall",
+            EventPayload::ToolResult(_) => "ToolResult",
+            EventPayload::User(_) => "User",
+            EventPayload::Message(_) => "Message",
+            EventPayload::Reasoning(_) => "Reasoning",
+            EventPayload::TokenUsage(_) => "TokenUsage",
+            EventPayload::Notification(_) => "Notification",
+        };
+        actual_type.eq_ignore_ascii_case(event_type)
+    }
+
+    fn matches_tool_name(&self, event: &AgentEvent, tool_name: &str) -> bool {
+        match &event.payload {
+            EventPayload::ToolCall(tool_call_payload) => {
+                let actual_name = tool_call_payload.name();
+                if self.ignore_case {
+                    actual_name.eq_ignore_ascii_case(tool_name)
+                } else {
+                    actual_name == tool_name
+                }
+            }
+            _ => false,
+        }
+    }
+}
+
+pub fn handle(workspace: &AgTrace, options: GrepOptions, view: &dyn TraceView) -> Result<()> {
+    // Build matcher with all filters
+    let matcher = EventMatcher::new(
+        options.pattern.clone(),
+        options.use_regex,
+        options.ignore_case,
+        options.event_type,
+        options.tool_name,
+    )?;
+
     let mut filter = SessionFilter::new().limit(1000);
-    if let Some(src) = source {
+    if let Some(src) = options.source {
         filter = filter.source(src);
     }
 
     let sessions = workspace.sessions().list(filter)?;
-    let max_matches = limit.unwrap_or(50);
+    let max_matches = options.limit.unwrap_or(50);
 
-    if raw_output {
+    if options.raw_output {
         // Raw mode: output complete AgentEvent with metadata
         let mut count = 0;
 
@@ -60,11 +175,12 @@ pub fn handle(
             let events = session.events()?;
 
             for event in &events {
-                let payload_str = serde_json::to_string(&event.payload)?;
-
-                if payload_str.contains(&pattern) {
+                if matcher.matches(event)? {
                     if count == 0 {
-                        println!("Searching for pattern '\x1b[36m{}\x1b[39m'...", pattern);
+                        println!(
+                            "Searching for pattern '\x1b[36m{}\x1b[39m'...",
+                            options.pattern
+                        );
                         println!("Found matches:\n");
                     }
 
@@ -88,6 +204,14 @@ pub fn handle(
             }
         }
 
+        if count == 0 {
+            println!(
+                "Searching for pattern '\x1b[36m{}\x1b[39m'...",
+                options.pattern
+            );
+            println!("Found 0 matches:");
+        }
+
         Ok(())
     } else {
         // Normal mode: use presenters
@@ -98,9 +222,7 @@ pub fn handle(
             let events = session.events()?;
 
             for event in events {
-                let payload_str = serde_json::to_string(&event.payload)?;
-
-                if payload_str.contains(&pattern) {
+                if matcher.matches(&event)? {
                     let vm = presenters::present_event(&event);
                     matches.push(vm);
 
@@ -111,7 +233,7 @@ pub fn handle(
             }
         }
 
-        view.render_lab_grep(&matches, &pattern, json_output)?;
+        view.render_lab_grep(&matches, &options.pattern, options.json_output)?;
         Ok(())
     }
 }

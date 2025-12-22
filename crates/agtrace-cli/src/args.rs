@@ -569,5 +569,24 @@ RAW MODE RATIONALE:
 
         #[arg(long, help = "Show complete AgentEvent including metadata")]
         raw: bool,
+
+        #[arg(
+            long,
+            help = "Use regex pattern matching instead of simple string contains"
+        )]
+        regex: bool,
+
+        #[arg(
+            long,
+            value_name = "TYPE",
+            help = "Filter by event type (ToolCall, ToolResult, User, Message, Reasoning, TokenUsage, Notification)"
+        )]
+        r#type: Option<String>,
+
+        #[arg(long, help = "Filter by tool name (only for ToolCall events)")]
+        tool: Option<String>,
+
+        #[arg(long, help = "Case-insensitive search")]
+        ignore_case: bool,
     },
 }

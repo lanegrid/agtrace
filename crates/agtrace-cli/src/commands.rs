@@ -179,8 +179,23 @@ pub fn run(cli: Cli) -> Result<()> {
                     source,
                     json,
                     raw,
+                    regex,
+                    r#type,
+                    tool,
+                    ignore_case,
                 } => {
-                    handlers::lab_grep::handle(&workspace, pattern, limit, source, json, raw, &view)
+                    let options = handlers::lab_grep::GrepOptions {
+                        pattern,
+                        limit,
+                        source,
+                        json_output: json,
+                        raw_output: raw,
+                        use_regex: regex,
+                        ignore_case,
+                        event_type: r#type,
+                        tool_name: tool,
+                    };
+                    handlers::lab_grep::handle(&workspace, options, &view)
                 }
             }
         }
