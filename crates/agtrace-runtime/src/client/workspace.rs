@@ -27,7 +27,17 @@ impl AgTrace {
         let db_path = data_dir.join("agtrace.db");
         let config_path = data_dir.join("config.toml");
 
-        let db = Database::open(&db_path)?;
+        let db = Database::open(&db_path).map_err(|e| {
+            if !db_path.exists() {
+                anyhow::anyhow!(
+                    "Database not found. Please run 'agtrace init' to initialize the workspace.\n\
+                     Database path: {}",
+                    db_path.display()
+                )
+            } else {
+                e
+            }
+        })?;
 
         let config = if config_path.exists() {
             Config::load_from(&config_path)?
