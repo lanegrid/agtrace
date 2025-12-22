@@ -114,12 +114,33 @@ impl SessionOps {
     }
 
     pub fn find(&self, session_id: &str) -> Result<SessionHandle> {
+        if let Some(resolved_id) = self.resolve_session_id(session_id)? {
+            return Ok(SessionHandle {
+                id: resolved_id,
+                db: self.db.clone(),
+            });
+        }
+
         self.ensure_index_is_fresh()?;
 
-        Ok(SessionHandle {
-            id: session_id.to_string(),
-            db: self.db.clone(),
-        })
+        if let Some(resolved_id) = self.resolve_session_id(session_id)? {
+            return Ok(SessionHandle {
+                id: resolved_id,
+                db: self.db.clone(),
+            });
+        }
+
+        anyhow::bail!("Session not found: {}", session_id)
+    }
+
+    fn resolve_session_id(&self, session_id: &str) -> Result<Option<String>> {
+        let db = self.db.lock().unwrap();
+
+        if let Some(session) = db.get_session_by_id(session_id)? {
+            return Ok(Some(session.id));
+        }
+
+        db.find_session_by_prefix(session_id)
     }
 
     pub fn pack_context(&self, project_hash: Option<&str>, limit: usize) -> Result<PackResult> {
