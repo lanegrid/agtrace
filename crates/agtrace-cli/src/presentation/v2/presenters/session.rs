@@ -174,24 +174,9 @@ fn build_turn_analysis(
     metric: &agtrace_engine::TurnMetrics,
     max_context: Option<u32>,
 ) -> TurnAnalysisViewModel {
-    let user_query = truncate_text(&turn.user.content.text, 80);
-
-    let prev_pct = if let Some(max) = max_context {
-        format!("{:.1}%", (metric.prev_total as f64 / max as f64) * 100.0)
-    } else {
-        format_tokens(metric.prev_total as i64)
-    };
-
-    let new_pct = if let Some(max) = max_context {
-        format!(
-            "{:.1}%",
-            ((metric.prev_total + metric.delta) as f64 / max as f64) * 100.0
-        )
-    } else {
-        format_tokens((metric.prev_total + metric.delta) as i64)
-    };
-
-    let context_transition = format!("{} -> {}", prev_pct, new_pct);
+    let user_query = turn.user.content.text.clone();
+    let prev_tokens = metric.prev_total;
+    let current_tokens = metric.prev_total + metric.delta;
 
     // Build context usage data (only if max_context is known)
     let context_usage = max_context.map(|max| {
@@ -214,7 +199,7 @@ fn build_turn_analysis(
             if let Some(ref reasoning) = step.reasoning {
                 result.push(AgentStepViewModel::Thinking {
                     duration: None,
-                    preview: truncate_text(&reasoning.content.text, 60),
+                    preview: reasoning.content.text.clone(),
                 });
             }
 
@@ -228,7 +213,7 @@ fn build_turn_analysis(
 
             if let Some(ref message) = step.message {
                 result.push(AgentStepViewModel::Message {
-                    text: truncate_text(&message.content.text, 80),
+                    text: message.content.text.clone(),
                 });
             }
 
@@ -269,17 +254,18 @@ fn build_turn_analysis(
     TurnAnalysisViewModel {
         turn_number: metric.turn_index + 1,
         timestamp: turn.steps.first().map(|s| format_timestamp(s.timestamp)),
-        context_transition,
+        prev_tokens,
+        current_tokens,
         context_usage,
         is_heavy_load: metric.is_heavy,
         user_query,
         steps,
         metrics: ViewTurnMetrics {
-            total_delta: format!("+{}", format_tokens(metric.delta as i64)),
-            input: format_tokens(total_input),
-            output: format_tokens(total_output),
-            cache_read: if cache_read_total > 0 {
-                Some(format_tokens(cache_read_total))
+            total_delta: metric.delta,
+            input_tokens: total_input,
+            output_tokens: total_output,
+            cache_read_tokens: if cache_read_total > 0 {
+                Some(cache_read_total)
             } else {
                 None
             },
@@ -315,15 +301,6 @@ fn format_tokens(count: i64) -> String {
         format!("{:.1}k", count as f64 / 1_000.0)
     } else {
         count.to_string()
-    }
-}
-
-fn truncate_text(text: &str, max_len: usize) -> String {
-    if text.chars().count() <= max_len {
-        text.to_string()
-    } else {
-        let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
-        format!("{}...", truncated)
     }
 }
 
@@ -456,7 +433,7 @@ fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<Agen
                 let result_text = tool
                     .result
                     .as_ref()
-                    .map(|r| truncate_text(&r.content.output, 60))
+                    .map(|r| r.content.output.clone())
                     .unwrap_or_else(|| "(no result)".to_string());
 
                 AgentStepViewModel::ToolCall {

@@ -51,6 +51,15 @@ fn format_tokens(count: i64) -> String {
     }
 }
 
+fn truncate_text(text: &str, max_len: usize) -> String {
+    if text.chars().count() <= max_len {
+        text.to_string()
+    } else {
+        let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
+        format!("{}...", truncated)
+    }
+}
+
 impl fmt::Display for SessionListViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::formatters::session_list::SessionEntry;
@@ -131,7 +140,8 @@ pub struct ContextWindowSummary {
 pub struct TurnAnalysisViewModel {
     pub turn_number: usize,
     pub timestamp: Option<String>,
-    pub context_transition: String,
+    pub prev_tokens: u32,
+    pub current_tokens: u32,
     pub context_usage: Option<ContextUsage>,
     pub is_heavy_load: bool,
     pub user_query: String,
@@ -175,10 +185,10 @@ pub enum AgentStepViewModel {
 
 #[derive(Debug, Serialize)]
 pub struct TurnMetrics {
-    pub total_delta: String,
-    pub input: String,
-    pub output: String,
-    pub cache_read: Option<String>,
+    pub total_delta: u32,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    pub cache_read_tokens: Option<i64>,
 }
 
 impl fmt::Display for SessionAnalysisViewModel {
@@ -216,10 +226,15 @@ impl fmt::Display for TurnAnalysisViewModel {
         // Extract delta for visual indicator
         let delta_indicator = self.extract_delta_indicator();
 
+        // Build context transition display
+        let prev_str = format_tokens(self.prev_tokens as i64);
+        let curr_str = format_tokens(self.current_tokens as i64);
+        let context_transition = format!("{} -> {}", prev_str, curr_str);
+
         writeln!(
             f,
             "[Turn #{:02}] {} {}  (Context: {}{})",
-            self.turn_number, status_icon, status_label, self.context_transition, delta_indicator
+            self.turn_number, status_icon, status_label, context_transition, delta_indicator
         )?;
 
         // Show progress bar if context usage data is available
@@ -239,7 +254,8 @@ impl fmt::Display for TurnAnalysisViewModel {
         let is_last = current_index == total_items;
         let prefix = if is_last { "└──" } else { "├──" };
         writeln!(f, "{} 👤 User", prefix)?;
-        self.write_indented(f, &self.user_query, is_last, "   ")?;
+        let truncated_query = truncate_text(&self.user_query, 80);
+        self.write_indented(f, &truncated_query, is_last, "   ")?;
 
         // Steps
         for step in &self.steps {
@@ -249,17 +265,21 @@ impl fmt::Display for TurnAnalysisViewModel {
         }
 
         writeln!(f)?;
+
+        // Format metrics
+        let delta_str = format!("+{}", format_tokens(self.metrics.total_delta as i64));
+        let input_str = format_tokens(self.metrics.input_tokens);
+        let output_str = format_tokens(self.metrics.output_tokens);
+        let cache_str = self
+            .metrics
+            .cache_read_tokens
+            .map(|c| format!(", Cache: {}", format_tokens(c)))
+            .unwrap_or_default();
+
         writeln!(
             f,
             "📊 Stats: {} (In: {}, Out: {}{})",
-            self.metrics.total_delta,
-            self.metrics.input,
-            self.metrics.output,
-            self.metrics
-                .cache_read
-                .as_ref()
-                .map(|c| format!(", Cache: {}", c))
-                .unwrap_or_default()
+            delta_str, input_str, output_str, cache_str
         )?;
         writeln!(f)?;
 
@@ -269,27 +289,12 @@ impl fmt::Display for TurnAnalysisViewModel {
 
 impl TurnAnalysisViewModel {
     fn extract_delta_indicator(&self) -> String {
-        // Extract numeric value from total_delta (e.g., "+57.2k" -> 57200)
-        let delta_str = self.metrics.total_delta.trim_start_matches('+');
-        let delta_value = if delta_str.ends_with('k') {
-            delta_str
-                .trim_end_matches('k')
-                .parse::<f64>()
-                .unwrap_or(0.0)
-                * 1000.0
-        } else if delta_str.ends_with('M') {
-            delta_str
-                .trim_end_matches('M')
-                .parse::<f64>()
-                .unwrap_or(0.0)
-                * 1_000_000.0
-        } else {
-            delta_str.parse::<f64>().unwrap_or(0.0)
-        };
+        // Use numeric value directly
+        let delta_value = self.metrics.total_delta;
 
-        if delta_value > 50_000.0 {
+        if delta_value > 50_000 {
             " 🔺".to_string()
-        } else if delta_value > 20_000.0 {
+        } else if delta_value > 20_000 {
             " ⚡".to_string()
         } else {
             String::new()
@@ -348,7 +353,8 @@ impl TurnAnalysisViewModel {
             }
             AgentStepViewModel::Message { text } => {
                 writeln!(f, "{} 💬 Message", prefix)?;
-                self.write_indented(f, text, is_last, "   ")?;
+                let truncated = truncate_text(text, 80);
+                self.write_indented(f, &truncated, is_last, "   ")?;
             }
             AgentStepViewModel::SystemEvent { description } => {
                 writeln!(f, "{} ℹ️  {}", prefix, description)?;
@@ -370,8 +376,9 @@ impl TurnAnalysisViewModel {
     ) -> fmt::Result {
         let continuation = if is_last { "   " } else { "│  " };
 
-        // Show first line prominently, rest dimmed
-        let lines: Vec<&str> = preview.lines().collect();
+        // Truncate and show first line prominently
+        let truncated = truncate_text(preview, 60);
+        let lines: Vec<&str> = truncated.lines().collect();
         if let Some(first_line) = lines.first() {
             writeln!(f, "{}   {}", continuation, first_line)?;
         }
@@ -396,12 +403,8 @@ impl TurnAnalysisViewModel {
     }
 
     fn write_truncated_result(&self, f: &mut fmt::Formatter, result: &str) -> fmt::Result {
-        let char_count = result.chars().count();
-        if char_count > 100 {
-            writeln!(f, "[Truncated: {} chars]", char_count)?;
-        } else {
-            writeln!(f, "{}", result)?;
-        }
+        let truncated = truncate_text(result, 60);
+        writeln!(f, "{}", truncated)?;
         Ok(())
     }
 }
