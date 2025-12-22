@@ -2,6 +2,9 @@ use anyhow::{Context, Result};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 
+// Schema version (increment when changing table definitions)
+const SCHEMA_VERSION: i32 = 1;
+
 // NOTE: Database Design Rationale (Pointer Edition)
 //
 // Why Schema-on-Read (not Schema-on-Write)?
@@ -78,6 +81,14 @@ impl Database {
     }
 
     pub fn init_schema(&self) -> Result<()> {
+        let current_version: i32 = self
+            .conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))?;
+
+        if current_version != SCHEMA_VERSION {
+            self.drop_all_tables()?;
+        }
+
         self.conn.execute_batch(
             r#"
             CREATE TABLE IF NOT EXISTS projects (
@@ -112,6 +123,20 @@ impl Database {
             "#,
         )?;
 
+        self.conn
+            .execute(&format!("PRAGMA user_version = {}", SCHEMA_VERSION), [])?;
+
+        Ok(())
+    }
+
+    fn drop_all_tables(&self) -> Result<()> {
+        self.conn.execute_batch(
+            r#"
+            DROP TABLE IF EXISTS log_files;
+            DROP TABLE IF EXISTS sessions;
+            DROP TABLE IF EXISTS projects;
+            "#,
+        )?;
         Ok(())
     }
 
@@ -542,5 +567,70 @@ mod tests {
 
         let count = db.count_sessions_for_project("abc123").unwrap();
         assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_schema_version_set_on_init() {
+        let db = Database::open_in_memory().unwrap();
+
+        let version: i32 = db
+            .conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+
+        assert_eq!(version, SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn test_schema_rebuild_on_version_mismatch() {
+        let conn = Connection::open_in_memory().unwrap();
+
+        conn.execute_batch(
+            r#"
+            CREATE TABLE projects (hash TEXT PRIMARY KEY);
+            CREATE TABLE sessions (id TEXT PRIMARY KEY);
+            PRAGMA user_version = 999;
+            "#,
+        )
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO projects (hash) VALUES (?1)",
+            params!["old_data"],
+        )
+        .unwrap();
+
+        let db = Database { conn };
+        db.init_schema().unwrap();
+
+        let version: i32 = db
+            .conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, SCHEMA_VERSION);
+
+        let count: i64 = db
+            .conn
+            .query_row("SELECT COUNT(*) FROM projects", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_schema_preserved_on_version_match() {
+        let db = Database::open_in_memory().unwrap();
+
+        let project = ProjectRecord {
+            hash: "abc123".to_string(),
+            root_path: Some("/path/to/project".to_string()),
+            last_scanned_at: Some("2025-12-10T10:00:00Z".to_string()),
+        };
+        db.insert_or_update_project(&project).unwrap();
+
+        db.init_schema().unwrap();
+
+        let retrieved = db.get_project("abc123").unwrap();
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().hash, "abc123");
     }
 }
