@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
-use crate::codex::tools::{ApplyPatchArgs, PatchOperation, ShellArgs};
+use crate::codex::tools::{ApplyPatchArgs, PatchOperation, ReadMcpResourceArgs, ShellArgs};
 use crate::normalization::normalize_tool_call;
 
 /// Regex for extracting exit codes from Codex output
@@ -105,6 +105,18 @@ fn normalize_codex_tool_call(
                 return ToolCallPayload::Execute {
                     name: tool_name,
                     arguments: execute_args,
+                    provider_call_id,
+                };
+            }
+        }
+        "read_mcp_resource" => {
+            // Try to parse as ReadMcpResourceArgs
+            if let Ok(mcp_args) = serde_json::from_value::<ReadMcpResourceArgs>(arguments.clone()) {
+                // Convert to standard FileReadArgs
+                let file_read_args = mcp_args.to_file_read_args();
+                return ToolCallPayload::FileRead {
+                    name: tool_name,
+                    arguments: file_read_args,
                     provider_call_id,
                 };
             }
@@ -602,6 +614,42 @@ mod tests {
                 assert_eq!(provider_call_id, Some("call_abc".to_string()));
             }
             _ => panic!("Expected Execute variant for shell"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_read_mcp_resource() {
+        let arguments = serde_json::json!({
+            "server": "local",
+            "uri": "/Users/zawakin/go/src/github.com/lanegrid/agtrace/AGENTS.md"
+        });
+
+        let payload = normalize_codex_tool_call(
+            "read_mcp_resource".to_string(),
+            arguments,
+            Some("call_xyz".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "read_mcp_resource");
+                assert_eq!(
+                    arguments.file_path,
+                    Some("/Users/zawakin/go/src/github.com/lanegrid/agtrace/AGENTS.md".to_string())
+                );
+                assert_eq!(arguments.path, None);
+                assert_eq!(arguments.pattern, None);
+                assert_eq!(
+                    arguments.extra.get("server"),
+                    Some(&serde_json::json!("local"))
+                );
+                assert_eq!(provider_call_id, Some("call_xyz".to_string()));
+            }
+            _ => panic!("Expected FileRead variant for read_mcp_resource"),
         }
     }
 }

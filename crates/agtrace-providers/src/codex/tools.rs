@@ -2,7 +2,7 @@
 ///
 /// These structs represent the exact schema that Codex uses, before normalization
 /// to the domain model in agtrace-types.
-use agtrace_types::ExecuteArgs;
+use agtrace_types::{ExecuteArgs, FileReadArgs};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -141,6 +141,43 @@ impl ShellArgs {
     }
 }
 
+/// Codex read_mcp_resource tool arguments
+///
+/// Codex uses MCP protocol to read resources via a server.
+///
+/// # Format
+/// ```json
+/// {
+///   "server": "local",
+///   "uri": "/path/to/file"
+/// }
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReadMcpResourceArgs {
+    /// MCP server name (e.g., "local")
+    pub server: String,
+    /// Resource URI (file path for local server)
+    pub uri: String,
+}
+
+impl ReadMcpResourceArgs {
+    /// Convert Codex read_mcp_resource args to standard FileReadArgs
+    ///
+    /// - Maps uri → file_path
+    /// - Preserves server in extra field
+    pub fn to_file_read_args(&self) -> FileReadArgs {
+        let mut extra = json!({});
+        extra["server"] = json!(&self.server);
+
+        FileReadArgs {
+            file_path: Some(self.uri.clone()),
+            path: None,
+            pattern: None,
+            extra,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -219,5 +256,22 @@ mod tests {
         assert_eq!(execute_args.command, Some("echo hello".to_string()));
         assert_eq!(execute_args.timeout, None);
         assert_eq!(execute_args.extra, json!({}));
+    }
+
+    #[test]
+    fn test_read_mcp_resource_args_to_file_read_args() {
+        let mcp_args = ReadMcpResourceArgs {
+            server: "local".to_string(),
+            uri: "/Users/zawakin/go/src/github.com/lanegrid/agtrace/AGENTS.md".to_string(),
+        };
+
+        let file_read_args = mcp_args.to_file_read_args();
+        assert_eq!(
+            file_read_args.file_path,
+            Some("/Users/zawakin/go/src/github.com/lanegrid/agtrace/AGENTS.md".to_string())
+        );
+        assert_eq!(file_read_args.path, None);
+        assert_eq!(file_read_args.pattern, None);
+        assert_eq!(file_read_args.extra.get("server"), Some(&json!("local")));
     }
 }
