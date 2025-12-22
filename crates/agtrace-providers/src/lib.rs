@@ -2,9 +2,14 @@ use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-// New trait-based architecture (internal separation of concerns)
-// Public for use within provider implementations, not exposed at crate level
+// New trait-based architecture (public API)
 pub mod traits;
+
+// Re-export new trait-based types for public use
+pub use traits::{
+    LogProvider as DiscoveryTrait, ProbeResult, ProviderAdapter, SessionIndex,
+    SessionParser as ParserTrait, ToolMapper as MapperTrait,
+};
 
 // Provider implementations (internal modules)
 pub mod claude;
@@ -41,8 +46,17 @@ pub use gemini::normalize_gemini_file;
 
 // Re-export registry functions for convenience
 pub use registry::{
-    create_all_providers, create_provider, detect_provider_from_path, get_all_providers,
-    get_default_log_paths, get_provider_metadata, get_provider_names,
+    // New trait-based adapter registry
+    create_adapter,
+    create_all_adapters,
+    create_all_providers,
+    create_provider,
+    detect_adapter_from_path,
+    detect_provider_from_path,
+    get_all_providers,
+    get_default_log_paths,
+    get_provider_metadata,
+    get_provider_names,
 };
 
 // Re-export tool analyzer functions for convenience

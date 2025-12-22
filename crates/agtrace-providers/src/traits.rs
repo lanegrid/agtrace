@@ -137,8 +137,57 @@ impl ProviderAdapter {
         }
     }
 
+    /// Create adapter for a provider by name
+    pub fn from_name(provider_name: &str) -> Result<Self> {
+        match provider_name {
+            "claude_code" | "claude" => Ok(Self::claude()),
+            "codex" => Ok(Self::codex()),
+            "gemini" => Ok(Self::gemini()),
+            _ => anyhow::bail!("Unknown provider: {}", provider_name),
+        }
+    }
+
+    /// Create Claude provider adapter
+    pub fn claude() -> Self {
+        Self::new(
+            Box::new(crate::claude::ClaudeDiscovery),
+            Box::new(crate::claude::ClaudeParser),
+            Box::new(crate::claude::ClaudeToolMapper),
+        )
+    }
+
+    /// Create Codex provider adapter
+    pub fn codex() -> Self {
+        Self::new(
+            Box::new(crate::codex::CodexDiscovery),
+            Box::new(crate::codex::CodexParser),
+            Box::new(crate::codex::CodexToolMapper),
+        )
+    }
+
+    /// Create Gemini provider adapter
+    pub fn gemini() -> Self {
+        Self::new(
+            Box::new(crate::gemini::GeminiDiscovery),
+            Box::new(crate::gemini::GeminiParser),
+            Box::new(crate::gemini::GeminiToolMapper),
+        )
+    }
+
     /// Get provider ID
     pub fn id(&self) -> &'static str {
         self.discovery.id()
+    }
+
+    /// Process a file through the adapter (convenience method)
+    pub fn process_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
+        if !self.discovery.probe(path).is_match() {
+            anyhow::bail!(
+                "Provider {} cannot handle file: {}",
+                self.id(),
+                path.display()
+            );
+        }
+        self.parser.parse_file(path)
     }
 }

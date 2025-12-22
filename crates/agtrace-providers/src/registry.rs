@@ -1,3 +1,4 @@
+use crate::traits::ProviderAdapter;
 use crate::{ClaudeProvider, CodexProvider, GeminiProvider, LogProvider};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
@@ -85,4 +86,33 @@ pub fn get_default_log_paths() -> Vec<(String, PathBuf)> {
         }
     }
     paths
+}
+
+// --- New trait-based adapter registry ---
+
+/// Create a provider adapter by name (new trait-based architecture)
+pub fn create_adapter(name: &str) -> Result<ProviderAdapter> {
+    ProviderAdapter::from_name(name)
+}
+
+/// Create all provider adapters (new trait-based architecture)
+pub fn create_all_adapters() -> Vec<ProviderAdapter> {
+    vec![
+        ProviderAdapter::claude(),
+        ProviderAdapter::codex(),
+        ProviderAdapter::gemini(),
+    ]
+}
+
+/// Detect provider adapter from path (new trait-based architecture)
+pub fn detect_adapter_from_path(path: &str) -> Result<ProviderAdapter> {
+    if path.contains(".claude/") {
+        Ok(ProviderAdapter::claude())
+    } else if path.contains(".codex/") {
+        Ok(ProviderAdapter::codex())
+    } else if path.contains(".gemini/") {
+        Ok(ProviderAdapter::gemini())
+    } else {
+        Err(anyhow!("Cannot detect provider from path: {}", path))
+    }
 }
