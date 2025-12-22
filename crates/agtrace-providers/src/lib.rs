@@ -2,6 +2,10 @@ use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
+// New trait-based architecture (internal separation of concerns)
+// Public for use within provider implementations, not exposed at crate level
+pub mod traits;
+
 // Provider implementations (internal modules)
 pub mod claude;
 pub mod codex;

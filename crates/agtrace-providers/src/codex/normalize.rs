@@ -47,7 +47,7 @@ fn attach_model_metadata(
 /// Normalize Codex-specific tool calls
 ///
 /// Handles provider-specific tools like apply_patch before falling back to generic normalization.
-fn normalize_codex_tool_call(
+pub(crate) fn normalize_codex_tool_call(
     tool_name: String,
     arguments: serde_json::Value,
     provider_call_id: Option<String>,

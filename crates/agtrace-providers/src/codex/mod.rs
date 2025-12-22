@@ -5,16 +5,158 @@ pub mod schema;
 pub mod tool_mapping;
 pub mod tools;
 
+use crate::traits::{ProbeResult, SessionIndex};
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
-use agtrace_types::paths_equal;
 use agtrace_types::AgentEvent;
+use agtrace_types::{paths_equal, ToolCallPayload, ToolKind, ToolOrigin};
 use anyhow::Result;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 pub use self::io::{
     extract_codex_header, extract_cwd_from_codex_file, is_empty_codex_session, normalize_codex_file,
 };
+
+// --- New trait-based architecture ---
+
+/// Codex discovery and lifecycle management
+pub struct CodexDiscovery;
+
+impl crate::traits::LogProvider for CodexDiscovery {
+    fn id(&self) -> &'static str {
+        "codex"
+    }
+
+    fn probe(&self, path: &Path) -> ProbeResult {
+        if !path.is_file() {
+            return ProbeResult::NoMatch;
+        }
+
+        // Skip empty files
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if metadata.len() == 0 {
+                return ProbeResult::NoMatch;
+            }
+        }
+
+        let is_jsonl = path.extension().is_some_and(|e| e == "jsonl");
+        let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+
+        if is_jsonl && filename.starts_with("rollout-") && !is_empty_codex_session(path) {
+            ProbeResult::match_high()
+        } else {
+            ProbeResult::NoMatch
+        }
+    }
+
+    fn resolve_log_root(&self, _project_root: &Path) -> Option<PathBuf> {
+        // Codex doesn't organize by project hash
+        None
+    }
+
+    fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>> {
+        let mut sessions: HashMap<String, SessionIndex> = HashMap::new();
+
+        if !log_root.exists() {
+            return Ok(Vec::new());
+        }
+
+        for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+
+            if self.probe(path) == ProbeResult::NoMatch {
+                continue;
+            }
+
+            let header = match extract_codex_header(path) {
+                Ok(h) => h,
+                Err(_) => continue,
+            };
+
+            let session_id = match header.session_id {
+                Some(id) => id,
+                None => continue,
+            };
+
+            sessions
+                .entry(session_id.clone())
+                .or_insert_with(|| SessionIndex {
+                    session_id: session_id.clone(),
+                    timestamp: header.timestamp.clone(),
+                    main_file: path.to_path_buf(),
+                    sidechain_files: Vec::new(), // Codex doesn't have sidechains
+                });
+        }
+
+        Ok(sessions.into_values().collect())
+    }
+
+    fn extract_session_id(&self, path: &Path) -> Result<String> {
+        let header = extract_codex_header(path)?;
+        header
+            .session_id
+            .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+    }
+
+    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
+        let mut matching_files = Vec::new();
+
+        for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+
+            if self.probe(path) == ProbeResult::NoMatch {
+                continue;
+            }
+
+            if let Ok(header) = extract_codex_header(path) {
+                if header.session_id.as_deref() == Some(session_id) {
+                    matching_files.push(path.to_path_buf());
+                }
+            }
+        }
+
+        Ok(matching_files)
+    }
+}
+
+/// Codex session parser
+pub struct CodexParser;
+
+impl crate::traits::SessionParser for CodexParser {
+    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
+        normalize_codex_file(path)
+    }
+
+    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
+        // Codex uses JSONL format, parse as AgentEvent
+        match serde_json::from_str::<AgentEvent>(content) {
+            Ok(event) => Ok(Some(event)),
+            Err(_) => Ok(None), // Skip malformed lines
+        }
+    }
+}
+
+/// Codex tool mapper
+pub struct CodexToolMapper;
+
+impl crate::traits::ToolMapper for CodexToolMapper {
+    fn classify(&self, tool_name: &str) -> (ToolOrigin, ToolKind) {
+        tool_mapping::classify_tool(tool_name)
+            .unwrap_or_else(|| crate::tool_analyzer::classify_common(tool_name))
+    }
+
+    fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>) -> ToolCallPayload {
+        normalize::normalize_codex_tool_call(name.to_string(), args, call_id)
+    }
+
+    fn summarize(&self, kind: ToolKind, args: &Value) -> String {
+        crate::tool_analyzer::extract_common_summary(kind, args)
+    }
+}
+
+// --- Backward-compatible provider ---
 
 pub struct CodexProvider;
 

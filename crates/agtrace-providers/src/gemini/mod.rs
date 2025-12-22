@@ -5,10 +5,14 @@ pub mod schema;
 pub mod tool_mapping;
 pub mod tools;
 
+use crate::traits::{ProbeResult, SessionIndex};
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::AgentEvent;
-use agtrace_types::{is_64_char_hex, project_hash_from_root};
+use agtrace_types::{
+    is_64_char_hex, project_hash_from_root, ToolCallPayload, ToolKind, ToolOrigin,
+};
 use anyhow::Result;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -16,6 +20,152 @@ use walkdir::WalkDir;
 pub use self::io::{
     extract_gemini_header, extract_project_hash_from_gemini_file, normalize_gemini_file,
 };
+
+// --- New trait-based architecture ---
+
+/// Gemini discovery and lifecycle management
+pub struct GeminiDiscovery;
+
+impl crate::traits::LogProvider for GeminiDiscovery {
+    fn id(&self) -> &'static str {
+        "gemini"
+    }
+
+    fn probe(&self, path: &Path) -> ProbeResult {
+        if !path.is_file() {
+            return ProbeResult::NoMatch;
+        }
+
+        // Skip empty files
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if metadata.len() == 0 {
+                return ProbeResult::NoMatch;
+            }
+        }
+
+        let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
+        // Only handle session-*.json files
+        if filename.starts_with("session-") && filename.ends_with(".json") {
+            ProbeResult::match_high()
+        } else {
+            ProbeResult::NoMatch
+        }
+    }
+
+    fn resolve_log_root(&self, project_root: &Path) -> Option<PathBuf> {
+        let hash = project_hash_from_root(&project_root.to_string_lossy());
+        Some(PathBuf::from(hash))
+    }
+
+    fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>> {
+        let mut sessions: HashMap<String, SessionIndex> = HashMap::new();
+
+        if !log_root.exists() {
+            return Ok(Vec::new());
+        }
+
+        for entry in WalkDir::new(log_root)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+
+            if self.probe(path) == ProbeResult::NoMatch {
+                continue;
+            }
+
+            let header = match extract_gemini_header(path) {
+                Ok(h) => h,
+                Err(_) => continue,
+            };
+
+            let session_id = match header.session_id {
+                Some(id) => id,
+                None => continue,
+            };
+
+            sessions
+                .entry(session_id.clone())
+                .or_insert_with(|| SessionIndex {
+                    session_id: session_id.clone(),
+                    timestamp: header.timestamp.clone(),
+                    main_file: path.to_path_buf(),
+                    sidechain_files: Vec::new(), // Gemini doesn't have sidechains
+                });
+        }
+
+        Ok(sessions.into_values().collect())
+    }
+
+    fn extract_session_id(&self, path: &Path) -> Result<String> {
+        let header = extract_gemini_header(path)?;
+        header
+            .session_id
+            .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+    }
+
+    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
+        let mut matching_files = Vec::new();
+
+        for entry in WalkDir::new(log_root)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+
+            if self.probe(path) == ProbeResult::NoMatch {
+                continue;
+            }
+
+            if let Ok(header) = extract_gemini_header(path) {
+                if header.session_id.as_deref() == Some(session_id) {
+                    matching_files.push(path.to_path_buf());
+                }
+            }
+        }
+
+        Ok(matching_files)
+    }
+}
+
+/// Gemini session parser
+pub struct GeminiParser;
+
+impl crate::traits::SessionParser for GeminiParser {
+    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
+        normalize_gemini_file(path)
+    }
+
+    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
+        // Gemini uses JSON format, parse as AgentEvent
+        match serde_json::from_str::<AgentEvent>(content) {
+            Ok(event) => Ok(Some(event)),
+            Err(_) => Ok(None), // Skip malformed lines
+        }
+    }
+}
+
+/// Gemini tool mapper
+pub struct GeminiToolMapper;
+
+impl crate::traits::ToolMapper for GeminiToolMapper {
+    fn classify(&self, tool_name: &str) -> (ToolOrigin, ToolKind) {
+        tool_mapping::classify_tool(tool_name)
+            .unwrap_or_else(|| crate::tool_analyzer::classify_common(tool_name))
+    }
+
+    fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>) -> ToolCallPayload {
+        normalize::normalize_gemini_tool_call(name.to_string(), args, call_id)
+    }
+
+    fn summarize(&self, kind: ToolKind, args: &Value) -> String {
+        crate::tool_analyzer::extract_common_summary(kind, args)
+    }
+}
+
+// --- Backward-compatible provider ---
 
 pub struct GeminiProvider;
 

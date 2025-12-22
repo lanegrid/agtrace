@@ -5,10 +5,12 @@ pub mod schema;
 pub mod tool_mapping;
 pub mod tools;
 
+use crate::traits::{ProbeResult, SessionIndex};
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
-use agtrace_types::paths_equal;
 use agtrace_types::AgentEvent;
+use agtrace_types::{paths_equal, ToolCallPayload, ToolKind, ToolOrigin};
 use anyhow::Result;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -25,6 +27,151 @@ fn encode_claude_project_dir(project_root: &Path) -> String {
         .to_string();
     format!("-{}", encoded)
 }
+
+// --- New trait-based architecture ---
+
+/// Claude discovery and lifecycle management
+pub struct ClaudeDiscovery;
+
+impl crate::traits::LogProvider for ClaudeDiscovery {
+    fn id(&self) -> &'static str {
+        "claude_code"
+    }
+
+    fn probe(&self, path: &Path) -> ProbeResult {
+        if !path.is_file() {
+            return ProbeResult::NoMatch;
+        }
+
+        if path.extension().is_none_or(|e| e != "jsonl") {
+            return ProbeResult::NoMatch;
+        }
+
+        // Skip empty files
+        if let Ok(metadata) = std::fs::metadata(path) {
+            if metadata.len() == 0 {
+                return ProbeResult::NoMatch;
+            }
+        }
+
+        ProbeResult::match_high()
+    }
+
+    fn resolve_log_root(&self, _project_root: &Path) -> Option<PathBuf> {
+        // Claude doesn't have a single log root per project
+        // Files are organized under ~/.claude/projects/-encoded-project-name/
+        None
+    }
+
+    fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>> {
+        let mut sessions: HashMap<String, SessionIndex> = HashMap::new();
+
+        for entry in WalkDir::new(log_root)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+
+            if self.probe(path) == ProbeResult::NoMatch {
+                continue;
+            }
+
+            let header = match extract_claude_header(path) {
+                Ok(h) => h,
+                Err(_) => continue,
+            };
+
+            let session_id = match header.session_id {
+                Some(id) => id,
+                None => continue,
+            };
+
+            let session = sessions
+                .entry(session_id.clone())
+                .or_insert_with(|| SessionIndex {
+                    session_id: session_id.clone(),
+                    timestamp: header.timestamp.clone(),
+                    main_file: path.to_path_buf(),
+                    sidechain_files: Vec::new(),
+                });
+
+            if header.is_sidechain {
+                session.sidechain_files.push(path.to_path_buf());
+            }
+        }
+
+        Ok(sessions.into_values().collect())
+    }
+
+    fn extract_session_id(&self, path: &Path) -> Result<String> {
+        let header = extract_claude_header(path)?;
+        header
+            .session_id
+            .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+    }
+
+    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
+        let mut matching_files = Vec::new();
+
+        for entry in WalkDir::new(log_root)
+            .max_depth(3)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+
+            if self.probe(path) == ProbeResult::NoMatch {
+                continue;
+            }
+
+            if let Ok(header) = extract_claude_header(path) {
+                if header.session_id.as_deref() == Some(session_id) {
+                    matching_files.push(path.to_path_buf());
+                }
+            }
+        }
+
+        Ok(matching_files)
+    }
+}
+
+/// Claude session parser
+pub struct ClaudeParser;
+
+impl crate::traits::SessionParser for ClaudeParser {
+    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
+        normalize_claude_file(path)
+    }
+
+    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
+        // Claude uses JSONL format, parse as AgentEvent
+        match serde_json::from_str::<AgentEvent>(content) {
+            Ok(event) => Ok(Some(event)),
+            Err(_) => Ok(None), // Skip malformed lines
+        }
+    }
+}
+
+/// Claude tool mapper
+pub struct ClaudeToolMapper;
+
+impl crate::traits::ToolMapper for ClaudeToolMapper {
+    fn classify(&self, tool_name: &str) -> (ToolOrigin, ToolKind) {
+        tool_mapping::classify_tool(tool_name)
+            .unwrap_or_else(|| crate::tool_analyzer::classify_common(tool_name))
+    }
+
+    fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>) -> ToolCallPayload {
+        normalize::normalize_claude_tool_call(name.to_string(), args, call_id)
+    }
+
+    fn summarize(&self, kind: ToolKind, args: &Value) -> String {
+        crate::tool_analyzer::extract_common_summary(kind, args)
+    }
+}
+
+// --- Backward-compatible provider ---
 
 pub struct ClaudeProvider;
 

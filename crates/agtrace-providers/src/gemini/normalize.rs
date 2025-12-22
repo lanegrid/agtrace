@@ -13,7 +13,7 @@ use crate::gemini::tools::{
 ///
 /// Handles Gemini provider-specific tool names and maps them to domain variants.
 /// Uses provider-specific Args structs for proper schema parsing and conversion.
-fn normalize_gemini_tool_call(
+pub(crate) fn normalize_gemini_tool_call(
     tool_name: String,
     arguments: serde_json::Value,
     provider_call_id: Option<String>,

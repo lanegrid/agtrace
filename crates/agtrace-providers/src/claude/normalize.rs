@@ -13,7 +13,7 @@ use crate::claude::tools::{
 ///
 /// Handles Claude Code provider-specific tool names and maps them to domain variants.
 /// Uses provider-specific Args structs for proper schema parsing and conversion.
-fn normalize_claude_tool_call(
+pub(crate) fn normalize_claude_tool_call(
     tool_name: String,
     arguments: serde_json::Value,
     provider_call_id: Option<String>,
