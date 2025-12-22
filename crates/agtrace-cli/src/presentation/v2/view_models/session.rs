@@ -75,85 +75,162 @@ impl fmt::Display for SessionListViewModel {
     }
 }
 
+/// Session analysis view - TUI-centric performance report
 #[derive(Debug, Serialize)]
-pub struct SessionDetailViewModel {
+pub struct SessionAnalysisViewModel {
+    pub header: SessionHeader,
+    pub context_summary: ContextWindowSummary,
+    pub turns: Vec<TurnAnalysisViewModel>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SessionHeader {
     pub session_id: String,
     pub provider: String,
-    pub view_mode: ViewMode,
-    pub content: DetailContent,
+    pub model: Option<String>,
+    pub status: String,
+    pub duration: Option<String>,
+    pub start_time: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ViewMode {
-    Raw,
-    Json,
-    Compact,
-    Timeline,
+pub struct ContextWindowSummary {
+    pub progress_bar: String,
+    pub usage_percent: String,
+    pub usage_fraction: String,
+    pub warning: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
-#[serde(untagged)]
-pub enum DetailContent {
-    Raw {
-        files: Vec<RawFile>,
+pub struct TurnAnalysisViewModel {
+    pub turn_number: usize,
+    pub timestamp: Option<String>,
+    pub context_transition: String,
+    pub is_heavy_load: bool,
+    pub user_query: String,
+    pub steps: Vec<AgentStepViewModel>,
+    pub metrics: TurnMetrics,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "kind")]
+pub enum AgentStepViewModel {
+    Thinking {
+        duration: Option<String>,
+        preview: String,
     },
-    Events {
-        events: serde_json::Value,
+    ToolCall {
+        name: String,
+        args: String,
+        result: String,
+        is_error: bool,
     },
-    Session {
-        session: serde_json::Value,
-        options: DisplayOptions,
+    Message {
+        text: String,
+    },
+    SystemEvent {
+        description: String,
     },
 }
 
 #[derive(Debug, Serialize)]
-pub struct RawFile {
-    pub path: String,
-    pub content: String,
+pub struct TurnMetrics {
+    pub total_delta: String,
+    pub input: String,
+    pub output: String,
+    pub cache_read: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct DisplayOptions {
-    pub enable_color: bool,
-    pub relative_time: bool,
-    pub truncate_text: Option<usize>,
-}
-
-impl fmt::Display for SessionDetailViewModel {
+impl fmt::Display for SessionAnalysisViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use crate::presentation::view_models::RawFileContent;
+        // Header
+        writeln!(f, "{}", "=".repeat(80))?;
+        write!(f, "SESSION: {}", self.header.session_id)?;
+        if let Some(ref model) = self.header.model {
+            write!(f, " ({})", model)?;
+        }
+        writeln!(f)?;
+        writeln!(f, "STATUS:  {}", self.header.status)?;
+        writeln!(f, "CONTEXT: {}", self.context_summary.progress_bar)?;
+        writeln!(f, "{}", "=".repeat(80))?;
+        writeln!(f)?;
 
-        match &self.content {
-            DetailContent::Raw { files } => {
-                let raw_files: Vec<RawFileContent> = files
-                    .iter()
-                    .map(|file| RawFileContent {
-                        path: file.path.clone(),
-                        content: file.content.clone(),
-                    })
-                    .collect();
-                for file in raw_files {
-                    writeln!(f, "{}", file.content)?;
+        // Turns
+        for turn in &self.turns {
+            write!(f, "{}", turn)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl fmt::Display for TurnAnalysisViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let status_icon = if self.is_heavy_load { "⚠️" } else { "🟢" };
+        let status_label = if self.is_heavy_load {
+            "Heavy Load"
+        } else {
+            "Normal"
+        };
+
+        writeln!(
+            f,
+            "[Turn #{:02}] {} {}  (Context: {})",
+            self.turn_number, status_icon, status_label, self.context_transition
+        )?;
+
+        writeln!(f, "  👤 User: \"{}\"", self.user_query)?;
+        writeln!(f, "  {}", "─".repeat(76))?;
+
+        // Steps
+        for step in &self.steps {
+            match step {
+                AgentStepViewModel::Thinking { duration, preview } => {
+                    if let Some(dur) = duration {
+                        writeln!(f, "  🧠 Thinking ({})", dur)?;
+                    } else {
+                        writeln!(f, "  🧠 Thinking")?;
+                    }
+                    if !preview.is_empty() {
+                        writeln!(f, "     {}", preview)?;
+                    }
+                }
+                AgentStepViewModel::ToolCall {
+                    name,
+                    args,
+                    result,
+                    is_error,
+                } => {
+                    writeln!(f, "  🔧 Tool: {} (args: {})", name, args)?;
+                    if *is_error {
+                        writeln!(f, "     ↳ ❌ Error: {}", result)?;
+                    } else {
+                        writeln!(f, "     ↳ 📝 Result: {}", result)?;
+                    }
+                }
+                AgentStepViewModel::Message { text } => {
+                    writeln!(f, "  💬 Msg: {}", text)?;
+                }
+                AgentStepViewModel::SystemEvent { description } => {
+                    writeln!(f, "  ℹ️  {}", description)?;
                 }
             }
-            DetailContent::Events { events } => {
-                writeln!(f, "{}", serde_json::to_string_pretty(events).unwrap())?;
-            }
-            DetailContent::Session {
-                session: _,
-                options: _,
-            } => {
-                // For now, delegate to the v1 rendering
-                // In a full v2 migration, we'd rewrite CompactSessionView to use v2 types
-                writeln!(
-                    f,
-                    "Session detail rendering (compact mode) - session_id: {}",
-                    self.session_id
-                )?;
-                writeln!(f, "View v1 implementation for full rendering")?;
-            }
         }
+
+        writeln!(f, "  {}", "─".repeat(76))?;
+        writeln!(
+            f,
+            "  📊 Stats: {} (In: {}, Out: {}{})",
+            self.metrics.total_delta,
+            self.metrics.input,
+            self.metrics.output,
+            self.metrics
+                .cache_read
+                .as_ref()
+                .map(|c| format!(", Cache: {}", c))
+                .unwrap_or_default()
+        )?;
+        writeln!(f)?;
 
         Ok(())
     }

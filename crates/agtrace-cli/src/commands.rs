@@ -92,17 +92,9 @@ pub fn run(cli: Cli) -> Result<()> {
                         no_auto_refresh,
                     )
                 }
-                SessionCommand::Show {
-                    session_id,
-                    raw,
-                    json,
-                    hide,
-                    only,
-                    short,
-                    verbose,
-                } => handlers::session_show::handle(
-                    &workspace, session_id, raw, json, hide, only, short, verbose, &view,
-                ),
+                SessionCommand::Show { session_id, json } => {
+                    handlers::session_show::handle(&workspace, session_id, json)
+                }
             }
         }
 

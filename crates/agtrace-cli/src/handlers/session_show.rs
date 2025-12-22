@@ -1,100 +1,46 @@
-#![allow(clippy::format_in_format_args)] // Intentional for colored terminal output
-
-use crate::args::ViewStyle;
-use crate::presentation::presenters;
-use crate::presentation::renderers::TraceView;
-use crate::presentation::view_models::{DisplayOptions, RawFileContent};
+use crate::presentation::v2::presenters;
+use crate::presentation::v2::renderers::ConsoleRenderer;
+use crate::presentation::v2::renderers::Renderer as _;
 use agtrace_engine::assemble_session;
-use agtrace_runtime::{AgTrace, EventFilters};
+use agtrace_runtime::{AgTrace, SessionFilter, TokenLimits};
 use anyhow::{Context, Result};
-use is_terminal::IsTerminal;
-use std::io;
 
-#[allow(clippy::too_many_arguments)]
-pub fn handle(
-    workspace: &AgTrace,
-    session_id: String,
-    raw: bool,
-    json: bool,
-    hide: Option<Vec<String>>,
-    only: Option<Vec<String>>,
-    short: bool,
-    verbose: bool,
-    view: &dyn TraceView,
-) -> Result<()> {
-    // Detect if output is being piped (not a terminal)
-    let is_tty = io::stdout().is_terminal();
-    let enable_color = is_tty;
-
-    let session = workspace.sessions().find(&session_id)?;
-
-    // Handle raw mode (display raw files without normalization)
-    if raw {
-        let contents = session
-            .raw_files()
-            .with_context(|| format!("Failed to load raw files for session: {}", session_id))?;
-
-        if contents.is_empty() {
-            anyhow::bail!(
-                "No raw log files found for session '{}'. \
-                This may occur if:\n\
-                1. The session was indexed but log files were not registered\n\
-                2. The original log files have been deleted\n\
-                3. The session needs to be re-indexed\n\n\
-                Try running: agtrace index update --verbose",
-                session_id
-            );
-        }
-
-        let view_contents: Vec<RawFileContent> = contents
-            .into_iter()
-            .map(|c| RawFileContent {
-                path: c.path,
-                content: c.content,
-            })
-            .collect();
-
-        view.render_session_raw_files(&view_contents)?;
-        return Ok(());
-    }
+pub fn handle(workspace: &AgTrace, session_id: String, json: bool) -> Result<()> {
+    let session_ops = workspace.sessions();
+    let session_meta = session_ops.find(&session_id)?;
 
     // Load and normalize events
-    let all_events = session.events()?;
+    let all_events = session_meta.events()?;
 
-    // Filter events based on --hide and --only options
-    let filtered_events = agtrace_runtime::filter_events(&all_events, EventFilters { hide, only });
+    // Assemble session from events
+    let session = assemble_session(&all_events)
+        .with_context(|| format!("Failed to assemble session: {}", session_id))?;
 
-    if json {
-        let event_vms = presenters::present_events(&filtered_events);
-        view.render_session_events_json(&event_vms)?;
-    } else {
-        let style = if verbose {
-            ViewStyle::Timeline
-        } else {
-            ViewStyle::Compact
-        };
+    // Use a default model name for now
+    // TODO: Extract actual model from session metadata or provider-specific data
+    let model_name = "Claude 3.5 Sonnet".to_string();
 
-        match style {
-            ViewStyle::Compact => {
-                if let Some(session) = assemble_session(&filtered_events) {
-                    let session_vm = presenters::present_session(&session);
-                    let opts = DisplayOptions {
-                        enable_color,
-                        relative_time: true,
-                        truncate_text: if short { Some(100) } else { None },
-                    };
-                    view.render_session_compact(&session_vm, &opts)?;
-                } else {
-                    view.render_session_assemble_error()?;
-                }
-            }
-            ViewStyle::Timeline => {
-                let truncate = short;
-                let event_vms = presenters::present_events(&filtered_events);
-                view.render_session_timeline(&event_vms, truncate, enable_color)?;
-            }
-        }
-    }
+    // Get provider from database by looking up session
+    let filter = SessionFilter::default();
+    let session_summaries = workspace.sessions().list(filter)?;
+    let provider = session_summaries
+        .iter()
+        .find(|s| s.id == session_id)
+        .map(|s| s.provider.clone())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    let token_limits = TokenLimits::new();
+    let max_context = token_limits
+        .get_limit(&model_name)
+        .map(|spec| spec.effective_limit() as u32);
+
+    // Present session analysis with provider and model info
+    let result =
+        presenters::present_session_analysis(&session, &provider, &model_name, max_context);
+
+    // Render output
+    let renderer = ConsoleRenderer::new(json);
+    renderer.render(result)?;
 
     Ok(())
 }

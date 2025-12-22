@@ -1,7 +1,9 @@
 use crate::presentation::v2::view_models::{
-    CommandResultViewModel, DetailContent, DisplayOptions, FilterSummary, Guidance, RawFile,
-    SessionDetailViewModel, SessionListEntry, SessionListViewModel, StatusBadge, ViewMode,
+    AgentStepViewModel, CommandResultViewModel, ContextWindowSummary, FilterSummary, Guidance,
+    SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel, StatusBadge,
+    TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
 };
+use agtrace_engine::AgentSession;
 use agtrace_index::SessionSummary;
 
 pub fn present_session_list(
@@ -70,69 +72,264 @@ pub fn present_session_list(
     result
 }
 
-pub fn present_session_raw(
-    session_id: String,
-    provider: String,
-    files: Vec<(String, String)>,
-) -> CommandResultViewModel<SessionDetailViewModel> {
-    let raw_files: Vec<RawFile> = files
-        .into_iter()
-        .map(|(path, content)| RawFile { path, content })
+/// Present session analysis with context-aware metrics
+pub fn present_session_analysis(
+    session: &AgentSession,
+    provider: &str,
+    model: &str,
+    max_context: Option<u32>,
+) -> CommandResultViewModel<SessionAnalysisViewModel> {
+    let metrics = session.compute_turn_metrics(max_context);
+
+    // Build header
+    let header = SessionHeader {
+        session_id: session.session_id.to_string(),
+        provider: provider.to_string(),
+        model: Some(model.to_string()),
+        status: if session.turns.is_empty() {
+            "Empty".to_string()
+        } else {
+            "Complete".to_string()
+        },
+        duration: compute_duration(session),
+        start_time: session
+            .turns
+            .first()
+            .and_then(|t| t.steps.first().map(|s| format_timestamp(s.timestamp))),
+    };
+
+    // Build context summary
+    let total_tokens = metrics.last().map(|m| m.prev_total + m.delta).unwrap_or(0);
+    let context_summary = build_context_summary(total_tokens, max_context);
+
+    // Build turns
+    let turns = session
+        .turns
+        .iter()
+        .zip(metrics.iter())
+        .map(|(turn, metric)| build_turn_analysis(turn, metric, max_context))
         .collect();
 
-    let content = SessionDetailViewModel {
-        session_id: session_id.clone(),
-        provider,
-        view_mode: ViewMode::Raw,
-        content: DetailContent::Raw { files: raw_files },
+    let content = SessionAnalysisViewModel {
+        header,
+        context_summary,
+        turns,
     };
 
-    CommandResultViewModel::new(content)
-        .with_badge(StatusBadge::info(format!("Raw files for {}", session_id)))
+    CommandResultViewModel::new(content).with_badge(StatusBadge::success("Session Analysis"))
 }
 
-pub fn present_session_events_json(
-    session_id: String,
-    provider: String,
-    events: serde_json::Value,
-) -> CommandResultViewModel<SessionDetailViewModel> {
-    let content = SessionDetailViewModel {
-        session_id: session_id.clone(),
-        provider,
-        view_mode: ViewMode::Json,
-        content: DetailContent::Events { events },
+fn build_context_summary(total_tokens: u32, max_context: Option<u32>) -> ContextWindowSummary {
+    let (usage_percent, usage_fraction, progress_bar, warning) = if let Some(max) = max_context {
+        let percent = (total_tokens as f64 / max as f64) * 100.0;
+        let bar_width = 40;
+        let filled = ((percent / 100.0) * bar_width as f64) as usize;
+        let filled = filled.min(bar_width);
+        let empty = bar_width - filled;
+
+        let bar = format!(
+            "[{}{}] {:.1}% Used ({} / {} limit)",
+            "█".repeat(filled),
+            "░".repeat(empty),
+            percent,
+            format_tokens(total_tokens as i64),
+            format_tokens(max as i64)
+        );
+
+        let warning = if percent > 90.0 {
+            Some("Warning: Context window nearly full".to_string())
+        } else {
+            None
+        };
+
+        (
+            format!("{:.1}%", percent),
+            format!(
+                "{} / {}",
+                format_tokens(total_tokens as i64),
+                format_tokens(max as i64)
+            ),
+            bar,
+            warning,
+        )
+    } else {
+        (
+            "N/A".to_string(),
+            format_tokens(total_tokens as i64),
+            format!("Total: {}", format_tokens(total_tokens as i64)),
+            None,
+        )
     };
 
-    CommandResultViewModel::new(content)
-        .with_badge(StatusBadge::success(format!("Events for {}", session_id)))
+    ContextWindowSummary {
+        progress_bar,
+        usage_percent,
+        usage_fraction,
+        warning,
+    }
 }
 
-pub fn present_session_compact(
-    session_id: String,
-    provider: String,
-    session_data: serde_json::Value,
-    enable_color: bool,
-    relative_time: bool,
-    truncate_text: Option<usize>,
-) -> CommandResultViewModel<SessionDetailViewModel> {
-    let content = SessionDetailViewModel {
-        session_id: session_id.clone(),
-        provider,
-        view_mode: ViewMode::Compact,
-        content: DetailContent::Session {
-            session: session_data,
-            options: DisplayOptions {
-                enable_color,
-                relative_time,
-                truncate_text,
+fn build_turn_analysis(
+    turn: &agtrace_engine::AgentTurn,
+    metric: &agtrace_engine::TurnMetrics,
+    max_context: Option<u32>,
+) -> TurnAnalysisViewModel {
+    let user_query = truncate_text(&turn.user.content.text, 80);
+
+    let prev_pct = if let Some(max) = max_context {
+        format!("{:.1}%", (metric.prev_total as f64 / max as f64) * 100.0)
+    } else {
+        format_tokens(metric.prev_total as i64)
+    };
+
+    let new_pct = if let Some(max) = max_context {
+        format!(
+            "{:.1}%",
+            ((metric.prev_total + metric.delta) as f64 / max as f64) * 100.0
+        )
+    } else {
+        format_tokens((metric.prev_total + metric.delta) as i64)
+    };
+
+    let context_transition = format!("{} -> {}", prev_pct, new_pct);
+
+    // Build steps from turn
+    let steps = turn
+        .steps
+        .iter()
+        .flat_map(|step| {
+            let mut result = Vec::new();
+
+            if let Some(ref reasoning) = step.reasoning {
+                result.push(AgentStepViewModel::Thinking {
+                    duration: None,
+                    preview: truncate_text(&reasoning.content.text, 60),
+                });
+            }
+
+            if !step.tools.is_empty() {
+                for tool in &step.tools {
+                    let name = tool.call.content.name().to_string();
+                    let args = truncate_text(
+                        &serde_json::to_string(&tool.call.content).unwrap_or_default(),
+                        40,
+                    );
+                    let is_error = tool
+                        .result
+                        .as_ref()
+                        .map(|r| r.content.is_error)
+                        .unwrap_or(false);
+                    let result_text = tool
+                        .result
+                        .as_ref()
+                        .map(|r| truncate_text(&r.content.output, 60))
+                        .unwrap_or_else(|| "(no result)".to_string());
+
+                    result.push(AgentStepViewModel::ToolCall {
+                        name,
+                        args,
+                        result: result_text,
+                        is_error,
+                    });
+                }
+            }
+
+            if let Some(ref message) = step.message {
+                result.push(AgentStepViewModel::Message {
+                    text: truncate_text(&message.content.text, 80),
+                });
+            }
+
+            result
+        })
+        .collect();
+
+    // Calculate metrics
+    let total_input: i64 = turn
+        .steps
+        .iter()
+        .filter_map(|s| s.usage.as_ref())
+        .map(|u| {
+            u.input_tokens as i64
+                + u.details
+                    .as_ref()
+                    .and_then(|d| d.cache_creation_input_tokens)
+                    .unwrap_or(0) as i64
+        })
+        .sum();
+
+    let total_output: i64 = turn
+        .steps
+        .iter()
+        .filter_map(|s| s.usage.as_ref())
+        .map(|u| u.output_tokens as i64)
+        .sum();
+
+    let cache_read_total: i64 = turn
+        .steps
+        .iter()
+        .filter_map(|s| s.usage.as_ref())
+        .filter_map(|u| u.details.as_ref())
+        .filter_map(|d| d.cache_read_input_tokens)
+        .map(|v| v as i64)
+        .sum();
+
+    TurnAnalysisViewModel {
+        turn_number: metric.turn_index + 1,
+        timestamp: turn.steps.first().map(|s| format_timestamp(s.timestamp)),
+        context_transition,
+        is_heavy_load: metric.is_heavy,
+        user_query,
+        steps,
+        metrics: ViewTurnMetrics {
+            total_delta: format!("+{}", format_tokens(metric.delta as i64)),
+            input: format_tokens(total_input),
+            output: format_tokens(total_output),
+            cache_read: if cache_read_total > 0 {
+                Some(format_tokens(cache_read_total))
+            } else {
+                None
             },
         },
-    };
+    }
+}
 
-    CommandResultViewModel::new(content)
-        .with_badge(StatusBadge::success(format!("Session {}", session_id)))
-        .with_suggestion(
-            Guidance::new("View detailed timeline")
-                .with_command(format!("agtrace session show {} --verbose", session_id)),
-        )
+fn compute_duration(session: &AgentSession) -> Option<String> {
+    let start = session.turns.first()?.steps.first()?.timestamp;
+    let end = session.turns.last()?.steps.last()?.timestamp;
+    let duration = end.signed_duration_since(start);
+
+    let minutes = duration.num_minutes();
+    let seconds = duration.num_seconds() % 60;
+
+    if minutes > 0 {
+        Some(format!("{}m {}s", minutes, seconds))
+    } else {
+        Some(format!("{}s", seconds))
+    }
+}
+
+fn format_timestamp(ts: chrono::DateTime<chrono::Utc>) -> String {
+    ts.with_timezone(&chrono::Local)
+        .format("%H:%M:%S")
+        .to_string()
+}
+
+fn format_tokens(count: i64) -> String {
+    if count >= 1_000_000 {
+        format!("{:.1}M", count as f64 / 1_000_000.0)
+    } else if count >= 1_000 {
+        format!("{:.1}k", count as f64 / 1_000.0)
+    } else {
+        count.to_string()
+    }
+}
+
+fn truncate_text(text: &str, max_len: usize) -> String {
+    if text.chars().count() <= max_len {
+        text.to_string()
+    } else {
+        let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
+        format!("{}...", truncated)
+    }
 }

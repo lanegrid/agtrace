@@ -325,27 +325,12 @@ pub enum SessionCommand {
         no_auto_refresh: bool,
     },
 
-    #[command(about = "Display detailed session timeline and events")]
+    #[command(about = "Display session analysis with context usage and turn metrics")]
     Show {
         session_id: String,
 
-        #[arg(long)]
-        raw: bool,
-
-        #[arg(long)]
+        #[arg(long, help = "Output as JSON")]
         json: bool,
-
-        #[arg(long, value_delimiter = ',')]
-        hide: Option<Vec<String>>,
-
-        #[arg(long, value_delimiter = ',')]
-        only: Option<Vec<String>>,
-
-        #[arg(long, help = "Truncate long text to ~100 chars for compact display")]
-        short: bool,
-
-        #[arg(long, help = "Show detailed timeline view instead of compact summary")]
-        verbose: bool,
     },
 }
 
