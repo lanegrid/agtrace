@@ -26,9 +26,35 @@ impl ProjectOps {
     }
 
     pub fn list(&self) -> Result<Vec<ProjectInfo>> {
+        self.ensure_index_is_fresh()?;
+
         let db = self.db.lock().unwrap();
         let service = ProjectService::new(&db);
         service.list_projects()
+    }
+
+    fn ensure_index_is_fresh(&self) -> Result<()> {
+        let db = self.db.lock().unwrap();
+
+        let providers: Vec<(ProviderAdapter, PathBuf)> = self
+            .provider_configs
+            .iter()
+            .filter_map(|(name, path)| {
+                agtrace_providers::create_adapter(name)
+                    .ok()
+                    .map(|p| (p, path.clone()))
+            })
+            .collect();
+
+        let service = IndexService::new(&db, providers);
+        let scan_context = ScanContext {
+            project_hash: "unknown".to_string(),
+            project_root: None,
+        };
+
+        service.run(&scan_context, false, |_progress: IndexProgress| {})?;
+
+        Ok(())
     }
 
     pub fn scan<F>(

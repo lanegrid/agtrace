@@ -82,7 +82,7 @@ impl AgTrace {
     }
 
     pub fn insights(&self) -> InsightOps {
-        InsightOps::new(self.db.clone())
+        InsightOps::new(self.db.clone(), self.provider_configs.clone())
     }
 
     pub fn watch_service(&self) -> WatchService {
