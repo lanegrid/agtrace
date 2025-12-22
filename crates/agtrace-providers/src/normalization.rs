@@ -141,7 +141,7 @@ mod tests {
                 provider_call_id,
             } => {
                 assert_eq!(name, "Bash");
-                assert_eq!(arguments.command, "ls -la");
+                assert_eq!(arguments.command, Some("ls -la".to_string()));
                 assert_eq!(provider_call_id, Some("call_456".to_string()));
             }
             _ => panic!("Expected Execute variant"),
@@ -163,7 +163,11 @@ mod tests {
                 provider_call_id,
             } => {
                 assert_eq!(name, "mcp__o3__search");
-                assert_eq!(arguments.full_name(), "mcp__o3__search");
+                // McpArgs wraps raw JSON, verify it contains the query
+                assert_eq!(
+                    arguments.inner.get("query").and_then(|v| v.as_str()),
+                    Some("test")
+                );
                 assert_eq!(provider_call_id, Some("call_789".to_string()));
             }
             _ => panic!("Expected Mcp variant"),
@@ -194,19 +198,26 @@ mod tests {
 
     #[test]
     fn test_normalize_invalid_arguments_fallback() {
-        // FileRead expects file_path, but we provide invalid args
+        // FileReadArgs has `extra: Value` field, so it accepts any fields
+        // This test verifies that invalid fields are captured in `extra`
         let payload = normalize_tool_call(
             "Read".to_string(),
             json!({"invalid_field": 123}),
             Some("call_000".to_string()),
         );
 
-        // Should fall back to Generic when args don't match expected schema
+        // Should parse as FileRead with invalid field in `extra`
         match payload {
-            ToolCallPayload::Generic { name, .. } => {
+            ToolCallPayload::FileRead {
+                name, arguments, ..
+            } => {
                 assert_eq!(name, "Read");
+                assert_eq!(arguments.file_path, None);
+                assert_eq!(arguments.path, None);
+                assert_eq!(arguments.pattern, None);
+                assert_eq!(arguments.extra.get("invalid_field"), Some(&json!(123)));
             }
-            _ => panic!("Expected Generic variant for invalid arguments"),
+            _ => panic!("Expected FileRead variant, got: {:?}", payload.kind()),
         }
     }
 }

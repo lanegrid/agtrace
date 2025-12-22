@@ -243,7 +243,8 @@ expression: json_pretty
   "content": {
     "name": "apply_patch",
     "arguments": {
-      "raw": "*** Begin Patch\n*** Add File: myapp/hoge.py\n+print(1 + 1)\n*** End Patch"
+      "file_path": "myapp/hoge.py",
+      "content": "*** Begin Patch\n*** Add File: myapp/hoge.py\n+print(1 + 1)\n*** End Patch"
     },
     "provider_call_id": "call_pBXH93fl6ZXH2svDOFIlr8GA"
   },

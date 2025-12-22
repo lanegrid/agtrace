@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
+use crate::codex::tools::{ApplyPatchArgs, PatchOperation};
 use crate::normalization::normalize_tool_call;
 
 /// Regex for extracting exit codes from Codex output
@@ -42,6 +43,67 @@ fn attach_model_metadata(
             Some(serde_json::Value::Object(map))
         }
     }
+}
+
+/// Normalize Codex-specific tool calls
+///
+/// Handles provider-specific tools like apply_patch before falling back to generic normalization.
+fn normalize_codex_tool_call(
+    tool_name: String,
+    arguments: serde_json::Value,
+    provider_call_id: Option<String>,
+) -> ToolCallPayload {
+    // Handle Codex-specific tools
+    match tool_name.as_str() {
+        "apply_patch" => {
+            // Try to parse as ApplyPatchArgs
+            if let Ok(patch_args) = serde_json::from_value::<ApplyPatchArgs>(arguments.clone()) {
+                // Parse the patch structure
+                match patch_args.parse() {
+                    Ok(parsed) => {
+                        // Map to FileWrite (Add) or FileEdit (Update) based on operation
+                        match parsed.operation {
+                            PatchOperation::Add => {
+                                // New file creation → FileWrite
+                                return ToolCallPayload::FileWrite {
+                                    name: tool_name,
+                                    arguments: FileWriteArgs {
+                                        file_path: parsed.file_path,
+                                        content: parsed.raw_patch,
+                                    },
+                                    provider_call_id,
+                                };
+                            }
+                            PatchOperation::Update => {
+                                // File modification → FileEdit
+                                // Note: For patches, we store the raw patch in old_string/new_string
+                                // as a placeholder. The actual diff is in the raw patch.
+                                return ToolCallPayload::FileEdit {
+                                    name: tool_name,
+                                    arguments: FileEditArgs {
+                                        file_path: parsed.file_path,
+                                        old_string: String::new(), // Placeholder: actual diff in raw patch
+                                        new_string: parsed.raw_patch.clone(),
+                                        replace_all: false,
+                                    },
+                                    provider_call_id,
+                                };
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        // Parsing failed, fall back to generic
+                    }
+                }
+            }
+        }
+        _ => {
+            // Not a Codex-specific tool, use generic normalization
+        }
+    }
+
+    // Fallback to generic normalization
+    normalize_tool_call(tool_name, arguments, provider_call_id)
 }
 
 /// Normalize Codex session records to events
@@ -206,7 +268,7 @@ pub(crate) fn normalize_codex_session(
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
-                            EventPayload::ToolCall(normalize_tool_call(
+                            EventPayload::ToolCall(normalize_codex_tool_call(
                                 func_call.name.clone(),
                                 arguments,
                                 Some(func_call.call_id.clone()),
@@ -250,7 +312,7 @@ pub(crate) fn normalize_codex_session(
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
-                            EventPayload::ToolCall(normalize_tool_call(
+                            EventPayload::ToolCall(normalize_codex_tool_call(
                                 tool_call.name.clone(),
                                 arguments,
                                 Some(tool_call.call_id.clone()),
@@ -405,5 +467,74 @@ mod tests {
             },
         ];
         assert_eq!(extract_message_text(&content), "Hello\nWorld");
+    }
+
+    #[test]
+    fn test_normalize_apply_patch_update_file() {
+        let raw_patch = r#"*** Begin Patch
+*** Update File: test.rs
+@@
+-old line
++new line
+*** End Patch"#;
+
+        let arguments = serde_json::json!({
+            "raw": raw_patch
+        });
+
+        let payload = normalize_codex_tool_call(
+            "apply_patch".to_string(),
+            arguments,
+            Some("call_123".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileEdit {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "apply_patch");
+                assert_eq!(arguments.file_path, "test.rs");
+                assert_eq!(provider_call_id, Some("call_123".to_string()));
+                // raw patch is stored in new_string
+                assert!(arguments.new_string.contains("*** Update File"));
+            }
+            _ => panic!("Expected FileEdit variant for Update File"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_apply_patch_add_file() {
+        let raw_patch = r#"*** Begin Patch
+*** Add File: docs/new_file.md
++# New File
++Content here
+*** End Patch"#;
+
+        let arguments = serde_json::json!({
+            "raw": raw_patch
+        });
+
+        let payload = normalize_codex_tool_call(
+            "apply_patch".to_string(),
+            arguments,
+            Some("call_456".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileWrite {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "apply_patch");
+                assert_eq!(arguments.file_path, "docs/new_file.md");
+                assert_eq!(provider_call_id, Some("call_456".to_string()));
+                // raw patch is stored in content
+                assert!(arguments.content.contains("*** Add File"));
+            }
+            _ => panic!("Expected FileWrite variant for Add File"),
+        }
     }
 }
