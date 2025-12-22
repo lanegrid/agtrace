@@ -7,8 +7,7 @@ pub mod traits;
 
 // Re-export new trait-based types for public use
 pub use traits::{
-    LogProvider as DiscoveryTrait, ProbeResult, ProviderAdapter, SessionIndex,
-    SessionParser as ParserTrait, ToolMapper as MapperTrait,
+    LogDiscovery, ProbeResult, ProviderAdapter, SessionIndex, SessionParser, ToolMapper,
 };
 
 // Provider implementations (internal modules)

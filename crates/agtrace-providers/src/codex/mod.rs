@@ -24,7 +24,7 @@ pub use self::io::{
 /// Codex discovery and lifecycle management
 pub struct CodexDiscovery;
 
-impl crate::traits::LogProvider for CodexDiscovery {
+impl crate::traits::LogDiscovery for CodexDiscovery {
     fn id(&self) -> &'static str {
         "codex"
     }
@@ -156,9 +156,12 @@ impl crate::traits::ToolMapper for CodexToolMapper {
     }
 }
 
-// --- Backward-compatible provider ---
+// --- Backward-compatible provider (Facade pattern) ---
 
-pub struct CodexProvider;
+/// Backward-compatible facade that delegates to new trait-based architecture
+pub struct CodexProvider {
+    adapter: crate::traits::ProviderAdapter,
+}
 
 impl Default for CodexProvider {
     fn default() -> Self {
@@ -168,35 +171,23 @@ impl Default for CodexProvider {
 
 impl CodexProvider {
     pub fn new() -> Self {
-        Self
+        Self {
+            adapter: crate::traits::ProviderAdapter::codex(),
+        }
     }
 }
 
 impl LogProvider for CodexProvider {
     fn name(&self) -> &str {
-        "codex"
+        self.adapter.discovery.id()
     }
 
     fn can_handle(&self, path: &Path) -> bool {
-        if !path.is_file() {
-            return false;
-        }
-
-        // Skip empty files
-        if let Ok(metadata) = std::fs::metadata(path) {
-            if metadata.len() == 0 {
-                return false;
-            }
-        }
-
-        let is_jsonl = path.extension().is_some_and(|e| e == "jsonl");
-        let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
-
-        is_jsonl && filename.starts_with("rollout-") && !is_empty_codex_session(path)
+        self.adapter.discovery.probe(path).is_match()
     }
 
     fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
-        normalize_codex_file(path)
+        self.adapter.parser.parse_file(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
@@ -277,49 +268,31 @@ impl LogProvider for CodexProvider {
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
-        let mut matching_files = Vec::new();
-
-        // Codex stores sessions as rollout-*.jsonl files in date-based directories
-        // Performance: Typical ~5ms for directory scan
-        for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path();
-
-            // Quick filter: must be a rollout-*.jsonl file
-            if !self.can_handle(path) {
-                continue;
-            }
-
-            // Extract session_id from file header
-            if let Ok(header) = extract_codex_header(path) {
-                if header.session_id.as_deref() == Some(session_id) {
-                    matching_files.push(path.to_path_buf());
-                }
-            }
-        }
-
-        Ok(matching_files)
+        self.adapter
+            .discovery
+            .find_session_files(log_root, session_id)
     }
 
     fn extract_session_id(&self, path: &Path) -> Result<String> {
-        let header = extract_codex_header(path)?;
-        header
-            .session_id
-            .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+        self.adapter.discovery.extract_session_id(path)
     }
 
     fn classify_tool(
         &self,
         tool_name: &str,
     ) -> Option<(agtrace_types::ToolOrigin, agtrace_types::ToolKind)> {
-        tool_mapping::classify_tool(tool_name)
+        // Use adapter's mapper for classification
+        let (origin, kind) = self.adapter.mapper.classify(tool_name);
+        Some((origin, kind))
     }
 
     fn extract_summary(
         &self,
-        tool_name: &str,
+        _tool_name: &str,
         kind: agtrace_types::ToolKind,
         arguments: &serde_json::Value,
     ) -> Option<String> {
-        tool_mapping::extract_summary(tool_name, kind, arguments)
+        // Use adapter's mapper for summary extraction
+        Some(self.adapter.mapper.summarize(kind, arguments))
     }
 }

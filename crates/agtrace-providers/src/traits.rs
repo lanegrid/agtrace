@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 /// - Identify provider from file paths/patterns
 /// - Locate session files on filesystem
 /// - Extract session metadata
-pub trait LogProvider: Send + Sync {
+pub trait LogDiscovery: Send + Sync {
     /// Unique provider ID (e.g., "claude", "codex", "gemini")
     fn id(&self) -> &'static str;
 
@@ -119,14 +119,14 @@ pub struct SessionIndex {
 /// This provides a unified interface for working with provider functionality
 /// while maintaining clean separation of concerns internally.
 pub struct ProviderAdapter {
-    pub discovery: Box<dyn LogProvider>,
+    pub discovery: Box<dyn LogDiscovery>,
     pub parser: Box<dyn SessionParser>,
     pub mapper: Box<dyn ToolMapper>,
 }
 
 impl ProviderAdapter {
     pub fn new(
-        discovery: Box<dyn LogProvider>,
+        discovery: Box<dyn LogDiscovery>,
         parser: Box<dyn SessionParser>,
         mapper: Box<dyn ToolMapper>,
     ) -> Self {

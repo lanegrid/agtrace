@@ -26,7 +26,7 @@ pub use self::io::{
 /// Gemini discovery and lifecycle management
 pub struct GeminiDiscovery;
 
-impl crate::traits::LogProvider for GeminiDiscovery {
+impl crate::traits::LogDiscovery for GeminiDiscovery {
     fn id(&self) -> &'static str {
         "gemini"
     }
@@ -165,9 +165,12 @@ impl crate::traits::ToolMapper for GeminiToolMapper {
     }
 }
 
-// --- Backward-compatible provider ---
+// --- Backward-compatible provider (Facade pattern) ---
 
-pub struct GeminiProvider;
+/// Backward-compatible facade that delegates to new trait-based architecture
+pub struct GeminiProvider {
+    adapter: crate::traits::ProviderAdapter,
+}
 
 impl Default for GeminiProvider {
     fn default() -> Self {
@@ -177,34 +180,23 @@ impl Default for GeminiProvider {
 
 impl GeminiProvider {
     pub fn new() -> Self {
-        Self
+        Self {
+            adapter: crate::traits::ProviderAdapter::gemini(),
+        }
     }
 }
 
 impl LogProvider for GeminiProvider {
     fn name(&self) -> &str {
-        "gemini"
+        self.adapter.discovery.id()
     }
 
     fn can_handle(&self, path: &Path) -> bool {
-        if !path.is_file() {
-            return false;
-        }
-
-        // Skip empty files
-        if let Ok(metadata) = std::fs::metadata(path) {
-            if metadata.len() == 0 {
-                return false;
-            }
-        }
-
-        let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
-        // Only handle session-*.json files, skip logs.json (metadata file, not conversation data)
-        filename.starts_with("session-") && filename.ends_with(".json")
+        self.adapter.discovery.probe(path).is_match()
     }
 
     fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
-        normalize_gemini_file(path)
+        self.adapter.parser.parse_file(path)
     }
 
     fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
@@ -326,53 +318,31 @@ impl LogProvider for GeminiProvider {
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
-        let mut matching_files = Vec::new();
-
-        // Gemini stores sessions as session-*.json files in project hash directories
-        // Performance: Typical ~5ms for directory scan
-        for entry in WalkDir::new(log_root)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-
-            // Quick filter: must be a session-*.json file
-            if !self.can_handle(path) {
-                continue;
-            }
-
-            // Extract session_id from file header
-            if let Ok(header) = extract_gemini_header(path) {
-                if header.session_id.as_deref() == Some(session_id) {
-                    matching_files.push(path.to_path_buf());
-                }
-            }
-        }
-
-        Ok(matching_files)
+        self.adapter
+            .discovery
+            .find_session_files(log_root, session_id)
     }
 
     fn extract_session_id(&self, path: &Path) -> Result<String> {
-        let header = extract_gemini_header(path)?;
-        header
-            .session_id
-            .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+        self.adapter.discovery.extract_session_id(path)
     }
 
     fn classify_tool(
         &self,
         tool_name: &str,
     ) -> Option<(agtrace_types::ToolOrigin, agtrace_types::ToolKind)> {
-        tool_mapping::classify_tool(tool_name)
+        // Use adapter's mapper for classification
+        let (origin, kind) = self.adapter.mapper.classify(tool_name);
+        Some((origin, kind))
     }
 
     fn extract_summary(
         &self,
-        tool_name: &str,
+        _tool_name: &str,
         kind: agtrace_types::ToolKind,
         arguments: &serde_json::Value,
     ) -> Option<String> {
-        tool_mapping::extract_summary(tool_name, kind, arguments)
+        // Use adapter's mapper for summary extraction
+        Some(self.adapter.mapper.summarize(kind, arguments))
     }
 }
