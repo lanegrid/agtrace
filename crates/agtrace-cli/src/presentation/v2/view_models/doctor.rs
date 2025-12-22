@@ -1,18 +1,18 @@
 use serde::Serialize;
 use std::collections::HashMap;
-
-use crate::presentation::v2::renderers::ConsolePresentable;
+use std::fmt;
 
 #[derive(Debug, Serialize)]
 pub struct DiagnoseResultsViewModel {
     pub results: Vec<DiagnoseResultViewModel>,
 }
 
-impl ConsolePresentable for DiagnoseResultsViewModel {
-    fn render_console(&self) {
+impl fmt::Display for DiagnoseResultsViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for result in &self.results {
-            result.render_console();
+            write!(f, "{}", result)?;
         }
+        Ok(())
     }
 }
 
@@ -30,28 +30,31 @@ pub struct FailureExample {
     pub reason: String,
 }
 
-impl DiagnoseResultViewModel {
-    fn render_console(&self) {
-        println!("\nProvider: {}", self.provider_name);
-        println!(
+impl fmt::Display for DiagnoseResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "\nProvider: {}", self.provider_name)?;
+        writeln!(
+            f,
             "  Files analyzed: {} ({} successful, {} failed)",
             self.total_files,
             self.successful,
             self.failures.values().map(|v| v.len()).sum::<usize>()
-        );
+        )?;
 
         if !self.failures.is_empty() {
-            println!("\n  Failures by reason:");
+            writeln!(f, "\n  Failures by reason:")?;
             for (reason, examples) in &self.failures {
-                println!("    • {} ({} files)", reason, examples.len());
+                writeln!(f, "    • {} ({} files)", reason, examples.len())?;
                 for (i, example) in examples.iter().take(3).enumerate() {
-                    println!("      [{}] {}", i + 1, example.path);
+                    writeln!(f, "      [{}] {}", i + 1, example.path)?;
                 }
                 if examples.len() > 3 {
-                    println!("      ... and {} more", examples.len() - 3);
+                    writeln!(f, "      ... and {} more", examples.len() - 3)?;
                 }
             }
         }
+
+        Ok(())
     }
 }
 
@@ -71,22 +74,24 @@ pub enum CheckStatus {
     Failure,
 }
 
-impl ConsolePresentable for DoctorCheckResultViewModel {
-    fn render_console(&self) {
-        println!("File: {}", self.file_path);
-        println!("Provider: {}", self.provider_name);
+impl fmt::Display for DoctorCheckResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "File: {}", self.file_path)?;
+        writeln!(f, "Provider: {}", self.provider_name)?;
         match self.status {
             CheckStatus::Success => {
-                println!("Status: ✓ Valid");
-                println!("Events parsed: {}", self.event_count);
+                writeln!(f, "Status: ✓ Valid")?;
+                writeln!(f, "Events parsed: {}", self.event_count)?;
             }
             CheckStatus::Failure => {
-                println!("Status: ✗ Failed");
+                writeln!(f, "Status: ✗ Failed")?;
                 if let Some(err) = &self.error_message {
-                    println!("Error: {}", err);
+                    writeln!(f, "Error: {}", err)?;
                 }
             }
         }
+
+        Ok(())
     }
 }
 
@@ -104,20 +109,23 @@ pub struct InspectLine {
     pub content: String,
 }
 
-impl ConsolePresentable for InspectResultViewModel {
-    fn render_console(&self) {
-        println!("File: {}", self.file_path);
-        println!(
+impl fmt::Display for InspectResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "File: {}", self.file_path)?;
+        writeln!(
+            f,
             "Lines: 1-{} (total: {} lines)",
             self.shown_lines.min(self.total_lines),
             self.total_lines
-        );
-        println!("{}", "─".repeat(40));
+        )?;
+        writeln!(f, "{}", "─".repeat(40))?;
 
         for line in &self.lines {
-            println!("{:>6}  {}", line.number, line.content);
+            writeln!(f, "{:>6}  {}", line.number, line.content)?;
         }
 
-        println!("{}", "─".repeat(40));
+        writeln!(f, "{}", "─".repeat(40))?;
+
+        Ok(())
     }
 }

@@ -1,6 +1,5 @@
 use serde::Serialize;
-
-use crate::presentation::v2::renderers::ConsolePresentable;
+use std::fmt;
 
 #[derive(Debug, Serialize)]
 pub struct SessionListViewModel {
@@ -26,20 +25,20 @@ pub struct FilterSummary {
     pub limit: usize,
 }
 
-impl ConsolePresentable for SessionListViewModel {
-    fn render_console(&self) {
+impl fmt::Display for SessionListViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::formatters::session_list::SessionEntry;
         use crate::presentation::formatters::SessionListView;
 
         if self.sessions.is_empty() {
-            println!("No sessions found.");
+            writeln!(f, "No sessions found.")?;
             if let Some(ref project) = self.applied_filters.project_filter {
-                println!("Project filter: {}", project);
+                writeln!(f, "Project filter: {}", project)?;
             }
             if let Some(ref source) = self.applied_filters.source_filter {
-                println!("Source filter: {}", source);
+                writeln!(f, "Source filter: {}", source)?;
             }
-            return;
+            return Ok(());
         }
 
         let entries: Vec<SessionEntry> = self
@@ -53,24 +52,26 @@ impl ConsolePresentable for SessionListViewModel {
             })
             .collect();
 
-        print!("{}", SessionListView::from_entries(entries));
+        write!(f, "{}", SessionListView::from_entries(entries))?;
 
         if self.applied_filters.project_filter.is_some()
             || self.applied_filters.source_filter.is_some()
             || self.applied_filters.time_range.is_some()
         {
-            println!();
-            println!("Filters applied:");
+            writeln!(f)?;
+            writeln!(f, "Filters applied:")?;
             if let Some(ref project) = self.applied_filters.project_filter {
-                println!("  Project: {}", project);
+                writeln!(f, "  Project: {}", project)?;
             }
             if let Some(ref source) = self.applied_filters.source_filter {
-                println!("  Source: {}", source);
+                writeln!(f, "  Source: {}", source)?;
             }
             if let Some(ref range) = self.applied_filters.time_range {
-                println!("  Time range: {}", range);
+                writeln!(f, "  Time range: {}", range)?;
             }
         }
+
+        Ok(())
     }
 }
 
@@ -119,25 +120,25 @@ pub struct DisplayOptions {
     pub truncate_text: Option<usize>,
 }
 
-impl ConsolePresentable for SessionDetailViewModel {
-    fn render_console(&self) {
+impl fmt::Display for SessionDetailViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::view_models::RawFileContent;
 
         match &self.content {
             DetailContent::Raw { files } => {
                 let raw_files: Vec<RawFileContent> = files
                     .iter()
-                    .map(|f| RawFileContent {
-                        path: f.path.clone(),
-                        content: f.content.clone(),
+                    .map(|file| RawFileContent {
+                        path: file.path.clone(),
+                        content: file.content.clone(),
                     })
                     .collect();
                 for file in raw_files {
-                    println!("{}", file.content);
+                    writeln!(f, "{}", file.content)?;
                 }
             }
             DetailContent::Events { events } => {
-                println!("{}", serde_json::to_string_pretty(events).unwrap());
+                writeln!(f, "{}", serde_json::to_string_pretty(events).unwrap())?;
             }
             DetailContent::Session {
                 session: _,
@@ -145,12 +146,15 @@ impl ConsolePresentable for SessionDetailViewModel {
             } => {
                 // For now, delegate to the v1 rendering
                 // In a full v2 migration, we'd rewrite CompactSessionView to use v2 types
-                println!(
+                writeln!(
+                    f,
                     "Session detail rendering (compact mode) - session_id: {}",
                     self.session_id
-                );
-                println!("View v1 implementation for full rendering");
+                )?;
+                writeln!(f, "View v1 implementation for full rendering")?;
             }
         }
+
+        Ok(())
     }
 }

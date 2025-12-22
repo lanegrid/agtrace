@@ -33,9 +33,7 @@ fn test_session_show_filtering() {
 
     assert!(!sessions.is_empty(), "Expected at least one session");
 
-    let session_id = sessions[0]["id"]
-        .as_str()
-        .expect("Expected session id");
+    let session_id = sessions[0]["id"].as_str().expect("Expected session id");
 
     let mut cmd = fixture.command();
     let output = cmd

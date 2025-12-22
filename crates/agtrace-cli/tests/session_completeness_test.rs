@@ -49,9 +49,7 @@ fn test_session_includes_all_files_main_and_sidechain() {
 
     assert!(!sessions.is_empty(), "Expected at least one session");
 
-    let session_id = sessions[0]["id"]
-        .as_str()
-        .expect("Expected session id");
+    let session_id = sessions[0]["id"].as_str().expect("Expected session id");
 
     // Show session events in JSON format
     let mut cmd = fixture.command();

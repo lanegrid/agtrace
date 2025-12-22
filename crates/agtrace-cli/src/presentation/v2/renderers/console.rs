@@ -1,8 +1,9 @@
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use serde::Serialize;
+use std::fmt::Display;
 
-use super::traits::{ConsolePresentable, Renderer};
+use super::traits::Renderer;
 use crate::presentation::v2::view_models::CommandResultViewModel;
 
 pub struct ConsoleRenderer {
@@ -18,7 +19,7 @@ impl ConsoleRenderer {
 impl Renderer for ConsoleRenderer {
     fn render<T>(&self, result: CommandResultViewModel<T>) -> Result<()>
     where
-        T: Serialize + ConsolePresentable + Send + Sync,
+        T: Serialize + Display + Send + Sync,
     {
         if self.json_mode {
             println!("{}", serde_json::to_string_pretty(&result)?);
@@ -30,7 +31,7 @@ impl Renderer for ConsoleRenderer {
             println!();
         }
 
-        result.content.render_console();
+        print!("{}", result.content);
 
         if !result.suggestions.is_empty() {
             println!("\n{}", "💡 Tips:".yellow().bold());

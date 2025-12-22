@@ -1,7 +1,6 @@
 use serde::Serialize;
+use std::fmt;
 use std::path::PathBuf;
-
-use crate::presentation::v2::renderers::ConsolePresentable;
 
 #[derive(Debug, Serialize)]
 pub struct ProviderListViewModel {
@@ -15,24 +14,27 @@ pub struct ProviderEntry {
     pub log_root: PathBuf,
 }
 
-impl ConsolePresentable for ProviderListViewModel {
-    fn render_console(&self) {
+impl fmt::Display for ProviderListViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.providers.is_empty() {
-            println!("No providers configured.");
-            return;
+            writeln!(f, "No providers configured.")?;
+            return Ok(());
         }
 
-        println!("{:<15} {:<10} LOG_ROOT", "PROVIDER", "ENABLED");
-        println!("{}", "-".repeat(80));
+        writeln!(f, "{:<15} {:<10} LOG_ROOT", "PROVIDER", "ENABLED")?;
+        writeln!(f, "{}", "-".repeat(80))?;
 
         for provider in &self.providers {
-            println!(
+            writeln!(
+                f,
                 "{:<15} {:<10} {}",
                 provider.name,
                 if provider.enabled { "yes" } else { "no" },
                 provider.log_root.display()
-            );
+            )?;
         }
+
+        Ok(())
     }
 }
 
@@ -41,17 +43,19 @@ pub struct ProviderDetectedViewModel {
     pub providers: Vec<ProviderEntry>,
 }
 
-impl ConsolePresentable for ProviderDetectedViewModel {
-    fn render_console(&self) {
+impl fmt::Display for ProviderDetectedViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.providers.is_empty() {
-            println!("No providers detected.");
-            return;
+            writeln!(f, "No providers detected.")?;
+            return Ok(());
         }
 
-        println!("Detected {} provider(s):", self.providers.len());
+        writeln!(f, "Detected {} provider(s):", self.providers.len())?;
         for provider in &self.providers {
-            println!("  {} -> {}", provider.name, provider.log_root.display());
+            writeln!(f, "  {} -> {}", provider.name, provider.log_root.display())?;
         }
+
+        Ok(())
     }
 }
 
@@ -62,13 +66,14 @@ pub struct ProviderSetViewModel {
     pub log_root: PathBuf,
 }
 
-impl ConsolePresentable for ProviderSetViewModel {
-    fn render_console(&self) {
-        println!(
+impl fmt::Display for ProviderSetViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(
+            f,
             "Set provider '{}': enabled={}, log_root={}",
             self.provider,
             self.enabled,
             self.log_root.display()
-        );
+        )
     }
 }

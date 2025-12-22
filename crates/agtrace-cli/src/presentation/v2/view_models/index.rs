@@ -1,6 +1,5 @@
 use serde::Serialize;
-
-use crate::presentation::v2::renderers::ConsolePresentable;
+use std::fmt;
 
 #[derive(Debug, Serialize)]
 pub struct IndexResultViewModel {
@@ -17,28 +16,32 @@ pub enum IndexMode {
     Rebuild,
 }
 
-impl ConsolePresentable for IndexResultViewModel {
-    fn render_console(&self) {
+impl fmt::Display for IndexResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Progress events are already printed during scanning
         // This is the final summary
         match self.mode {
             IndexMode::Update => {
                 if self.total_sessions > 0 {
-                    println!(
+                    writeln!(
+                        f,
                         "\nIndexed {} session(s) ({} files scanned, {} skipped)",
                         self.total_sessions, self.scanned_files, self.skipped_files
-                    );
+                    )?;
                 } else {
-                    println!("\nNo new sessions found.");
+                    writeln!(f, "\nNo new sessions found.")?;
                 }
             }
             IndexMode::Rebuild => {
-                println!(
+                writeln!(
+                    f,
                     "\nRebuilt index: {} session(s) ({} files scanned)",
                     self.total_sessions, self.scanned_files
-                );
+                )?;
             }
         }
+
+        Ok(())
     }
 }
 
@@ -47,8 +50,9 @@ pub struct VacuumResultViewModel {
     pub success: bool,
 }
 
-impl ConsolePresentable for VacuumResultViewModel {
-    fn render_console(&self) {
+impl fmt::Display for VacuumResultViewModel {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
         // Badge already shows "Database optimized", no need to print duplicate message
+        Ok(())
     }
 }
