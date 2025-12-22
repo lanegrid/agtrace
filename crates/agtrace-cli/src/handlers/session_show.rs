@@ -18,7 +18,8 @@ pub fn handle(workspace: &AgTrace, session_id: String, json: bool) -> Result<()>
 
     // Use a default model name for now
     // TODO: Extract actual model from session metadata or provider-specific data
-    let model_name = "Claude 3.5 Sonnet".to_string();
+    let model_name_display = "Claude 3.5 Sonnet".to_string();
+    let model_name_key = "claude-sonnet-4-5".to_string(); // For token limit lookup
 
     // Get provider from database by looking up session
     let filter = SessionFilter::default();
@@ -31,12 +32,12 @@ pub fn handle(workspace: &AgTrace, session_id: String, json: bool) -> Result<()>
 
     let token_limits = TokenLimits::new();
     let max_context = token_limits
-        .get_limit(&model_name)
+        .get_limit(&model_name_key)
         .map(|spec| spec.effective_limit() as u32);
 
     // Present session analysis with provider and model info
     let result =
-        presenters::present_session_analysis(&session, &provider, &model_name, max_context);
+        presenters::present_session_analysis(&session, &provider, &model_name_display, max_context);
 
     // Render output
     let renderer = ConsoleRenderer::new(json);

@@ -1,7 +1,7 @@
 use crate::presentation::v2::view_models::{
-    AgentStepViewModel, CommandResultViewModel, ContextWindowSummary, FilterSummary, Guidance,
-    SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel, StatusBadge,
-    TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
+    AgentStepViewModel, CommandResultViewModel, ContextUsage, ContextWindowSummary, FilterSummary,
+    Guidance, SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel,
+    StatusBadge, TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
 };
 use agtrace_engine::AgentSession;
 use agtrace_index::SessionSummary;
@@ -193,6 +193,17 @@ fn build_turn_analysis(
 
     let context_transition = format!("{} -> {}", prev_pct, new_pct);
 
+    // Build context usage data (only if max_context is known)
+    let context_usage = max_context.map(|max| {
+        let current_tokens = metric.prev_total + metric.delta;
+        let percentage = (current_tokens as f64 / max as f64) * 100.0;
+        ContextUsage {
+            current_tokens,
+            max_tokens: max,
+            percentage,
+        }
+    });
+
     // Build steps from turn
     let steps = turn
         .steps
@@ -208,29 +219,10 @@ fn build_turn_analysis(
             }
 
             if !step.tools.is_empty() {
-                for tool in &step.tools {
-                    let name = tool.call.content.name().to_string();
-                    let args = truncate_text(
-                        &serde_json::to_string(&tool.call.content).unwrap_or_default(),
-                        40,
-                    );
-                    let is_error = tool
-                        .result
-                        .as_ref()
-                        .map(|r| r.content.is_error)
-                        .unwrap_or(false);
-                    let result_text = tool
-                        .result
-                        .as_ref()
-                        .map(|r| truncate_text(&r.content.output, 60))
-                        .unwrap_or_else(|| "(no result)".to_string());
-
-                    result.push(AgentStepViewModel::ToolCall {
-                        name,
-                        args,
-                        result: result_text,
-                        is_error,
-                    });
+                // Group consecutive tool calls with the same name
+                let grouped_tools = group_consecutive_tools(&step.tools);
+                for group in grouped_tools {
+                    result.extend(group);
                 }
             }
 
@@ -278,6 +270,7 @@ fn build_turn_analysis(
         turn_number: metric.turn_index + 1,
         timestamp: turn.steps.first().map(|s| format_timestamp(s.timestamp)),
         context_transition,
+        context_usage,
         is_heavy_load: metric.is_heavy,
         user_query,
         steps,
@@ -331,5 +324,148 @@ fn truncate_text(text: &str, max_len: usize) -> String {
     } else {
         let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
         format!("{}...", truncated)
+    }
+}
+
+fn format_tool_args(tool_call: &agtrace_types::ToolCallPayload) -> String {
+    use agtrace_types::ToolCallPayload;
+
+    match tool_call {
+        ToolCallPayload::FileRead { arguments, .. } => {
+            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::FileEdit { arguments, .. } => {
+            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::FileWrite { arguments, .. } => {
+            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Execute { arguments, .. } => {
+            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Search { arguments, .. } => {
+            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Mcp { arguments, .. } => {
+            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+        ToolCallPayload::Generic { arguments, .. } => {
+            format_args_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
+    }
+}
+
+fn format_args_compact(args: &serde_json::Value) -> String {
+    if let Some(obj) = args.as_object() {
+        let pairs: Vec<String> = obj
+            .iter()
+            .map(|(k, v)| {
+                let value_str = match v {
+                    serde_json::Value::String(s) => {
+                        if s.len() > 50 {
+                            format!("\"{}...\"", s.chars().take(47).collect::<String>())
+                        } else {
+                            format!("\"{}\"", s)
+                        }
+                    }
+                    serde_json::Value::Number(n) => n.to_string(),
+                    serde_json::Value::Bool(b) => b.to_string(),
+                    serde_json::Value::Null => "null".to_string(),
+                    serde_json::Value::Array(_) => "[...]".to_string(),
+                    serde_json::Value::Object(_) => "{...}".to_string(),
+                };
+                format!("{}: {}", k, value_str)
+            })
+            .collect();
+
+        if pairs.is_empty() {
+            "{}".to_string()
+        } else {
+            pairs.join(", ")
+        }
+    } else {
+        serde_json::to_string(args).unwrap_or_else(|_| "{}".to_string())
+    }
+}
+
+fn group_consecutive_tools(
+    tools: &[agtrace_engine::ToolExecution],
+) -> Vec<Vec<AgentStepViewModel>> {
+    let mut result: Vec<Vec<AgentStepViewModel>> = Vec::new();
+    let mut current_group: Vec<&agtrace_engine::ToolExecution> = Vec::new();
+    let mut current_name: Option<String> = None;
+
+    for tool in tools {
+        let name = tool.call.content.name().to_string();
+
+        if current_name.as_ref() == Some(&name) {
+            // Same tool, add to current group
+            current_group.push(tool);
+        } else {
+            // Different tool, flush current group
+            if !current_group.is_empty() {
+                result.push(create_tool_view_models(&current_group));
+            }
+            current_group = vec![tool];
+            current_name = Some(name);
+        }
+    }
+
+    // Flush final group
+    if !current_group.is_empty() {
+        result.push(create_tool_view_models(&current_group));
+    }
+
+    result
+}
+
+fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<AgentStepViewModel> {
+    if tools.is_empty() {
+        return vec![];
+    }
+
+    // If 3+ consecutive calls with same name, create a ToolCallSequence
+    if tools.len() >= 3 {
+        let name = tools[0].call.content.name().to_string();
+        let sample_args = format_tool_args(&tools[0].call.content);
+        let has_errors = tools.iter().any(|t| {
+            t.result
+                .as_ref()
+                .map(|r| r.content.is_error)
+                .unwrap_or(false)
+        });
+
+        vec![AgentStepViewModel::ToolCallSequence {
+            name,
+            count: tools.len(),
+            sample_args,
+            has_errors,
+        }]
+    } else {
+        // Otherwise, create individual ToolCall entries
+        tools
+            .iter()
+            .map(|tool| {
+                let name = tool.call.content.name().to_string();
+                let args = format_tool_args(&tool.call.content);
+                let is_error = tool
+                    .result
+                    .as_ref()
+                    .map(|r| r.content.is_error)
+                    .unwrap_or(false);
+                let result_text = tool
+                    .result
+                    .as_ref()
+                    .map(|r| truncate_text(&r.content.output, 60))
+                    .unwrap_or_else(|| "(no result)".to_string());
+
+                AgentStepViewModel::ToolCall {
+                    name,
+                    args,
+                    result: result_text,
+                    is_error,
+                }
+            })
+            .collect()
     }
 }

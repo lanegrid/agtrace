@@ -25,6 +25,32 @@ pub struct FilterSummary {
     pub limit: usize,
 }
 
+fn build_progress_bar_string(current: u32, max: u32, percent: f64) -> String {
+    let bar_width = 20;
+    let filled = ((percent / 100.0) * bar_width as f64) as usize;
+    let filled = filled.min(bar_width);
+    let empty = bar_width - filled;
+
+    format!(
+        "[{}{}] {:.1}% ({} / {})",
+        "█".repeat(filled),
+        "░".repeat(empty),
+        percent,
+        format_tokens(current as i64),
+        format_tokens(max as i64)
+    )
+}
+
+fn format_tokens(count: i64) -> String {
+    if count >= 1_000_000 {
+        format!("{:.1}M", count as f64 / 1_000_000.0)
+    } else if count >= 1_000 {
+        format!("{:.1}k", count as f64 / 1_000.0)
+    } else {
+        count.to_string()
+    }
+}
+
 impl fmt::Display for SessionListViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::formatters::session_list::SessionEntry;
@@ -106,10 +132,18 @@ pub struct TurnAnalysisViewModel {
     pub turn_number: usize,
     pub timestamp: Option<String>,
     pub context_transition: String,
+    pub context_usage: Option<ContextUsage>,
     pub is_heavy_load: bool,
     pub user_query: String,
     pub steps: Vec<AgentStepViewModel>,
     pub metrics: TurnMetrics,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ContextUsage {
+    pub current_tokens: u32,
+    pub max_tokens: u32,
+    pub percentage: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -124,6 +158,12 @@ pub enum AgentStepViewModel {
         args: String,
         result: String,
         is_error: bool,
+    },
+    ToolCallSequence {
+        name: String,
+        count: usize,
+        sample_args: String,
+        has_errors: bool,
     },
     Message {
         text: String,
@@ -173,54 +213,45 @@ impl fmt::Display for TurnAnalysisViewModel {
             "Normal"
         };
 
+        // Extract delta for visual indicator
+        let delta_indicator = self.extract_delta_indicator();
+
         writeln!(
             f,
-            "[Turn #{:02}] {} {}  (Context: {})",
-            self.turn_number, status_icon, status_label, self.context_transition
+            "[Turn #{:02}] {} {}  (Context: {}{})",
+            self.turn_number, status_icon, status_label, self.context_transition, delta_indicator
         )?;
 
-        writeln!(f, "  👤 User: \"{}\"", self.user_query)?;
-        writeln!(f, "  {}", "─".repeat(76))?;
+        // Show progress bar if context usage data is available
+        if let Some(ref usage) = self.context_usage {
+            let progress_bar =
+                build_progress_bar_string(usage.current_tokens, usage.max_tokens, usage.percentage);
+            writeln!(f, "│ {}", progress_bar)?;
+        }
+        writeln!(f, "│")?;
+
+        // Calculate total items to display (user + steps)
+        let total_items = 1 + self.steps.len();
+        let mut current_index = 0;
+
+        // User query
+        current_index += 1;
+        let is_last = current_index == total_items;
+        let prefix = if is_last { "└──" } else { "├──" };
+        writeln!(f, "{} 👤 User", prefix)?;
+        self.write_indented(f, &self.user_query, is_last, "   ")?;
 
         // Steps
         for step in &self.steps {
-            match step {
-                AgentStepViewModel::Thinking { duration, preview } => {
-                    if let Some(dur) = duration {
-                        writeln!(f, "  🧠 Thinking ({})", dur)?;
-                    } else {
-                        writeln!(f, "  🧠 Thinking")?;
-                    }
-                    if !preview.is_empty() {
-                        writeln!(f, "     {}", preview)?;
-                    }
-                }
-                AgentStepViewModel::ToolCall {
-                    name,
-                    args,
-                    result,
-                    is_error,
-                } => {
-                    writeln!(f, "  🔧 Tool: {} (args: {})", name, args)?;
-                    if *is_error {
-                        writeln!(f, "     ↳ ❌ Error: {}", result)?;
-                    } else {
-                        writeln!(f, "     ↳ 📝 Result: {}", result)?;
-                    }
-                }
-                AgentStepViewModel::Message { text } => {
-                    writeln!(f, "  💬 Msg: {}", text)?;
-                }
-                AgentStepViewModel::SystemEvent { description } => {
-                    writeln!(f, "  ℹ️  {}", description)?;
-                }
-            }
+            current_index += 1;
+            let is_last = current_index == total_items;
+            self.write_step(f, step, is_last)?;
         }
 
-        writeln!(f, "  {}", "─".repeat(76))?;
+        writeln!(f)?;
         writeln!(
             f,
-            "  📊 Stats: {} (In: {}, Out: {}{})",
+            "📊 Stats: {} (In: {}, Out: {}{})",
             self.metrics.total_delta,
             self.metrics.input,
             self.metrics.output,
@@ -232,6 +263,145 @@ impl fmt::Display for TurnAnalysisViewModel {
         )?;
         writeln!(f)?;
 
+        Ok(())
+    }
+}
+
+impl TurnAnalysisViewModel {
+    fn extract_delta_indicator(&self) -> String {
+        // Extract numeric value from total_delta (e.g., "+57.2k" -> 57200)
+        let delta_str = self.metrics.total_delta.trim_start_matches('+');
+        let delta_value = if delta_str.ends_with('k') {
+            delta_str
+                .trim_end_matches('k')
+                .parse::<f64>()
+                .unwrap_or(0.0)
+                * 1000.0
+        } else if delta_str.ends_with('M') {
+            delta_str
+                .trim_end_matches('M')
+                .parse::<f64>()
+                .unwrap_or(0.0)
+                * 1_000_000.0
+        } else {
+            delta_str.parse::<f64>().unwrap_or(0.0)
+        };
+
+        if delta_value > 50_000.0 {
+            " 🔺".to_string()
+        } else if delta_value > 20_000.0 {
+            " ⚡".to_string()
+        } else {
+            String::new()
+        }
+    }
+
+    fn write_step(
+        &self,
+        f: &mut fmt::Formatter,
+        step: &AgentStepViewModel,
+        is_last: bool,
+    ) -> fmt::Result {
+        let prefix = if is_last { "└──" } else { "├──" };
+        let continuation = if is_last { "   " } else { "│  " };
+
+        match step {
+            AgentStepViewModel::Thinking { duration, preview } => {
+                if let Some(dur) = duration {
+                    writeln!(f, "{} 🧠 Thinking ({})", prefix, dur)?;
+                } else {
+                    writeln!(f, "{} 🧠 Thinking", prefix)?;
+                }
+                if !preview.is_empty() {
+                    self.write_thinking_content(f, preview, is_last)?;
+                }
+            }
+            AgentStepViewModel::ToolCall {
+                name,
+                args,
+                result,
+                is_error,
+            } => {
+                writeln!(f, "{} 🔧 Tool: {}", prefix, name)?;
+                self.write_indented(f, args, is_last, "   ")?;
+
+                if *is_error {
+                    write!(f, "{}   ↳ ❌ Error: ", continuation)?;
+                } else {
+                    write!(f, "{}   ↳ 📝 Result: ", continuation)?;
+                }
+                self.write_truncated_result(f, result)?;
+            }
+            AgentStepViewModel::ToolCallSequence {
+                name,
+                count,
+                sample_args,
+                has_errors,
+            } => {
+                let status = if *has_errors { "⚠️" } else { "✓" };
+                writeln!(
+                    f,
+                    "{} 🔧 Tool: {} (x{} calls) {}",
+                    prefix, name, count, status
+                )?;
+                self.write_indented(f, sample_args, is_last, "   ")?;
+            }
+            AgentStepViewModel::Message { text } => {
+                writeln!(f, "{} 💬 Message", prefix)?;
+                self.write_indented(f, text, is_last, "   ")?;
+            }
+            AgentStepViewModel::SystemEvent { description } => {
+                writeln!(f, "{} ℹ️  {}", prefix, description)?;
+            }
+        }
+
+        if !is_last {
+            writeln!(f, "│")?;
+        }
+
+        Ok(())
+    }
+
+    fn write_thinking_content(
+        &self,
+        f: &mut fmt::Formatter,
+        preview: &str,
+        is_last: bool,
+    ) -> fmt::Result {
+        let continuation = if is_last { "   " } else { "│  " };
+
+        // Show first line prominently, rest dimmed
+        let lines: Vec<&str> = preview.lines().collect();
+        if let Some(first_line) = lines.first() {
+            writeln!(f, "{}   {}", continuation, first_line)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_indented(
+        &self,
+        f: &mut fmt::Formatter,
+        text: &str,
+        is_last: bool,
+        extra_indent: &str,
+    ) -> fmt::Result {
+        let continuation = if is_last { "   " } else { "│  " };
+
+        for line in text.lines() {
+            writeln!(f, "{}{}{}", continuation, extra_indent, line)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_truncated_result(&self, f: &mut fmt::Formatter, result: &str) -> fmt::Result {
+        let char_count = result.chars().count();
+        if char_count > 100 {
+            writeln!(f, "[Truncated: {} chars]", char_count)?;
+        } else {
+            writeln!(f, "{}", result)?;
+        }
         Ok(())
     }
 }

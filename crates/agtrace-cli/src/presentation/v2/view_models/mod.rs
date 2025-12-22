@@ -18,6 +18,7 @@ pub use provider::{
 };
 pub use result::CommandResultViewModel;
 pub use session::{
-    AgentStepViewModel, ContextWindowSummary, FilterSummary, SessionAnalysisViewModel,
-    SessionHeader, SessionListEntry, SessionListViewModel, TurnAnalysisViewModel, TurnMetrics,
+    AgentStepViewModel, ContextUsage, ContextWindowSummary, FilterSummary,
+    SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel,
+    TurnAnalysisViewModel, TurnMetrics,
 };
