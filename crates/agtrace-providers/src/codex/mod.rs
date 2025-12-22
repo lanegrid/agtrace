@@ -7,9 +7,6 @@ pub mod tool_mapping;
 pub mod tools;
 
 use crate::traits::{ProbeResult, SessionIndex};
-use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
-use agtrace_types::paths_equal;
-use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -122,80 +119,5 @@ impl crate::traits::LogDiscovery for CodexDiscovery {
         }
 
         Ok(matching_files)
-    }
-}
-
-// --- Backward-compatible provider (Facade pattern) ---
-
-/// Backward-compatible facade that delegates to new trait-based architecture
-pub struct CodexProvider {
-    adapter: crate::traits::ProviderAdapter,
-}
-
-impl Default for CodexProvider {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl CodexProvider {
-    pub fn new() -> Self {
-        Self {
-            adapter: crate::traits::ProviderAdapter::codex(),
-        }
-    }
-}
-
-impl LogProvider for CodexProvider {
-    fn name(&self) -> &str {
-        self.adapter.discovery.id()
-    }
-
-    fn can_handle(&self, path: &Path) -> bool {
-        self.adapter.discovery.probe(path).is_match()
-    }
-
-    fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
-        self.adapter.parser.parse_file(path)
-    }
-
-    fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
-        extract_cwd_from_codex_file(path)
-            .map(|cwd| paths_equal(target_project_root, Path::new(&cwd)))
-            .unwrap_or(false)
-    }
-
-    fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>> {
-        // Delegate to adapter's scan_legacy which uses the new discovery architecture
-        self.adapter.scan_legacy(log_root, context)
-    }
-
-    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
-        self.adapter
-            .discovery
-            .find_session_files(log_root, session_id)
-    }
-
-    fn extract_session_id(&self, path: &Path) -> Result<String> {
-        self.adapter.discovery.extract_session_id(path)
-    }
-
-    fn classify_tool(
-        &self,
-        tool_name: &str,
-    ) -> Option<(agtrace_types::ToolOrigin, agtrace_types::ToolKind)> {
-        // Use adapter's mapper for classification
-        let (origin, kind) = self.adapter.mapper.classify(tool_name);
-        Some((origin, kind))
-    }
-
-    fn extract_summary(
-        &self,
-        _tool_name: &str,
-        kind: agtrace_types::ToolKind,
-        arguments: &serde_json::Value,
-    ) -> Option<String> {
-        // Use adapter's mapper for summary extraction
-        Some(self.adapter.mapper.summarize(kind, arguments))
     }
 }

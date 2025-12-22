@@ -7,9 +7,7 @@ pub mod tool_mapping;
 pub mod tools;
 
 use crate::traits::{ProbeResult, SessionIndex};
-use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
-use agtrace_types::AgentEvent;
-use agtrace_types::{is_64_char_hex, project_hash_from_root};
+use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -133,104 +131,3 @@ impl crate::traits::LogDiscovery for GeminiDiscovery {
 }
 
 // --- Backward-compatible provider (Facade pattern) ---
-
-/// Backward-compatible facade that delegates to new trait-based architecture
-pub struct GeminiProvider {
-    adapter: crate::traits::ProviderAdapter,
-}
-
-impl Default for GeminiProvider {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl GeminiProvider {
-    pub fn new() -> Self {
-        Self {
-            adapter: crate::traits::ProviderAdapter::gemini(),
-        }
-    }
-}
-
-impl LogProvider for GeminiProvider {
-    fn name(&self) -> &str {
-        self.adapter.discovery.id()
-    }
-
-    fn can_handle(&self, path: &Path) -> bool {
-        self.adapter.discovery.probe(path).is_match()
-    }
-
-    fn normalize_file(&self, path: &Path, _context: &ImportContext) -> Result<Vec<AgentEvent>> {
-        self.adapter.parser.parse_file(path)
-    }
-
-    fn belongs_to_project(&self, path: &Path, target_project_root: &Path) -> bool {
-        let target_hash = project_hash_from_root(&target_project_root.to_string_lossy());
-        if let Some(file_hash) = extract_project_hash_from_gemini_file(path) {
-            file_hash == target_hash
-        } else {
-            if let Some(parent) = path.parent() {
-                if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
-                    if is_64_char_hex(dir_name) {
-                        return dir_name == target_hash;
-                    }
-                }
-            }
-            false
-        }
-    }
-
-    fn get_search_root(&self, log_root: &Path, target_project_root: &Path) -> Option<PathBuf> {
-        let hash = project_hash_from_root(&target_project_root.to_string_lossy());
-        let dir = log_root.join(&hash);
-        (dir.exists() && dir.is_dir()).then_some(dir)
-    }
-
-    fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>> {
-        // Delegate to adapter's scan_legacy which uses the new discovery architecture
-        // For Gemini-specific filtering, we need to resolve the project-hash directory
-        let scan_root = if context.project_root.is_some() {
-            let project_dir = log_root.join(&context.project_hash);
-            if project_dir.exists() {
-                project_dir
-            } else {
-                return Ok(Vec::new());
-            }
-        } else {
-            log_root.to_path_buf()
-        };
-
-        self.adapter.scan_legacy(&scan_root, context)
-    }
-
-    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
-        self.adapter
-            .discovery
-            .find_session_files(log_root, session_id)
-    }
-
-    fn extract_session_id(&self, path: &Path) -> Result<String> {
-        self.adapter.discovery.extract_session_id(path)
-    }
-
-    fn classify_tool(
-        &self,
-        tool_name: &str,
-    ) -> Option<(agtrace_types::ToolOrigin, agtrace_types::ToolKind)> {
-        // Use adapter's mapper for classification
-        let (origin, kind) = self.adapter.mapper.classify(tool_name);
-        Some((origin, kind))
-    }
-
-    fn extract_summary(
-        &self,
-        _tool_name: &str,
-        kind: agtrace_types::ToolKind,
-        arguments: &serde_json::Value,
-    ) -> Option<String> {
-        // Use adapter's mapper for summary extraction
-        Some(self.adapter.mapper.summarize(kind, arguments))
-    }
-}

@@ -1,5 +1,4 @@
 use crate::traits::ProviderAdapter;
-use crate::{ClaudeProvider, CodexProvider, GeminiProvider, LogProvider};
 use anyhow::{anyhow, Result};
 use std::path::PathBuf;
 
@@ -40,34 +39,7 @@ pub fn get_provider_metadata(name: &str) -> Option<&'static ProviderMetadata> {
     PROVIDERS.iter().find(|p| p.name == name)
 }
 
-pub fn create_provider(name: &str) -> Result<Box<dyn LogProvider>> {
-    match name {
-        "claude_code" | "claude" => Ok(Box::new(ClaudeProvider::new())),
-        "codex" => Ok(Box::new(CodexProvider::new())),
-        "gemini" => Ok(Box::new(GeminiProvider::new())),
-        _ => Err(anyhow!("Unknown provider: {}", name)),
-    }
-}
-
-pub fn create_all_providers() -> Vec<Box<dyn LogProvider>> {
-    vec![
-        Box::new(ClaudeProvider::new()),
-        Box::new(CodexProvider::new()),
-        Box::new(GeminiProvider::new()),
-    ]
-}
-
-pub fn detect_provider_from_path(path: &str) -> Result<Box<dyn LogProvider>> {
-    if path.contains(".claude/") {
-        Ok(Box::new(ClaudeProvider::new()))
-    } else if path.contains(".codex/") {
-        Ok(Box::new(CodexProvider::new()))
-    } else if path.contains(".gemini/") {
-        Ok(Box::new(GeminiProvider::new()))
-    } else {
-        Err(anyhow!("Cannot detect provider from path: {}", path))
-    }
-}
+// Legacy functions removed - use create_adapter, create_all_adapters, detect_adapter_from_path instead
 
 pub fn expand_home_path(path: &str) -> Option<PathBuf> {
     if let Some(stripped) = path.strip_prefix("~/") {
