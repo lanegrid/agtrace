@@ -536,7 +536,7 @@ RAW MODE RATIONALE:
      - Gemini: metadata.payload vs content
 
   2. DEBUGGING TOOL PARSING
-     Inspect how ToolCallPayload::from_raw() determines variants:
+     Inspect how normalize_tool_call() determines variants:
      - FileRead, FileEdit, FileWrite (file operations)
      - Execute (Bash, shell_command)
      - Search (Grep, WebSearch)

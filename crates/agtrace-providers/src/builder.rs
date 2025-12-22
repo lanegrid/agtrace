@@ -115,6 +115,7 @@ impl EventBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::normalization::normalize_tool_call;
 
     #[test]
     fn test_event_builder_chain() {
@@ -158,7 +159,7 @@ mod tests {
             "test-id-3",
             SemanticSuffix::ToolCall,
             Utc::now(),
-            EventPayload::ToolCall(ToolCallPayload::from_raw(
+            EventPayload::ToolCall(normalize_tool_call(
                 "bash".to_string(),
                 serde_json::json!({"command": "ls"}),
                 Some("call_123".to_string()),

@@ -10,6 +10,9 @@ pub mod gemini;
 // Event builder (shared normalization utility)
 pub mod builder;
 
+// Tool call normalization (provider-specific logic)
+pub mod normalization;
+
 // Provider registry
 pub mod registry;
 
@@ -40,6 +43,9 @@ pub use registry::{
 
 // Re-export tool analyzer functions for convenience
 pub use tool_analyzer::{classify_common, extract_common_summary, truncate};
+
+// Re-export normalization functions for convenience
+pub use normalization::normalize_tool_call;
 
 #[derive(Debug, Clone)]
 pub struct LogFileMetadata {

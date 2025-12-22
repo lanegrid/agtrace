@@ -92,6 +92,7 @@ impl StepBuilder {
 mod tests {
     use super::super::types::StepStatus;
     use super::*;
+    use agtrace_providers::normalize_tool_call;
 
     #[test]
     fn test_step_builder_empty() {
@@ -143,7 +144,7 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("call-1".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "test".to_string(),
                     serde_json::json!({}),
                     Some("call-1".to_string()),
@@ -224,7 +225,7 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "bash".to_string(),
                     serde_json::json!({"command": "ls"}),
                     Some("toolu_123".to_string()),
@@ -252,7 +253,7 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "bash".to_string(),
                     serde_json::json!({"command": "ls"}),
                     Some("toolu_123".to_string()),
@@ -289,7 +290,7 @@ mod tests {
                 event_id: call_event_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "bash".to_string(),
                     serde_json::json!({"command": "invalid"}),
                     Some("toolu_123".to_string()),
@@ -328,7 +329,7 @@ mod tests {
                 event_id: call1_id,
                 timestamp,
                 provider_call_id: Some("toolu_1".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "read".to_string(),
                     serde_json::json!({}),
                     Some("toolu_1".to_string()),
@@ -354,7 +355,7 @@ mod tests {
                 event_id: call2_id,
                 timestamp,
                 provider_call_id: Some("toolu_2".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "bash".to_string(),
                     serde_json::json!({}),
                     Some("toolu_2".to_string()),
@@ -396,7 +397,7 @@ mod tests {
                 event_id: tool_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "bash".to_string(),
                     serde_json::json!({"command": "ls"}),
                     Some("toolu_123".to_string()),
@@ -442,7 +443,7 @@ mod tests {
                 event_id: tool_id,
                 timestamp,
                 provider_call_id: Some("toolu_123".to_string()),
-                content: agtrace_types::ToolCallPayload::from_raw(
+                content: normalize_tool_call(
                     "bash".to_string(),
                     serde_json::json!({"command": "ls"}),
                     Some("toolu_123".to_string()),

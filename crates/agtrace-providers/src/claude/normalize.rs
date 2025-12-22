@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
+use crate::normalization::normalize_tool_call;
 
 /// Determine StreamId from Claude record fields
 fn determine_stream_id(is_sidechain: bool, agent_id: &Option<String>) -> StreamId {
@@ -141,7 +142,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 &indexed_base_id,
                                 SemanticSuffix::ToolCall,
                                 timestamp,
-                                EventPayload::ToolCall(ToolCallPayload::from_raw(
+                                EventPayload::ToolCall(normalize_tool_call(
                                     name.clone(),
                                     input.clone(),
                                     Some(id.clone()),

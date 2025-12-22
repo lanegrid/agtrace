@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
+use crate::normalization::normalize_tool_call;
 
 /// Regex for extracting exit codes from Codex output
 /// Example: "Exit Code: 0" or similar patterns
@@ -205,7 +206,7 @@ pub(crate) fn normalize_codex_session(
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
-                            EventPayload::ToolCall(ToolCallPayload::from_raw(
+                            EventPayload::ToolCall(normalize_tool_call(
                                 func_call.name.clone(),
                                 arguments,
                                 Some(func_call.call_id.clone()),
@@ -249,7 +250,7 @@ pub(crate) fn normalize_codex_session(
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
-                            EventPayload::ToolCall(ToolCallPayload::from_raw(
+                            EventPayload::ToolCall(normalize_tool_call(
                                 tool_call.name.clone(),
                                 arguments,
                                 Some(tool_call.call_id.clone()),

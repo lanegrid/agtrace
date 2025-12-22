@@ -14,7 +14,7 @@ use anyhow::Result;
 //
 // Why metadata is essential:
 //   1. Validation: Compare provider-specific schemas (metadata.message, metadata.payload) with normalized content
-//   2. Debugging: Inspect how ToolCallPayload::from_raw() parses different providers (Claude, Codex, Gemini)
+//   2. Debugging: Inspect how normalize_tool_call() parses different providers (Claude, Codex, Gemini)
 //   3. Investigation: Access original tool inputs when normalized arguments differ (e.g., Codex stringified JSON)
 //
 // Example workflow:

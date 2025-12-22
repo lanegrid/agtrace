@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::gemini::schema::{GeminiMessage, GeminiSession};
+use crate::normalization::normalize_tool_call;
 
 /// Normalize Gemini session to events
 /// Unfolds nested structure (thoughts[], toolCalls[]) into event stream
@@ -73,7 +74,7 @@ pub(crate) fn normalize_gemini_session(
                         &indexed_base_id,
                         SemanticSuffix::ToolCall,
                         timestamp,
-                        EventPayload::ToolCall(ToolCallPayload::from_raw(
+                        EventPayload::ToolCall(normalize_tool_call(
                             tool_call.name.clone(),
                             tool_call.args.clone(),
                             Some(tool_call.id.clone()),

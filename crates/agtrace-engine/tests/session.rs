@@ -1,4 +1,5 @@
 use agtrace_engine::assemble_session;
+use agtrace_providers::normalize_tool_call;
 use agtrace_types::AgentEvent;
 use std::fs;
 use std::path::Path;
@@ -92,7 +93,7 @@ fn test_session_assembly_structure() {
             parent_id: Some(reasoning_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+            payload: EventPayload::ToolCall(normalize_tool_call(
                 "bash".to_string(),
                 serde_json::json!({"command": "echo hello"}),
                 Some("call_1".to_string()),
@@ -232,7 +233,7 @@ fn test_step_status_determination() {
             parent_id: Some(user2_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+            payload: EventPayload::ToolCall(normalize_tool_call(
                 "bash".to_string(),
                 serde_json::json!({"command": "ls"}),
                 Some("call_2".to_string()),
@@ -257,7 +258,7 @@ fn test_step_status_determination() {
             parent_id: Some(user3_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+            payload: EventPayload::ToolCall(normalize_tool_call(
                 "read".to_string(),
                 serde_json::json!({"file": "test.txt"}),
                 Some("call_3".to_string()),
@@ -318,7 +319,7 @@ fn test_step_status_determination() {
             parent_id: Some(user5_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(ToolCallPayload::from_raw(
+            payload: EventPayload::ToolCall(normalize_tool_call(
                 "bash".to_string(),
                 serde_json::json!({"command": "invalid"}),
                 Some("call_5".to_string()),
