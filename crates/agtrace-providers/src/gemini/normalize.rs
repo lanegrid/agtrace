@@ -4,63 +4,76 @@ use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::gemini::schema::{GeminiMessage, GeminiSession};
+use crate::gemini::tools::{
+    GeminiGoogleWebSearchArgs, GeminiReadFileArgs, GeminiReplaceArgs, GeminiRunShellCommandArgs,
+    GeminiWriteFileArgs,
+};
 
 /// Normalize Gemini-specific tool calls
 ///
 /// Handles Gemini provider-specific tool names and maps them to domain variants.
+/// Uses provider-specific Args structs for proper schema parsing and conversion.
 fn normalize_gemini_tool_call(
     tool_name: String,
     arguments: serde_json::Value,
     provider_call_id: Option<String>,
 ) -> ToolCallPayload {
-    // Handle Gemini-specific tools
+    // Handle Gemini-specific tools with provider-specific types
     match tool_name.as_str() {
         "read_file" => {
-            // read_file → FileRead
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // Parse as Gemini-specific Args, then convert to domain model
+            if let Ok(gemini_args) = serde_json::from_value::<GeminiReadFileArgs>(arguments.clone())
+            {
                 return ToolCallPayload::FileRead {
                     name: tool_name,
-                    arguments: args,
+                    arguments: gemini_args.to_file_read_args(),
                     provider_call_id,
                 };
             }
         }
         "write_file" => {
-            // write_file → FileWrite
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // Parse as Gemini-specific Args, then convert to domain model
+            if let Ok(gemini_args) =
+                serde_json::from_value::<GeminiWriteFileArgs>(arguments.clone())
+            {
                 return ToolCallPayload::FileWrite {
                     name: tool_name,
-                    arguments: args,
+                    arguments: gemini_args.to_file_write_args(),
                     provider_call_id,
                 };
             }
         }
         "replace" => {
-            // replace → FileEdit
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // Parse as Gemini-specific Args (with instruction field), then convert
+            if let Ok(gemini_args) = serde_json::from_value::<GeminiReplaceArgs>(arguments.clone())
+            {
                 return ToolCallPayload::FileEdit {
                     name: tool_name,
-                    arguments: args,
+                    arguments: gemini_args.to_file_edit_args(),
                     provider_call_id,
                 };
             }
         }
         "run_shell_command" => {
-            // run_shell_command → Execute
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // Parse as Gemini-specific Args, then convert to domain model
+            if let Ok(gemini_args) =
+                serde_json::from_value::<GeminiRunShellCommandArgs>(arguments.clone())
+            {
                 return ToolCallPayload::Execute {
                     name: tool_name,
-                    arguments: args,
+                    arguments: gemini_args.to_execute_args(),
                     provider_call_id,
                 };
             }
         }
         "google_web_search" => {
-            // google_web_search → Search
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // Parse as Gemini-specific Args, then convert to domain model
+            if let Ok(gemini_args) =
+                serde_json::from_value::<GeminiGoogleWebSearchArgs>(arguments.clone())
+            {
                 return ToolCallPayload::Search {
                     name: tool_name,
-                    arguments: args,
+                    arguments: gemini_args.to_search_args(),
                     provider_call_id,
                 };
             }

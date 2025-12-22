@@ -3,6 +3,7 @@ pub mod models;
 pub mod normalize;
 pub mod schema;
 pub mod tool_mapping;
+pub mod tools;
 
 use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::AgentEvent;
