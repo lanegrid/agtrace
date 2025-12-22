@@ -1,12 +1,10 @@
 use crate::args::OutputFormat;
-use crate::presentation::renderers::TraceView;
-use crate::presentation::view_models::SessionListEntryViewModel;
 use agtrace_runtime::{AgTrace, SessionFilter};
 use anyhow::Result;
 use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle(
+pub fn handle_v2(
     workspace: &AgTrace,
     _project_root: Option<&Path>,
     all_projects: bool,
@@ -17,12 +15,14 @@ pub fn handle(
     since: Option<String>,
     until: Option<String>,
     _no_auto_refresh: bool,
-    view: &dyn TraceView,
 ) -> Result<()> {
-    // Note: index::handle call removed - Read-Through Indexing handles this automatically
+    use crate::presentation::v2::presenters;
+    use crate::presentation::v2::{ConsoleRenderer, Renderer};
 
     // Build filter
     let mut filter = SessionFilter::new().limit(limit);
+
+    let project_filter_summary = project_hash.clone();
 
     if let Some(hash) = project_hash {
         filter = filter.project(hash);
@@ -32,34 +32,39 @@ pub fn handle(
         filter = filter.all_projects();
     }
 
-    if let Some(src) = source {
-        filter = filter.source(src);
+    if let Some(ref src) = source {
+        filter = filter.source(src.clone());
     }
 
-    if let Some(since_str) = since {
-        filter = filter.since(since_str);
+    if let Some(ref since_str) = since {
+        filter = filter.since(since_str.clone());
     }
 
-    if let Some(until_str) = until {
-        filter = filter.until(until_str);
+    if let Some(ref until_str) = until {
+        filter = filter.until(until_str.clone());
     }
 
     // Get sessions
     let sessions = workspace.sessions().list(filter)?;
 
-    // Convert to ViewModels
-    let session_vms: Vec<SessionListEntryViewModel> = sessions
-        .into_iter()
-        .map(|s| SessionListEntryViewModel {
-            id: s.id,
-            provider: s.provider,
-            project_hash: s.project_hash,
-            start_ts: s.start_ts,
-            snippet: s.snippet,
-        })
-        .collect();
+    // Build time range summary
+    let time_range = match (since.as_ref(), until.as_ref()) {
+        (Some(s), Some(u)) => Some(format!("{} to {}", s, u)),
+        (Some(s), None) => Some(format!("since {}", s)),
+        (None, Some(u)) => Some(format!("until {}", u)),
+        (None, None) => None,
+    };
 
-    view.render_session_list(&session_vms, format)?;
+    let view_model = presenters::present_session_list(
+        sessions,
+        project_filter_summary,
+        source,
+        time_range,
+        limit,
+    );
+
+    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    renderer.render(view_model)?;
 
     Ok(())
 }

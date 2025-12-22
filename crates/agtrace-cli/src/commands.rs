@@ -83,7 +83,7 @@ pub fn run(cli: Cli) -> Result<()> {
                         project_hash
                     };
 
-                    handlers::session_list::handle(
+                    handlers::session_list::handle_v2(
                         &workspace,
                         project_root.as_deref(),
                         cli.all_projects,
@@ -94,7 +94,6 @@ pub fn run(cli: Cli) -> Result<()> {
                         since.clone(),
                         until.clone(),
                         no_auto_refresh,
-                        &view,
                     )
                 }
                 SessionCommand::Show {
@@ -218,7 +217,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 project_hash
             };
 
-            handlers::session_list::handle(
+            handlers::session_list::handle_v2(
                 &workspace,
                 project_root.as_deref(),
                 cli.all_projects,
@@ -229,7 +228,6 @@ pub fn run(cli: Cli) -> Result<()> {
                 since,
                 until,
                 false, // no_auto_refresh - default to auto-refresh for Sessions command
-                &view,
             )
         }
 
