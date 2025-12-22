@@ -4,7 +4,7 @@ use crate::init::{InitConfig, InitProgress, InitResult, InitService};
 use crate::ops::{CheckResult, DoctorService, InspectResult};
 use agtrace_engine::DiagnoseResult;
 use agtrace_index::Database;
-use agtrace_providers::LogProvider;
+use agtrace_providers::ProviderAdapter;
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -52,11 +52,11 @@ impl AgTrace {
     }
 
     pub fn diagnose(&self) -> Result<Vec<DiagnoseResult>> {
-        let providers: Vec<(Box<dyn LogProvider>, PathBuf)> = self
+        let providers: Vec<(ProviderAdapter, PathBuf)> = self
             .provider_configs
             .iter()
             .filter_map(|(name, path)| {
-                agtrace_providers::create_provider(name)
+                agtrace_providers::create_adapter(name)
                     .ok()
                     .map(|p| (p, path.clone()))
             })
@@ -100,7 +100,7 @@ impl AgTrace {
 
     pub fn check_file(
         file_path: &str,
-        provider: &dyn LogProvider,
+        provider: &ProviderAdapter,
         provider_name: &str,
     ) -> Result<CheckResult> {
         DoctorService::check_file(file_path, provider, provider_name)

@@ -1,7 +1,7 @@
 use crate::storage::{LoadOptions, SessionRepository};
 use agtrace_engine::assemble_session;
 use agtrace_index::Database;
-use agtrace_providers::create_provider;
+use agtrace_providers::create_adapter;
 use agtrace_types::EventPayload;
 use anyhow::Result;
 use std::collections::{BTreeMap, HashMap};
@@ -146,11 +146,9 @@ pub fn collect_tool_stats(
             let classifications: Vec<ToolInfo> = sorted_tools
                 .keys()
                 .map(|tool_name| {
-                    let (origin, kind) = if let Ok(provider) = create_provider(&provider_name) {
-                        provider
-                            .classify_tool(tool_name)
-                            .map(|(o, k)| (Some(format!("{:?}", o)), Some(format!("{:?}", k))))
-                            .unwrap_or((None, None))
+                    let (origin, kind) = if let Ok(adapter) = create_adapter(&provider_name) {
+                        let (o, k) = adapter.mapper.classify(tool_name);
+                        (Some(format!("{:?}", o)), Some(format!("{:?}", k)))
                     } else {
                         (None, None)
                     };

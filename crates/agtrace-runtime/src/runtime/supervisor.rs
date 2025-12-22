@@ -1,6 +1,6 @@
 use crate::runtime::events::{DiscoveryEvent, WorkspaceEvent};
 use agtrace_index::Database;
-use agtrace_providers::LogProvider;
+use agtrace_providers::ProviderAdapter;
 use anyhow::Result;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
@@ -12,7 +12,7 @@ use std::time::Duration;
 
 pub struct WatchContext {
     pub provider_name: String,
-    pub provider: Arc<dyn LogProvider>,
+    pub provider: Arc<ProviderAdapter>,
     pub root: PathBuf,
 }
 
@@ -82,8 +82,9 @@ fn handle_fs_event(
         EventKind::Create(_) | EventKind::Modify(_) => {
             for path in &event.paths {
                 if let Some(context) = find_provider_for_path(path, contexts) {
-                    if context.provider.can_handle(path) {
-                        if let Ok(session_id) = context.provider.extract_session_id(path) {
+                    if context.provider.discovery.probe(path).is_match() {
+                        if let Ok(session_id) = context.provider.discovery.extract_session_id(path)
+                        {
                             let mut seen = seen_sessions.lock().unwrap();
                             let is_new = seen.insert(session_id.clone());
 

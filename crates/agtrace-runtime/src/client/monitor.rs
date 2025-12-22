@@ -29,10 +29,10 @@ impl MonitorBuilder {
         let mut contexts = Vec::new();
 
         for (provider_name, root) in self.provider_configs.iter() {
-            if let Ok(provider) = agtrace_providers::create_provider(provider_name) {
+            if let Ok(adapter) = agtrace_providers::create_adapter(provider_name) {
                 contexts.push(WatchContext {
                     provider_name: provider_name.clone(),
-                    provider: Arc::from(provider),
+                    provider: Arc::new(adapter),
                     root: root.clone(),
                 });
             }
@@ -73,10 +73,10 @@ impl WorkspaceMonitor {
                 .ok_or_else(|| anyhow::anyhow!("No providers available"))?
         };
 
-        let provider = agtrace_providers::create_provider(&provider_name)?;
+        let adapter = agtrace_providers::create_adapter(&provider_name)?;
 
         let streamer =
-            SessionStreamer::attach(session_id.to_string(), self.db.clone(), Arc::from(provider))?;
+            SessionStreamer::attach(session_id.to_string(), self.db.clone(), Arc::new(adapter))?;
 
         Ok(StreamHandle { streamer })
     }

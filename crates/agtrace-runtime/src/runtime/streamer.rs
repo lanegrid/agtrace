@@ -1,7 +1,7 @@
 use crate::runtime::events::{StreamEvent, WorkspaceEvent};
 use agtrace_engine::{assemble_session, AgentSession};
 use agtrace_index::Database;
-use agtrace_providers::LogProvider;
+use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
 use anyhow::Result;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
@@ -13,14 +13,14 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 struct StreamContext {
-    provider: Arc<dyn LogProvider>,
+    provider: Arc<ProviderAdapter>,
     file_states: HashMap<PathBuf, usize>,
     all_events: Vec<AgentEvent>,
     session: Option<AgentSession>,
 }
 
 impl StreamContext {
-    fn new(provider: Arc<dyn LogProvider>) -> Self {
+    fn new(provider: Arc<ProviderAdapter>) -> Self {
         Self {
             provider,
             file_states: HashMap::new(),
@@ -71,14 +71,8 @@ impl StreamContext {
         Ok(new_events)
     }
 
-    fn load_file(path: &Path, provider: &Arc<dyn LogProvider>) -> Result<Vec<AgentEvent>> {
-        let context = agtrace_providers::ImportContext {
-            project_root_override: None,
-            session_id_prefix: None,
-            all_projects: false,
-        };
-
-        provider.normalize_file(path, &context)
+    fn load_file(path: &Path, provider: &Arc<ProviderAdapter>) -> Result<Vec<AgentEvent>> {
+        provider.parser.parse_file(path)
     }
 }
 
@@ -96,7 +90,7 @@ impl SessionStreamer {
     pub fn attach(
         session_id: String,
         db: Arc<Mutex<Database>>,
-        provider: Arc<dyn LogProvider>,
+        provider: Arc<ProviderAdapter>,
     ) -> Result<Self> {
         let session_files = {
             let db_lock = db.lock().unwrap();
@@ -118,7 +112,7 @@ impl SessionStreamer {
     pub fn attach_from_filesystem(
         session_id: String,
         log_root: PathBuf,
-        provider: Arc<dyn LogProvider>,
+        provider: Arc<ProviderAdapter>,
     ) -> Result<Self> {
         let session_files = find_session_files(&log_root, &session_id, &provider)?;
 
@@ -132,7 +126,7 @@ impl SessionStreamer {
     fn start_core(
         session_id: String,
         session_files: Vec<PathBuf>,
-        provider: Arc<dyn LogProvider>,
+        provider: Arc<ProviderAdapter>,
     ) -> Result<Self> {
         let (tx_out, rx_out) = channel();
         let (tx_fs, rx_fs) = channel();
@@ -230,7 +224,7 @@ fn handle_fs_event(
 fn find_session_files(
     log_root: &Path,
     session_id: &str,
-    provider: &Arc<dyn LogProvider>,
+    provider: &Arc<ProviderAdapter>,
 ) -> Result<Vec<PathBuf>> {
     use std::fs;
 
@@ -239,7 +233,7 @@ fn find_session_files(
     fn visit_dir(
         dir: &Path,
         session_id: &str,
-        provider: &Arc<dyn LogProvider>,
+        provider: &Arc<ProviderAdapter>,
         files: &mut Vec<PathBuf>,
     ) -> Result<()> {
         if !dir.is_dir() {
@@ -252,8 +246,8 @@ fn find_session_files(
 
             if path.is_dir() {
                 visit_dir(&path, session_id, provider, files)?;
-            } else if provider.can_handle(&path) {
-                if let Ok(id) = provider.extract_session_id(&path) {
+            } else if provider.discovery.probe(&path).is_match() {
+                if let Ok(id) = provider.discovery.extract_session_id(&path) {
                     if id == session_id {
                         files.push(path);
                     }

@@ -1,7 +1,7 @@
 use crate::presentation::presenters;
 use crate::presentation::renderers::TraceView;
 use crate::presentation::view_models::{DoctorCheckResultViewModel, DoctorCheckStatus};
-use agtrace_providers::{create_provider, detect_provider_from_path};
+use agtrace_providers::{create_adapter, detect_adapter_from_path};
 use agtrace_runtime::{AgTrace, CheckStatus};
 use anyhow::Result;
 
@@ -10,16 +10,16 @@ pub fn handle(
     provider_override: Option<String>,
     view: &dyn TraceView,
 ) -> Result<()> {
-    let (provider, provider_name) = if let Some(name) = provider_override {
-        let provider = create_provider(&name)?;
-        (provider, name)
+    let (adapter, provider_name) = if let Some(name) = provider_override {
+        let adapter = create_adapter(&name)?;
+        (adapter, name)
     } else {
-        let provider = detect_provider_from_path(&file_path)?;
-        let name = format!("{} (auto-detected)", provider.name());
-        (provider, name)
+        let adapter = detect_adapter_from_path(&file_path)?;
+        let name = format!("{} (auto-detected)", adapter.id());
+        (adapter, name)
     };
 
-    let result = AgTrace::check_file(&file_path, provider.as_ref(), &provider_name)?;
+    let result = AgTrace::check_file(&file_path, &adapter, &provider_name)?;
 
     let result_vm = DoctorCheckResultViewModel {
         file_path: result.file_path,

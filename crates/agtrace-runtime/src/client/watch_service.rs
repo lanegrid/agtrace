@@ -34,21 +34,21 @@ impl WatchService {
 
         let streamer = if let Some(session) = session_opt {
             // Session exists in database, use normal attach
-            let provider = agtrace_providers::create_provider(&session.provider)?;
+            let adapter = agtrace_providers::create_adapter(&session.provider)?;
             let db_mutex = Arc::new(Mutex::new(db));
-            SessionStreamer::attach(session_id.to_string(), db_mutex, Arc::from(provider))?
+            SessionStreamer::attach(session_id.to_string(), db_mutex, Arc::new(adapter))?
         } else {
             // Session not in database yet, scan filesystem directly
             // Try each configured provider until we find the session
             let mut last_error = None;
 
             for (provider_name, log_root) in self.provider_configs.iter() {
-                match agtrace_providers::create_provider(provider_name) {
-                    Ok(provider) => {
+                match agtrace_providers::create_adapter(provider_name) {
+                    Ok(adapter) => {
                         match SessionStreamer::attach_from_filesystem(
                             session_id.to_string(),
                             log_root.clone(),
-                            Arc::from(provider),
+                            Arc::new(adapter),
                         ) {
                             Ok(streamer) => return Ok(StreamHandle::new(streamer)),
                             Err(e) => last_error = Some(e),

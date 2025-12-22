@@ -1,5 +1,5 @@
 use agtrace_engine::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
-use agtrace_providers::{ImportContext, LogProvider};
+use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
 use anyhow::Result;
 use std::collections::HashMap;
@@ -46,20 +46,18 @@ pub struct InspectResult {
 pub struct DoctorService;
 
 impl DoctorService {
-    pub fn diagnose_all(
-        providers: &[(Box<dyn LogProvider>, PathBuf)],
-    ) -> Result<Vec<DiagnoseResult>> {
+    pub fn diagnose_all(providers: &[(ProviderAdapter, PathBuf)]) -> Result<Vec<DiagnoseResult>> {
         let mut results = Vec::new();
         for (provider, root) in providers {
             if root.exists() {
-                let res = Self::diagnose_provider(provider.as_ref(), root)?;
+                let res = Self::diagnose_provider(provider, root)?;
                 results.push(res);
             }
         }
         Ok(results)
     }
 
-    fn diagnose_provider(provider: &dyn LogProvider, log_root: &Path) -> Result<DiagnoseResult> {
+    fn diagnose_provider(provider: &ProviderAdapter, log_root: &Path) -> Result<DiagnoseResult> {
         let mut all_files = Vec::new();
 
         for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
@@ -68,7 +66,7 @@ impl DoctorService {
                 continue;
             }
 
-            if provider.can_handle(path) {
+            if provider.discovery.probe(path).is_match() {
                 all_files.push(path.to_path_buf());
             }
         }
@@ -76,7 +74,7 @@ impl DoctorService {
         let files_to_check = all_files;
 
         let mut result = DiagnoseResult {
-            provider_name: provider.name().to_string(),
+            provider_name: provider.id().to_string(),
             total_files: files_to_check.len(),
             successful: 0,
             failures: HashMap::new(),
@@ -104,16 +102,10 @@ impl DoctorService {
     }
 
     fn test_parse_file(
-        provider: &dyn LogProvider,
+        provider: &ProviderAdapter,
         path: &Path,
     ) -> Result<(), (FailureType, String)> {
-        let context = ImportContext {
-            project_root_override: None,
-            session_id_prefix: None,
-            all_projects: true,
-        };
-
-        match provider.normalize_file(path, &context) {
+        match provider.parser.parse_file(path) {
             Ok(_events) => Ok(()),
             Err(e) => {
                 let error_msg = format!("{:?}", e);
@@ -124,7 +116,7 @@ impl DoctorService {
 
     pub fn check_file(
         file_path: &str,
-        provider: &dyn LogProvider,
+        provider: &ProviderAdapter,
         provider_name: &str,
     ) -> Result<CheckResult> {
         let path = Path::new(file_path);
@@ -133,13 +125,7 @@ impl DoctorService {
             anyhow::bail!("File not found: {}", file_path);
         }
 
-        let context = ImportContext {
-            project_root_override: None,
-            session_id_prefix: None,
-            all_projects: true,
-        };
-
-        match provider.normalize_file(path, &context) {
+        match provider.parser.parse_file(path) {
             Ok(events) => Ok(CheckResult {
                 file_path: file_path.to_string(),
                 provider_name: provider_name.to_string(),

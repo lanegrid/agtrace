@@ -1,6 +1,6 @@
 use crate::ops::{IndexProgress, IndexService, ProjectInfo, ProjectService};
 use agtrace_index::Database;
-use agtrace_providers::{LogProvider, ScanContext};
+use agtrace_providers::{ProviderAdapter, ScanContext};
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -45,11 +45,11 @@ impl ProjectOps {
         F: FnMut(IndexProgress),
     {
         let db = self.open_db()?;
-        let providers: Vec<(Box<dyn LogProvider>, PathBuf)> = self
+        let providers: Vec<(ProviderAdapter, PathBuf)> = self
             .provider_configs
             .iter()
             .filter_map(|(name, path)| {
-                agtrace_providers::create_provider(name)
+                agtrace_providers::create_adapter(name)
                     .ok()
                     .map(|p| (p, path.clone()))
             })

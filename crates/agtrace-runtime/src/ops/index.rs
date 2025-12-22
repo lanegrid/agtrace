@@ -1,5 +1,5 @@
 use agtrace_index::{Database, LogFileRecord, ProjectRecord, SessionRecord};
-use agtrace_providers::{LogProvider, ScanContext};
+use agtrace_providers::{ProviderAdapter, ScanContext};
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -34,11 +34,11 @@ pub enum IndexProgress {
 
 pub struct IndexService<'a> {
     db: &'a Database,
-    providers: Vec<(Box<dyn LogProvider>, PathBuf)>,
+    providers: Vec<(ProviderAdapter, PathBuf)>,
 }
 
 impl<'a> IndexService<'a> {
-    pub fn new(db: &'a Database, providers: Vec<(Box<dyn LogProvider>, PathBuf)>) -> Self {
+    pub fn new(db: &'a Database, providers: Vec<(ProviderAdapter, PathBuf)>) -> Self {
         Self { db, providers }
     }
 
@@ -73,7 +73,7 @@ impl<'a> IndexService<'a> {
         let mut skipped_files = 0;
 
         for (provider, log_root) in &self.providers {
-            let provider_name = provider.name();
+            let provider_name = provider.id();
 
             if !log_root.exists() {
                 on_progress(IndexProgress::LogRootMissing {
@@ -88,7 +88,7 @@ impl<'a> IndexService<'a> {
             });
 
             let sessions = provider
-                .scan(log_root, scan_context)
+                .scan_legacy(log_root, scan_context)
                 .with_context(|| format!("Failed to scan {}", provider_name))?;
 
             on_progress(IndexProgress::ProviderSessionCount {
