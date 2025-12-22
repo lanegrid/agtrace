@@ -19,22 +19,7 @@ pub fn handle(
     no_auto_refresh: bool,
     view: &dyn TraceView,
 ) -> Result<()> {
-    // Auto-refresh index before listing (unless disabled)
-    if !no_auto_refresh {
-        // Run incremental scan quietly (verbose=false)
-        if let Err(e) = crate::handlers::index::handle(
-            workspace,
-            project_root,
-            all_projects,
-            "all".to_string(),
-            false,
-            false,
-            view,
-        ) {
-            // Don't fail the list command if refresh fails - just warn
-            view.render_warning(&format!("Warning: auto-refresh failed: {}", e))?;
-        }
-    }
+    // Note: index::handle call removed - Read-Through Indexing handles this automatically
 
     // Build filter
     let mut filter = SessionFilter::new().limit(limit);
