@@ -4,7 +4,89 @@ use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
-use crate::normalization::normalize_tool_call;
+
+/// Normalize Claude-specific tool calls
+///
+/// Handles Claude Code provider-specific tool names and maps them to domain variants.
+fn normalize_claude_tool_call(
+    tool_name: String,
+    arguments: serde_json::Value,
+    provider_call_id: Option<String>,
+) -> ToolCallPayload {
+    // Handle Claude Code-specific tools
+    match tool_name.as_str() {
+        "Read" | "Glob" => {
+            // Read/Glob → FileRead
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::FileRead {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "Edit" => {
+            // Edit → FileEdit
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::FileEdit {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "Write" => {
+            // Write → FileWrite
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::FileWrite {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "Bash" | "KillShell" | "BashOutput" => {
+            // Bash/KillShell/BashOutput → Execute
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Execute {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "Grep" | "WebSearch" | "WebFetch" => {
+            // Grep/WebSearch/WebFetch → Search
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Search {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        _ if tool_name.starts_with("mcp__") => {
+            // MCP tools
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Mcp {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        _ => {
+            // Unknown Claude tool, fall through to Generic
+        }
+    }
+
+    // Fallback to generic
+    ToolCallPayload::Generic {
+        name: tool_name,
+        arguments,
+        provider_call_id,
+    }
+}
 
 /// Determine StreamId from Claude record fields
 fn determine_stream_id(is_sidechain: bool, agent_id: &Option<String>) -> StreamId {
@@ -142,7 +224,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 &indexed_base_id,
                                 SemanticSuffix::ToolCall,
                                 timestamp,
-                                EventPayload::ToolCall(normalize_tool_call(
+                                EventPayload::ToolCall(normalize_claude_tool_call(
                                     name.clone(),
                                     input.clone(),
                                     Some(id.clone()),
@@ -411,6 +493,73 @@ mod tests {
         match &events[1].payload {
             EventPayload::TokenUsage(_) => {}
             _ => panic!("Expected TokenUsage payload"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_read() {
+        let payload = normalize_claude_tool_call(
+            "Read".to_string(),
+            serde_json::json!({"file_path": "src/main.rs"}),
+            Some("call_123".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "Read");
+                assert_eq!(arguments.file_path, Some("src/main.rs".to_string()));
+                assert_eq!(provider_call_id, Some("call_123".to_string()));
+            }
+            _ => panic!("Expected FileRead variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_write() {
+        let payload = normalize_claude_tool_call(
+            "Write".to_string(),
+            serde_json::json!({"file_path": "test.txt", "content": "hello"}),
+            Some("call_456".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileWrite {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "Write");
+                assert_eq!(arguments.file_path, "test.txt");
+                assert_eq!(arguments.content, "hello");
+                assert_eq!(provider_call_id, Some("call_456".to_string()));
+            }
+            _ => panic!("Expected FileWrite variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_bash() {
+        let payload = normalize_claude_tool_call(
+            "Bash".to_string(),
+            serde_json::json!({"command": "ls -la"}),
+            Some("call_789".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::Execute {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "Bash");
+                assert_eq!(arguments.command, Some("ls -la".to_string()));
+                assert_eq!(provider_call_id, Some("call_789".to_string()));
+            }
+            _ => panic!("Expected Execute variant"),
         }
     }
 }

@@ -518,8 +518,8 @@ expression: json_pretty
   "content": {
     "name": "write_file",
     "arguments": {
-      "content": "print(1+1)",
-      "file_path": "myapp/hoge.py"
+      "file_path": "myapp/hoge.py",
+      "content": "print(1+1)"
     },
     "provider_call_id": "write_file-1765309936615-3e48006f9d7538"
   },

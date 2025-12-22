@@ -8,7 +8,6 @@ use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
 use crate::codex::tools::{ApplyPatchArgs, PatchOperation, ReadMcpResourceArgs, ShellArgs};
-use crate::normalization::normalize_tool_call;
 
 /// Regex for extracting exit codes from Codex output
 /// Example: "Exit Code: 0" or similar patterns
@@ -121,13 +120,37 @@ fn normalize_codex_tool_call(
                 };
             }
         }
+        "shell_command" => {
+            // shell_command → Execute (already uses string command format)
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Execute {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        _ if tool_name.starts_with("mcp__") => {
+            // MCP tools
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Mcp {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
         _ => {
-            // Not a Codex-specific tool, use generic normalization
+            // Unknown Codex tool, fall through to Generic
         }
     }
 
-    // Fallback to generic normalization
-    normalize_tool_call(tool_name, arguments, provider_call_id)
+    // Fallback to generic
+    ToolCallPayload::Generic {
+        name: tool_name,
+        arguments,
+        provider_call_id,
+    }
 }
 
 /// Normalize Codex session records to events
@@ -650,6 +673,37 @@ mod tests {
                 assert_eq!(provider_call_id, Some("call_xyz".to_string()));
             }
             _ => panic!("Expected FileRead variant for read_mcp_resource"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_command() {
+        let arguments = serde_json::json!({
+            "command": "ls",
+            "workdir": "/path/to/dir"
+        });
+
+        let payload = normalize_codex_tool_call(
+            "shell_command".to_string(),
+            arguments,
+            Some("call_def".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::Execute {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "shell_command");
+                assert_eq!(arguments.command, Some("ls".to_string()));
+                assert_eq!(
+                    arguments.extra.get("workdir"),
+                    Some(&serde_json::json!("/path/to/dir"))
+                );
+                assert_eq!(provider_call_id, Some("call_def".to_string()));
+            }
+            _ => panic!("Expected Execute variant for shell_command"),
         }
     }
 }

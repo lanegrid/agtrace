@@ -4,7 +4,89 @@ use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::gemini::schema::{GeminiMessage, GeminiSession};
-use crate::normalization::normalize_tool_call;
+
+/// Normalize Gemini-specific tool calls
+///
+/// Handles Gemini provider-specific tool names and maps them to domain variants.
+fn normalize_gemini_tool_call(
+    tool_name: String,
+    arguments: serde_json::Value,
+    provider_call_id: Option<String>,
+) -> ToolCallPayload {
+    // Handle Gemini-specific tools
+    match tool_name.as_str() {
+        "read_file" => {
+            // read_file → FileRead
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::FileRead {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "write_file" => {
+            // write_file → FileWrite
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::FileWrite {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "replace" => {
+            // replace → FileEdit
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::FileEdit {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "run_shell_command" => {
+            // run_shell_command → Execute
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Execute {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "google_web_search" => {
+            // google_web_search → Search
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Search {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        _ if tool_name.starts_with("mcp__") => {
+            // MCP tools
+            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+                return ToolCallPayload::Mcp {
+                    name: tool_name,
+                    arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        _ => {
+            // Unknown Gemini tool, fall through to Generic
+        }
+    }
+
+    // Fallback to generic
+    ToolCallPayload::Generic {
+        name: tool_name,
+        arguments,
+        provider_call_id,
+    }
+}
 
 /// Normalize Gemini session to events
 /// Unfolds nested structure (thoughts[], toolCalls[]) into event stream
@@ -74,7 +156,7 @@ pub(crate) fn normalize_gemini_session(
                         &indexed_base_id,
                         SemanticSuffix::ToolCall,
                         timestamp,
-                        EventPayload::ToolCall(normalize_tool_call(
+                        EventPayload::ToolCall(normalize_gemini_tool_call(
                             tool_call.name.clone(),
                             tool_call.args.clone(),
                             Some(tool_call.id.clone()),
@@ -252,5 +334,124 @@ mod tests {
 
         // TokenUsage parent is Message
         assert_eq!(events[1].parent_id, Some(events[0].id));
+    }
+
+    #[test]
+    fn test_normalize_read_file() {
+        let payload = normalize_gemini_tool_call(
+            "read_file".to_string(),
+            serde_json::json!({"file_path": "src/main.rs"}),
+            Some("call_123".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "read_file");
+                assert_eq!(arguments.file_path, Some("src/main.rs".to_string()));
+                assert_eq!(provider_call_id, Some("call_123".to_string()));
+            }
+            _ => panic!("Expected FileRead variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_write_file() {
+        let payload = normalize_gemini_tool_call(
+            "write_file".to_string(),
+            serde_json::json!({"file_path": "test.txt", "content": "hello"}),
+            Some("call_456".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileWrite {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "write_file");
+                assert_eq!(arguments.file_path, "test.txt");
+                assert_eq!(arguments.content, "hello");
+                assert_eq!(provider_call_id, Some("call_456".to_string()));
+            }
+            _ => panic!("Expected FileWrite variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_replace() {
+        let payload = normalize_gemini_tool_call(
+            "replace".to_string(),
+            serde_json::json!({
+                "file_path": "src/lib.rs",
+                "old_string": "old",
+                "new_string": "new",
+                "replace_all": false
+            }),
+            Some("call_789".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileEdit {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "replace");
+                assert_eq!(arguments.file_path, "src/lib.rs");
+                assert_eq!(arguments.old_string, "old");
+                assert_eq!(arguments.new_string, "new");
+                assert_eq!(provider_call_id, Some("call_789".to_string()));
+            }
+            _ => panic!("Expected FileEdit variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_run_shell_command() {
+        let payload = normalize_gemini_tool_call(
+            "run_shell_command".to_string(),
+            serde_json::json!({"command": "ls", "description": "list files"}),
+            Some("call_abc".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::Execute {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "run_shell_command");
+                assert_eq!(arguments.command, Some("ls".to_string()));
+                assert_eq!(arguments.description, Some("list files".to_string()));
+                assert_eq!(provider_call_id, Some("call_abc".to_string()));
+            }
+            _ => panic!("Expected Execute variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_unknown_gemini_tool() {
+        let payload = normalize_gemini_tool_call(
+            "write_todos".to_string(),
+            serde_json::json!({"todos": []}),
+            Some("call_999".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::Generic {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "write_todos");
+                assert_eq!(arguments, serde_json::json!({"todos": []}));
+                assert_eq!(provider_call_id, Some("call_999".to_string()));
+            }
+            _ => panic!("Expected Generic variant for unknown tool"),
+        }
     }
 }
