@@ -35,9 +35,43 @@ pub fn handle(
             all_projects,
             "all".to_string(),
             false,
-            true,
+            false,
             view,
         )?;
+
+        // Check session count to provide helpful guidance
+        let current_project_root = project_root.as_ref().map(|p| p.display().to_string());
+        let current_project_hash = if let Some(root) = &current_project_root {
+            agtrace_types::project_hash_from_root(root)
+        } else {
+            "unknown".to_string()
+        };
+
+        let effective_hash = if all_projects {
+            None
+        } else {
+            Some(current_project_hash.as_str())
+        };
+
+        let db = workspace.database();
+        let sessions = db.lock().unwrap().list_sessions(effective_hash, 10)?;
+
+        if sessions.is_empty() {
+            println!();
+            if all_projects {
+                println!("No sessions found in global index.");
+                println!("\nTips:");
+                println!("  - Check provider configuration: agtrace provider list");
+                println!("  - Run diagnostics: agtrace doctor run");
+            } else {
+                println!("Current directory: No sessions linked to this project.");
+                println!("\nTips:");
+                println!("  - To see all indexed sessions: agtrace list --all-projects");
+                println!("  - To scan all projects: agtrace init --all-projects");
+            }
+        } else {
+            println!("\nDone! Use 'agtrace list' to see all sessions.");
+        }
     }
 
     Ok(())

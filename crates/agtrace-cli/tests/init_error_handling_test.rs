@@ -45,7 +45,9 @@ fn test_init_with_scan_error_provides_helpful_output() {
 
     // Should show warning about scan error
     assert!(
-        stdout.contains("Warning") || stdout.contains("does not exist"),
+        stdout.contains("Skip")
+            || stdout.contains("not found")
+            || stdout.contains("does not exist"),
         "Should display warning about scan error, got:\n{}",
         stdout
     );

@@ -163,6 +163,8 @@ impl SystemView for ConsoleTraceView {
     }
 
     fn render_index_event(&self, event: IndexEvent) -> Result<()> {
+        use std::io::Write;
+
         match event {
             IndexEvent::IncrementalHint { indexed_files } => {
                 println!(
@@ -175,29 +177,22 @@ impl SystemView for ConsoleTraceView {
                 log_root,
             } => {
                 println!(
-                    "Warning: log_root does not exist for {}: {}",
+                    "  [Skip] {}: Log root not found at {}",
                     provider_name,
                     log_root.display()
                 );
             }
             IndexEvent::ProviderScanning { provider_name } => {
-                println!("Scanning provider: {}", provider_name);
+                print!("  • {:<15} ", provider_name);
+                std::io::stdout().flush().unwrap();
             }
             IndexEvent::ProviderSessionCount {
                 provider_name: _,
                 count,
-                project_hash,
-                all_projects,
+                project_hash: _,
+                all_projects: _,
             } => {
-                println!(
-                    "  Found {} sessions for project {}",
-                    count,
-                    if all_projects {
-                        "(all)".to_string()
-                    } else {
-                        project_hash
-                    }
-                );
+                println!("Found {} sessions", count);
             }
             IndexEvent::SessionRegistered { session_id } => {
                 println!("  Registered: {}", session_id);
@@ -210,11 +205,11 @@ impl SystemView for ConsoleTraceView {
             } => {
                 if verbose {
                     println!(
-                        "Scan complete: {} sessions, {} files scanned, {} files skipped",
+                        "\nScan complete: {} sessions indexed ({} files scanned, {} skipped)",
                         total_sessions, scanned_files, skipped_files
                     );
                 } else {
-                    println!("Scan complete: {} sessions registered", total_sessions);
+                    println!("\nTotal: {} sessions indexed", total_sessions);
                 }
             }
         }

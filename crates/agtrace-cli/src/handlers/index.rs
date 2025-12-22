@@ -35,7 +35,16 @@ pub fn handle(
     workspace
         .projects()
         .scan(&scan_context, force, |progress| {
-            if verbose || matches!(progress, IndexProgress::Completed { .. }) {
+            let should_render = match &progress {
+                IndexProgress::SessionRegistered { .. } => verbose,
+                IndexProgress::IncrementalHint { .. } => verbose,
+                IndexProgress::Completed { .. } => true,
+                IndexProgress::ProviderScanning { .. } => true,
+                IndexProgress::ProviderSessionCount { .. } => true,
+                IndexProgress::LogRootMissing { .. } => true,
+            };
+
+            if should_render {
                 let event = map_progress_to_view_model(progress, verbose);
                 let _ = view.render_index_event(event);
             }

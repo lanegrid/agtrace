@@ -63,7 +63,11 @@ pub fn print_init_result(result: &InitResult) {
     println!("\nScan:");
     match &result.scan_outcome {
         ScanOutcome::Scanned => {
-            println!("  Completed");
+            if result.scan_needed {
+                println!("  Scanning logs...");
+            } else {
+                println!("  Completed");
+            }
         }
         ScanOutcome::Skipped { elapsed } => {
             println!("  Skipped (scanned {})", format_duration(*elapsed));
@@ -71,25 +75,37 @@ pub fn print_init_result(result: &InitResult) {
         }
     }
 
-    println!("\nSessions:");
-    if result.session_count == 0 {
-        if result.all_projects {
-            println!("  No sessions found.");
-            println!("\nTips:");
-            println!("  - Check provider configuration: agtrace provider list");
-            println!("  - Run diagnostics: agtrace doctor run");
+    if !result.scan_needed {
+        println!("\nSessions:");
+        if result.session_count == 0 {
+            if result.all_projects {
+                println!("  No sessions found in global index.");
+                println!("\nTips:");
+                println!("  - Check provider configuration: agtrace provider list");
+                println!("  - Run diagnostics: agtrace doctor run");
+            } else {
+                println!("  Current directory: No sessions linked to this project.");
+                println!("\nTips:");
+                println!("  - To see all indexed sessions: agtrace list --all-projects");
+                println!("  - To scan all projects: agtrace init --all-projects");
+            }
         } else {
-            println!("  No sessions found for the current project.");
-            println!("\nTips:");
-            println!("  - Scan all projects: agtrace init --all-projects");
-            println!("  - Or: agtrace index update --all-projects");
+            if result.all_projects {
+                println!(
+                    "  Found {} sessions across all projects",
+                    result.session_count
+                );
+            } else {
+                println!(
+                    "  Found {} sessions for current project",
+                    result.session_count
+                );
+            }
+            println!("\nNext steps:");
+            println!("  View recent sessions:");
+            println!("    agtrace list");
+            println!("\n  View specific session:");
+            println!("    agtrace session show <id> --style compact");
         }
-    } else {
-        println!("  Found {} sessions", result.session_count);
-        println!("\nNext steps:");
-        println!("  View recent sessions:");
-        println!("    agtrace list");
-        println!("\n  View specific session:");
-        println!("    agtrace session show <id> --style compact");
     }
 }
