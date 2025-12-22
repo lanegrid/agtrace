@@ -159,6 +159,39 @@ impl GeminiGoogleWebSearchArgs {
     }
 }
 
+/// Gemini write_todos tool arguments
+///
+/// Gemini uses `description` instead of `content` for todo items.
+///
+/// # Format
+/// ```json
+/// {
+///   "todos": [
+///     {
+///       "description": "Task description",
+///       "status": "pending"
+///     }
+///   ]
+/// }
+/// ```
+///
+/// # Normalization Note
+/// This tool maps to ToolKind::Plan but currently falls back to Generic variant
+/// since there's no unified Plan variant in ToolCallPayload yet.
+/// The raw JSON is preserved in Generic.arguments.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GeminiWriteTodosArgs {
+    pub todos: Vec<GeminiTodoItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GeminiTodoItem {
+    /// Task description (Gemini-specific field name)
+    pub description: String,
+    /// Task status: "pending", "in_progress", "completed", "cancelled"
+    pub status: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,5 +289,28 @@ mod tests {
         let domain_args = args.to_search_args();
         assert_eq!(domain_args.query, Some("rust async".to_string()));
         assert_eq!(domain_args.extra, json!({}));
+    }
+
+    #[test]
+    fn test_write_todos_args_parsing() {
+        let json_value = json!({
+            "todos": [
+                {
+                    "description": "Create cli directory",
+                    "status": "pending"
+                },
+                {
+                    "description": "Move import logic",
+                    "status": "in_progress"
+                }
+            ]
+        });
+
+        let args: GeminiWriteTodosArgs = serde_json::from_value(json_value).unwrap();
+        assert_eq!(args.todos.len(), 2);
+        assert_eq!(args.todos[0].description, "Create cli directory");
+        assert_eq!(args.todos[0].status, "pending");
+        assert_eq!(args.todos[1].description, "Move import logic");
+        assert_eq!(args.todos[1].status, "in_progress");
     }
 }

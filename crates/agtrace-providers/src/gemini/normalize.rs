@@ -6,7 +6,7 @@ use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::gemini::schema::{GeminiMessage, GeminiSession};
 use crate::gemini::tools::{
     GeminiGoogleWebSearchArgs, GeminiReadFileArgs, GeminiReplaceArgs, GeminiRunShellCommandArgs,
-    GeminiWriteFileArgs,
+    GeminiWriteFileArgs, GeminiWriteTodosArgs,
 };
 
 /// Normalize Gemini-specific tool calls
@@ -74,6 +74,17 @@ fn normalize_gemini_tool_call(
                 return ToolCallPayload::Search {
                     name: tool_name,
                     arguments: gemini_args.to_search_args(),
+                    provider_call_id,
+                };
+            }
+        }
+        "write_todos" => {
+            // Validate as Gemini-specific Args, then keep as Generic
+            // (no unified Plan variant exists yet in domain model)
+            if serde_json::from_value::<GeminiWriteTodosArgs>(arguments.clone()).is_ok() {
+                return ToolCallPayload::Generic {
+                    name: tool_name,
+                    arguments,
                     provider_call_id,
                 };
             }
@@ -447,11 +458,22 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_unknown_gemini_tool() {
+    fn test_normalize_write_todos() {
         let payload = normalize_gemini_tool_call(
             "write_todos".to_string(),
-            serde_json::json!({"todos": []}),
-            Some("call_999".to_string()),
+            serde_json::json!({
+                "todos": [
+                    {
+                        "description": "Create cli directory",
+                        "status": "pending"
+                    },
+                    {
+                        "description": "Move import logic",
+                        "status": "in_progress"
+                    }
+                ]
+            }),
+            Some("call_todos".to_string()),
         );
 
         match payload {
@@ -461,7 +483,36 @@ mod tests {
                 provider_call_id,
             } => {
                 assert_eq!(name, "write_todos");
-                assert_eq!(arguments, serde_json::json!({"todos": []}));
+                assert_eq!(provider_call_id, Some("call_todos".to_string()));
+                // Verify the arguments structure is preserved
+                let todos = arguments.get("todos").unwrap().as_array().unwrap();
+                assert_eq!(todos.len(), 2);
+                assert_eq!(
+                    todos[0].get("description").unwrap().as_str().unwrap(),
+                    "Create cli directory"
+                );
+                assert_eq!(todos[0].get("status").unwrap().as_str().unwrap(), "pending");
+            }
+            _ => panic!("Expected Generic variant for write_todos (no Plan variant yet)"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_unknown_gemini_tool() {
+        let payload = normalize_gemini_tool_call(
+            "unknown_tool".to_string(),
+            serde_json::json!({"foo": "bar"}),
+            Some("call_999".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::Generic {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "unknown_tool");
+                assert_eq!(arguments, serde_json::json!({"foo": "bar"}));
                 assert_eq!(provider_call_id, Some("call_999".to_string()));
             }
             _ => panic!("Expected Generic variant for unknown tool"),
