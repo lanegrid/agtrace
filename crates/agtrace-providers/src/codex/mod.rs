@@ -6,7 +6,7 @@ pub mod tool_mapping;
 pub mod tools;
 
 use crate::traits::{ProbeResult, SessionIndex};
-use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
+use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::AgentEvent;
 use agtrace_types::{paths_equal, ToolCallPayload, ToolKind, ToolOrigin};
 use anyhow::Result;
@@ -87,6 +87,8 @@ impl crate::traits::LogDiscovery for CodexDiscovery {
                     timestamp: header.timestamp.clone(),
                     main_file: path.to_path_buf(),
                     sidechain_files: Vec::new(), // Codex doesn't have sidechains
+                    project_root: header.cwd.clone(),
+                    snippet: header.snippet.clone(),
                 });
         }
 
@@ -197,74 +199,8 @@ impl LogProvider for CodexProvider {
     }
 
     fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>> {
-        let mut sessions: Vec<SessionMetadata> = Vec::new();
-
-        if !log_root.exists() {
-            return Ok(Vec::new());
-        }
-
-        for entry in WalkDir::new(log_root).into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path();
-
-            // Use can_handle for consistent filtering (filename pattern + empty files + empty sessions)
-            if !self.can_handle(path) {
-                continue;
-            }
-
-            let header = match extract_codex_header(path) {
-                Ok(h) => h,
-                Err(_) => {
-                    // Skip files that can't be parsed (e.g., corrupted files)
-                    continue;
-                }
-            };
-
-            let session_id = match header.session_id {
-                Some(id) => id,
-                None => {
-                    // Skip files without session_id (e.g., incomplete sessions)
-                    continue;
-                }
-            };
-
-            if let Some(cwd) = &header.cwd {
-                if let Some(expected) = &context.project_root {
-                    let cwd_normalized = cwd.trim_end_matches('/');
-                    let expected_normalized = expected.trim_end_matches('/');
-                    if cwd_normalized != expected_normalized {
-                        continue;
-                    }
-                }
-            } else if context.project_root.is_some() {
-                continue;
-            }
-
-            let metadata = std::fs::metadata(path).ok();
-            let file_size = metadata.as_ref().map(|m| m.len() as i64);
-            let mod_time = metadata
-                .and_then(|m| m.modified().ok())
-                .map(|t| format!("{:?}", t));
-
-            let log_file = LogFileMetadata {
-                path: path.display().to_string(),
-                role: "main".to_string(),
-                file_size,
-                mod_time,
-            };
-
-            sessions.push(SessionMetadata {
-                session_id,
-                project_hash: context.project_hash.clone(),
-                project_root: header.cwd,
-                provider: "codex".to_string(),
-                start_ts: header.timestamp,
-                end_ts: None,
-                snippet: header.snippet,
-                log_files: vec![log_file],
-            });
-        }
-
-        Ok(sessions)
+        // Delegate to adapter's scan_legacy which uses the new discovery architecture
+        self.adapter.scan_legacy(log_root, context)
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {

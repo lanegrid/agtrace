@@ -6,7 +6,7 @@ pub mod tool_mapping;
 pub mod tools;
 
 use crate::traits::{ProbeResult, SessionIndex};
-use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
+use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::AgentEvent;
 use agtrace_types::{paths_equal, ToolCallPayload, ToolKind, ToolOrigin};
 use anyhow::Result;
@@ -67,7 +67,7 @@ impl crate::traits::LogDiscovery for ClaudeDiscovery {
         let mut sessions: HashMap<String, SessionIndex> = HashMap::new();
 
         for entry in WalkDir::new(log_root)
-            .max_depth(3)
+            .max_depth(2)
             .into_iter()
             .filter_map(|e| e.ok())
         {
@@ -92,12 +92,34 @@ impl crate::traits::LogDiscovery for ClaudeDiscovery {
                 .or_insert_with(|| SessionIndex {
                     session_id: session_id.clone(),
                     timestamp: header.timestamp.clone(),
-                    main_file: path.to_path_buf(),
+                    main_file: path.to_path_buf(), // Takes first file as default
                     sidechain_files: Vec::new(),
+                    project_root: header.cwd.clone(),
+                    snippet: header.snippet.clone(),
                 });
 
             if header.is_sidechain {
-                session.sidechain_files.push(path.to_path_buf());
+                // Add to sidechain files list (avoid duplicates)
+                if !session.sidechain_files.contains(&path.to_path_buf()) {
+                    session.sidechain_files.push(path.to_path_buf());
+                }
+            } else {
+                // FIX: If this is the main file, strictly assign it to main_file
+                // This overwrites any sidechain file that might have initialized the session
+                session.main_file = path.to_path_buf();
+            }
+
+            // Update metadata fields preferring main file data or filling missing fields
+            if !header.is_sidechain || session.timestamp.is_none() {
+                if session.timestamp.is_none() {
+                    session.timestamp = header.timestamp.clone();
+                }
+                if session.project_root.is_none() {
+                    session.project_root = header.cwd.clone();
+                }
+                if session.snippet.is_none() {
+                    session.snippet = header.snippet.clone();
+                }
             }
         }
 
@@ -219,102 +241,21 @@ impl LogProvider for ClaudeProvider {
     }
 
     fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>> {
-        let mut sessions: HashMap<String, SessionMetadata> = HashMap::new();
-
-        let target_dir = if let Some(root) = &context.project_root {
+        // Delegate to adapter's scan_legacy which uses the new discovery architecture
+        // For Claude-specific filtering, we need to resolve the project-specific log root
+        let scan_root = if let Some(root) = &context.project_root {
             let encoded = encode_claude_project_dir(Path::new(root));
-            log_root.join(&encoded)
+            let project_dir = log_root.join(&encoded);
+            if project_dir.exists() {
+                project_dir
+            } else {
+                return Ok(Vec::new());
+            }
         } else {
             log_root.to_path_buf()
         };
 
-        if !target_dir.exists() {
-            return Ok(Vec::new());
-        }
-
-        for entry in WalkDir::new(&target_dir)
-            .max_depth(2)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-
-            // Use can_handle for consistent filtering (extension + empty files)
-            if !self.can_handle(path) {
-                continue;
-            }
-
-            let header = match extract_claude_header(path) {
-                Ok(h) => h,
-                Err(_) => {
-                    // Skip files that can't be parsed (e.g., corrupted files)
-                    continue;
-                }
-            };
-
-            let session_id = match header.session_id {
-                Some(id) => id,
-                None => {
-                    // Skip files without session_id (e.g., metadata-only files)
-                    continue;
-                }
-            };
-
-            // Filter by project root if specified (exact match required)
-            // Subdirectories are treated as completely separate projects to maintain
-            // consistency with project_hash-based providers (Gemini)
-            if let Some(cwd) = &header.cwd {
-                if let Some(expected) = &context.project_root {
-                    let cwd_normalized = cwd.trim_end_matches('/');
-                    let expected_normalized = expected.trim_end_matches('/');
-                    if cwd_normalized != expected_normalized {
-                        continue;
-                    }
-                }
-            }
-
-            let metadata = std::fs::metadata(path).ok();
-            let file_size = metadata.as_ref().map(|m| m.len() as i64);
-            let mod_time = metadata
-                .and_then(|m| m.modified().ok())
-                .map(|t| format!("{:?}", t));
-
-            let log_file = LogFileMetadata {
-                path: path.display().to_string(),
-                role: if header.is_sidechain {
-                    "sidechain"
-                } else {
-                    "main"
-                }
-                .to_string(),
-                file_size,
-                mod_time,
-            };
-
-            let session = sessions
-                .entry(session_id.clone())
-                .or_insert_with(|| SessionMetadata {
-                    session_id: session_id.clone(),
-                    project_hash: context.project_hash.clone(),
-                    project_root: header.cwd.clone(),
-                    provider: "claude_code".to_string(),
-                    start_ts: header.timestamp.clone(),
-                    end_ts: None,
-                    snippet: header.snippet.clone(),
-                    log_files: Vec::new(),
-                });
-
-            session.log_files.push(log_file);
-
-            if session.start_ts.is_none() {
-                session.start_ts = header.timestamp.clone();
-            }
-            if session.snippet.is_none() {
-                session.snippet = header.snippet.clone();
-            }
-        }
-
-        Ok(sessions.into_values().collect())
+        self.adapter.scan_legacy(&scan_root, context)
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {

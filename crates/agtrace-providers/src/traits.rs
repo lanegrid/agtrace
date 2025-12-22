@@ -110,6 +110,8 @@ pub struct SessionIndex {
     pub timestamp: Option<String>,
     pub main_file: PathBuf,
     pub sidechain_files: Vec<PathBuf>,
+    pub project_root: Option<String>,
+    pub snippet: Option<String>,
 }
 
 // --- Provider Adapter ---

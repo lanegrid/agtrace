@@ -6,7 +6,7 @@ pub mod tool_mapping;
 pub mod tools;
 
 use crate::traits::{ProbeResult, SessionIndex};
-use crate::{ImportContext, LogFileMetadata, LogProvider, ScanContext, SessionMetadata};
+use crate::{ImportContext, LogProvider, ScanContext, SessionMetadata};
 use agtrace_types::AgentEvent;
 use agtrace_types::{
     is_64_char_hex, project_hash_from_root, ToolCallPayload, ToolKind, ToolOrigin,
@@ -92,6 +92,8 @@ impl crate::traits::LogDiscovery for GeminiDiscovery {
                     timestamp: header.timestamp.clone(),
                     main_file: path.to_path_buf(),
                     sidechain_files: Vec::new(), // Gemini doesn't have sidechains
+                    project_root: None,          // Gemini uses project_hash instead
+                    snippet: header.snippet.clone(),
                 });
         }
 
@@ -222,99 +224,20 @@ impl LogProvider for GeminiProvider {
     }
 
     fn scan(&self, log_root: &Path, context: &ScanContext) -> Result<Vec<SessionMetadata>> {
-        let mut sessions: HashMap<String, SessionMetadata> = HashMap::new();
-
-        if !log_root.exists() {
-            return Ok(Vec::new());
-        }
-
-        let target_dir = if context.project_root.is_some() {
-            log_root.join(&context.project_hash)
+        // Delegate to adapter's scan_legacy which uses the new discovery architecture
+        // For Gemini-specific filtering, we need to resolve the project-hash directory
+        let scan_root = if context.project_root.is_some() {
+            let project_dir = log_root.join(&context.project_hash);
+            if project_dir.exists() {
+                project_dir
+            } else {
+                return Ok(Vec::new());
+            }
         } else {
             log_root.to_path_buf()
         };
 
-        if !target_dir.exists() && context.project_root.is_some() {
-            return Ok(Vec::new());
-        }
-
-        let search_root = if target_dir.exists() && target_dir != log_root {
-            target_dir
-        } else {
-            log_root.to_path_buf()
-        };
-
-        for entry in WalkDir::new(&search_root)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-
-            // Use can_handle for consistent filtering (filename pattern + empty files)
-            if !self.can_handle(path) {
-                continue;
-            }
-
-            if let Some(parent) = path.parent() {
-                if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
-                    if is_64_char_hex(dir_name)
-                        && context.project_root.is_some()
-                        && dir_name != context.project_hash
-                    {
-                        continue;
-                    }
-                }
-            }
-
-            let header = match extract_gemini_header(path) {
-                Ok(h) => h,
-                Err(_) => {
-                    // Skip files that can't be parsed (e.g., corrupted files)
-                    continue;
-                }
-            };
-
-            if let Some(session_id) = header.session_id {
-                let metadata = std::fs::metadata(path).ok();
-                let file_size = metadata.as_ref().map(|m| m.len() as i64);
-                let mod_time = metadata
-                    .and_then(|m| m.modified().ok())
-                    .map(|t| format!("{:?}", t));
-
-                let log_file = LogFileMetadata {
-                    path: path.display().to_string(),
-                    role: "main".to_string(),
-                    file_size,
-                    mod_time,
-                };
-
-                let session =
-                    sessions
-                        .entry(session_id.clone())
-                        .or_insert_with(|| SessionMetadata {
-                            session_id: session_id.clone(),
-                            project_hash: context.project_hash.clone(),
-                            project_root: None,
-                            provider: "gemini".to_string(),
-                            start_ts: header.timestamp.clone(),
-                            end_ts: None,
-                            snippet: header.snippet.clone(),
-                            log_files: Vec::new(),
-                        });
-
-                session.log_files.push(log_file);
-
-                if session.start_ts.is_none() {
-                    session.start_ts = header.timestamp.clone();
-                }
-                if session.snippet.is_none() {
-                    session.snippet = header.snippet.clone();
-                }
-            }
-        }
-
-        Ok(sessions.into_values().collect())
+        self.adapter.scan_legacy(&scan_root, context)
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
