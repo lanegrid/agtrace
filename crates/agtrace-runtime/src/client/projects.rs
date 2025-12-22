@@ -3,7 +3,7 @@ use agtrace_index::Database;
 use agtrace_providers::{ProviderAdapter, ScanContext};
 use anyhow::Result;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct ScanSummary {
@@ -13,24 +13,20 @@ pub struct ScanSummary {
 }
 
 pub struct ProjectOps {
-    db_path: PathBuf,
+    db: Arc<Mutex<Database>>,
     provider_configs: Arc<Vec<(String, PathBuf)>>,
 }
 
 impl ProjectOps {
-    pub fn new(db_path: PathBuf, provider_configs: Arc<Vec<(String, PathBuf)>>) -> Self {
+    pub fn new(db: Arc<Mutex<Database>>, provider_configs: Arc<Vec<(String, PathBuf)>>) -> Self {
         Self {
-            db_path,
+            db,
             provider_configs,
         }
     }
 
-    fn open_db(&self) -> Result<Database> {
-        Database::open(&self.db_path)
-    }
-
     pub fn list(&self) -> Result<Vec<ProjectInfo>> {
-        let db = self.open_db()?;
+        let db = self.db.lock().unwrap();
         let service = ProjectService::new(&db);
         service.list_projects()
     }
@@ -44,7 +40,7 @@ impl ProjectOps {
     where
         F: FnMut(IndexProgress),
     {
-        let db = self.open_db()?;
+        let db = self.db.lock().unwrap();
         let providers: Vec<(ProviderAdapter, PathBuf)> = self
             .provider_configs
             .iter()

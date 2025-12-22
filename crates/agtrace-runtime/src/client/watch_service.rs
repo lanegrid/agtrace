@@ -8,35 +8,34 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct WatchService {
-    db_path: PathBuf,
+    db: Arc<Mutex<Database>>,
     config: Arc<Config>,
     provider_configs: Arc<Vec<(String, PathBuf)>>,
 }
 
 impl WatchService {
     pub fn new(
-        db_path: PathBuf,
+        db: Arc<Mutex<Database>>,
         config: Arc<Config>,
         provider_configs: Arc<Vec<(String, PathBuf)>>,
     ) -> Self {
         Self {
-            db_path,
+            db,
             config,
             provider_configs,
         }
     }
 
     pub fn watch_session(&self, session_id: &str) -> Result<StreamHandle> {
-        let db = Database::open(&self.db_path)?;
-
-        // Try to get the provider name from the database
-        let session_opt = db.get_session_by_id(session_id)?;
+        let session_opt = {
+            let db = self.db.lock().unwrap();
+            db.get_session_by_id(session_id)?
+        };
 
         let streamer = if let Some(session) = session_opt {
             // Session exists in database, use normal attach
             let adapter = agtrace_providers::create_adapter(&session.provider)?;
-            let db_mutex = Arc::new(Mutex::new(db));
-            SessionStreamer::attach(session_id.to_string(), db_mutex, Arc::new(adapter))?
+            SessionStreamer::attach(session_id.to_string(), self.db.clone(), Arc::new(adapter))?
         } else {
             // Session not in database yet, scan filesystem directly
             // Try each configured provider until we find the session
@@ -74,11 +73,8 @@ impl WatchService {
             .map(|(_, path)| path.clone())
             .ok_or_else(|| anyhow::anyhow!("Provider '{}' not configured", provider_name))?;
 
-        let db = Database::open(&self.db_path)?;
-        let db_mutex = Arc::new(Mutex::new(db));
-
         Ok(MonitorBuilder::new(
-            db_mutex,
+            self.db.clone(),
             Arc::new(vec![(provider_name.to_string(), log_root)]),
         ))
     }
@@ -87,7 +83,7 @@ impl WatchService {
         &self.config
     }
 
-    pub fn db_path(&self) -> &PathBuf {
-        &self.db_path
+    pub fn database(&self) -> Arc<Mutex<Database>> {
+        self.db.clone()
     }
 }

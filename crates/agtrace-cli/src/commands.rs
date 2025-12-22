@@ -56,7 +56,8 @@ pub fn run(cli: Cli) -> Result<()> {
                     &view,
                 ),
                 IndexCommand::Vacuum => {
-                    let db = agtrace_index::Database::open(workspace.database_path())?;
+                    let db = workspace.database();
+                    let db = db.lock().unwrap();
                     db.vacuum()
                 }
             }
