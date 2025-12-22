@@ -114,6 +114,8 @@ impl SessionOps {
     }
 
     pub fn find(&self, session_id: &str) -> Result<SessionHandle> {
+        self.ensure_index_is_fresh()?;
+
         Ok(SessionHandle {
             id: session_id.to_string(),
             db: self.db.clone(),
@@ -121,6 +123,8 @@ impl SessionOps {
     }
 
     pub fn pack_context(&self, project_hash: Option<&str>, limit: usize) -> Result<PackResult> {
+        self.ensure_index_is_fresh()?;
+
         let db = self.db.lock().unwrap();
         let service = PackService::new(&db);
         service.select_sessions(project_hash, limit)
