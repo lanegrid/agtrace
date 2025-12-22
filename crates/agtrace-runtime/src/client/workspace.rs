@@ -78,7 +78,7 @@ impl AgTrace {
     }
 
     pub fn sessions(&self) -> SessionOps {
-        SessionOps::new(self.db.clone())
+        SessionOps::new(self.db.clone(), self.provider_configs.clone())
     }
 
     pub fn insights(&self) -> InsightOps {

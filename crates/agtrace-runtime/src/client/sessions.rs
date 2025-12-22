@@ -1,9 +1,14 @@
-use crate::ops::{ExportService, ListSessionsRequest, PackResult, PackService, SessionService};
+use crate::ops::{
+    ExportService, IndexProgress, IndexService, ListSessionsRequest, PackResult, PackService,
+    SessionService,
+};
 use crate::storage::{get_raw_files, RawFileContent};
 use agtrace_engine::export::ExportStrategy;
 use agtrace_index::{Database, SessionSummary};
+use agtrace_providers::{ProviderAdapter, ScanContext};
 use agtrace_types::AgentEvent;
 use anyhow::Result;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Default)]
@@ -57,14 +62,20 @@ impl SessionFilter {
 
 pub struct SessionOps {
     db: Arc<Mutex<Database>>,
+    provider_configs: Arc<Vec<(String, PathBuf)>>,
 }
 
 impl SessionOps {
-    pub fn new(db: Arc<Mutex<Database>>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<Mutex<Database>>, provider_configs: Arc<Vec<(String, PathBuf)>>) -> Self {
+        Self {
+            db,
+            provider_configs,
+        }
     }
 
     pub fn list(&self, filter: SessionFilter) -> Result<Vec<SessionSummary>> {
+        self.ensure_index_is_fresh()?;
+
         let db = self.db.lock().unwrap();
         let service = SessionService::new(&db);
         let request = ListSessionsRequest {
@@ -76,6 +87,30 @@ impl SessionOps {
             until: filter.until,
         };
         service.list_sessions(request)
+    }
+
+    fn ensure_index_is_fresh(&self) -> Result<()> {
+        let db = self.db.lock().unwrap();
+
+        let providers: Vec<(ProviderAdapter, PathBuf)> = self
+            .provider_configs
+            .iter()
+            .filter_map(|(name, path)| {
+                agtrace_providers::create_adapter(name)
+                    .ok()
+                    .map(|p| (p, path.clone()))
+            })
+            .collect();
+
+        let service = IndexService::new(&db, providers);
+        let scan_context = ScanContext {
+            project_hash: "unknown".to_string(),
+            project_root: None,
+        };
+
+        service.run(&scan_context, false, |_progress: IndexProgress| {})?;
+
+        Ok(())
     }
 
     pub fn find(&self, session_id: &str) -> Result<SessionHandle> {
