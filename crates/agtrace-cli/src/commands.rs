@@ -114,20 +114,20 @@ pub fn run(cli: Cli) -> Result<()> {
             let config_path = data_dir.join("config.toml");
 
             match command {
-                ProviderCommand::List => handlers::provider::list(&config_path, &view),
-                ProviderCommand::Detect => handlers::provider::detect(&config_path, &view),
+                ProviderCommand::List => handlers::provider::list_v2(&config_path, cli.format),
+                ProviderCommand::Detect => handlers::provider::detect_v2(&config_path, cli.format),
                 ProviderCommand::Set {
                     provider,
                     log_root,
                     enable,
                     disable,
-                } => handlers::provider::set(
+                } => handlers::provider::set_v2(
                     provider,
                     log_root,
                     enable,
                     disable,
                     &config_path,
-                    &view,
+                    cli.format,
                 ),
             }
         }

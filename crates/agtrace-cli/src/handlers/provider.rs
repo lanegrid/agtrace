@@ -1,54 +1,72 @@
-use crate::presentation::renderers::TraceView;
-use crate::presentation::view_models::{ProviderConfigSummary, ProviderSetResult};
+use crate::args::OutputFormat;
 use agtrace_runtime::{Config, ProviderConfig};
 use anyhow::Result;
 use std::path::PathBuf;
 
-pub fn list(config_path: &PathBuf, view: &dyn TraceView) -> Result<()> {
+pub fn list_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
+    use crate::presentation::v2::presenters;
+    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+
     let config = Config::load_from(config_path)?;
 
-    let providers = config
+    let providers: Vec<(String, bool, PathBuf)> = config
         .providers
         .iter()
-        .map(|(name, provider_config)| ProviderConfigSummary {
-            name: name.clone(),
-            enabled: provider_config.enabled,
-            log_root: provider_config.log_root.clone(),
+        .map(|(name, provider_config)| {
+            (
+                name.clone(),
+                provider_config.enabled,
+                provider_config.log_root.clone(),
+            )
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    view.render_provider_list(&providers)?;
+    let view_model = presenters::present_provider_list(providers);
+
+    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    renderer.render(view_model)?;
 
     Ok(())
 }
 
-pub fn detect(config_path: &PathBuf, view: &dyn TraceView) -> Result<()> {
+pub fn detect_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
+    use crate::presentation::v2::presenters;
+    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+
     let config = Config::detect_providers()?;
     config.save_to(config_path)?;
 
-    let providers = config
+    let providers: Vec<(String, bool, PathBuf)> = config
         .providers
         .iter()
-        .map(|(name, provider_config)| ProviderConfigSummary {
-            name: name.clone(),
-            enabled: provider_config.enabled,
-            log_root: provider_config.log_root.clone(),
+        .map(|(name, provider_config)| {
+            (
+                name.clone(),
+                provider_config.enabled,
+                provider_config.log_root.clone(),
+            )
         })
-        .collect::<Vec<_>>();
+        .collect();
 
-    view.render_provider_detected(&providers)?;
+    let view_model = presenters::present_provider_detected(providers);
+
+    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    renderer.render(view_model)?;
 
     Ok(())
 }
 
-pub fn set(
+pub fn set_v2(
     provider: String,
     log_root: PathBuf,
     enable: bool,
     disable: bool,
     config_path: &PathBuf,
-    view: &dyn TraceView,
+    format: OutputFormat,
 ) -> Result<()> {
+    use crate::presentation::v2::presenters;
+    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+
     if enable && disable {
         anyhow::bail!("Cannot specify both --enable and --disable");
     }
@@ -68,11 +86,10 @@ pub fn set(
 
     config.save_to(config_path)?;
 
-    view.render_provider_set(&ProviderSetResult {
-        provider,
-        enabled,
-        log_root,
-    })?;
+    let view_model = presenters::present_provider_set(provider, enabled, log_root);
+
+    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    renderer.render(view_model)?;
 
     Ok(())
 }
