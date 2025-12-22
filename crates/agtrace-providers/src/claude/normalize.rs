@@ -4,49 +4,74 @@ use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
+use crate::claude::tools::{
+    ClaudeBashArgs, ClaudeEditArgs, ClaudeGlobArgs, ClaudeGrepArgs, ClaudeReadArgs,
+    ClaudeTodoWriteArgs, ClaudeWriteArgs,
+};
 
 /// Normalize Claude-specific tool calls
 ///
 /// Handles Claude Code provider-specific tool names and maps them to domain variants.
+/// Uses provider-specific Args structs for proper schema parsing and conversion.
 fn normalize_claude_tool_call(
     tool_name: String,
     arguments: serde_json::Value,
     provider_call_id: Option<String>,
 ) -> ToolCallPayload {
-    // Handle Claude Code-specific tools
+    // Handle Claude Code-specific tools with provider-specific types
     match tool_name.as_str() {
-        "Read" | "Glob" => {
-            // Read/Glob → FileRead
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+        "Read" => {
+            // Parse as Claude-specific Args, then convert to domain model
+            if let Ok(claude_args) = serde_json::from_value::<ClaudeReadArgs>(arguments.clone()) {
                 return ToolCallPayload::FileRead {
                     name: tool_name,
-                    arguments: args,
+                    arguments: claude_args.to_file_read_args(),
+                    provider_call_id,
+                };
+            }
+        }
+        "Glob" => {
+            // Parse as Claude-specific Args, then convert to domain model
+            if let Ok(claude_args) = serde_json::from_value::<ClaudeGlobArgs>(arguments.clone()) {
+                return ToolCallPayload::FileRead {
+                    name: tool_name,
+                    arguments: claude_args.to_file_read_args(),
                     provider_call_id,
                 };
             }
         }
         "Edit" => {
-            // Edit → FileEdit
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // Parse as Claude-specific Args, then convert to domain model
+            if let Ok(claude_args) = serde_json::from_value::<ClaudeEditArgs>(arguments.clone()) {
                 return ToolCallPayload::FileEdit {
                     name: tool_name,
-                    arguments: args,
+                    arguments: claude_args.to_file_edit_args(),
                     provider_call_id,
                 };
             }
         }
         "Write" => {
-            // Write → FileWrite
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // Parse as Claude-specific Args, then convert to domain model
+            if let Ok(claude_args) = serde_json::from_value::<ClaudeWriteArgs>(arguments.clone()) {
                 return ToolCallPayload::FileWrite {
                     name: tool_name,
-                    arguments: args,
+                    arguments: claude_args.to_file_write_args(),
                     provider_call_id,
                 };
             }
         }
-        "Bash" | "KillShell" | "BashOutput" => {
-            // Bash/KillShell/BashOutput → Execute
+        "Bash" => {
+            // Parse as Claude-specific Args (with timeout, sandbox flags), then convert
+            if let Ok(claude_args) = serde_json::from_value::<ClaudeBashArgs>(arguments.clone()) {
+                return ToolCallPayload::Execute {
+                    name: tool_name,
+                    arguments: claude_args.to_execute_args(),
+                    provider_call_id,
+                };
+            }
+        }
+        "KillShell" | "BashOutput" => {
+            // KillShell/BashOutput → Execute (use domain model directly for simpler tools)
             if let Ok(args) = serde_json::from_value(arguments.clone()) {
                 return ToolCallPayload::Execute {
                     name: tool_name,
@@ -55,12 +80,33 @@ fn normalize_claude_tool_call(
                 };
             }
         }
-        "Grep" | "WebSearch" | "WebFetch" => {
-            // Grep/WebSearch/WebFetch → Search
+        "Grep" => {
+            // Parse as Claude-specific Args (with many grep-specific options), then convert
+            if let Ok(claude_args) = serde_json::from_value::<ClaudeGrepArgs>(arguments.clone()) {
+                return ToolCallPayload::Search {
+                    name: tool_name,
+                    arguments: claude_args.to_search_args(),
+                    provider_call_id,
+                };
+            }
+        }
+        "WebSearch" | "WebFetch" => {
+            // WebSearch/WebFetch → Search (use domain model directly)
             if let Ok(args) = serde_json::from_value(arguments.clone()) {
                 return ToolCallPayload::Search {
                     name: tool_name,
                     arguments: args,
+                    provider_call_id,
+                };
+            }
+        }
+        "TodoWrite" => {
+            // Validate as Claude-specific Args, then keep as Generic
+            // (no unified Plan variant exists yet in domain model)
+            if serde_json::from_value::<ClaudeTodoWriteArgs>(arguments.clone()).is_ok() {
+                return ToolCallPayload::Generic {
+                    name: tool_name,
+                    arguments,
                     provider_call_id,
                 };
             }
