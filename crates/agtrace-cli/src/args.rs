@@ -323,9 +323,9 @@ pub enum Commands {
         #[arg(
             long,
             default_value = "tui",
-            help = "Output format: tui (interactive) or console (streaming text)"
+            help = "Display mode: tui (interactive) or console (streaming text)"
         )]
-        format: WatchFormat,
+        mode: WatchFormat,
     },
 
     #[command(about = "Initialize agtrace configuration")]

@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::presentation::v2::formatters::time;
 use crate::presentation::v2::view_models::{
-    WatchEventViewModel, WatchStreamStateViewModel, WatchTargetViewModel, ViewMode,
+    ViewMode, WatchEventViewModel, WatchStreamStateViewModel, WatchTargetViewModel,
 };
 use owo_colors::OwoColorize;
 
@@ -59,7 +59,9 @@ impl<'a> WatchEventView<'a> {
                 writeln!(
                     f,
                     "update {} events={} turns={}",
-                    state.session_id, events.len(), state.turn_count
+                    state.session_id,
+                    events.len(),
+                    state.turn_count
                 )
             }
             WatchEventViewModel::Error { message, fatal } => {
@@ -128,7 +130,8 @@ impl<'a> WatchEventView<'a> {
                 let usage_str = format!(
                     "{} / {}",
                     format_with_commas(total_tokens as u64),
-                    state.token_limit
+                    state
+                        .token_limit
                         .map(|l| format_with_commas(l))
                         .unwrap_or_else(|| "?".to_string())
                 );
@@ -182,9 +185,11 @@ impl<'a> WatchEventView<'a> {
             WatchEventViewModel::Waiting { message } => {
                 writeln!(f, "{} {}", "⏳".dimmed(), message.dimmed())
             }
-            WatchEventViewModel::StreamUpdate { state, events, turns } => {
-                self.render_stream_update(f, state, events, turns.as_deref())
-            }
+            WatchEventViewModel::StreamUpdate {
+                state,
+                events,
+                turns,
+            } => self.render_stream_update(f, state, events, turns.as_deref()),
             WatchEventViewModel::Error { message, fatal } => {
                 let prefix = if *fatal {
                     "❌ FATAL ERROR"
@@ -228,7 +233,12 @@ impl<'a> WatchEventView<'a> {
         writeln!(
             f,
             "  Session: {} | Turn {} | {} events",
-            state.session_id.chars().take(8).collect::<String>().yellow(),
+            state
+                .session_id
+                .chars()
+                .take(8)
+                .collect::<String>()
+                .yellow(),
             state.turn_count,
             events.len()
         )?;
@@ -297,13 +307,7 @@ impl<'a> WatchEventView<'a> {
                     }
                 };
 
-                writeln!(
-                    f,
-                    "    {} {} {}",
-                    timestamp.dimmed(),
-                    emoji,
-                    description
-                )?;
+                writeln!(f, "    {} {} {}", timestamp.dimmed(), emoji, description)?;
             }
 
             if events.len() > max_events {

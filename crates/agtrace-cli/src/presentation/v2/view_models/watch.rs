@@ -14,22 +14,16 @@ use super::session::{ContextWindowUsageViewModel, TurnUsageViewModel};
 #[serde(tag = "type")]
 pub enum WatchEventViewModel {
     /// Watch monitoring started
-    Start {
-        target: WatchTargetViewModel,
-    },
+    Start { target: WatchTargetViewModel },
     /// Attached to a session
-    Attached {
-        session_id: String,
-    },
+    Attached { session_id: String },
     /// Session switched (for provider watch)
     Rotated {
         old_session: String,
         new_session: String,
     },
     /// Waiting for new session
-    Waiting {
-        message: String,
-    },
+    Waiting { message: String },
     /// Stream update with new events
     StreamUpdate {
         state: WatchStreamStateViewModel,
@@ -37,23 +31,14 @@ pub enum WatchEventViewModel {
         turns: Option<Vec<TurnUsageViewModel>>,
     },
     /// Error occurred
-    Error {
-        message: String,
-        fatal: bool,
-    },
+    Error { message: String, fatal: bool },
 }
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type")]
 pub enum WatchTargetViewModel {
-    Provider {
-        name: String,
-        log_root: PathBuf,
-    },
-    Session {
-        id: String,
-        log_root: PathBuf,
-    },
+    Provider { name: String, log_root: PathBuf },
+    Session { id: String, log_root: PathBuf },
 }
 
 /// Session state snapshot for watch stream

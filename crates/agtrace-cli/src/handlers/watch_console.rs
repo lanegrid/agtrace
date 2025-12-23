@@ -83,11 +83,7 @@ pub fn handle_console(
             let watch_service_clone = watch_service.clone();
 
             // Process events on main thread (so we can print to stdout)
-            process_provider_events_console(
-                &watch_service_clone,
-                rx_discovery,
-                latest_session,
-            );
+            process_provider_events_console(&watch_service_clone, rx_discovery, latest_session);
 
             Ok(())
         }
@@ -127,12 +123,14 @@ fn process_provider_events_console(
                 current_session_id = Some(session.id.clone());
             }
             Err(e) => {
-                let error_event = present_watch::present_watch_error(format!("Failed to attach: {}", e), false);
+                let error_event =
+                    present_watch::present_watch_error(format!("Failed to attach: {}", e), false);
                 print_event(&error_event, ViewMode::Compact);
             }
         }
     } else {
-        let waiting_event = present_watch::present_watch_waiting("Waiting for new session...".to_string());
+        let waiting_event =
+            present_watch::present_watch_waiting("Waiting for new session...".to_string());
         print_event(&waiting_event, ViewMode::Compact);
     }
 
@@ -151,7 +149,10 @@ fn process_provider_events_console(
                         session_state = None;
                     }
                     Err(e) => {
-                        let error_event = present_watch::present_watch_error(format!("Failed to attach: {}", e), false);
+                        let error_event = present_watch::present_watch_error(
+                            format!("Failed to attach: {}", e),
+                            false,
+                        );
                         print_event(&error_event, ViewMode::Compact);
                     }
                 }
@@ -172,7 +173,10 @@ fn process_provider_events_console(
                             session_state = None;
                         }
                         Err(e) => {
-                            let error_event = present_watch::present_watch_error(format!("Failed to attach: {}", e), false);
+                            let error_event = present_watch::present_watch_error(
+                                format!("Failed to attach: {}", e),
+                                false,
+                            );
                             print_event(&error_event, ViewMode::Compact);
                         }
                     }
@@ -243,7 +247,9 @@ fn process_provider_events_console(
                     print_event(&error_event, ViewMode::Compact);
                     current_handle = None;
 
-                    let waiting_event = present_watch::present_watch_waiting("Waiting for new session...".to_string());
+                    let waiting_event = present_watch::present_watch_waiting(
+                        "Waiting for new session...".to_string(),
+                    );
                     print_event(&waiting_event, ViewMode::Compact);
                 }
                 Ok(WorkspaceEvent::Error(msg)) => {

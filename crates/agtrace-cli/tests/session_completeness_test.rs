@@ -86,10 +86,7 @@ fn test_session_includes_all_files_main_and_sidechain() {
         session.get("header").is_some(),
         "Expected 'header' field in SessionAnalysisViewModel"
     );
-    assert!(
-        session.get("turns").is_some(),
-        "Expected 'turns' field"
-    );
+    assert!(session.get("turns").is_some(), "Expected 'turns' field");
 
     let turns = session["turns"]
         .as_array()

@@ -72,10 +72,7 @@ fn test_session_show_basic_structure() {
         session.get("context_summary").is_some(),
         "Expected 'context_summary' field"
     );
-    assert!(
-        session.get("turns").is_some(),
-        "Expected 'turns' field"
-    );
+    assert!(session.get("turns").is_some(), "Expected 'turns' field");
 
     let turns = session["turns"]
         .as_array()
