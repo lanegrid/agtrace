@@ -213,22 +213,36 @@ fn build_turn_item(
 ) -> TurnItemViewModel {
     let title = truncate_text(&turn.user.content.text, 50);
 
-    // Logic: Calculate bar width based on cumulative usage (v1-style stacked bar)
+    // Logic: Calculate bar width based on v1's algorithm
     let max_bar_width = 20;
-    let total_after_turn = metric.prev_total + metric.delta;
 
-    // Calculate usage ratios against max_context
+    // Calculate prev_total and delta as absolute ratios against max_context (v1 logic)
     let prev_ratio = metric.prev_total as f64 / max_context as f64;
-    let usage_ratio = total_after_turn as f64 / max_context as f64;
+    let delta_ratio = metric.delta as f64 / max_context as f64;
 
-    // Calculate bar widths based on ratios
-    let prev_bar_width = (prev_ratio * max_bar_width as f64)
-        .floor()
-        .min(max_bar_width as f64) as u16;
+    let mut prev_chars = (prev_ratio * max_bar_width as f64) as usize;
+    let mut delta_chars = (delta_ratio * max_bar_width as f64) as usize;
 
-    let bar_width = (usage_ratio * max_bar_width as f64)
-        .ceil()
-        .min(max_bar_width as f64) as u16;
+    // Ensure at least 1 char for delta if delta > 0 (v1 logic)
+    if metric.delta > 0 && delta_chars == 0 {
+        delta_chars = 1;
+    }
+
+    // Clamp total to bar_width (v1 logic with scale down)
+    let total_chars = prev_chars + delta_chars;
+    if total_chars > max_bar_width {
+        // Scale down proportionally
+        let scale = max_bar_width as f64 / total_chars as f64;
+        prev_chars = (prev_chars as f64 * scale) as usize;
+        delta_chars = max_bar_width.saturating_sub(prev_chars);
+    }
+
+    let prev_bar_width = prev_chars as u16;
+    let bar_width = (prev_chars + delta_chars) as u16;
+
+    // Output ratios (for potential future use in View)
+    let usage_ratio = (metric.prev_total + metric.delta) as f64 / max_context as f64;
+    let prev_ratio = metric.prev_total as f64 / max_context as f64;
 
     // Logic: Determine color based on delta magnitude
     let delta_color = if metric.is_heavy {
