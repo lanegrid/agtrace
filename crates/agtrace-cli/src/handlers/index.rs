@@ -1,4 +1,4 @@
-use crate::args::OutputFormat;
+use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::view_models::IndexEvent;
 use agtrace_providers::ScanContext;
 use agtrace_runtime::{AgTrace, IndexProgress};
@@ -14,6 +14,7 @@ pub fn handle_v2(
     force: bool,
     verbose: bool,
     format: OutputFormat,
+    view_mode: &ViewModeArgs,
 ) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
@@ -96,13 +97,18 @@ pub fn handle_v2(
     );
 
     let v2_format = crate::presentation::v2::OutputFormat::from(format);
-    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
+    let resolved_view_mode = view_mode.resolve();
+    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())
 }
 
-pub fn handle_vacuum_v2(workspace: &AgTrace, format: OutputFormat) -> Result<()> {
+pub fn handle_vacuum_v2(
+    workspace: &AgTrace,
+    format: OutputFormat,
+    view_mode: &ViewModeArgs,
+) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
 
@@ -113,7 +119,8 @@ pub fn handle_vacuum_v2(workspace: &AgTrace, format: OutputFormat) -> Result<()>
     let view_model = presenters::present_vacuum_result();
 
     let v2_format = crate::presentation::v2::OutputFormat::from(format);
-    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
+    let resolved_view_mode = view_mode.resolve();
+    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())

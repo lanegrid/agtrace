@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -170,6 +170,40 @@ impl fmt::Display for InspectFormat {
     }
 }
 
+/// Common view mode flags for controlling output verbosity
+#[derive(Debug, Clone, Args)]
+pub struct ViewModeArgs {
+    #[arg(
+        long,
+        help = "Minimal output (IDs only, for scripting)",
+        group = "view_mode"
+    )]
+    pub quiet: bool,
+
+    #[arg(long, help = "Compact output (one line per item)", group = "view_mode")]
+    pub compact: bool,
+
+    #[arg(long, help = "Verbose output (all metadata)", group = "view_mode")]
+    pub verbose: bool,
+}
+
+impl ViewModeArgs {
+    /// Resolve to a ViewMode based on the flags
+    pub fn resolve(&self) -> crate::presentation::v2::ViewMode {
+        use crate::presentation::v2::ViewMode;
+
+        if self.quiet {
+            ViewMode::Minimal
+        } else if self.compact {
+            ViewMode::Compact
+        } else if self.verbose {
+            ViewMode::Verbose
+        } else {
+            ViewMode::default()
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(name = "agtrace")]
 #[command(about = "Normalize and analyze agent behavior logs", long_about = None)]
@@ -287,6 +321,9 @@ pub enum IndexCommand {
 
         #[arg(long)]
         verbose: bool,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 
     #[command(about = "Rebuild the entire index from scratch")]
@@ -296,10 +333,16 @@ pub enum IndexCommand {
 
         #[arg(long)]
         verbose: bool,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 
     #[command(about = "Optimize database by reclaiming unused space")]
-    Vacuum,
+    Vacuum {
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
+    },
 }
 
 #[derive(Subcommand)]
@@ -327,22 +370,8 @@ pub enum SessionCommand {
         #[arg(long, default_value = "plain", help = "Output format")]
         format: OutputFormat,
 
-        #[arg(
-            long,
-            help = "Minimal output (IDs only, for scripting)",
-            group = "view_mode"
-        )]
-        quiet: bool,
-
-        #[arg(
-            long,
-            help = "Compact output (one line per session)",
-            group = "view_mode"
-        )]
-        compact: bool,
-
-        #[arg(long, help = "Verbose output (all metadata)", group = "view_mode")]
-        verbose: bool,
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 
     #[command(about = "Display session analysis with context usage and turn metrics")]
@@ -352,23 +381,23 @@ pub enum SessionCommand {
         #[arg(long, default_value = "plain", help = "Output format")]
         format: OutputFormat,
 
-        #[arg(long, help = "Minimal output (summary only)", group = "view_mode")]
-        quiet: bool,
-
-        #[arg(long, help = "Compact output (single-line turns)", group = "view_mode")]
-        compact: bool,
-
-        #[arg(long, help = "Verbose output (all details)", group = "view_mode")]
-        verbose: bool,
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 }
 
 #[derive(Subcommand)]
 pub enum ProviderCommand {
     #[command(about = "Show configured providers")]
-    List,
+    List {
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
+    },
     #[command(about = "Auto-detect and configure providers")]
-    Detect,
+    Detect {
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
+    },
     #[command(about = "Configure a provider")]
     Set {
         provider: String,
@@ -381,6 +410,9 @@ pub enum ProviderCommand {
 
         #[arg(long)]
         disable: bool,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 }
 
@@ -393,6 +425,9 @@ pub enum DoctorCommand {
 
         #[arg(long)]
         verbose: bool,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 
     #[command(about = "Inspect raw log file contents")]
@@ -404,6 +439,9 @@ pub enum DoctorCommand {
 
         #[arg(long, default_value = "raw")]
         format: InspectFormat,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 
     #[command(about = "Check if a log file can be parsed")]
@@ -412,6 +450,9 @@ pub enum DoctorCommand {
 
         #[arg(long)]
         provider: Option<ProviderName>,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 }
 
@@ -421,6 +462,9 @@ pub enum ProjectCommand {
     List {
         #[arg(long)]
         project_root: Option<String>,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
     },
 }
 

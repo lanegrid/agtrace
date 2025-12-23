@@ -1,9 +1,13 @@
-use crate::args::OutputFormat;
+use crate::args::{OutputFormat, ViewModeArgs};
 use agtrace_runtime::{Config, ProviderConfig};
 use anyhow::Result;
 use std::path::PathBuf;
 
-pub fn list_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
+pub fn list_v2(
+    config_path: &PathBuf,
+    format: OutputFormat,
+    view_mode: &ViewModeArgs,
+) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
 
@@ -24,13 +28,18 @@ pub fn list_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
     let view_model = presenters::present_provider_list(providers);
 
     let v2_format = crate::presentation::v2::OutputFormat::from(format);
-    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
+    let resolved_view_mode = view_mode.resolve();
+    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())
 }
 
-pub fn detect_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
+pub fn detect_v2(
+    config_path: &PathBuf,
+    format: OutputFormat,
+    view_mode: &ViewModeArgs,
+) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
 
@@ -52,7 +61,8 @@ pub fn detect_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
     let view_model = presenters::present_provider_detected(providers);
 
     let v2_format = crate::presentation::v2::OutputFormat::from(format);
-    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
+    let resolved_view_mode = view_mode.resolve();
+    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())
@@ -65,6 +75,7 @@ pub fn set_v2(
     disable: bool,
     config_path: &PathBuf,
     format: OutputFormat,
+    view_mode: &ViewModeArgs,
 ) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
@@ -91,7 +102,8 @@ pub fn set_v2(
     let view_model = presenters::present_provider_set(provider, enabled, log_root);
 
     let v2_format = crate::presentation::v2::OutputFormat::from(format);
-    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
+    let resolved_view_mode = view_mode.resolve();
+    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())

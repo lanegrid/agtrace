@@ -1,4 +1,4 @@
-use crate::args::OutputFormat;
+use crate::args::{OutputFormat, ViewModeArgs};
 use agtrace_providers::{create_adapter, detect_adapter_from_path};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
@@ -7,6 +7,7 @@ pub fn handle_v2(
     file_path: String,
     provider_override: Option<String>,
     format: OutputFormat,
+    view_mode: &ViewModeArgs,
 ) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
@@ -31,8 +32,7 @@ pub fn handle_v2(
     );
 
     let output_format = crate::presentation::v2::OutputFormat::from(format);
-    let renderer =
-        ConsoleRenderer::new(output_format, crate::presentation::v2::ViewMode::default());
+    let renderer = ConsoleRenderer::new(output_format, view_mode.resolve());
     renderer.render(view_model)?;
 
     if matches!(result.status, agtrace_runtime::CheckStatus::Failure) {

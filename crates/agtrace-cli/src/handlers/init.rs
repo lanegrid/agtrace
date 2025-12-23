@@ -29,6 +29,11 @@ pub fn handle(
     if result.scan_needed {
         // Open workspace after init to run index
         let workspace = AgTrace::open(data_dir.to_path_buf())?;
+        let default_view_mode = crate::args::ViewModeArgs {
+            quiet: false,
+            compact: false,
+            verbose: false,
+        };
         super::index::handle_v2(
             &workspace,
             project_root.as_deref(),
@@ -37,6 +42,7 @@ pub fn handle(
             false,
             false,
             crate::args::OutputFormat::Plain,
+            &default_view_mode,
         )?;
 
         // Check session count to provide helpful guidance

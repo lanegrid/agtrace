@@ -1,4 +1,4 @@
-use crate::args::OutputFormat;
+use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::v2::presenters;
 use crate::presentation::v2::renderers::ConsoleRenderer;
 use crate::presentation::v2::renderers::Renderer as _;
@@ -6,32 +6,11 @@ use agtrace_engine::assemble_session;
 use agtrace_runtime::{AgTrace, SessionFilter, TokenLimits};
 use anyhow::{Context, Result};
 
-/// Resolve ViewMode from CLI flags
-fn resolve_view_mode(
-    quiet: bool,
-    compact: bool,
-    verbose: bool,
-) -> crate::presentation::v2::ViewMode {
-    use crate::presentation::v2::ViewMode;
-
-    if quiet {
-        ViewMode::Minimal
-    } else if compact {
-        ViewMode::Compact
-    } else if verbose {
-        ViewMode::Verbose
-    } else {
-        ViewMode::default()
-    }
-}
-
 pub fn handle(
     workspace: &AgTrace,
     session_id: String,
     format: OutputFormat,
-    quiet: bool,
-    compact: bool,
-    verbose: bool,
+    view_mode: &ViewModeArgs,
 ) -> Result<()> {
     let session_ops = workspace.sessions();
     let session_meta = session_ops.find(&session_id)?;
@@ -68,8 +47,8 @@ pub fn handle(
 
     // Render output
     let v2_format = crate::presentation::v2::OutputFormat::from(format);
-    let view_mode = resolve_view_mode(quiet, compact, verbose);
-    let renderer = ConsoleRenderer::new(v2_format, view_mode);
+    let resolved_view_mode = view_mode.resolve();
+    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(result)?;
 
     Ok(())

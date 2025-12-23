@@ -1,4 +1,4 @@
-use crate::args::{InspectFormat, OutputFormat};
+use crate::args::{InspectFormat, OutputFormat, ViewModeArgs};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 
@@ -7,6 +7,7 @@ pub fn handle_v2(
     lines: usize,
     inspect_format: InspectFormat,
     output_format: OutputFormat,
+    view_mode: &ViewModeArgs,
 ) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
@@ -37,7 +38,7 @@ pub fn handle_v2(
     );
 
     let v2_format = crate::presentation::v2::OutputFormat::from(output_format);
-    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
+    let renderer = ConsoleRenderer::new(v2_format, view_mode.resolve());
     renderer.render(view_model)?;
 
     Ok(())

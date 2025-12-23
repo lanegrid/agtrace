@@ -37,7 +37,11 @@ pub fn run(cli: Cli) -> Result<()> {
             let workspace = AgTrace::open(data_dir.clone())?;
 
             match command {
-                IndexCommand::Update { provider, verbose } => handlers::index::handle_v2(
+                IndexCommand::Update {
+                    provider,
+                    verbose,
+                    view_mode,
+                } => handlers::index::handle_v2(
                     &workspace,
                     project_root.as_deref(),
                     cli.all_projects,
@@ -45,8 +49,13 @@ pub fn run(cli: Cli) -> Result<()> {
                     false,
                     verbose,
                     cli.format,
+                    &view_mode,
                 ),
-                IndexCommand::Rebuild { provider, verbose } => handlers::index::handle_v2(
+                IndexCommand::Rebuild {
+                    provider,
+                    verbose,
+                    view_mode,
+                } => handlers::index::handle_v2(
                     &workspace,
                     project_root.as_deref(),
                     cli.all_projects,
@@ -54,8 +63,11 @@ pub fn run(cli: Cli) -> Result<()> {
                     true,
                     verbose,
                     cli.format,
+                    &view_mode,
                 ),
-                IndexCommand::Vacuum => handlers::index::handle_vacuum_v2(&workspace, cli.format),
+                IndexCommand::Vacuum { view_mode } => {
+                    handlers::index::handle_vacuum_v2(&workspace, cli.format, &view_mode)
+                }
             }
         }
 
@@ -71,9 +83,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     until,
                     no_auto_refresh,
                     format,
-                    quiet,
-                    compact,
-                    verbose,
+                    view_mode,
                 } => {
                     let effective_hash = if project_hash.is_none() {
                         project_root.as_ref().map(|p| {
@@ -94,20 +104,14 @@ pub fn run(cli: Cli) -> Result<()> {
                         since.clone(),
                         until.clone(),
                         no_auto_refresh,
-                        quiet,
-                        compact,
-                        verbose,
+                        &view_mode,
                     )
                 }
                 SessionCommand::Show {
                     session_id,
                     format,
-                    quiet,
-                    compact,
-                    verbose,
-                } => handlers::session_show::handle(
-                    &workspace, session_id, format, quiet, compact, verbose,
-                ),
+                    view_mode,
+                } => handlers::session_show::handle(&workspace, session_id, format, &view_mode),
             }
         }
 
@@ -115,13 +119,18 @@ pub fn run(cli: Cli) -> Result<()> {
             let config_path = data_dir.join("config.toml");
 
             match command {
-                ProviderCommand::List => handlers::provider::list_v2(&config_path, cli.format),
-                ProviderCommand::Detect => handlers::provider::detect_v2(&config_path, cli.format),
+                ProviderCommand::List { view_mode } => {
+                    handlers::provider::list_v2(&config_path, cli.format, &view_mode)
+                }
+                ProviderCommand::Detect { view_mode } => {
+                    handlers::provider::detect_v2(&config_path, cli.format, &view_mode)
+                }
                 ProviderCommand::Set {
                     provider,
                     log_root,
                     enable,
                     disable,
+                    view_mode,
                 } => handlers::provider::set_v2(
                     provider,
                     log_root,
@@ -129,32 +138,43 @@ pub fn run(cli: Cli) -> Result<()> {
                     disable,
                     &config_path,
                     cli.format,
+                    &view_mode,
                 ),
             }
         }
 
         Commands::Doctor { command } => match command {
-            DoctorCommand::Run { provider, verbose } => {
+            DoctorCommand::Run {
+                provider,
+                verbose,
+                view_mode,
+            } => {
                 let workspace = AgTrace::open(data_dir)?;
                 handlers::doctor_run::handle_v2(
                     &workspace,
                     provider.to_string(),
                     verbose,
                     cli.format,
+                    &view_mode,
                 )
             }
             DoctorCommand::Inspect {
                 file_path,
                 lines,
                 format,
-            } => handlers::doctor_inspect::handle_v2(file_path, lines, format, cli.format),
+                view_mode,
+            } => handlers::doctor_inspect::handle_v2(
+                file_path, lines, format, cli.format, &view_mode,
+            ),
             DoctorCommand::Check {
                 file_path,
                 provider,
+                view_mode,
             } => handlers::doctor_check::handle_v2(
                 file_path,
                 provider.map(|p| p.to_string()),
                 cli.format,
+                &view_mode,
             ),
         },
 
@@ -164,7 +184,8 @@ pub fn run(cli: Cli) -> Result<()> {
             match command {
                 ProjectCommand::List {
                     project_root: proj_root,
-                } => handlers::project::handle_v2(&workspace, proj_root, cli.format),
+                    view_mode,
+                } => handlers::project::handle_v2(&workspace, proj_root, cli.format, &view_mode),
             }
         }
 
@@ -227,6 +248,13 @@ pub fn run(cli: Cli) -> Result<()> {
                 project_hash
             };
 
+            // Create default ViewModeArgs for Sessions alias
+            let default_view_mode = crate::args::ViewModeArgs {
+                quiet: false,
+                compact: false,
+                verbose: false,
+            };
+
             handlers::session_list::handle_v2(
                 &workspace,
                 project_root.as_deref(),
@@ -238,9 +266,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 since,
                 until,
                 false, // no_auto_refresh - default to auto-refresh for Sessions command
-                false, // quiet
-                false, // compact
-                false, // verbose - default to Standard mode
+                &default_view_mode,
             )
         }
 
