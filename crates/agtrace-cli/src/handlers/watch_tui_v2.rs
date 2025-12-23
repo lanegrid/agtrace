@@ -79,12 +79,19 @@ impl WatchHandler {
 
     /// Send updated ViewModel to renderer
     fn send_update(&self) {
+        // Use context_window_limit from state, or fallback to max_context
+        let max_context_for_metrics = self
+            .state
+            .context_window_limit
+            .or(self.max_context.map(|c| c as u64))
+            .map(|c| c as u32);
+
         // Call Presenter (pure function) to build ViewModel
         let screen_vm = build_screen_view_model(
             &self.state,
             &self.events,
             self.assembled_session.as_ref(),
-            self.max_context,
+            max_context_for_metrics,
         );
 
         // Send to renderer (ignore errors if renderer has quit)
@@ -206,15 +213,12 @@ fn handle_session_watch(
     let rx_stream = handle.receiver();
 
     // Initialize handler with initial state
-    let mut initial_state = SessionState::new(session_id.to_string(), None, chrono::Utc::now());
-
-    // Set default context window limit (will be updated from actual events)
-    initial_state.context_window_limit = Some(128_000);
+    let initial_state = SessionState::new(session_id.to_string(), None, chrono::Utc::now());
 
     let mut handler = WatchHandler::new(initial_state, tx.clone());
 
-    // Set max_context for turn metrics
-    handler.max_context = Some(128_000);
+    // Set default fallback (will be updated from actual events)
+    handler.max_context = Some(200_000); // Default to Claude Code's limit
 
     // Event loop
     loop {
@@ -261,6 +265,9 @@ fn handle_session_watch(
                                 handler.state.model = Some(model);
                             }
                         }
+                        if let Some(limit) = updates.context_window_limit {
+                            handler.state.context_window_limit = Some(limit);
+                        }
 
                         // Add to event buffer (without triggering update)
                         handler.events.push_back(event.clone());
@@ -271,6 +278,13 @@ fn handle_session_watch(
 
                     // Update assembled session if available
                     if let Some(session) = session {
+                        // Extract context_window_limit from assembled session if available
+                        // The session's turns contain token usage that should reflect the actual limit
+                        // Use the limit from state updates, or infer from session data
+                        if handler.state.context_window_limit.is_none() {
+                            // Try to infer from first turn's usage or use default
+                            // For now, trust the state's context_window_limit from events
+                        }
                         handler.assembled_session = Some(session);
                     }
 
