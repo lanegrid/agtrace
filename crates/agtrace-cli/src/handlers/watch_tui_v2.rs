@@ -49,6 +49,7 @@ impl WatchHandler {
     }
 
     /// Handle new event
+    #[allow(dead_code)]
     fn handle_event(&mut self, event: agtrace_types::AgentEvent) {
         // Add to buffer (keep last 100 events)
         const MAX_EVENTS: usize = 100;
@@ -72,6 +73,7 @@ impl WatchHandler {
     }
 
     /// Handle assembled session update
+    #[allow(dead_code)]
     fn handle_session_update(&mut self, session: AgentSession) {
         self.assembled_session = Some(session);
         self.send_update();
@@ -79,10 +81,20 @@ impl WatchHandler {
 
     /// Send updated ViewModel to renderer
     fn send_update(&self) {
-        // Use context_window_limit from state, or fallback to max_context
-        let max_context_for_metrics = self
+        // Same fallback logic as build_dashboard: try context_window_limit first, then model lookup
+        let token_limits = agtrace_runtime::TokenLimits::new();
+        let token_spec = self
+            .state
+            .model
+            .as_ref()
+            .and_then(|m| token_limits.get_limit(m));
+        let limit_from_state_or_model = self
             .state
             .context_window_limit
+            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
+
+        // Fallback to handler's cached max_context if still None
+        let max_context_for_metrics = limit_from_state_or_model
             .or(self.max_context.map(|c| c as u64))
             .map(|c| c as u32);
 
@@ -239,9 +251,14 @@ fn handle_session_watch(
 
         match rx_stream.recv_timeout(Duration::from_millis(500)) {
             Ok(WorkspaceEvent::Stream(stream_event)) => match stream_event {
-                StreamEvent::Attached { .. } => {
-                    // Session attached - send initial screen
-                    handler.send_update();
+                StreamEvent::Attached { session_id, path } => {
+                    // Session attached - reset state to new session
+                    let new_state = SessionState::new(
+                        session_id.clone(),
+                        Some(path.clone()),
+                        chrono::Utc::now(),
+                    );
+                    handler.handle_state_update(new_state);
                 }
                 StreamEvent::Events { events, session } => {
                     // Batch process events to avoid spamming TUI with updates
