@@ -8,6 +8,7 @@ pub mod project;
 pub mod provider;
 pub mod result;
 pub mod session;
+pub mod watch;
 
 use std::fmt::Display;
 
@@ -52,6 +53,8 @@ pub use provider::{
 pub use result::CommandResultViewModel;
 pub use session::{
     AgentStepViewModel, ContextUsage, ContextWindowSummary, ContextWindowUsageViewModel,
-    FilterSummary, SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel,
-    StreamStateViewModel, TurnAnalysisViewModel, TurnMetrics,
+    FilterSummary, ReactionViewModel, SessionAnalysisViewModel, SessionHeader, SessionListEntry,
+    SessionListViewModel, StepItemViewModel, StreamStateViewModel, TurnAnalysisViewModel,
+    TurnMetrics, TurnUsageViewModel,
 };
+pub use watch::{WatchEventViewModel, WatchStreamStateViewModel, WatchTargetViewModel};

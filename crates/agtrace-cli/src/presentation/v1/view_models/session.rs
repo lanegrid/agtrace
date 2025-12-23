@@ -87,53 +87,12 @@ pub struct SessionListEntryViewModel {
     pub snippet: Option<String>,
 }
 
-#[derive(Debug, Clone)]
-pub enum ReactionViewModel {
-    Continue,
-    Warn(String),
-}
+// --------------------------------------------------------
+// Facade: Re-export v2 types for backward compatibility
+// --------------------------------------------------------
 
-#[derive(Debug, Clone)]
-pub struct ContextWindowUsageViewModel {
-    pub fresh_input: i32,
-    pub cache_creation: i32,
-    pub cache_read: i32,
-    pub output: i32,
-}
-
-#[derive(Debug, Clone)]
-pub struct StreamStateViewModel {
-    pub session_id: String,
-    pub project_root: Option<String>,
-    pub start_time: DateTime<Utc>,
-    pub last_activity: DateTime<Utc>,
-    pub model: Option<String>,
-    pub context_window_limit: Option<u64>,
-    pub current_usage: ContextWindowUsageViewModel,
-    pub current_reasoning_tokens: i32,
-    pub error_count: u32,
-    pub event_count: usize,
-    pub turn_count: usize,
-    pub token_limit: Option<u64>,
-    pub compaction_buffer_pct: Option<f64>,
-}
-
-#[derive(Debug, Clone)]
-pub struct TurnUsageViewModel {
-    pub turn_id: usize,
-    pub title: String,
-    pub prev_total: u32,
-    pub delta: u32,
-    pub is_heavy: bool,
-    pub is_active: bool,
-    pub recent_steps: Vec<StepItemViewModel>,
-    pub start_time: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StepItemViewModel {
-    pub timestamp: DateTime<Utc>,
-    pub emoji: String,
-    pub description: String,
-    pub token_usage: Option<u32>,
-}
+pub use crate::presentation::v2::view_models::ContextWindowUsageViewModel;
+pub use crate::presentation::v2::view_models::ReactionViewModel;
+pub use crate::presentation::v2::view_models::StepItemViewModel;
+pub use crate::presentation::v2::view_models::StreamStateViewModel;
+pub use crate::presentation::v2::view_models::TurnUsageViewModel;

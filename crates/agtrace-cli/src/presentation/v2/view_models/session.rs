@@ -143,6 +143,36 @@ pub struct StreamStateViewModel {
     pub compaction_buffer_pct: Option<f64>,
 }
 
+/// Turn usage view model for TUI visualization
+#[derive(Debug, Clone, Serialize)]
+pub struct TurnUsageViewModel {
+    pub turn_id: usize,
+    pub title: String,
+    pub prev_total: u32,
+    pub delta: u32,
+    pub is_heavy: bool,
+    pub is_active: bool,
+    pub recent_steps: Vec<StepItemViewModel>,
+    pub start_time: Option<DateTime<Utc>>,
+}
+
+/// Step item for TUI turn history
+#[derive(Debug, Clone, Serialize)]
+pub struct StepItemViewModel {
+    pub timestamp: DateTime<Utc>,
+    pub emoji: String,
+    pub description: String,
+    pub token_usage: Option<u32>,
+}
+
+/// Reaction from watch reactor (legacy, may be removed)
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum ReactionViewModel {
+    Continue,
+    Warn(String),
+}
+
 // --------------------------------------------------------
 // CreateView Trait Implementations (Bridge to Views)
 // --------------------------------------------------------

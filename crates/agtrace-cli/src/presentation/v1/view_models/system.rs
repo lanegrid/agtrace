@@ -95,12 +95,18 @@ pub enum IndexEvent {
     },
 }
 
+// --------------------------------------------------------
+// Watch types migrated to v2, re-exported for compatibility
+// --------------------------------------------------------
+
+/// Legacy type, use WatchEventViewModel::Start in new code
 #[derive(Debug, Clone)]
 pub enum WatchStart {
     Provider { name: String, log_root: PathBuf },
     Session { id: String, log_root: PathBuf },
 }
 
+/// Legacy type, kept for backward compatibility
 #[derive(Debug, Clone)]
 pub struct WatchTokenUsage {
     pub total_tokens: u64,
@@ -110,6 +116,7 @@ pub struct WatchTokenUsage {
     pub total_pct: Option<f64>,
 }
 
+/// Legacy type, kept for backward compatibility
 #[derive(Debug, Clone)]
 pub struct WatchSummary {
     pub recent_lines: Vec<String>,
