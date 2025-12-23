@@ -85,9 +85,12 @@ impl<'a> TurnHistoryView<'a> {
 
             let mut line_spans = vec![Span::raw(format!("#{:02} ", turn.turn_id))];
 
-            // Stacked bar (v1-style): history (█) + delta (▓)
+            // Fixed-width stacked bar (v1-style): history (█) + delta (▓) + empty (-)
+            const BAR_WIDTH: usize = 20;
             let prev_chars = turn.prev_bar_width as usize;
             let delta_chars = turn.bar_width.saturating_sub(turn.prev_bar_width) as usize;
+            let total_chars = turn.bar_width as usize;
+            let empty_chars = BAR_WIDTH.saturating_sub(total_chars);
 
             // Previous turns (dark gray)
             if prev_chars > 0 {
@@ -105,6 +108,16 @@ impl<'a> TurnHistoryView<'a> {
                     Style::default()
                         .fg(delta_color)
                         .add_modifier(Modifier::BOLD),
+                ));
+            }
+
+            // Empty/unused portion (dim gray)
+            if empty_chars > 0 {
+                line_spans.push(Span::styled(
+                    "─".repeat(empty_chars),
+                    Style::default()
+                        .fg(ratatui::style::Color::DarkGray)
+                        .add_modifier(Modifier::DIM),
                 ));
             }
 
