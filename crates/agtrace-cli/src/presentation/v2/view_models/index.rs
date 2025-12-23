@@ -67,12 +67,12 @@ pub struct VacuumResultViewModel {
 
 impl CreateView for VacuumResultViewModel {
     fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
-        Box::new(VacuumResultView { data: self })
+        Box::new(VacuumResultView { _data: self })
     }
 }
 
 struct VacuumResultView<'a> {
-    data: &'a VacuumResultViewModel,
+    _data: &'a VacuumResultViewModel,
 }
 
 impl<'a> fmt::Display for VacuumResultView<'a> {
@@ -83,6 +83,6 @@ impl<'a> fmt::Display for VacuumResultView<'a> {
 
 impl fmt::Display for VacuumResultViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", VacuumResultView { data: self })
+        write!(f, "{}", VacuumResultView { _data: self })
     }
 }
