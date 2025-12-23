@@ -40,7 +40,10 @@ pub use doctor::{
 };
 pub use index::{IndexMode, IndexResultViewModel, VacuumResultViewModel};
 pub use init::{ConfigStatus, InitProgress, InitResultViewModel, ProviderInfo, ScanOutcome};
-pub use lab::LabExportViewModel;
+pub use lab::{
+    LabExportViewModel, LabStatsViewModel, ProviderStats, ToolCallSample, ToolClassification,
+    ToolStatsEntry,
+};
 pub use pack::{PackReportViewModel, ReportTemplate, SessionDigest};
 pub use project::{ProjectEntryViewModel, ProjectListViewModel};
 pub use provider::{

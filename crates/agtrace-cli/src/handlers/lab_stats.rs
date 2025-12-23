@@ -1,5 +1,9 @@
-use crate::presentation::v1::presenters::{present_lab_stats, ToolCallSample, ToolClassification};
-use crate::presentation::v1::renderers::TraceView;
+use crate::args::{OutputFormat, ViewModeArgs};
+use crate::presentation::v2::presenters;
+use crate::presentation::v2::view_models::{
+    CommandResultViewModel, ToolCallSample, ToolClassification,
+};
+use crate::presentation::v2::{ConsoleRenderer, Renderer};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 
@@ -7,7 +11,8 @@ pub fn handle(
     workspace: &AgTrace,
     limit: Option<usize>,
     source: Option<String>,
-    view: &dyn TraceView,
+    output_format: OutputFormat,
+    view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
     let result = workspace.insights().tool_usage(limit, source)?;
 
@@ -39,8 +44,11 @@ pub fn handle(
         })
         .collect();
 
-    let stats_vm = present_lab_stats(result.total_sessions, sorted_stats);
-    view.render_lab_stats(&stats_vm)?;
+    let vm = presenters::present_lab_stats(result.total_sessions, sorted_stats);
+    let result_vm = CommandResultViewModel::new(vm);
+    let resolved_view_mode = view_mode_args.resolve();
+    let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);
+    renderer.render(result_vm)?;
 
     Ok(())
 }

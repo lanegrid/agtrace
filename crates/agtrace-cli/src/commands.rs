@@ -223,7 +223,12 @@ pub fn run(cli: Cli) -> Result<()> {
                     )
                 }
                 LabCommand::Stats { limit, source } => {
-                    handlers::lab_stats::handle(&workspace, limit, source, &view)
+                    let default_view_mode = crate::args::ViewModeArgs {
+                        quiet: false,
+                        compact: false,
+                        verbose: false,
+                    };
+                    handlers::lab_stats::handle(&workspace, limit, source, cli.format, &default_view_mode)
                 }
                 LabCommand::Grep {
                     pattern,
