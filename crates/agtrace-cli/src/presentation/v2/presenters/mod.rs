@@ -7,6 +7,7 @@ pub mod project;
 pub mod provider;
 pub mod session;
 pub mod watch;
+pub mod watch_tui;
 
 pub use doctor::{present_check_result, present_diagnose_results, present_inspect_result};
 pub use index::{present_index_result, present_vacuum_result};
@@ -23,3 +24,4 @@ pub use watch::{
     present_watch_start_provider, present_watch_start_session, present_watch_stream_update,
     present_watch_waiting,
 };
+pub use watch_tui::build_screen_view_model;

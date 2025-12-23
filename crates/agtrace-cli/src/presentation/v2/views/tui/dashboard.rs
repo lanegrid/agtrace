@@ -1,0 +1,116 @@
+//! Dashboard View Component
+//!
+//! Renders the top section with session overview and context usage.
+
+use ratatui::{
+    buffer::Buffer,
+    layout::{Constraint, Layout, Rect},
+    style::{Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Gauge, Paragraph, Widget},
+};
+
+use crate::presentation::v2::view_models::DashboardViewModel;
+
+use super::status_level_to_color;
+
+/// Dashboard view wrapper
+pub struct DashboardView<'a> {
+    model: &'a DashboardViewModel,
+}
+
+impl<'a> DashboardView<'a> {
+    pub fn new(model: &'a DashboardViewModel) -> Self {
+        Self { model }
+    }
+}
+
+impl<'a> Widget for DashboardView<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let block = Block::default()
+            .title(self.model.title.as_str())
+            .borders(Borders::ALL)
+            .style(Style::default());
+
+        let inner = block.inner(area);
+        block.render(area, buf);
+
+        // Split into info section and context gauge
+        let chunks = Layout::vertical([Constraint::Length(4), Constraint::Length(3)]).split(inner);
+
+        // Info section
+        self.render_info_section(chunks[0], buf);
+
+        // Context gauge
+        self.render_context_gauge(chunks[1], buf);
+    }
+}
+
+impl<'a> DashboardView<'a> {
+    fn render_info_section(&self, area: Rect, buf: &mut Buffer) {
+        let mut lines = vec![];
+
+        // Session ID and model
+        let session_line = Line::from(vec![
+            Span::styled("Session: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::raw(&self.model.session_id),
+        ]);
+        lines.push(session_line);
+
+        // Model
+        if let Some(model) = &self.model.model {
+            let model_line = Line::from(vec![
+                Span::styled("Model: ", Style::default().add_modifier(Modifier::DIM)),
+                Span::raw(model),
+            ]);
+            lines.push(model_line);
+        }
+
+        // Project root
+        if let Some(project) = &self.model.project_root {
+            let project_line = Line::from(vec![
+                Span::styled("Project: ", Style::default().add_modifier(Modifier::DIM)),
+                Span::raw(project),
+            ]);
+            lines.push(project_line);
+        }
+
+        // Elapsed time
+        let elapsed_str = format_duration(self.model.elapsed_seconds);
+        let elapsed_line = Line::from(vec![
+            Span::styled("Elapsed: ", Style::default().add_modifier(Modifier::DIM)),
+            Span::raw(elapsed_str),
+        ]);
+        lines.push(elapsed_line);
+
+        let paragraph = Paragraph::new(lines);
+        paragraph.render(area, buf);
+    }
+
+    fn render_context_gauge(&self, area: Rect, buf: &mut Buffer) {
+        let color = status_level_to_color(self.model.context_color);
+
+        // Create gauge with computed values
+        let gauge = Gauge::default()
+            .gauge_style(Style::default().fg(color))
+            .ratio(self.model.context_usage_pct)
+            .label(format!(
+                "Context: {} ({:.0}%)",
+                self.model.context_label,
+                self.model.context_usage_pct * 100.0
+            ));
+
+        gauge.render(area, buf);
+    }
+}
+
+/// Format duration in seconds to human-readable string
+fn format_duration(seconds: u64) -> String {
+    if seconds < 60 {
+        format!("{}s", seconds)
+    } else if seconds < 3600 {
+        format!("{}m {}s", seconds / 60, seconds % 60)
+    } else {
+        format!("{}h {}m", seconds / 3600, (seconds % 3600) / 60)
+    }
+}

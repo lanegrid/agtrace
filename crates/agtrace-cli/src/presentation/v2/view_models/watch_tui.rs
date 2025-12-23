@@ -1,0 +1,109 @@
+//! TUI-specific ViewModels for Watch command
+//!
+//! These ViewModels define the complete data contract for the TUI Renderer.
+//! They contain ONLY primitive types and computed values - NO domain logic.
+//! The TUI Renderer should be able to draw the screen using ONLY this data.
+
+use chrono::{DateTime, Utc};
+use serde::Serialize;
+
+use super::common::StatusLevel;
+
+/// Complete screen state for TUI rendering
+#[derive(Debug, Clone, Serialize)]
+pub struct TuiScreenViewModel {
+    pub dashboard: DashboardViewModel,
+    pub timeline: TimelineViewModel,
+    pub turn_history: TurnHistoryViewModel,
+    pub status_bar: StatusBarViewModel,
+}
+
+/// Dashboard component (top section with session overview)
+#[derive(Debug, Clone, Serialize)]
+pub struct DashboardViewModel {
+    pub title: String,
+    pub sub_title: Option<String>,
+    pub session_id: String,
+    pub project_root: Option<String>,
+    pub model: Option<String>,
+    pub start_time: DateTime<Utc>,
+    pub last_activity: DateTime<Utc>,
+    pub elapsed_seconds: u64,
+
+    // Context window usage (pre-computed)
+    pub context_usage_pct: f64,     // 0.0 - 1.0
+    pub context_label: String,      // e.g., "12k / 128k"
+    pub context_color: StatusLevel, // Color decision already made
+    pub context_breakdown: ContextBreakdownViewModel,
+}
+
+/// Context window usage breakdown
+#[derive(Debug, Clone, Serialize)]
+pub struct ContextBreakdownViewModel {
+    pub fresh_input: u64,
+    pub cache_creation: u64,
+    pub cache_read: u64,
+    pub output: u64,
+    pub total: u64,
+}
+
+/// Timeline component (recent events stream)
+#[derive(Debug, Clone, Serialize)]
+pub struct TimelineViewModel {
+    pub events: Vec<TimelineEventViewModel>,
+    pub total_count: usize,
+    pub displayed_count: usize,
+}
+
+/// Single timeline event item
+#[derive(Debug, Clone, Serialize)]
+pub struct TimelineEventViewModel {
+    pub timestamp: DateTime<Utc>,
+    pub relative_time: String, // e.g., "2s ago" (pre-formatted)
+    pub icon: String,          // Emoji or symbol
+    pub description: String,   // Short summary (pre-formatted, truncated)
+    pub level: StatusLevel,    // For coloring
+}
+
+/// Turn history component (left sidebar with turn list)
+#[derive(Debug, Clone, Serialize)]
+pub struct TurnHistoryViewModel {
+    pub turns: Vec<TurnItemViewModel>,
+    pub active_turn_index: Option<usize>,
+}
+
+/// Single turn item in history
+#[derive(Debug, Clone, Serialize)]
+pub struct TurnItemViewModel {
+    pub turn_id: usize,
+    pub title: String, // Truncated user message
+    pub is_active: bool,
+    pub is_heavy: bool, // Indicates if this turn consumed significant tokens
+
+    // Token delta visualization (pre-computed)
+    pub delta_tokens: u32,
+    pub delta_bar_width: u16, // Bar length in characters (0-20)
+    pub delta_color: StatusLevel,
+
+    // Step preview (for active turn)
+    pub recent_steps: Vec<StepPreviewViewModel>,
+    pub start_time: Option<DateTime<Utc>>,
+}
+
+/// Step preview for active turn
+#[derive(Debug, Clone, Serialize)]
+pub struct StepPreviewViewModel {
+    pub timestamp: DateTime<Utc>,
+    pub icon: String,        // Pre-determined emoji
+    pub description: String, // Pre-formatted, truncated
+    pub token_usage: Option<u32>,
+}
+
+/// Status bar component (bottom bar)
+#[derive(Debug, Clone, Serialize)]
+pub struct StatusBarViewModel {
+    pub event_count: usize,
+    pub turn_count: usize,
+    pub status_message: String, // e.g., "Watching session abc123..."
+    pub status_level: StatusLevel,
+}

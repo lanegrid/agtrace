@@ -1,0 +1,346 @@
+//! TUI Presenter for Watch command
+//!
+//! This module contains PURE FUNCTIONS that convert domain models
+//! (SessionState, AgentEvent, AgentSession) into TUI-specific ViewModels.
+//!
+//! ## Design Principles:
+//! - NO state management (Handler owns state, Presenter is stateless)
+//! - ALL calculations and logic happen here (colors, widths, truncation)
+//! - Views should only need to map data to widgets, NO decisions
+
+use chrono::Utc;
+use std::collections::VecDeque;
+
+use crate::presentation::v2::view_models::{
+    common::StatusLevel, ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel,
+    StepPreviewViewModel, TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel,
+    TurnHistoryViewModel, TurnItemViewModel,
+};
+
+/// Build complete screen ViewModel from current domain state
+///
+/// This is the main entry point called by the Handler.
+/// It produces a complete snapshot of what the TUI should display.
+pub fn build_screen_view_model(
+    state: &agtrace_runtime::SessionState,
+    events: &VecDeque<agtrace_types::AgentEvent>,
+    assembled_session: Option<&agtrace_engine::AgentSession>,
+    max_context: Option<u32>,
+) -> TuiScreenViewModel {
+    let dashboard = build_dashboard(state);
+    let timeline = build_timeline(events);
+    let turn_history = build_turn_history(assembled_session, max_context);
+    let status_bar = build_status_bar(state);
+
+    TuiScreenViewModel {
+        dashboard,
+        timeline,
+        turn_history,
+        status_bar,
+    }
+}
+
+/// Build dashboard ViewModel with context usage calculations
+fn build_dashboard(state: &agtrace_runtime::SessionState) -> DashboardViewModel {
+    let limit = state.context_window_limit.unwrap_or(128_000);
+    let total = state.current_usage.context_window_tokens().max(0) as u64;
+    let usage_pct = total as f64 / limit as f64;
+
+    // Logic: Determine color based on usage percentage
+    let context_color = if usage_pct > 0.9 {
+        StatusLevel::Error
+    } else if usage_pct > 0.7 {
+        StatusLevel::Warning
+    } else {
+        StatusLevel::Success
+    };
+
+    // Logic: Format context label
+    let context_label = format!("{} / {}", format_tokens(total), format_tokens(limit));
+
+    let elapsed = (state.last_activity - state.start_time).num_seconds();
+
+    DashboardViewModel {
+        title: "AGTRACE WATCH".to_string(),
+        sub_title: Some("Real-time Session Monitoring".to_string()),
+        session_id: state.session_id.clone(),
+        project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
+        model: state.model.clone(),
+        start_time: state.start_time,
+        last_activity: state.last_activity,
+        elapsed_seconds: elapsed.max(0) as u64,
+        context_usage_pct: usage_pct,
+        context_label,
+        context_color,
+        context_breakdown: ContextBreakdownViewModel {
+            fresh_input: state.current_usage.fresh_input.0.max(0) as u64,
+            cache_creation: state.current_usage.cache_creation.0.max(0) as u64,
+            cache_read: state.current_usage.cache_read.0.max(0) as u64,
+            output: state.current_usage.output.0.max(0) as u64,
+            total,
+        },
+    }
+}
+
+/// Build timeline ViewModel from recent events
+fn build_timeline(events: &VecDeque<agtrace_types::AgentEvent>) -> TimelineViewModel {
+    const MAX_TIMELINE_ITEMS: usize = 50;
+
+    let total_count = events.len();
+    let displayed = events
+        .iter()
+        .rev()
+        .take(MAX_TIMELINE_ITEMS)
+        .map(event_to_timeline_item)
+        .collect::<Vec<_>>();
+
+    TimelineViewModel {
+        events: displayed.clone(),
+        total_count,
+        displayed_count: displayed.len(),
+    }
+}
+
+/// Convert a single event to timeline item
+fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventViewModel {
+    use agtrace_types::EventPayload;
+
+    let now = Utc::now();
+    let relative_time = format_relative_time(event.timestamp, now);
+
+    let (icon, description, level) = match &event.payload {
+        EventPayload::User(content) => {
+            let preview = truncate_text(&content.text, 60);
+            (
+                "👤".to_string(),
+                format!("User: {}", preview),
+                StatusLevel::Info,
+            )
+        }
+        EventPayload::Reasoning(content) => {
+            let preview = truncate_text(&content.text, 60);
+            (
+                "🤔".to_string(),
+                format!("Reasoning: {}", preview),
+                StatusLevel::Info,
+            )
+        }
+        EventPayload::ToolCall(tool_call) => {
+            let name = tool_call.name();
+            (
+                "🔧".to_string(),
+                format!("Tool: {}", name),
+                StatusLevel::Success,
+            )
+        }
+        EventPayload::ToolResult(tool_result) => {
+            let id = &tool_result.tool_call_id;
+            (
+                "✅".to_string(),
+                format!("Result: {}", id),
+                StatusLevel::Success,
+            )
+        }
+        EventPayload::Message(content) => {
+            let preview = truncate_text(&content.text, 60);
+            (
+                "💬".to_string(),
+                format!("Message: {}", preview),
+                StatusLevel::Info,
+            )
+        }
+        EventPayload::TokenUsage(_) => (
+            "📊".to_string(),
+            "Token Usage".to_string(),
+            StatusLevel::Info,
+        ),
+        EventPayload::Notification(notification) => {
+            let preview = truncate_text(&notification.text, 60);
+            (
+                "🔔".to_string(),
+                format!("Notification: {}", preview),
+                StatusLevel::Info,
+            )
+        }
+    };
+
+    TimelineEventViewModel {
+        timestamp: event.timestamp,
+        relative_time,
+        icon,
+        description,
+        level,
+    }
+}
+
+/// Build turn history ViewModel from assembled session
+fn build_turn_history(
+    assembled_session: Option<&agtrace_engine::AgentSession>,
+    max_context: Option<u32>,
+) -> TurnHistoryViewModel {
+    let Some(session) = assembled_session else {
+        return TurnHistoryViewModel {
+            turns: Vec::new(),
+            active_turn_index: None,
+        };
+    };
+
+    let metrics = session.compute_turn_metrics(max_context);
+    let active_turn_index = metrics
+        .iter()
+        .enumerate()
+        .find(|(_, m)| m.is_active)
+        .map(|(i, _)| i);
+
+    let turns = session
+        .turns
+        .iter()
+        .zip(metrics.iter())
+        .map(|(turn, metric)| build_turn_item(turn, metric))
+        .collect();
+
+    TurnHistoryViewModel {
+        turns,
+        active_turn_index,
+    }
+}
+
+/// Build a single turn item with computed metrics
+fn build_turn_item(
+    turn: &agtrace_engine::AgentTurn,
+    metric: &agtrace_engine::TurnMetrics,
+) -> TurnItemViewModel {
+    let title = truncate_text(&turn.user.content.text, 50);
+
+    // Logic: Calculate bar width (0-20 characters)
+    let max_bar_width = 20;
+    let delta_bar_width = if metric.prev_total > 0 {
+        let ratio = metric.delta as f64 / metric.prev_total as f64;
+        (ratio * max_bar_width as f64)
+            .ceil()
+            .min(max_bar_width as f64) as u16
+    } else {
+        1
+    };
+
+    // Logic: Determine color based on delta magnitude
+    let delta_color = if metric.is_heavy {
+        StatusLevel::Warning
+    } else {
+        StatusLevel::Success
+    };
+
+    // Build step preview for active turn
+    let recent_steps = if metric.is_active {
+        turn.steps
+            .iter()
+            .rev()
+            .take(5)
+            .rev()
+            .map(build_step_preview)
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    let start_time = turn.steps.first().map(|s| s.timestamp);
+
+    TurnItemViewModel {
+        turn_id: metric.turn_index + 1,
+        title,
+        is_active: metric.is_active,
+        is_heavy: metric.is_heavy,
+        delta_tokens: metric.delta,
+        delta_bar_width,
+        delta_color,
+        recent_steps,
+        start_time,
+    }
+}
+
+/// Build step preview item
+fn build_step_preview(step: &agtrace_engine::AgentStep) -> StepPreviewViewModel {
+    let (icon, description) = if let Some(reasoning) = &step.reasoning {
+        ("🤔".to_string(), truncate_text(&reasoning.content.text, 40))
+    } else if let Some(message) = &step.message {
+        ("💬".to_string(), truncate_text(&message.content.text, 40))
+    } else if !step.tools.is_empty() {
+        let tool_name = step.tools[0].call.content.name();
+        ("🔧".to_string(), format!("Tool: {}", tool_name))
+    } else {
+        ("•".to_string(), "Event".to_string())
+    };
+
+    let token_usage = step.usage.as_ref().map(|u| {
+        (u.input_tokens
+            + u.details
+                .as_ref()
+                .and_then(|d| d.cache_creation_input_tokens)
+                .unwrap_or(0)
+            + u.details
+                .as_ref()
+                .and_then(|d| d.cache_read_input_tokens)
+                .unwrap_or(0)) as u32
+    });
+
+    StepPreviewViewModel {
+        timestamp: step.timestamp,
+        icon,
+        description,
+        token_usage,
+    }
+}
+
+/// Build status bar ViewModel
+fn build_status_bar(state: &agtrace_runtime::SessionState) -> StatusBarViewModel {
+    let status_message = format!("Watching session {}...", &state.session_id[..8]);
+    let status_level = StatusLevel::Info;
+
+    StatusBarViewModel {
+        event_count: state.event_count,
+        turn_count: state.turn_count,
+        status_message,
+        status_level,
+    }
+}
+
+// --------------------------------------------------------
+// Utility Functions (Formatting)
+// --------------------------------------------------------
+
+/// Format token count with k/M suffixes
+fn format_tokens(tokens: u64) -> String {
+    if tokens >= 1_000_000 {
+        format!("{:.1}M", tokens as f64 / 1_000_000.0)
+    } else if tokens >= 1_000 {
+        format!("{:.1}k", tokens as f64 / 1_000.0)
+    } else {
+        tokens.to_string()
+    }
+}
+
+/// Truncate text to max length with ellipsis
+fn truncate_text(text: &str, max_len: usize) -> String {
+    if text.chars().count() <= max_len {
+        text.to_string()
+    } else {
+        let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
+        format!("{}...", truncated)
+    }
+}
+
+/// Format relative time (e.g., "2s ago", "5m ago")
+fn format_relative_time(timestamp: chrono::DateTime<Utc>, now: chrono::DateTime<Utc>) -> String {
+    let duration = now.signed_duration_since(timestamp);
+    let seconds = duration.num_seconds();
+
+    if seconds < 60 {
+        format!("{}s ago", seconds)
+    } else if seconds < 3600 {
+        format!("{}m ago", seconds / 60)
+    } else if seconds < 86400 {
+        format!("{}h ago", seconds / 3600)
+    } else {
+        format!("{}d ago", seconds / 86400)
+    }
+}

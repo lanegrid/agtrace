@@ -28,10 +28,7 @@ fn truncate_text(text: &str, max_len: usize) -> String {
     }
 }
 
-pub fn present_lab_stats(
-    total_sessions: usize,
-    stats: ProviderStatsMap,
-) -> LabStatsViewModel {
+pub fn present_lab_stats(total_sessions: usize, stats: ProviderStatsMap) -> LabStatsViewModel {
     let providers: Vec<ProviderStats> = stats
         .into_iter()
         .map(|(provider_name, (tools, classifications))| {

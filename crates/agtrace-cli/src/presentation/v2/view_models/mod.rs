@@ -9,6 +9,7 @@ pub mod provider;
 pub mod result;
 pub mod session;
 pub mod watch;
+pub mod watch_tui;
 
 use std::fmt::Display;
 
@@ -58,3 +59,8 @@ pub use session::{
     TurnMetrics, TurnUsageViewModel,
 };
 pub use watch::{WatchEventViewModel, WatchStreamStateViewModel, WatchTargetViewModel};
+pub use watch_tui::{
+    ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel, StepPreviewViewModel,
+    TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel, TurnHistoryViewModel,
+    TurnItemViewModel,
+};
