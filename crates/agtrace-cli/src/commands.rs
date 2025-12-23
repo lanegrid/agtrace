@@ -99,9 +99,15 @@ pub fn run(cli: Cli) -> Result<()> {
                         verbose,
                     )
                 }
-                SessionCommand::Show { session_id, json } => {
-                    handlers::session_show::handle(&workspace, session_id, json)
-                }
+                SessionCommand::Show {
+                    session_id,
+                    format,
+                    quiet,
+                    compact,
+                    verbose,
+                } => handlers::session_show::handle(
+                    &workspace, session_id, format, quiet, compact, verbose,
+                ),
             }
         }
 

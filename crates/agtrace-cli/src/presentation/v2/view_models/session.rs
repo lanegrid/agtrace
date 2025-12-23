@@ -286,22 +286,69 @@ pub struct TurnMetrics {
 }
 
 impl CreateView for SessionAnalysisViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
-        // TODO: Implement mode-specific views in Phase 2
-        Box::new(SessionAnalysisView { data: self })
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        Box::new(SessionAnalysisView { data: self, mode })
     }
 }
 
 // Wrapper struct to separate View from ViewModel
 struct SessionAnalysisView<'a> {
     data: &'a SessionAnalysisViewModel,
+    mode: ViewMode,
 }
 
-impl<'a> fmt::Display for SessionAnalysisView<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> SessionAnalysisView<'a> {
+    fn render_minimal(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::presentation::v2::formatters::number;
+
+        // Minimal: Just session ID and turn count
+        writeln!(f, "{}", self.data.header.session_id)?;
+        writeln!(
+            f,
+            "Turns: {} | Tokens: {}",
+            self.data.turns.len(),
+            number::format_compact(self.data.context_summary.current_tokens as i64)
+        )?;
+        Ok(())
+    }
+
+    fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::presentation::v2::formatters::number;
+
+        // Compact: Single-line header + one-line per turn
+        writeln!(
+            f,
+            "{} | {} | {} turns | {} tokens",
+            self.data.header.session_id,
+            self.data.header.provider,
+            self.data.turns.len(),
+            number::format_compact(self.data.context_summary.current_tokens as i64)
+        )?;
+
+        for turn in &self.data.turns {
+            let tool_count = turn
+                .steps
+                .iter()
+                .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
+                .count();
+            let query_preview = if turn.user_query.len() > 50 {
+                format!("{}...", &turn.user_query[..47])
+            } else {
+                turn.user_query.clone()
+            };
+            writeln!(
+                f,
+                "  #{:02} | {} tools | {}",
+                turn.turn_number, tool_count, query_preview
+            )?;
+        }
+        Ok(())
+    }
+
+    fn render_standard(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::v2::formatters::{display, number};
 
-        // Header
+        // Standard: Full display (current behavior)
         writeln!(f, "{}", "=".repeat(80))?;
         write!(f, "SESSION: {}", self.data.header.session_id)?;
         if let Some(ref model) = self.data.header.model {
@@ -338,11 +385,77 @@ impl<'a> fmt::Display for SessionAnalysisView<'a> {
 
         Ok(())
     }
+
+    fn render_verbose(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::presentation::v2::formatters::{display, number};
+
+        // Verbose: Standard + additional metadata
+        writeln!(f, "{}", "=".repeat(80))?;
+        write!(f, "SESSION: {}", self.data.header.session_id)?;
+        if let Some(ref model) = self.data.header.model {
+            write!(f, " ({})", model)?;
+        }
+        writeln!(f)?;
+        writeln!(f, "PROVIDER: {}", self.data.header.provider)?;
+        writeln!(f, "STATUS:   {}", self.data.header.status)?;
+        if let Some(ref start) = self.data.header.start_time {
+            writeln!(f, "START:    {}", start)?;
+        }
+        if let Some(ref dur) = self.data.header.duration {
+            writeln!(f, "DURATION: {}", dur)?;
+        }
+
+        // Context summary
+        let context_display = if let Some(max) = self.data.context_summary.max_tokens {
+            let bar =
+                display::build_progress_bar(self.data.context_summary.current_tokens, max, 40);
+            format!(
+                "{} ({} / {})",
+                bar,
+                number::format_compact(self.data.context_summary.current_tokens as i64),
+                number::format_compact(max as i64)
+            )
+        } else {
+            format!(
+                "Total: {}",
+                number::format_compact(self.data.context_summary.current_tokens as i64)
+            )
+        };
+        writeln!(f, "CONTEXT:  {}", context_display)?;
+
+        writeln!(f, "{}", "=".repeat(80))?;
+        writeln!(f)?;
+
+        // Turns (verbose mode shows all details, same as standard)
+        for turn in &self.data.turns {
+            write!(f, "{}", turn)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> fmt::Display for SessionAnalysisView<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.mode {
+            ViewMode::Minimal => self.render_minimal(f),
+            ViewMode::Compact => self.render_compact(f),
+            ViewMode::Standard => self.render_standard(f),
+            ViewMode::Verbose => self.render_verbose(f),
+        }
+    }
 }
 
 impl fmt::Display for SessionAnalysisViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", SessionAnalysisView { data: self })
+        write!(
+            f,
+            "{}",
+            SessionAnalysisView {
+                data: self,
+                mode: ViewMode::default(),
+            }
+        )
     }
 }
 

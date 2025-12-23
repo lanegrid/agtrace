@@ -349,8 +349,17 @@ pub enum SessionCommand {
     Show {
         session_id: String,
 
-        #[arg(long, help = "Output as JSON")]
-        json: bool,
+        #[arg(long, default_value = "plain", help = "Output format")]
+        format: OutputFormat,
+
+        #[arg(long, help = "Minimal output (summary only)", group = "view_mode")]
+        quiet: bool,
+
+        #[arg(long, help = "Compact output (single-line turns)", group = "view_mode")]
+        compact: bool,
+
+        #[arg(long, help = "Verbose output (all details)", group = "view_mode")]
+        verbose: bool,
     },
 }
 
