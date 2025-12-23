@@ -3,6 +3,10 @@ use std::fmt;
 
 use super::{CreateView, ViewMode};
 
+// --------------------------------------------------------
+// Data Definitions (ViewModels)
+// --------------------------------------------------------
+
 #[derive(Debug, Serialize)]
 pub struct IndexResultViewModel {
     pub total_sessions: usize,
@@ -18,71 +22,41 @@ pub enum IndexMode {
     Rebuild,
 }
 
-impl CreateView for IndexResultViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
-        Box::new(IndexResultView { data: self })
-    }
-}
-
-struct IndexResultView<'a> {
-    data: &'a IndexResultViewModel,
-}
-
-impl<'a> fmt::Display for IndexResultView<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.data.mode {
-            IndexMode::Update => {
-                if self.data.total_sessions > 0 {
-                    writeln!(
-                        f,
-                        "\nIndexed {} session(s) ({} files scanned, {} skipped)",
-                        self.data.total_sessions, self.data.scanned_files, self.data.skipped_files
-                    )?;
-                } else {
-                    writeln!(f, "\nNo new sessions found.")?;
-                }
-            }
-            IndexMode::Rebuild => {
-                writeln!(
-                    f,
-                    "\nRebuilt index: {} session(s) ({} files scanned)",
-                    self.data.total_sessions, self.data.scanned_files
-                )?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl fmt::Display for IndexResultViewModel {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", IndexResultView { data: self })
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct VacuumResultViewModel {
     pub success: bool,
 }
 
-impl CreateView for VacuumResultViewModel {
+// --------------------------------------------------------
+// CreateView Trait Implementations (Bridge to Views)
+// --------------------------------------------------------
+
+impl CreateView for IndexResultViewModel {
     fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
-        Box::new(VacuumResultView { _data: self })
+        use crate::presentation::v2::views::index::IndexResultView;
+        Box::new(IndexResultView::new(self))
     }
 }
 
-struct VacuumResultView<'a> {
-    _data: &'a VacuumResultViewModel,
+impl CreateView for VacuumResultViewModel {
+    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        use crate::presentation::v2::views::index::VacuumResultView;
+        Box::new(VacuumResultView::new(self))
+    }
 }
 
-impl<'a> fmt::Display for VacuumResultView<'a> {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        Ok(())
+// --------------------------------------------------------
+// Display Trait (for backward compatibility and default rendering)
+// --------------------------------------------------------
+
+impl fmt::Display for IndexResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.create_view(ViewMode::default()))
     }
 }
 
 impl fmt::Display for VacuumResultViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", VacuumResultView { _data: self })
+        write!(f, "{}", self.create_view(ViewMode::default()))
     }
 }
