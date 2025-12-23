@@ -11,8 +11,9 @@ pub fn present_project_list(
     let project_entries: Vec<ProjectEntryViewModel> = projects
         .into_iter()
         .map(|p| {
-            let hash_short = if p.hash.len() > 16 {
-                format!("{}...", &p.hash[..16])
+            let hash_short = if p.hash.chars().count() > 16 {
+                let truncated: String = p.hash.chars().take(16).collect();
+                format!("{}...", truncated)
             } else {
                 p.hash.clone()
             };

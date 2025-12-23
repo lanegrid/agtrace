@@ -58,11 +58,7 @@ impl<'a> SessionListView2<'a> {
 
         for session in &self.data.sessions {
             // Shorten ID to first 8 chars (like git commit hash)
-            let id_short = if session.id.len() > 8 {
-                &session.id[..8]
-            } else {
-                &session.id
-            };
+            let id_short = session.id.chars().take(8).collect::<String>();
 
             // Use relative time format
             let time_display = session
@@ -313,7 +309,7 @@ impl<'a> SessionAnalysisView<'a> {
     }
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use crate::presentation::v2::formatters::number;
+        use crate::presentation::v2::formatters::{number, text};
 
         // Compact: Single-line header + one-line per turn
         writeln!(
@@ -331,11 +327,7 @@ impl<'a> SessionAnalysisView<'a> {
                 .iter()
                 .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
                 .count();
-            let query_preview = if turn.user_query.len() > 50 {
-                format!("{}...", &turn.user_query[..47])
-            } else {
-                turn.user_query.clone()
-            };
+            let query_preview = text::truncate(&turn.user_query, 50);
             writeln!(
                 f,
                 "  #{:02} | {} tools | {}",
