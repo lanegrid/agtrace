@@ -32,16 +32,16 @@ pub struct VacuumResultViewModel {
 // --------------------------------------------------------
 
 impl CreateView for IndexResultViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::index::IndexResultView;
-        Box::new(IndexResultView::new(self))
+        Box::new(IndexResultView::new(self, mode))
     }
 }
 
 impl CreateView for VacuumResultViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::index::VacuumResultView;
-        Box::new(VacuumResultView::new(self))
+        Box::new(VacuumResultView::new(self, mode))
     }
 }
 

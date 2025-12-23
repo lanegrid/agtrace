@@ -62,30 +62,30 @@ pub struct InspectLine {
 // --------------------------------------------------------
 
 impl CreateView for DiagnoseResultsViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::doctor::DiagnoseResultsView;
-        Box::new(DiagnoseResultsView::new(self))
+        Box::new(DiagnoseResultsView::new(self, mode))
     }
 }
 
 impl CreateView for DiagnoseResultViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::doctor::DiagnoseResultView;
-        Box::new(DiagnoseResultView::new(self))
+        Box::new(DiagnoseResultView::new(self, mode))
     }
 }
 
 impl CreateView for DoctorCheckResultViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::doctor::DoctorCheckResultView;
-        Box::new(DoctorCheckResultView::new(self))
+        Box::new(DoctorCheckResultView::new(self, mode))
     }
 }
 
 impl CreateView for InspectResultViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::doctor::InspectResultView;
-        Box::new(InspectResultView::new(self))
+        Box::new(InspectResultView::new(self, mode))
     }
 }
 

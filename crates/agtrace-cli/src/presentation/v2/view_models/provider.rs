@@ -37,23 +37,23 @@ pub struct ProviderSetViewModel {
 // --------------------------------------------------------
 
 impl CreateView for ProviderListViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::provider::ProviderListView;
-        Box::new(ProviderListView::new(self))
+        Box::new(ProviderListView::new(self, mode))
     }
 }
 
 impl CreateView for ProviderDetectedViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::provider::ProviderDetectedView;
-        Box::new(ProviderDetectedView::new(self))
+        Box::new(ProviderDetectedView::new(self, mode))
     }
 }
 
 impl CreateView for ProviderSetViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::provider::ProviderSetView;
-        Box::new(ProviderSetView::new(self))
+        Box::new(ProviderSetView::new(self, mode))
     }
 }
 

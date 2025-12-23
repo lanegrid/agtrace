@@ -28,9 +28,9 @@ pub struct ProjectEntryViewModel {
 // --------------------------------------------------------
 
 impl CreateView for ProjectListViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
         use crate::presentation::v2::views::project::ProjectListView;
-        Box::new(ProjectListView::new(self))
+        Box::new(ProjectListView::new(self, mode))
     }
 }
 
