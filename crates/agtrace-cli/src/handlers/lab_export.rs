@@ -1,5 +1,5 @@
 use crate::args::{ExportFormat, ExportStrategy as CliExportStrategy};
-use crate::presentation::renderers::TraceView;
+use crate::presentation::v1::renderers::TraceView;
 use crate::services::writer;
 use agtrace_engine::export::ExportStrategy;
 use agtrace_runtime::AgTrace;

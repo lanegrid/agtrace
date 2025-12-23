@@ -1,11 +1,12 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use crate::presentation::view_models::IndexEvent;
+use crate::presentation::v1::view_models::IndexEvent;
 use agtrace_providers::ScanContext;
 use agtrace_runtime::{AgTrace, IndexProgress};
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use std::path::Path;
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle_v2(
     workspace: &AgTrace,
     project_root: Option<&Path>,

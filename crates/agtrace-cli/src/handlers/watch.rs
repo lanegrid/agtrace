@@ -1,8 +1,8 @@
-use crate::presentation::presenters;
-use crate::presentation::renderers::traits::WatchView;
-use crate::presentation::renderers::tui::TuiEvent;
-use crate::presentation::renderers::TuiWatchView;
-use crate::presentation::view_models::{WatchStart, WatchSummary};
+use crate::presentation::v1::presenters;
+use crate::presentation::v1::renderers::traits::WatchView;
+use crate::presentation::v1::renderers::tui::TuiEvent;
+use crate::presentation::v1::renderers::TuiWatchView;
+use crate::presentation::v1::view_models::{WatchStart, WatchSummary};
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 use anyhow::Result;
 use std::path::Path;
@@ -261,7 +261,7 @@ fn process_provider_events(
                         // Build turns data from assembled session
                         let max_context = state.context_window_limit.map(|tl| tl as u32);
                         let turns_data = session.as_ref().map(|s| {
-                            crate::presentation::renderers::tui::build_turns_from_session(
+                            crate::presentation::v1::renderers::tui::build_turns_from_session(
                                 s,
                                 max_context,
                             )
@@ -367,7 +367,7 @@ fn process_stream_events(
                     // Build turns data from assembled session
                     let max_context = state.context_window_limit.map(|tl| tl as u32);
                     let turns_data = session.as_ref().map(|s| {
-                        crate::presentation::renderers::tui::build_turns_from_session(
+                        crate::presentation::v1::renderers::tui::build_turns_from_session(
                             s,
                             max_context,
                         )

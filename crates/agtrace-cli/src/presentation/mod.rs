@@ -70,17 +70,8 @@
 //!
 //! ## 📂 Directory Structure
 //!
-//! * `formatters/` - Small utils (Time, Token strings).
-//! * `presenters/` - Converters (Domain -> ViewModel).
-//! * `renderers/`  - Output drivers (Console impl, TUI impl, Traits).
-//! * `shared/`     - Cross-cutting concerns (DisplayOptions).
-//! * `view_models/` - The Data Structures (The API contract).
-//! * `views/`      - Console layout logic (`fmt::Display` impls).
+//! * `v1/`         - Legacy presentation layer (formatters, presenters, renderers, view_models, views, shared)
+//! * `v2/`         - Refactored presentation layer with unified ViewModel-View separation
 
-pub mod formatters;
-pub mod presenters;
-pub mod renderers;
-pub mod shared;
+pub mod v1;
 pub mod v2;
-pub mod view_models;
-pub mod views;

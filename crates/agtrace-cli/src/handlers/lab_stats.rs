@@ -1,5 +1,5 @@
-use crate::presentation::presenters::{present_lab_stats, ToolCallSample, ToolClassification};
-use crate::presentation::renderers::TraceView;
+use crate::presentation::v1::presenters::{present_lab_stats, ToolCallSample, ToolClassification};
+use crate::presentation::v1::renderers::TraceView;
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 

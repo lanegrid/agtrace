@@ -3,7 +3,7 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::presentation::renderers::{ConsoleTraceView, TuiWatchView};
+use crate::presentation::v1::renderers::{ConsoleTraceView, TuiWatchView};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 use clap::CommandFactory;

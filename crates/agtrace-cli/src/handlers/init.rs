@@ -1,4 +1,4 @@
-use crate::presentation::renderers::TraceView;
+use crate::presentation::v1::renderers::TraceView;
 use agtrace_runtime::{AgTrace, InitConfig, InitProgress};
 use anyhow::Result;
 use std::path::{Path, PathBuf};

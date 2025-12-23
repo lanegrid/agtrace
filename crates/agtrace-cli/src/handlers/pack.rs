@@ -1,5 +1,5 @@
-use crate::presentation::presenters;
-use crate::presentation::renderers::TraceView;
+use crate::presentation::v1::presenters;
+use crate::presentation::v1::renderers::TraceView;
 use agtrace_runtime::AgTrace;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;

@@ -64,8 +64,8 @@ impl<'a> SessionListView<'a> {
 
     fn render_standard(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Standard: Table format (current behavior)
-        use crate::presentation::formatters::session_list::SessionEntry;
-        use crate::presentation::formatters::SessionListView;
+        use crate::presentation::v1::formatters::session_list::SessionEntry;
+        use crate::presentation::v1::formatters::SessionListView;
 
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
@@ -93,8 +93,8 @@ impl<'a> SessionListView<'a> {
 
     fn render_verbose(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Verbose: Table + all available metadata
-        use crate::presentation::formatters::session_list::SessionEntry;
-        use crate::presentation::formatters::SessionListView;
+        use crate::presentation::v1::formatters::session_list::SessionEntry;
+        use crate::presentation::v1::formatters::SessionListView;
 
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
