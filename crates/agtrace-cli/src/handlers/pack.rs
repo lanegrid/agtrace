@@ -1,5 +1,7 @@
-use crate::presentation::v1::presenters;
-use crate::presentation::v1::renderers::TraceView;
+use crate::args::{OutputFormat, ViewModeArgs};
+use crate::presentation::v2::presenters;
+use crate::presentation::v2::view_models::{CommandResultViewModel, ReportTemplate};
+use crate::presentation::v2::{ConsoleRenderer, Renderer};
 use agtrace_runtime::AgTrace;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;
@@ -10,7 +12,8 @@ pub fn handle(
     limit: usize,
     project_hash: Option<String>,
     all_projects: bool,
-    view: &dyn TraceView,
+    output_format: OutputFormat,
+    view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
     let (effective_hash_string, _all_projects) =
         resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
@@ -20,20 +23,20 @@ pub fn handle(
         .sessions()
         .pack_context(effective_project_hash, limit)?;
 
-    let report_template = template
+    let report_template: ReportTemplate = template
         .parse()
         .expect("ReportTemplate parsing is infallible");
-    let selection_vms: Vec<_> = result
-        .selections
-        .iter()
-        .map(presenters::present_digest)
-        .collect();
-    view.render_pack_report(
-        &selection_vms,
+
+    let vm = presenters::present_pack_report(
+        result.selections,
         report_template,
         result.balanced_count,
         result.raw_count,
-    )?;
+    );
+    let result = CommandResultViewModel::new(vm);
+    let resolved_view_mode = view_mode_args.resolve();
+    let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);
+    renderer.render(result)?;
 
     Ok(())
 }

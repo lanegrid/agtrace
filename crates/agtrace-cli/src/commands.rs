@@ -289,13 +289,19 @@ pub fn run(cli: Cli) -> Result<()> {
                 .as_ref()
                 .map(|p| agtrace_types::project_hash_from_root(&p.display().to_string()));
 
+            let default_view_mode = crate::args::ViewModeArgs {
+                quiet: false,
+                compact: false,
+                verbose: false,
+            };
             handlers::pack::handle(
                 &workspace,
                 &template.to_string(),
                 limit,
                 project_hash,
                 cli.all_projects,
-                &view,
+                cli.format,
+                &default_view_mode,
             )
         }
 
