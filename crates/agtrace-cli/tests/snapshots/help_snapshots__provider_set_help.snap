@@ -17,5 +17,8 @@ Options:
       --disable                      
       --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
       --project-root <PROJECT_ROOT>  
+      --quiet                        Minimal output (IDs only, for scripting)
       --all-projects                 
+      --compact                      Compact output (one line per item)
+      --verbose                      Verbose output (all metadata)
   -h, --help                         Print help

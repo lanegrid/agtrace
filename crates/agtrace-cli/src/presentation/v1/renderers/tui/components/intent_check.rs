@@ -8,7 +8,7 @@ use ratatui::{
 
 use super::Component;
 use crate::presentation::v1::renderers::tui::app::AppState;
-use crate::presentation::v1::view_models::EventPayloadViewModel;
+use crate::presentation::v2::view_models::EventPayloadViewModel;
 
 pub(crate) struct IntentCheckComponent;
 

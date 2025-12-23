@@ -9,7 +9,6 @@ Usage: agtrace session list [OPTIONS]
 Options:
       --data-dir <DATA_DIR>          [default: ~/.agtrace]
       --project-hash <PROJECT_HASH>  
-      --format <FORMAT>              [default: plain] [possible values: plain, json]
       --source <SOURCE>              [possible values: claude_code, codex, gemini]
       --limit <LIMIT>                [default: 50]
       --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
@@ -18,4 +17,8 @@ Options:
       --all-projects                 
       --until <UNTIL>                
       --no-auto-refresh              
+      --format <FORMAT>              Output format [default: plain] [possible values: plain, json]
+      --quiet                        Minimal output (IDs only, for scripting)
+      --compact                      Compact output (one line per item)
+      --verbose                      Verbose output (all metadata)
   -h, --help                         Print help

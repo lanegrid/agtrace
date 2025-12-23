@@ -59,7 +59,8 @@ fn test_index_scan_and_query() {
             .arg("session")
             .arg("show")
             .arg(session_id)
-            .arg("--json")
+            .arg("--format")
+            .arg("json")
             .output()
             .expect("Failed to run session show");
 

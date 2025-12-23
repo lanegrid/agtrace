@@ -14,6 +14,9 @@ Options:
       --lines <LINES>                [default: 50]
       --format <FORMAT>              [default: raw] [possible values: raw, json]
       --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --quiet                        Minimal output (IDs only, for scripting)
+      --compact                      Compact output (one line per item)
       --project-root <PROJECT_ROOT>  
       --all-projects                 
+      --verbose                      Verbose output (all metadata)
   -h, --help                         Print help

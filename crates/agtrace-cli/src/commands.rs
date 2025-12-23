@@ -46,7 +46,6 @@ pub fn run(cli: Cli) -> Result<()> {
             match command {
                 IndexCommand::Update {
                     provider,
-                    verbose,
                     view_mode,
                 } => handlers::index::handle_v2(
                     &workspace,
@@ -54,13 +53,12 @@ pub fn run(cli: Cli) -> Result<()> {
                     cli.all_projects,
                     provider.to_string(),
                     false,
-                    verbose,
+                    view_mode.verbose,
                     cli.format,
                     &view_mode,
                 ),
                 IndexCommand::Rebuild {
                     provider,
-                    verbose,
                     view_mode,
                 } => handlers::index::handle_v2(
                     &workspace,
@@ -68,7 +66,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     cli.all_projects,
                     provider.to_string(),
                     true,
-                    verbose,
+                    view_mode.verbose,
                     cli.format,
                     &view_mode,
                 ),

@@ -1,7 +1,7 @@
 use crate::presentation::v1::view_models::{
-    DiagnoseResultViewModel, DoctorCheckResultViewModel, DoctorCheckStatus, EventPayloadViewModel,
-    EventViewModel,
+    DiagnoseResultViewModel, DoctorCheckResultViewModel, DoctorCheckStatus,
 };
+use crate::presentation::v2::view_models::{EventPayloadViewModel, EventViewModel};
 use owo_colors::OwoColorize;
 use std::collections::HashMap;
 

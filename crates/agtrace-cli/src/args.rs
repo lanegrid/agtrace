@@ -319,9 +319,6 @@ pub enum IndexCommand {
         #[arg(long, default_value = "all")]
         provider: ProviderFilter,
 
-        #[arg(long)]
-        verbose: bool,
-
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },
@@ -330,9 +327,6 @@ pub enum IndexCommand {
     Rebuild {
         #[arg(long, default_value = "all")]
         provider: ProviderFilter,
-
-        #[arg(long)]
-        verbose: bool,
 
         #[command(flatten)]
         view_mode: ViewModeArgs,

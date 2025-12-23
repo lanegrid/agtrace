@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::presentation::v1::view_models::EventViewModel;
+use crate::presentation::v2::view_models::EventViewModel;
 
 #[derive(Debug, Clone)]
 pub struct DiagnoseResultViewModel {

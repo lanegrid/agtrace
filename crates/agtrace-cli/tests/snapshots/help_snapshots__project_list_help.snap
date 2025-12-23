@@ -10,6 +10,9 @@ Options:
       --data-dir <DATA_DIR>          [default: ~/.agtrace]
       --project-root <PROJECT_ROOT>  
       --format <FORMAT>              [default: plain] [possible values: plain, json]
+      --quiet                        Minimal output (IDs only, for scripting)
+      --compact                      Compact output (one line per item)
       --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --verbose                      Verbose output (all metadata)
       --all-projects                 
   -h, --help                         Print help
