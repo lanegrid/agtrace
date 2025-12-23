@@ -39,16 +39,21 @@ impl Renderer for ConsoleRenderer {
                 println!("{}", serde_json::to_string_pretty(&result)?);
             }
             OutputFormat::Text => {
+                // Minimal mode: ID only, no decorations (for scripting)
+                let is_minimal = self.mode == ViewMode::Minimal;
+
                 // Text rendering uses CreateView to generate mode-specific display
-                if let Some(badge) = &result.badge {
-                    println!("{} {}", badge.icon(), badge.label.bold());
-                    println!();
+                if !is_minimal {
+                    if let Some(badge) = &result.badge {
+                        println!("{} {}", badge.icon(), badge.label.bold());
+                        println!();
+                    }
                 }
 
                 let view = result.content.create_view(self.mode);
                 print!("{}", view);
 
-                if !result.suggestions.is_empty() {
+                if !is_minimal && !result.suggestions.is_empty() {
                     println!("\n{}", "💡 Tips:".yellow().bold());
                     for tip in &result.suggestions {
                         print!("  • {}", tip.description);

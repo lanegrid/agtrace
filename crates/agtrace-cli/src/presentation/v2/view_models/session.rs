@@ -185,7 +185,7 @@ impl fmt::Display for SessionListViewModel {
             "{}",
             SessionListView2 {
                 data: self,
-                mode: ViewMode::Standard,
+                mode: ViewMode::default(),
             }
         )
     }

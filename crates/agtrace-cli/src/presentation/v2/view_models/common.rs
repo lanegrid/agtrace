@@ -11,7 +11,7 @@ pub enum ViewMode {
 
 impl Default for ViewMode {
     fn default() -> Self {
-        Self::Standard
+        Self::Compact
     }
 }
 

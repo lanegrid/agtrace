@@ -18,7 +18,7 @@ fn resolve_view_mode(
     } else if verbose {
         ViewMode::Verbose
     } else {
-        ViewMode::Standard
+        ViewMode::default()
     }
 }
 
