@@ -326,16 +326,15 @@ pub fn run(cli: Cli) -> Result<()> {
             )
         }
 
-        Commands::Watch { provider, id } => {
-            // Watch command requires a TTY for TUI
-            if !std::io::stdout().is_terminal() {
-                anyhow::bail!("watch command requires a TTY (interactive terminal). For non-interactive use, try 'agtrace session show' instead.");
+        Commands::Watch { provider, id, format } => {
+            use crate::args::WatchFormat;
+
+            // TUI mode requires TTY
+            if format == WatchFormat::Tui && !std::io::stdout().is_terminal() {
+                anyhow::bail!("watch --format tui requires a TTY (interactive terminal). Use --format console for non-interactive streaming.");
             }
 
             let workspace = AgTrace::open(data_dir)?;
-
-            // Create TUI view and get receiver for event loop
-            let (tui_view, rx) = TuiWatchView::new()?;
 
             let target = if let Some(session_id) = id {
                 handlers::watch::WatchTarget::Session { id: session_id }
@@ -361,7 +360,16 @@ pub fn run(cli: Cli) -> Result<()> {
                 }
             };
 
-            handlers::watch::handle(&workspace, project_root.as_deref(), target, tui_view, rx)
+            match format {
+                WatchFormat::Tui => {
+                    // Create TUI view and get receiver for event loop
+                    let (tui_view, rx) = TuiWatchView::new()?;
+                    handlers::watch::handle(&workspace, project_root.as_deref(), target, tui_view, rx)
+                }
+                WatchFormat::Console => {
+                    handlers::watch_console::handle_console(&workspace, project_root.as_deref(), target)
+                }
+            }
         }
     }
 }

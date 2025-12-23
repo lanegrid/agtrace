@@ -156,6 +156,22 @@ impl fmt::Display for ProviderFilter {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 #[value(rename_all = "lowercase")]
+pub enum WatchFormat {
+    Tui,
+    Console,
+}
+
+impl fmt::Display for WatchFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            WatchFormat::Tui => write!(f, "tui"),
+            WatchFormat::Console => write!(f, "console"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[value(rename_all = "lowercase")]
 pub enum InspectFormat {
     Raw,
     Json,
@@ -303,6 +319,13 @@ pub enum Commands {
             help = "Explicit session ID or file path to watch (bypasses liveness detection)"
         )]
         id: Option<String>,
+
+        #[arg(
+            long,
+            default_value = "tui",
+            help = "Output format: tui (interactive) or console (streaming text)"
+        )]
+        format: WatchFormat,
     },
 
     #[command(about = "Initialize agtrace configuration")]
