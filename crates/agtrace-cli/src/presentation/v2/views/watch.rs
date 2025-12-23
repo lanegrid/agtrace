@@ -132,7 +132,7 @@ impl<'a> WatchEventView<'a> {
                     format_with_commas(total_tokens as u64),
                     state
                         .token_limit
-                        .map(|l| format_with_commas(l))
+                        .map(format_with_commas)
                         .unwrap_or_else(|| "?".to_string())
                 );
 
@@ -335,14 +335,12 @@ fn truncate(text: &str, max_len: usize) -> String {
 fn format_with_commas(n: u64) -> String {
     let s = n.to_string();
     let mut result = String::new();
-    let mut count = 0;
 
-    for c in s.chars().rev() {
+    for (count, c) in s.chars().rev().enumerate() {
         if count > 0 && count % 3 == 0 {
             result.push(',');
         }
         result.push(c);
-        count += 1;
     }
 
     result.chars().rev().collect()
