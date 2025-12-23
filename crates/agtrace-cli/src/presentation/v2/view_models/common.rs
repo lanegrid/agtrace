@@ -1,5 +1,42 @@
 use serde::Serialize;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ViewMode {
+    Minimal,
+    Compact,
+    Standard,
+    Verbose,
+}
+
+impl Default for ViewMode {
+    fn default() -> Self {
+        Self::Standard
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OutputFormat {
+    Text,
+    Json,
+}
+
+impl Default for OutputFormat {
+    fn default() -> Self {
+        Self::Text
+    }
+}
+
+impl From<crate::args::OutputFormat> for OutputFormat {
+    fn from(format: crate::args::OutputFormat) -> Self {
+        match format {
+            crate::args::OutputFormat::Plain => Self::Text,
+            crate::args::OutputFormat::Json => Self::Json,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct StatusBadge {
     pub level: StatusLevel,

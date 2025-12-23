@@ -30,7 +30,9 @@ pub fn handle_v2(
         result.error_message,
     );
 
-    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    let output_format = crate::presentation::v2::OutputFormat::from(format);
+    let renderer =
+        ConsoleRenderer::new(output_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     if matches!(result.status, agtrace_runtime::CheckStatus::Failure) {

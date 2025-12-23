@@ -1,4 +1,4 @@
-//! # Presentation Layer
+//! # Presentation Layer (v2)
 //!
 //! This module implements the **User Interface** logic for the CLI.
 //! It is designed using an adaptation of the **MVVM (Model-View-ViewModel)** pattern
@@ -6,39 +6,62 @@
 //!
 //! ## 🏗️ Architecture & Data Flow
 //!
-//! The data flow is strictly unidirectional:
+//! The data flow is strictly unidirectional.
+//! The `Renderer` decides whether to format via `serde` (JSON) or `View` (Text).
 //!
 //! ```text
-//! [ Handler ] --> [ Presenter ] --> [ ViewModel ] --> [ Renderer ] --> [ Output ]
-//!    (Controller)      (Converter)       (Contract)       (View)        (Console/JSON)
+//! [ Handler ] --> [ Presenter ] --> [ ViewModel ] --> [ Renderer ] ==(JSON)==> [ serde_json ] --> Output
+//!    (Controller)      (Converter)       (Data)          (Driver)  ==(Text)==> [ View ] --> Output
+//!                                                                                 (Layout)
 //! ```
+//!
+//! ---
+//!
+//! ## 🌟 Golden Rules
+//!
+//! ### 1. The JSON Test (Raw Data Strategy) 🧪
+//! **ViewModel must contain "Raw Data", not "Formatted Strings".**
+//! * ❌ Bad: `struct Vm { duration: "2 minutes" }`
+//! * ✅ Good: `struct Vm { duration_sec: u64 }`
+//! * **Reason:** JSON output is an API. Clients need numbers, not strings.
+//!
+//! ### 2. The Density Rule 🔍
+//! `ViewMode` defines **Information Density**, not Shape.
+//! * **Minimal:** Machine-readable IDs/Paths only. (For pipes/scripts)
+//! * **Compact:** One line per item. (For scanning lists)
+//! * **Standard:** Structured context/trees. (Default for humans)
+//! * **Verbose:** No secrets. All hidden fields and raw values. (For debugging)
+//!
+//! ### 3. The Schema Stability Rule 📦
+//! **JSON Output is always "Full Data".**
+//! * `--format json` ignores `ViewMode`. It always dumps the complete ViewModel.
+//! * `ViewMode` only affects the Text/Console rendering.
 //!
 //! ---
 //!
 //! ## 📂 Directory Guide: Where does code go?
 //!
 //! ### 1. `view_models/` (The Data Contract)
-//! * **What:** Structs and Enums that define *what* information is available to the user.
+//! * **What:** Structs that define *what* information is available.
 //! * **Rule:** Pure data containers. Must implement `Serialize`. **No** calculation logic.
-//! * **Constraint:** Do not expose internal domain types (e.g., `agtrace_types`) directly.
-//! * **The JSON Test:** "If I output this struct as JSON, is it clean and machine-readable?"
+//! * **Trait:** Defines `CreateView` trait to bridge Data and View.
 //!
 //! ### 2. `presenters/` (The Transformation Logic)
 //! * **What:** Pure functions that convert Domain Models into ViewModels.
-//! * **Rule:** Handles filtering, summarization, calculation (e.g., diffs, totals), and mapping.
-//! * **Why:** Isolates the display logic from the core engine. Changes in the domain model only require updating the presenter.
+//! * **Rule:** Handles calculation (deltas, totals), grouping, and specific business logic (e.g., "When to show a tip").
+//! * **Constraint:** Does **not** use `formatters`. Produces raw data.
 //!
-//! ### 3. `renderers/` (The Output Strategy)
-//! * **What:** The driver that takes a `CommandResultViewModel` and paints it to the screen.
-//! * **Rule:** Handles **Layout** (indentation, tree structure), **Styling** (colors, bold), and **Format** (JSON vs Text).
-//! * **Components:**
-//!     * `console.rs`: Standard stdout rendering.
-//!     * `traits.rs`: Defines the `Renderer` interface used by Handlers.
+//! ### 3. `views/` (The Rendering Logic)
+//! * **What:** Structs that implement `fmt::Display`.
+//! * **Rule:** Handles **Layout** (indentation), **Styling** (colors), **Filtering** (hiding items based on Mode), and **Formatting** (using `formatters`).
+//! * **Pattern:** `struct SessionView<'a> { data: &'a SessionVM, mode: ViewMode }`
 //!
-//! ### 4. `formatters/` (The Utilities)
-//! * **What:** Reusable, small utility functions for string manipulation.
-//! * **Examples:** `format_duration`, `shorten_path`, `humanize_bytes`.
-//! * **Why:** Ensures consistency across different commands (e.g., time is always displayed the same way).
+//! ### 4. `renderers/` (The Driver)
+//! * **What:** The entry point that takes a ViewModel and handles the switch between JSON and Text output.
+//!
+//! ### 5. `formatters/` (The Utilities)
+//! * **What:** Reusable string manipulation functions used by **Views**.
+//! * **Examples:** `humanize_bytes(1024) -> "1 KB"`, `truncate(str, 80)`.
 //!
 //! ---
 //!
@@ -48,14 +71,19 @@
 //! |-------------------|----------|
 //! | Add a new field to the JSON output | **`view_models/`** |
 //! | Calculate a sum, average, or diff | **`presenters/`** |
-//! | Change the color of a warning | **`renderers/`** (or `fmt::Display`) |
-//! | Change the indentation of a list | **`renderers/`** (or `fmt::Display`) |
-//! | Format a timestamp as "2m ago" | **`formatters/`** |
+//! | Decide *when* to show a "Guidance" | **`presenters/`** |
+//! | Change the color of a warning | **`views/`** |
+//! | Hide an item in "Compact" mode | **`views/`** (Logic inside `fmt::Display`) |
+//! | Format a timestamp as "2m ago" | **`formatters/`** (Called by `views`) |
 
 pub mod formatters;
 pub mod presenters;
 pub mod renderers;
 pub mod view_models;
 
+// Re-exports for convenience
 pub use renderers::{ConsoleRenderer, Renderer};
-pub use view_models::{CommandResultViewModel, Guidance, StatusBadge, StatusLevel};
+pub use view_models::{
+    common::{OutputFormat, ViewMode},
+    CommandResultViewModel, CreateView, Guidance, StatusBadge, StatusLevel,
+};

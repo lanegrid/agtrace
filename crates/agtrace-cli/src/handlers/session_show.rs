@@ -40,7 +40,12 @@ pub fn handle(workspace: &AgTrace, session_id: String, json: bool) -> Result<()>
         presenters::present_session_analysis(&session, &provider, &model_name_display, max_context);
 
     // Render output
-    let renderer = ConsoleRenderer::new(json);
+    let v2_format = if json {
+        crate::presentation::v2::OutputFormat::Json
+    } else {
+        crate::presentation::v2::OutputFormat::Text
+    };
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(result)?;
 
     Ok(())

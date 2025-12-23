@@ -1,6 +1,8 @@
 use serde::Serialize;
 use std::fmt;
 
+use super::{CreateView, ViewMode};
+
 #[derive(Debug, Serialize)]
 pub struct SessionListViewModel {
     pub sessions: Vec<SessionListEntry>,
@@ -25,23 +27,34 @@ pub struct FilterSummary {
     pub limit: usize,
 }
 
-impl fmt::Display for SessionListViewModel {
+impl CreateView for SessionListViewModel {
+    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        Box::new(SessionListView2 { data: self })
+    }
+}
+
+struct SessionListView2<'a> {
+    data: &'a SessionListViewModel,
+}
+
+impl<'a> fmt::Display for SessionListView2<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::formatters::session_list::SessionEntry;
         use crate::presentation::formatters::SessionListView;
 
-        if self.sessions.is_empty() {
+        if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
-            if let Some(ref project) = self.applied_filters.project_filter {
+            if let Some(ref project) = self.data.applied_filters.project_filter {
                 writeln!(f, "Project filter: {}", project)?;
             }
-            if let Some(ref source) = self.applied_filters.source_filter {
+            if let Some(ref source) = self.data.applied_filters.source_filter {
                 writeln!(f, "Source filter: {}", source)?;
             }
             return Ok(());
         }
 
         let entries: Vec<SessionEntry> = self
+            .data
             .sessions
             .iter()
             .map(|s| SessionEntry {
@@ -54,24 +67,30 @@ impl fmt::Display for SessionListViewModel {
 
         write!(f, "{}", SessionListView::from_entries(entries))?;
 
-        if self.applied_filters.project_filter.is_some()
-            || self.applied_filters.source_filter.is_some()
-            || self.applied_filters.time_range.is_some()
+        if self.data.applied_filters.project_filter.is_some()
+            || self.data.applied_filters.source_filter.is_some()
+            || self.data.applied_filters.time_range.is_some()
         {
             writeln!(f)?;
             writeln!(f, "Filters applied:")?;
-            if let Some(ref project) = self.applied_filters.project_filter {
+            if let Some(ref project) = self.data.applied_filters.project_filter {
                 writeln!(f, "  Project: {}", project)?;
             }
-            if let Some(ref source) = self.applied_filters.source_filter {
+            if let Some(ref source) = self.data.applied_filters.source_filter {
                 writeln!(f, "  Source: {}", source)?;
             }
-            if let Some(ref range) = self.applied_filters.time_range {
+            if let Some(ref range) = self.data.applied_filters.time_range {
                 writeln!(f, "  Time range: {}", range)?;
             }
         }
 
         Ok(())
+    }
+}
+
+impl fmt::Display for SessionListViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", SessionListView2 { data: self })
     }
 }
 
@@ -160,32 +179,45 @@ pub struct TurnMetrics {
     pub cache_read_tokens: Option<i64>,
 }
 
-impl fmt::Display for SessionAnalysisViewModel {
+impl CreateView for SessionAnalysisViewModel {
+    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        // TODO: Implement mode-specific views in Phase 2
+        Box::new(SessionAnalysisView { data: self })
+    }
+}
+
+// Wrapper struct to separate View from ViewModel
+struct SessionAnalysisView<'a> {
+    data: &'a SessionAnalysisViewModel,
+}
+
+impl<'a> fmt::Display for SessionAnalysisView<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use crate::presentation::v2::formatters::{display, number};
 
         // Header
         writeln!(f, "{}", "=".repeat(80))?;
-        write!(f, "SESSION: {}", self.header.session_id)?;
-        if let Some(ref model) = self.header.model {
+        write!(f, "SESSION: {}", self.data.header.session_id)?;
+        if let Some(ref model) = self.data.header.model {
             write!(f, " ({})", model)?;
         }
         writeln!(f)?;
-        writeln!(f, "STATUS:  {}", self.header.status)?;
+        writeln!(f, "STATUS:  {}", self.data.header.status)?;
 
         // Context summary
-        let context_display = if let Some(max) = self.context_summary.max_tokens {
-            let bar = display::build_progress_bar(self.context_summary.current_tokens, max, 40);
+        let context_display = if let Some(max) = self.data.context_summary.max_tokens {
+            let bar =
+                display::build_progress_bar(self.data.context_summary.current_tokens, max, 40);
             format!(
                 "{} ({} / {})",
                 bar,
-                number::format_compact(self.context_summary.current_tokens as i64),
+                number::format_compact(self.data.context_summary.current_tokens as i64),
                 number::format_compact(max as i64)
             )
         } else {
             format!(
                 "Total: {}",
-                number::format_compact(self.context_summary.current_tokens as i64)
+                number::format_compact(self.data.context_summary.current_tokens as i64)
             )
         };
         writeln!(f, "CONTEXT: {}", context_display)?;
@@ -194,11 +226,17 @@ impl fmt::Display for SessionAnalysisViewModel {
         writeln!(f)?;
 
         // Turns
-        for turn in &self.turns {
+        for turn in &self.data.turns {
             write!(f, "{}", turn)?;
         }
 
         Ok(())
+    }
+}
+
+impl fmt::Display for SessionAnalysisViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", SessionAnalysisView { data: self })
     }
 }
 

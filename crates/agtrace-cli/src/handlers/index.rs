@@ -95,7 +95,8 @@ pub fn handle_v2(
         force, // force = rebuild mode
     );
 
-    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     Ok(())
@@ -111,7 +112,8 @@ pub fn handle_vacuum_v2(workspace: &AgTrace, format: OutputFormat) -> Result<()>
 
     let view_model = presenters::present_vacuum_result();
 
-    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     Ok(())

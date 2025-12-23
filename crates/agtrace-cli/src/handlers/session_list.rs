@@ -63,7 +63,8 @@ pub fn handle_v2(
         limit,
     );
 
-    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     Ok(())

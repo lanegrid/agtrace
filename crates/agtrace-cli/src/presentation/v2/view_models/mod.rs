@@ -6,7 +6,31 @@ pub mod provider;
 pub mod result;
 pub mod session;
 
-pub use common::{Guidance, StatusBadge, StatusLevel};
+use std::fmt::Display;
+
+pub use common::{Guidance, OutputFormat, StatusBadge, StatusLevel, ViewMode};
+
+/// Core trait that bridges Data (ViewModel) and Display (View).
+///
+/// ViewModels implement this trait to provide different visual representations
+/// based on the requested `ViewMode`.
+///
+/// ## The Golden Rule: Return `Box<dyn Display>`
+/// The trait returns a boxed `Display` trait object that encapsulates
+/// the rendering logic for the requested mode. This allows:
+/// - The ViewModel to remain a pure data container
+/// - The View to handle all formatting logic
+/// - Late binding of the display implementation
+pub trait CreateView {
+    /// Creates a display-ready view for the given mode.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let view = session_vm.create_view(ViewMode::Compact);
+    /// println!("{}", view);
+    /// ```
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn Display + 'a>;
+}
 pub use doctor::{
     CheckStatus, DiagnoseResultViewModel, DiagnoseResultsViewModel, DoctorCheckResultViewModel,
     FailureExample, InspectLine, InspectResultViewModel,

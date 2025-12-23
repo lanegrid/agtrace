@@ -23,7 +23,8 @@ pub fn list_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
 
     let view_model = presenters::present_provider_list(providers);
 
-    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     Ok(())
@@ -50,7 +51,8 @@ pub fn detect_v2(config_path: &PathBuf, format: OutputFormat) -> Result<()> {
 
     let view_model = presenters::present_provider_detected(providers);
 
-    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     Ok(())
@@ -88,7 +90,8 @@ pub fn set_v2(
 
     let view_model = presenters::present_provider_set(provider, enabled, log_root);
 
-    let renderer = ConsoleRenderer::new(format == OutputFormat::Json);
+    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     Ok(())

@@ -22,7 +22,8 @@ pub fn handle_v2(
         projects,
     );
 
-    let renderer = ConsoleRenderer::new(output_format == OutputFormat::Json);
+    let v2_format = crate::presentation::v2::OutputFormat::from(output_format);
+    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
     renderer.render(view_model)?;
 
     Ok(())

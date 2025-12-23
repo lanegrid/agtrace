@@ -1,6 +1,8 @@
 use serde::Serialize;
 use std::fmt;
 
+use super::{CreateView, ViewMode};
+
 #[derive(Debug, Serialize)]
 pub struct IndexResultViewModel {
     pub total_sessions: usize,
@@ -16,17 +18,25 @@ pub enum IndexMode {
     Rebuild,
 }
 
-impl fmt::Display for IndexResultViewModel {
+impl CreateView for IndexResultViewModel {
+    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        Box::new(IndexResultView { data: self })
+    }
+}
+
+struct IndexResultView<'a> {
+    data: &'a IndexResultViewModel,
+}
+
+impl<'a> fmt::Display for IndexResultView<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Progress events are already printed during scanning
-        // This is the final summary
-        match self.mode {
+        match self.data.mode {
             IndexMode::Update => {
-                if self.total_sessions > 0 {
+                if self.data.total_sessions > 0 {
                     writeln!(
                         f,
                         "\nIndexed {} session(s) ({} files scanned, {} skipped)",
-                        self.total_sessions, self.scanned_files, self.skipped_files
+                        self.data.total_sessions, self.data.scanned_files, self.data.skipped_files
                     )?;
                 } else {
                     writeln!(f, "\nNo new sessions found.")?;
@@ -36,12 +46,17 @@ impl fmt::Display for IndexResultViewModel {
                 writeln!(
                     f,
                     "\nRebuilt index: {} session(s) ({} files scanned)",
-                    self.total_sessions, self.scanned_files
+                    self.data.total_sessions, self.data.scanned_files
                 )?;
             }
         }
-
         Ok(())
+    }
+}
+
+impl fmt::Display for IndexResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", IndexResultView { data: self })
     }
 }
 
@@ -50,9 +65,24 @@ pub struct VacuumResultViewModel {
     pub success: bool,
 }
 
-impl fmt::Display for VacuumResultViewModel {
+impl CreateView for VacuumResultViewModel {
+    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        Box::new(VacuumResultView { data: self })
+    }
+}
+
+struct VacuumResultView<'a> {
+    data: &'a VacuumResultViewModel,
+}
+
+impl<'a> fmt::Display for VacuumResultView<'a> {
     fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        // Badge already shows "Database optimized", no need to print duplicate message
         Ok(())
+    }
+}
+
+impl fmt::Display for VacuumResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", VacuumResultView { data: self })
     }
 }
