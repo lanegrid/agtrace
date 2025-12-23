@@ -1,5 +1,5 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use crate::presentation::v1::view_models::IndexEvent;
+use crate::presentation::v2::view_models::IndexEvent;
 use agtrace_providers::ScanContext;
 use agtrace_runtime::{AgTrace, IndexProgress};
 use agtrace_types::project_hash_from_root;

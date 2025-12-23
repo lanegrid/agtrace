@@ -60,3 +60,38 @@ impl fmt::Display for VacuumResultViewModel {
         write!(f, "{}", self.create_view(ViewMode::default()))
     }
 }
+
+// --------------------------------------------------------
+// IndexEvent (for progress reporting during indexing)
+// --------------------------------------------------------
+
+use std::path::PathBuf;
+
+#[derive(Debug, Clone)]
+pub enum IndexEvent {
+    IncrementalHint {
+        indexed_files: usize,
+    },
+    LogRootMissing {
+        provider_name: String,
+        log_root: PathBuf,
+    },
+    ProviderScanning {
+        provider_name: String,
+    },
+    ProviderSessionCount {
+        provider_name: String,
+        count: usize,
+        project_hash: String,
+        all_projects: bool,
+    },
+    SessionRegistered {
+        session_id: String,
+    },
+    Completed {
+        total_sessions: usize,
+        scanned_files: usize,
+        skipped_files: usize,
+        verbose: bool,
+    },
+}
