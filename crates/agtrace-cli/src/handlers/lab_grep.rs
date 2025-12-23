@@ -1,5 +1,7 @@
-use crate::presentation::v1::presenters;
-use crate::presentation::v1::renderers::TraceView;
+use crate::args::{OutputFormat, ViewModeArgs};
+use crate::presentation::v2::presenters;
+use crate::presentation::v2::view_models::CommandResultViewModel;
+use crate::presentation::v2::{ConsoleRenderer, Renderer};
 use agtrace_runtime::{AgTrace, SessionFilter};
 use agtrace_types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
@@ -148,7 +150,12 @@ impl EventMatcher {
     }
 }
 
-pub fn handle(workspace: &AgTrace, options: GrepOptions, view: &dyn TraceView) -> Result<()> {
+pub fn handle(
+    workspace: &AgTrace,
+    options: GrepOptions,
+    output_format: OutputFormat,
+    view_mode_args: &ViewModeArgs,
+) -> Result<()> {
     // Build matcher with all filters
     let matcher = EventMatcher::new(
         options.pattern.clone(),
@@ -233,7 +240,11 @@ pub fn handle(workspace: &AgTrace, options: GrepOptions, view: &dyn TraceView) -
             }
         }
 
-        view.render_lab_grep(&matches, &options.pattern, options.json_output)?;
+        let vm = presenters::present_lab_grep(options.pattern.clone(), matches, options.json_output);
+        let result_vm = CommandResultViewModel::new(vm);
+        let resolved_view_mode = view_mode_args.resolve();
+        let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);
+        renderer.render(result_vm)?;
         Ok(())
     }
 }

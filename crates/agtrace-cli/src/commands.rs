@@ -252,7 +252,12 @@ pub fn run(cli: Cli) -> Result<()> {
                         event_type: r#type,
                         tool_name: tool,
                     };
-                    handlers::lab_grep::handle(&workspace, options, &view)
+                    let default_view_mode = crate::args::ViewModeArgs {
+                        quiet: false,
+                        compact: false,
+                        verbose: false,
+                    };
+                    handlers::lab_grep::handle(&workspace, options, cli.format, &default_view_mode)
                 }
             }
         }
