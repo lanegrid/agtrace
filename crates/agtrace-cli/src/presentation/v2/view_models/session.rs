@@ -49,6 +49,8 @@ impl<'a> SessionListView2<'a> {
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Compact: One line per session with key info
+        use crate::presentation::v2::formatters::text;
+
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
             return Ok(());
@@ -59,14 +61,7 @@ impl<'a> SessionListView2<'a> {
             let snippet = session
                 .snippet
                 .as_ref()
-                .map(|s| {
-                    let truncated = if s.len() > 50 {
-                        format!("{}...", &s[..47])
-                    } else {
-                        s.clone()
-                    };
-                    truncated
-                })
+                .map(|s| text::truncate(s, 50))
                 .unwrap_or_else(|| "(no snippet)".to_string());
 
             writeln!(
