@@ -25,13 +25,21 @@ pub fn run(cli: Cli) -> Result<()> {
         .or_else(|| std::env::current_dir().ok());
 
     match command {
-        Commands::Init { refresh } => handlers::init::handle(
-            &data_dir,
-            project_root.clone(),
-            cli.all_projects,
-            refresh,
-            &view,
-        ),
+        Commands::Init { refresh } => {
+            let default_view_mode = crate::args::ViewModeArgs {
+                quiet: false,
+                compact: false,
+                verbose: false,
+            };
+            handlers::init::handle(
+                &data_dir,
+                project_root.clone(),
+                cli.all_projects,
+                refresh,
+                cli.format,
+                &default_view_mode,
+            )
+        }
 
         Commands::Index { command } => {
             let workspace = AgTrace::open(data_dir.clone())?;

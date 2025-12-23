@@ -1,5 +1,6 @@
 pub mod doctor;
 pub mod index;
+pub mod init;
 pub mod lab;
 pub mod pack;
 pub mod project;

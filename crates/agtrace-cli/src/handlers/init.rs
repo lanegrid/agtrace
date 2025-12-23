@@ -1,5 +1,9 @@
-use crate::presentation::v1::renderers::TraceView;
-use agtrace_runtime::{AgTrace, InitConfig, InitProgress};
+use crate::args::{OutputFormat, ViewModeArgs};
+use crate::presentation::v2::presenters;
+use crate::presentation::v2::view_models::{CommandResultViewModel, InitProgress};
+use crate::presentation::v2::views::init::print_init_progress;
+use crate::presentation::v2::{ConsoleRenderer, Renderer};
+use agtrace_runtime::{AgTrace, InitConfig};
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -8,7 +12,8 @@ pub fn handle(
     project_root: Option<PathBuf>,
     all_projects: bool,
     refresh: bool,
-    view: &dyn TraceView,
+    output_format: OutputFormat,
+    view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
     let config = InitConfig {
         data_dir: data_dir.to_path_buf(),
@@ -20,11 +25,15 @@ pub fn handle(
     let result = AgTrace::setup(
         config,
         Some(|progress: InitProgress| {
-            let _ = view.render_init_progress(&progress);
+            print_init_progress(&progress);
         }),
     )?;
 
-    view.render_init_result(&result)?;
+    let vm = presenters::present_init_result(result.clone());
+    let result_vm = CommandResultViewModel::new(vm);
+    let resolved_view_mode = view_mode_args.resolve();
+    let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);
+    renderer.render(result_vm)?;
 
     if result.scan_needed {
         // Open workspace after init to run index
