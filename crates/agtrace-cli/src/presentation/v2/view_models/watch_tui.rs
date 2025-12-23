@@ -3,6 +3,16 @@
 //! These ViewModels define the complete data contract for the TUI Renderer.
 //! They contain ONLY primitive types and computed values - NO domain logic.
 //! The TUI Renderer should be able to draw the screen using ONLY this data.
+//!
+//! ## Multi-Page Architecture
+//!
+//! This ViewModel is organized hierarchically to support multiple pages/tabs:
+//! - Common components (status_bar) are always present
+//! - Page-specific components (dashboard, timeline, turn_history) belong to specific tabs
+//! - Future pages (e.g., turn_details) can be added as Option<T> fields
+//!
+//! The Presenter decides which components to populate based on the active tab.
+//! The Renderer uses the active_tab to determine which components to render.
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -10,11 +20,18 @@ use serde::Serialize;
 use super::common::StatusLevel;
 
 /// Complete screen state for TUI rendering
+///
+/// Currently contains all data for the Dashboard page.
+/// Future pages can be added as optional fields (e.g., turn_details: Option<TurnDetailsViewModel>).
 #[derive(Debug, Clone, Serialize)]
 pub struct TuiScreenViewModel {
+    /// Dashboard component (session overview) - Dashboard page
     pub dashboard: DashboardViewModel,
+    /// Timeline component (event stream) - Dashboard page
     pub timeline: TimelineViewModel,
+    /// Turn history component (turn list) - Dashboard page
     pub turn_history: TurnHistoryViewModel,
+    /// Status bar component (always visible on all pages)
     pub status_bar: StatusBarViewModel,
 }
 

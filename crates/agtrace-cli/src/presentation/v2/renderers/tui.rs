@@ -3,11 +3,20 @@
 //! This module implements the TUI event loop and screen rendering.
 //! It receives `TuiScreenViewModel` updates via channel and renders them using Ratatui.
 //!
-//! ## Design:
-//! - Renderer owns UI state (scroll positions, selected items)
+//! ## Architecture: Multi-Page TUI with State/Data Separation
+//!
+//! ### Core Principles:
+//! 1. **Data (ViewModel)** = Read-only snapshot from Presenter
+//! 2. **State (UI State)** = Mutable UI context (scroll, selection, active page)
+//! 3. **Renderer** = Router that delegates to page-specific handlers
+//! 4. **Index Safety** = Always verify cursor positions against data bounds
+//!
+//! ### Responsibilities:
+//! - Renderer owns UI state (scroll positions, selected items, active page)
 //! - Renderer does NOT own data (receives ViewModels via channel)
 //! - Uses View widgets to render the screen
 //! - Handles keyboard input for navigation and control
+//! - Delegates page-specific logic to handler methods
 
 use std::io;
 use std::sync::mpsc::Receiver;
@@ -19,16 +28,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Layout},
-    Frame, Terminal,
-};
+use ratatui::{backend::CrosstermBackend, Frame, Terminal};
 
 use crate::presentation::v2::view_models::TuiScreenViewModel;
-use crate::presentation::v2::views::tui::{
-    DashboardView, StatusBarView, TimelineView, TurnHistoryView,
-};
+use crate::presentation::v2::views::tui::components::DashboardComponent;
 
 /// TUI events sent from handler to renderer
 pub enum TuiEvent {
@@ -39,17 +42,20 @@ pub enum TuiEvent {
 }
 
 /// TUI Renderer application state
+///
+/// Acts as a Router/Orchestrator that delegates to Components.
+/// Separates immutable data (ViewModel) from mutable UI state (Components).
 pub struct TuiRenderer {
-    /// Current screen data (received from handler)
+    /// Current screen data (received from handler) - IMMUTABLE DATA
     current_screen: Option<TuiScreenViewModel>,
 
-    /// UI State: Timeline scroll offset
-    timeline_scroll: u16,
+    /// Dashboard component (owns UI state + input + render logic) - COMPONENT
+    dashboard_component: DashboardComponent,
 
-    /// UI State: Should quit flag
+    /// Global quit flag - UI STATE
     should_quit: bool,
 
-    /// Error message to display (if any)
+    /// Error message to display (if any) - UI STATE
     error_message: Option<String>,
 }
 
@@ -57,7 +63,7 @@ impl TuiRenderer {
     pub fn new() -> Self {
         Self {
             current_screen: None,
-            timeline_scroll: 0,
+            dashboard_component: DashboardComponent::new(),
             should_quit: false,
             error_message: None,
         }
@@ -129,44 +135,36 @@ impl TuiRenderer {
         Ok(())
     }
 
-    /// Handle keyboard input
+    /// Handle keyboard input (Router pattern)
+    ///
+    /// Handles global operations first, then delegates to Components.
     fn handle_key_event(&mut self, key: KeyEvent) {
         // Only handle key press events, not release
         if key.kind != KeyEventKind::Press {
             return;
         }
 
+        // 1. Global operations (always prioritized)
         match key.code {
-            // Quit
             KeyCode::Char('q') | KeyCode::Esc => {
                 self.should_quit = true;
-            }
-            // Scroll timeline up
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.timeline_scroll = self.timeline_scroll.saturating_sub(1);
-            }
-            // Scroll timeline down
-            KeyCode::Down | KeyCode::Char('j') => {
-                self.timeline_scroll = self.timeline_scroll.saturating_add(1);
-            }
-            // Page up
-            KeyCode::PageUp => {
-                self.timeline_scroll = self.timeline_scroll.saturating_sub(10);
-            }
-            // Page down
-            KeyCode::PageDown => {
-                self.timeline_scroll = self.timeline_scroll.saturating_add(10);
-            }
-            // Home (top)
-            KeyCode::Home => {
-                self.timeline_scroll = 0;
+                return;
             }
             _ => {}
         }
+
+        // 2. Delegate to Dashboard component
+        if let Some(screen) = &self.current_screen {
+            if let Some(_action) = self.dashboard_component.handle_input(key, screen) {
+                // Future: handle navigation actions here (e.g., show details page)
+            }
+        }
     }
 
-    /// Render the screen using Views
-    fn render(&self, f: &mut Frame) {
+    /// Render the screen using Components (Router pattern)
+    ///
+    /// Delegates to Components for rendering.
+    fn render(&mut self, f: &mut Frame) {
         let size = f.area();
 
         // If we have an error, show it
@@ -196,36 +194,8 @@ impl TuiRenderer {
             return;
         };
 
-        // Main layout: [Dashboard | Timeline + Turn History | Status Bar]
-        let main_chunks = Layout::vertical([
-            Constraint::Length(9), // Dashboard
-            Constraint::Min(10),   // Main content area (Timeline + Turns)
-            Constraint::Length(3), // Status bar
-        ])
-        .split(size);
-
-        // Render dashboard
-        let dashboard_view = DashboardView::new(&screen.dashboard);
-        f.render_widget(dashboard_view, main_chunks[0]);
-
-        // Split main content area into timeline and turn history
-        let content_chunks = Layout::horizontal([
-            Constraint::Percentage(70), // Timeline
-            Constraint::Percentage(30), // Turn history
-        ])
-        .split(main_chunks[1]);
-
-        // Render timeline
-        let timeline_view = TimelineView::new(&screen.timeline);
-        f.render_widget(timeline_view, content_chunks[0]);
-
-        // Render turn history
-        let turn_history_view = TurnHistoryView::new(&screen.turn_history);
-        f.render_widget(turn_history_view, content_chunks[1]);
-
-        // Render status bar
-        let status_bar_view = StatusBarView::new(&screen.status_bar);
-        f.render_widget(status_bar_view, main_chunks[2]);
+        // Delegate to Dashboard component for rendering
+        self.dashboard_component.render(f, size, screen);
     }
 }
 
