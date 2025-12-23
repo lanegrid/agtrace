@@ -75,8 +75,9 @@ impl TimelineComponent {
             }
         }
 
-        let view = TimelineView::new(data);
-        f.render_widget(view, area);
+        // Build List widget and render with state
+        let list = TimelineView::new(data).build_list();
+        f.render_stateful_widget(list, area, &mut self.state);
     }
 
     // Private state manipulation methods - Renderer doesn't know these

@@ -6,9 +6,13 @@ pub fn format_compact(value: &serde_json::Value) -> String {
                 let value_str = match v {
                     serde_json::Value::String(s) => {
                         if s.len() > 50 {
-                            format!("\"{}...\"", s.chars().take(47).collect::<String>())
+                            let truncated: String = s.chars().take(47).collect();
+                            let truncated_value =
+                                serde_json::Value::String(format!("{}...", truncated));
+                            serde_json::to_string(&truncated_value)
+                                .unwrap_or_else(|_| "\"...\"".to_string())
                         } else {
-                            format!("\"{}\"", s)
+                            serde_json::to_string(v).unwrap_or_else(|_| format!("\"{}\"", s))
                         }
                     }
                     serde_json::Value::Number(n) => n.to_string(),

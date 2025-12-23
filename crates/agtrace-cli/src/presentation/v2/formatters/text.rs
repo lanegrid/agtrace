@@ -1,8 +1,13 @@
 pub fn truncate(text: &str, max_len: usize) -> String {
-    if text.chars().count() <= max_len {
+    let char_count = text.chars().count();
+
+    if char_count <= max_len {
         text.to_string()
+    } else if max_len <= 3 {
+        // For very small max_len, just take first chars without "..."
+        text.chars().take(max_len).collect()
     } else {
-        let truncated: String = text.chars().take(max_len.saturating_sub(3)).collect();
+        let truncated: String = text.chars().take(max_len - 3).collect();
         format!("{}...", truncated)
     }
 }
