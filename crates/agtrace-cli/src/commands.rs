@@ -198,9 +198,22 @@ pub fn run(cli: Cli) -> Result<()> {
                     output,
                     format,
                     strategy,
-                } => handlers::lab_export::handle(
-                    &workspace, session_id, output, format, strategy, &view,
-                ),
+                } => {
+                    let default_view_mode = crate::args::ViewModeArgs {
+                        quiet: false,
+                        compact: false,
+                        verbose: false,
+                    };
+                    handlers::lab_export::handle(
+                        &workspace,
+                        session_id,
+                        output,
+                        format,
+                        strategy,
+                        cli.format,
+                        &default_view_mode,
+                    )
+                }
                 LabCommand::Stats { limit, source } => {
                     handlers::lab_stats::handle(&workspace, limit, source, &view)
                 }

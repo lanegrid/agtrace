@@ -1,5 +1,7 @@
-use crate::args::{ExportFormat, ExportStrategy as CliExportStrategy};
-use crate::presentation::v1::renderers::TraceView;
+use crate::args::{ExportFormat, ExportStrategy as CliExportStrategy, OutputFormat, ViewModeArgs};
+use crate::presentation::v2::presenters;
+use crate::presentation::v2::view_models::CommandResultViewModel;
+use crate::presentation::v2::{ConsoleRenderer, Renderer};
 use crate::services::writer;
 use agtrace_engine::export::ExportStrategy;
 use agtrace_runtime::AgTrace;
@@ -12,7 +14,8 @@ pub fn handle(
     output: Option<PathBuf>,
     format: ExportFormat,
     strategy: CliExportStrategy,
-    view: &dyn TraceView,
+    output_format: OutputFormat,
+    view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
     let export_strategy: ExportStrategy = strategy
         .to_string()
@@ -38,7 +41,11 @@ pub fn handle(
         ExportFormat::Text => writer::write_text(&output_path, &processed_events)?,
     }
 
-    view.render_lab_export(processed_events.len(), &output_path)?;
+    let vm = presenters::present_lab_export(processed_events.len(), &output_path);
+    let result = CommandResultViewModel::new(vm);
+    let resolved_view_mode = view_mode_args.resolve();
+    let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);
+    renderer.render(result)?;
 
     Ok(())
 }

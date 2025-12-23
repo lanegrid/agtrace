@@ -1,6 +1,7 @@
 pub mod common;
 pub mod doctor;
 pub mod index;
+pub mod lab;
 pub mod project;
 pub mod provider;
 pub mod result;
@@ -36,6 +37,7 @@ pub use doctor::{
     FailureExample, InspectLine, InspectResultViewModel,
 };
 pub use index::{IndexMode, IndexResultViewModel, VacuumResultViewModel};
+pub use lab::LabExportViewModel;
 pub use project::{ProjectEntryViewModel, ProjectListViewModel};
 pub use provider::{
     ProviderDetectedViewModel, ProviderEntry, ProviderListViewModel, ProviderSetViewModel,
