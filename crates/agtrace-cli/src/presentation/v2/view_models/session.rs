@@ -28,28 +28,93 @@ pub struct FilterSummary {
 }
 
 impl CreateView for SessionListViewModel {
-    fn create_view<'a>(&'a self, _mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
-        Box::new(SessionListView2 { data: self })
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        Box::new(SessionListView2 { data: self, mode })
     }
 }
 
 struct SessionListView2<'a> {
     data: &'a SessionListViewModel,
+    mode: ViewMode,
 }
 
-impl<'a> fmt::Display for SessionListView2<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> SessionListView2<'a> {
+    fn render_minimal(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Minimal: Just IDs, one per line (for pipes/scripts)
+        for session in &self.data.sessions {
+            writeln!(f, "{}", session.id)?;
+        }
+        Ok(())
+    }
+
+    fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Compact: One line per session with key info
+        if self.data.sessions.is_empty() {
+            writeln!(f, "No sessions found.")?;
+            return Ok(());
+        }
+
+        for session in &self.data.sessions {
+            let ts = session.start_ts.as_deref().unwrap_or("(no timestamp)");
+            let snippet = session
+                .snippet
+                .as_ref()
+                .map(|s| {
+                    let truncated = if s.len() > 50 {
+                        format!("{}...", &s[..47])
+                    } else {
+                        s.clone()
+                    };
+                    truncated
+                })
+                .unwrap_or_else(|| "(no snippet)".to_string());
+
+            writeln!(
+                f,
+                "{} {} [{}] {}",
+                session.id, ts, session.provider, snippet
+            )?;
+        }
+        Ok(())
+    }
+
+    fn render_standard(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Standard: Table format (current behavior)
         use crate::presentation::formatters::session_list::SessionEntry;
         use crate::presentation::formatters::SessionListView;
 
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
-            if let Some(ref project) = self.data.applied_filters.project_filter {
-                writeln!(f, "Project filter: {}", project)?;
-            }
-            if let Some(ref source) = self.data.applied_filters.source_filter {
-                writeln!(f, "Source filter: {}", source)?;
-            }
+            self.show_filter_info(f)?;
+            return Ok(());
+        }
+
+        let entries: Vec<SessionEntry> = self
+            .data
+            .sessions
+            .iter()
+            .map(|s| SessionEntry {
+                id: s.id.clone(),
+                provider: s.provider.clone(),
+                start_ts: s.start_ts.clone(),
+                snippet: s.snippet.clone(),
+            })
+            .collect();
+
+        write!(f, "{}", SessionListView::from_entries(entries))?;
+        self.show_filter_info(f)?;
+
+        Ok(())
+    }
+
+    fn render_verbose(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Verbose: Table + all available metadata
+        use crate::presentation::formatters::session_list::SessionEntry;
+        use crate::presentation::formatters::SessionListView;
+
+        if self.data.sessions.is_empty() {
+            writeln!(f, "No sessions found.")?;
+            self.show_filter_info(f)?;
             return Ok(());
         }
 
@@ -67,6 +132,21 @@ impl<'a> fmt::Display for SessionListView2<'a> {
 
         write!(f, "{}", SessionListView::from_entries(entries))?;
 
+        // In verbose mode, show project hashes for each session
+        writeln!(f)?;
+        writeln!(f, "Project information:")?;
+        writeln!(f, "{:<50} PROJECT_HASH", "SESSION_ID")?;
+        writeln!(f, "{}", "-".repeat(80))?;
+        for session in &self.data.sessions {
+            writeln!(f, "{:<50} {}", session.id, session.project_hash)?;
+        }
+
+        self.show_filter_info(f)?;
+
+        Ok(())
+    }
+
+    fn show_filter_info(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.data.applied_filters.project_filter.is_some()
             || self.data.applied_filters.source_filter.is_some()
             || self.data.applied_filters.time_range.is_some()
@@ -83,14 +163,31 @@ impl<'a> fmt::Display for SessionListView2<'a> {
                 writeln!(f, "  Time range: {}", range)?;
             }
         }
-
         Ok(())
+    }
+}
+
+impl<'a> fmt::Display for SessionListView2<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.mode {
+            ViewMode::Minimal => self.render_minimal(f),
+            ViewMode::Compact => self.render_compact(f),
+            ViewMode::Standard => self.render_standard(f),
+            ViewMode::Verbose => self.render_verbose(f),
+        }
     }
 }
 
 impl fmt::Display for SessionListViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", SessionListView2 { data: self })
+        write!(
+            f,
+            "{}",
+            SessionListView2 {
+                data: self,
+                mode: ViewMode::Standard,
+            }
+        )
     }
 }
 
