@@ -372,6 +372,18 @@ pub fn run(cli: Cli) -> Result<()> {
                         rx,
                     )
                 }
+                WatchFormat::TuiV2 => {
+                    // TUI v2: Handler owns state, Presenter is pure, Renderer receives ViewModels
+                    let target_v2 = match target {
+                        handlers::watch::WatchTarget::Provider { name } => {
+                            handlers::watch_tui_v2::WatchTarget::Provider { name }
+                        }
+                        handlers::watch::WatchTarget::Session { id } => {
+                            handlers::watch_tui_v2::WatchTarget::Session { id }
+                        }
+                    };
+                    handlers::watch_tui_v2::handle(&workspace, project_root.as_deref(), target_v2)
+                }
                 WatchFormat::Console => handlers::watch_console::handle_console(
                     &workspace,
                     project_root.as_deref(),
