@@ -44,11 +44,11 @@ pub fn build_screen_view_model(
 fn build_dashboard(state: &agtrace_runtime::SessionState) -> DashboardViewModel {
     let limit = state.context_window_limit.unwrap_or(128_000);
     let total = state.current_usage.context_window_tokens().max(0) as u64;
-    let usage_pct = total as f64 / limit as f64;
+    let usage_pct = (total as f64 / limit as f64).min(1.0); // Clamp to 0.0-1.0 for gauge
 
     // Logic: Determine color based on usage percentage (v1-style strict thresholds)
-    let context_color = if usage_pct > 0.9 {
-        StatusLevel::Error // Red
+    let context_color = if total >= limit || usage_pct > 0.9 {
+        StatusLevel::Error // Red (at or over limit)
     } else if usage_pct > 0.8 {
         StatusLevel::Warning // Yellow
     } else {
