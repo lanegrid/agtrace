@@ -7,6 +7,11 @@ use crate::presentation::v2::view_models::{
 };
 use agtrace_types::{AgentEvent, EventPayload};
 
+// Type aliases for complex nested types
+type ToolStatsMap = BTreeMap<String, (usize, Option<ToolCallSample>)>;
+type ProviderStatsData = (ToolStatsMap, Vec<ToolClassification>);
+type ProviderStatsMap = BTreeMap<String, ProviderStatsData>;
+
 pub fn present_lab_export(exported_count: usize, output_path: &Path) -> LabExportViewModel {
     LabExportViewModel {
         exported_count,
@@ -25,13 +30,7 @@ fn truncate_text(text: &str, max_len: usize) -> String {
 
 pub fn present_lab_stats(
     total_sessions: usize,
-    stats: BTreeMap<
-        String,
-        (
-            BTreeMap<String, (usize, Option<ToolCallSample>)>,
-            Vec<ToolClassification>,
-        ),
-    >,
+    stats: ProviderStatsMap,
 ) -> LabStatsViewModel {
     let providers: Vec<ProviderStats> = stats
         .into_iter()
