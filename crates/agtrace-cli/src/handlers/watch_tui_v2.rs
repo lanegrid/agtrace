@@ -206,9 +206,15 @@ fn handle_session_watch(
     let rx_stream = handle.receiver();
 
     // Initialize handler with initial state
-    let initial_state = SessionState::new(session_id.to_string(), None, chrono::Utc::now());
+    let mut initial_state = SessionState::new(session_id.to_string(), None, chrono::Utc::now());
+
+    // Set default context window limit (will be updated from actual events)
+    initial_state.context_window_limit = Some(128_000);
 
     let mut handler = WatchHandler::new(initial_state, tx.clone());
+
+    // Set max_context for turn metrics
+    handler.max_context = Some(128_000);
 
     // Event loop
     loop {
@@ -230,10 +236,13 @@ fn handle_session_watch(
         match rx_stream.recv_timeout(Duration::from_millis(500)) {
             Ok(WorkspaceEvent::Stream(stream_event)) => match stream_event {
                 StreamEvent::Attached { .. } => {
-                    // Session attached
+                    // Session attached - send initial screen
+                    handler.send_update();
                 }
                 StreamEvent::Events { events, session } => {
-                    // Process events
+                    // Batch process events to avoid spamming TUI with updates
+                    const MAX_EVENTS: usize = 100;
+
                     for event in &events {
                         // Update state with event data
                         handler.state.last_activity = event.timestamp;
@@ -253,14 +262,20 @@ fn handle_session_watch(
                             }
                         }
 
-                        // Add to event buffer
-                        handler.handle_event(event.clone());
+                        // Add to event buffer (without triggering update)
+                        handler.events.push_back(event.clone());
+                        if handler.events.len() > MAX_EVENTS {
+                            handler.events.pop_front();
+                        }
                     }
 
                     // Update assembled session if available
                     if let Some(session) = session {
-                        handler.handle_session_update(session);
+                        handler.assembled_session = Some(session);
                     }
+
+                    // Send single update after processing all events (batch update)
+                    handler.send_update();
                 }
                 StreamEvent::Disconnected { reason } => {
                     // Stream disconnected
