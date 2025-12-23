@@ -64,28 +64,29 @@ impl<'a> SessionListView<'a> {
 
     fn render_standard(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Standard: Table format (current behavior)
-        use crate::presentation::v1::formatters::session_list::SessionEntry;
-        use crate::presentation::v1::formatters::SessionListView;
-
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
             self.show_filter_info(f)?;
             return Ok(());
         }
 
-        let entries: Vec<SessionEntry> = self
-            .data
-            .sessions
-            .iter()
-            .map(|s| SessionEntry {
-                id: s.id.clone(),
-                provider: s.provider.clone(),
-                start_ts: s.start_ts.clone(),
-                snippet: s.snippet.clone(),
-            })
-            .collect();
+        for session in &self.data.sessions {
+            let id_short = if session.id.len() > 8 {
+                &session.id[..8]
+            } else {
+                &session.id
+            };
 
-        write!(f, "{}", SessionListView::from_entries(entries))?;
+            let time_str = session.start_ts.as_deref().unwrap_or("unknown");
+            let snippet = session.snippet.as_deref().unwrap_or("[empty]");
+
+            writeln!(
+                f,
+                "{} {} {} {}",
+                time_str, id_short, session.provider, snippet
+            )?;
+        }
+
         self.show_filter_info(f)?;
 
         Ok(())
@@ -93,28 +94,28 @@ impl<'a> SessionListView<'a> {
 
     fn render_verbose(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Verbose: Table + all available metadata
-        use crate::presentation::v1::formatters::session_list::SessionEntry;
-        use crate::presentation::v1::formatters::SessionListView;
-
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
             self.show_filter_info(f)?;
             return Ok(());
         }
 
-        let entries: Vec<SessionEntry> = self
-            .data
-            .sessions
-            .iter()
-            .map(|s| SessionEntry {
-                id: s.id.clone(),
-                provider: s.provider.clone(),
-                start_ts: s.start_ts.clone(),
-                snippet: s.snippet.clone(),
-            })
-            .collect();
+        for session in &self.data.sessions {
+            let id_short = if session.id.len() > 8 {
+                &session.id[..8]
+            } else {
+                &session.id
+            };
 
-        write!(f, "{}", SessionListView::from_entries(entries))?;
+            let time_str = session.start_ts.as_deref().unwrap_or("unknown");
+            let snippet = session.snippet.as_deref().unwrap_or("[empty]");
+
+            writeln!(
+                f,
+                "{} {} {} {}",
+                time_str, id_short, session.provider, snippet
+            )?;
+        }
 
         // In verbose mode, show project hashes for each session
         writeln!(f)?;
