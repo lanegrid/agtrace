@@ -49,7 +49,7 @@ impl<'a> SessionListView2<'a> {
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Compact: One line per session with key info
-        use crate::presentation::v2::formatters::text;
+        use crate::presentation::formatters::{text, time};
 
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
@@ -57,17 +57,31 @@ impl<'a> SessionListView2<'a> {
         }
 
         for session in &self.data.sessions {
-            let ts = session.start_ts.as_deref().unwrap_or("(no timestamp)");
+            // Shorten ID to first 8 chars (like git commit hash)
+            let id_short = if session.id.len() > 8 {
+                &session.id[..8]
+            } else {
+                &session.id
+            };
+
+            // Use relative time format
+            let time_display = session
+                .start_ts
+                .as_ref()
+                .map(|ts| time::format_relative_time(ts))
+                .unwrap_or_else(|| "(no timestamp)".to_string());
+
+            // Inline snippet by replacing newlines with spaces
             let snippet = session
                 .snippet
                 .as_ref()
-                .map(|s| text::truncate(s, 50))
+                .map(|s| text::normalize_and_clean(s, 50))
                 .unwrap_or_else(|| "(no snippet)".to_string());
 
             writeln!(
                 f,
                 "{} {} [{}] {}",
-                session.id, ts, session.provider, snippet
+                id_short, time_display, session.provider, snippet
             )?;
         }
         Ok(())
