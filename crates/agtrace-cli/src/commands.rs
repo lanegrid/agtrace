@@ -3,7 +3,7 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::presentation::v1::renderers::{ConsoleTraceView, TuiWatchView};
+use crate::presentation::v1::renderers::TuiWatchView;
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 use clap::CommandFactory;
@@ -12,7 +12,6 @@ use std::path::PathBuf;
 
 pub fn run(cli: Cli) -> Result<()> {
     let data_dir = expand_tilde(&cli.data_dir);
-    let view = ConsoleTraceView::new();
 
     let Some(command) = cli.command else {
         Cli::command().print_help()?;
@@ -228,7 +227,13 @@ pub fn run(cli: Cli) -> Result<()> {
                         compact: false,
                         verbose: false,
                     };
-                    handlers::lab_stats::handle(&workspace, limit, source, cli.format, &default_view_mode)
+                    handlers::lab_stats::handle(
+                        &workspace,
+                        limit,
+                        source,
+                        cli.format,
+                        &default_view_mode,
+                    )
                 }
                 LabCommand::Grep {
                     pattern,

@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::presentation::v2::view_models::{
-    EventPayloadViewModel, EventViewModel, LabExportViewModel, LabGrepViewModel,
-    LabStatsViewModel, ProviderStats, ToolCallSample, ToolClassification, ToolStatsEntry,
+    EventPayloadViewModel, EventViewModel, LabExportViewModel, LabGrepViewModel, LabStatsViewModel,
+    ProviderStats, ToolCallSample, ToolClassification, ToolStatsEntry,
 };
 use agtrace_types::{AgentEvent, EventPayload};
 
@@ -25,7 +25,13 @@ fn truncate_text(text: &str, max_len: usize) -> String {
 
 pub fn present_lab_stats(
     total_sessions: usize,
-    stats: BTreeMap<String, (BTreeMap<String, (usize, Option<ToolCallSample>)>, Vec<ToolClassification>)>,
+    stats: BTreeMap<
+        String,
+        (
+            BTreeMap<String, (usize, Option<ToolCallSample>)>,
+            Vec<ToolClassification>,
+        ),
+    >,
 ) -> LabStatsViewModel {
     let providers: Vec<ProviderStats> = stats
         .into_iter()
@@ -108,6 +114,10 @@ pub fn present_event(event: &AgentEvent) -> EventViewModel {
         payload: present_event_payload(&event.payload),
         metadata: event.metadata.clone(),
     }
+}
+
+pub fn present_events(events: &[AgentEvent]) -> Vec<EventViewModel> {
+    events.iter().map(present_event).collect()
 }
 
 pub fn present_lab_grep(

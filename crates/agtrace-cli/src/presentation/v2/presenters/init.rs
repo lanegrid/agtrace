@@ -1,4 +1,6 @@
-use crate::presentation::v2::view_models::{ConfigStatus, InitResultViewModel, ProviderInfo, ScanOutcome};
+use crate::presentation::v2::view_models::{
+    ConfigStatus, InitResultViewModel, ProviderInfo, ScanOutcome,
+};
 
 pub fn present_init_result(result: agtrace_runtime::InitResult) -> InitResultViewModel {
     let config_status = match result.config_status {

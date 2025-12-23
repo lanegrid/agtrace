@@ -1,4 +1,4 @@
-use crate::presentation::v1::view_models::{EventPayloadViewModel, EventViewModel};
+use crate::presentation::v2::view_models::{EventPayloadViewModel, EventViewModel};
 use chrono::{DateTime, Utc};
 use ratatui::{
     style::{Color, Modifier, Style},

@@ -1,8 +1,8 @@
-use crate::presentation::v1::presenters;
 use crate::presentation::v1::renderers::traits::WatchView;
 use crate::presentation::v1::renderers::tui::TuiEvent;
 use crate::presentation::v1::renderers::TuiWatchView;
 use crate::presentation::v1::view_models::{WatchStart, WatchSummary};
+use crate::presentation::v2::presenters;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 use anyhow::Result;
 use std::path::Path;

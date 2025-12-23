@@ -59,11 +59,23 @@ pub struct EventViewModel {
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum EventPayloadViewModel {
-    User { text: String },
-    Reasoning { text: String },
-    ToolCall { name: String, arguments: Value },
-    ToolResult { output: String, is_error: bool },
-    Message { text: String },
+    User {
+        text: String,
+    },
+    Reasoning {
+        text: String,
+    },
+    ToolCall {
+        name: String,
+        arguments: Value,
+    },
+    ToolResult {
+        output: String,
+        is_error: bool,
+    },
+    Message {
+        text: String,
+    },
     TokenUsage {
         input: i32,
         output: i32,

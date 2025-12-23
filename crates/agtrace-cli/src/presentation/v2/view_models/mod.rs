@@ -41,8 +41,8 @@ pub use doctor::{
 pub use index::{IndexEvent, IndexMode, IndexResultViewModel, VacuumResultViewModel};
 pub use init::{ConfigStatus, InitProgress, InitResultViewModel, ProviderInfo, ScanOutcome};
 pub use lab::{
-    EventPayloadViewModel, EventViewModel, LabExportViewModel, LabGrepViewModel,
-    LabStatsViewModel, ProviderStats, ToolCallSample, ToolClassification, ToolStatsEntry,
+    EventPayloadViewModel, EventViewModel, LabExportViewModel, LabGrepViewModel, LabStatsViewModel,
+    ProviderStats, ToolCallSample, ToolClassification, ToolStatsEntry,
 };
 pub use pack::{PackReportViewModel, ReportTemplate, SessionDigest};
 pub use project::{ProjectEntryViewModel, ProjectListViewModel};
@@ -51,7 +51,7 @@ pub use provider::{
 };
 pub use result::CommandResultViewModel;
 pub use session::{
-    AgentStepViewModel, ContextUsage, ContextWindowSummary, FilterSummary,
-    SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel,
-    TurnAnalysisViewModel, TurnMetrics,
+    AgentStepViewModel, ContextUsage, ContextWindowSummary, ContextWindowUsageViewModel,
+    FilterSummary, SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel,
+    StreamStateViewModel, TurnAnalysisViewModel, TurnMetrics,
 };

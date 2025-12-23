@@ -98,7 +98,10 @@ impl<'a> fmt::Display for InitResultView<'a> {
                     writeln!(f, "  - Check provider configuration: agtrace provider list")?;
                     writeln!(f, "  - Run diagnostics: agtrace doctor run")?;
                 } else {
-                    writeln!(f, "  Current directory: No sessions linked to this project.")?;
+                    writeln!(
+                        f,
+                        "  Current directory: No sessions linked to this project."
+                    )?;
                     writeln!(f, "\nTips:")?;
                     writeln!(
                         f,

@@ -1,5 +1,6 @@
 use crate::presentation::v1::formatters::{text, tool};
-use crate::presentation::v1::view_models::{DisplayOptions, EventPayloadViewModel, EventViewModel};
+use crate::presentation::v1::view_models::DisplayOptions;
+use crate::presentation::v2::view_models::{EventPayloadViewModel, EventViewModel};
 
 type FormatOptions = DisplayOptions;
 use chrono::{DateTime, Local, Utc};

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::fmt;
 
@@ -114,6 +115,32 @@ pub struct TurnMetrics {
     pub input_tokens: i64,
     pub output_tokens: i64,
     pub cache_read_tokens: Option<i64>,
+}
+
+// Watch-related view models
+#[derive(Debug, Clone, Serialize)]
+pub struct ContextWindowUsageViewModel {
+    pub fresh_input: i32,
+    pub cache_creation: i32,
+    pub cache_read: i32,
+    pub output: i32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct StreamStateViewModel {
+    pub session_id: String,
+    pub project_root: Option<String>,
+    pub start_time: DateTime<Utc>,
+    pub last_activity: DateTime<Utc>,
+    pub model: Option<String>,
+    pub context_window_limit: Option<u64>,
+    pub current_usage: ContextWindowUsageViewModel,
+    pub current_reasoning_tokens: i32,
+    pub error_count: u32,
+    pub event_count: usize,
+    pub turn_count: usize,
+    pub token_limit: Option<u64>,
+    pub compaction_buffer_pct: Option<f64>,
 }
 
 // --------------------------------------------------------

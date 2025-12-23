@@ -16,7 +16,11 @@ struct PackReportView<'a> {
 }
 
 impl<'a> PackReportView<'a> {
-    fn render_digest_summary(&self, f: &mut fmt::Formatter<'_>, digest: &SessionDigest) -> fmt::Result {
+    fn render_digest_summary(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        digest: &SessionDigest,
+    ) -> fmt::Result {
         let id_short = &digest.session_id[..8.min(digest.session_id.len())];
         let reason = digest.selection_reason.as_deref().unwrap_or("");
 

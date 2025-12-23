@@ -1,4 +1,5 @@
-use crate::presentation::v1::view_models::{EventViewModel, TurnUsageViewModel};
+use crate::presentation::v1::view_models::TurnUsageViewModel;
+use crate::presentation::v2::view_models::EventViewModel;
 use ratatui::widgets::{ListItem, ListState};
 use std::collections::VecDeque;
 

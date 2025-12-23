@@ -1,6 +1,5 @@
-use crate::presentation::v1::view_models::{
-    EventViewModel, StreamStateViewModel, TurnUsageViewModel, WatchStart,
-};
+use crate::presentation::v1::view_models::{TurnUsageViewModel, WatchStart};
+use crate::presentation::v2::view_models::{EventViewModel, StreamStateViewModel};
 use crossterm::event::KeyEvent;
 
 #[derive(Debug, Clone)]

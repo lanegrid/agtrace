@@ -240,7 +240,8 @@ pub fn handle(
             }
         }
 
-        let vm = presenters::present_lab_grep(options.pattern.clone(), matches, options.json_output);
+        let vm =
+            presenters::present_lab_grep(options.pattern.clone(), matches, options.json_output);
         let result_vm = CommandResultViewModel::new(vm);
         let resolved_view_mode = view_mode_args.resolve();
         let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);

@@ -5,13 +5,16 @@ use crate::presentation::v1::formatters::token::TokenUsageView;
 use crate::presentation::v1::formatters::SessionListView;
 use crate::presentation::v1::view_models::{
     CorpusStats, DiagnoseResultViewModel, DisplayOptions, DoctorCheckResultViewModel,
-    EventPayloadViewModel, EventViewModel, GuidanceContext, IndexEvent, InitProgress, InitResult,
-    InspectContent, InspectDisplay, LabStatsViewModel, ProjectSummary, ProviderConfigSummary,
-    ProviderSetResult, RawFileContent, ReactionViewModel, SessionDigestViewModel,
-    SessionListEntryViewModel, SessionViewModel, StreamStateViewModel, WatchStart, WatchSummary,
+    GuidanceContext, IndexEvent, InitProgress, InitResult, InspectContent, InspectDisplay,
+    LabStatsViewModel, ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent,
+    ReactionViewModel, SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel,
+    WatchStart, WatchSummary,
 };
 use crate::presentation::v1::views::ReportTemplate;
 use crate::presentation::v1::views::{CompactSessionView, EventView, TimelineView};
+use crate::presentation::v2::view_models::{
+    EventPayloadViewModel, EventViewModel, StreamStateViewModel,
+};
 use anyhow::Result;
 use owo_colors::OwoColorize;
 use std::path::Path;

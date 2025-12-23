@@ -5,9 +5,8 @@ mod tui_event;
 mod ui;
 
 use super::traits::WatchView;
-use crate::presentation::v1::view_models::{
-    EventViewModel, ReactionViewModel, WatchStart, WatchSummary,
-};
+use crate::presentation::v1::view_models::{ReactionViewModel, WatchStart, WatchSummary};
+use crate::presentation::v2::view_models::EventViewModel;
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -130,7 +129,7 @@ impl TuiWatchView {
                         }
                     }
                     TuiEvent::StreamUpdate(state, new_events, turns_data) => {
-                        use crate::presentation::v1::view_models::EventPayloadViewModel;
+                        use crate::presentation::v2::view_models::EventPayloadViewModel;
 
                         if app_state.session_start_time.is_none() {
                             app_state.session_start_time = Some(state.start_time);
@@ -301,7 +300,7 @@ impl WatchView for TuiWatchView {
 
     fn render_stream_update(
         &self,
-        state: &crate::presentation::v1::view_models::StreamStateViewModel,
+        state: &crate::presentation::v2::view_models::StreamStateViewModel,
         new_events: &[EventViewModel],
         turns: Option<&[crate::presentation::v1::view_models::TurnUsageViewModel]>,
     ) -> Result<()> {

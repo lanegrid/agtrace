@@ -1,12 +1,12 @@
 use crate::args::OutputFormat;
 use crate::presentation::v1::view_models::{
     CorpusStats, DiagnoseResultViewModel, DisplayOptions, DoctorCheckResultViewModel,
-    EventViewModel, GuidanceContext, IndexEvent, InitProgress, InitResult, InspectDisplay,
-    LabStatsViewModel, ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent,
-    ReactionViewModel, SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel,
-    StreamStateViewModel, WatchStart, WatchSummary,
+    GuidanceContext, IndexEvent, InitProgress, InitResult, InspectDisplay, LabStatsViewModel,
+    ProjectSummary, ProviderConfigSummary, ProviderSetResult, RawFileContent, ReactionViewModel,
+    SessionDigestViewModel, SessionListEntryViewModel, SessionViewModel, WatchStart, WatchSummary,
 };
 use crate::presentation::v1::views::ReportTemplate;
+use crate::presentation::v2::view_models::{EventViewModel, StreamStateViewModel};
 use anyhow::Result;
 use std::path::Path;
 
