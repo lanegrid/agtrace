@@ -19,7 +19,7 @@
 //! - Delegates page-specific logic to handler methods
 
 use std::io;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use std::time::Duration;
 
 use anyhow::Result;
@@ -41,6 +41,12 @@ pub enum TuiEvent {
     Error(String),
 }
 
+/// Signal sent from renderer to handler
+pub enum RendererSignal {
+    /// User requested quit
+    Quit,
+}
+
 /// TUI Renderer application state
 ///
 /// Acts as a Router/Orchestrator that delegates to Components.
@@ -57,6 +63,9 @@ pub struct TuiRenderer {
 
     /// Error message to display (if any) - UI STATE
     error_message: Option<String>,
+
+    /// Sender to notify handler of renderer events
+    signal_tx: Option<Sender<RendererSignal>>,
 }
 
 impl TuiRenderer {
@@ -66,7 +75,13 @@ impl TuiRenderer {
             dashboard_component: DashboardComponent::new(),
             should_quit: false,
             error_message: None,
+            signal_tx: None,
         }
+    }
+
+    pub fn with_signal_sender(mut self, tx: Sender<RendererSignal>) -> Self {
+        self.signal_tx = Some(tx);
+        self
     }
 
     /// Main event loop for TUI rendering
@@ -128,6 +143,10 @@ impl TuiRenderer {
 
             // Exit if quit flag is set
             if self.should_quit {
+                // Notify handler that we're quitting
+                if let Some(tx) = &self.signal_tx {
+                    let _ = tx.send(RendererSignal::Quit);
+                }
                 break;
             }
         }

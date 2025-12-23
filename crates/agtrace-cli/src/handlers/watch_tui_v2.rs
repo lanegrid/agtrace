@@ -8,13 +8,13 @@
 
 use std::collections::VecDeque;
 use std::path::Path;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
 use anyhow::Result;
 
 use crate::presentation::v2::presenters::watch_tui::build_screen_view_model;
-use crate::presentation::v2::renderers::tui::{TuiEvent, TuiRenderer};
+use crate::presentation::v2::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
 use agtrace_engine::AgentSession;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 
@@ -99,17 +99,18 @@ impl WatchHandler {
 
 /// Main entry point for TUI v2 watch
 pub fn handle(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
-    // Create channel for communication
-    let (tx, rx) = mpsc::channel();
+    // Create channels for bidirectional communication
+    let (event_tx, event_rx) = mpsc::channel(); // Handler -> Renderer (events)
+    let (signal_tx, signal_rx) = mpsc::channel(); // Renderer -> Handler (signals)
 
     // Spawn TUI renderer thread
     let tui_handle = thread::spawn(move || {
-        let renderer = TuiRenderer::new();
-        renderer.run(rx)
+        let renderer = TuiRenderer::new().with_signal_sender(signal_tx);
+        renderer.run(event_rx)
     });
 
     // Run handler in main thread
-    let result = run_handler(workspace, project_root, target, tx);
+    let result = run_handler(workspace, project_root, target, event_tx, signal_rx);
 
     // Wait for TUI to finish
     if let Err(e) = tui_handle.join() {
@@ -125,12 +126,15 @@ fn run_handler(
     project_root: Option<&Path>,
     target: WatchTarget,
     tx: Sender<TuiEvent>,
+    signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
     let _watch_service = workspace.watch_service();
 
     match target {
-        WatchTarget::Provider { name } => handle_provider_watch(workspace, project_root, &name, tx),
-        WatchTarget::Session { id } => handle_session_watch(workspace, &id, tx),
+        WatchTarget::Provider { name } => {
+            handle_provider_watch(workspace, project_root, &name, tx, signal_rx)
+        }
+        WatchTarget::Session { id } => handle_session_watch(workspace, &id, tx, signal_rx),
     }
 }
 
@@ -140,6 +144,7 @@ fn handle_provider_watch(
     project_root: Option<&Path>,
     provider_name: &str,
     tx: Sender<TuiEvent>,
+    signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
     use agtrace_providers::ScanContext;
     use agtrace_runtime::SessionFilter;
@@ -182,11 +187,16 @@ fn handle_provider_watch(
     };
 
     // Watch the latest session
-    handle_session_watch(workspace, &session.id, tx)
+    handle_session_watch(workspace, &session.id, tx, signal_rx)
 }
 
 /// Handle session watch mode
-fn handle_session_watch(workspace: &AgTrace, session_id: &str, tx: Sender<TuiEvent>) -> Result<()> {
+fn handle_session_watch(
+    workspace: &AgTrace,
+    session_id: &str,
+    tx: Sender<TuiEvent>,
+    signal_rx: Receiver<RendererSignal>,
+) -> Result<()> {
     use std::time::Duration;
 
     let watch_service = workspace.watch_service();
@@ -202,6 +212,21 @@ fn handle_session_watch(workspace: &AgTrace, session_id: &str, tx: Sender<TuiEve
 
     // Event loop
     loop {
+        // Check for quit signal from renderer (non-blocking)
+        match signal_rx.try_recv() {
+            Ok(RendererSignal::Quit) => {
+                // User requested quit
+                break;
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                // No signal, continue
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                // Renderer disconnected unexpectedly
+                break;
+            }
+        }
+
         match rx_stream.recv_timeout(Duration::from_millis(500)) {
             Ok(WorkspaceEvent::Stream(stream_event)) => match stream_event {
                 StreamEvent::Attached { .. } => {
