@@ -66,9 +66,11 @@ impl WatchHandler {
         self.send_update();
     }
 
-    /// Handle state update
-    fn handle_state_update(&mut self, new_state: SessionState) {
-        self.state = new_state;
+    /// Reset session state (clear all buffers and data)
+    fn reset_session_state(&mut self, session_id: String, path: Option<std::path::PathBuf>) {
+        self.state = SessionState::new(session_id, path, chrono::Utc::now());
+        self.events.clear();
+        self.assembled_session = None;
         self.send_update();
     }
 
@@ -252,13 +254,8 @@ fn handle_session_watch(
         match rx_stream.recv_timeout(Duration::from_millis(500)) {
             Ok(WorkspaceEvent::Stream(stream_event)) => match stream_event {
                 StreamEvent::Attached { session_id, path } => {
-                    // Session attached - reset state to new session
-                    let new_state = SessionState::new(
-                        session_id.clone(),
-                        Some(path.clone()),
-                        chrono::Utc::now(),
-                    );
-                    handler.handle_state_update(new_state);
+                    // Session attached - reset all state and buffers
+                    handler.reset_session_state(session_id, Some(path));
                 }
                 StreamEvent::Events { events, session } => {
                     // Batch process events to avoid spamming TUI with updates
@@ -316,9 +313,8 @@ fn handle_session_watch(
             },
             Ok(WorkspaceEvent::Discovery(discovery_event)) => match discovery_event {
                 DiscoveryEvent::NewSession { summary } => {
-                    // New session detected - could switch to it
-                    let new_state = SessionState::new(summary.id.clone(), None, chrono::Utc::now());
-                    handler.handle_state_update(new_state);
+                    // New session detected - reset to new session
+                    handler.reset_session_state(summary.id.clone(), None);
                 }
                 DiscoveryEvent::SessionUpdated { .. } => {
                     // Session updated
