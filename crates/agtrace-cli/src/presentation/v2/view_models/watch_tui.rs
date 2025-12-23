@@ -47,9 +47,10 @@ pub struct DashboardViewModel {
     pub last_activity: DateTime<Utc>,
     pub elapsed_seconds: u64,
 
-    // Context window usage (pre-computed)
+    // Context window usage (raw data for JSON API)
+    pub context_total: u64,         // Total tokens used
+    pub context_limit: u64,         // Context window limit
     pub context_usage_pct: f64,     // 0.0 - 1.0
-    pub context_label: String,      // e.g., "12k / 128k"
     pub context_color: StatusLevel, // Color decision already made
     pub context_breakdown: ContextBreakdownViewModel,
 }
@@ -97,9 +98,13 @@ pub struct TurnItemViewModel {
     pub is_active: bool,
     pub is_heavy: bool, // Indicates if this turn consumed significant tokens
 
-    // Token delta visualization (pre-computed)
-    pub delta_tokens: u32,
-    pub delta_bar_width: u16, // Bar length in characters (0-20)
+    // Stacked bar visualization (pre-computed) - v1-style cumulative display
+    pub prev_total: u32,     // Total tokens before this turn
+    pub delta_tokens: u32,   // Tokens added by this turn
+    pub usage_ratio: f64,    // Total usage ratio after this turn (0.0 - 1.0)
+    pub prev_ratio: f64,     // Usage ratio before this turn (0.0 - 1.0)
+    pub bar_width: u16,      // Total bar width in characters
+    pub prev_bar_width: u16, // Previous bar width in characters
     pub delta_color: StatusLevel,
 
     // Step preview (for active turn)

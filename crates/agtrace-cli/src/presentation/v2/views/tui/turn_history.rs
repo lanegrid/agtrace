@@ -71,12 +71,29 @@ impl<'a> TurnHistoryView<'a> {
             .map(|turn| {
                 let mut line_spans = vec![Span::raw(format!("#{} ", turn.turn_id))];
 
-                // Delta bar (pre-computed width and color)
-                let bar_char = if turn.is_heavy { "█" } else { "▓" };
-                let bar = bar_char.repeat(turn.delta_bar_width as usize);
-                let bar_color = status_level_to_color(turn.delta_color);
+                // Stacked bar (v1-style): history (█) + delta (▓)
+                let prev_chars = turn.prev_bar_width as usize;
+                let delta_chars = turn.bar_width.saturating_sub(turn.prev_bar_width) as usize;
 
-                line_spans.push(Span::styled(bar, Style::default().fg(bar_color)));
+                // Previous turns (dark gray)
+                if prev_chars > 0 {
+                    line_spans.push(Span::styled(
+                        "█".repeat(prev_chars),
+                        Style::default().fg(ratatui::style::Color::DarkGray),
+                    ));
+                }
+
+                // Current turn delta (colored based on is_heavy)
+                if delta_chars > 0 {
+                    let delta_color = status_level_to_color(turn.delta_color);
+                    line_spans.push(Span::styled(
+                        "▓".repeat(delta_chars),
+                        Style::default()
+                            .fg(delta_color)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                }
+
                 line_spans.push(Span::raw(" "));
 
                 // Title with indicator for active turn

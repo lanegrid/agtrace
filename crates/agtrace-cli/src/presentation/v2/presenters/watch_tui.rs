@@ -46,31 +46,29 @@ fn build_dashboard(state: &agtrace_runtime::SessionState) -> DashboardViewModel 
     let total = state.current_usage.context_window_tokens().max(0) as u64;
     let usage_pct = total as f64 / limit as f64;
 
-    // Logic: Determine color based on usage percentage
+    // Logic: Determine color based on usage percentage (v1-style strict thresholds)
     let context_color = if usage_pct > 0.9 {
-        StatusLevel::Error
-    } else if usage_pct > 0.7 {
-        StatusLevel::Warning
+        StatusLevel::Error // Red
+    } else if usage_pct > 0.8 {
+        StatusLevel::Warning // Yellow
     } else {
-        StatusLevel::Success
+        StatusLevel::Success // Green
     };
-
-    // Logic: Format context label
-    let context_label = format!("{} / {}", format_tokens(total), format_tokens(limit));
 
     let elapsed = (state.last_activity - state.start_time).num_seconds();
 
     DashboardViewModel {
-        title: "AGTRACE WATCH".to_string(),
-        sub_title: Some("Real-time Session Monitoring".to_string()),
+        title: "AGTRACE".to_string(),
+        sub_title: None,
         session_id: state.session_id.clone(),
         project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
         model: state.model.clone(),
         start_time: state.start_time,
         last_activity: state.last_activity,
         elapsed_seconds: elapsed.max(0) as u64,
+        context_total: total,
+        context_limit: limit,
         context_usage_pct: usage_pct,
-        context_label,
         context_color,
         context_breakdown: ContextBreakdownViewModel {
             fresh_input: state.current_usage.fresh_input.0.max(0) as u64,
@@ -192,11 +190,13 @@ fn build_turn_history(
         .find(|(_, m)| m.is_active)
         .map(|(i, _)| i);
 
+    let max_context_u64 = max_context.unwrap_or(128_000) as u64;
+
     let turns = session
         .turns
         .iter()
         .zip(metrics.iter())
-        .map(|(turn, metric)| build_turn_item(turn, metric))
+        .map(|(turn, metric)| build_turn_item(turn, metric, max_context_u64))
         .collect();
 
     TurnHistoryViewModel {
@@ -209,19 +209,26 @@ fn build_turn_history(
 fn build_turn_item(
     turn: &agtrace_engine::AgentTurn,
     metric: &agtrace_engine::TurnMetrics,
+    max_context: u64,
 ) -> TurnItemViewModel {
     let title = truncate_text(&turn.user.content.text, 50);
 
-    // Logic: Calculate bar width (0-20 characters)
+    // Logic: Calculate bar width based on cumulative usage (v1-style stacked bar)
     let max_bar_width = 20;
-    let delta_bar_width = if metric.prev_total > 0 {
-        let ratio = metric.delta as f64 / metric.prev_total as f64;
-        (ratio * max_bar_width as f64)
-            .ceil()
-            .min(max_bar_width as f64) as u16
-    } else {
-        1
-    };
+    let total_after_turn = metric.prev_total + metric.delta;
+
+    // Calculate usage ratios against max_context
+    let prev_ratio = metric.prev_total as f64 / max_context as f64;
+    let usage_ratio = total_after_turn as f64 / max_context as f64;
+
+    // Calculate bar widths based on ratios
+    let prev_bar_width = (prev_ratio * max_bar_width as f64)
+        .floor()
+        .min(max_bar_width as f64) as u16;
+
+    let bar_width = (usage_ratio * max_bar_width as f64)
+        .ceil()
+        .min(max_bar_width as f64) as u16;
 
     // Logic: Determine color based on delta magnitude
     let delta_color = if metric.is_heavy {
@@ -250,8 +257,12 @@ fn build_turn_item(
         title,
         is_active: metric.is_active,
         is_heavy: metric.is_heavy,
+        prev_total: metric.prev_total,
         delta_tokens: metric.delta,
-        delta_bar_width,
+        usage_ratio,
+        prev_ratio,
+        bar_width,
+        prev_bar_width,
         delta_color,
         recent_steps,
         start_time,
@@ -305,19 +316,8 @@ fn build_status_bar(state: &agtrace_runtime::SessionState) -> StatusBarViewModel
 }
 
 // --------------------------------------------------------
-// Utility Functions (Formatting)
+// Utility Functions (Text Processing)
 // --------------------------------------------------------
-
-/// Format token count with k/M suffixes
-fn format_tokens(tokens: u64) -> String {
-    if tokens >= 1_000_000 {
-        format!("{:.1}M", tokens as f64 / 1_000_000.0)
-    } else if tokens >= 1_000 {
-        format!("{:.1}k", tokens as f64 / 1_000.0)
-    } else {
-        tokens.to_string()
-    }
-}
 
 /// Truncate text to max length with ellipsis
 fn truncate_text(text: &str, max_len: usize) -> String {

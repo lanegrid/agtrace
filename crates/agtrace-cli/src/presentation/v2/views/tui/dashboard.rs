@@ -90,14 +90,25 @@ impl<'a> DashboardView<'a> {
     fn render_context_gauge(&self, area: Rect, buf: &mut Buffer) {
         let color = status_level_to_color(self.model.context_color);
 
-        // Create gauge with computed values
+        // Calculate and format in View layer (not ViewModel)
+        let total_formatted = format_tokens(self.model.context_total);
+        let limit_formatted = format_tokens(self.model.context_limit);
+        let remaining = self
+            .model
+            .context_limit
+            .saturating_sub(self.model.context_total);
+        let remaining_formatted = format_tokens(remaining);
+
+        // v1-style "LIFE" gauge with remaining capacity emphasis
         let gauge = Gauge::default()
-            .gauge_style(Style::default().fg(color))
+            .gauge_style(Style::default().fg(color).add_modifier(Modifier::BOLD))
             .ratio(self.model.context_usage_pct)
             .label(format!(
-                "Context: {} ({:.0}%)",
-                self.model.context_label,
-                self.model.context_usage_pct * 100.0
+                "LIFE: {} / {} ({:.0}%) - {} remaining",
+                total_formatted,
+                limit_formatted,
+                self.model.context_usage_pct * 100.0,
+                remaining_formatted
             ));
 
         gauge.render(area, buf);
@@ -112,5 +123,16 @@ fn format_duration(seconds: u64) -> String {
         format!("{}m {}s", seconds / 60, seconds % 60)
     } else {
         format!("{}h {}m", seconds / 3600, (seconds % 3600) / 60)
+    }
+}
+
+/// Format token count with k/M suffixes
+fn format_tokens(tokens: u64) -> String {
+    if tokens >= 1_000_000 {
+        format!("{:.1}M", tokens as f64 / 1_000_000.0)
+    } else if tokens >= 1_000 {
+        format!("{:.1}k", tokens as f64 / 1_000.0)
+    } else {
+        tokens.to_string()
     }
 }
