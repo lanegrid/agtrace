@@ -28,22 +28,28 @@ impl<'a> TurnHistoryView<'a> {
 impl<'a> Widget for TurnHistoryView<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         if self.model.turns.is_empty() {
-            let block = Block::default().title("Turns").borders(Borders::ALL);
-            let empty = Paragraph::new("No turns yet...").block(block);
+            let block = Block::default()
+                .title("SATURATION HISTORY")
+                .borders(Borders::ALL);
+            let empty = Paragraph::new("Waiting for turn data...").block(block);
             empty.render(area, buf);
             return;
         }
 
+        // v1-style title: "SATURATION HISTORY (Delta Highlight)"
         let block = Block::default()
-            .title(format!("Turns ({})", self.model.turns.len()))
+            .title(format!(
+                "SATURATION HISTORY (Delta Highlight) - {} turns",
+                self.model.turns.len()
+            ))
             .borders(Borders::ALL);
 
         let inner = block.inner(area);
         block.render(area, buf);
 
-        // Split into turn list and active turn detail
+        // Split into turn list and active turn detail (v1 style)
         if self.model.active_turn_index.is_some() {
-            let chunks = Layout::vertical([Constraint::Percentage(60), Constraint::Percentage(40)])
+            let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
                 .split(inner);
 
             // Render turn list
@@ -64,51 +70,58 @@ impl<'a> Widget for TurnHistoryView<'a> {
 
 impl<'a> TurnHistoryView<'a> {
     fn render_turn_list(&self, area: Rect, buf: &mut Buffer) {
-        let items: Vec<ListItem> = self
-            .model
-            .turns
-            .iter()
-            .map(|turn| {
-                let mut line_spans = vec![Span::raw(format!("#{} ", turn.turn_id))];
+        let mut items: Vec<ListItem> = Vec::new();
 
-                // Stacked bar (v1-style): history (█) + delta (▓)
-                let prev_chars = turn.prev_bar_width as usize;
-                let delta_chars = turn.bar_width.saturating_sub(turn.prev_bar_width) as usize;
+        for (idx, turn) in self.model.turns.iter().enumerate() {
+            // v1-style: Add "CURRENT TURN" marker before active turn
+            if turn.is_active && idx > 0 {
+                items.push(ListItem::new(Line::from(vec![Span::styled(
+                    "├─ CURRENT TURN (Active) ────────────────────────────────────",
+                    Style::default()
+                        .fg(ratatui::style::Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )])));
+            }
 
-                // Previous turns (dark gray)
-                if prev_chars > 0 {
-                    line_spans.push(Span::styled(
-                        "█".repeat(prev_chars),
-                        Style::default().fg(ratatui::style::Color::DarkGray),
-                    ));
-                }
+            let mut line_spans = vec![Span::raw(format!("#{:02} ", turn.turn_id))];
 
-                // Current turn delta (colored based on is_heavy)
-                if delta_chars > 0 {
-                    let delta_color = status_level_to_color(turn.delta_color);
-                    line_spans.push(Span::styled(
-                        "▓".repeat(delta_chars),
-                        Style::default()
-                            .fg(delta_color)
-                            .add_modifier(Modifier::BOLD),
-                    ));
-                }
+            // Stacked bar (v1-style): history (█) + delta (▓)
+            let prev_chars = turn.prev_bar_width as usize;
+            let delta_chars = turn.bar_width.saturating_sub(turn.prev_bar_width) as usize;
 
-                line_spans.push(Span::raw(" "));
+            // Previous turns (dark gray)
+            if prev_chars > 0 {
+                line_spans.push(Span::styled(
+                    "█".repeat(prev_chars),
+                    Style::default().fg(ratatui::style::Color::DarkGray),
+                ));
+            }
 
-                // Title with indicator for active turn
-                if turn.is_active {
-                    line_spans.push(Span::styled(
-                        format!("▶ {}", turn.title),
-                        Style::default().add_modifier(Modifier::BOLD),
-                    ));
-                } else {
-                    line_spans.push(Span::raw(&turn.title));
-                }
+            // Current turn delta (colored based on is_heavy)
+            if delta_chars > 0 {
+                let delta_color = status_level_to_color(turn.delta_color);
+                line_spans.push(Span::styled(
+                    "▓".repeat(delta_chars),
+                    Style::default()
+                        .fg(delta_color)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
 
-                ListItem::new(Line::from(line_spans))
-            })
-            .collect();
+            line_spans.push(Span::raw(" "));
+
+            // Title
+            if turn.is_active {
+                line_spans.push(Span::styled(
+                    format!("User: \"{}\"", turn.title),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ));
+            } else {
+                line_spans.push(Span::raw(format!("User: \"{}\"", turn.title)));
+            }
+
+            items.push(ListItem::new(Line::from(line_spans)));
+        }
 
         let list = List::new(items);
         list.render(area, buf);
@@ -120,15 +133,14 @@ impl<'a> TurnHistoryView<'a> {
         buf: &mut Buffer,
         turn: &crate::presentation::v2::view_models::TurnItemViewModel,
     ) {
-        let block = Block::default()
-            .title("Active Turn Steps")
-            .borders(Borders::TOP);
+        // v1-style: "Recent Steps" (instead of "Active Turn Steps")
+        let block = Block::default().title("Recent Steps").borders(Borders::TOP);
 
         let inner = block.inner(area);
         block.render(area, buf);
 
         if turn.recent_steps.is_empty() {
-            let empty = Paragraph::new("No steps yet...");
+            let empty = Paragraph::new("Waiting for steps...");
             empty.render(inner, buf);
             return;
         }
@@ -144,7 +156,7 @@ impl<'a> TurnHistoryView<'a> {
 
                 if let Some(tokens) = step.token_usage {
                     spans.push(Span::styled(
-                        format!(" ({}t)", tokens),
+                        format!(" (+{})", tokens),
                         Style::default().add_modifier(Modifier::DIM),
                     ));
                 }
