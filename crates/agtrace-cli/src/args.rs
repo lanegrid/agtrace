@@ -323,6 +323,26 @@ pub enum SessionCommand {
 
         #[arg(long)]
         no_auto_refresh: bool,
+
+        #[arg(long, default_value = "plain", help = "Output format")]
+        format: OutputFormat,
+
+        #[arg(
+            long,
+            help = "Minimal output (IDs only, for scripting)",
+            group = "view_mode"
+        )]
+        quiet: bool,
+
+        #[arg(
+            long,
+            help = "Compact output (one line per session)",
+            group = "view_mode"
+        )]
+        compact: bool,
+
+        #[arg(long, help = "Verbose output (all metadata)", group = "view_mode")]
+        verbose: bool,
     },
 
     #[command(about = "Display session analysis with context usage and turn metrics")]

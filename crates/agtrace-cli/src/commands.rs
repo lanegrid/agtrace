@@ -70,6 +70,10 @@ pub fn run(cli: Cli) -> Result<()> {
                     since,
                     until,
                     no_auto_refresh,
+                    format,
+                    quiet,
+                    compact,
+                    verbose,
                 } => {
                     let effective_hash = if project_hash.is_none() {
                         project_root.as_ref().map(|p| {
@@ -85,11 +89,14 @@ pub fn run(cli: Cli) -> Result<()> {
                         cli.all_projects,
                         effective_hash,
                         limit,
-                        cli.format,
+                        format,
                         source.map(|s| s.to_string()),
                         since.clone(),
                         until.clone(),
                         no_auto_refresh,
+                        quiet,
+                        compact,
+                        verbose,
                     )
                 }
                 SessionCommand::Show { session_id, json } => {
@@ -225,6 +232,9 @@ pub fn run(cli: Cli) -> Result<()> {
                 since,
                 until,
                 false, // no_auto_refresh - default to auto-refresh for Sessions command
+                false, // quiet
+                false, // compact
+                false, // verbose - default to Standard mode
             )
         }
 

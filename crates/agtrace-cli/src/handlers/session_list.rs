@@ -3,6 +3,25 @@ use agtrace_runtime::{AgTrace, SessionFilter};
 use anyhow::Result;
 use std::path::Path;
 
+/// Resolve ViewMode from CLI flags
+fn resolve_view_mode(
+    quiet: bool,
+    compact: bool,
+    verbose: bool,
+) -> crate::presentation::v2::ViewMode {
+    use crate::presentation::v2::ViewMode;
+
+    if quiet {
+        ViewMode::Minimal
+    } else if compact {
+        ViewMode::Compact
+    } else if verbose {
+        ViewMode::Verbose
+    } else {
+        ViewMode::Standard
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn handle_v2(
     workspace: &AgTrace,
@@ -15,6 +34,9 @@ pub fn handle_v2(
     since: Option<String>,
     until: Option<String>,
     _no_auto_refresh: bool,
+    quiet: bool,
+    compact: bool,
+    verbose: bool,
 ) -> Result<()> {
     use crate::presentation::v2::presenters;
     use crate::presentation::v2::{ConsoleRenderer, Renderer};
@@ -64,7 +86,8 @@ pub fn handle_v2(
     );
 
     let v2_format = crate::presentation::v2::OutputFormat::from(format);
-    let renderer = ConsoleRenderer::new(v2_format, crate::presentation::v2::ViewMode::default());
+    let view_mode = resolve_view_mode(quiet, compact, verbose);
+    let renderer = ConsoleRenderer::new(v2_format, view_mode);
     renderer.render(view_model)?;
 
     Ok(())
