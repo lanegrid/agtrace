@@ -57,9 +57,10 @@ impl<'a> Widget for TurnHistoryView<'a> {
 
             // Render active turn details if present
             if let Some(idx) = self.model.active_turn_index
-                && let Some(turn) = self.model.turns.get(idx) {
-                    self.render_active_turn_detail(chunks[1], buf, turn);
-                }
+                && let Some(turn) = self.model.turns.get(idx)
+            {
+                self.render_active_turn_detail(chunks[1], buf, turn);
+            }
         } else {
             // Just render turn list
             self.render_turn_list(inner, buf);

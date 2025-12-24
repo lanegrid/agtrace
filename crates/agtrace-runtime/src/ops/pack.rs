@@ -30,16 +30,17 @@ impl<'a> PackService<'a> {
 
         for (i, session) in balanced_sessions.iter().enumerate() {
             if let Ok(events) = loader.load_events(&session.id, &options)
-                && let Some(agent_session) = assemble_session(&events) {
-                    let recency_boost = (balanced_sessions.len() - i) as u32;
-                    let digest = SessionDigest::new(
-                        &session.id,
-                        &session.provider,
-                        agent_session,
-                        recency_boost,
-                    );
-                    digests.push(digest);
-                }
+                && let Some(agent_session) = assemble_session(&events)
+            {
+                let recency_boost = (balanced_sessions.len() - i) as u32;
+                let digest = SessionDigest::new(
+                    &session.id,
+                    &session.provider,
+                    agent_session,
+                    recency_boost,
+                );
+                digests.push(digest);
+            }
         }
 
         let selections = analyze_and_select_sessions(digests, limit);

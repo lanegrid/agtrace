@@ -129,9 +129,10 @@ impl TuiRenderer {
 
             // Handle events with timeout (allows periodic redraws)
             if event::poll(Duration::from_millis(100))?
-                && let Event::Key(key) = event::read()? {
-                    self.handle_key_event(key);
-                }
+                && let Event::Key(key) = event::read()?
+            {
+                self.handle_key_event(key);
+            }
 
             // Check for updates from handler (non-blocking)
             if let Ok(tui_event) = rx.try_recv() {
@@ -183,9 +184,10 @@ impl TuiRenderer {
 
         // 2. Delegate to Dashboard component
         if let Some(screen) = &self.current_screen
-            && let Some(_action) = self.dashboard_component.handle_input(key, screen) {
-                // Future: handle navigation actions here (e.g., show details page)
-            }
+            && let Some(_action) = self.dashboard_component.handle_input(key, screen)
+        {
+            // Future: handle navigation actions here (e.g., show details page)
+        }
     }
 
     /// Render the screen using Components (Router pattern)

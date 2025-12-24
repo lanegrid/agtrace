@@ -33,9 +33,10 @@ pub fn compute_metrics(session: &AgentSession) -> SessionMetrics {
                     missing_tool_pairs += 1;
                 }
                 if let Some(duration_ms) = tool_exec.duration_ms
-                    && duration_ms > max_tool_ms {
-                        max_tool_ms = duration_ms;
-                    }
+                    && duration_ms > max_tool_ms
+                {
+                    max_tool_ms = duration_ms;
+                }
             }
 
             if step.tools.len() > longest_chain {

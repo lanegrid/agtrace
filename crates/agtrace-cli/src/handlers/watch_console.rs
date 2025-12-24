@@ -224,9 +224,10 @@ fn process_provider_events_console(
                                 state.current_usage = usage;
                             }
                             if let Some(model) = updates.model
-                                && state.model.is_none() {
-                                    state.model = Some(model);
-                                }
+                                && state.model.is_none()
+                            {
+                                state.model = Some(model);
+                            }
                         }
 
                         // Build max_context from state
@@ -313,9 +314,10 @@ fn process_stream_events_console(
                             state.current_usage = usage;
                         }
                         if let Some(model) = updates.model
-                            && state.model.is_none() {
-                                state.model = Some(model);
-                            }
+                            && state.model.is_none()
+                        {
+                            state.model = Some(model);
+                        }
                     }
 
                     let max_context = state.context_window_limit.map(|tl| tl as u32);

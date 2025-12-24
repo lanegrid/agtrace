@@ -20,9 +20,10 @@ impl LogDiscovery for GeminiDiscovery {
         }
 
         if let Ok(metadata) = std::fs::metadata(path)
-            && metadata.len() == 0 {
-                return ProbeResult::NoMatch;
-            }
+            && metadata.len() == 0
+        {
+            return ProbeResult::NoMatch;
+        }
 
         let filename = path.file_name().and_then(|f| f.to_str()).unwrap_or("");
         if filename.starts_with("session-") && filename.ends_with(".json") {
@@ -102,9 +103,10 @@ impl LogDiscovery for GeminiDiscovery {
             }
 
             if let Ok(header) = extract_gemini_header(path)
-                && header.session_id.as_deref() == Some(session_id) {
-                    matching_files.push(path.to_path_buf());
-                }
+                && header.session_id.as_deref() == Some(session_id)
+            {
+                matching_files.push(path.to_path_buf());
+            }
         }
 
         Ok(matching_files)

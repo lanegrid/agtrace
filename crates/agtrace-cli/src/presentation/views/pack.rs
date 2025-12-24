@@ -30,9 +30,10 @@ impl<'a> PackReportView<'a> {
             writeln!(f, "  Opening: \"{}\"", opening)?;
         }
         if let Some(activation) = &digest.activation
-            && digest.opening.as_ref() != Some(activation) {
-                writeln!(f, "  Activation: \"{}\"", activation)?;
-            }
+            && digest.opening.as_ref() != Some(activation)
+        {
+            writeln!(f, "  Activation: \"{}\"", activation)?;
+        }
         Ok(())
     }
 

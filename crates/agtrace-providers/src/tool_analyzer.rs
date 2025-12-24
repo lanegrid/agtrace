@@ -75,9 +75,10 @@ fn determine_origin(tool_name: &str) -> ToolOrigin {
 fn pick_first<'a>(args: &'a Value, keys: &[&str]) -> Option<&'a Value> {
     for key in keys {
         if let Some(val) = args.get(key)
-            && !val.is_null() {
-                return Some(val);
-            }
+            && !val.is_null()
+        {
+            return Some(val);
+        }
     }
     None
 }

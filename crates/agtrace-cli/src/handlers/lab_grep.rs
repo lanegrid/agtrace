@@ -98,15 +98,17 @@ impl EventMatcher {
     fn matches(&self, event: &AgentEvent) -> Result<bool> {
         // Event type filter (early return for performance)
         if let Some(ref event_type) = self.event_type_filter
-            && !self.matches_event_type(event, event_type) {
-                return Ok(false);
-            }
+            && !self.matches_event_type(event, event_type)
+        {
+            return Ok(false);
+        }
 
         // Tool name filter (for ToolCall events)
         if let Some(ref tool_name) = self.tool_name_filter
-            && !self.matches_tool_name(event, tool_name) {
-                return Ok(false);
-            }
+            && !self.matches_tool_name(event, tool_name)
+        {
+            return Ok(false);
+        }
 
         // Pattern matching on payload
         let payload_str = serde_json::to_string(&event.payload)?;

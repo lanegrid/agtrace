@@ -35,26 +35,30 @@ impl<'a> SessionService<'a> {
         }
 
         if let Some(since_str) = request.since
-            && let Ok(since_dt) = DateTime::parse_from_rfc3339(&since_str) {
-                sessions.retain(|s| {
-                    if let Some(ts) = &s.start_ts
-                        && let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
-                            return dt >= since_dt;
-                        }
-                    false
-                });
-            }
+            && let Ok(since_dt) = DateTime::parse_from_rfc3339(&since_str)
+        {
+            sessions.retain(|s| {
+                if let Some(ts) = &s.start_ts
+                    && let Ok(dt) = DateTime::parse_from_rfc3339(ts)
+                {
+                    return dt >= since_dt;
+                }
+                false
+            });
+        }
 
         if let Some(until_str) = request.until
-            && let Ok(until_dt) = DateTime::parse_from_rfc3339(&until_str) {
-                sessions.retain(|s| {
-                    if let Some(ts) = &s.start_ts
-                        && let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
-                            return dt <= until_dt;
-                        }
-                    false
-                });
-            }
+            && let Ok(until_dt) = DateTime::parse_from_rfc3339(&until_str)
+        {
+            sessions.retain(|s| {
+                if let Some(ts) = &s.start_ts
+                    && let Ok(dt) = DateTime::parse_from_rfc3339(ts)
+                {
+                    return dt <= until_dt;
+                }
+                false
+            });
+        }
 
         sessions.truncate(request.limit);
 

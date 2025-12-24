@@ -30,21 +30,22 @@ pub fn get_corpus_overview(
 
     for session in &raw_sessions {
         if let Ok(events) = loader.load_events(&session.id, &options)
-            && let Some(agent_session) = assemble_session(&events) {
-                for turn in &agent_session.turns {
-                    for step in &turn.steps {
-                        total_tool_calls += step.tools.len();
-                        for tool_exec in &step.tools {
-                            if tool_exec.is_error {
-                                total_failures += 1;
-                            }
+            && let Some(agent_session) = assemble_session(&events)
+        {
+            for turn in &agent_session.turns {
+                for step in &turn.steps {
+                    total_tool_calls += step.tools.len();
+                    for tool_exec in &step.tools {
+                        if tool_exec.is_error {
+                            total_failures += 1;
                         }
                     }
-                    if turn.stats.duration_ms > max_duration {
-                        max_duration = turn.stats.duration_ms;
-                    }
+                }
+                if turn.stats.duration_ms > max_duration {
+                    max_duration = turn.stats.duration_ms;
                 }
             }
+        }
     }
 
     Ok(CorpusStats {

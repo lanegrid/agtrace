@@ -160,12 +160,13 @@ impl SessionStreamer {
         let mut context = StreamContext::new(provider);
 
         if let Ok(events) = context.load_all_events(&session_files)
-            && !events.is_empty() {
-                let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
-                    events: events.clone(),
-                    session: context.session.clone(),
-                }));
-            }
+            && !events.is_empty()
+        {
+            let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
+                events: events.clone(),
+                session: context.session.clone(),
+            }));
+        }
 
         let tx_worker = tx_out.clone();
         let handle = std::thread::Builder::new()
@@ -210,12 +211,13 @@ fn handle_fs_event(
         for path in &event.paths {
             if session_files.contains(path)
                 && let Ok(new_events) = context.handle_change(path)
-                    && !new_events.is_empty() {
-                        let _ = tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
-                            events: new_events,
-                            session: context.session.clone(),
-                        }));
-                    }
+                && !new_events.is_empty()
+            {
+                let _ = tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
+                    events: new_events,
+                    session: context.session.clone(),
+                }));
+            }
         }
     }
     Ok(())
@@ -248,9 +250,10 @@ fn find_session_files(
                 visit_dir(&path, session_id, provider, files)?;
             } else if provider.discovery.probe(&path).is_match()
                 && let Ok(id) = provider.discovery.extract_session_id(&path)
-                    && id == session_id {
-                        files.push(path);
-                    }
+                && id == session_id
+            {
+                files.push(path);
+            }
         }
 
         Ok(())

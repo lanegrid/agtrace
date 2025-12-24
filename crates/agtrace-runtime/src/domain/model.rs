@@ -75,12 +75,13 @@ impl SessionState {
         }
 
         if let Some(limit) = model_limit
-            && total as u64 > limit {
-                return Err(format!(
-                    "Token count {} exceeds model limit {}",
-                    total, limit
-                ));
-            }
+            && total as u64 > limit
+        {
+            return Err(format!(
+                "Token count {} exceeds model limit {}",
+                total, limit
+            ));
+        }
 
         Ok(())
     }

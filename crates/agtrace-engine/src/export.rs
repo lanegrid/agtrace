@@ -102,9 +102,10 @@ fn apply_reasoning_strategy(events: &[AgentEvent]) -> Vec<AgentEvent> {
             reasoning_pairs.push(events[i].clone());
 
             if let Some(next) = events.get(i + 1)
-                && matches!(next.payload, EventPayload::ToolCall(_)) {
-                    reasoning_pairs.push(next.clone());
-                }
+                && matches!(next.payload, EventPayload::ToolCall(_))
+            {
+                reasoning_pairs.push(next.clone());
+            }
         }
     }
 

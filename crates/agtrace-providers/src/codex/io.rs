@@ -102,9 +102,10 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                         timestamp = Some(event.timestamp.clone());
                     }
                     if snippet.is_none()
-                        && let super::schema::EventMsgPayload::UserMessage(msg) = &event.payload {
-                            snippet = Some(msg.message.clone());
-                        }
+                        && let super::schema::EventMsgPayload::UserMessage(msg) = &event.payload
+                    {
+                        snippet = Some(msg.message.clone());
+                    }
                 }
                 CodexRecord::ResponseItem(response) => {
                     if timestamp.is_none() {
@@ -112,21 +113,21 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                     }
                     if snippet.is_none()
                         && let super::schema::ResponseItemPayload::Message(msg) = &response.payload
-                            && msg.role == "user" {
-                                let text = msg.content.iter().find_map(|c| match c {
-                                    super::schema::MessageContent::InputText { text } => {
-                                        Some(text.clone())
-                                    }
-                                    super::schema::MessageContent::OutputText { text } => {
-                                        Some(text.clone())
-                                    }
-                                    _ => None,
-                                });
-                                if let Some(t) = &text
-                                    && !t.contains("<environment_context>") {
-                                        snippet = text;
-                                    }
+                        && msg.role == "user"
+                    {
+                        let text = msg.content.iter().find_map(|c| match c {
+                            super::schema::MessageContent::InputText { text } => Some(text.clone()),
+                            super::schema::MessageContent::OutputText { text } => {
+                                Some(text.clone())
                             }
+                            _ => None,
+                        });
+                        if let Some(t) = &text
+                            && !t.contains("<environment_context>")
+                        {
+                            snippet = text;
+                        }
+                    }
                 }
                 _ => {}
             }

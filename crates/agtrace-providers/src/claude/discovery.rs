@@ -23,9 +23,10 @@ impl LogDiscovery for ClaudeDiscovery {
         }
 
         if let Ok(metadata) = std::fs::metadata(path)
-            && metadata.len() == 0 {
-                return ProbeResult::NoMatch;
-            }
+            && metadata.len() == 0
+        {
+            return ProbeResult::NoMatch;
+        }
 
         ProbeResult::match_high()
     }
@@ -115,9 +116,10 @@ impl LogDiscovery for ClaudeDiscovery {
             }
 
             if let Ok(header) = extract_claude_header(path)
-                && header.session_id.as_deref() == Some(session_id) {
-                    matching_files.push(path.to_path_buf());
-                }
+                && header.session_id.as_deref() == Some(session_id)
+            {
+                matching_files.push(path.to_path_buf());
+            }
         }
 
         Ok(matching_files)

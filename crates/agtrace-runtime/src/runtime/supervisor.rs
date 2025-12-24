@@ -85,19 +85,17 @@ fn handle_fs_event(
             for path in &event.paths {
                 if let Some(context) = find_provider_for_path(path, contexts)
                     && context.provider.discovery.probe(path).is_match()
-                        && let Ok(session_id) = context.provider.discovery.extract_session_id(path)
-                        {
-                            let mut seen = seen_sessions.lock().unwrap();
-                            let is_new = seen.insert(session_id.clone());
+                    && let Ok(session_id) = context.provider.discovery.extract_session_id(path)
+                {
+                    let mut seen = seen_sessions.lock().unwrap();
+                    let is_new = seen.insert(session_id.clone());
 
-                            let _ = tx.send(WorkspaceEvent::Discovery(
-                                DiscoveryEvent::SessionUpdated {
-                                    session_id,
-                                    provider_name: context.provider_name.clone(),
-                                    is_new,
-                                },
-                            ));
-                        }
+                    let _ = tx.send(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
+                        session_id,
+                        provider_name: context.provider_name.clone(),
+                        is_new,
+                    }));
+                }
             }
         }
         _ => {}

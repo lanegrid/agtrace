@@ -43,9 +43,10 @@ pub fn get_provider_metadata(name: &str) -> Option<&'static ProviderMetadata> {
 
 pub fn expand_home_path(path: &str) -> Option<PathBuf> {
     if let Some(stripped) = path.strip_prefix("~/")
-        && let Some(home) = dirs::home_dir() {
-            return Some(home.join(stripped));
-        }
+        && let Some(home) = dirs::home_dir()
+    {
+        return Some(home.join(stripped));
+    }
     None
 }
 
