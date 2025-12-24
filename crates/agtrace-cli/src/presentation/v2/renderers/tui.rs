@@ -39,6 +39,8 @@ pub enum TuiEvent {
     Update(Box<TuiScreenViewModel>),
     /// Fatal error occurred
     Error(String),
+    /// Notification message (non-fatal info)
+    Notification(String),
 }
 
 /// Signal sent from renderer to handler
@@ -64,6 +66,9 @@ pub struct TuiRenderer {
     /// Error message to display (if any) - UI STATE
     error_message: Option<String>,
 
+    /// Notification message (non-fatal info) - UI STATE
+    notification_message: Option<String>,
+
     /// Sender to notify handler of renderer events
     signal_tx: Option<Sender<RendererSignal>>,
 }
@@ -75,6 +80,7 @@ impl TuiRenderer {
             dashboard_component: DashboardComponent::new(),
             should_quit: false,
             error_message: None,
+            notification_message: None,
             signal_tx: None,
         }
     }
@@ -137,6 +143,10 @@ impl TuiRenderer {
                     }
                     TuiEvent::Error(msg) => {
                         self.error_message = Some(msg);
+                        self.notification_message = None;
+                    }
+                    TuiEvent::Notification(msg) => {
+                        self.notification_message = Some(msg);
                     }
                 }
             }

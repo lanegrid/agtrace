@@ -51,6 +51,17 @@ impl SessionState {
         self.current_usage.context_window_tokens()
     }
 
+    /// Get total tokens as type-safe TokenCount
+    pub fn total_tokens(&self) -> agtrace_engine::TokenCount {
+        self.current_usage.total_tokens()
+    }
+
+    /// Get context limit as type-safe ContextLimit
+    pub fn context_limit(&self) -> Option<agtrace_engine::ContextLimit> {
+        self.context_window_limit
+            .map(agtrace_engine::ContextLimit::new)
+    }
+
     pub fn validate_tokens(&self, model_limit: Option<u64>) -> Result<(), String> {
         let total = self.total_context_window_tokens();
 

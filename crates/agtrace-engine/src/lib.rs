@@ -17,5 +17,6 @@ pub use session::{
 };
 pub use state_updates::{extract_state_updates, StateUpdates};
 pub use token_usage::{
-    CacheCreationTokens, CacheReadTokens, ContextWindowUsage, FreshInputTokens, OutputTokens,
+    CacheCreationTokens, CacheReadTokens, ContextLimit, ContextWindowUsage, FreshInputTokens,
+    OutputTokens, TokenCount,
 };

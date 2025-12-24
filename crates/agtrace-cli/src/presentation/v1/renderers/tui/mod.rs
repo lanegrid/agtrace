@@ -177,14 +177,16 @@ impl TuiWatchView {
                                     }
                                 }
                                 EventPayloadViewModel::TokenUsage { .. } => {
-                                    let total_used = state.current_usage.fresh_input
-                                        + state.current_usage.cache_creation
-                                        + state.current_usage.cache_read
-                                        + state.current_usage.output;
+                                    // Calculate total using non-negative values
+                                    let total_used = (state.current_usage.fresh_input.max(0)
+                                        + state.current_usage.cache_creation.max(0)
+                                        + state.current_usage.cache_read.max(0)
+                                        + state.current_usage.output.max(0))
+                                        as u64;
 
-                                    let input_total = (state.current_usage.fresh_input
-                                        + state.current_usage.cache_creation
-                                        + state.current_usage.cache_read)
+                                    let input_total = (state.current_usage.fresh_input.max(0)
+                                        + state.current_usage.cache_creation.max(0)
+                                        + state.current_usage.cache_read.max(0))
                                         as u32;
 
                                     app_state.previous_token_total = total_used as u32;
@@ -195,13 +197,13 @@ impl TuiWatchView {
                                         0.0
                                     };
                                     let output_pct = if total_used > 0 {
-                                        state.current_usage.output as f64 / total_used as f64
+                                        state.current_usage.output.max(0) as f64 / total_used as f64
                                     } else {
                                         0.0
                                     };
 
                                     app_state.context_usage = Some(ContextUsageState {
-                                        used: total_used as u64,
+                                        used: total_used,
                                         limit: state.token_limit.unwrap_or(0),
                                         input_pct,
                                         output_pct,

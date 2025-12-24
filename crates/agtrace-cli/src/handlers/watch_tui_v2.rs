@@ -33,6 +33,8 @@ struct WatchHandler {
     assembled_session: Option<AgentSession>,
     /// Max context window
     max_context: Option<u32>,
+    /// Notification message (for session switching, etc.)
+    notification: Option<String>,
     /// Sender to TUI renderer
     tx: Sender<TuiEvent>,
 }
@@ -44,6 +46,7 @@ impl WatchHandler {
             events: VecDeque::new(),
             assembled_session: None,
             max_context: None,
+            notification: None,
             tx,
         }
     }
@@ -106,6 +109,7 @@ impl WatchHandler {
             &self.events,
             self.assembled_session.as_ref(),
             max_context_for_metrics,
+            self.notification.as_deref(),
         );
 
         // Send to renderer (ignore errors if renderer has quit)
@@ -170,8 +174,10 @@ fn handle_provider_watch(
     use agtrace_providers::ScanContext;
     use agtrace_runtime::SessionFilter;
     use agtrace_types::project_hash_from_root;
+    use std::sync::mpsc::RecvTimeoutError;
+    use std::time::Duration;
 
-    let _watch_service = workspace.watch_service();
+    let watch_service = workspace.watch_service();
 
     // Quick scan to find latest session
     let latest_session = {
@@ -184,7 +190,7 @@ fn handle_provider_watch(
 
         let scan_context = ScanContext {
             project_hash,
-            project_root: current_project_root,
+            project_root: current_project_root.clone(),
         };
 
         // Lightweight scan (incremental by default)
@@ -201,14 +207,177 @@ fn handle_provider_watch(
             .and_then(|sessions| sessions.into_iter().next())
     };
 
-    let Some(session) = latest_session else {
-        let msg = format!("No sessions found for provider '{}'", provider_name);
-        tx.send(TuiEvent::Error(msg))?;
-        return Ok(());
+    // Start background discovery monitoring (like v1)
+    let mut builder = watch_service.watch_provider(provider_name)?;
+    if let Some(root) = project_root {
+        builder = builder.with_project_root(root.to_path_buf());
+    }
+    let monitor = builder.start_background_scan()?;
+    let rx_discovery = monitor.receiver();
+
+    // Initialize handler with initial session
+    let initial_state = if let Some(session) = &latest_session {
+        SessionState::new(session.id.clone(), None, chrono::Utc::now())
+    } else {
+        SessionState::new("waiting".to_string(), None, chrono::Utc::now())
     };
 
-    // Watch the latest session
-    handle_session_watch(workspace, &session.id, tx, signal_rx)
+    let mut handler = WatchHandler::new(initial_state, tx.clone());
+    handler.max_context = Some(200_000); // Default fallback
+
+    // Track current stream handle
+    let mut current_stream_handle: Option<agtrace_runtime::StreamHandle> = None;
+    let mut current_session_id: Option<String> = None;
+
+    // Attach to initial session if available
+    if let Some(session) = latest_session {
+        match watch_service.watch_session(&session.id) {
+            Ok(handle) => {
+                current_stream_handle = Some(handle);
+                current_session_id = Some(session.id.clone());
+                handler.notification = Some(format!("Watching session {}", &session.id[..8]));
+                handler.send_update();
+            }
+            Err(e) => {
+                handler.send_error(format!("Failed to attach to session: {}", e));
+            }
+        }
+    } else {
+        handler.notification = Some("Waiting for new session...".to_string());
+        handler.send_update();
+    }
+
+    let poll_timeout = Duration::from_millis(100);
+
+    // Event loop: monitor both discovery and stream events
+    loop {
+        // Check for quit signal from renderer
+        match signal_rx.try_recv() {
+            Ok(RendererSignal::Quit) => break,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+            _ => {}
+        }
+
+        // Check for new session discoveries (non-blocking)
+        match rx_discovery.try_recv() {
+            Ok(WorkspaceEvent::Discovery(DiscoveryEvent::NewSession { summary })) => {
+                // Auto-switch to new session
+                handler.notification = Some(format!("Switched to session {}", &summary.id[..8]));
+                handler.reset_session_state(summary.id.clone(), None);
+
+                match watch_service.watch_session(&summary.id) {
+                    Ok(handle) => {
+                        current_stream_handle = Some(handle);
+                        current_session_id = Some(summary.id.clone());
+                    }
+                    Err(e) => {
+                        handler.send_error(format!("Failed to attach to new session: {}", e));
+                    }
+                }
+            }
+            Ok(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
+                session_id,
+                is_new,
+                ..
+            })) => {
+                // Switch only if it's a new session and different from current
+                if is_new && current_session_id.as_ref() != Some(&session_id) {
+                    handler.notification =
+                        Some(format!("Switched to session {}", &session_id[..8]));
+                    handler.reset_session_state(session_id.clone(), None);
+
+                    match watch_service.watch_session(&session_id) {
+                        Ok(handle) => {
+                            current_stream_handle = Some(handle);
+                            current_session_id = Some(session_id.clone());
+                        }
+                        Err(e) => {
+                            handler
+                                .send_error(format!("Failed to attach to updated session: {}", e));
+                        }
+                    }
+                }
+            }
+            Ok(WorkspaceEvent::Error(msg)) => {
+                if msg.starts_with("FATAL:") {
+                    handler.send_error(msg);
+                    break;
+                }
+            }
+            _ => {}
+        }
+
+        // Process stream events from current session
+        if let Some(ref stream_handle) = current_stream_handle {
+            match stream_handle.receiver().recv_timeout(poll_timeout) {
+                Ok(WorkspaceEvent::Stream(StreamEvent::Attached { session_id, path })) => {
+                    handler.reset_session_state(session_id, Some(path));
+                }
+                Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, session })) => {
+                    // Batch process events
+                    const MAX_EVENTS: usize = 100;
+
+                    for event in &events {
+                        handler.state.last_activity = event.timestamp;
+                        handler.state.event_count += 1;
+
+                        let updates = agtrace_engine::extract_state_updates(event);
+                        if updates.is_new_turn {
+                            handler.state.turn_count += 1;
+                        }
+                        if let Some(usage) = updates.usage {
+                            handler.state.current_usage = usage;
+                        }
+                        if let Some(model) = updates.model {
+                            if handler.state.model.is_none() {
+                                handler.state.model = Some(model);
+                            }
+                        }
+                        if let Some(limit) = updates.context_window_limit {
+                            handler.state.context_window_limit = Some(limit);
+                        }
+
+                        handler.events.push_back(event.clone());
+                        if handler.events.len() > MAX_EVENTS {
+                            handler.events.pop_front();
+                        }
+                    }
+
+                    if let Some(session) = session {
+                        handler.assembled_session = Some(session);
+                    }
+
+                    handler.send_update();
+                }
+                Ok(WorkspaceEvent::Stream(StreamEvent::Disconnected { reason })) => {
+                    handler.notification = Some(format!(
+                        "Disconnected: {} - Waiting for new session...",
+                        reason
+                    ));
+                    handler.send_update();
+                    current_stream_handle = None;
+                }
+                Ok(WorkspaceEvent::Error(msg)) => {
+                    if msg.starts_with("FATAL:") {
+                        handler.send_error(msg);
+                        break;
+                    }
+                }
+                Err(RecvTimeoutError::Timeout) => {
+                    // Continue
+                }
+                Err(RecvTimeoutError::Disconnected) => {
+                    current_stream_handle = None;
+                }
+                _ => {}
+            }
+        } else {
+            // No active session, just wait
+            std::thread::sleep(poll_timeout);
+        }
+    }
+
+    Ok(())
 }
 
 /// Handle session watch mode
@@ -312,9 +481,8 @@ fn handle_session_watch(
                 }
             },
             Ok(WorkspaceEvent::Discovery(discovery_event)) => match discovery_event {
-                DiscoveryEvent::NewSession { summary } => {
-                    // New session detected - reset to new session
-                    handler.reset_session_state(summary.id.clone(), None);
+                DiscoveryEvent::NewSession { .. } => {
+                    // Ignore new sessions - locked to specified session ID (no auto-attach)
                 }
                 DiscoveryEvent::SessionUpdated { .. } => {
                     // Session updated

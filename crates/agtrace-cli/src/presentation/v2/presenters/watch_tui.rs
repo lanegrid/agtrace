@@ -26,8 +26,9 @@ pub fn build_screen_view_model(
     events: &VecDeque<agtrace_types::AgentEvent>,
     assembled_session: Option<&agtrace_engine::AgentSession>,
     max_context: Option<u32>,
+    notification: Option<&str>,
 ) -> TuiScreenViewModel {
-    let dashboard = build_dashboard(state);
+    let dashboard = build_dashboard(state, notification);
     let timeline = build_timeline(events);
     let turn_history = build_turn_history(assembled_session, max_context);
     let status_bar = build_status_bar(state);
@@ -41,33 +42,51 @@ pub fn build_screen_view_model(
 }
 
 /// Build dashboard ViewModel with context usage calculations
-fn build_dashboard(state: &agtrace_runtime::SessionState) -> DashboardViewModel {
-    let limit = state.context_window_limit.unwrap_or(128_000);
-    let total = state.current_usage.context_window_tokens().max(0) as u64;
-    let usage_pct = (total as f64 / limit as f64).min(1.0); // Clamp to 0.0-1.0 for gauge
+fn build_dashboard(
+    state: &agtrace_runtime::SessionState,
+    notification: Option<&str>,
+) -> DashboardViewModel {
+    use agtrace_engine::ContextLimit;
 
-    // Logic: Determine color based on usage percentage (v1-style strict thresholds)
-    let context_color = if total >= limit || usage_pct > 0.9 {
-        StatusLevel::Error // Red (at or over limit)
-    } else if usage_pct > 0.8 {
-        StatusLevel::Warning // Yellow
+    // Same fallback logic as present_session_state: try context_window_limit first, then model lookup
+    let token_limits = agtrace_runtime::TokenLimits::new();
+    let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
+    let limit_u64 = state
+        .context_window_limit
+        .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
+
+    let limit_opt = limit_u64.map(ContextLimit::new);
+    let total = state.total_tokens();
+
+    // Calculate usage percentage and color only if limit is known
+    let (usage_pct, context_color) = if let Some(limit) = limit_opt {
+        let pct = limit.usage_ratio(total).min(1.0);
+        let color = if limit.is_exceeded(total) || limit.is_danger_zone(total) {
+            StatusLevel::Error
+        } else if limit.is_warning_zone(total) {
+            StatusLevel::Warning
+        } else {
+            StatusLevel::Success
+        };
+        (Some(pct), color)
     } else {
-        StatusLevel::Success // Green
+        // No limit known - show as warning (unknown state)
+        (None, StatusLevel::Warning)
     };
 
     let elapsed = (state.last_activity - state.start_time).num_seconds();
 
     DashboardViewModel {
         title: "AGTRACE".to_string(),
-        sub_title: None,
+        sub_title: notification.map(|s| s.to_string()),
         session_id: state.session_id.clone(),
         project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
         model: state.model.clone(),
         start_time: state.start_time,
         last_activity: state.last_activity,
         elapsed_seconds: elapsed.max(0) as u64,
-        context_total: total,
-        context_limit: limit,
+        context_total: total.as_u64(),
+        context_limit: limit_opt.map(|l| l.as_u64()),
         context_usage_pct: usage_pct,
         context_color,
         context_breakdown: ContextBreakdownViewModel {
@@ -75,7 +94,7 @@ fn build_dashboard(state: &agtrace_runtime::SessionState) -> DashboardViewModel 
             cache_creation: state.current_usage.cache_creation.0.max(0) as u64,
             cache_read: state.current_usage.cache_read.0.max(0) as u64,
             output: state.current_usage.output.0.max(0) as u64,
-            total,
+            total: total.as_u64(),
         },
     }
 }
@@ -183,6 +202,15 @@ fn build_turn_history(
         };
     };
 
+    // max_context should come from the handler (already has model fallback logic)
+    // If still None, we can't calculate usage bars - return empty
+    let Some(max_context_u32) = max_context else {
+        return TurnHistoryViewModel {
+            turns: Vec::new(),
+            active_turn_index: None,
+        };
+    };
+
     let metrics = session.compute_turn_metrics(max_context);
     let active_turn_index = metrics
         .iter()
@@ -190,7 +218,7 @@ fn build_turn_history(
         .find(|(_, m)| m.is_active)
         .map(|(i, _)| i);
 
-    let max_context_u64 = max_context.unwrap_or(128_000) as u64;
+    let max_context_u64 = max_context_u32 as u64;
 
     let turns = session
         .turns

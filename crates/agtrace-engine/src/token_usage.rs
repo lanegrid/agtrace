@@ -3,7 +3,96 @@
 /// Raw i32 values are error-prone; these newtypes keep input/output/cache
 /// accounting explicit and make it harder to forget cache reads when
 /// computing context window pressure.
+use serde::{Deserialize, Serialize};
 use std::ops::Add;
+
+/// Total token count (always non-negative)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Serialize, Deserialize)]
+pub struct TokenCount(u64);
+
+impl TokenCount {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn zero() -> Self {
+        Self(0)
+    }
+
+    pub const fn as_u64(self) -> u64 {
+        self.0
+    }
+
+    pub fn saturating_add(self, other: Self) -> Self {
+        Self(self.0.saturating_add(other.0))
+    }
+
+    pub fn saturating_sub(self, other: Self) -> Self {
+        Self(self.0.saturating_sub(other.0))
+    }
+}
+
+impl From<u64> for TokenCount {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
+
+impl Add for TokenCount {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Self(self.0 + rhs.0)
+    }
+}
+
+/// Context window limit (maximum tokens allowed)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct ContextLimit(u64);
+
+impl ContextLimit {
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    pub const fn as_u64(self) -> u64 {
+        self.0
+    }
+
+    /// Calculate usage ratio (0.0 to 1.0+)
+    pub fn usage_ratio(self, used: TokenCount) -> f64 {
+        if self.0 == 0 {
+            0.0
+        } else {
+            used.as_u64() as f64 / self.0 as f64
+        }
+    }
+
+    /// Calculate remaining capacity
+    pub fn remaining(self, used: TokenCount) -> TokenCount {
+        TokenCount::new(self.0.saturating_sub(used.as_u64()))
+    }
+
+    /// Check if usage exceeds limit
+    pub fn is_exceeded(self, used: TokenCount) -> bool {
+        used.as_u64() >= self.0
+    }
+
+    /// Check if usage is in warning zone (>80%)
+    pub fn is_warning_zone(self, used: TokenCount) -> bool {
+        self.usage_ratio(used) > 0.8
+    }
+
+    /// Check if usage is in danger zone (>90%)
+    pub fn is_danger_zone(self, used: TokenCount) -> bool {
+        self.usage_ratio(used) > 0.9
+    }
+}
+
+impl From<u64> for ContextLimit {
+    fn from(value: u64) -> Self {
+        Self(value)
+    }
+}
 
 /// Fresh input tokens (new content, not from cache)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -92,9 +181,15 @@ impl ContextWindowUsage {
         self.output.0
     }
 
-    /// Context window tokens consumed this turn
+    /// Context window tokens consumed this turn (legacy i32 version)
     pub fn context_window_tokens(&self) -> i32 {
         self.input_tokens() + self.output_tokens()
+    }
+
+    /// Context window tokens as type-safe TokenCount
+    pub fn total_tokens(&self) -> TokenCount {
+        let total = self.context_window_tokens().max(0);
+        TokenCount::new(total as u64)
     }
 
     pub fn is_empty(&self) -> bool {
@@ -152,5 +247,67 @@ mod tests {
         let usage = ContextWindowUsage::default();
         assert!(usage.is_empty());
         assert_eq!(usage.context_window_tokens(), 0);
+    }
+
+    #[test]
+    fn test_token_count_operations() {
+        let count1 = TokenCount::new(100);
+        let count2 = TokenCount::new(50);
+
+        assert_eq!(count1 + count2, TokenCount::new(150));
+        assert_eq!(count1.saturating_sub(count2), TokenCount::new(50));
+        assert_eq!(count2.saturating_sub(count1), TokenCount::zero());
+        assert_eq!(count1.as_u64(), 100);
+    }
+
+    #[test]
+    fn test_context_limit_usage_ratio() {
+        let limit = ContextLimit::new(200_000);
+        let used = TokenCount::new(100_000);
+
+        assert_eq!(limit.usage_ratio(used), 0.5);
+        assert!(!limit.is_exceeded(used));
+        assert!(!limit.is_warning_zone(used));
+        assert!(!limit.is_danger_zone(used));
+    }
+
+    #[test]
+    fn test_context_limit_warning_zones() {
+        let limit = ContextLimit::new(100_000);
+
+        let used_normal = TokenCount::new(50_000);
+        assert!(!limit.is_warning_zone(used_normal));
+        assert!(!limit.is_danger_zone(used_normal));
+
+        let used_warning = TokenCount::new(85_000);
+        assert!(limit.is_warning_zone(used_warning));
+        assert!(!limit.is_danger_zone(used_warning));
+
+        let used_danger = TokenCount::new(95_000);
+        assert!(limit.is_warning_zone(used_danger));
+        assert!(limit.is_danger_zone(used_danger));
+
+        let used_exceeded = TokenCount::new(105_000);
+        assert!(limit.is_exceeded(used_exceeded));
+    }
+
+    #[test]
+    fn test_context_limit_remaining() {
+        let limit = ContextLimit::new(200_000);
+        let used = TokenCount::new(150_000);
+
+        assert_eq!(limit.remaining(used), TokenCount::new(50_000));
+
+        let used_over = TokenCount::new(250_000);
+        assert_eq!(limit.remaining(used_over), TokenCount::zero());
+    }
+
+    #[test]
+    fn test_context_window_usage_total_tokens() {
+        let usage = ContextWindowUsage::from_raw(100, 200, 300, 50);
+        assert_eq!(usage.total_tokens(), TokenCount::new(650));
+
+        let usage_negative = ContextWindowUsage::from_raw(-100, 0, 0, 0);
+        assert_eq!(usage_negative.total_tokens(), TokenCount::zero());
     }
 }

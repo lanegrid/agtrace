@@ -27,8 +27,25 @@ impl<'a> DashboardView<'a> {
 
 impl<'a> Widget for DashboardView<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        use ratatui::style::Color;
+
+        let title = if let Some(sub_title) = &self.model.sub_title {
+            format!("{} - {}", self.model.title, sub_title)
+        } else {
+            self.model.title.clone()
+        };
+
+        let title_style = if self.model.sub_title.is_some() {
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default()
+        };
+
         let block = Block::default()
-            .title(self.model.title.as_str())
+            .title(title)
+            .title_style(title_style)
             .borders(Borders::ALL)
             .style(Style::default());
 
@@ -89,27 +106,36 @@ impl<'a> DashboardView<'a> {
 
     fn render_context_gauge(&self, area: Rect, buf: &mut Buffer) {
         let color = status_level_to_color(self.model.context_color);
-
-        // Calculate and format in View layer (not ViewModel)
         let total_formatted = format_tokens(self.model.context_total);
-        let limit_formatted = format_tokens(self.model.context_limit);
-        let remaining = self
-            .model
-            .context_limit
-            .saturating_sub(self.model.context_total);
-        let remaining_formatted = format_tokens(remaining);
 
-        // v1-style "LIFE" gauge with remaining capacity emphasis
-        let gauge = Gauge::default()
-            .gauge_style(Style::default().fg(color).add_modifier(Modifier::BOLD))
-            .ratio(self.model.context_usage_pct)
-            .label(format!(
-                "LIFE: {} / {} ({:.0}%) - {} remaining",
-                total_formatted,
-                limit_formatted,
-                self.model.context_usage_pct * 100.0,
-                remaining_formatted
-            ));
+        // Handle missing context limit explicitly
+        let gauge = if let (Some(limit), Some(usage_pct)) =
+            (self.model.context_limit, self.model.context_usage_pct)
+        {
+            let limit_formatted = format_tokens(limit);
+            let remaining = limit.saturating_sub(self.model.context_total);
+            let remaining_formatted = format_tokens(remaining);
+
+            Gauge::default()
+                .gauge_style(Style::default().fg(color).add_modifier(Modifier::BOLD))
+                .ratio(usage_pct)
+                .label(format!(
+                    "LIFE: {} / {} ({:.0}%) - {} remaining",
+                    total_formatted,
+                    limit_formatted,
+                    usage_pct * 100.0,
+                    remaining_formatted
+                ))
+        } else {
+            // No limit known - display warning
+            Gauge::default()
+                .gauge_style(Style::default().fg(color).add_modifier(Modifier::BOLD))
+                .ratio(0.0)
+                .label(format!(
+                    "LIFE: {} / ??? (limit unknown - check model config)",
+                    total_formatted
+                ))
+        };
 
         gauge.render(area, buf);
     }

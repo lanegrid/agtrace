@@ -123,6 +123,17 @@ impl<'a> TurnHistoryView<'a> {
 
             line_spans.push(Span::raw("] "));
 
+            // Token info: percentage and delta tokens (v1-style compact form)
+            let pct = turn.usage_ratio * 100.0;
+            let pct_color = if turn.is_heavy {
+                ratatui::style::Color::Red
+            } else {
+                ratatui::style::Color::White
+            };
+            let pct_text = format!("+{:.1}% ({})", pct, format_tokens(turn.delta_tokens));
+            line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
+            line_spans.push(Span::raw(" "));
+
             // Title
             if turn.is_active {
                 line_spans.push(Span::styled(
@@ -169,7 +180,7 @@ impl<'a> TurnHistoryView<'a> {
 
                 if let Some(tokens) = step.token_usage {
                     spans.push(Span::styled(
-                        format!(" (+{})", tokens),
+                        format!(" (+{})", format_tokens(tokens)),
                         Style::default().add_modifier(Modifier::DIM),
                     ));
                 }
@@ -180,5 +191,16 @@ impl<'a> TurnHistoryView<'a> {
 
         let paragraph = Paragraph::new(lines);
         paragraph.render(inner, buf);
+    }
+}
+
+/// Format token count in compact form (k, M)
+fn format_tokens(count: u32) -> String {
+    if count >= 1_000_000 {
+        format!("{:.1}M", count as f64 / 1_000_000.0)
+    } else if count >= 1_000 {
+        format!("{:.1}k", count as f64 / 1_000.0)
+    } else {
+        count.to_string()
     }
 }
