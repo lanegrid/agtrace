@@ -8,10 +8,16 @@ agtrace uses **automatic publishing** to both npm and crates.io on every tagged 
 
 | Registry | Method | Required Setup |
 |----------|--------|----------------|
-| **npm** | OIDC Trusted Publishing | Configure on npmjs.com (no token) |
+| **npm** | OIDC Trusted Publishing | Configure on npmjs.com (no token needed) |
 | **crates.io** | Token-based | Add `CARGO_REGISTRY_TOKEN` to GitHub Secrets |
 
 **Both registries publish automatically when you push a version tag (e.g., `v0.1.0`).**
+
+### Architecture
+
+- **cargo-dist**: Builds cross-platform binaries and generates the npm package tarball
+- **Custom OIDC job**: Publishes the npm package using OIDC (no long-lived tokens)
+- **Custom cargo publish job**: Publishes the Rust crate to crates.io
 
 ---
 
@@ -37,8 +43,8 @@ agtrace uses **automatic publishing** to both npm and crates.io on every tagged 
 ### Step 2: Configure Trusted Publisher
 
 1. Go to: https://www.npmjs.com/settings/@lanegrid/agtrace/publishing
-2. Click "Select your publisher" → **GitHub Actions**
-3. Fill in:
+2. Click "Add trusted publisher" → Select **GitHub Actions**
+3. Fill in the configuration:
    - **Organization**: `lanegrid`
    - **Repository**: `agtrace`
    - **Workflow filename**: `release.yml`
@@ -47,7 +53,12 @@ agtrace uses **automatic publishing** to both npm and crates.io on every tagged 
 
 **That's it! No npm token needed.**
 
-The GitHub Actions workflow already has the required OIDC configuration.
+### Benefits of OIDC Publishing
+
+- ✅ **No long-lived tokens** - Eliminates secret management and rotation
+- ✅ **Automatic provenance** - npm automatically attaches Sigstore attestations
+- ✅ **Workflow-scoped** - Credentials only valid during workflow execution
+- ✅ **Better security** - No risk of token leakage
 
 ---
 
@@ -122,18 +133,22 @@ agtrace --version
 
 ### npm (OIDC)
 - [ ] npm account created
-- [ ] `@lanegrid` organization created
-- [ ] Trusted Publisher configured on npmjs.com
-- [ ] Repository is PUBLIC
+- [ ] `@lanegrid` organization created on npmjs.com
+- [ ] Trusted Publisher configured at https://www.npmjs.com/settings/@lanegrid/agtrace/publishing
+  - Organization: `lanegrid`
+  - Repository: `agtrace`
+  - Workflow: `release.yml`
+- [ ] Repository is PUBLIC (required for npm OIDC)
 
 ### crates.io (Token)
 - [ ] crates.io account created (GitHub login)
-- [ ] API token generated with correct scopes
+- [ ] API token generated with `publish-new` and `publish-update` scopes
 - [ ] `CARGO_REGISTRY_TOKEN` added to GitHub Secrets
 
 ### Repository
-- [ ] Repository is PUBLIC (required for OIDC)
-- [ ] All secrets verified (none leaked)
+- [ ] Repository is PUBLIC (required for npm OIDC and provenance)
+- [ ] GitHub Actions enabled
+- [ ] Workflow has correct permissions (`id-token: write` for OIDC)
 
 ---
 
@@ -141,12 +156,22 @@ agtrace --version
 
 ### npm publish fails
 
-**Error: "Unable to authenticate"**
+**Error: "Unable to verify the first certificate" or "OIDC token validation failed"**
 
 Check:
-- Trusted Publisher settings match exactly (case-sensitive)
-- Repository is PUBLIC
-- Workflow filename is `release.yml` (exact match)
+- Trusted Publisher settings match **exactly** (case-sensitive):
+  - Organization: `lanegrid` (not `Lanegrid`)
+  - Repository: `agtrace` (not `lanegrid/agtrace`)
+  - Workflow: `release.yml` (not `.github/workflows/release.yml`)
+- Repository is PUBLIC (private repos don't support OIDC)
+- Workflow has `permissions.id-token: write`
+- npm CLI version ≥ 11.5.1 (check in workflow logs)
+
+**Error: "Package name too similar to existing package"**
+
+Check:
+- Package name `@lanegrid/agtrace` is available
+- Organization `@lanegrid` exists and you have publish permissions
 
 ### crates.io publish fails
 
@@ -155,21 +180,27 @@ Check:
 Check:
 - GitHub Secret name is exactly `CARGO_REGISTRY_TOKEN`
 - Token has `publish-new` and `publish-update` scopes
-- Token hasn't expired
+- Token hasn't expired (check at https://crates.io/settings/tokens)
+
+**Error: "crate name already exists"**
+
+- The crate name is `agtrace-cli`, not `agtrace`
 
 ---
 
 ## Security Notes
 
-**npm OIDC:**
-- ✅ No long-lived tokens
-- ✅ Automatic provenance attestations
-- ✅ Workflow-scoped credentials
+### npm OIDC Publishing
+- ✅ **No long-lived tokens** - OIDC tokens are issued per-workflow and expire immediately
+- ✅ **Automatic provenance** - Sigstore attestations prove the package was built in GitHub Actions
+- ✅ **Workflow-scoped** - Credentials only valid for the specific workflow run
+- ✅ **Transparent supply chain** - Users can verify the package origin with `npm audit signatures`
 
-**crates.io Token:**
-- ⚠️ Long-lived token (rotate periodically)
-- ✅ Minimal scopes (publish only)
-- ⚠️ Store securely in GitHub Secrets only
+### crates.io Token-based Publishing
+- ⚠️ **Long-lived token** - Rotate periodically (recommended: every 6 months)
+- ✅ **Minimal scopes** - Token only has `publish-new` and `publish-update` permissions
+- ⚠️ **Secret management** - Store securely in GitHub Secrets only, never commit to repo
+- 💡 **Future**: crates.io added OIDC support in July 2025, may migrate in future
 
 ---
 

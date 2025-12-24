@@ -3,15 +3,19 @@
 # Copyright 2022-2024, axodotdev
 # SPDX-License-Identifier: MIT or Apache-2.0
 #
-# CI that:
+# Release Workflow:
 #
-# * checks for a Git Tag that looks like a release
-# * builds artifacts with dist (archives, installers, hashes)
-# * uploads those artifacts to temporary workflow zip
-# * on success, uploads the artifacts to a GitHub Release
+# 1. Plan: Validate tag and determine what to build
+# 2. Build: Create cross-platform binaries and installers (shell, npm, homebrew)
+# 3. Host: Create GitHub Release with all artifacts
+# 4. Publish: Push to package registries
+#    - npm (OIDC trusted publishing with automatic provenance)
+#    - crates.io (token-based)
+# 5. Announce: Final notifications
 #
-# Note that the GitHub Release will be created with a generated
-# title/body based on your changelogs.
+# Note: The publish jobs (npm, crates.io) are custom additions to the
+# cargo-dist generated workflow. cargo-dist handles building the npm package
+# tarball, but we publish it using OIDC for enhanced security.
 
 name: Release
 permissions:
@@ -279,33 +283,41 @@ jobs:
           gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
 
   # Publish to npm using OIDC Trusted Publishing (no NPM_TOKEN needed)
+  # This provides automatic provenance attestations and eliminates long-lived tokens
   publish-npm:
     needs:
       - plan
       - host
-    if: ${{ !github.event.pull_request && needs.plan.outputs.publishing == 'true' }}
-    runs-on: ubuntu-latest
+    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    runs-on: "ubuntu-22.04"
     permissions:
-      id-token: write  # Required for OIDC authentication
-      contents: read
+      id-token: write      # Required for OIDC authentication with npm
+      contents: read       # Required to download artifacts
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       - name: Download npm package artifact
         uses: actions/download-artifact@v4
         with:
           pattern: artifacts-*
           path: artifacts
           merge-multiple: true
+
       - name: Extract npm package
         run: |
           cd artifacts
-          tar -xzf agtrace-cli-npm-package.tar.gz
+          # Find and extract the npm package tarball
+          tar -xzf *-npm-package.tar.gz
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-      - name: Publish to npm
-        run: npm publish
+
+      - name: Publish to npm with provenance
+        run: npm publish --access public
         working-directory: artifacts/package
 
   # Publish to crates.io using registry token
@@ -313,11 +325,15 @@ jobs:
     needs:
       - plan
       - host
-    if: ${{ !github.event.pull_request && needs.plan.outputs.publishing == 'true' }}
-    runs-on: ubuntu-latest
+    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    runs-on: "ubuntu-22.04"
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       - uses: dtolnay/rust-toolchain@stable
+
       - name: Publish to crates.io
         run: cargo publish -p agtrace-cli
         env:
@@ -332,7 +348,7 @@ jobs:
     # use "always() && ..." to allow us to wait for all publish jobs while
     # still allowing individual publish jobs to skip themselves (for prereleases).
     # "host" however must run to completion, no skipping allowed!
-    if: ${{ always() && needs.host.result == 'success' }}
+    if: ${{ always() && needs.host.result == 'success' && (needs.publish-npm.result == 'skipped' || needs.publish-npm.result == 'success') && (needs.publish-crates-io.result == 'skipped' || needs.publish-crates-io.result == 'success') }}
     runs-on: "ubuntu-22.04"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
