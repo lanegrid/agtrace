@@ -1,8 +1,8 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use crate::presentation::v2::presenters;
-use crate::presentation::v2::view_models::{CommandResultViewModel, InitProgress};
-use crate::presentation::v2::views::init::print_init_progress;
-use crate::presentation::v2::{ConsoleRenderer, Renderer};
+use crate::presentation::presenters;
+use crate::presentation::view_models::{CommandResultViewModel, InitProgress};
+use crate::presentation::views::init::print_init_progress;
+use crate::presentation::{ConsoleRenderer, Renderer};
 use agtrace_runtime::{AgTrace, InitConfig};
 use anyhow::Result;
 use std::path::{Path, PathBuf};

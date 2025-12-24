@@ -1,7 +1,7 @@
 /// Console watch handler - streams WatchEventViewModel to stdout
-use crate::presentation::v2::presenters::watch as present_watch;
-use crate::presentation::v2::view_models::{ViewMode, WatchEventViewModel};
-use crate::presentation::v2::views::watch::WatchEventView;
+use crate::presentation::presenters::watch as present_watch;
+use crate::presentation::view_models::{ViewMode, WatchEventViewModel};
+use crate::presentation::views::watch::WatchEventView;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 use anyhow::Result;
 use std::path::Path;

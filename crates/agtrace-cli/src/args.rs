@@ -205,8 +205,8 @@ pub struct ViewModeArgs {
 
 impl ViewModeArgs {
     /// Resolve to a ViewMode based on the flags
-    pub fn resolve(&self) -> crate::presentation::v2::ViewMode {
-        use crate::presentation::v2::ViewMode;
+    pub fn resolve(&self) -> crate::presentation::ViewMode {
+        use crate::presentation::ViewMode;
 
         if self.quiet {
             ViewMode::Minimal

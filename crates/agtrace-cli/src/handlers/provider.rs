@@ -8,8 +8,8 @@ pub fn list_v2(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::v2::presenters;
-    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+    use crate::presentation::presenters;
+    use crate::presentation::{ConsoleRenderer, Renderer};
 
     let config = Config::load_from(config_path)?;
 
@@ -27,7 +27,7 @@ pub fn list_v2(
 
     let view_model = presenters::present_provider_list(providers);
 
-    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let v2_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
     let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;
@@ -40,8 +40,8 @@ pub fn detect_v2(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::v2::presenters;
-    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+    use crate::presentation::presenters;
+    use crate::presentation::{ConsoleRenderer, Renderer};
 
     let config = Config::detect_providers()?;
     config.save_to(config_path)?;
@@ -60,7 +60,7 @@ pub fn detect_v2(
 
     let view_model = presenters::present_provider_detected(providers);
 
-    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let v2_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
     let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;
@@ -77,8 +77,8 @@ pub fn set_v2(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::v2::presenters;
-    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+    use crate::presentation::presenters;
+    use crate::presentation::{ConsoleRenderer, Renderer};
 
     if enable && disable {
         anyhow::bail!("Cannot specify both --enable and --disable");
@@ -101,7 +101,7 @@ pub fn set_v2(
 
     let view_model = presenters::present_provider_set(provider, enabled, log_root);
 
-    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let v2_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
     let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;

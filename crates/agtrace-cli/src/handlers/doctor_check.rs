@@ -9,8 +9,8 @@ pub fn handle_v2(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::v2::presenters;
-    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+    use crate::presentation::presenters;
+    use crate::presentation::{ConsoleRenderer, Renderer};
 
     let (adapter, provider_name) = if let Some(name) = provider_override {
         let adapter = create_adapter(&name)?;
@@ -31,7 +31,7 @@ pub fn handle_v2(
         result.error_message,
     );
 
-    let output_format = crate::presentation::v2::OutputFormat::from(format);
+    let output_format = crate::presentation::OutputFormat::from(format);
     let renderer = ConsoleRenderer::new(output_format, view_mode.resolve());
     renderer.render(view_model)?;
 

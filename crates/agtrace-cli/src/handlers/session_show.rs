@@ -1,7 +1,7 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use crate::presentation::v2::presenters;
-use crate::presentation::v2::renderers::ConsoleRenderer;
-use crate::presentation::v2::renderers::Renderer as _;
+use crate::presentation::presenters;
+use crate::presentation::renderers::ConsoleRenderer;
+use crate::presentation::renderers::Renderer as _;
 use agtrace_engine::assemble_session;
 use agtrace_runtime::{AgTrace, SessionFilter, TokenLimits};
 use anyhow::{Context, Result};
@@ -46,7 +46,7 @@ pub fn handle(
         presenters::present_session_analysis(&session, &provider, &model_name_display, max_context);
 
     // Render output
-    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let v2_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
     let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(result)?;

@@ -1,7 +1,7 @@
 use crate::args::{ExportFormat, ExportStrategy as CliExportStrategy, OutputFormat, ViewModeArgs};
-use crate::presentation::v2::presenters;
-use crate::presentation::v2::view_models::CommandResultViewModel;
-use crate::presentation::v2::{ConsoleRenderer, Renderer};
+use crate::presentation::presenters;
+use crate::presentation::view_models::CommandResultViewModel;
+use crate::presentation::{ConsoleRenderer, Renderer};
 use crate::services::writer;
 use agtrace_engine::export::ExportStrategy;
 use agtrace_runtime::AgTrace;

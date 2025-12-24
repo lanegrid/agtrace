@@ -13,8 +13,8 @@ use std::thread;
 
 use anyhow::Result;
 
-use crate::presentation::v2::presenters::watch_tui::build_screen_view_model;
-use crate::presentation::v2::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
+use crate::presentation::presenters::watch_tui::build_screen_view_model;
+use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
 use agtrace_engine::AgentSession;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 

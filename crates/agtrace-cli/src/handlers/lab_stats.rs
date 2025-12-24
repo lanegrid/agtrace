@@ -1,9 +1,9 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use crate::presentation::v2::presenters;
-use crate::presentation::v2::view_models::{
+use crate::presentation::presenters;
+use crate::presentation::view_models::{
     CommandResultViewModel, ToolCallSample, ToolClassification,
 };
-use crate::presentation::v2::{ConsoleRenderer, Renderer};
+use crate::presentation::{ConsoleRenderer, Renderer};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 

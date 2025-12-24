@@ -9,14 +9,14 @@ pub fn handle_v2(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::v2::presenters;
-    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+    use crate::presentation::presenters;
+    use crate::presentation::{ConsoleRenderer, Renderer};
 
     let results = workspace.diagnose()?;
 
     let view_model = presenters::present_diagnose_results(results);
 
-    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let v2_format = crate::presentation::OutputFormat::from(format);
     let renderer = ConsoleRenderer::new(v2_format, view_mode.resolve());
     renderer.render(view_model)?;
 

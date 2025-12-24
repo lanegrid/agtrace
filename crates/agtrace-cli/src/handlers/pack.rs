@@ -1,7 +1,7 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use crate::presentation::v2::presenters;
-use crate::presentation::v2::view_models::{CommandResultViewModel, ReportTemplate};
-use crate::presentation::v2::{ConsoleRenderer, Renderer};
+use crate::presentation::presenters;
+use crate::presentation::view_models::{CommandResultViewModel, ReportTemplate};
+use crate::presentation::{ConsoleRenderer, Renderer};
 use agtrace_runtime::AgTrace;
 use agtrace_types::resolve_effective_project_hash;
 use anyhow::Result;

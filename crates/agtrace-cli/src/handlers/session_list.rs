@@ -17,8 +17,8 @@ pub fn handle_v2(
     _no_auto_refresh: bool,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::v2::presenters;
-    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+    use crate::presentation::presenters;
+    use crate::presentation::{ConsoleRenderer, Renderer};
 
     // Build filter
     let mut filter = SessionFilter::new().limit(limit);
@@ -64,7 +64,7 @@ pub fn handle_v2(
         limit,
     );
 
-    let v2_format = crate::presentation::v2::OutputFormat::from(format);
+    let v2_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
     let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
     renderer.render(view_model)?;

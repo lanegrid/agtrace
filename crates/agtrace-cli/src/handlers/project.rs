@@ -9,8 +9,8 @@ pub fn handle_v2(
     output_format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::v2::presenters;
-    use crate::presentation::v2::{ConsoleRenderer, Renderer};
+    use crate::presentation::presenters;
+    use crate::presentation::{ConsoleRenderer, Renderer};
 
     let project_root_path = discover_project_root(project_root.as_deref())?;
     let project_hash = agtrace_types::project_hash_from_root(&project_root_path.to_string_lossy());
@@ -23,7 +23,7 @@ pub fn handle_v2(
         projects,
     );
 
-    let v2_format = crate::presentation::v2::OutputFormat::from(output_format);
+    let v2_format = crate::presentation::OutputFormat::from(output_format);
     let renderer = ConsoleRenderer::new(v2_format, view_mode.resolve());
     renderer.render(view_model)?;
 
