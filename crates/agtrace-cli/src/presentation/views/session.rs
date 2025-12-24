@@ -9,8 +9,12 @@ use crate::presentation::view_models::{
 const SESSION_ID_SHORT_LENGTH: usize = 8;
 const SNIPPET_MAX_LENGTH: usize = 50;
 const QUERY_PREVIEW_LENGTH: usize = 50;
-const QUERY_DISPLAY_LENGTH: usize = 80;
-const THINKING_PREVIEW_LENGTH: usize = 60;
+const QUERY_DISPLAY_LENGTH: usize = 100;
+const QUERY_MAX_LINES: usize = 3;
+const THINKING_PREVIEW_LENGTH: usize = 100;
+const THINKING_MAX_LINES: usize = 2;
+const MESSAGE_PREVIEW_LENGTH: usize = 100;
+const MESSAGE_MAX_LINES: usize = 2;
 const TOOL_RESULT_LENGTH: usize = 60;
 const CONTEXT_BAR_WIDTH_STANDARD: usize = 40;
 const CONTEXT_BAR_WIDTH_COMPACT: usize = 20;
@@ -423,7 +427,8 @@ impl<'a> TurnView<'a> {
             }
             AgentStepViewModel::Message { text } => {
                 writeln!(f, "{} 💬 Message", prefix)?;
-                let truncated = text::truncate(text, QUERY_DISPLAY_LENGTH);
+                let truncated =
+                    text::truncate_multiline(text, MESSAGE_MAX_LINES, MESSAGE_PREVIEW_LENGTH);
                 self.write_indented(f, &truncated, is_last, "   ")?;
             }
             AgentStepViewModel::SystemEvent { description } => {
@@ -444,15 +449,10 @@ impl<'a> TurnView<'a> {
         preview: &str,
         is_last: bool,
     ) -> fmt::Result {
-        let continuation = if is_last { "   " } else { "│  " };
-
-        // Truncate and show first line prominently
-        let truncated = text::truncate(preview, THINKING_PREVIEW_LENGTH);
-        let lines: Vec<&str> = truncated.lines().collect();
-        if let Some(first_line) = lines.first() {
-            writeln!(f, "{}   {}", continuation, first_line)?;
-        }
-
+        // Use multiline truncation for thinking previews
+        let truncated =
+            text::truncate_multiline(preview, THINKING_MAX_LINES, THINKING_PREVIEW_LENGTH);
+        self.write_indented(f, &truncated, is_last, "   ")?;
         Ok(())
     }
 
@@ -536,7 +536,8 @@ impl<'a> fmt::Display for TurnView<'a> {
         let is_last = current_index == total_items;
         let prefix = if is_last { "└──" } else { "├──" };
         writeln!(f, "{} 👤 User", prefix)?;
-        let truncated_query = text::truncate(&self.data.user_query, QUERY_DISPLAY_LENGTH);
+        let truncated_query =
+            text::truncate_multiline(&self.data.user_query, QUERY_MAX_LINES, QUERY_DISPLAY_LENGTH);
         self.write_indented(f, &truncated_query, is_last, "   ")?;
 
         // Steps

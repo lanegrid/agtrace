@@ -51,6 +51,38 @@ pub fn format_empty(text: &str) -> String {
     }
 }
 
+/// Smart truncation for multiline text - shows first N lines with line length limits
+pub fn truncate_multiline(text: &str, max_lines: usize, max_line_length: usize) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+
+    if lines.is_empty() {
+        return text.to_string();
+    }
+
+    let total_lines = lines.len();
+    let lines_to_show = max_lines.min(total_lines);
+    let truncated_lines: Vec<String> = lines
+        .iter()
+        .take(lines_to_show)
+        .map(|line| {
+            if line.len() > max_line_length {
+                truncate(line, max_line_length)
+            } else {
+                line.to_string()
+            }
+        })
+        .collect();
+
+    let result = truncated_lines.join("\n");
+
+    // Add indicator if there are more lines
+    if total_lines > lines_to_show {
+        format!("{}\n...", result)
+    } else {
+        result
+    }
+}
+
 /// Normalize whitespace, strip known noise, and truncate
 pub fn normalize_and_clean(text: &str, max_chars: usize) -> String {
     let normalized = text
@@ -124,5 +156,34 @@ mod tests {
             normalize_and_clean("  multiple   spaces  ", 30),
             "multiple spaces"
         );
+    }
+
+    #[test]
+    fn test_truncate_multiline_short() {
+        let text = "line1\nline2\nline3";
+        assert_eq!(truncate_multiline(text, 5, 100), "line1\nline2\nline3");
+    }
+
+    #[test]
+    fn test_truncate_multiline_lines_limit() {
+        let text = "line1\nline2\nline3\nline4\nline5";
+        let result = truncate_multiline(text, 3, 100);
+        assert_eq!(result, "line1\nline2\nline3\n...");
+    }
+
+    #[test]
+    fn test_truncate_multiline_line_length() {
+        let text = "this is a very long line that should be truncated\nshort";
+        let result = truncate_multiline(text, 5, 20);
+        assert!(result.contains("this is a very lo..."));
+        assert!(result.contains("short"));
+    }
+
+    #[test]
+    fn test_truncate_multiline_both_limits() {
+        let text = "line1 is very long indeed\nline2 is also quite lengthy\nline3\nline4\nline5";
+        let result = truncate_multiline(text, 2, 20);
+        assert_eq!(result.lines().count(), 3); // 2 lines + "..."
+        assert!(result.contains("..."));
     }
 }
