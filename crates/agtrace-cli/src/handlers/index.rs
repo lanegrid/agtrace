@@ -1,4 +1,5 @@
 use crate::args::{OutputFormat, ViewModeArgs};
+use crate::presentation::presenters;
 use crate::presentation::view_models::IndexEvent;
 use agtrace_providers::ScanContext;
 use agtrace_runtime::{AgTrace, IndexProgress};
@@ -17,9 +18,6 @@ pub fn handle(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::presenters;
-    use crate::presentation::{ConsoleRenderer, Renderer};
-
     let current_project_root = project_root.map(|p| p.display().to_string());
 
     let project_hash = if let Some(root) = &current_project_root {
@@ -89,20 +87,11 @@ pub fn handle(
             }
         })?;
 
-    // Render final result with the presentation architecture
-    let view_model = presenters::present_index_result(
-        final_total,
-        final_scanned,
-        final_skipped,
-        force, // force = rebuild mode
-    );
+    let view_model =
+        presenters::present_index_result(final_total, final_scanned, final_skipped, force);
 
-    let presentation_format = crate::presentation::OutputFormat::from(format);
-    let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
-    renderer.render(view_model)?;
-
-    Ok(())
+    let ctx = crate::handlers::HandlerContext::new(format, view_mode);
+    ctx.render(view_model)
 }
 
 pub fn handle_vacuum(
@@ -110,21 +99,14 @@ pub fn handle_vacuum(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::presenters;
-    use crate::presentation::{ConsoleRenderer, Renderer};
+    let ctx = crate::handlers::HandlerContext::new(format, view_mode);
 
     let db = workspace.database();
     let db = db.lock().unwrap();
     db.vacuum()?;
 
     let view_model = presenters::present_vacuum_result();
-
-    let presentation_format = crate::presentation::OutputFormat::from(format);
-    let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
-    renderer.render(view_model)?;
-
-    Ok(())
+    ctx.render(view_model)
 }
 
 fn render_progress_event(event: &IndexEvent) {

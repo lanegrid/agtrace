@@ -1,12 +1,12 @@
 use crate::args::{OutputFormat, ViewModeArgs};
+use crate::handlers::HandlerContext;
+use crate::presentation::presenters;
 use agtrace_runtime::{Config, ProviderConfig};
 use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn list(config_path: &PathBuf, format: OutputFormat, view_mode: &ViewModeArgs) -> Result<()> {
-    use crate::presentation::presenters;
-    use crate::presentation::{ConsoleRenderer, Renderer};
-
+    let ctx = HandlerContext::new(format, view_mode);
     let config = Config::load_from(config_path)?;
 
     let providers: Vec<(String, bool, PathBuf)> = config
@@ -22,19 +22,11 @@ pub fn list(config_path: &PathBuf, format: OutputFormat, view_mode: &ViewModeArg
         .collect();
 
     let view_model = presenters::present_provider_list(providers);
-
-    let presentation_format = crate::presentation::OutputFormat::from(format);
-    let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
-    renderer.render(view_model)?;
-
-    Ok(())
+    ctx.render(view_model)
 }
 
 pub fn detect(config_path: &PathBuf, format: OutputFormat, view_mode: &ViewModeArgs) -> Result<()> {
-    use crate::presentation::presenters;
-    use crate::presentation::{ConsoleRenderer, Renderer};
-
+    let ctx = HandlerContext::new(format, view_mode);
     let config = Config::detect_providers()?;
     config.save_to(config_path)?;
 
@@ -51,13 +43,7 @@ pub fn detect(config_path: &PathBuf, format: OutputFormat, view_mode: &ViewModeA
         .collect();
 
     let view_model = presenters::present_provider_detected(providers);
-
-    let presentation_format = crate::presentation::OutputFormat::from(format);
-    let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
-    renderer.render(view_model)?;
-
-    Ok(())
+    ctx.render(view_model)
 }
 
 pub fn set(
@@ -69,15 +55,13 @@ pub fn set(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    use crate::presentation::presenters;
-    use crate::presentation::{ConsoleRenderer, Renderer};
+    let ctx = HandlerContext::new(format, view_mode);
 
     if enable && disable {
         anyhow::bail!("Cannot specify both --enable and --disable");
     }
 
     let mut config = Config::load_from(config_path)?;
-
     let enabled = if enable { true } else { !disable };
 
     config.set_provider(
@@ -92,11 +76,5 @@ pub fn set(
     config.save_to(config_path)?;
 
     let view_model = presenters::present_provider_set(provider, enabled, log_root);
-
-    let presentation_format = crate::presentation::OutputFormat::from(format);
-    let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
-    renderer.render(view_model)?;
-
-    Ok(())
+    ctx.render(view_model)
 }

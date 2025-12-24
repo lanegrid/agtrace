@@ -1,59 +1,94 @@
 use super::args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
-    SessionCommand,
+    SessionCommand, ViewModeArgs,
 };
 use super::handlers;
 use agtrace_runtime::AgTrace;
+use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use clap::CommandFactory;
 use is_terminal::IsTerminal;
 use std::path::PathBuf;
 
+struct CommandContext {
+    data_dir: PathBuf,
+    project_root: Option<PathBuf>,
+    all_projects: bool,
+    format: crate::args::OutputFormat,
+}
+
+impl CommandContext {
+    fn from_cli(cli: &Cli) -> Self {
+        let data_dir = expand_tilde(&cli.data_dir);
+        let project_root = cli
+            .project_root
+            .as_ref()
+            .map(PathBuf::from)
+            .or_else(|| std::env::current_dir().ok());
+
+        Self {
+            data_dir,
+            project_root,
+            all_projects: cli.all_projects,
+            format: cli.format,
+        }
+    }
+
+    fn open_workspace(&self) -> Result<AgTrace> {
+        AgTrace::open(self.data_dir.clone())
+    }
+
+    fn config_path(&self) -> PathBuf {
+        self.data_dir.join("config.toml")
+    }
+
+    fn project_hash(&self) -> Option<String> {
+        self.project_root
+            .as_ref()
+            .map(|p| project_hash_from_root(&p.display().to_string()))
+    }
+
+    fn effective_project_hash(&self, explicit_hash: Option<String>) -> Option<String> {
+        explicit_hash.or_else(|| self.project_hash())
+    }
+}
+
+fn default_view_mode() -> ViewModeArgs {
+    ViewModeArgs::default()
+}
+
 pub fn run(cli: Cli) -> Result<()> {
-    let data_dir = expand_tilde(&cli.data_dir);
+    let ctx = CommandContext::from_cli(&cli);
 
     let Some(command) = cli.command else {
         Cli::command().print_help()?;
         return Ok(());
     };
 
-    let project_root = cli
-        .project_root
-        .map(PathBuf::from)
-        .or_else(|| std::env::current_dir().ok());
-
     match command {
-        Commands::Init { refresh } => {
-            let default_view_mode = crate::args::ViewModeArgs {
-                quiet: false,
-                compact: false,
-                verbose: false,
-            };
-            handlers::init::handle(
-                &data_dir,
-                project_root.clone(),
-                cli.all_projects,
-                refresh,
-                cli.format,
-                &default_view_mode,
-            )
-        }
+        Commands::Init { refresh } => handlers::init::handle(
+            &ctx.data_dir,
+            ctx.project_root.clone(),
+            ctx.all_projects,
+            refresh,
+            ctx.format,
+            &default_view_mode(),
+        ),
 
         Commands::Index { command } => {
-            let workspace = AgTrace::open(data_dir.clone())?;
-
+            let workspace = ctx.open_workspace()?;
             match command {
                 IndexCommand::Update {
                     provider,
                     view_mode,
                 } => handlers::index::handle(
                     &workspace,
-                    project_root.as_deref(),
-                    cli.all_projects,
+                    ctx.project_root.as_deref(),
+                    ctx.all_projects,
                     provider.to_string(),
                     false,
                     view_mode.verbose,
-                    cli.format,
+                    ctx.format,
                     &view_mode,
                 ),
                 IndexCommand::Rebuild {
@@ -61,23 +96,22 @@ pub fn run(cli: Cli) -> Result<()> {
                     view_mode,
                 } => handlers::index::handle(
                     &workspace,
-                    project_root.as_deref(),
-                    cli.all_projects,
+                    ctx.project_root.as_deref(),
+                    ctx.all_projects,
                     provider.to_string(),
                     true,
                     view_mode.verbose,
-                    cli.format,
+                    ctx.format,
                     &view_mode,
                 ),
                 IndexCommand::Vacuum { view_mode } => {
-                    handlers::index::handle_vacuum(&workspace, cli.format, &view_mode)
+                    handlers::index::handle_vacuum(&workspace, ctx.format, &view_mode)
                 }
             }
         }
 
         Commands::Session { command } => {
-            let workspace = AgTrace::open(data_dir.clone())?;
-
+            let workspace = ctx.open_workspace()?;
             match command {
                 SessionCommand::List {
                     project_hash,
@@ -88,29 +122,19 @@ pub fn run(cli: Cli) -> Result<()> {
                     no_auto_refresh,
                     format,
                     view_mode,
-                } => {
-                    let effective_hash = if project_hash.is_none() {
-                        project_root.as_ref().map(|p| {
-                            agtrace_types::project_hash_from_root(&p.display().to_string())
-                        })
-                    } else {
-                        project_hash
-                    };
-
-                    handlers::session_list::handle(
-                        &workspace,
-                        project_root.as_deref(),
-                        cli.all_projects,
-                        effective_hash,
-                        limit,
-                        format,
-                        source.map(|s| s.to_string()),
-                        since.clone(),
-                        until.clone(),
-                        no_auto_refresh,
-                        &view_mode,
-                    )
-                }
+                } => handlers::session_list::handle(
+                    &workspace,
+                    ctx.project_root.as_deref(),
+                    ctx.all_projects,
+                    ctx.effective_project_hash(project_hash),
+                    limit,
+                    format,
+                    source.map(|s| s.to_string()),
+                    since,
+                    until,
+                    no_auto_refresh,
+                    &view_mode,
+                ),
                 SessionCommand::Show {
                     session_id,
                     format,
@@ -120,14 +144,13 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Provider { command } => {
-            let config_path = data_dir.join("config.toml");
-
+            let config_path = ctx.config_path();
             match command {
                 ProviderCommand::List { view_mode } => {
-                    handlers::provider::list(&config_path, cli.format, &view_mode)
+                    handlers::provider::list(&config_path, ctx.format, &view_mode)
                 }
                 ProviderCommand::Detect { view_mode } => {
-                    handlers::provider::detect(&config_path, cli.format, &view_mode)
+                    handlers::provider::detect(&config_path, ctx.format, &view_mode)
                 }
                 ProviderCommand::Set {
                     provider,
@@ -141,7 +164,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     enable,
                     disable,
                     &config_path,
-                    cli.format,
+                    ctx.format,
                     &view_mode,
                 ),
             }
@@ -153,12 +176,12 @@ pub fn run(cli: Cli) -> Result<()> {
                 verbose,
                 view_mode,
             } => {
-                let workspace = AgTrace::open(data_dir)?;
+                let workspace = ctx.open_workspace()?;
                 handlers::doctor_run::handle(
                     &workspace,
                     provider.to_string(),
                     verbose,
-                    cli.format,
+                    ctx.format,
                     &view_mode,
                 )
             }
@@ -167,7 +190,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 lines,
                 format,
                 view_mode,
-            } => handlers::doctor_inspect::handle(file_path, lines, format, cli.format, &view_mode),
+            } => handlers::doctor_inspect::handle(file_path, lines, format, ctx.format, &view_mode),
             DoctorCommand::Check {
                 file_path,
                 provider,
@@ -175,61 +198,45 @@ pub fn run(cli: Cli) -> Result<()> {
             } => handlers::doctor_check::handle(
                 file_path,
                 provider.map(|p| p.to_string()),
-                cli.format,
+                ctx.format,
                 &view_mode,
             ),
         },
 
         Commands::Project { command } => {
-            let workspace = AgTrace::open(data_dir)?;
-
+            let workspace = ctx.open_workspace()?;
             match command {
                 ProjectCommand::List {
                     project_root: proj_root,
                     view_mode,
-                } => handlers::project::handle(&workspace, proj_root, cli.format, &view_mode),
+                } => handlers::project::handle(&workspace, proj_root, ctx.format, &view_mode),
             }
         }
 
         Commands::Lab { command } => {
-            let workspace = AgTrace::open(data_dir)?;
-
+            let workspace = ctx.open_workspace()?;
             match command {
                 LabCommand::Export {
                     session_id,
                     output,
                     format,
                     strategy,
-                } => {
-                    let default_view_mode = crate::args::ViewModeArgs {
-                        quiet: false,
-                        compact: false,
-                        verbose: false,
-                    };
-                    handlers::lab_export::handle(
-                        &workspace,
-                        session_id,
-                        output,
-                        format,
-                        strategy,
-                        cli.format,
-                        &default_view_mode,
-                    )
-                }
-                LabCommand::Stats { limit, source } => {
-                    let default_view_mode = crate::args::ViewModeArgs {
-                        quiet: false,
-                        compact: false,
-                        verbose: false,
-                    };
-                    handlers::lab_stats::handle(
-                        &workspace,
-                        limit,
-                        source,
-                        cli.format,
-                        &default_view_mode,
-                    )
-                }
+                } => handlers::lab_export::handle(
+                    &workspace,
+                    session_id,
+                    output,
+                    format,
+                    strategy,
+                    ctx.format,
+                    &default_view_mode(),
+                ),
+                LabCommand::Stats { limit, source } => handlers::lab_stats::handle(
+                    &workspace,
+                    limit,
+                    source,
+                    ctx.format,
+                    &default_view_mode(),
+                ),
                 LabCommand::Grep {
                     pattern,
                     limit,
@@ -252,12 +259,12 @@ pub fn run(cli: Cli) -> Result<()> {
                         event_type: r#type,
                         tool_name: tool,
                     };
-                    let default_view_mode = crate::args::ViewModeArgs {
-                        quiet: false,
-                        compact: false,
-                        verbose: false,
-                    };
-                    handlers::lab_grep::handle(&workspace, options, cli.format, &default_view_mode)
+                    handlers::lab_grep::handle(
+                        &workspace,
+                        options,
+                        ctx.format,
+                        &default_view_mode(),
+                    )
                 }
             }
         }
@@ -269,89 +276,62 @@ pub fn run(cli: Cli) -> Result<()> {
             since,
             until,
         } => {
-            let workspace = AgTrace::open(data_dir)?;
-
-            let effective_hash = if project_hash.is_none() {
-                project_root
-                    .as_ref()
-                    .map(|p| agtrace_types::project_hash_from_root(&p.display().to_string()))
-            } else {
-                project_hash
-            };
-
-            // Create default ViewModeArgs for Sessions alias
-            let default_view_mode = crate::args::ViewModeArgs {
-                quiet: false,
-                compact: false,
-                verbose: false,
-            };
-
+            let workspace = ctx.open_workspace()?;
             handlers::session_list::handle(
                 &workspace,
-                project_root.as_deref(),
-                cli.all_projects,
-                effective_hash,
+                ctx.project_root.as_deref(),
+                ctx.all_projects,
+                ctx.effective_project_hash(project_hash),
                 limit,
-                cli.format,
+                ctx.format,
                 source.map(|s| s.to_string()),
                 since,
                 until,
                 false, // no_auto_refresh - default to auto-refresh for Sessions command
-                &default_view_mode,
+                &default_view_mode(),
             )
         }
 
         Commands::Pack { template, limit } => {
-            let workspace = AgTrace::open(data_dir)?;
-            let project_hash = project_root
-                .as_ref()
-                .map(|p| agtrace_types::project_hash_from_root(&p.display().to_string()));
-
-            let default_view_mode = crate::args::ViewModeArgs {
-                quiet: false,
-                compact: false,
-                verbose: false,
-            };
+            let workspace = ctx.open_workspace()?;
             handlers::pack::handle(
                 &workspace,
                 &template.to_string(),
                 limit,
-                project_hash,
-                cli.all_projects,
-                cli.format,
-                &default_view_mode,
+                ctx.project_hash(),
+                ctx.all_projects,
+                ctx.format,
+                &default_view_mode(),
             )
         }
 
         Commands::Watch { provider, id, mode } => {
             use crate::args::WatchFormat;
 
-            // TUI mode requires TTY
             if mode == WatchFormat::Tui && !std::io::stdout().is_terminal() {
                 anyhow::bail!("watch --mode tui requires a TTY (interactive terminal). Use --mode console for non-interactive streaming.");
             }
 
-            let workspace = AgTrace::open(data_dir)?;
+            let workspace = ctx.open_workspace()?;
 
             let target = if let Some(session_id) = id {
                 handlers::watch_tui::WatchTarget::Session { id: session_id }
             } else {
-                let provider_name = if let Some(name) = provider {
-                    name.to_string()
-                } else {
-                    // Get default provider from workspace config
-                    workspace
-                        .config()
-                        .enabled_providers()
-                        .into_iter()
-                        .next()
-                        .map(|(name, _)| name.clone())
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "No enabled provider found. Run 'agtrace init' to configure providers."
-                            )
-                        })?
-                };
+                let provider_name = provider
+                    .map(|p| p.to_string())
+                    .or_else(|| {
+                        workspace
+                            .config()
+                            .enabled_providers()
+                            .into_iter()
+                            .next()
+                            .map(|(name, _)| name.clone())
+                    })
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "No enabled provider found. Run 'agtrace init' to configure providers."
+                        )
+                    })?;
                 handlers::watch_tui::WatchTarget::Provider {
                     name: provider_name,
                 }
@@ -359,11 +339,11 @@ pub fn run(cli: Cli) -> Result<()> {
 
             match mode {
                 WatchFormat::Tui => {
-                    handlers::watch_tui::handle(&workspace, project_root.as_deref(), target)
+                    handlers::watch_tui::handle(&workspace, ctx.project_root.as_deref(), target)
                 }
                 WatchFormat::Console => handlers::watch_console::handle_console(
                     &workspace,
-                    project_root.as_deref(),
+                    ctx.project_root.as_deref(),
                     target,
                 ),
             }
