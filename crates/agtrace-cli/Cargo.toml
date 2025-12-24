@@ -7,6 +7,10 @@ license.workspace = true
 repository.workspace = true
 homepage = "https://github.com/lanegrid/agtrace"
 
+# cargo-dist config for npm publishing
+[package.metadata.dist]
+npm-package = "@lanegrid/agtrace"
+
 [[bin]]
 name = "agtrace"
 path = "src/main.rs"
