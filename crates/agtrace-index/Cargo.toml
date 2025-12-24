@@ -4,9 +4,10 @@ version.workspace = true
 edition.workspace = true
 description = "Lightweight SQLite metadata index - schema-on-read approach for zero-copy storage"
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
-agtrace-types.workspace = true
+agtrace-types = { version = "0.1.0", path = "../agtrace-types" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
