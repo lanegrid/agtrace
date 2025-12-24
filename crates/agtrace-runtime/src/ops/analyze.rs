@@ -29,8 +29,8 @@ pub fn get_corpus_overview(
     let mut max_duration = 0i64;
 
     for session in &raw_sessions {
-        if let Ok(events) = loader.load_events(&session.id, &options) {
-            if let Some(agent_session) = assemble_session(&events) {
+        if let Ok(events) = loader.load_events(&session.id, &options)
+            && let Some(agent_session) = assemble_session(&events) {
                 for turn in &agent_session.turns {
                     for step in &turn.steps {
                         total_tool_calls += step.tools.len();
@@ -45,7 +45,6 @@ pub fn get_corpus_overview(
                     }
                 }
             }
-        }
     }
 
     Ok(CorpusStats {

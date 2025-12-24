@@ -309,7 +309,9 @@ pub fn run(cli: Cli) -> Result<()> {
             use crate::args::WatchFormat;
 
             if mode == WatchFormat::Tui && !std::io::stdout().is_terminal() {
-                anyhow::bail!("watch --mode tui requires a TTY (interactive terminal). Use --mode console for non-interactive streaming.");
+                anyhow::bail!(
+                    "watch --mode tui requires a TTY (interactive terminal). Use --mode console for non-interactive streaming."
+                );
             }
 
             let workspace = ctx.open_workspace()?;
@@ -352,10 +354,9 @@ pub fn run(cli: Cli) -> Result<()> {
 }
 
 fn expand_tilde(path: &str) -> PathBuf {
-    if let Some(stripped) = path.strip_prefix("~/") {
-        if let Some(home) = std::env::var_os("HOME") {
+    if let Some(stripped) = path.strip_prefix("~/")
+        && let Some(home) = std::env::var_os("HOME") {
             return PathBuf::from(home).join(stripped);
         }
-    }
     PathBuf::from(path)
 }

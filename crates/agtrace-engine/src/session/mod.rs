@@ -6,7 +6,7 @@ mod turn_builder;
 pub mod types;
 
 pub use assembler::assemble_session;
-pub use summary::{summarize, SessionSummary};
+pub use summary::{SessionSummary, summarize};
 pub use types::{
     AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionStats, ToolCallBlock,
     ToolExecution, ToolResultBlock, TurnMetrics, TurnStats, UserMessage,

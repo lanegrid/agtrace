@@ -1,5 +1,5 @@
 use crate::ops::{
-    collect_tool_stats, get_corpus_overview, CorpusStats, IndexProgress, IndexService, StatsResult,
+    CorpusStats, IndexProgress, IndexService, StatsResult, collect_tool_stats, get_corpus_overview,
 };
 use agtrace_index::Database;
 use agtrace_providers::{ProviderAdapter, ScanContext};

@@ -31,11 +31,10 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
     for event in events {
         match &event.payload {
             EventPayload::User(user) => {
-                if let Some(builder) = current_turn.take() {
-                    if let Some(turn) = builder.build() {
+                if let Some(builder) = current_turn.take()
+                    && let Some(turn) = builder.build() {
                         turns.push(turn);
                     }
-                }
 
                 current_turn = Some(TurnBuilder::new(
                     event.id,
@@ -54,11 +53,10 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
         }
     }
 
-    if let Some(builder) = current_turn {
-        if let Some(turn) = builder.build() {
+    if let Some(builder) = current_turn
+        && let Some(turn) = builder.build() {
             turns.push(turn);
         }
-    }
 
     turns
 }

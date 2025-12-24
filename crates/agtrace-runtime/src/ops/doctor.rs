@@ -1,4 +1,4 @@
-use agtrace_engine::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
+use agtrace_engine::{DiagnoseResult, FailureExample, FailureType, categorize_parse_error};
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
 use anyhow::Result;

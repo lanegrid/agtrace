@@ -18,7 +18,7 @@ pub use runtime::SessionStreamer;
 
 // Data types used as inputs/outputs in public APIs
 pub use config::{Config, ProviderConfig};
-pub use domain::{filter_events, EventFilters, SessionState, TokenLimit, TokenLimits};
+pub use domain::{EventFilters, SessionState, TokenLimit, TokenLimits, filter_events};
 pub use init::{ConfigStatus, InitConfig, InitProgress, InitResult, ScanOutcome};
 pub use ops::{
     CheckResult, CheckStatus, CorpusStats, IndexProgress, InspectContentType, InspectLine,

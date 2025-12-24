@@ -3,7 +3,7 @@
 //! Encapsulates timeline list state and input handling.
 
 use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{layout::Rect, widgets::ListState, Frame};
+use ratatui::{Frame, layout::Rect, widgets::ListState};
 
 use crate::presentation::view_models::TimelineViewModel;
 use crate::presentation::views::tui::TimelineView;

@@ -26,9 +26,9 @@ use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Frame, Terminal};
+use ratatui::{Frame, Terminal, backend::CrosstermBackend};
 
 use crate::presentation::view_models::TuiScreenViewModel;
 use crate::presentation::views::tui::components::DashboardComponent;
@@ -128,11 +128,10 @@ impl TuiRenderer {
             terminal.draw(|f| self.render(f))?;
 
             // Handle events with timeout (allows periodic redraws)
-            if event::poll(Duration::from_millis(100))? {
-                if let Event::Key(key) = event::read()? {
+            if event::poll(Duration::from_millis(100))?
+                && let Event::Key(key) = event::read()? {
                     self.handle_key_event(key);
                 }
-            }
 
             // Check for updates from handler (non-blocking)
             if let Ok(tui_event) = rx.try_recv() {
@@ -183,11 +182,10 @@ impl TuiRenderer {
         }
 
         // 2. Delegate to Dashboard component
-        if let Some(screen) = &self.current_screen {
-            if let Some(_action) = self.dashboard_component.handle_input(key, screen) {
+        if let Some(screen) = &self.current_screen
+            && let Some(_action) = self.dashboard_component.handle_input(key, screen) {
                 // Future: handle navigation actions here (e.g., show details page)
             }
-        }
     }
 
     /// Render the screen using Components (Router pattern)

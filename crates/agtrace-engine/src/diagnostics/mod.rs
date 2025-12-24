@@ -3,4 +3,4 @@
 
 pub mod validator;
 
-pub use validator::{categorize_parse_error, DiagnoseResult, FailureExample, FailureType};
+pub use validator::{DiagnoseResult, FailureExample, FailureType, categorize_parse_error};

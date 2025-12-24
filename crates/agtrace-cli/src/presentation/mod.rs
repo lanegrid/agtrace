@@ -139,6 +139,6 @@ pub mod views;
 // Re-exports for convenience
 pub use renderers::{ConsoleRenderer, Renderer};
 pub use view_models::{
-    common::{OutputFormat, ViewMode},
     CommandResultViewModel, CreateView, Guidance, StatusBadge, StatusLevel,
+    common::{OutputFormat, ViewMode},
 };

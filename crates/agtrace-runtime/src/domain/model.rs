@@ -74,14 +74,13 @@ impl SessionState {
             return Err("Negative token count detected".to_string());
         }
 
-        if let Some(limit) = model_limit {
-            if total as u64 > limit {
+        if let Some(limit) = model_limit
+            && total as u64 > limit {
                 return Err(format!(
                     "Token count {} exceeds model limit {}",
                     total, limit
                 ));
             }
-        }
 
         Ok(())
     }

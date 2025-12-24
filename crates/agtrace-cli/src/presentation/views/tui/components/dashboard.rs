@@ -5,8 +5,8 @@
 
 use crossterm::event::KeyEvent;
 use ratatui::{
-    layout::{Constraint, Layout, Rect},
     Frame,
+    layout::{Constraint, Layout, Rect},
 };
 
 use crate::presentation::view_models::TuiScreenViewModel;

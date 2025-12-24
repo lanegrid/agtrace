@@ -207,14 +207,13 @@ impl<'a> WatchEventView<'a> {
         self.render_standard(f)?;
 
         // Add extra debug info in verbose mode
-        if matches!(self.mode, ViewMode::Verbose) {
-            if let WatchEventViewModel::StreamUpdate { state, .. } = self.event {
+        if matches!(self.mode, ViewMode::Verbose)
+            && let WatchEventViewModel::StreamUpdate { state, .. } = self.event {
                 writeln!(f, "\n{}", "Debug Info:".dimmed())?;
                 writeln!(f, "  Project root: {:?}", state.project_root)?;
                 writeln!(f, "  Model: {:?}", state.model)?;
                 writeln!(f, "  Event count: {}", state.event_count)?;
             }
-        }
 
         Ok(())
     }

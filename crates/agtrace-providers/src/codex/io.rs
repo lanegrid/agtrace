@@ -101,20 +101,18 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                     if timestamp.is_none() {
                         timestamp = Some(event.timestamp.clone());
                     }
-                    if snippet.is_none() {
-                        if let super::schema::EventMsgPayload::UserMessage(msg) = &event.payload {
+                    if snippet.is_none()
+                        && let super::schema::EventMsgPayload::UserMessage(msg) = &event.payload {
                             snippet = Some(msg.message.clone());
                         }
-                    }
                 }
                 CodexRecord::ResponseItem(response) => {
                     if timestamp.is_none() {
                         timestamp = Some(response.timestamp.clone());
                     }
-                    if snippet.is_none() {
-                        if let super::schema::ResponseItemPayload::Message(msg) = &response.payload
-                        {
-                            if msg.role == "user" {
+                    if snippet.is_none()
+                        && let super::schema::ResponseItemPayload::Message(msg) = &response.payload
+                            && msg.role == "user" {
                                 let text = msg.content.iter().find_map(|c| match c {
                                     super::schema::MessageContent::InputText { text } => {
                                         Some(text.clone())
@@ -124,14 +122,11 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                                     }
                                     _ => None,
                                 });
-                                if let Some(t) = &text {
-                                    if !t.contains("<environment_context>") {
+                                if let Some(t) = &text
+                                    && !t.contains("<environment_context>") {
                                         snippet = text;
                                     }
-                                }
                             }
-                        }
-                    }
                 }
                 _ => {}
             }

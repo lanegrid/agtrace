@@ -1,5 +1,5 @@
 use crate::runtime::events::{StreamEvent, WorkspaceEvent};
-use agtrace_engine::{assemble_session, AgentSession};
+use agtrace_engine::{AgentSession, assemble_session};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
@@ -7,7 +7,7 @@ use anyhow::Result;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
@@ -159,33 +159,35 @@ impl SessionStreamer {
 
         let mut context = StreamContext::new(provider);
 
-        if let Ok(events) = context.load_all_events(&session_files) {
-            if !events.is_empty() {
+        if let Ok(events) = context.load_all_events(&session_files)
+            && !events.is_empty() {
                 let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
                     events: events.clone(),
                     session: context.session.clone(),
                 }));
             }
-        }
 
         let tx_worker = tx_out.clone();
         let handle = std::thread::Builder::new()
             .name("session-streamer".to_string())
-            .spawn(move || loop {
-                match rx_fs.recv() {
-                    Ok(event) => {
-                        if let Err(e) =
-                            handle_fs_event(&event, &session_files, &mut context, &tx_worker)
-                        {
-                            let _ = tx_worker
-                                .send(WorkspaceEvent::Error(format!("Stream error: {}", e)));
+            .spawn(move || {
+                loop {
+                    match rx_fs.recv() {
+                        Ok(event) => {
+                            if let Err(e) =
+                                handle_fs_event(&event, &session_files, &mut context, &tx_worker)
+                            {
+                                let _ = tx_worker
+                                    .send(WorkspaceEvent::Error(format!("Stream error: {}", e)));
+                            }
                         }
-                    }
-                    Err(_) => {
-                        let _ = tx_worker.send(WorkspaceEvent::Stream(StreamEvent::Disconnected {
-                            reason: "Stream ended".to_string(),
-                        }));
-                        break;
+                        Err(_) => {
+                            let _ =
+                                tx_worker.send(WorkspaceEvent::Stream(StreamEvent::Disconnected {
+                                    reason: "Stream ended".to_string(),
+                                }));
+                            break;
+                        }
                     }
                 }
             })?;
@@ -206,16 +208,14 @@ fn handle_fs_event(
 ) -> Result<()> {
     if let EventKind::Modify(_) = event.kind {
         for path in &event.paths {
-            if session_files.contains(path) {
-                if let Ok(new_events) = context.handle_change(path) {
-                    if !new_events.is_empty() {
+            if session_files.contains(path)
+                && let Ok(new_events) = context.handle_change(path)
+                    && !new_events.is_empty() {
                         let _ = tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
                             events: new_events,
                             session: context.session.clone(),
                         }));
                     }
-                }
-            }
         }
     }
     Ok(())
@@ -246,13 +246,11 @@ fn find_session_files(
 
             if path.is_dir() {
                 visit_dir(&path, session_id, provider, files)?;
-            } else if provider.discovery.probe(&path).is_match() {
-                if let Ok(id) = provider.discovery.extract_session_id(&path) {
-                    if id == session_id {
+            } else if provider.discovery.probe(&path).is_match()
+                && let Ok(id) = provider.discovery.extract_session_id(&path)
+                    && id == session_id {
                         files.push(path);
                     }
-                }
-            }
         }
 
         Ok(())

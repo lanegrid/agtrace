@@ -1,6 +1,6 @@
 use crate::storage::{LoadOptions, SessionRepository};
 use agtrace_index::{Database, SessionSummary};
-use agtrace_types::{resolve_effective_project_hash, AgentEvent};
+use agtrace_types::{AgentEvent, resolve_effective_project_hash};
 use anyhow::Result;
 use chrono::DateTime;
 
@@ -34,31 +34,27 @@ impl<'a> SessionService<'a> {
             sessions.retain(|s| s.provider == src);
         }
 
-        if let Some(since_str) = request.since {
-            if let Ok(since_dt) = DateTime::parse_from_rfc3339(&since_str) {
+        if let Some(since_str) = request.since
+            && let Ok(since_dt) = DateTime::parse_from_rfc3339(&since_str) {
                 sessions.retain(|s| {
-                    if let Some(ts) = &s.start_ts {
-                        if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
+                    if let Some(ts) = &s.start_ts
+                        && let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
                             return dt >= since_dt;
                         }
-                    }
                     false
                 });
             }
-        }
 
-        if let Some(until_str) = request.until {
-            if let Ok(until_dt) = DateTime::parse_from_rfc3339(&until_str) {
+        if let Some(until_str) = request.until
+            && let Ok(until_dt) = DateTime::parse_from_rfc3339(&until_str) {
                 sessions.retain(|s| {
-                    if let Some(ts) = &s.start_ts {
-                        if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
+                    if let Some(ts) = &s.start_ts
+                        && let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
                             return dt <= until_dt;
                         }
-                    }
                     false
                 });
             }
-        }
 
         sessions.truncate(request.limit);
 

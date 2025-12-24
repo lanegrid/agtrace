@@ -43,12 +43,11 @@ impl Renderer for ConsoleRenderer {
                 let is_minimal = self.mode == ViewMode::Minimal;
 
                 // Text rendering uses CreateView to generate mode-specific display
-                if !is_minimal {
-                    if let Some(badge) = &result.badge {
+                if !is_minimal
+                    && let Some(badge) = &result.badge {
                         println!("{} {}", badge.icon(), badge.label.bold());
                         println!();
                     }
-                }
 
                 let view = result.content.create_view(self.mode);
                 print!("{}", view);

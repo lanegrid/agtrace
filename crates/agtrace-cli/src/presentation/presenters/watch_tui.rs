@@ -12,9 +12,9 @@ use chrono::Utc;
 use std::collections::VecDeque;
 
 use crate::presentation::view_models::{
-    common::StatusLevel, ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel,
-    StepPreviewViewModel, TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel,
-    TurnHistoryViewModel, TurnItemViewModel,
+    ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel, StepPreviewViewModel,
+    TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel, TurnHistoryViewModel,
+    TurnItemViewModel, common::StatusLevel,
 };
 
 /// Build complete screen ViewModel from current domain state

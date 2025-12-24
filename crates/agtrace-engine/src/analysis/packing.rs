@@ -1,5 +1,5 @@
 use super::digest::SessionDigest;
-use super::lenses::{select_sessions_by_lenses, Thresholds};
+use super::lenses::{Thresholds, select_sessions_by_lenses};
 
 /// High-level API for analyzing and selecting interesting sessions from a corpus
 pub fn analyze_and_select_sessions(

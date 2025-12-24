@@ -1,4 +1,4 @@
-use agtrace_engine::{analyze_and_select_sessions, assemble_session, SessionDigest};
+use agtrace_engine::{SessionDigest, analyze_and_select_sessions, assemble_session};
 use agtrace_index::{Database, SessionSummary};
 use anyhow::Result;
 use std::collections::HashMap;
@@ -29,8 +29,8 @@ impl<'a> PackService<'a> {
         let options = LoadOptions::default();
 
         for (i, session) in balanced_sessions.iter().enumerate() {
-            if let Ok(events) = loader.load_events(&session.id, &options) {
-                if let Some(agent_session) = assemble_session(&events) {
+            if let Ok(events) = loader.load_events(&session.id, &options)
+                && let Some(agent_session) = assemble_session(&events) {
                     let recency_boost = (balanced_sessions.len() - i) as u32;
                     let digest = SessionDigest::new(
                         &session.id,
@@ -40,7 +40,6 @@ impl<'a> PackService<'a> {
                     );
                     digests.push(digest);
                 }
-            }
         }
 
         let selections = analyze_and_select_sessions(digests, limit);

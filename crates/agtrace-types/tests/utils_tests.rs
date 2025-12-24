@@ -30,20 +30,26 @@ fn test_discover_project_root_with_explicit() {
 #[test]
 fn test_discover_project_root_priority() {
     // Set environment variable
-    env::set_var("AGTRACE_PROJECT_ROOT", "/env/project/root");
+    unsafe {
+        env::set_var("AGTRACE_PROJECT_ROOT", "/env/project/root");
+    }
 
     // Explicit should override env var
     let result = discover_project_root(Some("/explicit/root")).unwrap();
     assert_eq!(result, PathBuf::from("/explicit/root"));
 
     // Clean up
-    env::remove_var("AGTRACE_PROJECT_ROOT");
+    unsafe {
+        env::remove_var("AGTRACE_PROJECT_ROOT");
+    }
 }
 
 #[test]
 fn test_discover_project_root_falls_back_to_cwd() {
     // Make sure env var is not set
-    env::remove_var("AGTRACE_PROJECT_ROOT");
+    unsafe {
+        env::remove_var("AGTRACE_PROJECT_ROOT");
+    }
 
     // Without explicit root or env var, should fall back to cwd
     let result = discover_project_root(None).unwrap();

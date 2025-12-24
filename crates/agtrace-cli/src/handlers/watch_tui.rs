@@ -328,11 +328,10 @@ fn handle_provider_watch(
                         if let Some(usage) = updates.usage {
                             handler.state.current_usage = usage;
                         }
-                        if let Some(model) = updates.model {
-                            if handler.state.model.is_none() {
+                        if let Some(model) = updates.model
+                            && handler.state.model.is_none() {
                                 handler.state.model = Some(model);
                             }
-                        }
                         if let Some(limit) = updates.context_window_limit {
                             handler.state.context_window_limit = Some(limit);
                         }
@@ -443,11 +442,10 @@ fn handle_session_watch(
                         if let Some(usage) = updates.usage {
                             handler.state.current_usage = usage;
                         }
-                        if let Some(model) = updates.model {
-                            if handler.state.model.is_none() {
+                        if let Some(model) = updates.model
+                            && handler.state.model.is_none() {
                                 handler.state.model = Some(model);
                             }
-                        }
                         if let Some(limit) = updates.context_window_limit {
                             handler.state.context_window_limit = Some(limit);
                         }

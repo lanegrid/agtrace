@@ -1,4 +1,4 @@
-use super::metrics::{compute_metrics, SessionMetrics};
+use super::metrics::{SessionMetrics, compute_metrics};
 use crate::AgentSession;
 
 #[derive(Debug, Clone)]

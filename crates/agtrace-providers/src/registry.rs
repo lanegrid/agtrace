@@ -1,5 +1,5 @@
 use crate::traits::ProviderAdapter;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -42,11 +42,10 @@ pub fn get_provider_metadata(name: &str) -> Option<&'static ProviderMetadata> {
 // Legacy functions removed - use create_adapter, create_all_adapters, detect_adapter_from_path instead
 
 pub fn expand_home_path(path: &str) -> Option<PathBuf> {
-    if let Some(stripped) = path.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
+    if let Some(stripped) = path.strip_prefix("~/")
+        && let Some(home) = dirs::home_dir() {
             return Some(home.join(stripped));
         }
-    }
     None
 }
 
