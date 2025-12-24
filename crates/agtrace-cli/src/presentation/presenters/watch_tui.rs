@@ -127,7 +127,7 @@ fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventVie
 
     let (icon, description, level) = match &event.payload {
         EventPayload::User(content) => {
-            let preview = truncate_text(&content.text, 60);
+            let preview = truncate_text(&content.text, 150);
             (
                 "👤".to_string(),
                 format!("User: {}", preview),
@@ -135,7 +135,7 @@ fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventVie
             )
         }
         EventPayload::Reasoning(content) => {
-            let preview = truncate_text(&content.text, 60);
+            let preview = truncate_text(&content.text, 150);
             (
                 "🤔".to_string(),
                 format!("Reasoning: {}", preview),
@@ -159,7 +159,7 @@ fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventVie
             )
         }
         EventPayload::Message(content) => {
-            let preview = truncate_text(&content.text, 60);
+            let preview = truncate_text(&content.text, 150);
             (
                 "💬".to_string(),
                 format!("Message: {}", preview),
@@ -172,7 +172,7 @@ fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventVie
             StatusLevel::Info,
         ),
         EventPayload::Notification(notification) => {
-            let preview = truncate_text(&notification.text, 60);
+            let preview = truncate_text(&notification.text, 150);
             (
                 "🔔".to_string(),
                 format!("Notification: {}", preview),
@@ -239,7 +239,7 @@ fn build_turn_item(
     metric: &agtrace_engine::TurnMetrics,
     max_context: u64,
 ) -> TurnItemViewModel {
-    let title = truncate_text(&turn.user.content.text, 50);
+    let title = truncate_text(&turn.user.content.text, 120);
 
     // Logic: Calculate bar width based on v1's algorithm
     let max_bar_width = 20;
@@ -314,9 +314,12 @@ fn build_turn_item(
 /// Build step preview item
 fn build_step_preview(step: &agtrace_engine::AgentStep) -> StepPreviewViewModel {
     let (icon, description) = if let Some(reasoning) = &step.reasoning {
-        ("🤔".to_string(), truncate_text(&reasoning.content.text, 40))
+        (
+            "🤔".to_string(),
+            truncate_text(&reasoning.content.text, 100),
+        )
     } else if let Some(message) = &step.message {
-        ("💬".to_string(), truncate_text(&message.content.text, 40))
+        ("💬".to_string(), truncate_text(&message.content.text, 100))
     } else if !step.tools.is_empty() {
         let tool_name = step.tools[0].call.content.name();
         ("🔧".to_string(), format!("Tool: {}", tool_name))
