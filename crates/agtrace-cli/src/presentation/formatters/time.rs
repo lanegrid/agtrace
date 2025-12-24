@@ -19,6 +19,15 @@ pub fn format_duration(start: DateTime<Utc>, end: DateTime<Utc>) -> String {
     }
 }
 
+/// Helper to format with correct singular/plural
+fn pluralize(count: i64, unit: &str, suffix: &str) -> String {
+    if count == 1 {
+        format!("{} {} {}", count, unit, suffix)
+    } else {
+        format!("{} {}s {}", count, unit, suffix)
+    }
+}
+
 /// Format RFC3339 timestamp as relative time ("2 min ago", "yesterday")
 pub fn format_relative_time(ts: &str) -> String {
     let parsed = match DateTime::parse_from_rfc3339(ts) {
@@ -37,21 +46,21 @@ pub fn format_relative_time(ts: &str) -> String {
     if seconds < 60 {
         "just now".to_string()
     } else if minutes < 60 {
-        format!("{} min ago", minutes)
+        pluralize(minutes, "min", "ago")
     } else if hours < 24 {
-        format!("{} hours ago", hours)
+        pluralize(hours, "hour", "ago")
     } else if days == 1 {
         "yesterday".to_string()
     } else if days < 7 {
-        format!("{} days ago", days)
+        pluralize(days, "day", "ago")
     } else if days < 30 {
         let weeks = days / 7;
-        format!("{} weeks ago", weeks)
+        pluralize(weeks, "week", "ago")
     } else if days < 365 {
         let months = days / 30;
-        format!("{} months ago", months)
+        pluralize(months, "month", "ago")
     } else {
         let years = days / 365;
-        format!("{} years ago", years)
+        pluralize(years, "year", "ago")
     }
 }

@@ -5,6 +5,18 @@ use crate::presentation::view_models::{
     AgentStepViewModel, SessionAnalysisViewModel, SessionListViewModel, ViewMode,
 };
 
+// Display constants
+const SESSION_ID_SHORT_LENGTH: usize = 8;
+const SNIPPET_MAX_LENGTH: usize = 50;
+const QUERY_PREVIEW_LENGTH: usize = 50;
+const QUERY_DISPLAY_LENGTH: usize = 80;
+const THINKING_PREVIEW_LENGTH: usize = 60;
+const TOOL_RESULT_LENGTH: usize = 60;
+const CONTEXT_BAR_WIDTH_STANDARD: usize = 40;
+const CONTEXT_BAR_WIDTH_COMPACT: usize = 20;
+const DELTA_WARNING_THRESHOLD: u32 = 20_000;
+const DELTA_ALERT_THRESHOLD: u32 = 50_000;
+
 // --------------------------------------------------------
 // Session List View
 // --------------------------------------------------------
@@ -37,7 +49,11 @@ impl<'a> SessionListView<'a> {
 
         for session in &self.data.sessions {
             // Shorten ID to first 8 chars (like git commit hash)
-            let id_short = session.id.chars().take(8).collect::<String>();
+            let id_short = session
+                .id
+                .chars()
+                .take(SESSION_ID_SHORT_LENGTH)
+                .collect::<String>();
 
             // Use relative time format
             let time_display = session
@@ -50,8 +66,8 @@ impl<'a> SessionListView<'a> {
             let snippet = session
                 .snippet
                 .as_ref()
-                .map(|s| text::normalize_and_clean(s, 50))
-                .unwrap_or_else(|| "(no snippet)".to_string());
+                .map(|s| text::normalize_and_clean(s, SNIPPET_MAX_LENGTH))
+                .unwrap_or_else(|| "--".to_string());
 
             writeln!(
                 f,
@@ -71,14 +87,14 @@ impl<'a> SessionListView<'a> {
         }
 
         for session in &self.data.sessions {
-            let id_short = if session.id.len() > 8 {
-                &session.id[..8]
+            let id_short = if session.id.len() > SESSION_ID_SHORT_LENGTH {
+                &session.id[..SESSION_ID_SHORT_LENGTH]
             } else {
                 &session.id
             };
 
             let time_str = session.start_ts.as_deref().unwrap_or("unknown");
-            let snippet = session.snippet.as_deref().unwrap_or("[empty]");
+            let snippet = session.snippet.as_deref().unwrap_or("--");
 
             writeln!(
                 f,
@@ -101,14 +117,14 @@ impl<'a> SessionListView<'a> {
         }
 
         for session in &self.data.sessions {
-            let id_short = if session.id.len() > 8 {
-                &session.id[..8]
+            let id_short = if session.id.len() > SESSION_ID_SHORT_LENGTH {
+                &session.id[..SESSION_ID_SHORT_LENGTH]
             } else {
                 &session.id
             };
 
             let time_str = session.start_ts.as_deref().unwrap_or("unknown");
-            let snippet = session.snippet.as_deref().unwrap_or("[empty]");
+            let snippet = session.snippet.as_deref().unwrap_or("--");
 
             writeln!(
                 f,
@@ -207,7 +223,7 @@ impl<'a> SessionAnalysisView<'a> {
                 .iter()
                 .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
                 .count();
-            let query_preview = text::truncate(&turn.user_query, 50);
+            let query_preview = text::truncate(&turn.user_query, QUERY_PREVIEW_LENGTH);
             writeln!(
                 f,
                 "  #{:02} | {} tools | {}",
@@ -229,8 +245,11 @@ impl<'a> SessionAnalysisView<'a> {
 
         // Context summary
         let context_display = if let Some(max) = self.data.context_summary.max_tokens {
-            let bar =
-                display::build_progress_bar(self.data.context_summary.current_tokens, max, 40);
+            let bar = display::build_progress_bar(
+                self.data.context_summary.current_tokens,
+                max,
+                CONTEXT_BAR_WIDTH_STANDARD,
+            );
             format!(
                 "{} ({} / {})",
                 bar,
@@ -275,8 +294,11 @@ impl<'a> SessionAnalysisView<'a> {
 
         // Context summary
         let context_display = if let Some(max) = self.data.context_summary.max_tokens {
-            let bar =
-                display::build_progress_bar(self.data.context_summary.current_tokens, max, 40);
+            let bar = display::build_progress_bar(
+                self.data.context_summary.current_tokens,
+                max,
+                CONTEXT_BAR_WIDTH_STANDARD,
+            );
             format!(
                 "{} ({} / {})",
                 bar,
@@ -332,9 +354,9 @@ impl<'a> TurnView<'a> {
     fn extract_delta_indicator(&self) -> String {
         let delta_value = self.data.metrics.total_delta;
 
-        if delta_value > 50_000 {
+        if delta_value > DELTA_ALERT_THRESHOLD {
             " 🔺".to_string()
-        } else if delta_value > 20_000 {
+        } else if delta_value > DELTA_WARNING_THRESHOLD {
             " ⚡".to_string()
         } else {
             String::new()
@@ -401,7 +423,7 @@ impl<'a> TurnView<'a> {
             }
             AgentStepViewModel::Message { text } => {
                 writeln!(f, "{} 💬 Message", prefix)?;
-                let truncated = text::truncate(text, 80);
+                let truncated = text::truncate(text, QUERY_DISPLAY_LENGTH);
                 self.write_indented(f, &truncated, is_last, "   ")?;
             }
             AgentStepViewModel::SystemEvent { description } => {
@@ -425,7 +447,7 @@ impl<'a> TurnView<'a> {
         let continuation = if is_last { "   " } else { "│  " };
 
         // Truncate and show first line prominently
-        let truncated = text::truncate(preview, 60);
+        let truncated = text::truncate(preview, THINKING_PREVIEW_LENGTH);
         let lines: Vec<&str> = truncated.lines().collect();
         if let Some(first_line) = lines.first() {
             writeln!(f, "{}   {}", continuation, first_line)?;
@@ -451,7 +473,7 @@ impl<'a> TurnView<'a> {
     }
 
     fn write_truncated_result(&self, f: &mut fmt::Formatter, result: &str) -> fmt::Result {
-        let truncated = text::truncate(result, 60);
+        let truncated = text::truncate(result, TOOL_RESULT_LENGTH);
         writeln!(f, "{}", truncated)?;
         Ok(())
     }
@@ -486,7 +508,11 @@ impl<'a> fmt::Display for TurnView<'a> {
 
         // Show progress bar if context usage data is available
         if let Some(ref usage) = self.data.context_usage {
-            let bar = display::build_progress_bar(usage.current_tokens, usage.max_tokens, 20);
+            let bar = display::build_progress_bar(
+                usage.current_tokens,
+                usage.max_tokens,
+                CONTEXT_BAR_WIDTH_COMPACT,
+            );
             writeln!(
                 f,
                 "│ {} ({} / {})",
@@ -506,7 +532,7 @@ impl<'a> fmt::Display for TurnView<'a> {
         let is_last = current_index == total_items;
         let prefix = if is_last { "└──" } else { "├──" };
         writeln!(f, "{} 👤 User", prefix)?;
-        let truncated_query = text::truncate(&self.data.user_query, 80);
+        let truncated_query = text::truncate(&self.data.user_query, QUERY_DISPLAY_LENGTH);
         self.write_indented(f, &truncated_query, is_last, "   ")?;
 
         // Steps
@@ -573,5 +599,147 @@ fn format_tool_args(tool_call: &agtrace_types::ToolCallPayload) -> String {
         ToolCallPayload::Generic { arguments, .. } => {
             json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::presentation::view_models::session::{
+        ContextWindowSummary, FilterSummary, SessionAnalysisViewModel, SessionHeader,
+        SessionListEntry, SessionListViewModel, TurnAnalysisViewModel, TurnMetrics,
+    };
+
+    #[test]
+    fn test_session_list_compact_empty() {
+        let data = SessionListViewModel {
+            sessions: vec![],
+            total_count: 0,
+            applied_filters: FilterSummary {
+                project_filter: None,
+                source_filter: None,
+                time_range: None,
+                limit: 50,
+            },
+        };
+        let view = SessionListView::new(&data, ViewMode::Compact);
+        let output = format!("{}", view);
+        assert!(output.contains("No sessions found"));
+    }
+
+    #[test]
+    fn test_session_list_compact_with_session() {
+        let session = SessionListEntry {
+            id: "abc123def456".to_string(),
+            provider: "test_provider".to_string(),
+            start_ts: Some("2025-12-24T12:00:00Z".to_string()),
+            snippet: Some("Test snippet".to_string()),
+            project_hash: "hash123".to_string(),
+        };
+        let data = SessionListViewModel {
+            sessions: vec![session],
+            total_count: 1,
+            applied_filters: FilterSummary {
+                project_filter: None,
+                source_filter: None,
+                time_range: None,
+                limit: 50,
+            },
+        };
+        let view = SessionListView::new(&data, ViewMode::Compact);
+        let output = format!("{}", view);
+
+        // Should show shortened ID (first 8 chars)
+        assert!(output.contains("abc123de"));
+        assert!(output.contains("test_provider"));
+        assert!(output.contains("Test snippet"));
+    }
+
+    #[test]
+    fn test_session_list_missing_snippet() {
+        let session = SessionListEntry {
+            id: "test123".to_string(),
+            provider: "test".to_string(),
+            start_ts: None,
+            snippet: None,
+            project_hash: "hash".to_string(),
+        };
+        let data = SessionListViewModel {
+            sessions: vec![session],
+            total_count: 1,
+            applied_filters: FilterSummary {
+                project_filter: None,
+                source_filter: None,
+                time_range: None,
+                limit: 50,
+            },
+        };
+        let view = SessionListView::new(&data, ViewMode::Compact);
+        let output = format!("{}", view);
+
+        // Should show "--" instead of "(no snippet)"
+        assert!(output.contains("--"));
+        assert!(!output.contains("(no snippet)"));
+    }
+
+    #[test]
+    fn test_delta_indicator_thresholds() {
+        // Create a minimal turn for testing delta indicators
+        let make_turn = |delta: u32| TurnAnalysisViewModel {
+            turn_number: 1,
+            timestamp: None,
+            user_query: "test".to_string(),
+            steps: vec![],
+            metrics: TurnMetrics {
+                input_tokens: 100,
+                output_tokens: 50,
+                cache_read_tokens: None,
+                total_delta: delta,
+            },
+            prev_tokens: 0,
+            current_tokens: delta,
+            context_usage: None,
+            is_heavy_load: false,
+        };
+
+        // Test below warning threshold
+        let turn = make_turn(10_000);
+        let view = TurnView::new(&turn);
+        assert_eq!(view.extract_delta_indicator(), "");
+
+        // Test above warning threshold
+        let turn = make_turn(25_000);
+        let view = TurnView::new(&turn);
+        assert_eq!(view.extract_delta_indicator(), " ⚡");
+
+        // Test above alert threshold
+        let turn = make_turn(60_000);
+        let view = TurnView::new(&turn);
+        assert_eq!(view.extract_delta_indicator(), " 🔺");
+    }
+
+    #[test]
+    fn test_session_analysis_compact() {
+        let data = SessionAnalysisViewModel {
+            header: SessionHeader {
+                session_id: "test-session-id".to_string(),
+                provider: "test_provider".to_string(),
+                model: Some("test-model".to_string()),
+                status: "Complete".to_string(),
+                start_time: None,
+                duration: None,
+            },
+            context_summary: ContextWindowSummary {
+                current_tokens: 1000,
+                max_tokens: Some(10000),
+            },
+            turns: vec![],
+        };
+        let view = SessionAnalysisView::new(&data, ViewMode::Compact);
+        let output = format!("{}", view);
+
+        assert!(output.contains("test-session-id"));
+        assert!(output.contains("test_provider"));
+        assert!(output.contains("0 turns"));
     }
 }
