@@ -27,7 +27,8 @@ impl WatchService {
     }
 
     pub fn watch_session(&self, session_id: &str) -> Result<StreamHandle> {
-        // Resolve short ID to full ID (same logic as SessionService::resolve_session_id)
+        // Try to resolve short ID to full ID from database
+        // If not found, use the provided session_id as-is (might be a full ID for a new session)
         let resolved_id = {
             let db = self.db.lock().unwrap();
             if let Some(session) = db.get_session_by_id(session_id)? {
@@ -35,7 +36,8 @@ impl WatchService {
             } else if let Some(full_id) = db.find_session_by_prefix(session_id)? {
                 full_id
             } else {
-                return Err(anyhow::anyhow!("Session not found: {}", session_id));
+                // Not in database - use as-is and let filesystem scan handle it
+                session_id.to_string()
             }
         };
 
