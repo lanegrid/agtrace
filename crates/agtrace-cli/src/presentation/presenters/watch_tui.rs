@@ -349,7 +349,8 @@ fn build_step_preview(step: &agtrace_engine::AgentStep) -> StepPreviewViewModel 
 
 /// Build status bar ViewModel
 fn build_status_bar(state: &agtrace_runtime::SessionState) -> StatusBarViewModel {
-    let status_message = format!("Watching session {}...", &state.session_id[..8]);
+    let session_preview: String = state.session_id.chars().take(8).collect();
+    let status_message = format!("Watching session {}...", session_preview);
     let status_level = StatusLevel::Info;
 
     StatusBarViewModel {
