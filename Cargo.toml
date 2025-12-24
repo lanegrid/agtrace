@@ -60,3 +60,8 @@ filetime = "0.2"
 
 # Platform-specific
 libc = "0.2"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

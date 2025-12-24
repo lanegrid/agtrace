@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 description = "Terminal UI and command-line interface for exploring AI agent execution traces"
 license.workspace = true
+repository.workspace = true
+homepage = "https://github.com/lanegrid/agtrace"
 
 [[bin]]
 name = "agtrace"
