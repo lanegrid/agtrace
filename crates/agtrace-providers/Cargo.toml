@@ -2,7 +2,7 @@
 name = "agtrace-providers"
 version.workspace = true
 edition.workspace = true
-description = "Log discovery and normalization adapters for Claude, Codex, and Gemini"
+description = "Log discovery and normalization adapters for AI agent providers"
 license.workspace = true
 
 [dependencies]
