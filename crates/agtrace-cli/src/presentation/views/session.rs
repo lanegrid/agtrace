@@ -473,8 +473,12 @@ impl<'a> TurnView<'a> {
     }
 
     fn write_truncated_result(&self, f: &mut fmt::Formatter, result: &str) -> fmt::Result {
-        let truncated = text::truncate(result, TOOL_RESULT_LENGTH);
-        writeln!(f, "{}", truncated)?;
+        let display_text = if result.trim().is_empty() {
+            text::format_empty(result)
+        } else {
+            text::truncate(result, TOOL_RESULT_LENGTH)
+        };
+        writeln!(f, "{}", display_text)?;
         Ok(())
     }
 }
@@ -741,5 +745,44 @@ mod tests {
         assert!(output.contains("test-session-id"));
         assert!(output.contains("test_provider"));
         assert!(output.contains("0 turns"));
+    }
+
+    #[test]
+    fn test_empty_tool_result_display() {
+        use crate::presentation::view_models::session::AgentStepViewModel;
+        use agtrace_types::ToolCallPayload;
+
+        let turn = TurnAnalysisViewModel {
+            turn_number: 1,
+            timestamp: None,
+            user_query: "test".to_string(),
+            steps: vec![AgentStepViewModel::ToolCall {
+                name: "Bash".to_string(),
+                arguments: ToolCallPayload::Generic {
+                    name: "bash".to_string(),
+                    provider_call_id: Some("test-id".to_string()),
+                    arguments: serde_json::json!({"command": "mkdir test"}),
+                },
+                args_formatted: None,
+                result: "".to_string(), // Empty result
+                is_error: false,
+            }],
+            metrics: TurnMetrics {
+                input_tokens: 100,
+                output_tokens: 50,
+                cache_read_tokens: None,
+                total_delta: 150,
+            },
+            prev_tokens: 0,
+            current_tokens: 150,
+            context_usage: None,
+            is_heavy_load: false,
+        };
+
+        let view = TurnView::new(&turn);
+        let output = format!("{}", view);
+
+        // Empty result should show "(empty)"
+        assert!(output.contains("(empty)"));
     }
 }

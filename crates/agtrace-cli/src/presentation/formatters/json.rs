@@ -6,9 +6,13 @@ pub fn format_compact(value: &serde_json::Value) -> String {
                 let value_str = match v {
                     serde_json::Value::String(s) => {
                         if s.len() > 50 {
-                            let truncated: String = s.chars().take(47).collect();
-                            let truncated_value =
-                                serde_json::Value::String(format!("{}...", truncated));
+                            // Use smart path truncation for file_path fields
+                            let truncated_str = if k == "file_path" || k.ends_with("_path") {
+                                super::text::truncate_path(s, 50)
+                            } else {
+                                super::text::truncate(s, 50)
+                            };
+                            let truncated_value = serde_json::Value::String(truncated_str);
                             serde_json::to_string(&truncated_value)
                                 .unwrap_or_else(|_| "\"...\"".to_string())
                         } else {
