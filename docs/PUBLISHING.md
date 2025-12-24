@@ -1,23 +1,25 @@
 # Publishing Preparation Guide
 
-This document outlines the steps required to prepare `agtrace` for automatic publishing to npm and crates.io registries.
+This document outlines the steps required to prepare `agtrace` for automatic publishing to npm.
 
 ## Publishing Strategy
 
-agtrace uses **automatic publishing** to both npm and crates.io on every tagged release:
+agtrace uses **automatic publishing** to npm on every tagged release:
 
 | Registry | Method | Required Setup |
 |----------|--------|----------------|
 | **npm** | OIDC Trusted Publishing | Configure on npmjs.com (no token needed) |
-| **crates.io** | Token-based | Add `CARGO_REGISTRY_TOKEN` to GitHub Secrets |
 
-**Both registries publish automatically when you push a version tag (e.g., `v0.1.0`).**
+**The npm package publishes automatically when you push a version tag (e.g., `v0.1.0`).**
 
 ### Architecture
 
 - **cargo-dist**: Builds cross-platform binaries and generates the npm package tarball
 - **Custom OIDC job**: Publishes the npm package using OIDC (no long-lived tokens)
-- **Custom cargo publish job**: Publishes the Rust crate to crates.io
+
+### Note on crates.io
+
+The workspace crates (agtrace-types, agtrace-providers, etc.) are **not published to crates.io**. The project is distributed as pre-built binaries via npm.
 
 ---
 
@@ -25,11 +27,8 @@ agtrace uses **automatic publishing** to both npm and crates.io on every tagged 
 
 | Component | Name |
 |-----------|------|
-| **Crate name** | `agtrace-cli` |
 | **Binary name** | `agtrace` |
 | **npm package** | `@lanegrid/agtrace` |
-
-**Availability:** All names are available ✓
 
 ---
 
@@ -62,31 +61,9 @@ agtrace uses **automatic publishing** to both npm and crates.io on every tagged 
 
 ---
 
-## 2. crates.io Setup (Token-based)
+## 2. Release Workflow
 
-### Step 1: Generate API Token
-
-1. Visit: https://crates.io/settings/tokens
-2. Click "New Token"
-3. Settings:
-   - **Name**: `github-actions-agtrace`
-   - **Scopes**: Check `publish-new` and `publish-update`
-4. **Copy the token** (starts with `crates-io_...`)
-
-### Step 2: Add to GitHub Secrets
-
-1. Go to: https://github.com/lanegrid/agtrace/settings/secrets/actions
-2. Click "New repository secret"
-3. Settings:
-   - **Name**: `CARGO_REGISTRY_TOKEN`
-   - **Secret**: (paste the token from Step 1)
-4. Save
-
----
-
-## 3. Release Workflow
-
-Once both registries are configured, releasing is simple:
+Once npm OIDC is configured, releasing is simple:
 
 ```bash
 # 1. Run checks
@@ -101,35 +78,33 @@ git push origin v0.1.0
 ```
 
 **GitHub Actions will automatically:**
-1. ✅ Build binaries for 5 platforms
+1. ✅ Build binaries for 5 platforms (macOS, Linux, Windows)
 2. ✅ Generate installers (shell, npm, homebrew)
-3. ✅ Create GitHub Release
-4. ✅ Publish to npm (via OIDC)
-5. ✅ Publish to crates.io (via token)
+3. ✅ Create GitHub Release with all artifacts
+4. ✅ Publish to npm (via OIDC with provenance)
 
 ---
 
-## 4. Verify Installation
+## 3. Verify Installation
 
 After the release workflow completes:
 
 ```bash
-# npm
+# npm (recommended)
 npm install -g @lanegrid/agtrace
 agtrace --version
 
-# crates.io
-cargo install agtrace-cli
+# Homebrew (after tap setup)
+brew install lanegrid/tap/agtrace
 agtrace --version
 
-# Homebrew (after tap setup)
-brew install lanegrid/tap/agtrace-cli
-agtrace --version
+# Shell script (curl)
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/lanegrid/agtrace/releases/latest/download/agtrace-installer.sh | sh
 ```
 
 ---
 
-## Setup Checklist
+## 4. Setup Checklist
 
 ### npm (OIDC)
 - [ ] npm account created
@@ -138,12 +113,6 @@ agtrace --version
   - Organization: `lanegrid`
   - Repository: `agtrace`
   - Workflow: `release.yml`
-- [ ] Repository is PUBLIC (required for npm OIDC)
-
-### crates.io (Token)
-- [ ] crates.io account created (GitHub login)
-- [ ] API token generated with `publish-new` and `publish-update` scopes
-- [ ] `CARGO_REGISTRY_TOKEN` added to GitHub Secrets
 
 ### Repository
 - [ ] Repository is PUBLIC (required for npm OIDC and provenance)
@@ -173,19 +142,6 @@ Check:
 - Package name `@lanegrid/agtrace` is available
 - Organization `@lanegrid` exists and you have publish permissions
 
-### crates.io publish fails
-
-**Error: "failed to authenticate"**
-
-Check:
-- GitHub Secret name is exactly `CARGO_REGISTRY_TOKEN`
-- Token has `publish-new` and `publish-update` scopes
-- Token hasn't expired (check at https://crates.io/settings/tokens)
-
-**Error: "crate name already exists"**
-
-- The crate name is `agtrace-cli`, not `agtrace`
-
 ---
 
 ## Security Notes
@@ -196,15 +152,14 @@ Check:
 - ✅ **Workflow-scoped** - Credentials only valid for the specific workflow run
 - ✅ **Transparent supply chain** - Users can verify the package origin with `npm audit signatures`
 
-### crates.io Token-based Publishing
-- ⚠️ **Long-lived token** - Rotate periodically (recommended: every 6 months)
-- ✅ **Minimal scopes** - Token only has `publish-new` and `publish-update` permissions
-- ⚠️ **Secret management** - Store securely in GitHub Secrets only, never commit to repo
-- 💡 **Future**: crates.io added OIDC support in July 2025, may migrate in future
+### Binary Distribution
+- All binaries are built in GitHub Actions with full transparency
+- GitHub Artifact Attestations provide cryptographic proof of build provenance
+- No manual build steps or local compilation required
 
 ---
 
 ## Learn More
 
 - [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)
-- [crates.io Publishing Guide](https://doc.rust-lang.org/cargo/reference/publishing.html)
+- [cargo-dist Documentation](https://opensource.axo.dev/cargo-dist/)

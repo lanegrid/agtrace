@@ -320,43 +320,15 @@ jobs:
         run: npm publish --access public
         working-directory: artifacts/package
 
-  # Publish to crates.io using registry token
-  # Publishes all workspace crates in dependency order
-  publish-crates-io:
-    needs:
-      - plan
-      - host
-    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
-    runs-on: "ubuntu-22.04"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Publish workspace crates in dependency order
-        run: |
-          # Publish in dependency order to satisfy crates.io requirements
-          cargo publish -p agtrace-types
-          cargo publish -p agtrace-index
-          cargo publish -p agtrace-providers
-          cargo publish -p agtrace-engine
-          cargo publish -p agtrace-runtime
-          cargo publish -p agtrace-cli
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
   announce:
     needs:
       - plan
       - host
       - publish-npm
-      - publish-crates-io
     # use "always() && ..." to allow us to wait for all publish jobs while
     # still allowing individual publish jobs to skip themselves (for prereleases).
     # "host" however must run to completion, no skipping allowed!
-    if: ${{ always() && needs.host.result == 'success' && (needs.publish-npm.result == 'skipped' || needs.publish-npm.result == 'success') && (needs.publish-crates-io.result == 'skipped' || needs.publish-crates-io.result == 'success') }}
+    if: ${{ always() && needs.host.result == 'success' && (needs.publish-npm.result == 'skipped' || needs.publish-npm.result == 'success') }}
     runs-on: "ubuntu-22.04"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
