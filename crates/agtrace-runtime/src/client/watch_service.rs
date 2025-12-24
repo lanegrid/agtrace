@@ -27,15 +27,27 @@ impl WatchService {
     }
 
     pub fn watch_session(&self, session_id: &str) -> Result<StreamHandle> {
+        // Resolve short ID to full ID (same logic as SessionService::resolve_session_id)
+        let resolved_id = {
+            let db = self.db.lock().unwrap();
+            if let Some(session) = db.get_session_by_id(session_id)? {
+                session.id
+            } else if let Some(full_id) = db.find_session_by_prefix(session_id)? {
+                full_id
+            } else {
+                return Err(anyhow::anyhow!("Session not found: {}", session_id));
+            }
+        };
+
         let session_opt = {
             let db = self.db.lock().unwrap();
-            db.get_session_by_id(session_id)?
+            db.get_session_by_id(&resolved_id)?
         };
 
         let streamer = if let Some(session) = session_opt {
             // Session exists in database, use normal attach
             let adapter = agtrace_providers::create_adapter(&session.provider)?;
-            SessionStreamer::attach(session_id.to_string(), self.db.clone(), Arc::new(adapter))?
+            SessionStreamer::attach(resolved_id.clone(), self.db.clone(), Arc::new(adapter))?
         } else {
             // Session not in database yet, scan filesystem directly
             // Try each configured provider until we find the session
@@ -45,7 +57,7 @@ impl WatchService {
                 match agtrace_providers::create_adapter(provider_name) {
                     Ok(adapter) => {
                         match SessionStreamer::attach_from_filesystem(
-                            session_id.to_string(),
+                            resolved_id.clone(),
                             log_root.clone(),
                             Arc::new(adapter),
                         ) {
@@ -59,7 +71,7 @@ impl WatchService {
 
             return Err(last_error
                 .unwrap_or_else(|| anyhow::anyhow!("No providers configured"))
-                .context(format!("Session not found: {}", session_id)));
+                .context(format!("Session not found: {}", resolved_id)));
         };
 
         Ok(StreamHandle::new(streamer))
