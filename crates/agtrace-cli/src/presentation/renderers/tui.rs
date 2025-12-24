@@ -1,4 +1,4 @@
-//! TUI Renderer for Watch command (v2)
+//! TUI Renderer for Watch command
 //!
 //! This module implements the TUI event loop and screen rendering.
 //! It receives `TuiScreenViewModel` updates via channel and renders them using Ratatui.

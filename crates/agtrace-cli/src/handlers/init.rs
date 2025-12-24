@@ -43,7 +43,7 @@ pub fn handle(
             compact: false,
             verbose: false,
         };
-        super::index::handle_v2(
+        super::index::handle(
             &workspace,
             project_root.as_deref(),
             all_projects,

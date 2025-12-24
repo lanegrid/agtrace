@@ -46,9 +46,9 @@ pub fn handle(
         presenters::present_session_analysis(&session, &provider, &model_name_display, max_context);
 
     // Render output
-    let v2_format = crate::presentation::OutputFormat::from(format);
+    let presentation_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
+    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
     renderer.render(result)?;
 
     Ok(())

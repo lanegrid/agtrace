@@ -3,7 +3,7 @@ use agtrace_runtime::AgTrace;
 use agtrace_types::discover_project_root;
 use anyhow::Result;
 
-pub fn handle_v2(
+pub fn handle(
     workspace: &AgTrace,
     project_root: Option<String>,
     output_format: OutputFormat,
@@ -23,8 +23,8 @@ pub fn handle_v2(
         projects,
     );
 
-    let v2_format = crate::presentation::OutputFormat::from(output_format);
-    let renderer = ConsoleRenderer::new(v2_format, view_mode.resolve());
+    let presentation_format = crate::presentation::OutputFormat::from(output_format);
+    let renderer = ConsoleRenderer::new(presentation_format, view_mode.resolve());
     renderer.render(view_model)?;
 
     Ok(())

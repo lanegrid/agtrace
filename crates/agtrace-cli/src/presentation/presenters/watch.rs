@@ -87,7 +87,7 @@ pub fn present_watch_stream_update(
     };
 
     // Build turns data from assembled session (if available)
-    let turns = assembled_session.map(|s| build_turns_from_session_v2(s, max_context));
+    let turns = assembled_session.map(|s| build_turns_from_session(s, max_context));
 
     WatchEventViewModel::StreamUpdate {
         state: state_vm,
@@ -96,8 +96,8 @@ pub fn present_watch_stream_update(
     }
 }
 
-/// Build turn usage view models from assembled session (v2 version)
-fn build_turns_from_session_v2(
+/// Build turn usage view models from assembled session
+fn build_turns_from_session(
     session: &agtrace_engine::AgentSession,
     max_context: Option<u32>,
 ) -> Vec<crate::presentation::view_models::TurnUsageViewModel> {

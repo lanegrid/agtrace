@@ -2,7 +2,7 @@ use crate::args::{InspectFormat, OutputFormat, ViewModeArgs};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 
-pub fn handle_v2(
+pub fn handle(
     file_path: String,
     lines: usize,
     inspect_format: InspectFormat,
@@ -37,8 +37,8 @@ pub fn handle_v2(
         formatted_lines,
     );
 
-    let v2_format = crate::presentation::OutputFormat::from(output_format);
-    let renderer = ConsoleRenderer::new(v2_format, view_mode.resolve());
+    let presentation_format = crate::presentation::OutputFormat::from(output_format);
+    let renderer = ConsoleRenderer::new(presentation_format, view_mode.resolve());
     renderer.render(view_model)?;
 
     Ok(())

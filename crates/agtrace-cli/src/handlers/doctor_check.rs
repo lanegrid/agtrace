@@ -3,7 +3,7 @@ use agtrace_providers::{create_adapter, detect_adapter_from_path};
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 
-pub fn handle_v2(
+pub fn handle(
     file_path: String,
     provider_override: Option<String>,
     format: OutputFormat,

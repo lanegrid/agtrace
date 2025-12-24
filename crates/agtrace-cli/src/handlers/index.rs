@@ -7,7 +7,7 @@ use anyhow::Result;
 use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_v2(
+pub fn handle(
     workspace: &AgTrace,
     project_root: Option<&Path>,
     all_projects: bool,
@@ -65,7 +65,7 @@ pub fn handle_v2(
             let should_render = match &progress {
                 IndexProgress::SessionRegistered { .. } => verbose,
                 IndexProgress::IncrementalHint { .. } => verbose,
-                IndexProgress::Completed { .. } => false, // We'll render this ourselves with v2
+                IndexProgress::Completed { .. } => false, // We'll render this ourselves with the presentation layer
                 IndexProgress::ProviderScanning { .. } => true,
                 IndexProgress::ProviderSessionCount { .. } => true,
                 IndexProgress::LogRootMissing { .. } => true,
@@ -89,7 +89,7 @@ pub fn handle_v2(
             }
         })?;
 
-    // Render final result with v2 architecture
+    // Render final result with the presentation architecture
     let view_model = presenters::present_index_result(
         final_total,
         final_scanned,
@@ -97,15 +97,15 @@ pub fn handle_v2(
         force, // force = rebuild mode
     );
 
-    let v2_format = crate::presentation::OutputFormat::from(format);
+    let presentation_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
+    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())
 }
 
-pub fn handle_vacuum_v2(
+pub fn handle_vacuum(
     workspace: &AgTrace,
     format: OutputFormat,
     view_mode: &ViewModeArgs,
@@ -119,9 +119,9 @@ pub fn handle_vacuum_v2(
 
     let view_model = presenters::present_vacuum_result();
 
-    let v2_format = crate::presentation::OutputFormat::from(format);
+    let presentation_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
+    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())
@@ -163,7 +163,7 @@ fn render_progress_event(event: &IndexEvent) {
             println!("  Registered: {}", session_id);
         }
         IndexEvent::Completed { .. } => {
-            // Handled by v2 presenter
+            // Handled by the presenter
         }
     }
 }

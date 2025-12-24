@@ -4,7 +4,7 @@ use anyhow::Result;
 use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
-pub fn handle_v2(
+pub fn handle(
     workspace: &AgTrace,
     _project_root: Option<&Path>,
     all_projects: bool,
@@ -64,9 +64,9 @@ pub fn handle_v2(
         limit,
     );
 
-    let v2_format = crate::presentation::OutputFormat::from(format);
+    let presentation_format = crate::presentation::OutputFormat::from(format);
     let resolved_view_mode = view_mode.resolve();
-    let renderer = ConsoleRenderer::new(v2_format, resolved_view_mode);
+    let renderer = ConsoleRenderer::new(presentation_format, resolved_view_mode);
     renderer.render(view_model)?;
 
     Ok(())

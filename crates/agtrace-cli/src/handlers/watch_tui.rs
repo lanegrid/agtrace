@@ -1,4 +1,4 @@
-//! Watch Handler for TUI v2
+//! Watch Handler for TUI
 //!
 //! This module implements the Handler (Controller) that:
 //! - Owns state (SessionState, event buffer)
@@ -122,7 +122,7 @@ impl WatchHandler {
     }
 }
 
-/// Main entry point for TUI v2 watch
+/// Main entry point for TUI watch
 pub fn handle(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
     // Create channels for bidirectional communication
     let (event_tx, event_rx) = mpsc::channel(); // Handler -> Renderer (events)

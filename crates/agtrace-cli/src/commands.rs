@@ -46,7 +46,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 IndexCommand::Update {
                     provider,
                     view_mode,
-                } => handlers::index::handle_v2(
+                } => handlers::index::handle(
                     &workspace,
                     project_root.as_deref(),
                     cli.all_projects,
@@ -59,7 +59,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 IndexCommand::Rebuild {
                     provider,
                     view_mode,
-                } => handlers::index::handle_v2(
+                } => handlers::index::handle(
                     &workspace,
                     project_root.as_deref(),
                     cli.all_projects,
@@ -70,7 +70,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     &view_mode,
                 ),
                 IndexCommand::Vacuum { view_mode } => {
-                    handlers::index::handle_vacuum_v2(&workspace, cli.format, &view_mode)
+                    handlers::index::handle_vacuum(&workspace, cli.format, &view_mode)
                 }
             }
         }
@@ -97,7 +97,7 @@ pub fn run(cli: Cli) -> Result<()> {
                         project_hash
                     };
 
-                    handlers::session_list::handle_v2(
+                    handlers::session_list::handle(
                         &workspace,
                         project_root.as_deref(),
                         cli.all_projects,
@@ -124,10 +124,10 @@ pub fn run(cli: Cli) -> Result<()> {
 
             match command {
                 ProviderCommand::List { view_mode } => {
-                    handlers::provider::list_v2(&config_path, cli.format, &view_mode)
+                    handlers::provider::list(&config_path, cli.format, &view_mode)
                 }
                 ProviderCommand::Detect { view_mode } => {
-                    handlers::provider::detect_v2(&config_path, cli.format, &view_mode)
+                    handlers::provider::detect(&config_path, cli.format, &view_mode)
                 }
                 ProviderCommand::Set {
                     provider,
@@ -135,7 +135,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     enable,
                     disable,
                     view_mode,
-                } => handlers::provider::set_v2(
+                } => handlers::provider::set(
                     provider,
                     log_root,
                     enable,
@@ -154,7 +154,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 view_mode,
             } => {
                 let workspace = AgTrace::open(data_dir)?;
-                handlers::doctor_run::handle_v2(
+                handlers::doctor_run::handle(
                     &workspace,
                     provider.to_string(),
                     verbose,
@@ -167,14 +167,12 @@ pub fn run(cli: Cli) -> Result<()> {
                 lines,
                 format,
                 view_mode,
-            } => handlers::doctor_inspect::handle_v2(
-                file_path, lines, format, cli.format, &view_mode,
-            ),
+            } => handlers::doctor_inspect::handle(file_path, lines, format, cli.format, &view_mode),
             DoctorCommand::Check {
                 file_path,
                 provider,
                 view_mode,
-            } => handlers::doctor_check::handle_v2(
+            } => handlers::doctor_check::handle(
                 file_path,
                 provider.map(|p| p.to_string()),
                 cli.format,
@@ -189,7 +187,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 ProjectCommand::List {
                     project_root: proj_root,
                     view_mode,
-                } => handlers::project::handle_v2(&workspace, proj_root, cli.format, &view_mode),
+                } => handlers::project::handle(&workspace, proj_root, cli.format, &view_mode),
             }
         }
 
@@ -288,7 +286,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 verbose: false,
             };
 
-            handlers::session_list::handle_v2(
+            handlers::session_list::handle(
                 &workspace,
                 project_root.as_deref(),
                 cli.all_projects,
@@ -336,7 +334,7 @@ pub fn run(cli: Cli) -> Result<()> {
             let workspace = AgTrace::open(data_dir)?;
 
             let target = if let Some(session_id) = id {
-                handlers::watch_tui_v2::WatchTarget::Session { id: session_id }
+                handlers::watch_tui::WatchTarget::Session { id: session_id }
             } else {
                 let provider_name = if let Some(name) = provider {
                     name.to_string()
@@ -354,14 +352,14 @@ pub fn run(cli: Cli) -> Result<()> {
                             )
                         })?
                 };
-                handlers::watch_tui_v2::WatchTarget::Provider {
+                handlers::watch_tui::WatchTarget::Provider {
                     name: provider_name,
                 }
             };
 
             match mode {
                 WatchFormat::Tui => {
-                    handlers::watch_tui_v2::handle(&workspace, project_root.as_deref(), target)
+                    handlers::watch_tui::handle(&workspace, project_root.as_deref(), target)
                 }
                 WatchFormat::Console => handlers::watch_console::handle_console(
                     &workspace,
