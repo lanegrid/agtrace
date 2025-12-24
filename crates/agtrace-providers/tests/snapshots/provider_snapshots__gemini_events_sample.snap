@@ -493,7 +493,7 @@ expression: json_pretty
               "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
-                "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+                "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
               }
             }
           }
@@ -560,7 +560,7 @@ expression: json_pretty
               "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
-                "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+                "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
               }
             }
           }
@@ -583,7 +583,7 @@ expression: json_pretty
   },
   "type": "tool_result",
   "content": {
-    "output": "[FunctionResponse { function_response: FunctionResponseInner { id: \"write_file-1765309936615-3e48006f9d7538\", name: \"write_file\", response: Object {\"output\": String(\"Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py.\")} } }]",
+    "output": "[FunctionResponse { function_response: FunctionResponseInner { id: \"write_file-1765309936615-3e48006f9d7538\", name: \"write_file\", response: Object {\"output\": String(\"Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py.\")} } }]",
     "tool_call_id": "296bbe29-5899-576d-9bf2-5675d73961b5",
     "is_error": false
   },
@@ -624,7 +624,7 @@ expression: json_pretty
               "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
-                "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+                "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
               }
             }
           }
@@ -686,7 +686,7 @@ expression: json_pretty
               "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
-                "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+                "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
               }
             }
           }
@@ -755,7 +755,7 @@ expression: json_pretty
               "id": "write_file-1765309936615-3e48006f9d7538",
               "name": "write_file",
               "response": {
-                "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+                "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
               }
             }
           }

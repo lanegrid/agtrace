@@ -103,7 +103,7 @@ All three milestones completed in a single session, demonstrating that the ExecP
 
 ## Context and Orientation
 
-The agtrace CLI tool is a Rust workspace located at `/Users/zawakin/go/src/github.com/lanegrid/agtrace`. The watch command is implemented in `crates/agtrace-cli/src/handlers/watch.rs` and uses a view trait (`WatchView`) defined in `crates/agtrace-cli/src/ui/traits.rs`. The current implementation uses `ConsoleTraceView` (in `crates/agtrace-cli/src/ui/console.rs`) which prints events to stdout sequentially.
+The agtrace CLI tool is a Rust workspace. The watch command is implemented in `crates/agtrace-cli/src/handlers/watch.rs` and uses a view trait (`WatchView`) defined in `crates/agtrace-cli/src/ui/traits.rs`. The current implementation uses `ConsoleTraceView` (in `crates/agtrace-cli/src/ui/console.rs`) which prints events to stdout sequentially.
 
 There is already infrastructure for refreshing displays in `crates/agtrace-cli/src/ui/refresh.rs`, including:
 - `WatchBuffer`: stores events and session state

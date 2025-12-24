@@ -13,8 +13,8 @@ fn test_session_includes_all_files_main_and_sidechain() {
 
     // Copy both main session file and sidechain agent file to the project directory
     // Both files share the same sessionId: 7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9
-    // and cwd: /Users/zawakin/agent-sample
-    let project_dir = "/Users/zawakin/agent-sample";
+    // and cwd: /Users/test_user/agent-sample
+    let project_dir = "/Users/test_user/agent-sample";
 
     fixture
         .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", project_dir)

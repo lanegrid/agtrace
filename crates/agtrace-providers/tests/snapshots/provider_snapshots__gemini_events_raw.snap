@@ -376,7 +376,7 @@ expression: metadata_json_pretty
             "id": "write_file-1765309936615-3e48006f9d7538",
             "name": "write_file",
             "response": {
-              "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+              "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
             }
           }
         }
@@ -425,7 +425,7 @@ expression: metadata_json_pretty
             "id": "write_file-1765309936615-3e48006f9d7538",
             "name": "write_file",
             "response": {
-              "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+              "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
             }
           }
         }
@@ -474,7 +474,7 @@ expression: metadata_json_pretty
             "id": "write_file-1765309936615-3e48006f9d7538",
             "name": "write_file",
             "response": {
-              "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+              "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
             }
           }
         }
@@ -523,7 +523,7 @@ expression: metadata_json_pretty
             "id": "write_file-1765309936615-3e48006f9d7538",
             "name": "write_file",
             "response": {
-              "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+              "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
             }
           }
         }
@@ -572,7 +572,7 @@ expression: metadata_json_pretty
             "id": "write_file-1765309936615-3e48006f9d7538",
             "name": "write_file",
             "response": {
-              "output": "Successfully created and wrote to new file: /Users/zawakin/agent-sample/myapp/hoge.py."
+              "output": "Successfully created and wrote to new file: /Users/test_user/agent-sample/myapp/hoge.py."
             }
           }
         }

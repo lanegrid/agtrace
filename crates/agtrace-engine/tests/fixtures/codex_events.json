@@ -6,13 +6,13 @@
     "timestamp": "2025-12-09T19:55:16.336Z",
     "type": "user",
     "content": {
-      "text": "<environment_context>\n  <cwd>/Users/zawakin/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>"
+      "text": "<environment_context>\n  <cwd>/Users/test_user/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>"
     },
     "metadata": {
       "payload": {
         "content": [
           {
-            "text": "<environment_context>\n  <cwd>/Users/zawakin/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>",
+            "text": "<environment_context>\n  <cwd>/Users/test_user/agent-sample</cwd>\n  <approval_policy>on-request</approval_policy>\n  <sandbox_mode>workspace-write</sandbox_mode>\n  <network_access>restricted</network_access>\n  <shell>zsh</shell>\n</environment_context>",
             "type": "input_text"
           }
         ],
@@ -80,14 +80,14 @@
       "name": "shell_command",
       "arguments": {
         "command": "mkdir -p myapp",
-        "workdir": "/Users/zawakin/agent-sample"
+        "workdir": "/Users/test_user/agent-sample"
       },
       "provider_call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG"
     },
     "metadata": {
       "model": "gpt-5.1-codex-max",
       "payload": {
-        "arguments": "{\"command\":\"mkdir -p myapp\",\"workdir\":\"/Users/zawakin/agent-sample\"}",
+        "arguments": "{\"command\":\"mkdir -p myapp\",\"workdir\":\"/Users/test_user/agent-sample\"}",
         "call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG",
         "name": "shell_command",
         "type": "function_call"
@@ -453,14 +453,14 @@
       "name": "shell_command",
       "arguments": {
         "command": "python hoge.py",
-        "workdir": "/Users/zawakin/agent-sample/myapp"
+        "workdir": "/Users/test_user/agent-sample/myapp"
       },
       "provider_call_id": "call_5j2yJgrbOClvto1R8nvfSoJS"
     },
     "metadata": {
       "model": "gpt-5.1-codex-max",
       "payload": {
-        "arguments": "{\"command\":\"python hoge.py\",\"workdir\":\"/Users/zawakin/agent-sample/myapp\"}",
+        "arguments": "{\"command\":\"python hoge.py\",\"workdir\":\"/Users/test_user/agent-sample/myapp\"}",
         "call_id": "call_5j2yJgrbOClvto1R8nvfSoJS",
         "name": "shell_command",
         "type": "function_call"
@@ -587,14 +587,14 @@
         "command": "python hoge.py",
         "justification": "Need to run python script outside sandbox because default sandbox fails to locate python shim",
         "with_escalated_permissions": true,
-        "workdir": "/Users/zawakin/agent-sample/myapp"
+        "workdir": "/Users/test_user/agent-sample/myapp"
       },
       "provider_call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x"
     },
     "metadata": {
       "model": "gpt-5.1-codex-max",
       "payload": {
-        "arguments": "{\"command\":\"python hoge.py\",\"workdir\":\"/Users/zawakin/agent-sample/myapp\",\"with_escalated_permissions\":true,\"justification\":\"Need to run python script outside sandbox because default sandbox fails to locate python shim\"}",
+        "arguments": "{\"command\":\"python hoge.py\",\"workdir\":\"/Users/test_user/agent-sample/myapp\",\"with_escalated_permissions\":true,\"justification\":\"Need to run python script outside sandbox because default sandbox fails to locate python shim\"}",
         "call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x",
         "name": "shell_command",
         "type": "function_call"
@@ -719,14 +719,14 @@
       "name": "shell_command",
       "arguments": {
         "command": "python3 hoge.py",
-        "workdir": "/Users/zawakin/agent-sample/myapp"
+        "workdir": "/Users/test_user/agent-sample/myapp"
       },
       "provider_call_id": "call_mI2n5JLETgVMNGApYPPAjEwD"
     },
     "metadata": {
       "model": "gpt-5.1-codex-max",
       "payload": {
-        "arguments": "{\"command\":\"python3 hoge.py\",\"workdir\":\"/Users/zawakin/agent-sample/myapp\"}",
+        "arguments": "{\"command\":\"python3 hoge.py\",\"workdir\":\"/Users/test_user/agent-sample/myapp\"}",
         "call_id": "call_mI2n5JLETgVMNGApYPPAjEwD",
         "name": "shell_command",
         "type": "function_call"

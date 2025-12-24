@@ -37,7 +37,7 @@ expression: session
                   "name": "shell_command",
                   "arguments": {
                     "command": "mkdir -p myapp",
-                    "workdir": "/Users/zawakin/agent-sample"
+                    "workdir": "/Users/test_user/agent-sample"
                   },
                   "provider_call_id": "call_DyhFJrJJb2y0MiOOHVP7KaVG"
                 }
@@ -162,7 +162,7 @@ expression: session
                   "name": "shell_command",
                   "arguments": {
                     "command": "python hoge.py",
-                    "workdir": "/Users/zawakin/agent-sample/myapp"
+                    "workdir": "/Users/test_user/agent-sample/myapp"
                   },
                   "provider_call_id": "call_5j2yJgrbOClvto1R8nvfSoJS"
                 }
@@ -216,7 +216,7 @@ expression: session
                     "command": "python hoge.py",
                     "justification": "Need to run python script outside sandbox because default sandbox fails to locate python shim",
                     "with_escalated_permissions": true,
-                    "workdir": "/Users/zawakin/agent-sample/myapp"
+                    "workdir": "/Users/test_user/agent-sample/myapp"
                   },
                   "provider_call_id": "call_hm1XO5EQnKjpErxjNjpINQ2x"
                 }
@@ -268,7 +268,7 @@ expression: session
                   "name": "shell_command",
                   "arguments": {
                     "command": "python3 hoge.py",
-                    "workdir": "/Users/zawakin/agent-sample/myapp"
+                    "workdir": "/Users/test_user/agent-sample/myapp"
                   },
                   "provider_call_id": "call_mI2n5JLETgVMNGApYPPAjEwD"
                 }

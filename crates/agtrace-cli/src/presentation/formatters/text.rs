@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_truncate_path_long() {
-        let path = "/Users/zawakin/go/src/github.com/lanegrid/agtrace/crates/cli/src/main.rs";
+        let path = "/foo-bar-hoge-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/crates/cli/src/main.rs";
         let result = truncate_path(path, 40);
 
         // Should end with filename and parent dirs

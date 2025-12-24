@@ -262,13 +262,13 @@ mod tests {
     fn test_read_mcp_resource_args_to_file_read_args() {
         let mcp_args = ReadMcpResourceArgs {
             server: "local".to_string(),
-            uri: "/Users/zawakin/go/src/github.com/lanegrid/agtrace/AGENTS.md".to_string(),
+            uri: "/foo-bar-hoge-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/AGENTS.md".to_string(),
         };
 
         let file_read_args = mcp_args.to_file_read_args();
         assert_eq!(
             file_read_args.file_path,
-            Some("/Users/zawakin/go/src/github.com/lanegrid/agtrace/AGENTS.md".to_string())
+            Some("/foo-bar-hoge-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/AGENTS.md".to_string())
         );
         assert_eq!(file_read_args.path, None);
         assert_eq!(file_read_args.pattern, None);
