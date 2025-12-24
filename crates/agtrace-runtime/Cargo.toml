@@ -11,10 +11,10 @@ anyhow.workspace = true
 chrono.workspace = true
 notify.workspace = true
 walkdir.workspace = true
-agtrace-engine = { version = "0.1.0", path = "../agtrace-engine" }
-agtrace-index = { version = "0.1.0", path = "../agtrace-index" }
-agtrace-types = { version = "0.1.0", path = "../agtrace-types" }
-agtrace-providers = { version = "0.1.0", path = "../agtrace-providers" }
+agtrace-engine.workspace = true
+agtrace-index.workspace = true
+agtrace-types.workspace = true
+agtrace-providers.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
