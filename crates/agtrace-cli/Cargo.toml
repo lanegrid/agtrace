@@ -1,46 +1,46 @@
 [package]
 name = "agtrace-cli"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "CLI interface for agtrace"
-license = "MIT OR Apache-2.0"
+license.workspace = true
 
 [[bin]]
 name = "agtrace"
 path = "src/main.rs"
 
 [dependencies]
-agtrace-types = { path = "../agtrace-types" }
-agtrace-providers = { path = "../agtrace-providers" }
-agtrace-index = { path = "../agtrace-index" }
-agtrace-engine = { path = "../agtrace-engine" }
-agtrace-runtime = { path = "../agtrace-runtime" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-clap = { version = "4.5", features = ["derive"] }
-anyhow = "1.0"
-chrono = "0.4"
-walkdir = "2.5"
-owo-colors = "4.0"
-comfy-table = "7.1"
-is-terminal = "0.4"
-csv = "1.3"
-toml = "0.8"
-notify = "6.1"
-once_cell = "1.21.3"
-terminal_size = "0.4"
-crossterm = "0.28"
-ctrlc = "3.4"
-ratatui = "0.29.0"
-regex = "1.11"
+agtrace-types.workspace = true
+agtrace-providers.workspace = true
+agtrace-index.workspace = true
+agtrace-engine.workspace = true
+agtrace-runtime.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+walkdir.workspace = true
+owo-colors.workspace = true
+comfy-table.workspace = true
+is-terminal.workspace = true
+csv.workspace = true
+toml.workspace = true
+notify.workspace = true
+once_cell.workspace = true
+terminal_size.workspace = true
+crossterm.workspace = true
+ctrlc.workspace = true
+ratatui.workspace = true
+regex.workspace = true
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
+libc.workspace = true
 
 [dev-dependencies]
-assert_cmd = "2.0"
-predicates = "3.1"
-tempfile = "3.10"
-insta = { version = "1.34", features = ["json"] }
-uuid = "1.19.0"
-filetime = "0.2"
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+insta.workspace = true
+uuid.workspace = true
+filetime.workspace = true
