@@ -2,7 +2,6 @@
 name = "agtrace-runtime"
 version = "0.1.0"
 edition = "2021"
-authors = ["lanegrid team"]
 description = "Runtime orchestration for agtrace (watch loop, reactors, streaming)"
 license = "MIT OR Apache-2.0"
 
