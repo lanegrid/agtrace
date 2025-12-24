@@ -105,6 +105,8 @@ impl<'a> DashboardView<'a> {
     }
 
     fn render_context_gauge(&self, area: Rect, buf: &mut Buffer) {
+        use ratatui::style::Color;
+
         let color = status_level_to_color(self.model.context_color);
         let total_formatted = format_tokens(self.model.context_total);
 
@@ -117,6 +119,7 @@ impl<'a> DashboardView<'a> {
             let remaining_formatted = format_tokens(remaining);
 
             Gauge::default()
+                .block(Block::default().style(Style::default().bg(Color::Rgb(40, 40, 40))))
                 .gauge_style(Style::default().fg(color).add_modifier(Modifier::BOLD))
                 .ratio(usage_pct)
                 .label(format!(
@@ -129,6 +132,7 @@ impl<'a> DashboardView<'a> {
         } else {
             // No limit known - display warning
             Gauge::default()
+                .block(Block::default().style(Style::default().bg(Color::Rgb(40, 40, 40))))
                 .gauge_style(Style::default().fg(color).add_modifier(Modifier::BOLD))
                 .ratio(0.0)
                 .label(format!(
