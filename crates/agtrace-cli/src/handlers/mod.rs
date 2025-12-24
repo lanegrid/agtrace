@@ -11,6 +11,5 @@ pub mod project;
 pub mod provider;
 pub mod session_list;
 pub mod session_show;
-pub mod watch;
 pub mod watch_console;
 pub mod watch_tui_v2;

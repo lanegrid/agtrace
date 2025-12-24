@@ -3,7 +3,6 @@ use super::args::{
     SessionCommand,
 };
 use super::handlers;
-use crate::presentation::v1::renderers::TuiWatchView;
 use agtrace_runtime::AgTrace;
 use anyhow::Result;
 use clap::CommandFactory;
@@ -337,7 +336,7 @@ pub fn run(cli: Cli) -> Result<()> {
             let workspace = AgTrace::open(data_dir)?;
 
             let target = if let Some(session_id) = id {
-                handlers::watch::WatchTarget::Session { id: session_id }
+                handlers::watch_tui_v2::WatchTarget::Session { id: session_id }
             } else {
                 let provider_name = if let Some(name) = provider {
                     name.to_string()
@@ -355,34 +354,14 @@ pub fn run(cli: Cli) -> Result<()> {
                             )
                         })?
                 };
-                handlers::watch::WatchTarget::Provider {
+                handlers::watch_tui_v2::WatchTarget::Provider {
                     name: provider_name,
                 }
             };
 
             match mode {
                 WatchFormat::Tui => {
-                    // Create TUI view and get receiver for event loop
-                    let (tui_view, rx) = TuiWatchView::new()?;
-                    handlers::watch::handle(
-                        &workspace,
-                        project_root.as_deref(),
-                        target,
-                        tui_view,
-                        rx,
-                    )
-                }
-                WatchFormat::TuiV2 => {
-                    // TUI v2: Handler owns state, Presenter is pure, Renderer receives ViewModels
-                    let target_v2 = match target {
-                        handlers::watch::WatchTarget::Provider { name } => {
-                            handlers::watch_tui_v2::WatchTarget::Provider { name }
-                        }
-                        handlers::watch::WatchTarget::Session { id } => {
-                            handlers::watch_tui_v2::WatchTarget::Session { id }
-                        }
-                    };
-                    handlers::watch_tui_v2::handle(&workspace, project_root.as_deref(), target_v2)
+                    handlers::watch_tui_v2::handle(&workspace, project_root.as_deref(), target)
                 }
                 WatchFormat::Console => handlers::watch_console::handle_console(
                     &workspace,

@@ -158,8 +158,6 @@ impl fmt::Display for ProviderFilter {
 #[value(rename_all = "lowercase")]
 pub enum WatchFormat {
     Tui,
-    #[value(name = "tui-v2")]
-    TuiV2,
     Console,
 }
 
@@ -167,7 +165,6 @@ impl fmt::Display for WatchFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             WatchFormat::Tui => write!(f, "tui"),
-            WatchFormat::TuiV2 => write!(f, "tui-v2"),
             WatchFormat::Console => write!(f, "console"),
         }
     }

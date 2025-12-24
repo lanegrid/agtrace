@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
 
-use super::watch::WatchTarget;
+use super::watch_tui_v2::WatchTarget;
 
 pub fn handle_console(
     workspace: &AgTrace,

@@ -70,8 +70,6 @@
 //!
 //! ## 📂 Directory Structure
 //!
-//! * `v1/`         - Legacy presentation layer (formatters, presenters, renderers, view_models, views, shared)
-//! * `v2/`         - Refactored presentation layer with unified ViewModel-View separation
+//! * `v2/`         - Presentation layer with unified ViewModel-View separation
 
-pub mod v1;
 pub mod v2;
