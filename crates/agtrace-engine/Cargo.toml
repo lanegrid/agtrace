@@ -2,7 +2,7 @@
 name = "agtrace-engine"
 version.workspace = true
 edition.workspace = true
-description = "Core processing engine for agtrace"
+description = "Session reconstruction and analysis engine - builds conversation timelines from raw events"
 license.workspace = true
 
 [dependencies]

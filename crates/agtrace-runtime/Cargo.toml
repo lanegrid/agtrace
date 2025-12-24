@@ -2,7 +2,7 @@
 name = "agtrace-runtime"
 version.workspace = true
 edition.workspace = true
-description = "Runtime orchestration for agtrace (watch loop, reactors, streaming)"
+description = "Workspace orchestration and live session monitoring with file-watching reactors"
 license.workspace = true
 
 [dependencies]

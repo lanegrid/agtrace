@@ -2,7 +2,7 @@
 name = "agtrace-index"
 version.workspace = true
 edition.workspace = true
-description = "SQLite index for agtrace"
+description = "Lightweight SQLite metadata index - schema-on-read approach for zero-copy storage"
 license.workspace = true
 
 [dependencies]

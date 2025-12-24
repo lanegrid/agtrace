@@ -2,7 +2,7 @@
 name = "agtrace-types"
 version.workspace = true
 edition.workspace = true
-description = "Core types for agtrace"
+description = "Shared domain models and type-safe AgentEvent definitions for cross-provider compatibility"
 license.workspace = true
 
 [dependencies]

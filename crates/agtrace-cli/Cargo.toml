@@ -2,7 +2,7 @@
 name = "agtrace-cli"
 version.workspace = true
 edition.workspace = true
-description = "CLI interface for agtrace"
+description = "Terminal UI and command-line interface for exploring AI agent execution traces"
 license.workspace = true
 
 [[bin]]
