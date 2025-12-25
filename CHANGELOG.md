@@ -34,10 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Prevent panic when session_id is shorter than 8 characters in watch mode
 
-## [0.1.1] - 2024-12-24
+## [0.1.1] - 2025-12-25
 
 _Internal development release - not published to crates.io or npm_
 
-## [0.1.0] - 2024-12-24
+## [0.1.0] - 2025-12-25
 
 _Internal development release - not published to crates.io or npm_
