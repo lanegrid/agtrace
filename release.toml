@@ -10,11 +10,8 @@ tag-name = "v{{version}}"
 
 # Workspace version management
 shared-version = true
-workspace = true
 consolidate-commits = true
 
-# Hook: Update CHANGELOG.md when bumping version (relative to workspace root)
-[[pre-release-replacements]]
-file = "../../CHANGELOG.md"
-search = "## \\[unreleased\\]"
-replace = "## [{{version}}] - {{date}}"
+# Rate limit for publishing new packages to crates.io
+[rate-limit]
+new-packages = 10
