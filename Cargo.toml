@@ -11,19 +11,19 @@ default-members = ["crates/agtrace-cli"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/lanegrid/agtrace"
 
 [workspace.dependencies]
 # Internal crates
-agtrace-types = { version = "0.1.1", path = "crates/agtrace-types" }
-agtrace-providers = { version = "0.1.1", path = "crates/agtrace-providers" }
-agtrace-index = { version = "0.1.1", path = "crates/agtrace-index" }
-agtrace-engine = { version = "0.1.1", path = "crates/agtrace-engine" }
-agtrace-runtime = { version = "0.1.1", path = "crates/agtrace-runtime" }
-agtrace-cli = { version = "0.1.1", path = "crates/agtrace-cli" }
+agtrace-types = { version = "0.1.2", path = "crates/agtrace-types" }
+agtrace-providers = { version = "0.1.2", path = "crates/agtrace-providers" }
+agtrace-index = { version = "0.1.2", path = "crates/agtrace-index" }
+agtrace-engine = { version = "0.1.2", path = "crates/agtrace-engine" }
+agtrace-runtime = { version = "0.1.2", path = "crates/agtrace-runtime" }
+agtrace-cli = { version = "0.1.2", path = "crates/agtrace-cli" }
 
 # Common dependencies
 serde = { version = "1.0", features = ["derive"] }
