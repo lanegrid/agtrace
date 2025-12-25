@@ -49,7 +49,11 @@ impl CommandContext {
     }
 
     fn effective_project_hash(&self, explicit_hash: Option<String>) -> Option<String> {
-        explicit_hash.or_else(|| self.project_hash())
+        if self.all_projects {
+            None
+        } else {
+            explicit_hash.or_else(|| self.project_hash())
+        }
     }
 }
 

@@ -5,8 +5,9 @@ use common::TestFixture;
 fn test_init_full_workflow() {
     let fixture = TestFixture::new();
 
+    // Claude Code stores sessions in project-specific directories
     fixture
-        .copy_sample_file("claude_session.jsonl", "session1.jsonl")
+        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", "/Users/test_user/agent-sample")
         .expect("Failed to copy sample file");
 
     fixture
@@ -46,6 +47,7 @@ fn test_init_full_workflow() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--all-projects")
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");

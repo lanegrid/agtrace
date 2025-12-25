@@ -9,8 +9,9 @@ fn test_session_show_basic_structure() {
         .setup_provider("claude_code")
         .expect("Failed to setup provider");
 
+    // Claude Code stores sessions in project-specific directories
     fixture
-        .copy_sample_file("claude_session.jsonl", "session1.jsonl")
+        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", "/Users/test_user/agent-sample")
         .expect("Failed to copy sample file");
 
     fixture.index_update().expect("Failed to index");
@@ -21,6 +22,7 @@ fn test_session_show_basic_structure() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--all-projects")
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
