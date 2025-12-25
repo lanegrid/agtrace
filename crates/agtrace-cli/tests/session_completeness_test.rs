@@ -33,6 +33,7 @@ fn test_session_includes_all_files_main_and_sidechain() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--all-projects")
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");

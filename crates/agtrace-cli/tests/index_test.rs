@@ -9,12 +9,13 @@ fn test_index_scan_and_query() {
         .setup_provider("claude_code")
         .expect("Failed to setup provider");
 
+    // Claude Code stores sessions in project-specific directories like -Users-foo-bar/
     fixture
-        .copy_sample_file("claude_session.jsonl", "session1.jsonl")
+        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", "/Users/test_user/agent-sample")
         .expect("Failed to copy sample 1");
 
     fixture
-        .copy_sample_file("claude_agent.jsonl", "session2.jsonl")
+        .copy_sample_file_to_project("claude_agent.jsonl", "session2.jsonl", "/Users/test_user/agent-sample")
         .expect("Failed to copy sample 2");
 
     fixture.index_update().expect("Failed to run index update");
@@ -25,6 +26,7 @@ fn test_index_scan_and_query() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--all-projects")
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
@@ -45,8 +47,10 @@ fn test_index_scan_and_query() {
 
     assert!(
         !sessions.is_empty(),
-        "Expected at least 1 session, found {}",
-        sessions.len()
+        "Expected at least 1 session, found {}\nstdout: {}\nstderr: {}",
+        sessions.len(),
+        stdout,
+        String::from_utf8_lossy(&output.stderr)
     );
 
     for session in sessions {

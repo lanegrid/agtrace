@@ -9,12 +9,14 @@ fn test_session_list_filtering() {
         .setup_provider("claude_code")
         .expect("Failed to setup provider");
 
+    // Claude Code stores sessions in project-specific directories
+    let project_dir = "/Users/test_user/agent-sample";
     fixture
-        .copy_sample_file("claude_session.jsonl", "session1.jsonl")
+        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", project_dir)
         .expect("Failed to copy sample 1");
 
     fixture
-        .copy_sample_file("claude_agent.jsonl", "session2.jsonl")
+        .copy_sample_file_to_project("claude_agent.jsonl", "session2.jsonl", project_dir)
         .expect("Failed to copy sample 2");
 
     fixture.index_update().expect("Failed to index");
@@ -26,6 +28,7 @@ fn test_session_list_filtering() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--all-projects")
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
@@ -46,6 +49,7 @@ fn test_session_list_filtering() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--all-projects")
         .arg("--source")
         .arg("claude_code")
         .arg("--no-auto-refresh")
@@ -73,6 +77,7 @@ fn test_session_list_filtering() {
         .arg("list")
         .arg("--format")
         .arg("json")
+        .arg("--all-projects")
         .arg("--limit")
         .arg("1")
         .arg("--no-auto-refresh")
@@ -95,6 +100,7 @@ fn test_session_list_filtering() {
         .arg("list")
         .arg("--format")
         .arg("plain")
+        .arg("--all-projects")
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list with plain format");
