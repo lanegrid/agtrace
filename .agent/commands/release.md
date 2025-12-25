@@ -26,14 +26,22 @@ Replace `patch` with `minor` or `major` as needed.
 
 ### 2. Update CHANGELOG
 
-Generate CHANGELOG from commit history:
+Generate CHANGELOG entries for changes since the last release:
 
 ```bash
-git cliff -o CHANGELOG.md
+# Get the latest tag
+LAST_TAG=$(git describe --tags --abbrev=0)
+
+# Generate changelog for commits since last tag
+git cliff ${LAST_TAG}..HEAD --unreleased --prepend CHANGELOG.md
 ```
 
-Review the generated `CHANGELOG.md`. The `## [unreleased]` section should contain recent changes.
-Edit manually if needed.
+This prepends new entries to the existing CHANGELOG.md under the `[Unreleased]` section.
+
+Review the generated changes:
+- Check that only new commits are added
+- Edit descriptions for clarity if needed
+- The `[Unreleased]` section will be automatically renamed to the version number during release
 
 ### 3. Commit CHANGELOG
 
@@ -73,6 +81,13 @@ Check the Actions tab to ensure successful completion.
 - If a name is already taken, update `name` in `Cargo.toml`
 - Binary distribution uses `cargo-dist` (handled by CI)
 - crates.io publishing uses `cargo-release` (handled locally)
+
+### CHANGELOG Best Practices
+
+- **Incremental releases**: Use `git cliff ${LAST_TAG}..HEAD --unreleased --prepend CHANGELOG.md` to add only new commits
+- **Initial release**: Manually write a concise "Initial public release" summary instead of dumping all commits
+- **Keep it readable**: Focus on user-visible changes (features, bug fixes, breaking changes)
+- **Full history in Git**: The complete commit history is always available via `git log`
 
 ## Troubleshooting
 
