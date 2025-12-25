@@ -15,11 +15,14 @@ This document describes the standard release process for agtrace.
 Check what will happen without making changes (dry-run is the default):
 
 ```bash
-cargo release --workspace patch
+cargo release --workspace patch --no-verify
 ```
 
 Replace `patch` with `minor` or `major` as needed.
-The `--workspace` flag is required to publish all 6 crates in dependency order.
+
+**Flags explained**:
+- `--workspace`: Required to publish all 6 crates in dependency order
+- `--no-verify`: Skips local verification to avoid a known Cargo bug ([#14396](https://github.com/rust-lang/cargo/issues/14396)) that causes "no hash listed" errors during dry-run. The actual release with `--execute` verifies against crates.io and works correctly.
 
 ### 2. Update CHANGELOG
 
@@ -70,3 +73,21 @@ Check the Actions tab to ensure successful completion.
 - If a name is already taken, update `name` in `Cargo.toml`
 - Binary distribution uses `cargo-dist` (handled by CI)
 - crates.io publishing uses `cargo-release` (handled locally)
+
+## Troubleshooting
+
+### "no hash listed" error during dry-run
+
+If you see this error during `cargo release --workspace`:
+
+```
+error: failed to verify package tarball
+Caused by: no hash listed for agtrace-xxx v0.x.x
+```
+
+This is a known Cargo bug ([#14396](https://github.com/rust-lang/cargo/issues/14396)) that only affects dry-run verification of interdependent workspace crates. The actual release (`--execute`) succeeds because crates are published to crates.io sequentially, and each published crate gets a proper checksum in the registry.
+
+**Solution**: Use `--no-verify` flag for dry-run:
+```bash
+cargo release --workspace patch --no-verify
+```
