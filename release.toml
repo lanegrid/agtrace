@@ -1,0 +1,23 @@
+# release.toml - cargo-release configuration for version management and crates.io publishing
+allow-branch = ["main", "master"]
+sign-commit = false
+sign-tag = false
+push = true
+publish = true
+
+# Version tag format (e.g., v0.1.0)
+tag-name = "v{{version}}"
+
+# Synchronize versions across workspace
+[workspace]
+consolidate-commits = true
+
+# Hook: Update CHANGELOG.md when bumping version
+[[pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "## \\[unreleased\\]"
+replace = "## [{{version}}] - {{date}}"
+
+# Ensure lockfile updates for CLI
+[shared-version]
+consumption = "all"
