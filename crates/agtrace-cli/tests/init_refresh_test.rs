@@ -196,7 +196,7 @@ fn test_init_fresh_with_multiple_projects() {
     // so it will be indexed under the project hash of /Users/test_user/agent-sample
     // Only claude_agent.jsonl might have a different cwd
     assert!(
-        projects.len() >= 1,
+        !projects.is_empty(),
         "Should have indexed at least 1 project during init, got {}",
         projects.len()
     );
@@ -249,10 +249,7 @@ fn test_init_without_all_projects_flag() {
     // Run init WITHOUT --all-projects
     // Note: The test fixture runs from a temp directory, not project A or B
     let mut cmd = fixture.command();
-    let output = cmd
-        .arg("init")
-        .output()
-        .expect("Failed to run init");
+    let output = cmd.arg("init").output().expect("Failed to run init");
 
     assert!(output.status.success());
 

@@ -125,7 +125,7 @@ impl TestFixture {
         // Replace cwd field
         let mut modified_content = content.replace(
             r#""cwd":"/Users/test_user/agent-sample""#,
-            &format!(r#""cwd":"{}""#, target_project_dir)
+            &format!(r#""cwd":"{}""#, target_project_dir),
         );
 
         // Generate a unique sessionId based on the target project dir AND dest file name
@@ -139,10 +139,8 @@ impl TestFixture {
         let new_session_id = format!("test-session-{:016x}", hash);
 
         // Replace sessionId (original: 7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9)
-        modified_content = modified_content.replace(
-            "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-            &new_session_id
-        );
+        modified_content =
+            modified_content.replace("7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9", &new_session_id);
 
         fs::write(dest, modified_content)?;
         Ok(())
