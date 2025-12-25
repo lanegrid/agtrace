@@ -10,26 +10,22 @@ fn test_project_isolation_current_project_only() {
         .setup_provider("claude_code")
         .expect("Failed to setup provider");
 
-    // Note: Sample files have embedded cwd fields:
-    // - claude_session.jsonl has cwd: /Users/test_user/agent-sample
-    // - claude_agent.jsonl has cwd: /Users/test_user/agent-sample
-    // So they'll both be indexed under the same project
-
-    // Use the actual project paths from the sample files
-    let project_sample = "/Users/test_user/agent-sample";
+    // Create sessions for two DIFFERENT projects by replacing cwd
+    let project_a = "/Users/test_user/project-a";
+    let project_b = "/Users/test_user/project-b";
 
     fixture
-        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", project_sample)
-        .expect("Failed to copy session1");
+        .copy_sample_file_to_project_with_cwd("claude_session.jsonl", "session1.jsonl", project_a)
+        .expect("Failed to copy to project A");
 
     fixture
-        .copy_sample_file_to_project("claude_agent.jsonl", "session2.jsonl", project_sample)
-        .expect("Failed to copy session2");
+        .copy_sample_file_to_project_with_cwd("claude_agent.jsonl", "session2.jsonl", project_b)
+        .expect("Failed to copy to project B");
 
     // Index all projects
     fixture.index_update().expect("Failed to index");
 
-    // List all projects - should see sessions
+    // List all projects - should see 2 sessions across 2 projects
     let mut cmd = fixture.command();
     let output = cmd
         .arg("session")
@@ -48,16 +44,17 @@ fn test_project_isolation_current_project_only() {
         .as_array()
         .expect("Expected sessions array");
 
-    assert!(
-        !all_sessions.is_empty(),
-        "Should have sessions across all projects"
+    assert_eq!(
+        all_sessions.len(),
+        2,
+        "Should have 2 sessions across 2 different projects"
     );
 
-    // Calculate project hash from the actual cwd in sample files
+    // Calculate project hashes
     use agtrace_types::project_hash_from_root;
-    let project_sample_hash = project_hash_from_root(project_sample);
+    let project_a_hash = project_hash_from_root(project_a);
 
-    // List with specific project hash
+    // List with specific project hash - should see only project A's session
     let mut cmd = fixture.command();
     let output = cmd
         .arg("session")
@@ -65,7 +62,7 @@ fn test_project_isolation_current_project_only() {
         .arg("--format")
         .arg("json")
         .arg("--project-hash")
-        .arg(&project_sample_hash)
+        .arg(&project_a_hash)
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list with project hash");
@@ -77,21 +74,20 @@ fn test_project_isolation_current_project_only() {
         .as_array()
         .expect("Expected sessions array");
 
-    assert!(
-        !filtered_sessions.is_empty(),
-        "Should have sessions for the project"
+    assert_eq!(
+        filtered_sessions.len(),
+        1,
+        "Should have exactly 1 session for project A"
     );
 
-    // Verify the sessions belong to the correct project
-    for session in filtered_sessions {
-        let session_project = session["project_hash"]
-            .as_str()
-            .expect("Session should have project_hash");
-        assert_eq!(
-            session_project, project_sample_hash,
-            "Session should belong to the correct project"
-        );
-    }
+    // Verify the session belongs to project A
+    let session_project = filtered_sessions[0]["project_hash"]
+        .as_str()
+        .expect("Session should have project_hash");
+    assert_eq!(
+        session_project, project_a_hash,
+        "Session should belong to project A"
+    );
 }
 
 /// Test: Current project has no sessions, other projects have sessions
@@ -107,7 +103,7 @@ fn test_project_isolation_empty_current_project() {
     let project_b = "/Users/test_user/project-b";
 
     fixture
-        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", project_b)
+        .copy_sample_file_to_project_with_cwd("claude_session.jsonl", "session1.jsonl", project_b)
         .expect("Failed to copy to project B");
 
     fixture.index_update().expect("Failed to index");
@@ -178,22 +174,21 @@ fn test_project_isolation_multiple_sessions_same_project() {
         .setup_provider("claude_code")
         .expect("Failed to setup provider");
 
-    // Use the actual project path from the sample files
-    let project_sample = "/Users/test_user/agent-sample";
+    let project_a = "/Users/test_user/project-a";
 
     // Add multiple session files to the same project directory
     fixture
-        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", project_sample)
+        .copy_sample_file_to_project_with_cwd("claude_session.jsonl", "session1.jsonl", project_a)
         .expect("Failed to copy session 1");
 
     fixture
-        .copy_sample_file_to_project("claude_agent.jsonl", "session2.jsonl", project_sample)
+        .copy_sample_file_to_project_with_cwd("claude_agent.jsonl", "session2.jsonl", project_a)
         .expect("Failed to copy session 2");
 
     fixture.index_update().expect("Failed to index");
 
     use agtrace_types::project_hash_from_root;
-    let project_sample_hash = project_hash_from_root(project_sample);
+    let project_a_hash = project_hash_from_root(project_a);
 
     let mut cmd = fixture.command();
     let output = cmd
@@ -202,7 +197,7 @@ fn test_project_isolation_multiple_sessions_same_project() {
         .arg("--format")
         .arg("json")
         .arg("--project-hash")
-        .arg(&project_sample_hash)
+        .arg(&project_a_hash)
         .arg("--no-auto-refresh")
         .output()
         .expect("Failed to run session list");
@@ -214,9 +209,11 @@ fn test_project_isolation_multiple_sessions_same_project() {
         .as_array()
         .expect("Expected sessions array");
 
-    assert!(
-        !sessions.is_empty(),
-        "Should have sessions in the project, got {}",
+    // Both files have different sessionIds, so we should have 2 sessions
+    assert_eq!(
+        sessions.len(),
+        2,
+        "Should have 2 sessions in project A, got {}",
         sessions.len()
     );
 
@@ -226,13 +223,13 @@ fn test_project_isolation_multiple_sessions_same_project() {
             .as_str()
             .expect("Session should have project_hash");
         assert_eq!(
-            session_project, project_sample_hash,
-            "All sessions should belong to the correct project"
+            session_project, project_a_hash,
+            "All sessions should belong to project A"
         );
     }
 }
 
-/// Test: Project list shows projects correctly
+/// Test: Project list shows multiple projects correctly
 #[test]
 fn test_project_list_shows_multiple_projects() {
     let fixture = TestFixture::new();
@@ -241,12 +238,16 @@ fn test_project_list_shows_multiple_projects() {
         .setup_provider("claude_code")
         .expect("Failed to setup provider");
 
-    // Use the actual project path from the sample files
-    let project_sample = "/Users/test_user/agent-sample";
+    let project_a = "/Users/test_user/project-a";
+    let project_b = "/Users/test_user/project-b";
 
     fixture
-        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", project_sample)
-        .expect("Failed to copy session");
+        .copy_sample_file_to_project_with_cwd("claude_session.jsonl", "session1.jsonl", project_a)
+        .expect("Failed to copy to project A");
+
+    fixture
+        .copy_sample_file_to_project_with_cwd("claude_agent.jsonl", "session2.jsonl", project_b)
+        .expect("Failed to copy to project B");
 
     fixture.index_update().expect("Failed to index");
 
@@ -272,14 +273,16 @@ fn test_project_list_shows_multiple_projects() {
         .as_array()
         .expect("Expected projects array");
 
-    assert!(
-        !projects.is_empty(),
-        "Should have at least 1 project indexed, got {}",
+    assert_eq!(
+        projects.len(),
+        2,
+        "Should have exactly 2 projects indexed, got {}",
         projects.len()
     );
 
     use agtrace_types::project_hash_from_root;
-    let project_sample_hash = project_hash_from_root(project_sample);
+    let project_a_hash = project_hash_from_root(project_a);
+    let project_b_hash = project_hash_from_root(project_b);
 
     let project_hashes: Vec<String> = projects
         .iter()
@@ -287,7 +290,11 @@ fn test_project_list_shows_multiple_projects() {
         .collect();
 
     assert!(
-        project_hashes.contains(&project_sample_hash),
-        "Should include the project from sample files"
+        project_hashes.contains(&project_a_hash),
+        "Should include project A"
+    );
+    assert!(
+        project_hashes.contains(&project_b_hash),
+        "Should include project B"
     );
 }
