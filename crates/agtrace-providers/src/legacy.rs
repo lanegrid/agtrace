@@ -76,9 +76,20 @@ impl ProviderAdapter {
                 log_files.push(to_log_file(side_file, "sidechain"));
             }
 
+            let project_hash = if let Some(ref root) = session.project_root {
+                agtrace_types::project_hash_from_root(root)
+            } else if self.id() == "gemini" {
+                // For Gemini, extract project_hash directly from the file
+                use crate::gemini::io::extract_project_hash_from_gemini_file;
+                extract_project_hash_from_gemini_file(&session.main_file)
+                    .unwrap_or_else(|| context.project_hash.clone())
+            } else {
+                context.project_hash.clone()
+            };
+
             metadata_list.push(SessionMetadata {
                 session_id: session.session_id,
-                project_hash: context.project_hash.clone(),
+                project_hash,
                 project_root: session.project_root,
                 provider: self.id().to_string(),
                 start_ts: session.timestamp,
