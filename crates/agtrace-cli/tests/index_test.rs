@@ -11,11 +11,19 @@ fn test_index_scan_and_query() {
 
     // Claude Code stores sessions in project-specific directories like -Users-foo-bar/
     fixture
-        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", "/Users/test_user/agent-sample")
+        .copy_sample_file_to_project(
+            "claude_session.jsonl",
+            "session1.jsonl",
+            "/Users/test_user/agent-sample",
+        )
         .expect("Failed to copy sample 1");
 
     fixture
-        .copy_sample_file_to_project("claude_agent.jsonl", "session2.jsonl", "/Users/test_user/agent-sample")
+        .copy_sample_file_to_project(
+            "claude_agent.jsonl",
+            "session2.jsonl",
+            "/Users/test_user/agent-sample",
+        )
         .expect("Failed to copy sample 2");
 
     fixture.index_update().expect("Failed to run index update");

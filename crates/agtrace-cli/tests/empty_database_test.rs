@@ -11,7 +11,9 @@ fn test_empty_database_session_list() {
         .expect("Failed to setup provider");
 
     // Don't add any sessions - just index
-    fixture.index_update().expect("Failed to index empty log directory");
+    fixture
+        .index_update()
+        .expect("Failed to index empty log directory");
 
     // List sessions - should return empty array
     let mut cmd = fixture.command();
@@ -301,7 +303,7 @@ fn test_index_rebuild_vs_update() {
         .expect("Expected sessions array");
 
     assert!(
-        sessions.len() >= 1,
+        !sessions.is_empty(),
         "Should have at least 1 session after incremental update"
     );
 

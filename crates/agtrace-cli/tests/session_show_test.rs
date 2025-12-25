@@ -11,7 +11,11 @@ fn test_session_show_basic_structure() {
 
     // Claude Code stores sessions in project-specific directories
     fixture
-        .copy_sample_file_to_project("claude_session.jsonl", "session1.jsonl", "/Users/test_user/agent-sample")
+        .copy_sample_file_to_project(
+            "claude_session.jsonl",
+            "session1.jsonl",
+            "/Users/test_user/agent-sample",
+        )
         .expect("Failed to copy sample file");
 
     fixture.index_update().expect("Failed to index");
