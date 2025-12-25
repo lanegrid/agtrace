@@ -7,15 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Documentation
-
-- Improve README ([ee66d7a](https://github.com/lanegrid/agtrace/commit/ee66d7abb984fc6a9abb0823138887b3ae52301e))
-
-## [0.1.1] - 2024-12-24
+## [0.1.2] - 2025-12-25
 
 ### Added
 
-- Initial public release on crates.io
+- Initial public release on crates.io and npm
 - Core library APIs for AI agent log analysis
   - Multi-provider normalization (Claude Code, Codex, Gemini)
   - Session parsing and event stream processing
@@ -38,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Prevent panic when session_id is shorter than 8 characters in watch mode
 
+## [0.1.1] - 2024-12-24
+
+_Internal development release - not published to crates.io or npm_
+
 ## [0.1.0] - 2024-12-24
 
-_Internal development release - not published to crates.io_
+_Internal development release - not published to crates.io or npm_
