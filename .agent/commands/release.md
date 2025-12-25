@@ -10,15 +10,22 @@ This document describes the standard release process for agtrace.
 
 ## Release Steps
 
+### 0. Set Release Level
+
+Choose the release level (`patch`, `minor`, or `major`):
+
+```bash
+# Set release level
+RELEASE_LEVEL=patch  # or: minor, major
+```
+
 ### 1. Dry-run (Verification)
 
 Check what will happen without making changes (dry-run is the default):
 
 ```bash
-cargo release --workspace patch --no-verify
+cargo release --workspace ${RELEASE_LEVEL} --no-verify
 ```
-
-Replace `patch` with `minor` or `major` as needed.
 
 **Flags explained**:
 - `--workspace`: Required to publish all 6 crates in dependency order
@@ -29,30 +36,37 @@ Replace `patch` with `minor` or `major` as needed.
 Generate CHANGELOG entries for changes since the last release:
 
 ```bash
-# Get the latest tag
+# Get the latest tag and calculate next version
 LAST_TAG=$(git describe --tags --abbrev=0)
+CURRENT_VERSION=${LAST_TAG#v}  # Remove 'v' prefix
 
-# Generate changelog for commits since last tag
-git cliff ${LAST_TAG}..HEAD --unreleased --prepend CHANGELOG.md
+# Calculate next version based on release level
+IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+case "$RELEASE_LEVEL" in
+  major) NEXT_VERSION="$((major + 1)).0.0" ;;
+  minor) NEXT_VERSION="${major}.$((minor + 1)).0" ;;
+  patch) NEXT_VERSION="${major}.${minor}.$((patch + 1))" ;;
+esac
+
+echo "Current version: $CURRENT_VERSION"
+echo "Next version: $NEXT_VERSION"
+
+# Generate changelog for commits since last tag with version and date
+git cliff ${LAST_TAG}..HEAD --unreleased --tag v${NEXT_VERSION} --prepend CHANGELOG.md
 ```
 
-This prepends new entries to the existing CHANGELOG.md under the `[Unreleased]` section.
+This prepends new entries to CHANGELOG.md with the calculated version and current date.
 
-Review the generated changes:
-- Check that only new commits are added
-- Edit descriptions for clarity if needed
-- The `[Unreleased]` section will be automatically renamed to the version number during release
+Review the generated changes to verify correctness.
 
 ### 3. Commit CHANGELOG
 
-Commit the updated CHANGELOG before running the release:
+Commit the updated CHANGELOG with auto-generated commit message:
 
 ```bash
 git add CHANGELOG.md
-git commit -m "docs: update CHANGELOG for vX.Y.Z"
+git commit -m "docs: update CHANGELOG for v${NEXT_VERSION}"
 ```
-
-Replace `X.Y.Z` with the actual version number.
 
 ### 4. Execute Release
 
@@ -63,7 +77,7 @@ This command will:
 - Create and push git tag
 
 ```bash
-cargo release --workspace patch --execute
+cargo release --workspace ${RELEASE_LEVEL} --execute
 ```
 
 ### 5. Verify GitHub Actions
@@ -84,9 +98,12 @@ Check the Actions tab to ensure successful completion.
 
 ### CHANGELOG Best Practices
 
-- **Incremental releases**: Use `git cliff ${LAST_TAG}..HEAD --unreleased --prepend CHANGELOG.md` to add only new commits
+- **Deterministic generation**: Version and date are automatically calculated from Git state
+  - Version: Computed from last tag + release level
+  - Date: Current date in YYYY-MM-DD format (git-cliff default)
+- **Incremental releases**: Only commits since last tag are included
 - **Initial release**: Manually write a concise "Initial public release" summary instead of dumping all commits
-- **Keep it readable**: Focus on user-visible changes (features, bug fixes, breaking changes)
+- **Keep it readable**: Use conventional commits (feat:, fix:, docs:) for automatic grouping
 - **Full history in Git**: The complete commit history is always available via `git log`
 
 ## Troubleshooting
