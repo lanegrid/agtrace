@@ -12,15 +12,16 @@ This document describes the standard release process for agtrace.
 
 ### 1. Dry-run (Verification)
 
-Check what will happen without making changes:
+Check what will happen without making changes (dry-run is the default):
 
 ```bash
-cargo release patch --dry-run
+cargo release --workspace patch
 ```
 
 Replace `patch` with `minor` or `major` as needed.
+The `--workspace` flag is required to publish all 6 crates in dependency order.
 
-### 2. Generate CHANGELOG
+### 2. Update CHANGELOG
 
 Generate CHANGELOG from commit history:
 
@@ -28,29 +29,37 @@ Generate CHANGELOG from commit history:
 git cliff -o CHANGELOG.md
 ```
 
-Review the generated `CHANGELOG.md`. Edit manually if needed, then:
+Review the generated `CHANGELOG.md`. The `## [unreleased]` section should contain recent changes.
+Edit manually if needed.
+
+### 3. Commit CHANGELOG
+
+Commit the updated CHANGELOG before running the release:
 
 ```bash
 git add CHANGELOG.md
+git commit -m "docs: update CHANGELOG for vX.Y.Z"
 ```
 
-### 3. Execute Release
+Replace `X.Y.Z` with the actual version number.
+
+### 4. Execute Release
 
 This command will:
-- Update version in `Cargo.toml`
+- Update version in all `Cargo.toml` files
 - Create git commit
-- Publish to crates.io (in dependency order: types → engine → ... → cli)
+- Publish to crates.io (in dependency order: types → providers → index → engine → runtime → cli)
 - Create and push git tag
 
 ```bash
-cargo release patch --execute
+cargo release --workspace patch --execute
 ```
 
-### 4. Verify GitHub Actions
+### 5. Verify GitHub Actions
 
 After tag push (e.g., `v0.1.2`), the workflow `.github/workflows/release.yml` automatically triggers:
 
-- **crates.io**: Already published in step 3
+- **crates.io**: Already published in step 4
 - **GitHub Release**: CI builds binaries for all platforms and uploads artifacts
 
 Check the Actions tab to ensure successful completion.
