@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2025-12-27
+
+### Bug Fixes
+
+- Watch command now selects provider with most recent session (issue #6) ([6802b22](https://github.com/lanegrid/agtrace/commit/6802b22))
+
+- Perform session indexing during init before counting sessions (issue #5) ([7cf2bae](https://github.com/lanegrid/agtrace/commit/7cf2bae))
+
+- Implement provider filtering in index commands ([72cd3af](https://github.com/lanegrid/agtrace/commit/72cd3af))
+
+- Canonicalize paths in project_hash_from_root and add comprehensive integration tests ([834564c](https://github.com/lanegrid/agtrace/commit/834564c))
+
+
+### Testing
+
+- Add failing test that documents issue #5 bug (init reports 0 sessions before indexing) ([2b1a3d2](https://github.com/lanegrid/agtrace/commit/2b1a3d2))
+
+- Add provider filtering tests with provider-agnostic test infrastructure ([ae99ec1](https://github.com/lanegrid/agtrace/commit/ae99ec1))
+
+
+### Documentation
+
+- Add test-driven bug fix strategy to AGENTS.md ([9d03968](https://github.com/lanegrid/agtrace/commit/9d03968))
+
+- Update progress and bug status - all 21 integration tests passing ([5c51beb](https://github.com/lanegrid/agtrace/commit/5c51beb))
+
+
 ## [0.1.3] - 2025-12-25
 
 ### Bug Fixes
