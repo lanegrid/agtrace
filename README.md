@@ -73,32 +73,40 @@ npx @lanegrid/agtrace@latest init
 
 ## 🚀 Quick Start
 
-Navigate to your project directory where you use AI Coding Agents (Claude Code, Codex, Gemini CLI, etc.):
+### 1. Initialize in Your Project
+
+Navigate to your project directory and run:
 
 ```bash
 cd /path/to/your/project
-```
-
-### 1. Initialize
-
-Detect installed providers and index existing sessions:
-
-```bash
 agtrace init
 ```
 
-### 2. Watch Mode (The "Vital Check")
+### 2. Start Your AI Coding Agent
 
-Open a new terminal pane and run the watch command to launch the TUI dashboard:
+In one terminal, launch your usual AI coding agent:
+
+```bash
+# Example: Claude Code
+claude
+
+# Or Codex, Gemini, etc.
+```
+
+### 3. Watch in Another Terminal
+
+Open a separate terminal pane in the same project directory and run:
 
 ```bash
 agtrace watch
 ```
 
-* **Visualizes:** Context Window usage, Cost, Turns, and Last Activity.
-* **Auto-Switch:** When you start a `claude` or `codex` session in another pane, agtrace automatically latches onto the new log file.
+That's it. No integration required—agtrace automatically detects and monitors your agent session.
 
-### 3. Analyze Past Sessions
+* **Visualizes:** Context Window usage, Cost, Turns, and Last Activity.
+* **Auto-Switch:** When you start a new session, agtrace automatically latches onto it.
+
+### 4. Analyze Past Sessions
 
 List recent sessions across all providers or inspect a specific one.
 
@@ -111,7 +119,7 @@ agtrace session show <session_id>
 
 ```
 
-### 4. Advanced: The "Lab"
+### 5. Advanced: The "Lab"
 
 Debug agent interactions or search for specific patterns (e.g., "When did the agent try to write to `package.json`?").
 
