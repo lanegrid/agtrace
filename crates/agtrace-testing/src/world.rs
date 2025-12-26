@@ -359,12 +359,15 @@ impl TestWorld {
         sample_name: &str,
         dest_name: &str,
         target_project_dir: &str,
+        provider: TestProvider,
     ) -> Result<()> {
+        let adapter = provider.adapter();
         self.samples.copy_to_project_with_cwd(
             sample_name,
             dest_name,
             target_project_dir,
             &self.log_root,
+            &adapter,
         )
     }
 
@@ -493,7 +496,7 @@ impl TestWorld {
     /// This method:
     /// 1. Determines the provider's log directory
     /// 2. Places a sample session file in the correct location
-    /// 3. Handles provider-specific directory encoding
+    /// 3. Handles provider-specific directory encoding via the provider adapter
     ///
     /// # Example
     /// ```no_run
@@ -512,13 +515,15 @@ impl TestWorld {
     pub fn add_session(&self, provider: TestProvider, dest_filename: &str) -> Result<()> {
         let log_root = self.temp_dir.path().join(provider.default_log_dir_name());
         let project_dir = self.cwd.to_string_lossy();
+        let adapter = provider.adapter();
 
-        // Use the existing fixture infrastructure with provider-specific log root
+        // Use the existing fixture infrastructure with provider-specific log root and adapter
         self.samples.copy_to_project_with_cwd(
             provider.sample_filename(),
             dest_filename,
             &project_dir,
             &log_root,
+            &adapter,
         )
     }
 }

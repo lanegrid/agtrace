@@ -8,6 +8,7 @@ repository.workspace = true
 [dependencies]
 # Internal crates
 agtrace-types = { workspace = true }
+agtrace-providers = { workspace = true }
 
 # Common dependencies
 anyhow = { workspace = true }

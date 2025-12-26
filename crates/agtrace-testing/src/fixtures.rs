@@ -73,12 +73,14 @@ impl SampleFiles {
     /// This creates isolated test sessions by:
     /// 1. Replacing the embedded `cwd` field with `target_project_dir` (canonicalized)
     /// 2. Generating a unique `sessionId` based on project dir + filename
+    /// 3. Using provider-specific directory encoding via the provider adapter
     pub fn copy_to_project_with_cwd(
         &self,
         sample_name: &str,
         dest_name: &str,
         target_project_dir: &str,
         log_root: &Path,
+        provider_adapter: &agtrace_providers::ProviderAdapter,
     ) -> Result<()> {
         let source = self.samples_dir.join(sample_name);
 
@@ -88,14 +90,22 @@ impl SampleFiles {
             .unwrap_or_else(|_| Path::new(target_project_dir).to_path_buf());
         let canonical_str = canonical_project_dir.to_string_lossy();
 
-        // Encode project directory (Claude format) - use original path for encoding
-        let encoded = target_project_dir
-            .replace(['/', '.'], "-")
-            .trim_start_matches('-')
-            .to_string();
-        let encoded_dir = format!("-{}", encoded);
+        // Use provider-specific directory encoding from the discovery trait
+        let project_log_dir = if let Some(provider_subdir) =
+            provider_adapter.discovery.resolve_log_root(&canonical_project_dir)
+        {
+            // Provider uses project-specific subdirectory (e.g., Gemini uses hash)
+            log_root.join(provider_subdir)
+        } else {
+            // Provider uses flat structure with encoded project names (e.g., Claude)
+            let encoded = target_project_dir
+                .replace(['/', '.'], "-")
+                .trim_start_matches('-')
+                .to_string();
+            let encoded_dir = format!("-{}", encoded);
+            log_root.join(encoded_dir)
+        };
 
-        let project_log_dir = log_root.join(encoded_dir);
         fs::create_dir_all(&project_log_dir)?;
 
         let dest = project_log_dir.join(dest_name);
