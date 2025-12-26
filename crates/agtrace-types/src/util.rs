@@ -3,9 +3,18 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 /// Calculate project_hash from project_root using SHA256
+///
+/// This function canonicalizes the path before hashing to ensure consistency
+/// across symlinks and different path representations.
+/// For example, `/var/folders/...` and `/private/var/folders/...` will produce
+/// the same hash on macOS where `/var` is a symlink to `/private/var`.
 pub fn project_hash_from_root(project_root: &str) -> String {
+    // Normalize path to resolve symlinks and relative paths
+    let normalized = normalize_path(Path::new(project_root));
+    let path_str = normalized.to_string_lossy();
+
     let mut hasher = Sha256::new();
-    hasher.update(project_root.as_bytes());
+    hasher.update(path_str.as_bytes());
     format!("{:x}", hasher.finalize())
 }
 

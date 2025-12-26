@@ -38,6 +38,12 @@ pub struct TestWorldBuilder {
     env_vars: HashMap<String, String>,
 }
 
+impl Default for TestWorldBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestWorldBuilder {
     pub fn new() -> Self {
         Self {

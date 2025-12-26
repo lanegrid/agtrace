@@ -53,7 +53,7 @@ impl TestProvider {
     pub fn sample_filename(&self) -> &'static str {
         match self {
             TestProvider::Claude => "claude_session.jsonl",
-            TestProvider::Gemini => "gemini_session.jsonl",
+            TestProvider::Gemini => "gemini_session.json",
             TestProvider::Codex => "codex_session.jsonl",
         }
     }
