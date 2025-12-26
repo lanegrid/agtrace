@@ -86,14 +86,60 @@ temp_dir/
 
 #### Working Directory Management
 
+`TestWorld` provides three ways to manage the current working directory:
+
+##### 1. `enter_dir()` - Builder Pattern (Immutable)
+
+Use this when setting up the test environment:
+
 ```rust
-// Create a project directory and enter it
 let world = TestWorld::new()
     .with_project("my-project")
     .enter_dir("my-project");
 
 // The command will execute with CWD = temp_dir/my-project
 ```
+
+##### 2. `set_cwd()` - Mutable Changes
+
+Use this when you need to change directories multiple times during a test:
+
+```rust
+let mut world = TestWorld::new()
+    .with_project("project-a")
+    .with_project("project-b");
+
+// Move to project-a
+world.set_cwd("project-a");
+let result = world.run(&["session", "list"])?;
+
+// Move to project-b
+world.set_cwd("project-b");
+let result = world.run(&["session", "list"])?;
+```
+
+##### 3. `run_in_dir()` - Temporary Context
+
+Use this when you want to run a command in a specific directory without permanently changing the CWD:
+
+```rust
+let mut world = TestWorld::new()
+    .with_project("project-a")
+    .with_project("project-b");
+
+// Run in project-a (temporarily)
+let result_a = world.run_in_dir(&["session", "list"], "project-a")?;
+
+// Run in project-b (cwd is preserved from before)
+let result_b = world.run_in_dir(&["session", "list"], "project-b")?;
+
+// Original cwd is still active
+```
+
+**When to use which:**
+- `enter_dir()`: Initial setup in builder pattern
+- `set_cwd()`: Explicitly testing "move to directory X" scenarios
+- `run_in_dir()`: Testing the same command in multiple directories without state management
 
 This is crucial for testing CWD-dependent logic like project detection.
 
@@ -344,14 +390,41 @@ assertions::assert_session_count(&json, 2)?;
 
 ### 4. Test CWD-dependent logic explicitly
 
+Use `run_in_dir()` when testing the same logic across multiple directories:
+
 ```rust
 #[test]
-fn test_project_detection_from_cwd() {
-    let world = TestWorld::new()
+fn test_project_isolation_across_directories() {
+    let mut world = TestWorld::new()
         .with_project("project-a")
-        .enter_dir("project-a");
+        .with_project("project-b");
 
-    // Command will execute from project-a directory
+    // Setup data for both projects
+    world.copy_sample_to_project_with_cwd(..., "project-a")?;
+    world.copy_sample_to_project_with_cwd(..., "project-b")?;
+    world.run(&["index", "update", "--all-projects"])?;
+
+    // Test project isolation without manual cwd management
+    let result_a = world.run_in_dir(&["session", "list"], "project-a")?;
+    let result_b = world.run_in_dir(&["session", "list"], "project-b")?;
+
+    // Verify each directory only sees its own sessions
+    assertions::assert_session_count(&result_a.json()?, 1)?;
+    assertions::assert_session_count(&result_b.json()?, 1)?;
+}
+```
+
+Or use `set_cwd()` when explicitly testing directory navigation:
+
+```rust
+#[test]
+fn test_directory_navigation() {
+    let mut world = TestWorld::new().with_project("project-a");
+
+    // Test that changing to project directory works
+    world.set_cwd("project-a");
+    assert!(world.cwd().ends_with("project-a"));
+
     let result = world.run(&["session", "list"])?;
     // Should only see sessions from project-a
 }

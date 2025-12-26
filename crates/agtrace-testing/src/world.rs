@@ -86,6 +86,9 @@ impl TestWorld {
     /// Change the current working directory (relative to temp root).
     ///
     /// This is crucial for testing CWD-dependent logic.
+    /// This method consumes `self` for use in builder pattern chains.
+    ///
+    /// For changing directory multiple times in a test, use `set_cwd()` instead.
     pub fn enter_dir<P: AsRef<Path>>(mut self, path: P) -> Self {
         let new_cwd = if path.as_ref().is_absolute() {
             path.as_ref().to_path_buf()
@@ -97,6 +100,38 @@ impl TestWorld {
         std::fs::create_dir_all(&new_cwd).expect("Failed to create directory");
         self.cwd = new_cwd;
         self
+    }
+
+    /// Set the current working directory without consuming self.
+    ///
+    /// This is useful when you need to change directories multiple times
+    /// during a test.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use agtrace_testing::TestWorld;
+    /// let mut world = TestWorld::new()
+    ///     .with_project("project-a")
+    ///     .with_project("project-b");
+    ///
+    /// // Move to project-a
+    /// world.set_cwd("project-a");
+    /// let result = world.run(&["session", "list"]).unwrap();
+    ///
+    /// // Move to project-b
+    /// world.set_cwd("project-b");
+    /// let result = world.run(&["session", "list"]).unwrap();
+    /// ```
+    pub fn set_cwd<P: AsRef<Path>>(&mut self, path: P) {
+        let new_cwd = if path.as_ref().is_absolute() {
+            path.as_ref().to_path_buf()
+        } else {
+            self.temp_dir.path().join(path)
+        };
+
+        // Create the directory if it doesn't exist
+        std::fs::create_dir_all(&new_cwd).expect("Failed to create directory");
+        self.cwd = new_cwd;
     }
 
     /// Set an environment variable for CLI execution.
@@ -215,6 +250,44 @@ impl TestWorld {
             stdout: String::from_utf8_lossy(&output.stdout).to_string(),
             stderr: String::from_utf8_lossy(&output.stderr).to_string(),
         })
+    }
+
+    /// Execute a command in a specific directory temporarily.
+    ///
+    /// This helper temporarily changes the working directory, runs the command,
+    /// and restores the original directory. This is useful for testing commands
+    /// that depend on the current working directory without permanently changing
+    /// the `TestWorld` state.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use agtrace_testing::TestWorld;
+    /// let mut world = TestWorld::new()
+    ///     .with_project("project-a")
+    ///     .with_project("project-b");
+    ///
+    /// // Run in project-a
+    /// let result_a = world.run_in_dir(&["session", "list"], "project-a").unwrap();
+    ///
+    /// // Run in project-b (without manually changing cwd)
+    /// let result_b = world.run_in_dir(&["session", "list"], "project-b").unwrap();
+    ///
+    /// // Original cwd is preserved
+    /// ```
+    pub fn run_in_dir<P: AsRef<Path>>(&mut self, args: &[&str], dir: P) -> Result<CliResult> {
+        // Save original cwd
+        let original_cwd = self.cwd.clone();
+
+        // Temporarily change directory
+        self.set_cwd(dir);
+
+        // Run the command
+        let result = self.run(args);
+
+        // Restore original directory
+        self.cwd = original_cwd;
+
+        result
     }
 }
 
