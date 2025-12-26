@@ -17,7 +17,6 @@ The `agtrace-testing` crate provides a declarative, fluent interface for setting
 
 ```rust
 use agtrace_testing::{assertions, TestWorld};
-use assert_cmd::cargo::cargo_bin_cmd;
 
 #[test]
 fn test_session_list() {
@@ -25,16 +24,16 @@ fn test_session_list() {
     let world = TestWorld::new();
 
     // Setup provider
-    let mut cmd = cargo_bin_cmd!("agtrace");
     world
-        .configure_command(&mut cmd)
-        .arg("provider")
-        .arg("set")
-        .arg("claude_code")
-        .arg("--log-root")
-        .arg(world.log_root())
-        .arg("--enable");
-    cmd.output().expect("Failed to setup provider");
+        .run(&[
+            "provider",
+            "set",
+            "claude_code",
+            "--log-root",
+            world.log_root().to_str().unwrap(),
+            "--enable",
+        ])
+        .expect("Failed to setup provider");
 
     // Copy sample data with isolation
     world
@@ -45,29 +44,17 @@ fn test_session_list() {
         )
         .expect("Failed to copy sample");
 
-    // Index and query
-    let mut cmd = cargo_bin_cmd!("agtrace");
+    // Index
     world
-        .configure_command(&mut cmd)
-        .arg("index")
-        .arg("update")
-        .arg("--all-projects");
-    cmd.output().expect("Failed to index");
+        .run(&["index", "update", "--all-projects"])
+        .expect("Failed to index");
 
-    // Verify results using custom assertions
-    let mut cmd = cargo_bin_cmd!("agtrace");
-    world
-        .configure_command(&mut cmd)
-        .arg("session")
-        .arg("list")
-        .arg("--format")
-        .arg("json");
-    let output = cmd.output().expect("Failed to list sessions");
+    // Query and verify
+    let result = world
+        .run(&["session", "list", "--format", "json"])
+        .expect("Failed to list sessions");
 
-    let json: serde_json::Value =
-        serde_json::from_str(&String::from_utf8_lossy(&output.stdout))
-            .expect("Parse failed");
-
+    let json = result.json().expect("Failed to parse JSON");
     assertions::assert_session_count(&json, 1)
         .expect("Should have 1 session");
 }
@@ -152,20 +139,41 @@ This method:
 **Why this matters:**
 Sample files contain embedded `cwd` and `sessionId` fields. Without replacement, all tests would share the same session, causing false positives/negatives.
 
-### Command Configuration
+### Command Execution
 
-Instead of creating commands directly, use `configure_command`:
+There are two ways to execute commands in `TestWorld`:
+
+#### 1. Using `run()` - Recommended for most cases
+
+The `run()` method is a convenience wrapper that handles command creation and configuration:
 
 ```rust
-// ❌ Old way (doesn't respect test environment)
-let mut cmd = cargo_bin_cmd!("agtrace");
-cmd.arg("--data-dir").arg("/tmp/some-path");
+// ✅ Simplest way - use run()
+let result = world.run(&["session", "list", "--format", "json"])?;
+assert!(result.success());
 
-// ✅ New way (respects CWD, env vars, data dir)
+let json = result.json()?;
+assertions::assert_session_count(&json, 1)?;
+```
+
+This automatically:
+- Finds the `agtrace` binary (via `cargo_bin`)
+- Configures `--data-dir`, `--format`, CWD, and environment variables
+- Returns a `CliResult` with typed access to stdout/stderr
+
+#### 2. Using `configure_command()` - For advanced cases
+
+For more control (e.g., background processes), use `configure_command()`:
+
+```rust
+// ✅ Advanced: configure a custom command
 let mut cmd = cargo_bin_cmd!("agtrace");
 world.configure_command(&mut cmd)
-    .arg("session")
-    .arg("list");
+    .arg("watch")
+    .arg("--mode")
+    .arg("console");
+
+let output = cmd.output()?;
 ```
 
 This automatically adds:
@@ -173,6 +181,48 @@ This automatically adds:
 - `--format plain`
 - `current_dir(<world.cwd>)`
 - Environment variables from `world.with_env(...)`
+
+### Background Processes
+
+For testing long-running commands like `watch`, use `BackgroundProcess`:
+
+```rust
+use agtrace_testing::process::BackgroundProcess;
+use std::io::{BufRead, BufReader};
+use std::process::Command;
+
+// Start watch in the background
+let mut cmd = Command::cargo_bin("agtrace")?;
+world.configure_command(&mut cmd)
+    .arg("watch")
+    .arg("--mode")
+    .arg("console");
+
+let mut proc = BackgroundProcess::spawn_piped(cmd)?;
+
+// Read output line by line
+if let Some(stdout) = proc.stdout() {
+    let reader = BufReader::new(stdout);
+    for line in reader.lines().take(10) {
+        if let Ok(l) = line {
+            if l.contains("Attached") {
+                // Found what we're looking for
+                break;
+            }
+        }
+    }
+}
+
+// Clean up (or let Drop handle it)
+proc.kill()?;
+```
+
+**Key methods:**
+- `spawn_piped()` - Start process with stdout/stderr captured
+- `stdout()` - Get mutable access to stdout for reading
+- `stderr()` - Get mutable access to stderr
+- `kill()` - Terminate the process
+- `wait_timeout()` - Wait for process to exit
 
 ### Custom Assertions
 
@@ -251,7 +301,24 @@ fn test_example() {
 
 ## Best Practices
 
-### 1. Always use `copy_sample_to_project_with_cwd` for session isolation
+### 1. Prefer `run()` over `configure_command()` when possible
+
+```rust
+// ✅ Simple and readable
+let result = world.run(&["session", "list", "--format", "json"])?;
+assert!(result.success());
+
+// ❌ More verbose (only use for advanced cases like background processes)
+let mut cmd = cargo_bin_cmd!("agtrace");
+world.configure_command(&mut cmd)
+    .arg("session")
+    .arg("list")
+    .arg("--format")
+    .arg("json");
+let output = cmd.output()?;
+```
+
+### 2. Always use `copy_sample_to_project_with_cwd` for session isolation
 
 ```rust
 // ❌ Will cause session ID collisions
@@ -264,7 +331,7 @@ world.copy_sample_to_project_with_cwd("claude_session.jsonl", "s1.jsonl", "/proj
 world.copy_sample_to_project_with_cwd("claude_session.jsonl", "s2.jsonl", "/proj/b")?;
 ```
 
-### 2. Use custom assertions for readability
+### 3. Use custom assertions for readability
 
 ```rust
 // ❌ Manual JSON parsing is verbose
@@ -275,7 +342,7 @@ assert_eq!(sessions.len(), 2);
 assertions::assert_session_count(&json, 2)?;
 ```
 
-### 3. Test CWD-dependent logic explicitly
+### 4. Test CWD-dependent logic explicitly
 
 ```rust
 #[test]
@@ -285,10 +352,7 @@ fn test_project_detection_from_cwd() {
         .enter_dir("project-a");
 
     // Command will execute from project-a directory
-    let mut cmd = cargo_bin_cmd!("agtrace");
-    world.configure_command(&mut cmd)
-        .arg("session")
-        .arg("list");
+    let result = world.run(&["session", "list"])?;
     // Should only see sessions from project-a
 }
 ```

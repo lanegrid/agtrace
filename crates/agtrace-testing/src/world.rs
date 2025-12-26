@@ -21,10 +21,10 @@ use crate::fixtures::SampleFiles;
 /// use agtrace_testing::TestWorld;
 ///
 /// let world = TestWorld::new()
-///     .with_project("project-a", "claude_code")
+///     .with_project("project-a")
 ///     .enter_dir("project-a");
 ///
-/// let result = world.run_cli(&["session", "list"]);
+/// let result = world.run(&["session", "list"]).unwrap();
 /// assert!(result.success());
 /// ```
 pub struct TestWorld {
@@ -176,6 +176,45 @@ impl TestWorld {
             target_project_dir,
             &self.log_root,
         )
+    }
+
+    /// Execute a command using the project's binary and return the result.
+    ///
+    /// This is a convenience method that creates a command, configures it
+    /// with the test environment settings, and executes it.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use agtrace_testing::TestWorld;
+    /// let world = TestWorld::new();
+    /// let result = world.run(&["session", "list"]).unwrap();
+    /// assert!(result.success());
+    /// ```
+    ///
+    /// # Note
+    /// This method uses `Command::cargo_bin()` which requires the binary to be
+    /// built and the `CARGO_BIN_EXE_` environment variable to be set (which
+    /// cargo test does automatically).
+    #[allow(deprecated)]
+    pub fn run(&self, args: &[&str]) -> Result<CliResult> {
+        // Find the binary using cargo_bin
+        let mut cmd = Command::cargo_bin("agtrace")
+            .map_err(|e| anyhow::anyhow!("Failed to find agtrace binary: {}", e))?;
+
+        // Configure with test environment settings
+        self.configure_command(&mut cmd);
+
+        // Add arguments
+        cmd.args(args);
+
+        // Execute
+        let output = cmd.output()?;
+
+        Ok(CliResult {
+            status: output.status,
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+        })
     }
 }
 
