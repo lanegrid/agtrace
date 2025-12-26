@@ -30,6 +30,41 @@ Based on the codebase analysis, here are the project goals and non-goals for agt
 - Leave a TODO when you are consciously deferring a specific, necessary action due to immediate constraints like scope or dependencies.
 - When investigating actual event/tool structures: Run `cargo build --release && ./target/release/agtrace lab grep "pattern" --json --limit 5` to see real data instead of reading raw files. `./target/release/agtrace lab grep -h` helps to learn how to use it.
 
+### Test-Driven Bug Fixes
+
+When fixing bugs, ensure tests actually validate the fix:
+
+**Core Principle**: Tests should fail before the fix and pass after the fix.
+
+**Recommended Approach**:
+1. Write a test that reproduces the bug (should fail on current main)
+2. Verify the test actually fails without your fix
+3. Implement the fix
+4. Verify the test now passes
+
+**Commit Strategy** (choose based on context):
+- **Separate commits** (preferred for complex bugs):
+  - First commit: `test: add failing test for issue #N (documents bug behavior)`
+  - Second commit: `fix: resolve issue #N (description)`
+  - Keep both commits in the same PR for easier review
+- **Single commit** (acceptable for simple fixes):
+  - Include both test and fix in one commit
+  - Ensure test would fail without the fix
+
+**Verification**:
+- Before finalizing: Temporarily revert your implementation changes and confirm tests fail
+- This proves your test actually validates the fix
+- If tests pass without your fix, the test isn't testing the right thing
+
+**Anti-patterns to avoid**:
+- Writing tests that always pass (even before the fix)
+- Implementing fix without any test coverage
+- Tests that check indirect effects instead of the actual bug
+
+**Example** (issue #5):
+- Test commit: Documents that `init` reports `session_count: 0` before indexing (current bug)
+- Fix commit: Modifies `InitService::run()` to index before counting + updates test to assert `session_count: 1`
+
 ## Overview of agtrace
 
 The repository is a Rust Workspace organized into modular crates, following a distinct Layered Architecture (Presentation → Runtime → Core Logic → Data Access).
