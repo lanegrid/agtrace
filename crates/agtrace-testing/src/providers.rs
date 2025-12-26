@@ -34,6 +34,17 @@ impl TestProvider {
         }
     }
 
+    /// Create a provider adapter for this test provider.
+    ///
+    /// This allows access to provider-specific logic like directory encoding.
+    pub fn adapter(&self) -> agtrace_providers::ProviderAdapter {
+        match self {
+            TestProvider::Claude => agtrace_providers::ProviderAdapter::claude(),
+            TestProvider::Gemini => agtrace_providers::ProviderAdapter::gemini(),
+            TestProvider::Codex => agtrace_providers::ProviderAdapter::codex(),
+        }
+    }
+
     /// Get the default log directory name for this provider.
     ///
     /// This is the directory name relative to the temp root where

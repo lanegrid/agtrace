@@ -9,10 +9,12 @@
 //! - `init_configuration.rs`: Initialization and configuration workflows
 //! - `list_filtering.rs`: Session list filtering and queries
 //! - `watch_command.rs`: Watch command and live session monitoring
+//! - `provider_filtering.rs`: Provider-specific filtering behavior (--provider, --source)
 //!
 //! All tests should pass with the current implementation.
 
 mod init_configuration;
 mod list_filtering;
 mod project_isolation;
+mod provider_filtering;
 mod watch_command;

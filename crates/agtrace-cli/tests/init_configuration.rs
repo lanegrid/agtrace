@@ -33,11 +33,13 @@ log_root = "{}"
     world.set_cwd("my-project");
     let samples = agtrace_testing::fixtures::SampleFiles::new();
     let project_path = world.temp_dir().join("my-project");
+    let adapter = TestProvider::Claude.adapter();
     samples.copy_to_project_with_cwd(
         "claude_session.jsonl",
         "session.jsonl",
         &project_path.to_string_lossy(),
         &log_root,
+        &adapter,
     )?;
 
     // Verify data dir doesn't exist yet
