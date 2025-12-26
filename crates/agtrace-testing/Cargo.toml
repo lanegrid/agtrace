@@ -1,0 +1,29 @@
+[package]
+name = "agtrace-testing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Internal crates
+agtrace-types = { workspace = true }
+
+# Common dependencies
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+
+# Testing infrastructure
+tempfile = { workspace = true }
+assert_cmd = { workspace = true }
+predicates = { workspace = true }
+
+# File operations
+walkdir = { workspace = true }
+
+# Hashing for sessionId generation
+sha2 = { workspace = true }
+
+[lib]
+name = "agtrace_testing"
+path = "src/lib.rs"

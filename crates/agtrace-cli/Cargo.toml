@@ -43,6 +43,7 @@ regex.workspace = true
 libc.workspace = true
 
 [dev-dependencies]
+agtrace-testing.workspace = true
 assert_cmd.workspace = true
 predicates.workspace = true
 tempfile.workspace = true
