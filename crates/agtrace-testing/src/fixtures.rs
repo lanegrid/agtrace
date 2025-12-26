@@ -71,7 +71,7 @@ impl SampleFiles {
     /// Copy a sample file with cwd and sessionId replacement.
     ///
     /// This creates isolated test sessions by:
-    /// 1. Replacing the embedded `cwd` field with `target_project_dir`
+    /// 1. Replacing the embedded `cwd` field with `target_project_dir` (canonicalized)
     /// 2. Generating a unique `sessionId` based on project dir + filename
     pub fn copy_to_project_with_cwd(
         &self,
@@ -82,7 +82,13 @@ impl SampleFiles {
     ) -> Result<()> {
         let source = self.samples_dir.join(sample_name);
 
-        // Encode project directory (Claude format)
+        // Canonicalize target_project_dir to match project_hash_from_root behavior
+        let canonical_project_dir = Path::new(target_project_dir)
+            .canonicalize()
+            .unwrap_or_else(|_| Path::new(target_project_dir).to_path_buf());
+        let canonical_str = canonical_project_dir.to_string_lossy();
+
+        // Encode project directory (Claude format) - use original path for encoding
         let encoded = target_project_dir
             .replace(['/', '.'], "-")
             .trim_start_matches('-')
@@ -97,18 +103,30 @@ impl SampleFiles {
         // Read and modify content
         let content = fs::read_to_string(&source)?;
 
-        // Replace cwd field
+        // Replace cwd field with canonicalized path (Claude format)
         let mut modified_content = content.replace(
             r#""cwd":"/Users/test_user/agent-sample""#,
-            &format!(r#""cwd":"{}""#, target_project_dir),
+            &format!(r#""cwd":"{}""#, canonical_str),
+        );
+
+        // Replace projectHash field (Gemini format)
+        // Calculate the correct project hash from the canonicalized path
+        let project_hash = agtrace_types::project_hash_from_root(&canonical_str);
+        modified_content = modified_content.replace(
+            r#""projectHash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde""#,
+            &format!(r#""projectHash": "{}""#, project_hash),
         );
 
         // Generate unique sessionId
         let new_session_id = generate_session_id(target_project_dir, dest_name);
 
-        // Replace sessionId (original: 7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9)
+        // Replace sessionId (Claude: 7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9)
         modified_content =
             modified_content.replace("7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9", &new_session_id);
+
+        // Replace sessionId (Gemini: f0a689a6-b0ac-407f-afcc-4fafa9e14e8a)
+        modified_content =
+            modified_content.replace("f0a689a6-b0ac-407f-afcc-4fafa9e14e8a", &new_session_id);
 
         fs::write(dest, modified_content)?;
         Ok(())
