@@ -91,3 +91,54 @@ fn test_testworld_cwd_change() {
 
     assert!(world.cwd().ends_with("my-project"));
 }
+
+#[test]
+fn test_testworld_run_convenience_method() {
+    // Demonstrate the run() convenience method
+    let world = TestWorld::new();
+
+    // Setup provider using run()
+    let result = world
+        .run(&[
+            "provider",
+            "set",
+            "claude_code",
+            "--log-root",
+            world.log_root().to_str().unwrap(),
+            "--enable",
+        ])
+        .expect("Failed to setup provider");
+
+    assert!(
+        result.success(),
+        "Provider setup failed: {}",
+        result.stderr()
+    );
+
+    // Copy sample data
+    world
+        .copy_sample_to_project_with_cwd(
+            "claude_session.jsonl",
+            "session1.jsonl",
+            "/Users/test_user/project-a",
+        )
+        .expect("Failed to copy sample");
+
+    // Index using run()
+    let result = world
+        .run(&["index", "update", "--all-projects", "--verbose"])
+        .expect("Failed to index");
+
+    assert!(result.success(), "Index failed: {}", result.stderr());
+
+    // List sessions using run()
+    let result = world
+        .run(&["session", "list", "--format", "json", "--all-projects"])
+        .expect("Failed to list sessions");
+
+    assert!(result.success(), "List failed: {}", result.stderr());
+
+    // Verify using custom assertions
+    let json = result.json().expect("Failed to parse JSON");
+    assertions::assert_session_count(&json, 1).expect("Should have 1 session");
+}
