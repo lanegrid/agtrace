@@ -84,12 +84,106 @@ fn test_testworld_project_isolation() {
 
 #[test]
 fn test_testworld_cwd_change() {
-    // Demonstrate changing working directory
+    // Demonstrate changing working directory (builder pattern)
     let world = TestWorld::new()
         .with_project("my-project")
         .enter_dir("my-project");
 
     assert!(world.cwd().ends_with("my-project"));
+}
+
+#[test]
+fn test_testworld_set_cwd_multiple_times() {
+    // Demonstrate mutable directory changes
+    let mut world = TestWorld::new()
+        .with_project("project-a")
+        .with_project("project-b");
+
+    // Initial cwd is temp root (not in any project)
+    let initial_cwd = world.cwd().to_path_buf();
+    assert!(!initial_cwd.ends_with("project-a"));
+    assert!(!initial_cwd.ends_with("project-b"));
+
+    // Move to project-a
+    world.set_cwd("project-a");
+    assert!(world.cwd().ends_with("project-a"));
+
+    // Move to project-b
+    world.set_cwd("project-b");
+    assert!(world.cwd().ends_with("project-b"));
+
+    // Move back to temp root
+    let temp_dir = world.temp_dir().to_path_buf();
+    world.set_cwd(temp_dir);
+    assert!(!world.cwd().ends_with("project-b"));
+}
+
+#[test]
+fn test_testworld_run_in_dir() {
+    // Demonstrate temporary directory context
+    let mut world = TestWorld::new()
+        .with_project("project-a")
+        .with_project("project-b");
+
+    // Setup provider
+    world
+        .run(&[
+            "provider",
+            "set",
+            "claude_code",
+            "--log-root",
+            world.log_root().to_str().unwrap(),
+            "--enable",
+        ])
+        .expect("Failed to setup provider");
+
+    // Copy samples to different projects
+    world
+        .copy_sample_to_project_with_cwd(
+            "claude_session.jsonl",
+            "session_a.jsonl",
+            "/Users/test_user/project-a",
+        )
+        .expect("Failed to copy to project A");
+
+    world
+        .copy_sample_to_project_with_cwd(
+            "claude_agent.jsonl",
+            "session_b.jsonl",
+            "/Users/test_user/project-b",
+        )
+        .expect("Failed to copy to project B");
+
+    // Index all
+    world
+        .run(&["index", "update", "--all-projects"])
+        .expect("Failed to index");
+
+    // Run in project-a without permanently changing cwd
+    let result_a = world
+        .run_in_dir(&["session", "list", "--format", "json"], "project-a")
+        .expect("Failed to list in project-a");
+
+    assert!(result_a.success());
+    let json_a = result_a.json().expect("Failed to parse JSON");
+
+    // Run in project-b - cwd is still at original location
+    let result_b = world
+        .run_in_dir(&["session", "list", "--format", "json"], "project-b")
+        .expect("Failed to list in project-b");
+
+    assert!(result_b.success());
+    let json_b = result_b.json().expect("Failed to parse JSON");
+
+    // Verify sessions belong to different projects
+    use agtrace_types::project_hash_from_root;
+    let hash_a = project_hash_from_root("/Users/test_user/project-a");
+    let hash_b = project_hash_from_root("/Users/test_user/project-b");
+
+    assertions::assert_sessions_belong_to_project(&json_a, &hash_a)
+        .expect("Sessions should belong to project A");
+    assertions::assert_sessions_belong_to_project(&json_b, &hash_b)
+        .expect("Sessions should belong to project B");
 }
 
 #[test]
