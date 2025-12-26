@@ -82,6 +82,101 @@ pub fn assert_projects_contain(json: &Value, expected_hashes: &[&str]) -> Result
     Ok(())
 }
 
+/// Assert that a specific session comes from the expected provider.
+///
+/// # Example
+/// ```no_run
+/// # use agtrace_testing::assertions;
+/// # use serde_json::json;
+/// let json = json!({
+///     "content": {
+///         "sessions": [
+///             {"source": "claude_code"},
+///             {"source": "gemini"}
+///         ]
+///     }
+/// });
+///
+/// assertions::assert_session_provider(&json, 0, "claude_code").unwrap();
+/// assertions::assert_session_provider(&json, 1, "gemini").unwrap();
+/// ```
+pub fn assert_session_provider(
+    json: &Value,
+    session_index: usize,
+    expected_provider: &str,
+) -> Result<()> {
+    let sessions = json["content"]["sessions"]
+        .as_array()
+        .context("Expected 'content.sessions' array in JSON")?;
+
+    let session = sessions
+        .get(session_index)
+        .with_context(|| format!("Session index {} out of bounds", session_index))?;
+
+    // Check both "source" and "provider" fields (different views may use different names)
+    let actual = session["source"]
+        .as_str()
+        .or_else(|| session["provider"].as_str())
+        .with_context(|| {
+            format!(
+                "Session {} missing 'source' or 'provider' field",
+                session_index
+            )
+        })?;
+
+    if actual != expected_provider {
+        anyhow::bail!(
+            "Session {} expected provider '{}', got '{}'",
+            session_index,
+            expected_provider,
+            actual
+        );
+    }
+
+    Ok(())
+}
+
+/// Assert that all sessions in the list come from the expected provider.
+///
+/// # Example
+/// ```no_run
+/// # use agtrace_testing::assertions;
+/// # use serde_json::json;
+/// let json = json!({
+///     "content": {
+///         "sessions": [
+///             {"source": "claude_code"},
+///             {"source": "claude_code"}
+///         ]
+///     }
+/// });
+///
+/// assertions::assert_all_sessions_from_provider(&json, "claude_code").unwrap();
+/// ```
+pub fn assert_all_sessions_from_provider(json: &Value, expected_provider: &str) -> Result<()> {
+    let sessions = json["content"]["sessions"]
+        .as_array()
+        .context("Expected 'content.sessions' array in JSON")?;
+
+    for (i, session) in sessions.iter().enumerate() {
+        let actual = session["source"]
+            .as_str()
+            .or_else(|| session["provider"].as_str())
+            .with_context(|| format!("Session {} missing 'source' or 'provider' field", i))?;
+
+        if actual != expected_provider {
+            anyhow::bail!(
+                "Session {} expected provider '{}', got '{}'",
+                i,
+                expected_provider,
+                actual
+            );
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
