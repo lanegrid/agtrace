@@ -73,9 +73,15 @@ npx @lanegrid/agtrace@latest init
 
 ## 🚀 Quick Start
 
+Navigate to your project directory where you use AI Coding Agents (Claude Code, Codex, Gemini CLI, etc.):
+
+```bash
+cd /path/to/your/project
+```
+
 ### 1. Initialize
 
-Run this in your project root to detect installed providers (Claude, etc.) and index existing sessions.
+Detect installed providers and index existing sessions:
 
 ```bash
 agtrace init
@@ -83,7 +89,7 @@ agtrace init
 
 ### 2. Watch Mode (The "Vital Check")
 
-Open a new terminal pane and run the watch command. This will launch the TUI dashboard.
+Open a new terminal pane and run the watch command to launch the TUI dashboard:
 
 ```bash
 agtrace watch
