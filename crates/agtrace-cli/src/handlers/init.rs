@@ -47,11 +47,11 @@ pub fn handle(
             } else {
                 println!("Current directory: No sessions linked to this project.");
                 println!("\nTips:");
-                println!("  - To see all indexed sessions: agtrace list --all-projects");
+                println!("  - To see all indexed sessions: agtrace session list");
                 println!("  - To scan all projects: agtrace init --all-projects");
             }
         } else {
-            println!("\nDone! Use 'agtrace list' to see all sessions.");
+            println!("\nDone! Use 'agtrace watch' to start live monitoring.");
         }
     }
 
