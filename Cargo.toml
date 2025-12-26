@@ -24,7 +24,7 @@ agtrace-providers = { version = "0.1.5", path = "crates/agtrace-providers" }
 agtrace-index = { version = "0.1.5", path = "crates/agtrace-index" }
 agtrace-engine = { version = "0.1.5", path = "crates/agtrace-engine" }
 agtrace-runtime = { version = "0.1.5", path = "crates/agtrace-runtime" }
-agtrace-cli = { version = "0.1.5", path = "crates/agtrace-cli" }
+agtrace = { version = "0.1.5", path = "crates/agtrace-cli" }
 agtrace-testing = { version = "0.1.5", path = "crates/agtrace-testing" }
 
 # Common dependencies

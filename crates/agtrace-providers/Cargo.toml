@@ -2,9 +2,10 @@
 name = "agtrace-providers"
 version.workspace = true
 edition.workspace = true
-description = "Log discovery and normalization adapters for AI agent providers"
+description = "Internal provider adapters for the agtrace CLI. Not intended for direct use."
 license.workspace = true
 repository.workspace = true
+keywords = ["agtrace-internal"]
 
 [dependencies]
 agtrace-types.workspace = true

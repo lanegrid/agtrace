@@ -2,8 +2,10 @@
 name = "agtrace-testing"
 version.workspace = true
 edition.workspace = true
+description = "Internal testing utilities for the agtrace CLI. Not intended for direct use."
 license.workspace = true
 repository.workspace = true
+keywords = ["agtrace-internal"]
 
 [dependencies]
 # Internal crates

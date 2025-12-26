@@ -2,9 +2,10 @@
 name = "agtrace-engine"
 version.workspace = true
 edition.workspace = true
-description = "Session reconstruction and analysis engine - builds conversation timelines from raw events"
+description = "Internal core engine for the agtrace CLI. Not intended for direct use."
 license.workspace = true
 repository.workspace = true
+keywords = ["agtrace-internal"]
 
 [dependencies]
 agtrace-types.workspace = true

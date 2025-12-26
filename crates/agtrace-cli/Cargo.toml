@@ -1,11 +1,14 @@
 [package]
-name = "agtrace-cli"
+name = "agtrace"
 version.workspace = true
 edition.workspace = true
-description = "Terminal UI and command-line interface for exploring AI agent execution traces"
+description = "A CLI tool to visualize and analyze AI agent execution traces (Claude, Gemini, etc.) in a unified timeline."
 license.workspace = true
 repository.workspace = true
 homepage = "https://github.com/lanegrid/agtrace"
+categories = ["command-line-utilities", "development-tools::debugging", "visualization"]
+keywords = ["ai", "agent", "llm", "trace", "tui"]
+readme = "../../README.md"
 
 # cargo-dist config for npm publishing
 [package.metadata.dist]

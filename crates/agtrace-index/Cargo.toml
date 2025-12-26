@@ -2,9 +2,10 @@
 name = "agtrace-index"
 version.workspace = true
 edition.workspace = true
-description = "Lightweight SQLite metadata index - schema-on-read approach for zero-copy storage"
+description = "Internal index database for the agtrace CLI. Not intended for direct use."
 license.workspace = true
 repository.workspace = true
+keywords = ["agtrace-internal"]
 
 [dependencies]
 agtrace-types.workspace = true

@@ -2,9 +2,10 @@
 name = "agtrace-types"
 version.workspace = true
 edition.workspace = true
-description = "Shared domain models and type-safe AgentEvent definitions for cross-provider compatibility"
+description = "Internal core types for the agtrace CLI. Not intended for direct use."
 license.workspace = true
 repository.workspace = true
+keywords = ["agtrace-internal"]
 
 [dependencies]
 serde.workspace = true

@@ -2,9 +2,10 @@
 name = "agtrace-runtime"
 version.workspace = true
 edition.workspace = true
-description = "Workspace orchestration and live session monitoring with file-watching reactors"
+description = "Internal runtime orchestration for the agtrace CLI. Not intended for direct use."
 license.workspace = true
 repository.workspace = true
+keywords = ["agtrace-internal"]
 
 [dependencies]
 anyhow.workspace = true
