@@ -35,43 +35,9 @@ pub fn handle(
     let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);
     renderer.render(result_vm)?;
 
+    // Provide helpful guidance based on session count
     if result.scan_needed {
-        // Open workspace after init to run index
-        let workspace = AgTrace::open(data_dir.to_path_buf())?;
-        let default_view_mode = crate::args::ViewModeArgs {
-            quiet: false,
-            compact: false,
-            verbose: false,
-        };
-        super::index::handle(
-            &workspace,
-            project_root.as_deref(),
-            all_projects,
-            "all".to_string(),
-            false,
-            false,
-            crate::args::OutputFormat::Plain,
-            &default_view_mode,
-        )?;
-
-        // Check session count to provide helpful guidance
-        let current_project_root = project_root.as_ref().map(|p| p.display().to_string());
-        let current_project_hash = if let Some(root) = &current_project_root {
-            agtrace_types::project_hash_from_root(root)
-        } else {
-            "unknown".to_string()
-        };
-
-        let effective_hash = if all_projects {
-            None
-        } else {
-            Some(current_project_hash.as_str())
-        };
-
-        let db = workspace.database();
-        let sessions = db.lock().unwrap().list_sessions(effective_hash, 10)?;
-
-        if sessions.is_empty() {
+        if result.session_count == 0 {
             println!();
             if all_projects {
                 println!("No sessions found in global index.");

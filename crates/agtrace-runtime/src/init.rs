@@ -1,6 +1,7 @@
 use crate::config::Config;
+use crate::ops::IndexService;
 use agtrace_index::Database;
-use agtrace_providers::get_all_providers;
+use agtrace_providers::{ScanContext, get_all_providers};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
@@ -101,6 +102,35 @@ impl InitService {
         }
         let (scan_outcome, scan_needed) =
             Self::step3_scan(&db, &current_project_hash, config.refresh)?;
+
+        // Perform actual scan if needed
+        if scan_needed {
+            let loaded_config = Config::load_from(&config_path)?;
+            let providers: Vec<(agtrace_providers::ProviderAdapter, PathBuf)> = loaded_config
+                .providers
+                .iter()
+                .filter_map(|(name, cfg)| {
+                    agtrace_providers::create_adapter(name)
+                        .ok()
+                        .map(|p| (p, cfg.log_root.clone()))
+                })
+                .collect();
+
+            let service = IndexService::new(&db, providers);
+            let scan_context = ScanContext {
+                project_hash: current_project_hash.clone(),
+                project_root: if config.all_projects {
+                    None
+                } else {
+                    Some(current_project_root.clone())
+                },
+                provider_filter: None,
+            };
+
+            service.run(&scan_context, config.refresh, |_progress| {
+                // Silently index during init - progress is shown by the handler
+            })?;
+        }
 
         if let Some(ref mut f) = progress_fn {
             f(InitProgress::SessionPhase);
