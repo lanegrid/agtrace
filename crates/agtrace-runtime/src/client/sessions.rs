@@ -75,7 +75,10 @@ impl SessionOps {
 
     pub fn list(&self, filter: SessionFilter) -> Result<Vec<SessionSummary>> {
         self.ensure_index_is_fresh()?;
+        self.list_without_refresh(filter)
+    }
 
+    pub fn list_without_refresh(&self, filter: SessionFilter) -> Result<Vec<SessionSummary>> {
         let db = self.db.lock().unwrap();
         let service = SessionService::new(&db);
         let request = ListSessionsRequest {
@@ -114,6 +117,7 @@ impl SessionOps {
         let scan_context = ScanContext {
             project_hash,
             project_root: None,
+            provider_filter: None,
         };
 
         service.run(&scan_context, false, |_progress: IndexProgress| {})?;

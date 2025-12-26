@@ -91,8 +91,9 @@ impl SampleFiles {
         let canonical_str = canonical_project_dir.to_string_lossy();
 
         // Use provider-specific directory encoding from the discovery trait
-        let project_log_dir = if let Some(provider_subdir) =
-            provider_adapter.discovery.resolve_log_root(&canonical_project_dir)
+        let project_log_dir = if let Some(provider_subdir) = provider_adapter
+            .discovery
+            .resolve_log_root(&canonical_project_dir)
         {
             // Provider uses project-specific subdirectory (e.g., Gemini uses hash)
             log_root.join(provider_subdir)

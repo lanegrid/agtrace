@@ -60,6 +60,7 @@ impl InsightOps {
         let scan_context = ScanContext {
             project_hash,
             project_root: None,
+            provider_filter: None,
         };
 
         service.run(&scan_context, false, |_progress: IndexProgress| {})?;

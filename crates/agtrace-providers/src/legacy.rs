@@ -26,6 +26,7 @@ pub struct SessionMetadata {
 pub struct ScanContext {
     pub project_hash: String,
     pub project_root: Option<String>,
+    pub provider_filter: Option<String>,
 }
 
 impl ProviderAdapter {
