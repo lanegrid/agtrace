@@ -205,20 +205,15 @@ fn test_init_detects_providers_automatically() -> Result<()> {
     Ok(())
 }
 
-/// Issue #5: init fails to index sessions on first run
+/// Issue #5: Verify init indexes sessions before counting on first run
 ///
-/// This test documents the current buggy behavior where `agtrace init`
-/// reports "Found 0 sessions" on the first run, even when session files exist.
-/// A second run with `--refresh` is required to properly index sessions.
+/// This test verifies the fix for issue #5, where `agtrace init` previously
+/// reported "Found 0 sessions" on the first run, even when session files existed.
 ///
-/// CURRENT BEHAVIOR (buggy):
-/// - First init reports 0 sessions in output
-/// - Sessions are indexed by handler AFTER InitService returns
-/// - Session list succeeds because handler runs indexing
-///
-/// EXPECTED BEHAVIOR (to be fixed):
-/// - First init should report the correct session count
-/// - InitService should perform indexing before counting
+/// FIXED BEHAVIOR:
+/// - InitService performs indexing before counting sessions
+/// - First init reports the correct session count
+/// - No second run with `--refresh` is required
 #[test]
 fn test_issue_5_init_reports_zero_sessions_on_first_run() -> Result<()> {
     // Given: Uninitialized directory with session files
@@ -280,34 +275,24 @@ log_root = "{}"
     let json_only = &json_str[..json_end];
     let json: serde_json::Value = serde_json::from_str(json_only)?;
 
-    // Then: BUG - InitService reports 0 sessions even though file exists
-    // This is the current buggy behavior that needs to be fixed
+    // Then: InitService should report correct session count after indexing
     let session_count = json["content"]["session_count"]
         .as_u64()
         .expect("Should have session_count field");
 
-    // TODO: After fix, this assertion should be:
-    // assert_eq!(session_count, 1, "Init should report 1 session");
-    //
-    // Current buggy behavior - InitService counts 0 sessions before indexing:
+    // Fixed: InitService now performs indexing before counting sessions
     assert_eq!(
         session_count,
-        0,
-        "BUG: InitService should count sessions after indexing, but currently counts before. \
-         This test documents the buggy behavior. JSON: {}",
+        1,
+        "Init should report 1 session after indexing. JSON: {}",
         serde_json::to_string_pretty(&json)?
     );
 
-    // Note: The handler DOES run indexing after InitService returns,
-    // so session list will show results. This masks the bug in tests
-    // that only check `session list` results.
+    // Verify session list also shows the correct results
     let list_result = world.run(&["session", "list", "--format", "json"])?;
     let list_json = list_result.json()?;
     let sessions = list_json["content"]["sessions"].as_array().unwrap();
-    assert!(
-        !sessions.is_empty(),
-        "Sessions are indexed by handler after init"
-    );
+    assert_eq!(sessions.len(), 1, "Session list should show 1 session");
 
     Ok(())
 }

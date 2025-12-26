@@ -83,7 +83,8 @@ impl ProjectOps {
             .filter_map(|(name, path)| {
                 // Apply provider filter if specified
                 if let Some(ref filter) = scan_context.provider_filter
-                    && filter != "all" && name != filter
+                    && filter != "all"
+                    && name != filter
                 {
                     return None;
                 }
