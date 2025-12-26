@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2025-12-27
+
+### Bug Fixes
+
+- Correct init command hints to suggest 'watch' and 'session list' instead of non-existent 'list' ([bf1ce4f](https://github.com/lanegrid/agtrace/commit/bf1ce4f))
+
+
+### Documentation
+
+- Reorder Quick Start to emphasize 'watch' workflow as primary use case ([bd9e03c](https://github.com/lanegrid/agtrace/commit/bd9e03c))
+
+- Clarify Quick Start workflow with explicit agent launch steps and no-integration requirement ([09d7e29](https://github.com/lanegrid/agtrace/commit/09d7e29))
+
+- Update screenshot to use Claude-specific dashboard image ([e504ee4](https://github.com/lanegrid/agtrace/commit/e504ee4))
+
+
 ## [0.1.4] - 2025-12-27
 
 ### Bug Fixes
