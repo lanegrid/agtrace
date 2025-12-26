@@ -191,6 +191,7 @@ fn handle_provider_watch(
         let scan_context = ScanContext {
             project_hash,
             project_root: current_project_root.clone(),
+            provider_filter: None,
         };
 
         // Lightweight scan (incremental by default)

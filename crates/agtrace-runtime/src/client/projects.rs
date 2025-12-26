@@ -59,6 +59,7 @@ impl ProjectOps {
         let scan_context = ScanContext {
             project_hash,
             project_root: None,
+            provider_filter: None,
         };
 
         service.run(&scan_context, false, |_progress: IndexProgress| {})?;
@@ -80,6 +81,12 @@ impl ProjectOps {
             .provider_configs
             .iter()
             .filter_map(|(name, path)| {
+                // Apply provider filter if specified
+                if let Some(ref filter) = scan_context.provider_filter
+                    && filter != "all" && name != filter
+                {
+                    return None;
+                }
                 agtrace_providers::create_adapter(name)
                     .ok()
                     .map(|p| (p, path.clone()))

@@ -10,7 +10,7 @@
 //! These tests define the IDEAL behavior. Current TODOs mark unimplemented features.
 
 use agtrace_testing::providers::TestProvider;
-use agtrace_testing::{assertions, TestWorld};
+use agtrace_testing::{TestWorld, assertions};
 use anyhow::Result;
 
 // =============================================================================
@@ -101,21 +101,15 @@ fn test_index_update_with_provider_claude_code_indexes_only_claude() -> Result<(
     ])?;
 
     // Then: Only Claude provider is indexed
-    // TODO: Implement provider filtering in index handler
-    // Expected behavior: Should index only Claude sessions
     assert!(result.success(), "Command should succeed");
 
-    // Verify only Claude sessions are indexed
-    let list_result = world.run(&["session", "list", "--format", "json"])?;
+    // Verify only Claude sessions are indexed (use --no-auto-refresh to avoid re-indexing)
+    let list_result = world.run(&["session", "list", "--no-auto-refresh", "--format", "json"])?;
     assert!(list_result.success());
-    let _json = list_result.json()?;
+    let json = list_result.json()?;
 
-    // TODO: After implementing provider filtering:
-    // assertions::assert_session_count(&_json, 1)?;
-    // assertions::assert_all_sessions_from_provider(&_json, "claude_code")?;
-
-    // For now, just verify the command succeeds
-    let _expected_provider = "claude_code";
+    assertions::assert_session_count(&json, 1)?;
+    assertions::assert_all_sessions_from_provider(&json, "claude_code")?;
 
     Ok(())
 }
@@ -133,24 +127,25 @@ fn test_index_update_with_provider_gemini_indexes_only_gemini() -> Result<()> {
     world.add_session(TestProvider::Gemini, "session-gemini.json")?;
 
     // When: Run index update with --provider gemini
-    let result = world.run(&["index", "update", "--provider", "gemini", "--format", "json"])?;
+    let result = world.run(&[
+        "index",
+        "update",
+        "--provider",
+        "gemini",
+        "--format",
+        "json",
+    ])?;
 
     // Then: Only Gemini provider is indexed
-    // TODO: Implement provider filtering in index handler
-    // Expected behavior: Should index only Gemini sessions
     assert!(result.success(), "Command should succeed");
 
-    // Verify only Gemini sessions are indexed
-    let list_result = world.run(&["session", "list", "--format", "json"])?;
+    // Verify only Gemini sessions are indexed (use --no-auto-refresh to avoid re-indexing)
+    let list_result = world.run(&["session", "list", "--no-auto-refresh", "--format", "json"])?;
     assert!(list_result.success());
-    let _json = list_result.json()?;
+    let json = list_result.json()?;
 
-    // TODO: After implementing provider filtering:
-    // assertions::assert_session_count(&_json, 1)?;
-    // assertions::assert_all_sessions_from_provider(&_json, "gemini")?;
-
-    // For now, just verify the command succeeds
-    let _expected_provider = "gemini";
+    assertions::assert_session_count(&json, 1)?;
+    assertions::assert_all_sessions_from_provider(&json, "gemini")?;
 
     Ok(())
 }
@@ -170,7 +165,7 @@ fn test_index_rebuild_with_provider_filter_rebuilds_only_specified_provider() ->
     // First index all
     world.run(&["init"])?;
 
-    // When: Rebuild with --provider claude_code
+    // When: Rebuild with --provider claude_code (forces re-scan of Claude only)
     let result = world.run(&[
         "index",
         "rebuild",
@@ -180,13 +175,17 @@ fn test_index_rebuild_with_provider_filter_rebuilds_only_specified_provider() ->
         "json",
     ])?;
 
-    // Then: Only Claude provider is rebuilt
-    // TODO: Implement provider filtering in rebuild handler
-    // Expected behavior: Should rebuild only Claude sessions
+    // Then: Rebuild command succeeds
     assert!(result.success(), "Command should succeed");
 
-    // For now, just verify the command succeeds
-    let _expected_provider = "claude_code";
+    // Note: Rebuild with a provider filter re-scans only that provider's files,
+    // but does not remove sessions from other providers. Both sessions remain.
+    let list_result = world.run(&["session", "list", "--no-auto-refresh", "--format", "json"])?;
+    assert!(list_result.success());
+    let json = list_result.json()?;
+
+    // Both sessions should still be present (Gemini was not removed)
+    assertions::assert_session_count(&json, 2)?;
 
     Ok(())
 }
@@ -475,13 +474,15 @@ fn test_index_with_provider_filter_skips_other_providers() -> Result<()> {
     ])?;
 
     // Then: Index command succeeds
-    // TODO: Implement provider filtering in index
-    // Expected behavior: Should index only Claude, skip Gemini
     assert!(result.success(), "Command should succeed");
 
-    // TODO: Verify only Claude sessions are in the database
-    // For now, we just check the command succeeds
-    let _expected_indexed_providers = ["claude_code"];
+    // Verify only Claude sessions are in the database (use --no-auto-refresh to avoid re-indexing)
+    let list_result = world.run(&["session", "list", "--no-auto-refresh", "--format", "json"])?;
+    assert!(list_result.success());
+    let json = list_result.json()?;
+
+    assertions::assert_session_count(&json, 1)?;
+    assertions::assert_all_sessions_from_provider(&json, "claude_code")?;
 
     Ok(())
 }

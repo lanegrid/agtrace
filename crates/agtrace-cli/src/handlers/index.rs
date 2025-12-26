@@ -12,7 +12,7 @@ pub fn handle(
     workspace: &AgTrace,
     project_root: Option<&Path>,
     all_projects: bool,
-    _provider: String,
+    provider: String,
     force: bool,
     verbose: bool,
     format: OutputFormat,
@@ -26,6 +26,12 @@ pub fn handle(
         "unknown".to_string()
     };
 
+    let provider_filter = if provider == "all" {
+        None
+    } else {
+        Some(provider)
+    };
+
     let scan_context = ScanContext {
         project_hash,
         project_root: if all_projects {
@@ -33,6 +39,7 @@ pub fn handle(
         } else {
             current_project_root
         },
+        provider_filter,
     };
 
     // Track final result

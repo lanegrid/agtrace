@@ -14,7 +14,7 @@ pub fn handle(
     source: Option<String>,
     since: Option<String>,
     until: Option<String>,
-    _no_auto_refresh: bool,
+    no_auto_refresh: bool,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
     use crate::presentation::presenters;
@@ -45,8 +45,12 @@ pub fn handle(
         filter = filter.until(until_str.clone());
     }
 
-    // Get sessions
-    let sessions = workspace.sessions().list(filter)?;
+    // Get sessions (with optional auto-refresh)
+    let sessions = if no_auto_refresh {
+        workspace.sessions().list_without_refresh(filter)?
+    } else {
+        workspace.sessions().list(filter)?
+    };
 
     // Build time range summary
     let time_range = match (since.as_ref(), until.as_ref()) {
