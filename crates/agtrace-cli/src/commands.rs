@@ -325,17 +325,10 @@ pub fn run(cli: Cli) -> Result<()> {
             } else {
                 let provider_name = provider
                     .map(|p| p.to_string())
-                    .or_else(|| {
-                        workspace
-                            .config()
-                            .enabled_providers()
-                            .into_iter()
-                            .next()
-                            .map(|(name, _)| name.clone())
-                    })
+                    .or_else(|| find_provider_with_most_recent_session(&workspace))
                     .ok_or_else(|| {
                         anyhow::anyhow!(
-                            "No enabled provider found. Run 'agtrace init' to configure providers."
+                            "No sessions found in any enabled provider. Run 'agtrace init' to index your sessions."
                         )
                     })?;
                 handlers::watch_tui::WatchTarget::Provider {
@@ -355,6 +348,34 @@ pub fn run(cli: Cli) -> Result<()> {
             }
         }
     }
+}
+
+fn find_provider_with_most_recent_session(workspace: &agtrace_runtime::AgTrace) -> Option<String> {
+    use agtrace_runtime::SessionFilter;
+    use chrono::DateTime;
+
+    let enabled_providers = workspace.config().enabled_providers();
+    if enabled_providers.is_empty() {
+        return None;
+    }
+
+    // Get the most recent session from each provider
+    let mut most_recent: Option<(String, DateTime<chrono::FixedOffset>)> = None;
+
+    for (provider_name, _) in enabled_providers {
+        let filter = SessionFilter::new().source(provider_name.clone()).limit(1);
+
+        if let Ok(sessions) = workspace.sessions().list_without_refresh(filter)
+            && let Some(session) = sessions.first()
+            && let Some(ts_str) = &session.start_ts
+            && let Ok(ts) = DateTime::parse_from_rfc3339(ts_str)
+            && (most_recent.is_none() || ts > most_recent.as_ref().unwrap().1)
+        {
+            most_recent = Some((provider_name.clone(), ts));
+        }
+    }
+
+    most_recent.map(|(provider, _)| provider)
 }
 
 fn expand_tilde(path: &str) -> PathBuf {

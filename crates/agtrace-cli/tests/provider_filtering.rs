@@ -284,7 +284,12 @@ fn test_session_list_with_source_gemini_shows_only_gemini() -> Result<()> {
 
 #[test]
 fn test_watch_without_provider_watches_latest_from_any_provider() -> Result<()> {
-    // Given: Multiple providers with sessions
+    use agtrace_testing::process::BackgroundProcess;
+    use std::io::{BufRead, BufReader};
+
+    // Given: Multiple providers with sessions at different times
+    // Claude session: 2025-12-09T19:47:42.987Z (older)
+    // Gemini session: 2025-12-09T19:51:29.418Z (newer, ~4 min later)
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
@@ -296,15 +301,50 @@ fn test_watch_without_provider_watches_latest_from_any_provider() -> Result<()> 
 
     world.run(&["init"])?;
 
-    // When: Watch without --provider (would run in background)
-    // Note: We can't actually test the interactive watch behavior in integration tests
-    // This test just verifies the command accepts the parameters
+    // Get session IDs for verification
+    let list_result = world.run(&["session", "list", "--format", "json"])?;
+    let json = list_result.json()?;
+    let sessions = json["content"]["sessions"]
+        .as_array()
+        .expect("Should have sessions array");
 
-    // TODO: Implement actual watch behavior testing
-    // Expected behavior: Should watch the most recent session from any provider
+    // Find the Gemini session (should be the most recent based on timestamp)
+    let gemini_session = sessions
+        .iter()
+        .find(|s| s["provider"].as_str() == Some("gemini"))
+        .expect("Should have Gemini session");
+    let gemini_id = gemini_session["id"].as_str().expect("Should have ID");
 
-    // For now, just verify command construction
-    let _watch_args = ["watch", "--mode", "console"];
+    // When: Run watch without --provider in console mode
+    world.set_cwd("my-project");
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_agtrace"));
+    cmd.current_dir(world.temp_dir().join("my-project"))
+        .arg("--data-dir")
+        .arg(world.data_dir())
+        .args(["watch", "--mode", "console"]);
+
+    let mut proc = BackgroundProcess::spawn_piped(cmd)?;
+
+    // Then: Should attach to the most recent session (Gemini)
+    let stdout = proc.stdout().expect("Should have stdout");
+    let reader = BufReader::new(stdout);
+
+    let mut found_gemini_attachment = false;
+    for line in reader.lines().take(10) {
+        let line = line?;
+        if line.contains("Attached") && line.contains(&gemini_id[..8]) {
+            found_gemini_attachment = true;
+            break;
+        }
+    }
+
+    // Clean up
+    proc.kill()?;
+
+    assert!(
+        found_gemini_attachment,
+        "Should attach to most recent session (Gemini), not first provider (Claude)"
+    );
 
     Ok(())
 }
