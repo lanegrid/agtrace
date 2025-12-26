@@ -20,7 +20,7 @@ You are effectively flying a plane without a fuel gauge.
 
 **agtrace** is a local-only telemetry tool that acts as a "Vital Check" for your AI agents. by normalizing logs from various providers, it visualizes the internal state of your agent in real-time.
 
-![agtrace watch TUI dashboard](docs/images/watch-screenshot.png)
+![agtrace watch TUI dashboard](docs/images/watch-screenshot-claude.png)
 
 *The dashboard showing Context Window usage, current turn, and token costs*
 
