@@ -430,9 +430,71 @@ fn test_directory_navigation() {
 }
 ```
 
+## Multi-Provider Testing
+
+`TestWorld` provides first-class support for testing multiple providers (Claude, Gemini, Codex, etc.).
+
+### Provider Testing Goals
+
+These tests verify that the CLI correctly:
+1. Reads provider configuration from `config.toml`
+2. Routes to the correct log directories
+3. Selects the appropriate provider adapter
+4. Aggregates data from multiple providers
+
+### Using TestProvider
+
+```rust
+use agtrace_testing::providers::TestProvider;
+use agtrace_testing::TestWorld;
+
+#[test]
+fn test_multi_provider_setup() -> anyhow::Result<()> {
+    let world = TestWorld::new();
+
+    // Enable multiple providers
+    world.enable_provider(TestProvider::Claude)?;
+    world.enable_provider(TestProvider::Gemini)?;
+
+    // Add sessions from different providers
+    world.add_session(TestProvider::Claude, "claude_work.jsonl")?;
+    world.add_session(TestProvider::Gemini, "gemini_review.jsonl")?;
+
+    // Index all providers
+    world.run(&["index", "update", "--all-projects"])?;
+
+    // Verify aggregation
+    let result = world.run(&["session", "list", "--format", "json", "--all-projects"])?;
+    let json = result.json()?;
+
+    assertions::assert_session_count(&json, 2)?;
+
+    Ok(())
+}
+```
+
+### Provider-Specific Assertions
+
+```rust
+use agtrace_testing::assertions;
+
+// Assert a specific session is from Claude
+assertions::assert_session_provider(&json, 0, "claude_code")?;
+
+// Assert all sessions are from Gemini
+assertions::assert_all_sessions_from_provider(&json, "gemini")?;
+```
+
+### What These Tests Guarantee
+
+1. **Configuration Routing**: `provider set` correctly updates `config.toml` and `session list` reads that configuration
+2. **Provider Selection**: The indexer instantiates the correct `ProviderAdapter` based on file paths and config
+3. **Data Aggregation**: Sessions from different providers are aggregated into a unified list
+4. **Filtering**: The `--source` option correctly filters by provider
+
 ## Examples
 
-See `crates/agtrace-cli/tests/testworld_example.rs` for complete examples.
+See `crates/agtrace-cli/tests/testworld_example.rs` and `crates/agtrace-cli/tests/multi_provider_test.rs` for complete examples.
 
 ## Next Steps
 
