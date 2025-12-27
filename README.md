@@ -5,6 +5,7 @@
 Real-time telemetry, context window tracking, and session forensics for Claude Code, Codex, and Gemini. **Built in Rust for zero-overhead monitoring.**
 
 [![npm version](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat)](https://www.npmjs.com/package/@lanegrid/agtrace)
+[![crates.io](https://img.shields.io/crates/v/agtrace.svg)](https://crates.io/crates/agtrace)
 
 ---
 
@@ -59,13 +60,19 @@ We recommend installing `agtrace` globally for the best performance and quick ac
 npm install -g @lanegrid/agtrace
 ```
 
-### ⚡ Or use via npx
+### via npx (no installation)
 
 If you prefer not to install it globally, you can run commands using `npx`.
 *Note: In the examples below, replace `agtrace` with `npx @lanegrid/agtrace`.*
 
 ```bash
 npx @lanegrid/agtrace@latest init
+```
+
+### via Cargo (Rust)
+
+```bash
+cargo install agtrace
 ```
 
 
