@@ -1,11 +1,12 @@
-# agtrace
+<div align="center">
+  <img src="docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
+  <h1>agtrace</h1>
+  <p><strong>The Vital Monitor for AI Coding Agents.</strong></p>
+  <p>Real-time telemetry, context window tracking, and session forensics for Claude Code, Codex, and Gemini. <strong>Built in Rust for zero-overhead monitoring.</strong></p>
 
-**The Vital Monitor for AI Coding Agents.**
-
-Real-time telemetry, context window tracking, and session forensics for Claude Code, Codex, and Gemini. **Built in Rust for zero-overhead monitoring.**
-
-[![npm version](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat)](https://www.npmjs.com/package/@lanegrid/agtrace)
-[![crates.io](https://img.shields.io/crates/v/agtrace.svg)](https://crates.io/crates/agtrace)
+  [![npm version](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat)](https://www.npmjs.com/package/@lanegrid/agtrace)
+  [![crates.io](https://img.shields.io/crates/v/agtrace.svg)](https://crates.io/crates/agtrace)
+</div>
 
 ---
 
