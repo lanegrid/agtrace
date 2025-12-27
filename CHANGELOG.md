@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2025-12-27
+
+### Infrastructure
+
+- Rename CLI package from `agtrace-cli` to `agtrace` for better discoverability on crates.io
+- Add crates.io publishing automation to GitHub Actions release workflow
+- Mark internal crates with `agtrace-internal` keyword to prevent accidental usage
+- Add package metadata (categories, keywords, readme) for crates.io optimization
+
 ## [0.1.5] - 2025-12-27
 
 ### Bug Fixes
