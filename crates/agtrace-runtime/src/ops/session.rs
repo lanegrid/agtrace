@@ -8,7 +8,7 @@ pub struct ListSessionsRequest {
     pub project_hash: Option<String>,
     pub limit: usize,
     pub all_projects: bool,
-    pub source: Option<String>,
+    pub provider: Option<String>,
     pub since: Option<String>,
     pub until: Option<String>,
 }
@@ -30,7 +30,7 @@ impl<'a> SessionService<'a> {
         let fetch_limit = request.limit * 3;
         let mut sessions = self.db.list_sessions(effective_project_hash, fetch_limit)?;
 
-        if let Some(src) = request.source {
+        if let Some(src) = request.provider {
             sessions.retain(|s| s.provider == src);
         }
 

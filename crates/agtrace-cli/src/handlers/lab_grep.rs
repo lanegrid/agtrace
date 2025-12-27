@@ -167,7 +167,7 @@ pub fn handle(
 
     let mut filter = SessionFilter::new().limit(1000);
     if let Some(src) = options.provider {
-        filter = filter.source(src);
+        filter = filter.provider(src);
     }
 
     let sessions = workspace.sessions().list(filter)?;

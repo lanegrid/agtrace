@@ -16,7 +16,7 @@ pub struct SessionFilter {
     pub project_hash: Option<String>,
     pub limit: usize,
     pub all_projects: bool,
-    pub source: Option<String>,
+    pub provider: Option<String>,
     pub since: Option<String>,
     pub until: Option<String>,
 }
@@ -44,8 +44,8 @@ impl SessionFilter {
         self
     }
 
-    pub fn source(mut self, source: String) -> Self {
-        self.source = Some(source);
+    pub fn provider(mut self, provider: String) -> Self {
+        self.provider = Some(provider);
         self
     }
 
@@ -85,7 +85,7 @@ impl SessionOps {
             project_hash: filter.project_hash,
             limit: filter.limit,
             all_projects: filter.all_projects,
-            source: filter.source,
+            provider: filter.provider,
             since: filter.since,
             until: filter.until,
         };

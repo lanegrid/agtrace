@@ -38,7 +38,14 @@ fn test_list_filter_by_source_provider() -> Result<()> {
     assertions::assert_all_sessions_from_provider(&json, "claude_code")?;
 
     // When: List with --provider gemini
-    let result = world.run(&["session", "list", "--provider", "gemini", "--format", "json"])?;
+    let result = world.run(&[
+        "session",
+        "list",
+        "--provider",
+        "gemini",
+        "--format",
+        "json",
+    ])?;
 
     // Then: Only Gemini sessions are shown
     assert!(result.success(), "Command should succeed");

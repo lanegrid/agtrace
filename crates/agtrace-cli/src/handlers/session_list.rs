@@ -34,7 +34,7 @@ pub fn handle(
     }
 
     if let Some(ref src) = provider {
-        filter = filter.source(src.clone());
+        filter = filter.provider(src.clone());
     }
 
     if let Some(ref since_str) = since {

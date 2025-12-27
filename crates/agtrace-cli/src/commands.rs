@@ -363,7 +363,9 @@ fn find_provider_with_most_recent_session(workspace: &agtrace_runtime::AgTrace) 
     let mut most_recent: Option<(String, DateTime<chrono::FixedOffset>)> = None;
 
     for (provider_name, _) in enabled_providers {
-        let filter = SessionFilter::new().source(provider_name.clone()).limit(1);
+        let filter = SessionFilter::new()
+            .provider(provider_name.clone())
+            .limit(1);
 
         if let Ok(sessions) = workspace.sessions().list_without_refresh(filter)
             && let Some(session) = sessions.first()

@@ -24,7 +24,11 @@ impl<'a> PackReportView<'a> {
         let id_short = &digest.session_id[..8.min(digest.session_id.len())];
         let reason = digest.selection_reason.as_deref().unwrap_or("");
 
-        writeln!(f, "Session {} ({}) -- {}", id_short, digest.source, reason)?;
+        writeln!(
+            f,
+            "Session {} ({}) -- {}",
+            id_short, digest.provider, reason
+        )?;
 
         if let Some(opening) = &digest.opening {
             writeln!(f, "  Opening: \"{}\"", opening)?;

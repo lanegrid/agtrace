@@ -28,11 +28,15 @@ impl InsightOps {
         get_corpus_overview(&db, project_hash, limit)
     }
 
-    pub fn tool_usage(&self, limit: Option<usize>, source: Option<String>) -> Result<StatsResult> {
+    pub fn tool_usage(
+        &self,
+        limit: Option<usize>,
+        provider: Option<String>,
+    ) -> Result<StatsResult> {
         self.ensure_index_is_fresh()?;
 
         let db = self.db.lock().unwrap();
-        collect_tool_stats(&db, limit, source)
+        collect_tool_stats(&db, limit, provider)
     }
 
     fn ensure_index_is_fresh(&self) -> Result<()> {

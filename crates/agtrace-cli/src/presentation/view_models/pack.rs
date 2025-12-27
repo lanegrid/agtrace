@@ -23,7 +23,7 @@ impl std::str::FromStr for ReportTemplate {
 #[derive(Debug, Clone, Serialize)]
 pub struct SessionDigest {
     pub session_id: String,
-    pub source: String,
+    pub provider: String,
     pub opening: Option<String>,
     pub activation: Option<String>,
     pub tool_calls_total: usize,

@@ -55,7 +55,7 @@ pub fn handle_console(
                 let _ = workspace.projects().scan(&scan_context, false, |_| {});
 
                 // Get latest session from updated DB
-                let filter = SessionFilter::new().source(name.clone()).limit(1);
+                let filter = SessionFilter::new().provider(name.clone()).limit(1);
                 workspace
                     .sessions()
                     .list(filter)

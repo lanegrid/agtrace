@@ -199,7 +199,7 @@ fn handle_provider_watch(
 
         // Get latest session from updated DB
         let filter = SessionFilter::new()
-            .source(provider_name.to_string())
+            .provider(provider_name.to_string())
             .limit(1);
         workspace
             .sessions()

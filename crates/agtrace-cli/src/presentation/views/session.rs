@@ -153,7 +153,7 @@ impl<'a> SessionListView<'a> {
 
     fn show_filter_info(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.data.applied_filters.project_filter.is_some()
-            || self.data.applied_filters.source_filter.is_some()
+            || self.data.applied_filters.provider_filter.is_some()
             || self.data.applied_filters.time_range.is_some()
         {
             writeln!(f)?;
@@ -161,8 +161,8 @@ impl<'a> SessionListView<'a> {
             if let Some(ref project) = self.data.applied_filters.project_filter {
                 writeln!(f, "  Project: {}", project)?;
             }
-            if let Some(ref source) = self.data.applied_filters.source_filter {
-                writeln!(f, "  Source: {}", source)?;
+            if let Some(ref provider) = self.data.applied_filters.provider_filter {
+                writeln!(f, "  Provider: {}", provider)?;
             }
             if let Some(ref range) = self.data.applied_filters.time_range {
                 writeln!(f, "  Time range: {}", range)?;
@@ -622,7 +622,7 @@ mod tests {
             total_count: 0,
             applied_filters: FilterSummary {
                 project_filter: None,
-                source_filter: None,
+                provider_filter: None,
                 time_range: None,
                 limit: 50,
             },
@@ -646,7 +646,7 @@ mod tests {
             total_count: 1,
             applied_filters: FilterSummary {
                 project_filter: None,
-                source_filter: None,
+                provider_filter: None,
                 time_range: None,
                 limit: 50,
             },
@@ -674,7 +674,7 @@ mod tests {
             total_count: 1,
             applied_filters: FilterSummary {
                 project_filter: None,
-                source_filter: None,
+                provider_filter: None,
                 time_range: None,
                 limit: 50,
             },

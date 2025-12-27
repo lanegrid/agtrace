@@ -80,13 +80,13 @@ pub struct StatsResult {
 pub fn collect_tool_stats(
     db: &Database,
     limit: Option<usize>,
-    source: Option<String>,
+    provider: Option<String>,
 ) -> Result<StatsResult> {
     let sessions = db.list_sessions(None, limit.unwrap_or(100000))?;
     let sessions: Vec<_> = sessions
         .into_iter()
         .filter(|s| {
-            if let Some(ref src) = source {
+            if let Some(ref src) = provider {
                 &s.provider == src
             } else {
                 true

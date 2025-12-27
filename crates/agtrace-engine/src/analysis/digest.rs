@@ -4,7 +4,7 @@ use crate::AgentSession;
 #[derive(Debug, Clone)]
 pub struct SessionDigest {
     pub session_id: String,
-    pub source: String,
+    pub provider: String,
     pub session: AgentSession,
     pub opening: Option<String>,
     pub activation: Option<String>,
@@ -32,7 +32,7 @@ impl SessionDigest {
 
         Self {
             session_id: session_id.to_string(),
-            source: provider.to_string(),
+            provider: provider.to_string(),
             session,
             opening,
             activation,

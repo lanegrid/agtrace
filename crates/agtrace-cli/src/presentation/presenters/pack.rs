@@ -11,7 +11,7 @@ pub fn present_pack_report(
         .into_iter()
         .map(|digest| SessionDigest {
             session_id: digest.session_id,
-            source: digest.source,
+            provider: digest.provider,
             opening: digest.opening,
             activation: digest.activation,
             tool_calls_total: digest.metrics.tool_calls_total,

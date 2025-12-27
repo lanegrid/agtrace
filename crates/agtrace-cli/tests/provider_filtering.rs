@@ -266,7 +266,14 @@ fn test_session_list_with_source_gemini_shows_only_gemini() -> Result<()> {
     world.run(&["init"])?;
 
     // When: List with --provider gemini
-    let result = world.run(&["session", "list", "--provider", "gemini", "--format", "json"])?;
+    let result = world.run(&[
+        "session",
+        "list",
+        "--provider",
+        "gemini",
+        "--format",
+        "json",
+    ])?;
 
     // Then: Only Gemini sessions are shown
     assert!(result.success(), "Command should succeed");
@@ -452,7 +459,15 @@ fn test_lab_grep_with_source_gemini_searches_only_gemini() -> Result<()> {
     world.run(&["init"])?;
 
     // When: Grep with --provider gemini
-    let result = world.run(&["lab", "grep", "Read", "--provider", "gemini", "--limit", "10"])?;
+    let result = world.run(&[
+        "lab",
+        "grep",
+        "Read",
+        "--provider",
+        "gemini",
+        "--limit",
+        "10",
+    ])?;
 
     // Then: Searches only Gemini sessions
     // TODO: Verify results only include Gemini sessions
@@ -480,7 +495,14 @@ fn test_provider_filter_with_disabled_provider_shows_no_sessions() -> Result<()>
     world.run(&["init"])?;
 
     // When: List with --provider gemini (disabled provider)
-    let result = world.run(&["session", "list", "--provider", "gemini", "--format", "json"])?;
+    let result = world.run(&[
+        "session",
+        "list",
+        "--provider",
+        "gemini",
+        "--format",
+        "json",
+    ])?;
 
     // Then: No sessions are shown
     assert!(result.success(), "Command should succeed");

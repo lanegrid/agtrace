@@ -10,11 +10,12 @@ use agtrace_index::SessionSummary;
 pub fn present_session_list(
     sessions: Vec<SessionSummary>,
     project_filter: Option<String>,
-    source_filter: Option<String>,
+    provider_filter: Option<String>,
     time_range: Option<String>,
     limit: usize,
 ) -> CommandResultViewModel<SessionListViewModel> {
-    let view = build_session_list_view(sessions, project_filter, source_filter, time_range, limit);
+    let view =
+        build_session_list_view(sessions, project_filter, provider_filter, time_range, limit);
     let result = CommandResultViewModel::new(view);
     add_session_list_guidance(result)
 }
@@ -22,7 +23,7 @@ pub fn present_session_list(
 fn build_session_list_view(
     sessions: Vec<SessionSummary>,
     project_filter: Option<String>,
-    source_filter: Option<String>,
+    provider_filter: Option<String>,
     time_range: Option<String>,
     limit: usize,
 ) -> SessionListViewModel {
@@ -44,7 +45,7 @@ fn build_session_list_view(
         total_count,
         applied_filters: FilterSummary {
             project_filter,
-            source_filter,
+            provider_filter,
             time_range,
             limit,
         },

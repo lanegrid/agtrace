@@ -27,7 +27,7 @@ pub struct SessionListEntry {
 #[derive(Debug, Serialize)]
 pub struct FilterSummary {
     pub project_filter: Option<String>,
-    pub source_filter: Option<String>,
+    pub provider_filter: Option<String>,
     pub time_range: Option<String>,
     pub limit: usize,
 }
