@@ -1,10 +1,9 @@
 //! Provider Filtering Tests
 //!
-//! Tests the behavior of `--provider` and `--source` flags across different commands.
+//! Tests the behavior of `--provider` flag across different commands.
 //!
 //! # Terminology
-//! - `--provider`: Used in index commands (default: "all")
-//! - `--source`: Used in query commands (session list, lab grep)
+//! - `--provider`: Used in both index commands (default: "all") and query commands (session list, lab grep)
 //!
 //! # Desired Behavior (Test-Driven Approach)
 //! These tests define the IDEAL behavior. Current TODOs mark unimplemented features.
@@ -208,7 +207,7 @@ fn test_session_list_without_source_shows_all_providers() -> Result<()> {
 
     world.run(&["init"])?;
 
-    // When: List sessions without --source
+    // When: List sessions without --provider
     let result = world.run(&["session", "list", "--format", "json"])?;
 
     // Then: Sessions from all providers are shown
@@ -233,11 +232,11 @@ fn test_session_list_with_source_claude_code_shows_only_claude() -> Result<()> {
 
     world.run(&["init"])?;
 
-    // When: List with --source claude_code
+    // When: List with --provider claude_code
     let result = world.run(&[
         "session",
         "list",
-        "--source",
+        "--provider",
         "claude_code",
         "--format",
         "json",
@@ -266,8 +265,8 @@ fn test_session_list_with_source_gemini_shows_only_gemini() -> Result<()> {
 
     world.run(&["init"])?;
 
-    // When: List with --source gemini
-    let result = world.run(&["session", "list", "--source", "gemini", "--format", "json"])?;
+    // When: List with --provider gemini
+    let result = world.run(&["session", "list", "--provider", "gemini", "--format", "json"])?;
 
     // Then: Only Gemini sessions are shown
     assert!(result.success(), "Command should succeed");
@@ -394,7 +393,7 @@ fn test_lab_grep_without_source_searches_all_providers() -> Result<()> {
 
     world.run(&["init"])?;
 
-    // When: Grep without --source
+    // When: Grep without --provider
     let result = world.run(&["lab", "grep", "Read", "--limit", "10"])?;
 
     // Then: Searches across all providers
@@ -419,12 +418,12 @@ fn test_lab_grep_with_source_claude_code_searches_only_claude() -> Result<()> {
 
     world.run(&["init"])?;
 
-    // When: Grep with --source claude_code
+    // When: Grep with --provider claude_code
     let result = world.run(&[
         "lab",
         "grep",
         "Read",
-        "--source",
+        "--provider",
         "claude_code",
         "--limit",
         "10",
@@ -452,8 +451,8 @@ fn test_lab_grep_with_source_gemini_searches_only_gemini() -> Result<()> {
 
     world.run(&["init"])?;
 
-    // When: Grep with --source gemini
-    let result = world.run(&["lab", "grep", "Read", "--source", "gemini", "--limit", "10"])?;
+    // When: Grep with --provider gemini
+    let result = world.run(&["lab", "grep", "Read", "--provider", "gemini", "--limit", "10"])?;
 
     // Then: Searches only Gemini sessions
     // TODO: Verify results only include Gemini sessions
@@ -480,8 +479,8 @@ fn test_provider_filter_with_disabled_provider_shows_no_sessions() -> Result<()>
 
     world.run(&["init"])?;
 
-    // When: List with --source gemini (disabled provider)
-    let result = world.run(&["session", "list", "--source", "gemini", "--format", "json"])?;
+    // When: List with --provider gemini (disabled provider)
+    let result = world.run(&["session", "list", "--provider", "gemini", "--format", "json"])?;
 
     // Then: No sessions are shown
     assert!(result.success(), "Command should succeed");
@@ -548,12 +547,12 @@ fn test_combined_filters_provider_and_project() -> Result<()> {
 
     world.run(&["init", "--all-projects"])?;
 
-    // When: List with --source claude_code and specific project
+    // When: List with --provider claude_code and specific project
     world.set_cwd("project-a");
     let result = world.run(&[
         "session",
         "list",
-        "--source",
+        "--provider",
         "claude_code",
         "--format",
         "json",

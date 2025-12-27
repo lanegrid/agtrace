@@ -490,7 +490,7 @@ assertions::assert_all_sessions_from_provider(&json, "gemini")?;
 1. **Configuration Routing**: `provider set` correctly updates `config.toml` and `session list` reads that configuration
 2. **Provider Selection**: The indexer instantiates the correct `ProviderAdapter` based on file paths and config
 3. **Data Aggregation**: Sessions from different providers are aggregated into a unified list
-4. **Filtering**: The `--source` option correctly filters by provider
+4. **Filtering**: The `--provider` option correctly filters by provider
 
 ## Examples
 

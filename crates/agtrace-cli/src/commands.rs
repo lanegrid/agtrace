@@ -119,7 +119,7 @@ pub fn run(cli: Cli) -> Result<()> {
             match command {
                 SessionCommand::List {
                     project_hash,
-                    source,
+                    provider,
                     limit,
                     since,
                     until,
@@ -133,7 +133,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     ctx.effective_project_hash(project_hash),
                     limit,
                     format,
-                    source.map(|s| s.to_string()),
+                    provider.map(|s| s.to_string()),
                     since,
                     until,
                     no_auto_refresh,
@@ -234,17 +234,17 @@ pub fn run(cli: Cli) -> Result<()> {
                     ctx.format,
                     &default_view_mode(),
                 ),
-                LabCommand::Stats { limit, source } => handlers::lab_stats::handle(
+                LabCommand::Stats { limit, provider } => handlers::lab_stats::handle(
                     &workspace,
                     limit,
-                    source,
+                    provider,
                     ctx.format,
                     &default_view_mode(),
                 ),
                 LabCommand::Grep {
                     pattern,
                     limit,
-                    source,
+                    provider,
                     json,
                     raw,
                     regex,
@@ -255,7 +255,7 @@ pub fn run(cli: Cli) -> Result<()> {
                     let options = handlers::lab_grep::GrepOptions {
                         pattern,
                         limit,
-                        source,
+                        provider,
                         json_output: json,
                         raw_output: raw,
                         use_regex: regex,
@@ -275,7 +275,7 @@ pub fn run(cli: Cli) -> Result<()> {
 
         Commands::Sessions {
             project_hash,
-            source,
+            provider,
             limit,
             since,
             until,
@@ -288,7 +288,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 ctx.effective_project_hash(project_hash),
                 limit,
                 ctx.format,
-                source.map(|s| s.to_string()),
+                provider.map(|s| s.to_string()),
                 since,
                 until,
                 false, // no_auto_refresh - default to auto-refresh for Sessions command

@@ -1,7 +1,7 @@
 //! List & Filtering Tests
 //!
 //! Verifies that session list filtering works correctly
-//! with --source, --all-projects, and other filters.
+//! with --provider, --all-projects, and other filters.
 
 use agtrace_testing::providers::TestProvider;
 use agtrace_testing::{TestWorld, assertions};
@@ -21,11 +21,11 @@ fn test_list_filter_by_source_provider() -> Result<()> {
 
     world.run(&["init"])?;
 
-    // When: List with --source claude_code
+    // When: List with --provider claude_code
     let result = world.run(&[
         "session",
         "list",
-        "--source",
+        "--provider",
         "claude_code",
         "--format",
         "json",
@@ -37,8 +37,8 @@ fn test_list_filter_by_source_provider() -> Result<()> {
     assertions::assert_session_count(&json, 1)?;
     assertions::assert_all_sessions_from_provider(&json, "claude_code")?;
 
-    // When: List with --source gemini
-    let result = world.run(&["session", "list", "--source", "gemini", "--format", "json"])?;
+    // When: List with --provider gemini
+    let result = world.run(&["session", "list", "--provider", "gemini", "--format", "json"])?;
 
     // Then: Only Gemini sessions are shown
     assert!(result.success(), "Command should succeed");
@@ -164,12 +164,12 @@ fn test_list_combined_filters() -> Result<()> {
 
     world.run(&["init", "--all-projects"])?;
 
-    // When: List with --source claude_code and --all-projects
+    // When: List with --provider claude_code and --all-projects
     world.set_cwd("project-a");
     let result = world.run(&[
         "session",
         "list",
-        "--source",
+        "--provider",
         "claude_code",
         "--all-projects",
         "--format",

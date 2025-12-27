@@ -10,11 +10,11 @@ use anyhow::Result;
 pub fn handle(
     workspace: &AgTrace,
     limit: Option<usize>,
-    source: Option<String>,
+    provider: Option<String>,
     output_format: OutputFormat,
     view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
-    let result = workspace.insights().tool_usage(limit, source)?;
+    let result = workspace.insights().tool_usage(limit, provider)?;
 
     let sorted_stats = result
         .provider_stats

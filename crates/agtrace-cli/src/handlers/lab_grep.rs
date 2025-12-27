@@ -42,7 +42,7 @@ use regex::Regex;
 pub struct GrepOptions {
     pub pattern: String,
     pub limit: Option<usize>,
-    pub source: Option<String>,
+    pub provider: Option<String>,
     pub json_output: bool,
     pub raw_output: bool,
     pub use_regex: bool,
@@ -166,7 +166,7 @@ pub fn handle(
     )?;
 
     let mut filter = SessionFilter::new().limit(1000);
-    if let Some(src) = options.source {
+    if let Some(src) = options.provider {
         filter = filter.source(src);
     }
 

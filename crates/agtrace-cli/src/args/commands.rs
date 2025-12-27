@@ -50,7 +50,7 @@ pub enum Commands {
         project_hash: Option<String>,
 
         #[arg(long)]
-        source: Option<ProviderName>,
+        provider: Option<ProviderName>,
 
         #[arg(long, default_value = "50")]
         limit: usize,
@@ -132,7 +132,7 @@ pub enum SessionCommand {
         project_hash: Option<String>,
 
         #[arg(long)]
-        source: Option<ProviderName>,
+        provider: Option<ProviderName>,
 
         #[arg(long, default_value = "50")]
         limit: usize,
@@ -269,7 +269,7 @@ pub enum LabCommand {
         limit: Option<usize>,
 
         #[arg(long)]
-        source: Option<String>,
+        provider: Option<String>,
     },
 
     #[command(
@@ -291,7 +291,7 @@ including provider-specific metadata for normalization verification.",
   agtrace lab grep \"file_path\" --json --limit 10
 
   # Find MCP-related calls from specific provider
-  agtrace lab grep \"mcp\" --source claude_code
+  agtrace lab grep \"mcp\" --provider claude_code
 
   # Investigate write operations structure
   agtrace lab grep \"write_file\" --json
@@ -361,7 +361,7 @@ NOTES:
   - Searches up to 1000 recent sessions by default
   - Pattern matching is case-sensitive substring search
   - Default limit is 50 matches
-  - Use --source to filter by provider (claude_code, codex, gemini)
+  - Use --provider to filter by provider (claude_code, codex, gemini)
 
 RAW MODE RATIONALE:
   The --raw flag outputs complete AgentEvent including metadata. This enables:
@@ -399,7 +399,7 @@ RAW MODE RATIONALE:
         limit: Option<usize>,
 
         #[arg(long, help = "Filter by provider")]
-        source: Option<String>,
+        provider: Option<String>,
 
         #[arg(long, help = "Show raw JSON of the matching event")]
         json: bool,

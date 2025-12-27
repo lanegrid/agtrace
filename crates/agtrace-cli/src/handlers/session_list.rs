@@ -11,7 +11,7 @@ pub fn handle(
     project_hash: Option<String>,
     limit: usize,
     format: OutputFormat,
-    source: Option<String>,
+    provider: Option<String>,
     since: Option<String>,
     until: Option<String>,
     no_auto_refresh: bool,
@@ -33,7 +33,7 @@ pub fn handle(
         filter = filter.all_projects();
     }
 
-    if let Some(ref src) = source {
+    if let Some(ref src) = provider {
         filter = filter.source(src.clone());
     }
 
@@ -63,7 +63,7 @@ pub fn handle(
     let view_model = presenters::present_session_list(
         sessions,
         project_filter_summary,
-        source,
+        provider,
         time_range,
         limit,
     );
