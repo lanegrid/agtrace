@@ -46,6 +46,7 @@ pub enum WatchTargetViewModel {
 pub struct WatchStreamStateViewModel {
     pub session_id: String,
     pub project_root: Option<String>,
+    pub log_path: Option<String>,
     pub start_time: DateTime<Utc>,
     pub last_activity: DateTime<Utc>,
     pub model: Option<String>,

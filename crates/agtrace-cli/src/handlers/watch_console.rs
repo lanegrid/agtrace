@@ -111,6 +111,7 @@ fn process_provider_events_console(
     let mut current_handle: Option<agtrace_runtime::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
     let mut session_state: Option<SessionState> = None;
+    let mut current_log_path: Option<std::path::PathBuf> = None;
     let poll_timeout = Duration::from_millis(100);
 
     // Attach to initial session if available
@@ -198,7 +199,8 @@ fn process_provider_events_console(
         // Process stream events from current session
         if let Some(ref handle) = current_handle {
             match handle.receiver().recv_timeout(poll_timeout) {
-                Ok(WorkspaceEvent::Stream(StreamEvent::Attached { session_id, .. })) => {
+                Ok(WorkspaceEvent::Stream(StreamEvent::Attached { session_id, path })) => {
+                    current_log_path = Some(path);
                     let event = present_watch::present_watch_attached(session_id);
                     print_event(&event, ViewMode::Compact);
                 }
@@ -239,6 +241,7 @@ fn process_provider_events_console(
                             &events,
                             session.as_ref(),
                             max_context,
+                            current_log_path.as_ref(),
                         );
                         print_event(&update_event, ViewMode::Standard);
                     }
@@ -281,13 +284,12 @@ fn process_stream_events_console(
     session_id: String,
 ) {
     let mut session_state: Option<SessionState> = None;
+    let mut current_log_path: Option<std::path::PathBuf> = None;
 
     while let Ok(event) = receiver.recv() {
         match event {
-            WorkspaceEvent::Stream(StreamEvent::Attached {
-                session_id,
-                path: _,
-            }) => {
+            WorkspaceEvent::Stream(StreamEvent::Attached { session_id, path }) => {
+                current_log_path = Some(path);
                 let event = present_watch::present_watch_attached(session_id);
                 print_event(&event, ViewMode::Compact);
             }
@@ -328,6 +330,7 @@ fn process_stream_events_console(
                         &events,
                         session.as_ref(),
                         max_context,
+                        current_log_path.as_ref(),
                     );
                     print_event(&update_event, ViewMode::Standard);
                 }

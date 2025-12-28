@@ -211,7 +211,12 @@ impl<'a> WatchEventView<'a> {
             && let WatchEventViewModel::StreamUpdate { state, .. } = self.event
         {
             writeln!(f, "\n{}", "Debug Info:".dimmed())?;
-            writeln!(f, "  Project root: {:?}", state.project_root)?;
+            if let Some(project_root) = &state.project_root {
+                writeln!(f, "  Project root: {}", project_root)?;
+            }
+            if let Some(log_path) = &state.log_path {
+                writeln!(f, "  Log path: {}", log_path)?;
+            }
             writeln!(f, "  Model: {:?}", state.model)?;
             writeln!(f, "  Event count: {}", state.event_count)?;
         }
@@ -230,6 +235,17 @@ impl<'a> WatchEventView<'a> {
 
         // Header
         writeln!(f, "\n{} Stream Update", "📝".green().bold())?;
+
+        // Show project root if available, otherwise log path
+        if let Some(project_root) = &state.project_root {
+            writeln!(f, "  Project: {}", project_root.yellow())?;
+            if let Some(log_path) = &state.log_path {
+                writeln!(f, "    {}", log_path.dimmed())?;
+            }
+        } else if let Some(log_path) = &state.log_path {
+            writeln!(f, "  Log: {}", log_path.dimmed())?;
+        }
+
         writeln!(
             f,
             "  Session: {} | Turn {} | {} events",
