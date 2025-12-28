@@ -9,6 +9,7 @@
 mod commands;
 mod common;
 mod enums;
+pub mod hints;
 
 pub use commands::*;
 pub use common::*;

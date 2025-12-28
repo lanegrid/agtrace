@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use crate::args::hints::cmd;
 use crate::presentation::view_models::{
     CommandResultViewModel, Guidance, ProviderDetectedViewModel, ProviderEntry,
     ProviderListViewModel, ProviderSetViewModel, StatusBadge,
@@ -25,11 +26,10 @@ pub fn present_provider_list(
         result = result
             .with_badge(StatusBadge::warning("No providers configured"))
             .with_suggestion(
-                Guidance::new("Auto-detect providers").with_command("agtrace provider detect"),
+                Guidance::new("Auto-detect providers").with_command(cmd::PROVIDER_DETECT),
             )
             .with_suggestion(
-                Guidance::new("Or manually configure a provider")
-                    .with_command("agtrace provider set <name> --log-root <PATH> --enable"),
+                Guidance::new("Or manually configure a provider").with_command(cmd::PROVIDER_SET),
             );
     } else {
         let enabled_count = result
@@ -69,8 +69,7 @@ pub fn present_provider_detected(
         result = result
             .with_badge(StatusBadge::warning("No providers detected"))
             .with_suggestion(
-                Guidance::new("Manually configure a provider")
-                    .with_command("agtrace provider set <name> --log-root <PATH> --enable"),
+                Guidance::new("Manually configure a provider").with_command(cmd::PROVIDER_SET),
             );
     } else {
         let label = format!(
@@ -80,10 +79,10 @@ pub fn present_provider_detected(
         result = result
             .with_badge(StatusBadge::success(label))
             .with_suggestion(
-                Guidance::new("View configured providers").with_command("agtrace provider list"),
+                Guidance::new("View configured providers").with_command(cmd::PROVIDER_LIST),
             )
             .with_suggestion(
-                Guidance::new("Start indexing sessions").with_command("agtrace index update"),
+                Guidance::new("Start indexing sessions").with_command(cmd::INDEX_UPDATE),
             );
     }
 
@@ -109,8 +108,8 @@ pub fn present_provider_set(
 
     CommandResultViewModel::new(content)
         .with_badge(StatusBadge::success(label))
-        .with_suggestion(Guidance::new("View all providers").with_command("agtrace provider list"))
+        .with_suggestion(Guidance::new("View all providers").with_command(cmd::PROVIDER_LIST))
         .with_suggestion(
-            Guidance::new("Index sessions from this provider").with_command("agtrace index update"),
+            Guidance::new("Index sessions from this provider").with_command(cmd::INDEX_UPDATE),
         )
 }

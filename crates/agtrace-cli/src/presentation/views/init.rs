@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::args::hints::cmd;
 use crate::presentation::view_models::{
     ConfigStatus, CreateView, InitResultViewModel, ScanOutcome, ViewMode,
 };
@@ -51,10 +52,7 @@ impl<'a> fmt::Display for InitResultView<'a> {
                 writeln!(f, "Configuration:")?;
                 writeln!(f, "  No providers detected automatically.")?;
                 writeln!(f, "\n  To manually configure a provider:")?;
-                writeln!(
-                    f,
-                    "    agtrace provider set <name> --log-root <PATH> --enable"
-                )?;
+                writeln!(f, "    {}", cmd::PROVIDER_SET)?;
                 writeln!(f, "\n  Supported providers:")?;
                 for provider in available_providers {
                     writeln!(
@@ -85,7 +83,7 @@ impl<'a> fmt::Display for InitResultView<'a> {
                     "  Skipped (scanned {})",
                     self.format_duration_seconds(*elapsed_seconds)
                 )?;
-                writeln!(f, "  Use `agtrace init --refresh` to force re-scan.")?;
+                writeln!(f, "  Use `{}` to force re-scan.", cmd::INIT_REFRESH)?;
             }
         }
 
@@ -95,8 +93,12 @@ impl<'a> fmt::Display for InitResultView<'a> {
                 if self.data.all_projects {
                     writeln!(f, "  No sessions found in global index.")?;
                     writeln!(f, "\nTips:")?;
-                    writeln!(f, "  - Check provider configuration: agtrace provider list")?;
-                    writeln!(f, "  - Run diagnostics: agtrace doctor run")?;
+                    writeln!(
+                        f,
+                        "  - Check provider configuration: {}",
+                        cmd::PROVIDER_LIST
+                    )?;
+                    writeln!(f, "  - Run diagnostics: {}", cmd::DOCTOR_RUN)?;
                 } else {
                     writeln!(
                         f,
@@ -105,9 +107,10 @@ impl<'a> fmt::Display for InitResultView<'a> {
                     writeln!(f, "\nTips:")?;
                     writeln!(
                         f,
-                        "  - To see all indexed sessions: agtrace list --all-projects"
+                        "  - To see all indexed sessions: {}",
+                        cmd::LIST_ALL_PROJECTS
                     )?;
-                    writeln!(f, "  - To scan all projects: agtrace init --all-projects")?;
+                    writeln!(f, "  - To scan all projects: {}", cmd::INIT_ALL_PROJECTS)?;
                 }
             } else {
                 if self.data.all_projects {
@@ -125,9 +128,9 @@ impl<'a> fmt::Display for InitResultView<'a> {
                 }
                 writeln!(f, "\nNext steps:")?;
                 writeln!(f, "  View recent sessions:")?;
-                writeln!(f, "    agtrace list")?;
+                writeln!(f, "    {}", cmd::LIST)?;
                 writeln!(f, "\n  View specific session:")?;
-                writeln!(f, "    agtrace session show <id> --style compact")?;
+                writeln!(f, "    {}", cmd::SESSION_SHOW_COMPACT)?;
             }
         }
 

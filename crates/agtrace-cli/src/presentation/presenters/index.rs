@@ -1,3 +1,4 @@
+use crate::args::hints::cmd;
 use crate::presentation::view_models::{
     CommandResultViewModel, Guidance, IndexMode, IndexResultViewModel, StatusBadge,
     VacuumResultViewModel,
@@ -29,11 +30,10 @@ pub fn present_index_result(
             .with_badge(StatusBadge::info("No sessions found"))
             .with_suggestion(
                 Guidance::new("Check if providers are configured correctly")
-                    .with_command("agtrace provider list"),
+                    .with_command(cmd::PROVIDER_LIST),
             )
             .with_suggestion(
-                Guidance::new("Run diagnostics to identify issues")
-                    .with_command("agtrace doctor run"),
+                Guidance::new("Run diagnostics to identify issues").with_command(cmd::DOCTOR_RUN),
             );
     } else {
         let label = if is_rebuild {
@@ -46,7 +46,7 @@ pub fn present_index_result(
 
         if total_sessions > 0 {
             result = result.with_suggestion(
-                Guidance::new("View recent sessions").with_command("agtrace session list"),
+                Guidance::new("View recent sessions").with_command(cmd::SESSION_LIST),
             );
         }
 
@@ -56,7 +56,7 @@ pub fn present_index_result(
                     "Skipped {} files. Use --verbose to see details or rebuild to force rescan",
                     skipped_files
                 ))
-                .with_command("agtrace index rebuild"),
+                .with_command(cmd::INDEX_REBUILD),
             );
         }
     }

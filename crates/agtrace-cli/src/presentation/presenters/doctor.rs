@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::args::hints::{cmd, fmt};
 use crate::presentation::view_models::{
     CheckStatus, CommandResultViewModel, DiagnoseResultViewModel, DiagnoseResultsViewModel,
     DoctorCheckResultViewModel, FailureExample, Guidance, InspectLine, InspectResultViewModel,
@@ -65,11 +66,11 @@ pub fn present_diagnose_results(
             )))
             .with_suggestion(
                 Guidance::new("Use doctor check to validate specific files")
-                    .with_command("agtrace doctor check <file-path>"),
+                    .with_command(cmd::DOCTOR_CHECK),
             )
             .with_suggestion(
                 Guidance::new("Use doctor inspect to view raw file contents")
-                    .with_command("agtrace doctor inspect <file-path>"),
+                    .with_command(cmd::DOCTOR_INSPECT),
             );
     }
 
@@ -112,7 +113,7 @@ pub fn present_check_result(
                 .with_badge(StatusBadge::error("File validation failed"))
                 .with_suggestion(
                     Guidance::new("Inspect the raw file contents")
-                        .with_command(format!("agtrace doctor inspect {}", file_path)),
+                        .with_command(fmt::doctor_inspect(&file_path)),
                 );
 
             if let Some(err) = &error_message {
@@ -152,15 +153,13 @@ pub fn present_inspect_result(
     if shown_lines < total_lines {
         result = result.with_suggestion(
             Guidance::new("Use --lines to see more content")
-                .with_command(format!("agtrace doctor inspect {} --lines 100", file_path)),
+                .with_command(fmt::doctor_inspect_lines(&file_path, 100)),
         );
     }
 
     result = result.with_suggestion(
-        Guidance::new("Use --format json to parse as JSON").with_command(format!(
-            "agtrace doctor inspect {} --format json",
-            file_path
-        )),
+        Guidance::new("Use --format json to parse as JSON")
+            .with_command(fmt::doctor_inspect_json(&file_path)),
     );
 
     result

@@ -29,31 +29,11 @@ pub fn handle(
         }),
     )?;
 
-    let vm = presenters::present_init_result(result.clone());
+    let vm = presenters::present_init_result(result);
     let result_vm = CommandResultViewModel::new(vm);
     let resolved_view_mode = view_mode_args.resolve();
     let renderer = ConsoleRenderer::new(output_format.into(), resolved_view_mode);
     renderer.render(result_vm)?;
-
-    // Provide helpful guidance based on session count
-    if result.scan_needed {
-        if result.session_count == 0 {
-            println!();
-            if all_projects {
-                println!("No sessions found in global index.");
-                println!("\nTips:");
-                println!("  - Check provider configuration: agtrace provider list");
-                println!("  - Run diagnostics: agtrace doctor run");
-            } else {
-                println!("Current directory: No sessions linked to this project.");
-                println!("\nTips:");
-                println!("  - To see all indexed sessions: agtrace session list");
-                println!("  - To scan all projects: agtrace init --all-projects");
-            }
-        } else {
-            println!("\nDone! Use 'agtrace watch' to start live monitoring.");
-        }
-    }
 
     Ok(())
 }

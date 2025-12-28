@@ -1,3 +1,4 @@
+use crate::args::hints::{cmd, fmt};
 use crate::presentation::view_models::{
     AgentStepViewModel, CommandResultViewModel, ContextUsage, ContextWindowSummary,
     ContextWindowUsageViewModel, FilterSummary, Guidance, SessionAnalysisViewModel, SessionHeader,
@@ -63,11 +64,10 @@ fn add_session_list_guidance(
             .with_badge(StatusBadge::info("No sessions found"))
             .with_suggestion(
                 Guidance::new("Index sessions to populate the database")
-                    .with_command("agtrace index update"),
+                    .with_command(cmd::INDEX_UPDATE),
             )
             .with_suggestion(
-                Guidance::new("Or scan all projects")
-                    .with_command("agtrace index update --all-projects"),
+                Guidance::new("Or scan all projects").with_command(cmd::INDEX_UPDATE_ALL_PROJECTS),
             );
     } else {
         let label = if total_count == 1 {
@@ -83,7 +83,7 @@ fn add_session_list_guidance(
                     "Showing first {} sessions, use --limit to see more",
                     limit
                 ))
-                .with_command(format!("agtrace session list --limit {}", limit * 2)),
+                .with_command(fmt::session_list_limit(limit * 2)),
             );
         }
     }

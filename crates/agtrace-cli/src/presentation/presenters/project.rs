@@ -1,3 +1,4 @@
+use crate::args::hints::cmd;
 use crate::presentation::view_models::{
     CommandResultViewModel, Guidance, ProjectEntryViewModel, ProjectListViewModel, StatusBadge,
 };
@@ -41,7 +42,7 @@ pub fn present_project_list(
             .with_badge(StatusBadge::info("No projects registered"))
             .with_suggestion(
                 Guidance::new("Scan for sessions to register projects")
-                    .with_command("agtrace index update"),
+                    .with_command(cmd::INDEX_UPDATE),
             );
     } else {
         result = result.with_badge(StatusBadge::success("Projects found"));
