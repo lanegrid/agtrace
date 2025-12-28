@@ -1,9 +1,9 @@
 Output demo.gif
 
-Set FontSize 14
-Set Width 1200
-Set Height 700
-Set Padding 10
+Set FontSize 18
+Set Width 1100
+Set Height 650
+Set Padding 12
 
 Sleep 500ms
 
