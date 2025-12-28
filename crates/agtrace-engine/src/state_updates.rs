@@ -38,6 +38,10 @@ pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
                 .and_then(|d| d.reasoning_output_tokens)
                 .unwrap_or(0);
 
+            // TODO: Verify if input_tokens includes cache tokens (potential double counting)
+            // Claude API's input_tokens may already include cache_creation + cache_read.
+            // If so, fresh_input should be: usage.input_tokens - cache_creation - cache_read
+            // Need to verify with actual logs using: agtrace lab grep "TokenUsage" --json
             updates.usage = Some(ContextWindowUsage::from_raw(
                 usage.input_tokens,
                 cache_creation,
