@@ -84,7 +84,12 @@ pub fn handle_console(
             let watch_service_clone = watch_service.clone();
 
             // Process events on main thread (so we can print to stdout)
-            process_provider_events_console(&watch_service_clone, rx_discovery, latest_session);
+            process_provider_events_console(
+                &watch_service_clone,
+                rx_discovery,
+                latest_session,
+                project_root,
+            );
 
             Ok(())
         }
@@ -96,7 +101,7 @@ pub fn handle_console(
             // Attach to session
             let handle = watch_service.watch_session(&id)?;
 
-            process_stream_events_console(handle.receiver(), id);
+            process_stream_events_console(handle.receiver(), id, project_root);
 
             Ok(())
         }
@@ -107,11 +112,13 @@ fn process_provider_events_console(
     watch_service: &agtrace_runtime::WatchService,
     rx_discovery: std::sync::mpsc::Receiver<WorkspaceEvent>,
     initial_session: Option<agtrace_index::SessionSummary>,
+    project_root: Option<&Path>,
 ) {
     let mut current_handle: Option<agtrace_runtime::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
+    let project_root_buf = project_root.map(|p| p.to_path_buf());
     let poll_timeout = Duration::from_millis(100);
 
     // Attach to initial session if available
@@ -212,7 +219,7 @@ fn process_provider_events_console(
 
                         session_state = Some(SessionState::new(
                             session_id,
-                            None,
+                            project_root_buf.clone(),
                             current_log_path.clone(),
                             events[0].timestamp,
                         ));
@@ -285,9 +292,11 @@ fn process_provider_events_console(
 fn process_stream_events_console(
     receiver: &std::sync::mpsc::Receiver<WorkspaceEvent>,
     session_id: String,
+    project_root: Option<&Path>,
 ) {
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
+    let project_root_buf = project_root.map(|p| p.to_path_buf());
 
     while let Ok(event) = receiver.recv() {
         match event {
@@ -301,7 +310,7 @@ fn process_stream_events_console(
                 if session_state.is_none() && !events.is_empty() {
                     session_state = Some(SessionState::new(
                         session_id.clone(),
-                        None,
+                        project_root_buf.clone(),
                         current_log_path.clone(),
                         events[0].timestamp,
                     ));
