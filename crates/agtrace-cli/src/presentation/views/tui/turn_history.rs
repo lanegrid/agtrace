@@ -123,14 +123,14 @@ impl<'a> TurnHistoryView<'a> {
 
             line_spans.push(Span::raw("] "));
 
-            // Token info: percentage and delta tokens (v1-style compact form)
-            let pct = turn.usage_ratio * 100.0;
+            // Token info: delta percentage and delta tokens
+            let delta_pct = turn.delta_ratio * 100.0;
             let pct_color = if turn.is_heavy {
                 ratatui::style::Color::Red
             } else {
                 ratatui::style::Color::White
             };
-            let pct_text = format!("+{:.1}% ({})", pct, format_tokens(turn.delta_tokens));
+            let pct_text = format!("+{:.1}% ({})", delta_pct, format_tokens(turn.delta_tokens));
             line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
             line_spans.push(Span::raw(" "));
 

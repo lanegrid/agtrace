@@ -271,6 +271,7 @@ fn build_turn_item(
     // Output ratios (for potential future use in View)
     let usage_ratio = (metric.prev_total + metric.delta) as f64 / max_context as f64;
     let prev_ratio = metric.prev_total as f64 / max_context as f64;
+    let delta_ratio = metric.delta as f64 / max_context as f64;
 
     // Logic: Determine color based on delta magnitude
     let delta_color = if metric.is_heavy {
@@ -303,6 +304,7 @@ fn build_turn_item(
         delta_tokens: metric.delta,
         usage_ratio,
         prev_ratio,
+        delta_ratio,
         bar_width,
         prev_bar_width,
         delta_color,

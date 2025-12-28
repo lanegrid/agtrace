@@ -103,6 +103,7 @@ pub struct TurnItemViewModel {
     pub delta_tokens: u32,   // Tokens added by this turn
     pub usage_ratio: f64,    // Total usage ratio after this turn (0.0 - 1.0)
     pub prev_ratio: f64,     // Usage ratio before this turn (0.0 - 1.0)
+    pub delta_ratio: f64,    // Delta ratio for this turn (0.0 - 1.0)
     pub bar_width: u16,      // Total bar width in characters
     pub prev_bar_width: u16, // Previous bar width in characters
     pub delta_color: StatusLevel,
