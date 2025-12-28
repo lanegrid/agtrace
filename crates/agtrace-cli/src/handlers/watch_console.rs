@@ -49,7 +49,7 @@ pub fn handle_console(
                 let scan_context = ScanContext {
                     project_hash,
                     project_root: current_project_root,
-                    provider_filter: None,
+                    provider_filter: Some(name.clone()),
                 };
 
                 // Lightweight scan (incremental by default)
