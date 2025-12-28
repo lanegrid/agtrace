@@ -1,8 +1,12 @@
 <div align="center">
   <img src="docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
   <h1>agtrace</h1>
-  <p><strong>The Vital Monitor for AI Coding Agents.</strong></p>
-  <p>Real-time telemetry, context window tracking, and session forensics for Claude Code, Codex, and Gemini. <strong>Built in Rust for zero-overhead monitoring.</strong></p>
+  <p><strong>The Observability Layer for AI Coding Agents.</strong></p>
+  <p>
+    Real-time telemetry and session forensics for Claude Code, Codex, and Gemini.
+    Track context window usage, compaction behavior, and regressions —
+    <strong>locally</strong>, with <strong>zero overhead</strong>.
+  </p>
 
   [![npm version](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat)](https://www.npmjs.com/package/@lanegrid/agtrace)
   [![crates.io](https://img.shields.io/crates/v/agtrace.svg)](https://crates.io/crates/agtrace)
@@ -10,54 +14,69 @@
 
 ---
 
-## 📉 The Problem: "Context Window Anxiety"
+## 📉 The Problem: No Observability for Context Compaction
 
-AI Coding Agents (Claude Code, Codex, etc.) are evolving rapidly, but managing their **"Context Window"** has become a hidden, cognitively heavy burden for humans.
+Modern AI coding agents rely on context window compaction by design. This is expected behavior across Claude Code, Codex, and Gemini.
 
-When a conversation exceeds the token limit, agents trigger **"Auto Compaction"** (silent compression). They start to "forget" previous instructions, file contents, or architectural decisions. Currently, this happens invisibly. You only realize it when the agent starts hallucinating or making regression errors.
+The problem is not that compaction happens.
 
-You are effectively flying a plane without a fuel gauge.
+The problem is that you cannot:
+- observe *when* compaction occurs
+- measure *how much* context was discarded
+- correlate compaction with regressions, hallucinations, or sudden behavioral shifts
+
+In practice, we are running a lossy, stateful system without logs, metrics, or traces for its most critical state transition.
 
 ## ⚡ The Solution: agtrace
 
-**agtrace** is a local-only telemetry tool that acts as a "Vital Check" for your AI agents. by normalizing logs from various providers, it visualizes the internal state of your agent in real-time.
+**agtrace** adds the missing observability layer to AI coding agents.
+
+By normalizing provider logs and exposing real-time context usage and compaction behavior, agtrace makes agent state transitions inspectable and debuggable — without sending sensitive data to the cloud.
 
 ![agtrace watch demo](demo.gif)
 
-*Live demo of `agtrace watch` - Real-time AI session monitoring*
+*Live demo of `agtrace watch` — real-time session monitoring*
 
 ![agtrace watch TUI dashboard](docs/images/watch-screenshot-claude.png)
 
-*The dashboard showing Context Window usage, current turn, and token costs*
+*The dashboard showing context usage, current turn, and token costs*
 
-### Key Features
+---
 
-* **👁️ Live Vital Monitoring (`watch`)**
-  A TUI (Terminal User Interface) dashboard that visualizes the "health" of your session. See exactly how much Context Window is remaining before auto-compaction hits.
+## ✨ Key Features
 
-* **🔌 Provider Normalization**
-  Whether you use `Claude Code`, `Codex`, or `Gemini`, agtrace normalizes the events into a standard format.
+### 1) Live Telemetry (`watch`)
+A TUI dashboard that visualizes the health of your active session:
+- remaining context window (before compaction pressure)
+- current turn and recent activity
+- token/cost telemetry (where available)
 
-* **🔒 Local & Private**
-  Agent logs contain sensitive code and secrets. **agtrace runs 100% locally.** No data is sent to the cloud. It reads directly from your local log files (`~/.claude`, etc.).
+### 2) Provider Normalization
+Whether you use **Claude Code**, **Codex**, or **Gemini**, agtrace converts their events into a consistent internal format so you can reason about sessions the same way across providers.
 
-* **🚀 Auto-Tracking**
-  The `watch` command automatically detects new sessions as they are created. Just keep it running in a separate terminal pane.
+### 3) Local-Only by Default
+Agent logs often contain sensitive code and secrets. **agtrace runs 100% locally** and reads directly from local log files (e.g., `~/.claude`). No data is sent to the cloud.
 
-* **🥼 Forensics Lab**
-  Use `agtrace lab grep` to search across thousands of past sessions, analyze tool usage patterns, or debug agent behavior with `--raw` inspection.
+### 4) Automatic Session Tracking
+Keep `watch` running in a separate terminal pane. It automatically detects newly created sessions and follows along as you switch agents or start fresh conversations.
 
-* **⚡ Zero-Overhead Monitoring**
-  Built in **Rust**, agtrace is designed to run in the background with a minimal footprint. It won't slow down your machine while you work with heavy AI agents.
+### 5) Session Forensics (“Lab”)
+Investigate agent behavior across history:
+- search across thousands of past sessions
+- analyze tool usage patterns
+- inspect raw provider events when debugging schema changes (`--raw`)
 
-* **🔍 Instant Forensics**
-  Parse and grep through gigabytes of JSONL logs in milliseconds. The schema-on-read architecture combined with Rust's performance makes analyzing history instantaneous.
+### 6) High-Performance, Minimal Footprint
+Built in **Rust**, agtrace is designed to run continuously without slowing down your machine while you work with heavyweight AI agents.
+
+### 7) Instant Log Analysis
+Parse and grep through gigabytes of JSONL logs quickly. The schema-on-read approach plus Rust performance makes historical analysis fast and practical.
 
 ---
 
 ## 📦 Installation
 
-We recommend installing `agtrace` globally for the best performance and quick access to the `watch` command.
+For best performance and easy access to `watch`, install globally.
 
 ### via npm (Recommended)
 
@@ -67,7 +86,8 @@ npm install -g @lanegrid/agtrace
 
 ### via npx (no installation)
 
-If you prefer not to install it globally, you can run commands using `npx`.
+If you prefer not to install globally, run via `npx`.
+
 *Note: In the examples below, replace `agtrace` with `npx @lanegrid/agtrace`.*
 
 ```bash
@@ -80,14 +100,13 @@ npx @lanegrid/agtrace@latest init
 cargo install agtrace
 ```
 
-
 ---
 
 ## 🚀 Quick Start
 
-### 0. Try the Demo (Optional)
+### 0) Try the Demo (Optional)
 
-See `agtrace watch` in action without setting up logs:
+See `agtrace watch` in action without configuring logs:
 
 ```bash
 agtrace demo
@@ -95,18 +114,18 @@ agtrace demo
 
 This simulates a live AI session to demonstrate the TUI dashboard. Use `--speed fast` for a quicker preview.
 
-### 1. Initialize in Your Project
+### 1) Initialize in Your Project
 
-Navigate to your project directory and run:
+From your project directory:
 
 ```bash
 cd /path/to/your/project
 agtrace init
 ```
 
-### 2. Start Your AI Coding Agent
+### 2) Start Your AI Coding Agent
 
-In one terminal, launch your usual AI coding agent:
+In one terminal, launch your agent as usual:
 
 ```bash
 # Example: Claude Code
@@ -115,55 +134,63 @@ claude
 # Or Codex, Gemini, etc.
 ```
 
-### 3. Watch in Another Terminal
+### 3) Watch in Another Terminal
 
-Open a separate terminal pane in the same project directory and run:
+In a separate terminal pane (same project directory):
 
 ```bash
 agtrace watch
 ```
 
-That's it. No integration required—agtrace automatically detects and monitors your agent session.
+That’s it. No integration required — agtrace automatically detects and monitors your agent session.
 
-* **Visualizes:** Context Window usage, Cost, Turns, and Last Activity.
-* **Auto-Switch:** When you start a new session, agtrace automatically latches onto it.
+**`watch` surfaces:**
 
-### 4. Analyze Past Sessions
+* context window usage
+* cost telemetry (where available)
+* turns and recent activity
+* automatic switching to newly created sessions
 
-List recent sessions across all providers or inspect a specific one.
+### 4) Analyze Past Sessions
+
+List recent sessions across providers, or inspect a specific one:
 
 ```bash
 # List recent sessions
 agtrace session list
 
-# Show analysis of a specific session (Context usage, turns, models)
+# Show analysis of a specific session (context usage, turns, models)
 agtrace session show <session_id>
-
 ```
 
-### 5. Advanced: The "Lab"
+### 5) Advanced: The Lab
 
-Debug agent interactions or search for specific patterns (e.g., "When did the agent try to write to `package.json`?").
+Debug agent interactions or search for specific patterns, e.g. “When did the agent try to write to `package.json`?”:
 
 ```bash
 # Find all file write operations across history
 agtrace lab grep "write_file" --json
 
-# Inspect raw provider event (useful for debugging schema changes)
+# Inspect a raw provider event (useful for debugging schema changes)
 agtrace lab grep "mcp" --raw --limit 1
-
 ```
 
 ---
 
 ## 🏗️ Architecture
 
-agtrace is designed with **"Pointer-Based"** and **"Schema-on-Read"** philosophies:
+agtrace is designed around **pointer-based indexing** and **schema-on-read**:
 
-1. **No Data Duplication:** We don't copy your massive log files. We index metadata and point to the original logs.
-2. **Resilience:** Provider log schemas change frequently. agtrace parses logs at read-time, meaning a schema update won't corrupt your historical index.
-3. **Project Isolation:** Sessions are grouped by project root hash, keeping your workspaces clean
+1. **No Data Duplication**
+   agtrace does not copy your massive log files. It indexes metadata and points to the original logs.
 
+2. **Resilient to Schema Drift**
+   Provider log schemas change frequently. agtrace parses logs at read time, so schema updates are less likely to corrupt or invalidate historical indexes.
+
+3. **Project Isolation**
+   Sessions are grouped by a project root hash to keep workspaces clean and prevent cross-project mixing.
+
+---
 
 ## 🤝 Supported Providers
 
@@ -175,4 +202,4 @@ agtrace is designed with **"Pointer-Based"** and **"Schema-on-Read"** philosophi
 
 ## 📜 License
 
-This project is dual-licensed under the MIT and Apache 2.0 licenses.
+Dual-licensed under the MIT and Apache 2.0 licenses.
