@@ -22,19 +22,42 @@ use clap::Parser;
 #[command(about = "Normalize and analyze agent behavior logs", long_about = None)]
 #[command(version)]
 pub struct Cli {
-    #[arg(long, default_value = "~/.agtrace", global = true)]
+    #[arg(
+        long,
+        default_value = "~/.agtrace",
+        global = true,
+        help = "Directory for agtrace database and configuration"
+    )]
     pub data_dir: String,
 
-    #[arg(long, default_value = "plain", global = true)]
+    #[arg(
+        long,
+        default_value = "plain",
+        global = true,
+        help = "Output format for command results"
+    )]
     pub format: OutputFormat,
 
-    #[arg(long, default_value = "info", global = true)]
+    #[arg(
+        long,
+        default_value = "info",
+        global = true,
+        help = "Logging verbosity level"
+    )]
     pub log_level: LogLevel,
 
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "Override project root directory (defaults to current directory)"
+    )]
     pub project_root: Option<String>,
 
-    #[arg(long, global = true)]
+    #[arg(
+        long,
+        global = true,
+        help = "Operate on all indexed projects instead of current project only"
+    )]
     pub all_projects: bool,
 
     #[command(subcommand)]

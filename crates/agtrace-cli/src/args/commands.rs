@@ -8,43 +8,43 @@ use std::path::PathBuf;
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = "Manage index database operations")]
+    #[command(about = "Index and manage the session database")]
     Index {
         #[command(subcommand)]
         command: IndexCommand,
     },
 
-    #[command(about = "Manage and view session data")]
+    #[command(about = "View and analyze session data")]
     Session {
         #[command(subcommand)]
         command: SessionCommand,
     },
 
-    #[command(about = "Manage provider configurations")]
+    #[command(about = "Configure log sources (Claude Code, Codex, Gemini)")]
     Provider {
         #[command(subcommand)]
         command: ProviderCommand,
     },
 
-    #[command(about = "Diagnose provider configurations and log files")]
+    #[command(about = "Diagnose and troubleshoot log parsing issues")]
     Doctor {
         #[command(subcommand)]
         command: DoctorCommand,
     },
 
-    #[command(about = "List indexed projects")]
+    #[command(about = "List all indexed projects")]
     Project {
         #[command(subcommand)]
         command: ProjectCommand,
     },
 
-    #[command(about = "Experimental features")]
+    #[command(about = "Advanced analysis tools (grep, export, stats)")]
     Lab {
         #[command(subcommand)]
         command: LabCommand,
     },
 
-    #[command(about = "List recent sessions (alias for 'session list')")]
+    #[command(about = "List recent sessions (shorthand for 'session list')")]
     Sessions {
         #[arg(long)]
         project_hash: Option<String>,
@@ -62,7 +62,7 @@ pub enum Commands {
         until: Option<String>,
     },
 
-    #[command(about = "Analyze and pack sessions for sharing")]
+    #[command(about = "Package sessions for sharing or analysis")]
     Pack {
         #[arg(long, default_value = "compact")]
         template: PackTemplate,
@@ -71,9 +71,9 @@ pub enum Commands {
         limit: usize,
     },
 
-    #[command(about = "Watch for live session updates")]
+    #[command(about = "Monitor live session updates in real-time")]
     Watch {
-        #[arg(long)]
+        #[arg(long, help = "Filter by provider")]
         provider: Option<ProviderName>,
 
         #[arg(
@@ -90,34 +90,60 @@ pub enum Commands {
         mode: WatchFormat,
     },
 
-    #[command(about = "Initialize agtrace configuration")]
+    #[command(
+        about = "Set up agtrace (detects providers, creates DB, scans logs)",
+        long_about = "Initialize agtrace by detecting provider configurations, creating the database, and scanning logs.
+
+This is typically the first command to run. It will:
+  1. Auto-detect installed providers (Claude Code, Codex, Gemini)
+  2. Create the SQLite index database
+  3. Scan and index existing session logs
+
+Use --refresh to force a re-scan even if recently indexed."
+    )]
     Init {
-        #[arg(long)]
+        #[arg(long, help = "Force re-scan even if recently indexed")]
         refresh: bool,
     },
 }
 
 #[derive(Subcommand)]
 pub enum IndexCommand {
-    #[command(about = "Incrementally update the index with new sessions")]
+    #[command(
+        about = "Scan for new sessions and add them to the index",
+        long_about = "Incrementally update the index by scanning for new session logs.
+
+This command only processes files that haven't been indexed yet, making it fast for regular updates.
+Use this after AI agent sessions to make them searchable."
+    )]
     Update {
-        #[arg(long, default_value = "all")]
+        #[arg(long, default_value = "all", help = "Filter by provider")]
         provider: ProviderFilter,
 
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },
 
-    #[command(about = "Rebuild the entire index from scratch")]
+    #[command(
+        about = "Clear and rebuild the entire index from scratch",
+        long_about = "Rebuild the entire index by re-scanning all log files.
+
+This is useful when:
+  - You suspect the index is corrupted
+  - Provider log formats have changed
+  - You want to force re-processing of all sessions
+
+Warning: This clears all existing index data."
+    )]
     Rebuild {
-        #[arg(long, default_value = "all")]
+        #[arg(long, default_value = "all", help = "Filter by provider")]
         provider: ProviderFilter,
 
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },
 
-    #[command(about = "Optimize database by reclaiming unused space")]
+    #[command(about = "Optimize database performance and reclaim disk space")]
     Vacuum {
         #[command(flatten)]
         view_mode: ViewModeArgs,
@@ -126,24 +152,34 @@ pub enum IndexCommand {
 
 #[derive(Subcommand)]
 pub enum SessionCommand {
-    #[command(about = "List recent sessions with filtering options")]
+    #[command(
+        about = "Browse recent sessions with optional filtering",
+        long_about = "List recent AI agent sessions from the index.
+
+Sessions are displayed with timestamps, snippets, and metadata.
+Use filters to narrow down by provider, time range, or project."
+    )]
     List {
-        #[arg(long)]
+        #[arg(long, help = "Filter by project hash")]
         project_hash: Option<String>,
 
-        #[arg(long)]
+        #[arg(long, help = "Filter by provider")]
         provider: Option<ProviderName>,
 
-        #[arg(long, default_value = "50")]
+        #[arg(
+            long,
+            default_value = "50",
+            help = "Maximum number of sessions to show"
+        )]
         limit: usize,
 
-        #[arg(long)]
+        #[arg(long, help = "Show sessions after this timestamp")]
         since: Option<String>,
 
-        #[arg(long)]
+        #[arg(long, help = "Show sessions before this timestamp")]
         until: Option<String>,
 
-        #[arg(long)]
+        #[arg(long, help = "Skip automatic index refresh before listing")]
         no_auto_refresh: bool,
 
         #[arg(long, default_value = "plain", help = "Output format")]
@@ -153,8 +189,18 @@ pub enum SessionCommand {
         view_mode: ViewModeArgs,
     },
 
-    #[command(about = "Display session analysis with context usage and turn metrics")]
+    #[command(
+        about = "Show detailed analysis of a specific session",
+        long_about = "Display comprehensive analysis of a single session including:
+  - Context window usage and token statistics
+  - Turn-by-turn conversation flow
+  - Tool calls and reasoning traces
+  - Model and provider information
+
+Use this to deep-dive into session behavior and performance."
+    )]
     Show {
+        #[arg(help = "Session ID (short or full hash)")]
         session_id: String,
 
         #[arg(long, default_value = "plain", help = "Output format")]
@@ -167,27 +213,46 @@ pub enum SessionCommand {
 
 #[derive(Subcommand)]
 pub enum ProviderCommand {
-    #[command(about = "Show configured providers")]
+    #[command(about = "Show all configured log sources and their status")]
     List {
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },
-    #[command(about = "Auto-detect and configure providers")]
+    #[command(
+        about = "Auto-detect installed AI tools and configure them",
+        long_about = "Scan the system for installed AI agent tools and automatically configure their log paths.
+
+Supported providers:
+  - Claude Code (~/.claude/sessions)
+  - Codex (~/.codex/sessions)
+  - Gemini (~/.gemini/sessions)
+
+Detected providers are saved to the configuration file."
+    )]
     Detect {
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },
-    #[command(about = "Configure a provider")]
+    #[command(
+        about = "Manually configure a log source",
+        long_about = "Manually add or update a provider configuration.
+
+Use this when:
+  - Auto-detection fails
+  - Logs are in a non-standard location
+  - You want to enable/disable a specific provider"
+    )]
     Set {
+        #[arg(help = "Provider name (claude_code, codex, gemini)")]
         provider: String,
 
-        #[arg(long)]
+        #[arg(long, help = "Path to the provider's log directory")]
         log_root: PathBuf,
 
-        #[arg(long)]
+        #[arg(long, help = "Enable this provider for indexing")]
         enable: bool,
 
-        #[arg(long)]
+        #[arg(long, help = "Disable this provider from indexing")]
         disable: bool,
 
         #[command(flatten)]
@@ -197,37 +262,61 @@ pub enum ProviderCommand {
 
 #[derive(Subcommand)]
 pub enum DoctorCommand {
-    #[command(about = "Diagnose provider log files for parse errors")]
+    #[command(
+        about = "Scan all log files and report parsing errors",
+        long_about = "Run diagnostics on all configured provider log files.
+
+This command:
+  - Scans all log files from enabled providers
+  - Attempts to parse each file
+  - Reports files that fail to parse
+  - Provides error details for troubleshooting
+
+Use this when sessions aren't appearing in the index."
+    )]
     Run {
-        #[arg(long, default_value = "all")]
+        #[arg(long, default_value = "all", help = "Filter by provider")]
         provider: ProviderFilter,
 
-        #[arg(long)]
+        #[arg(long, help = "Show detailed parsing errors")]
         verbose: bool,
 
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },
 
-    #[command(about = "Inspect raw log file contents")]
+    #[command(
+        about = "View raw contents of a log file",
+        long_about = "Display the raw contents of a log file for manual inspection.
+
+Useful for debugging parsing issues or understanding log file structure."
+    )]
     Inspect {
+        #[arg(help = "Path to the log file")]
         file_path: String,
 
-        #[arg(long, default_value = "50")]
+        #[arg(long, default_value = "50", help = "Number of lines to display")]
         lines: usize,
 
-        #[arg(long, default_value = "raw")]
+        #[arg(long, default_value = "raw", help = "Display format")]
         format: InspectFormat,
 
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },
 
-    #[command(about = "Check if a log file can be parsed")]
+    #[command(
+        about = "Validate if a specific log file can be parsed",
+        long_about = "Test if a specific log file can be successfully parsed.
+
+Returns success/failure status and event count.
+Useful for validating log files before indexing."
+    )]
     Check {
+        #[arg(help = "Path to the log file")]
         file_path: String,
 
-        #[arg(long)]
+        #[arg(long, help = "Explicitly specify provider (auto-detects if omitted)")]
         provider: Option<ProviderName>,
 
         #[command(flatten)]
