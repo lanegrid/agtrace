@@ -35,18 +35,25 @@ struct WatchHandler {
     max_context: Option<u32>,
     /// Notification message (for session switching, etc.)
     notification: Option<String>,
+    /// Project root (CWD)
+    project_root: Option<std::path::PathBuf>,
     /// Sender to TUI renderer
     tx: Sender<TuiEvent>,
 }
 
 impl WatchHandler {
-    fn new(state: SessionState, tx: Sender<TuiEvent>) -> Self {
+    fn new(
+        state: SessionState,
+        project_root: Option<std::path::PathBuf>,
+        tx: Sender<TuiEvent>,
+    ) -> Self {
         Self {
             state,
             events: VecDeque::new(),
             assembled_session: None,
             max_context: None,
             notification: None,
+            project_root,
             tx,
         }
     }
@@ -70,8 +77,13 @@ impl WatchHandler {
     }
 
     /// Reset session state (clear all buffers and data)
-    fn reset_session_state(&mut self, session_id: String, path: Option<std::path::PathBuf>) {
-        self.state = SessionState::new(session_id, path, chrono::Utc::now());
+    fn reset_session_state(&mut self, session_id: String, log_path: Option<std::path::PathBuf>) {
+        self.state = SessionState::new(
+            session_id,
+            self.project_root.clone(),
+            log_path,
+            chrono::Utc::now(),
+        );
         self.events.clear();
         self.assembled_session = None;
         self.send_update();
@@ -218,12 +230,16 @@ fn handle_provider_watch(
 
     // Initialize handler with initial session
     let initial_state = if let Some(session) = &latest_session {
-        SessionState::new(session.id.clone(), None, chrono::Utc::now())
+        SessionState::new(session.id.clone(), None, None, chrono::Utc::now())
     } else {
-        SessionState::new("waiting".to_string(), None, chrono::Utc::now())
+        SessionState::new("waiting".to_string(), None, None, chrono::Utc::now())
     };
 
-    let mut handler = WatchHandler::new(initial_state, tx.clone());
+    let mut handler = WatchHandler::new(
+        initial_state,
+        project_root.map(|p| p.to_path_buf()),
+        tx.clone(),
+    );
     handler.max_context = Some(200_000); // Default fallback
 
     // Track current stream handle
@@ -397,9 +413,9 @@ fn handle_session_watch(
     let rx_stream = handle.receiver();
 
     // Initialize handler with initial state
-    let initial_state = SessionState::new(session_id.to_string(), None, chrono::Utc::now());
+    let initial_state = SessionState::new(session_id.to_string(), None, None, chrono::Utc::now());
 
-    let mut handler = WatchHandler::new(initial_state, tx.clone());
+    let mut handler = WatchHandler::new(initial_state, None, tx.clone());
 
     // Set default fallback (will be updated from actual events)
     handler.max_context = Some(200_000); // Default to Claude Code's limit

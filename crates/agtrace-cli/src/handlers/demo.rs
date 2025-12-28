@@ -58,7 +58,7 @@ fn run_simulation(
     let session_id = "demo-session-00000000-0000-0000-0000-000000000000".to_string();
     let start_time = Utc::now();
 
-    let mut state = SessionState::new(session_id.clone(), None, start_time);
+    let mut state = SessionState::new(session_id.clone(), None, None, start_time);
     state.context_window_limit = Some(DEMO_CONTEXT_WINDOW_LIMIT);
     state.model = Some("Demo Model".to_string());
 

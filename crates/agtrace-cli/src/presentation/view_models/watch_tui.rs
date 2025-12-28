@@ -42,6 +42,7 @@ pub struct DashboardViewModel {
     pub sub_title: Option<String>,
     pub session_id: String,
     pub project_root: Option<String>,
+    pub log_path: Option<String>,
     pub model: Option<String>,
     pub start_time: DateTime<Utc>,
     pub last_activity: DateTime<Utc>,

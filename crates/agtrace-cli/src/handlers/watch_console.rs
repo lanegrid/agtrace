@@ -210,8 +210,12 @@ fn process_provider_events_console(
                             .clone()
                             .unwrap_or_else(|| "unknown".to_string());
 
-                        session_state =
-                            Some(SessionState::new(session_id, None, events[0].timestamp));
+                        session_state = Some(SessionState::new(
+                            session_id,
+                            None,
+                            current_log_path.clone(),
+                            events[0].timestamp,
+                        ));
                     }
 
                     if let Some(state) = &mut session_state {
@@ -241,7 +245,6 @@ fn process_provider_events_console(
                             &events,
                             session.as_ref(),
                             max_context,
-                            current_log_path.as_ref(),
                         );
                         print_event(&update_event, ViewMode::Standard);
                     }
@@ -299,6 +302,7 @@ fn process_stream_events_console(
                     session_state = Some(SessionState::new(
                         session_id.clone(),
                         None,
+                        current_log_path.clone(),
                         events[0].timestamp,
                     ));
                 }
@@ -330,7 +334,6 @@ fn process_stream_events_console(
                         &events,
                         session.as_ref(),
                         max_context,
-                        current_log_path.as_ref(),
                     );
                     print_event(&update_event, ViewMode::Standard);
                 }

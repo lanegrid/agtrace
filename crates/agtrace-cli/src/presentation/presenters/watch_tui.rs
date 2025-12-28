@@ -81,6 +81,7 @@ fn build_dashboard(
         sub_title: notification.map(|s| s.to_string()),
         session_id: state.session_id.clone(),
         project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
+        log_path: state.log_path.as_ref().map(|p| p.display().to_string()),
         model: state.model.clone(),
         start_time: state.start_time,
         last_activity: state.last_activity,

@@ -7,6 +7,7 @@ use std::path::PathBuf;
 pub struct SessionState {
     pub session_id: String,
     pub project_root: Option<PathBuf>,
+    pub log_path: Option<PathBuf>,
     pub start_time: DateTime<Utc>,
     pub last_activity: DateTime<Utc>,
     pub model: Option<String>,
@@ -22,11 +23,13 @@ impl SessionState {
     pub fn new(
         session_id: String,
         project_root: Option<PathBuf>,
+        log_path: Option<PathBuf>,
         start_time: DateTime<Utc>,
     ) -> Self {
         Self {
             session_id,
             project_root,
+            log_path,
             start_time,
             last_activity: start_time,
             model: None,
@@ -93,7 +96,7 @@ mod tests {
 
     #[test]
     fn test_session_state_initialization() {
-        let state = SessionState::new("test-id".to_string(), None, Utc::now());
+        let state = SessionState::new("test-id".to_string(), None, None, Utc::now());
 
         assert_eq!(state.session_id, "test-id");
         assert!(state.current_usage.is_empty());
@@ -105,7 +108,7 @@ mod tests {
 
     #[test]
     fn test_session_state_token_snapshot() {
-        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+        let mut state = SessionState::new("test-id".to_string(), None, None, Utc::now());
 
         state.current_usage = ContextWindowUsage::from_raw(100, 0, 0, 50);
         assert_eq!(state.total_input_side_tokens(), 100);
@@ -120,14 +123,14 @@ mod tests {
 
     #[test]
     fn test_validate_tokens_success() {
-        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+        let mut state = SessionState::new("test-id".to_string(), None, None, Utc::now());
         state.current_usage = ContextWindowUsage::from_raw(1000, 2000, 10000, 500);
         assert!(state.validate_tokens(Some(200_000)).is_ok());
     }
 
     #[test]
     fn test_validate_tokens_exceeds_limit() {
-        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+        let mut state = SessionState::new("test-id".to_string(), None, None, Utc::now());
         state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 0, 150_000);
         let result = state.validate_tokens(Some(200_000));
         assert!(result.is_err());
@@ -136,7 +139,7 @@ mod tests {
 
     #[test]
     fn test_validate_tokens_negative() {
-        let mut state = SessionState::new("test-id".to_string(), None, Utc::now());
+        let mut state = SessionState::new("test-id".to_string(), None, None, Utc::now());
         state.current_usage = ContextWindowUsage::from_raw(-100, 0, 0, 0);
 
         let result = state.validate_tokens(None);

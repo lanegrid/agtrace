@@ -53,7 +53,8 @@ impl<'a> Widget for DashboardView<'a> {
         block.render(area, buf);
 
         // Split into info section and context gauge
-        let chunks = Layout::vertical([Constraint::Length(4), Constraint::Length(3)]).split(inner);
+        // Increased height to accommodate log path
+        let chunks = Layout::vertical([Constraint::Length(5), Constraint::Length(3)]).split(inner);
 
         // Info section
         self.render_info_section(chunks[0], buf);
@@ -83,13 +84,29 @@ impl<'a> DashboardView<'a> {
             lines.push(model_line);
         }
 
-        // Project root
+        // Project root and log path
         if let Some(project) = &self.model.project_root {
             let project_line = Line::from(vec![
                 Span::styled("Project: ", Style::default().add_modifier(Modifier::DIM)),
                 Span::raw(project),
             ]);
             lines.push(project_line);
+
+            // Log path (dimmed)
+            if let Some(log_path) = &self.model.log_path {
+                let log_line = Line::from(vec![
+                    Span::styled("  Log: ", Style::default().add_modifier(Modifier::DIM)),
+                    Span::styled(log_path, Style::default().add_modifier(Modifier::DIM)),
+                ]);
+                lines.push(log_line);
+            }
+        } else if let Some(log_path) = &self.model.log_path {
+            // Only log path (if no project root)
+            let log_line = Line::from(vec![
+                Span::styled("Log: ", Style::default().add_modifier(Modifier::DIM)),
+                Span::styled(log_path, Style::default().add_modifier(Modifier::DIM)),
+            ]);
+            lines.push(log_line);
         }
 
         // Elapsed time

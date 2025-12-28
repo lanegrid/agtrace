@@ -61,7 +61,6 @@ pub fn present_watch_stream_update(
     events: &[agtrace_types::AgentEvent],
     assembled_session: Option<&agtrace_engine::AgentSession>,
     max_context: Option<u32>,
-    log_path: Option<impl AsRef<Path>>,
 ) -> WatchEventViewModel {
     use super::lab::present_events;
 
@@ -72,7 +71,7 @@ pub fn present_watch_stream_update(
     let state_vm = WatchStreamStateViewModel {
         session_id: state.session_id.clone(),
         project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
-        log_path: log_path.map(|p| p.as_ref().display().to_string()),
+        log_path: state.log_path.as_ref().map(|p| p.display().to_string()),
         start_time: state.start_time,
         last_activity: state.last_activity,
         model: state.model.clone(),
