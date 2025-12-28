@@ -198,6 +198,30 @@ impl AgentTurn {
             .unwrap_or(fallback)
     }
 
+    /// Calculate cumulative total tokens (input + output) at the end of this turn
+    /// Falls back to `fallback` if no usage data found
+    pub fn cumulative_total_tokens(&self, fallback: u32) -> u32 {
+        self.steps
+            .iter()
+            .rev()
+            .find_map(|step| step.usage.as_ref())
+            .map(|usage| {
+                (usage.input_tokens
+                    + usage
+                        .details
+                        .as_ref()
+                        .and_then(|d| d.cache_creation_input_tokens)
+                        .unwrap_or(0)
+                    + usage
+                        .details
+                        .as_ref()
+                        .and_then(|d| d.cache_read_input_tokens)
+                        .unwrap_or(0)
+                    + usage.output_tokens) as u32
+            })
+            .unwrap_or(fallback)
+    }
+
     /// Check if this turn is currently active
     ///
     /// A turn is active if any of the recent steps are in progress.
@@ -217,14 +241,14 @@ impl AgentTurn {
 impl AgentSession {
     /// Compute presentation metrics for all turns
     pub fn compute_turn_metrics(&self, max_context: Option<u32>) -> Vec<TurnMetrics> {
-        let mut cumulative_input = 0u32;
+        let mut cumulative_total = 0u32;
         let mut metrics = Vec::new();
         let total_turns = self.turns.len();
 
         for (idx, turn) in self.turns.iter().enumerate() {
-            let turn_end_cumulative = turn.cumulative_input_tokens(cumulative_input);
-            let delta = turn_end_cumulative.saturating_sub(cumulative_input);
-            let prev_total = cumulative_input;
+            let turn_end_cumulative = turn.cumulative_total_tokens(cumulative_total);
+            let delta = turn_end_cumulative.saturating_sub(cumulative_total);
+            let prev_total = cumulative_total;
 
             // Last turn is always active during streaming to avoid flicker
             // when steps transition between InProgress and Done
@@ -244,7 +268,7 @@ impl AgentSession {
                 is_active,
             });
 
-            cumulative_input = turn_end_cumulative;
+            cumulative_total = turn_end_cumulative;
         }
 
         metrics
