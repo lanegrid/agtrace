@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8] - 2025-12-28
+
+### Documentation
+
+- Rewrite README to emphasize observability layer and compaction behavior ([c8a669f](https://github.com/lanegrid/agtrace/commit/c8a669fac6db12214febc0796f3b32b62ce5d032))
+
+- Rewrite README to emphasize observability layer and compaction behavior ([8fafcf4](https://github.com/lanegrid/agtrace/commit/8fafcf4680ba80e93decb634ed3d348cee8034a1))
+
+- Clarify CWD-scoped monitoring and improve Quick Start workflow ([63e5c38](https://github.com/lanegrid/agtrace/commit/63e5c38e8d2c7d4e4d56576054055615c89237c7))
+
+- Use GitHub raw content URLs for images and move demo.gif to docs/assets ([d4dbda6](https://github.com/lanegrid/agtrace/commit/d4dbda623e32e18cb8519bcced6dd22a70ec2e2d))
+
+
+### Miscellaneous Tasks
+
+- Remove PROGRESS.md ([0e728f5](https://github.com/lanegrid/agtrace/commit/0e728f5c627988d64e93cd640c6a30f73153c3bd))
+
+
 ## [0.1.7] - 2025-12-28
 
 ### Features
