@@ -4,8 +4,7 @@ use agtrace_engine::session::assemble_session;
 use agtrace_runtime::SessionState;
 use agtrace_types::{
     AgentEvent, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs, MessagePayload,
-    ReasoningPayload, StreamId, ToolCallPayload, ToolResultPayload, TokenUsagePayload,
-    UserPayload,
+    ReasoningPayload, StreamId, TokenUsagePayload, ToolCallPayload, ToolResultPayload, UserPayload,
 };
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -522,8 +521,9 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
     let mut builder = ScenarioBuilder::new(session_id, start, max_context);
 
     // Turn 1: Error handling improvement
-    builder
-        .user("Improve error handling in src/handlers/index.rs. I want to add context using anyhow.");
+    builder.user(
+        "Improve error handling in src/handlers/index.rs. I want to add context using anyhow.",
+    );
 
     // AgentStep 1: Read the file
     builder
@@ -534,18 +534,32 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
     // AgentStep 2: First edit attempt
     builder
         .think("Found unwrap() being used. I'll replace it with context().")
-        .edit_file("src/handlers/index.rs", "unwrap()", "context(\"failed to read file\")?", 3)
+        .edit_file(
+            "src/handlers/index.rs",
+            "unwrap()",
+            "context(\"failed to read file\")?",
+            3,
+        )
         .emit_step_tokens();
 
     // AgentStep 3: Check build and find error
     builder
-        .bash("cargo check", true, "error[E0425]: cannot find value `anyhow` in this scope")
+        .bash(
+            "cargo check",
+            true,
+            "error[E0425]: cannot find value `anyhow` in this scope",
+        )
         .emit_step_tokens();
 
     // AgentStep 4: Add missing import
     builder
         .think("Forgot to import. Adding use anyhow::Context;")
-        .edit_file("src/handlers/index.rs", "use std::fs;", "use std::fs;\nuse anyhow::Context;", 1)
+        .edit_file(
+            "src/handlers/index.rs",
+            "use std::fs;",
+            "use std::fs;\nuse anyhow::Context;",
+            1,
+        )
         .emit_step_tokens();
 
     // AgentStep 5: Verify fix and complete
@@ -555,8 +569,7 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
         .emit_step_tokens();
 
     // Turn 2: Add tests
-    builder
-        .user("Please add tests as well");
+    builder.user("Please add tests as well");
 
     // AgentStep 1: Check for existing test files
     builder
@@ -580,7 +593,12 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
     // AgentStep 4: Add error case test
     builder
         .think("Adding error case tests as well")
-        .edit_file("tests/integration_test.rs", "}", "#[test]\nfn test_handle_missing_file() {\n    // Test error case\n}\n\n}", 1)
+        .edit_file(
+            "tests/integration_test.rs",
+            "}",
+            "#[test]\nfn test_handle_missing_file() {\n    // Test error case\n}\n\n}",
+            1,
+        )
         .emit_step_tokens();
 
     // AgentStep 5: Run all tests and complete
@@ -590,26 +608,40 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
         .emit_step_tokens();
 
     // Turn 3: Performance optimization
-    builder
-        .user("Can we make it faster? I'm concerned about performance");
+    builder.user("Can we make it faster? I'm concerned about performance");
 
     // AgentStep 1: Benchmark current performance
     builder
         .think("First, let's benchmark to understand the current state")
-        .bash("cargo build --release", false, "    Compiling agtrace-cli v0.1.0\n    Finished release [optimized] target(s) in 15.2s")
-        .bash("hyperfine 'cargo run --release'", false, "Time (mean ± σ):     124.3 ms ±   2.1 ms")
+        .bash(
+            "cargo build --release",
+            false,
+            "    Compiling agtrace-cli v0.1.0\n    Finished release [optimized] target(s) in 15.2s",
+        )
+        .bash(
+            "hyperfine 'cargo run --release'",
+            false,
+            "Time (mean ± σ):     124.3 ms ±   2.1 ms",
+        )
         .emit_step_tokens();
 
     // AgentStep 2: Profile to find bottlenecks
     builder
         .think("Profiling to identify bottlenecks")
-        .bash("cargo flamegraph", false, "Wrote flamegraph to flamegraph.svg")
+        .bash(
+            "cargo flamegraph",
+            false,
+            "Wrote flamegraph to flamegraph.svg",
+        )
         .emit_step_tokens();
 
     // AgentStep 3: Analyze bottleneck
     builder
         .think("File I/O is the main bottleneck. Using BufReader should improve performance")
-        .read_file("src/handlers/index.rs", "let data = std::fs::read_to_string(\"data.json\").context(\"failed to read file\")?;")
+        .read_file(
+            "src/handlers/index.rs",
+            "let data = std::fs::read_to_string(\"data.json\").context(\"failed to read file\")?;",
+        )
         .emit_step_tokens(); // Reading code with context
 
     // AgentStep 4: Implement BufReader optimization
@@ -621,14 +653,21 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
 
     // AgentStep 5: Verify performance improvement
     builder
-        .bash("cargo build --release", false, "    Finished release [optimized] target(s) in 3.8s")
-        .bash("hyperfine 'cargo run --release'", false, "Time (mean ± σ):      89.1 ms ±   1.8 ms")
+        .bash(
+            "cargo build --release",
+            false,
+            "    Finished release [optimized] target(s) in 3.8s",
+        )
+        .bash(
+            "hyperfine 'cargo run --release'",
+            false,
+            "Time (mean ± σ):      89.1 ms ±   1.8 ms",
+        )
         .message("Achieved ~28% speedup using BufReader (124.3ms → 89.1ms).")
         .emit_step_tokens();
 
     // Turn 4: Add documentation
-    builder
-        .user("Please add documentation comments");
+    builder.user("Please add documentation comments");
 
     // AgentStep 1: Check current documentation
     builder
@@ -657,8 +696,7 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
         .emit_step_tokens();
 
     // Turn 5: Refactoring
-    builder
-        .user("I'm concerned about code duplication. Can you refactor it?");
+    builder.user("I'm concerned about code duplication. Can you refactor it?");
 
     // AgentStep 1: Find duplication patterns
     builder
@@ -675,8 +713,18 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
     // AgentStep 3: Refactor index.rs to use common module
     builder
         .think("Updating to use it in index.rs")
-        .edit_file("src/handlers/index.rs", "use std::fs", "use std::fs;\nuse super::errors", 1)
-        .edit_file("src/handlers/index.rs", ".context(\"failed to read file\")?", ".context(errors::read_file_error(\"data.json\"))?", 1)
+        .edit_file(
+            "src/handlers/index.rs",
+            "use std::fs",
+            "use std::fs;\nuse super::errors",
+            1,
+        )
+        .edit_file(
+            "src/handlers/index.rs",
+            ".context(\"failed to read file\")?",
+            ".context(errors::read_file_error(\"data.json\"))?",
+            1,
+        )
         .emit_step_tokens();
 
     // AgentStep 4: Verify refactoring
@@ -687,8 +735,7 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
         .emit_step_tokens();
 
     // Turn 6: Add logging
-    builder
-        .user("I want to add logging to make debugging easier");
+    builder.user("I want to add logging to make debugging easier");
 
     // AgentStep 1: Add tracing dependencies
     builder
@@ -699,15 +746,35 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
     // AgentStep 2: Initialize tracing
     builder
         .think("Adding initialization code")
-        .edit_file("src/main.rs", "fn main()", "fn main() {\n    tracing_subscriber::fmt::init();\n", 1)
+        .edit_file(
+            "src/main.rs",
+            "fn main()",
+            "fn main() {\n    tracing_subscriber::fmt::init();\n",
+            1,
+        )
         .emit_step_tokens();
 
     // AgentStep 3: Add log statements to handlers
     builder
         .think("Adding logs to handler functions")
-        .edit_file("src/handlers/index.rs", "use super::errors", "use super::errors;\nuse tracing::{info, debug, error};", 1)
-        .edit_file("src/handlers/index.rs", "pub fn handle() -> Result<()> {", "pub fn handle() -> Result<()> {\n    info!(\"Starting handle operation\");", 1)
-        .edit_file("src/handlers/index.rs", "let reader = BufReader::new(file);", "let reader = BufReader::new(file);\n    debug!(\"Reading file with BufReader\");", 1)
+        .edit_file(
+            "src/handlers/index.rs",
+            "use super::errors",
+            "use super::errors;\nuse tracing::{info, debug, error};",
+            1,
+        )
+        .edit_file(
+            "src/handlers/index.rs",
+            "pub fn handle() -> Result<()> {",
+            "pub fn handle() -> Result<()> {\n    info!(\"Starting handle operation\");",
+            1,
+        )
+        .edit_file(
+            "src/handlers/index.rs",
+            "let reader = BufReader::new(file);",
+            "let reader = BufReader::new(file);\n    debug!(\"Reading file with BufReader\");",
+            1,
+        )
         .emit_step_tokens(); // Multiple edits with large context
 
     // AgentStep 4: Test logging output
@@ -717,13 +784,16 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
         .emit_step_tokens();
 
     // Turn 7: Add configuration
-    builder
-        .user("Please make it possible to customize behavior with a configuration file");
+    builder.user("Please make it possible to customize behavior with a configuration file");
 
     // AgentStep 1: Add dependencies
     builder
         .think("Adding functionality to read config.toml")
-        .bash("cargo add serde toml", false, "    Updating crates.io index\n      Adding serde v1.0\n      Adding toml v0.8")
+        .bash(
+            "cargo add serde toml",
+            false,
+            "    Updating crates.io index\n      Adding serde v1.0\n      Adding toml v0.8",
+        )
         .emit_step_tokens();
 
     // AgentStep 2: Define config struct
@@ -737,8 +807,17 @@ fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -
     // AgentStep 3: Create config file and integrate
     builder
         .think("Loading from config.toml")
-        .bash("echo '[settings]\\nbuffer_size = 8192\\nenable_cache = true' > config.toml", false, "")
-        .edit_file("src/handlers/index.rs", "pub fn handle()", "pub fn handle(config: &crate::config::Config)", 1)
+        .bash(
+            "echo '[settings]\\nbuffer_size = 8192\\nenable_cache = true' > config.toml",
+            false,
+            "",
+        )
+        .edit_file(
+            "src/handlers/index.rs",
+            "pub fn handle()",
+            "pub fn handle(config: &crate::config::Config)",
+            1,
+        )
         .emit_step_tokens(); // Near context limit
 
     // AgentStep 4: Build and verify
