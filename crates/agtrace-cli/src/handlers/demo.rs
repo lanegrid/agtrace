@@ -58,8 +58,8 @@ fn run_simulation(
     let start_time = Utc::now();
 
     let mut state = SessionState::new(session_id.clone(), None, start_time);
-    state.context_window_limit = Some(100_000);
-    state.model = Some("claude-3-5-sonnet-20241022 (Demo)".to_string());
+    state.context_window_limit = Some(180_000);
+    state.model = Some("Demo Model".to_string());
 
     let mut events_buffer = VecDeque::new();
 
@@ -81,11 +81,20 @@ fn run_simulation(
 
         match &event.payload {
             EventPayload::ToolResult(_) | EventPayload::Message(_) => {
-                let mut input_tokens = state.current_usage.input_tokens() + 2000;
-                let output_tokens = state.current_usage.output_tokens() + 100;
+                let mut input_tokens = state.current_usage.input_tokens() + 2500;
+                let output_tokens = state.current_usage.output_tokens() + 200;
 
-                if idx == 10 {
-                    input_tokens += 50000;
+                // Simulate large file reads and context buildup
+                if idx == 3 {
+                    input_tokens += 12000; // First large file read
+                } else if idx == 15 {
+                    input_tokens += 18000; // Documentation read
+                } else if idx == 30 {
+                    input_tokens += 22000; // Multiple file reads
+                } else if idx == 50 {
+                    input_tokens += 25000; // Accumulated context from refactoring
+                } else if idx == 70 {
+                    input_tokens += 15000; // Final context push
                 }
 
                 state.current_usage =
@@ -102,9 +111,17 @@ fn run_simulation(
         let max_context = state.context_window_limit.map(|x| x as u32);
 
         let notification = if idx == 0 {
-            Some("DEMO MODE: Simulating active session...".to_string())
-        } else if idx == 10 {
-            Some("Warning: Large file detected, context usage spiked!".to_string())
+            Some("DEMO MODE: Simulating active coding session...".to_string())
+        } else if idx == 3 {
+            Some("Large file detected, context usage spiked!".to_string())
+        } else if idx == 15 {
+            Some("Documentation loaded, context growing...".to_string())
+        } else if idx == 30 {
+            Some("Multiple files in context, approaching limits...".to_string())
+        } else if idx == 50 {
+            Some("⚠ Warning: Context window usage is getting high!".to_string())
+        } else if idx == 70 {
+            Some("🔴 Critical: Near maximum context window capacity!".to_string())
         } else {
             None
         };
