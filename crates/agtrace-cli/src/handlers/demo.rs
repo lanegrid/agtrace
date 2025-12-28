@@ -14,6 +14,8 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+const DEMO_CONTEXT_WINDOW_LIMIT: u64 = 180_000;
+
 struct DemoConfig {
     step_delay: u64,
 }
@@ -58,14 +60,14 @@ fn run_simulation(
     let start_time = Utc::now();
 
     let mut state = SessionState::new(session_id.clone(), None, start_time);
-    state.context_window_limit = Some(180_000);
+    state.context_window_limit = Some(DEMO_CONTEXT_WINDOW_LIMIT);
     state.model = Some("Demo Model".to_string());
 
     let mut events_buffer = VecDeque::new();
     let mut current_notification: Option<String> = None;
     let mut notification_ttl: usize = 0;
 
-    let scenario = generate_scenario(&session_id, start_time);
+    let scenario = generate_scenario(&session_id, start_time, DEMO_CONTEXT_WINDOW_LIMIT);
 
     for (idx, event) in scenario.into_iter().enumerate() {
         match signal_rx.try_recv() {
@@ -167,7 +169,7 @@ struct ScenarioBuilder {
 }
 
 impl ScenarioBuilder {
-    fn new(session_id: &str, start: DateTime<Utc>) -> Self {
+    fn new(session_id: &str, start: DateTime<Utc>, max_context: u64) -> Self {
         use std::str::FromStr;
         let session_uuid = uuid::Uuid::from_str(session_id).unwrap_or_else(|_| {
             uuid::Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap()
@@ -185,7 +187,7 @@ impl ScenarioBuilder {
             step_output_tokens: 0,
             total_context: 0,
             total_output_tokens: 0,
-            max_context: 180_000,
+            max_context: max_context as i32,
         }
     }
 
@@ -503,8 +505,8 @@ impl ScenarioBuilder {
     }
 }
 
-fn generate_scenario(session_id: &str, start: DateTime<Utc>) -> Vec<AgentEvent> {
-    let mut builder = ScenarioBuilder::new(session_id, start);
+fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -> Vec<AgentEvent> {
+    let mut builder = ScenarioBuilder::new(session_id, start, max_context);
 
     // Turn 1: Error handling improvement
     builder
