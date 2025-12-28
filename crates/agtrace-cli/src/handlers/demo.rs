@@ -96,9 +96,8 @@ fn run_simulation(
         }
 
         events_buffer.push_back(event);
-        if events_buffer.len() > 100 {
-            events_buffer.pop_front();
-        }
+        // Don't truncate events in demo - we need all events to maintain turn history
+        // In live watch mode, truncation makes sense to limit memory, but demo has fixed scenario
 
         let max_context = state.context_window_limit.map(|x| x as u32);
 
