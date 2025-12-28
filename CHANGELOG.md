@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2025-12-28
+
+### Features
+
+- Add demo mode to showcase TUI without requiring local logs ([a7f3261](https://github.com/lanegrid/agtrace/commit/a7f3261))
+
+### Bug Fixes
+
+- Change turn percentage display from cumulative to delta (incremental) ([65eeaa5](https://github.com/lanegrid/agtrace/commit/65eeaa5))
+- Preserve all events in demo to prevent turn count reduction ([1bbe397](https://github.com/lanegrid/agtrace/commit/1bbe397))
+- Link demo notifications to progress bar percentage instead of event index ([07f0577](https://github.com/lanegrid/agtrace/commit/07f0577))
+- Unify progress bar calculation to include both input and output tokens ([49e0b5b](https://github.com/lanegrid/agtrace/commit/49e0b5b))
+- Add context window limit enforcement to demo token generation ([f6771c5](https://github.com/lanegrid/agtrace/commit/f6771c5))
+- Update demo model name and prevent context window overflow ([c708a9c](https://github.com/lanegrid/agtrace/commit/c708a9c))
+- Assemble session from events to display turn data in demo mode ([7f77b87](https://github.com/lanegrid/agtrace/commit/7f77b87))
+- Correct provider default log paths in help text ([0d6f5b8](https://github.com/lanegrid/agtrace/commit/0d6f5b8))
+
+### Refactoring
+
+- Unify --source option to --provider across CLI ([657cd40](https://github.com/lanegrid/agtrace/commit/657cd40))
+- Rename source to provider in internal API ([b7ab5a4](https://github.com/lanegrid/agtrace/commit/b7ab5a4))
+- Centralize CLI command hints to prevent duplication and typos ([6188a34](https://github.com/lanegrid/agtrace/commit/6188a34))
+- Add scenario builder pattern and expand demo to 7 turns with 100+ events ([7917ffb](https://github.com/lanegrid/agtrace/commit/7917ffb))
+- Unify token usage logic by using engine's extract_state_updates in demo ([a79f5b9](https://github.com/lanegrid/agtrace/commit/a79f5b9))
+- Remove hardcoded context limit in demo, use configurable constant ([9277085](https://github.com/lanegrid/agtrace/commit/9277085))
+
+### Documentation
+
+- Add VHS demo gif and agtrace demo command documentation ([ea15513](https://github.com/lanegrid/agtrace/commit/ea15513))
+- Regenerate demo.gif with cargo-installed agtrace v0.1.6 ([ef0b1c7](https://github.com/lanegrid/agtrace/commit/ef0b1c7))
+- Reduce demo.gif size for better readability (1200x700) ([d328478](https://github.com/lanegrid/agtrace/commit/d328478))
+- Organize demo generation scripts into scripts/demo directory ([acd1d46](https://github.com/lanegrid/agtrace/commit/acd1d46))
+- Increase demo.gif font size for better readability (FontSize 18) ([508d1c1](https://github.com/lanegrid/agtrace/commit/508d1c1))
+- Improve CLI help text and command descriptions for better UX ([0ae8b91](https://github.com/lanegrid/agtrace/commit/0ae8b91))
+- Remove unnecessary documents ([98bb313](https://github.com/lanegrid/agtrace/commit/98bb313))
+- Add centered logo to README header ([0327721](https://github.com/lanegrid/agtrace/commit/0327721))
+- Add crates.io badge and cargo install instructions ([2908ebb](https://github.com/lanegrid/agtrace/commit/2908ebb))
+
 ## [0.1.6] - 2025-12-27
 
 ### Infrastructure
