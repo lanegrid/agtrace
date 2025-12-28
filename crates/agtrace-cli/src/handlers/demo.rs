@@ -14,7 +14,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-const DEMO_CONTEXT_WINDOW_LIMIT: u64 = 180_000;
+const DEMO_CONTEXT_WINDOW_LIMIT: u64 = 150_000;
 
 struct DemoConfig {
     step_delay: u64,
