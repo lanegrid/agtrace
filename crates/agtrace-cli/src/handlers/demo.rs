@@ -163,6 +163,7 @@ struct ScenarioBuilder {
     step_output_tokens: i32,
     total_context: i32,
     total_output_tokens: i32,
+    max_context: i32,
 }
 
 impl ScenarioBuilder {
@@ -184,6 +185,7 @@ impl ScenarioBuilder {
             step_output_tokens: 0,
             total_context: 0,
             total_output_tokens: 0,
+            max_context: 180_000,
         }
     }
 
@@ -233,11 +235,25 @@ impl ScenarioBuilder {
         // Total input for this step = context + new action
         let step_total_input = context_tokens + new_action_tokens;
 
-        // Update total context for next step (includes this step's input + output)
-        self.total_context = step_total_input + self.step_output_tokens;
+        // Calculate projected total after this step
+        let projected_total = step_total_input + self.step_output_tokens;
+
+        // If we would exceed the limit, cap the tokens
+        let (capped_input, capped_output) = if projected_total > self.max_context {
+            let available = self.max_context - context_tokens;
+            let input_ratio = step_total_input as f64 / projected_total as f64;
+            let capped_input = context_tokens + (available as f64 * input_ratio) as i32;
+            let capped_output = self.max_context - capped_input;
+            (capped_input, capped_output.max(0))
+        } else {
+            (step_total_input, self.step_output_tokens)
+        };
+
+        // Update total context for next step
+        self.total_context = capped_input + capped_output;
 
         // Update cumulative output tokens
-        self.total_output_tokens += self.step_output_tokens;
+        self.total_output_tokens += capped_output;
 
         // Emit as CUMULATIVE values
         self.events.push(AgentEvent {
@@ -248,9 +264,9 @@ impl ScenarioBuilder {
             stream_id: self.stream_id.clone(),
             metadata: None,
             payload: EventPayload::TokenUsage(TokenUsagePayload {
-                input_tokens: step_total_input,
+                input_tokens: capped_input,
                 output_tokens: self.total_output_tokens,
-                total_tokens: step_total_input + self.total_output_tokens,
+                total_tokens: capped_input + self.total_output_tokens,
                 details: None,
             }),
         });
@@ -286,7 +302,7 @@ impl ScenarioBuilder {
 
         // Thinking adds moderate input cost (processing previous context)
         let tokens = Self::estimate_tokens(&text_str);
-        self.add_step_tokens(tokens * 2, tokens / 2);
+        self.add_step_tokens(tokens, tokens / 4);
 
         self.events.push(AgentEvent {
             id,
@@ -309,9 +325,8 @@ impl ScenarioBuilder {
 
         // File reads add significant input tokens (simulated file content)
         let file_tokens = Self::estimate_tokens(&output_str);
-        // Large files contribute significantly to context
-        // Multiply by 5-10x to simulate reading file + surrounding context
-        let input_tokens = file_tokens * 8;
+        // Multiply by 2x to simulate reading file + surrounding context
+        let input_tokens = file_tokens * 2;
         self.add_step_tokens(input_tokens, 200);
 
         self.events.push(AgentEvent {
@@ -365,8 +380,8 @@ impl ScenarioBuilder {
         // Edits require reading context + generating new code
         // Editing involves: reading file, understanding context, generating changes
         let edit_tokens = Self::estimate_tokens(&old_str) + Self::estimate_tokens(&new_str);
-        let input_tokens = edit_tokens * 5 * count as i32; // Large context for edits
-        let output_tokens = edit_tokens * 2 * count as i32; // Generated code
+        let input_tokens = edit_tokens * 2 * count as i32; // Context for edits
+        let output_tokens = edit_tokens * count as i32; // Generated code
         self.add_step_tokens(input_tokens, output_tokens);
 
         self.events.push(AgentEvent {
