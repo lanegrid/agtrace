@@ -4,6 +4,7 @@ use crate::presentation::view_models::{ViewMode, WatchEventViewModel};
 use crate::presentation::views::watch::WatchEventView;
 use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 use anyhow::Result;
+use std::collections::VecDeque;
 use std::path::Path;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
@@ -118,6 +119,8 @@ fn process_provider_events_console(
     let mut current_session_id: Option<String> = None;
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
+    let mut event_buffer: VecDeque<agtrace_types::AgentEvent> = VecDeque::new();
+    let mut assembled_session: Option<agtrace_engine::AgentSession> = None;
     let project_root_buf = project_root.map(|p| p.to_path_buf());
     let poll_timeout = Duration::from_millis(100);
 
@@ -156,6 +159,8 @@ fn process_provider_events_console(
                         current_handle = Some(handle);
                         current_session_id = Some(summary.id.clone());
                         session_state = None;
+                        event_buffer.clear();
+                        assembled_session = None;
                     }
                     Err(e) => {
                         let error_event = present_watch::present_watch_error(
@@ -180,6 +185,8 @@ fn process_provider_events_console(
                             current_handle = Some(handle);
                             current_session_id = Some(session_id.clone());
                             session_state = None;
+                            event_buffer.clear();
+                            assembled_session = None;
                         }
                         Err(e) => {
                             let error_event = present_watch::present_watch_error(
@@ -212,6 +219,8 @@ fn process_provider_events_console(
                     print_event(&event, ViewMode::Compact);
                 }
                 Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, session })) => {
+                    const MAX_EVENTS: usize = 100;
+
                     if session_state.is_none() && !events.is_empty() {
                         let session_id = current_session_id
                             .clone()
@@ -242,16 +251,37 @@ fn process_provider_events_console(
                             {
                                 state.model = Some(model);
                             }
+                            if let Some(limit) = updates.context_window_limit {
+                                state.context_window_limit = Some(limit);
+                            }
+
+                            // Add to event buffer
+                            event_buffer.push_back(event.clone());
+                            if event_buffer.len() > MAX_EVENTS {
+                                event_buffer.pop_front();
+                            }
+                        }
+
+                        // Update assembled session
+                        if let Some(sess) = session {
+                            assembled_session = Some(sess);
                         }
 
                         // Build max_context from state
-                        let max_context = state.context_window_limit.map(|tl| tl as u32);
+                        let token_limits = agtrace_runtime::TokenLimits::new();
+                        let token_spec =
+                            state.model.as_ref().and_then(|m| token_limits.get_limit(m));
+                        let max_context = state
+                            .context_window_limit
+                            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()))
+                            .map(|c| c as u32);
 
                         let update_event = present_watch::present_watch_stream_update(
                             state,
-                            &events,
-                            session.as_ref(),
+                            &event_buffer,
+                            assembled_session.as_ref(),
                             max_context,
+                            None, // no notification for console mode
                         );
                         print_event(&update_event, ViewMode::Standard);
                     }
@@ -296,6 +326,8 @@ fn process_stream_events_console(
 ) {
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
+    let mut event_buffer: VecDeque<agtrace_types::AgentEvent> = VecDeque::new();
+    let mut assembled_session: Option<agtrace_engine::AgentSession> = None;
     let project_root_buf = project_root.map(|p| p.to_path_buf());
 
     while let Ok(event) = receiver.recv() {
@@ -306,6 +338,8 @@ fn process_stream_events_console(
                 print_event(&event, ViewMode::Compact);
             }
             WorkspaceEvent::Stream(StreamEvent::Events { events, session }) => {
+                const MAX_EVENTS: usize = 100;
+
                 // Initialize state on first events
                 if session_state.is_none() && !events.is_empty() {
                     session_state = Some(SessionState::new(
@@ -334,15 +368,36 @@ fn process_stream_events_console(
                         {
                             state.model = Some(model);
                         }
+                        if let Some(limit) = updates.context_window_limit {
+                            state.context_window_limit = Some(limit);
+                        }
+
+                        // Add to event buffer
+                        event_buffer.push_back(event.clone());
+                        if event_buffer.len() > MAX_EVENTS {
+                            event_buffer.pop_front();
+                        }
                     }
 
-                    let max_context = state.context_window_limit.map(|tl| tl as u32);
+                    // Update assembled session
+                    if let Some(sess) = session {
+                        assembled_session = Some(sess);
+                    }
+
+                    // Build max_context from state
+                    let token_limits = agtrace_runtime::TokenLimits::new();
+                    let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
+                    let max_context = state
+                        .context_window_limit
+                        .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()))
+                        .map(|c| c as u32);
 
                     let update_event = present_watch::present_watch_stream_update(
                         state,
-                        &events,
-                        session.as_ref(),
+                        &event_buffer,
+                        assembled_session.as_ref(),
                         max_context,
+                        None, // no notification for console mode
                     );
                     print_event(&update_event, ViewMode::Standard);
                 }

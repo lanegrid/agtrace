@@ -2,8 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::path::PathBuf;
 
-use super::lab::EventViewModel;
-use super::session::{ContextWindowUsageViewModel, TurnUsageViewModel};
+use super::session::ContextWindowUsageViewModel;
+use super::watch_tui::TuiScreenViewModel;
 
 // --------------------------------------------------------
 // Watch Event ViewModels (Producer/Consumer pattern)
@@ -24,12 +24,8 @@ pub enum WatchEventViewModel {
     },
     /// Waiting for new session
     Waiting { message: String },
-    /// Stream update with new events
-    StreamUpdate {
-        state: WatchStreamStateViewModel,
-        events: Vec<EventViewModel>,
-        turns: Option<Vec<TurnUsageViewModel>>,
-    },
+    /// Stream update with unified screen view model
+    StreamUpdate { screen: Box<TuiScreenViewModel> },
     /// Error occurred
     Error { message: String, fatal: bool },
 }

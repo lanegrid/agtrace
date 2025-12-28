@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::presentation::formatters::time;
 use crate::presentation::view_models::{
-    ViewMode, WatchEventViewModel, WatchStreamStateViewModel, WatchTargetViewModel,
+    TuiScreenViewModel, ViewMode, WatchEventViewModel, WatchTargetViewModel,
 };
 use owo_colors::OwoColorize;
 
@@ -55,13 +55,13 @@ impl<'a> WatchEventView<'a> {
             WatchEventViewModel::Waiting { message } => {
                 writeln!(f, "waiting {}", message)
             }
-            WatchEventViewModel::StreamUpdate { state, events, .. } => {
+            WatchEventViewModel::StreamUpdate { screen } => {
                 writeln!(
                     f,
                     "update {} events={} turns={}",
-                    state.session_id,
-                    events.len(),
-                    state.turn_count
+                    screen.dashboard.session_id,
+                    screen.timeline.displayed_count,
+                    screen.status_bar.turn_count
                 )
             }
             WatchEventViewModel::Error { message, fatal } => {
@@ -114,24 +114,23 @@ impl<'a> WatchEventView<'a> {
             WatchEventViewModel::Waiting { message } => {
                 writeln!(f, "{} {}", "⏳".dimmed(), message.dimmed())
             }
-            WatchEventViewModel::StreamUpdate { state, events, .. } => {
+            WatchEventViewModel::StreamUpdate { screen } => {
                 // Show summary of events received
-                let event_summary = if events.len() == 1 {
+                let event_count = screen.timeline.displayed_count;
+                let event_summary = if event_count == 1 {
                     "1 event".to_string()
                 } else {
-                    format!("{} events", events.len())
+                    format!("{} events", event_count)
                 };
 
-                let total_tokens = state.current_usage.fresh_input
-                    + state.current_usage.cache_creation
-                    + state.current_usage.cache_read
-                    + state.current_usage.output;
+                let total_tokens = screen.dashboard.context_total;
 
                 let usage_str = format!(
                     "{} / {}",
-                    format_with_commas(total_tokens as u64),
-                    state
-                        .token_limit
+                    format_with_commas(total_tokens),
+                    screen
+                        .dashboard
+                        .context_limit
                         .map(format_with_commas)
                         .unwrap_or_else(|| "?".to_string())
                 );
@@ -141,7 +140,7 @@ impl<'a> WatchEventView<'a> {
                     "{} {} | Turn {} | Tokens: {}",
                     "📝".green(),
                     event_summary,
-                    state.turn_count,
+                    screen.status_bar.turn_count,
                     usage_str.cyan()
                 )
             }
@@ -185,11 +184,7 @@ impl<'a> WatchEventView<'a> {
             WatchEventViewModel::Waiting { message } => {
                 writeln!(f, "{} {}", "⏳".dimmed(), message.dimmed())
             }
-            WatchEventViewModel::StreamUpdate {
-                state,
-                events,
-                turns,
-            } => self.render_stream_update(f, state, events, turns.as_deref()),
+            WatchEventViewModel::StreamUpdate { screen } => self.render_stream_update(f, screen),
             WatchEventViewModel::Error { message, fatal } => {
                 let prefix = if *fatal {
                     "❌ FATAL ERROR"
@@ -208,17 +203,17 @@ impl<'a> WatchEventView<'a> {
 
         // Add extra debug info in verbose mode
         if matches!(self.mode, ViewMode::Verbose)
-            && let WatchEventViewModel::StreamUpdate { state, .. } = self.event
+            && let WatchEventViewModel::StreamUpdate { screen } = self.event
         {
             writeln!(f, "\n{}", "Debug Info:".dimmed())?;
-            if let Some(project_root) = &state.project_root {
+            if let Some(project_root) = &screen.dashboard.project_root {
                 writeln!(f, "  Project root: {}", project_root)?;
             }
-            if let Some(log_path) = &state.log_path {
+            if let Some(log_path) = &screen.dashboard.log_path {
                 writeln!(f, "  Log path: {}", log_path)?;
             }
-            writeln!(f, "  Model: {:?}", state.model)?;
-            writeln!(f, "  Event count: {}", state.event_count)?;
+            writeln!(f, "  Model: {:?}", screen.dashboard.model)?;
+            writeln!(f, "  Event count: {}", screen.status_bar.event_count)?;
         }
 
         Ok(())
@@ -227,58 +222,45 @@ impl<'a> WatchEventView<'a> {
     fn render_stream_update(
         &self,
         f: &mut fmt::Formatter,
-        state: &WatchStreamStateViewModel,
-        events: &[crate::presentation::view_models::EventViewModel],
-        _turns: Option<&[crate::presentation::view_models::TurnUsageViewModel]>,
+        screen: &TuiScreenViewModel,
     ) -> fmt::Result {
-        use crate::presentation::view_models::EventPayloadViewModel;
-
         // Header
         writeln!(f, "\n{} Stream Update", "📝".green().bold())?;
 
         // Show project root if available, otherwise log path
-        if let Some(project_root) = &state.project_root {
+        if let Some(project_root) = &screen.dashboard.project_root {
             writeln!(f, "  Project: {}", project_root.yellow())?;
-            if let Some(log_path) = &state.log_path {
+            if let Some(log_path) = &screen.dashboard.log_path {
                 writeln!(f, "    {}", log_path.dimmed())?;
             }
-        } else if let Some(log_path) = &state.log_path {
+        } else if let Some(log_path) = &screen.dashboard.log_path {
             writeln!(f, "  Log: {}", log_path.dimmed())?;
         }
 
         writeln!(
             f,
             "  Session: {} | Turn {} | {} events",
-            state
+            screen
+                .dashboard
                 .session_id
                 .chars()
                 .take(8)
                 .collect::<String>()
                 .yellow(),
-            state.turn_count,
-            events.len()
+            screen.status_bar.turn_count,
+            screen.timeline.displayed_count
         )?;
 
         // Token usage
-        let total_tokens = state.current_usage.fresh_input
-            + state.current_usage.cache_creation
-            + state.current_usage.cache_read
-            + state.current_usage.output;
+        let total_tokens = screen.dashboard.context_total;
 
-        let usage_pct = state.token_limit.map(|limit| {
-            if limit > 0 {
-                (total_tokens as f64 / limit as f64 * 100.0) as u32
-            } else {
-                0
-            }
-        });
+        let usage_pct = screen
+            .dashboard
+            .context_usage_pct
+            .map(|pct| (pct * 100.0) as u32);
 
-        write!(
-            f,
-            "  Tokens: {}",
-            format_with_commas(total_tokens as u64).cyan()
-        )?;
-        if let Some(limit) = state.token_limit {
+        write!(f, "  Tokens: {}", format_with_commas(total_tokens).cyan())?;
+        if let Some(limit) = screen.dashboard.context_limit {
             write!(f, " / {}", format_with_commas(limit))?;
         }
         if let Some(pct) = usage_pct {
@@ -288,63 +270,35 @@ impl<'a> WatchEventView<'a> {
 
         // Show recent events (up to 5 in standard mode, all in verbose)
         let max_events = if matches!(self.mode, ViewMode::Verbose) {
-            events.len()
+            screen.timeline.events.len()
         } else {
-            5.min(events.len())
+            5.min(screen.timeline.events.len())
         };
 
-        if !events.is_empty() {
+        if !screen.timeline.events.is_empty() {
             writeln!(f, "\n  Recent events:")?;
-            for event in events.iter().take(max_events) {
+            for event in screen.timeline.events.iter().take(max_events) {
                 let timestamp = time::format_time(event.timestamp);
-                let (emoji, description) = match &event.payload {
-                    EventPayloadViewModel::User { text } => {
-                        ("💬", format!("User: {}", truncate(text, 60)))
-                    }
-                    EventPayloadViewModel::Reasoning { text } => {
-                        ("🤔", format!("Thinking: {}", truncate(text, 60)))
-                    }
-                    EventPayloadViewModel::Message { text } => {
-                        ("📤", format!("Response: {}", truncate(text, 60)))
-                    }
-                    EventPayloadViewModel::ToolCall { name, .. } => {
-                        ("🔧", format!("Tool: {}", name))
-                    }
-                    EventPayloadViewModel::ToolResult { output, is_error } => {
-                        if *is_error {
-                            ("❌", format!("Tool error: {}", truncate(output, 60)))
-                        } else {
-                            ("✅", format!("Tool result: {}", truncate(output, 60)))
-                        }
-                    }
-                    EventPayloadViewModel::TokenUsage { .. } => ("📊", "Token usage".to_string()),
-                    EventPayloadViewModel::Notification { text, .. } => {
-                        ("ℹ️", format!("Notification: {}", truncate(text, 60)))
-                    }
-                };
-
-                writeln!(f, "    {} {} {}", timestamp.dimmed(), emoji, description)?;
+                writeln!(
+                    f,
+                    "    {} {} {}",
+                    timestamp.dimmed(),
+                    event.icon,
+                    event.description
+                )?;
             }
 
-            if events.len() > max_events {
+            if screen.timeline.events.len() > max_events {
                 writeln!(
                     f,
                     "    {} ({} more events not shown)",
                     "...".dimmed(),
-                    events.len() - max_events
+                    screen.timeline.events.len() - max_events
                 )?;
             }
         }
 
         Ok(())
-    }
-}
-
-fn truncate(text: &str, max_len: usize) -> String {
-    if text.len() <= max_len {
-        text.to_string()
-    } else {
-        format!("{}...", &text[..max_len.saturating_sub(3)])
     }
 }
 
