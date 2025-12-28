@@ -23,15 +23,16 @@ if ! command -v vhs &> /dev/null; then
 fi
 
 echo "==> Removing old demo.gif if exists..."
-rm -f demo.gif
+rm -f "$PROJECT_ROOT/docs/assets/demo.gif"
 
 echo "==> Generating demo.gif..."
 cd "$SCRIPT_DIR"
 vhs demo.tape
 
-echo "==> Moving demo.gif to project root..."
-mv demo.gif "$PROJECT_ROOT/"
+echo "==> Moving demo.gif to docs/assets/..."
+mkdir -p "$PROJECT_ROOT/docs/assets"
+mv demo.gif "$PROJECT_ROOT/docs/assets/"
 
 cd "$PROJECT_ROOT"
 echo "==> Done! demo.gif created successfully."
-ls -lh demo.gif
+ls -lh docs/assets/demo.gif

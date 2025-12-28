@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
+  <img src="https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
   <h1>agtrace</h1>
   <p><strong>The Observability Layer for AI Coding Agents.</strong></p>
   <p>
@@ -33,11 +33,11 @@ In practice, we are running a lossy, stateful system without logs, metrics, or t
 
 By normalizing provider logs and exposing real-time context usage and compaction behavior, agtrace makes agent state transitions inspectable and debuggable — without sending sensitive data to the cloud.
 
-![agtrace watch demo](demo.gif)
+![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
 
 *Live demo of `agtrace watch` — real-time session monitoring*
 
-![agtrace watch TUI dashboard](docs/images/watch-screenshot-claude.png)
+![agtrace watch TUI dashboard](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/watch-screenshot-claude.png)
 
 *The dashboard showing context usage, current turn, and token costs*
 
