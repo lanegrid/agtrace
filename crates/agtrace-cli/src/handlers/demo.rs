@@ -1,5 +1,6 @@
 use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
+use agtrace_engine::session::assemble_session;
 use agtrace_engine::token_usage::ContextWindowUsage;
 use agtrace_runtime::SessionState;
 use agtrace_types::{
@@ -108,10 +109,13 @@ fn run_simulation(
             None
         };
 
+        let events_vec: Vec<_> = events_buffer.iter().cloned().collect();
+        let assembled_session = assemble_session(&events_vec);
+
         let vm = build_screen_view_model(
             &state,
             &events_buffer,
-            None,
+            assembled_session.as_ref(),
             max_context,
             notification.as_deref(),
         );
