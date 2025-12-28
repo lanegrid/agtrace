@@ -327,7 +327,9 @@ pub fn run(cli: Cli) -> Result<()> {
             } else {
                 let provider_name = provider
                     .map(|p| p.to_string())
-                    .or_else(|| find_provider_with_most_recent_session(&workspace))
+                    .or_else(|| {
+                        find_provider_with_most_recent_session(&workspace, ctx.project_root.as_deref())
+                    })
                     .ok_or_else(|| {
                         anyhow::anyhow!(
                             "No sessions found in any enabled provider. Run 'agtrace init' to index your sessions."
@@ -352,8 +354,13 @@ pub fn run(cli: Cli) -> Result<()> {
     }
 }
 
-fn find_provider_with_most_recent_session(workspace: &agtrace_runtime::AgTrace) -> Option<String> {
+fn find_provider_with_most_recent_session(
+    workspace: &agtrace_runtime::AgTrace,
+    project_root: Option<&std::path::Path>,
+) -> Option<String> {
+    use agtrace_providers::ScanContext;
     use agtrace_runtime::SessionFilter;
+    use agtrace_types::project_hash_from_root;
     use chrono::DateTime;
 
     let enabled_providers = workspace.config().enabled_providers();
@@ -361,10 +368,27 @@ fn find_provider_with_most_recent_session(workspace: &agtrace_runtime::AgTrace) 
         return None;
     }
 
+    // Prepare scan context
+    let current_project_root = project_root.map(|p| p.display().to_string());
+    let project_hash = if let Some(root) = &current_project_root {
+        project_hash_from_root(root)
+    } else {
+        "unknown".to_string()
+    };
+
     // Get the most recent session from each provider
     let mut most_recent: Option<(String, DateTime<chrono::FixedOffset>)> = None;
 
     for (provider_name, _) in enabled_providers {
+        // Quick scan of this provider to pick up new sessions
+        let scan_context = ScanContext {
+            project_hash: project_hash.clone(),
+            project_root: current_project_root.clone(),
+            provider_filter: Some(provider_name.clone()),
+        };
+        let _ = workspace.projects().scan(&scan_context, false, |_| {});
+
+        // Now check DB for most recent session
         let filter = SessionFilter::new()
             .provider(provider_name.clone())
             .limit(1);
