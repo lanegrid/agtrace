@@ -16,7 +16,7 @@
 
 ## 📉 The Problem: No Observability for Context Compaction
 
-Modern AI coding agents rely on context window compaction by design. This is expected behavior across Claude Code, Codex, and Gemini.
+Modern AI coding agents rely on context window compaction by design. It is a standard mechanism across Claude Code, Codex, and Gemini.
 
 The problem is not that compaction happens.
 
@@ -57,8 +57,8 @@ Whether you use **Claude Code**, **Codex**, or **Gemini**, agtrace converts thei
 ### 3) Local-Only by Default
 Agent logs often contain sensitive code and secrets. **agtrace runs 100% locally** and reads directly from local log files (e.g., `~/.claude`). No data is sent to the cloud.
 
-### 4) Automatic Session Tracking
-Keep `watch` running in a separate terminal pane. It automatically detects newly created sessions and follows along as you switch agents or start fresh conversations.
+### 4) Always-On Session Tracking
+Keep `watch` running — it automatically detects new sessions and follows the latest one.
 
 ### 5) Session Forensics (“Lab”)
 Investigate agent behavior across history:
@@ -92,7 +92,6 @@ If you prefer not to install globally, run via `npx`.
 
 ```bash
 npx @lanegrid/agtrace@latest init
-npx @lanegrid/agtrace@latest watch
 ```
 
 ### via Cargo (Rust)
@@ -105,29 +104,44 @@ cargo install agtrace
 
 ## 🚀 Quick Start
 
-### 0) Try the Demo (Optional)
+### 0) Initialize Once (Global)
 
-See `agtrace watch` in action without configuring logs:
+Run `agtrace init` **once** on your machine.
 
-```bash
-agtrace demo
-```
-
-This simulates a live AI session to demonstrate the TUI dashboard. Use `--speed fast` for a quicker preview.
-
-### 1) Initialize in Your Project
-
-From your project directory:
+This creates local configuration and caches under `~/.agtrace`.
+It does **not** modify any project directory, and you do **not** need to run it per project.
 
 ```bash
-cd /path/to/your/project
-
 agtrace init
 ```
 
-### 2) Start Your AI Coding Agent
+### 1) Open Your Project Directory (CWD matters)
 
-In one terminal, launch your agent as usual:
+`agtrace` scopes monitoring by the **current working directory (cwd)**.
+
+To ensure `agtrace` can locate and follow the right session logs, run it from the **same working directory** where your AI coding agent is started.
+
+```bash
+cd /path/to/your/project
+```
+
+### 2) Start `watch` (either order works)
+
+In one terminal pane (from the project directory), run:
+
+```bash
+agtrace watch
+```
+
+`watch` can be started before or after your AI coding agent.
+
+* If no active session exists yet, it stays in **waiting mode** (or opens the latest session if available).
+* When a new session starts, agtrace detects the new logs and **automatically switches** to it.
+* You do **not** need to restart `agtrace watch` per session.
+
+### 3) Start Your AI Coding Agent (Same CWD)
+
+In another terminal (same project directory), launch your agent:
 
 ```bash
 # Example: Claude Code
@@ -136,32 +150,22 @@ claude
 # Or Codex, Gemini, etc.
 ```
 
-### 3) Watch in Another Terminal
-
-In a separate terminal pane (same project directory):
-
-```bash
-agtrace watch
-```
-
-That’s it. No integration required — agtrace automatically detects and monitors your agent session.
+That’s it. No integration required — `watch` follows sessions by monitoring logs scoped to your current working directory.
 
 **`watch` surfaces:**
 
 * context window usage
-* cost telemetry (where available)
+* compaction pressure / behavior (where detectable)
 * turns and recent activity
-* automatic switching to newly created sessions
+* token/cost telemetry (where available)
 
 ### 4) Analyze Past Sessions
-
-List recent sessions across providers, or inspect a specific one:
 
 ```bash
 # List recent sessions
 agtrace session list
 
-# Show analysis of a specific session (context usage, turns, models)
+# Inspect a specific session (context usage, turns, models)
 agtrace session show <session_id>
 ```
 
@@ -179,6 +183,13 @@ agtrace lab grep "mcp" --raw --limit 1
 
 ---
 
+## 🧭 CWD-Scoped Monitoring
+
+agtrace uses your current working directory (cwd) as the scope boundary for log discovery and session tracking.
+To monitor a different project, run `agtrace watch` from that project's directory.
+
+---
+
 ## 🏗️ Architecture
 
 agtrace is designed around **pointer-based indexing** and **schema-on-read**:
@@ -190,7 +201,7 @@ agtrace is designed around **pointer-based indexing** and **schema-on-read**:
    Provider log schemas change frequently. agtrace parses logs at read time, so schema updates are less likely to corrupt or invalidate historical indexes.
 
 3. **Project Isolation**
-   Sessions are grouped by a project root hash to keep workspaces clean and prevent cross-project mixing.
+   Sessions are scoped by cwd/project boundaries and grouped by a project root hash to keep workspaces clean and prevent cross-project mixing.
 
 ---
 
