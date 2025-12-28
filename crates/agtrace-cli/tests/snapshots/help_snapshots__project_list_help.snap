@@ -7,12 +7,12 @@ List all indexed projects
 Usage: agtrace project list [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
       --project-root <PROJECT_ROOT>  
-      --format <FORMAT>              [default: plain] [possible values: plain, json]
+      --format <FORMAT>              Output format for command results [default: plain] [possible values: plain, json]
       --quiet                        Minimal output (IDs only, for scripting)
       --compact                      Compact output (one line per item)
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --log-level <LOG_LEVEL>        Logging verbosity level [default: info] [possible values: error, warn, info, debug, trace]
       --verbose                      Verbose output (all metadata)
-      --all-projects                 
+      --all-projects                 Operate on all indexed projects instead of current project only
   -h, --help                         Print help

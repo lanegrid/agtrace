@@ -79,6 +79,8 @@ pub fn run(cli: Cli) -> Result<()> {
             &default_view_mode(),
         ),
 
+        Commands::Demo { speed } => handlers::demo::handle(speed),
+
         Commands::Index { command } => {
             let workspace = ctx.open_workspace()?;
             match command {

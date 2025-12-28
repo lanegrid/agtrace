@@ -2,18 +2,55 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Rebuild the entire index from scratch
+Rebuild the entire index by re-scanning all log files.
+
+This is useful when:
+  - You suspect the index is corrupted
+  - Provider log formats have changed
+  - You want to force re-processing of all sessions
+
+Warning: This clears all existing index data.
 
 Usage: agtrace index rebuild [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
-      --provider <PROVIDER>          [default: all] [possible values: claude_code, codex, gemini, all]
-      --format <FORMAT>              [default: plain] [possible values: plain, json]
-      --quiet                        Minimal output (IDs only, for scripting)
-      --compact                      Compact output (one line per item)
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --project-root <PROJECT_ROOT>  
-      --verbose                      Verbose output (all metadata)
-      --all-projects                 
-  -h, --help                         Print help
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration
+          
+          [default: ~/.agtrace]
+
+      --provider <PROVIDER>
+          Filter by provider
+          
+          [default: all]
+          [possible values: claude_code, codex, gemini, all]
+
+      --format <FORMAT>
+          Output format for command results
+          
+          [default: plain]
+          [possible values: plain, json]
+
+      --quiet
+          Minimal output (IDs only, for scripting)
+
+      --compact
+          Compact output (one line per item)
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --project-root <PROJECT_ROOT>
+          Override project root directory (defaults to current directory)
+
+      --verbose
+          Verbose output (all metadata)
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+  -h, --help
+          Print help (see a summary with '-h')

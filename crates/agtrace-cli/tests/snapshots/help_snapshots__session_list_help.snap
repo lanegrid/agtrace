@@ -2,23 +2,67 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-List recent sessions with filtering options
+List recent AI agent sessions from the index.
+
+Sessions are displayed with timestamps, snippets, and metadata.
+Use filters to narrow down by provider, time range, or project.
 
 Usage: agtrace session list [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
-      --project-hash <PROJECT_HASH>  
-      --provider <PROVIDER>          [possible values: claude_code, codex, gemini]
-      --limit <LIMIT>                [default: 50]
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --project-root <PROJECT_ROOT>  
-      --since <SINCE>                
-      --all-projects                 
-      --until <UNTIL>                
-      --no-auto-refresh              
-      --format <FORMAT>              Output format [default: plain] [possible values: plain, json]
-      --quiet                        Minimal output (IDs only, for scripting)
-      --compact                      Compact output (one line per item)
-      --verbose                      Verbose output (all metadata)
-  -h, --help                         Print help
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration
+          
+          [default: ~/.agtrace]
+
+      --project-hash <PROJECT_HASH>
+          Filter by project hash
+
+      --provider <PROVIDER>
+          Filter by provider
+          
+          [possible values: claude_code, codex, gemini]
+
+      --limit <LIMIT>
+          Maximum number of sessions to show
+          
+          [default: 50]
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --project-root <PROJECT_ROOT>
+          Override project root directory (defaults to current directory)
+
+      --since <SINCE>
+          Show sessions after this timestamp
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+      --until <UNTIL>
+          Show sessions before this timestamp
+
+      --no-auto-refresh
+          Skip automatic index refresh before listing
+
+      --format <FORMAT>
+          Output format
+          
+          [default: plain]
+          [possible values: plain, json]
+
+      --quiet
+          Minimal output (IDs only, for scripting)
+
+      --compact
+          Compact output (one line per item)
+
+      --verbose
+          Verbose output (all metadata)
+
+  -h, --help
+          Print help (see a summary with '-h')

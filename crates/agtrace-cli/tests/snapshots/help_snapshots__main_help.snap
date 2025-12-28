@@ -7,23 +7,24 @@ Normalize and analyze agent behavior logs
 Usage: agtrace [OPTIONS] [COMMAND]
 
 Commands:
-  index     Manage index database operations
-  session   Manage and view session data
-  provider  Manage provider configurations
-  doctor    Diagnose provider configurations and log files
-  project   List indexed projects
-  lab       Experimental features
-  sessions  List recent sessions (alias for 'session list')
-  pack      Analyze and pack sessions for sharing
-  watch     Watch for live session updates
-  init      Initialize agtrace configuration
+  index     Index and manage the session database
+  session   View and analyze session data
+  provider  Configure log sources (Claude Code, Codex, Gemini)
+  doctor    Diagnose and troubleshoot log parsing issues
+  project   List all indexed projects
+  lab       Advanced analysis tools (grep, export, stats)
+  sessions  List recent sessions (shorthand for 'session list')
+  pack      Package sessions for sharing or analysis
+  watch     Monitor live session updates in real-time
+  init      Set up agtrace (detects providers, creates DB, scans logs)
+  demo      Run a simulated live demo of the TUI dashboard
   help      Print this message or the help of the given subcommand(s)
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
-      --format <FORMAT>              [default: plain] [possible values: plain, json]
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --project-root <PROJECT_ROOT>  
-      --all-projects                 
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
+      --format <FORMAT>              Output format for command results [default: plain] [possible values: plain, json]
+      --log-level <LOG_LEVEL>        Logging verbosity level [default: info] [possible values: error, warn, info, debug, trace]
+      --project-root <PROJECT_ROOT>  Override project root directory (defaults to current directory)
+      --all-projects                 Operate on all indexed projects instead of current project only
   -h, --help                         Print help
   -V, --version                      Print version

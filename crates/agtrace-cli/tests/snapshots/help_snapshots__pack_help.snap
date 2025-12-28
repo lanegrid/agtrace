@@ -2,16 +2,16 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Analyze and pack sessions for sharing
+Package sessions for sharing or analysis
 
 Usage: agtrace pack [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
       --template <TEMPLATE>          [default: compact] [possible values: compact, diagnose, tools]
-      --format <FORMAT>              [default: plain] [possible values: plain, json]
+      --format <FORMAT>              Output format for command results [default: plain] [possible values: plain, json]
       --limit <LIMIT>                [default: 20]
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --project-root <PROJECT_ROOT>  
-      --all-projects                 
+      --log-level <LOG_LEVEL>        Logging verbosity level [default: info] [possible values: error, warn, info, debug, trace]
+      --project-root <PROJECT_ROOT>  Override project root directory (defaults to current directory)
+      --all-projects                 Operate on all indexed projects instead of current project only
   -h, --help                         Print help

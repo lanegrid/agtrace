@@ -2,7 +2,7 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Experimental features
+Advanced analysis tools (grep, export, stats)
 
 Usage: agtrace lab [OPTIONS] <COMMAND>
 
@@ -13,9 +13,9 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
-      --format <FORMAT>              [default: plain] [possible values: plain, json]
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --project-root <PROJECT_ROOT>  
-      --all-projects                 
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
+      --format <FORMAT>              Output format for command results [default: plain] [possible values: plain, json]
+      --log-level <LOG_LEVEL>        Logging verbosity level [default: info] [possible values: error, warn, info, debug, trace]
+      --project-root <PROJECT_ROOT>  Override project root directory (defaults to current directory)
+      --all-projects                 Operate on all indexed projects instead of current project only
   -h, --help                         Print help

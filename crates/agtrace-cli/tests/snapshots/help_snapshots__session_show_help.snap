@@ -2,20 +2,52 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Display session analysis with context usage and turn metrics
+Display comprehensive analysis of a single session including:
+  - Context window usage and token statistics
+  - Turn-by-turn conversation flow
+  - Tool calls and reasoning traces
+  - Model and provider information
+
+Use this to deep-dive into session behavior and performance.
 
 Usage: agtrace session show [OPTIONS] <SESSION_ID>
 
 Arguments:
-  <SESSION_ID>  
+  <SESSION_ID>
+          Session ID (short or full hash)
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
-      --format <FORMAT>              Output format [default: plain] [possible values: plain, json]
-      --quiet                        Minimal output (IDs only, for scripting)
-      --compact                      Compact output (one line per item)
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --project-root <PROJECT_ROOT>  
-      --verbose                      Verbose output (all metadata)
-      --all-projects                 
-  -h, --help                         Print help
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration
+          
+          [default: ~/.agtrace]
+
+      --format <FORMAT>
+          Output format
+          
+          [default: plain]
+          [possible values: plain, json]
+
+      --quiet
+          Minimal output (IDs only, for scripting)
+
+      --compact
+          Compact output (one line per item)
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --project-root <PROJECT_ROOT>
+          Override project root directory (defaults to current directory)
+
+      --verbose
+          Verbose output (all metadata)
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+  -h, --help
+          Print help (see a summary with '-h')

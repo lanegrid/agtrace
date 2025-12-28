@@ -2,21 +2,53 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Inspect raw log file contents
+Display the raw contents of a log file for manual inspection.
+
+Useful for debugging parsing issues or understanding log file structure.
 
 Usage: agtrace doctor inspect [OPTIONS] <FILE_PATH>
 
 Arguments:
-  <FILE_PATH>  
+  <FILE_PATH>
+          Path to the log file
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
-      --lines <LINES>                [default: 50]
-      --format <FORMAT>              [default: raw] [possible values: raw, json]
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
-      --quiet                        Minimal output (IDs only, for scripting)
-      --compact                      Compact output (one line per item)
-      --project-root <PROJECT_ROOT>  
-      --all-projects                 
-      --verbose                      Verbose output (all metadata)
-  -h, --help                         Print help
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration
+          
+          [default: ~/.agtrace]
+
+      --lines <LINES>
+          Number of lines to display
+          
+          [default: 50]
+
+      --format <FORMAT>
+          Display format
+          
+          [default: raw]
+          [possible values: raw, json]
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --quiet
+          Minimal output (IDs only, for scripting)
+
+      --compact
+          Compact output (one line per item)
+
+      --project-root <PROJECT_ROOT>
+          Override project root directory (defaults to current directory)
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+      --verbose
+          Verbose output (all metadata)
+
+  -h, --help
+          Print help (see a summary with '-h')

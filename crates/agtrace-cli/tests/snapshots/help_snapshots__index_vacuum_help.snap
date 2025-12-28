@@ -2,17 +2,17 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Optimize database by reclaiming unused space
+Optimize database performance and reclaim disk space
 
 Usage: agtrace index vacuum [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>          [default: ~/.agtrace]
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
       --quiet                        Minimal output (IDs only, for scripting)
       --compact                      Compact output (one line per item)
-      --format <FORMAT>              [default: plain] [possible values: plain, json]
-      --log-level <LOG_LEVEL>        [default: info] [possible values: error, warn, info, debug, trace]
+      --format <FORMAT>              Output format for command results [default: plain] [possible values: plain, json]
+      --log-level <LOG_LEVEL>        Logging verbosity level [default: info] [possible values: error, warn, info, debug, trace]
       --verbose                      Verbose output (all metadata)
-      --project-root <PROJECT_ROOT>  
-      --all-projects                 
+      --project-root <PROJECT_ROOT>  Override project root directory (defaults to current directory)
+      --all-projects                 Operate on all indexed projects instead of current project only
   -h, --help                         Print help

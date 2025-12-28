@@ -105,6 +105,24 @@ Use --refresh to force a re-scan even if recently indexed."
         #[arg(long, help = "Force re-scan even if recently indexed")]
         refresh: bool,
     },
+
+    #[command(
+        about = "Run a simulated live demo of the TUI dashboard",
+        long_about = "Start a simulated session showing how agtrace monitors an AI agent in real-time.
+
+This allows you to experience the TUI dashboard without needing active agent logs.
+It simulates a refactoring session to demonstrate context window tracking and event flow.
+
+Perfect for understanding agtrace's capabilities before setting up your own logs."
+    )]
+    Demo {
+        #[arg(
+            long,
+            default_value = "normal",
+            help = "Simulation speed: slow, normal, or fast"
+        )]
+        speed: String,
+    },
 }
 
 #[derive(Subcommand)]
