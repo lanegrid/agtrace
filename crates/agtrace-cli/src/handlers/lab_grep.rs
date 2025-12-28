@@ -29,7 +29,7 @@ use regex::Regex;
 //   # Verify Mcp variant parsing and McpArgs::parse_name() behavior
 //
 // Without --raw, users would need to:
-//   - Navigate ~/.claude/sessions/*.jsonl or ~/.codex/sessions/*.jsonl directly
+//   - Navigate ~/.claude/projects/*.jsonl or ~/.codex/sessions/*.jsonl directly
 //   - Manually correlate timestamps and event IDs
 //   - Parse provider-specific log formats
 //

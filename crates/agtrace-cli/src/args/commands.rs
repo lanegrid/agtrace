@@ -223,9 +223,9 @@ pub enum ProviderCommand {
         long_about = "Scan the system for installed AI agent tools and automatically configure their log paths.
 
 Supported providers:
-  - Claude Code (~/.claude/sessions)
+  - Claude Code (~/.claude/projects)
   - Codex (~/.codex/sessions)
-  - Gemini (~/.gemini/sessions)
+  - Gemini (~/.gemini/tmp)
 
 Detected providers are saved to the configuration file."
     )]
@@ -471,7 +471,7 @@ RAW MODE RATIONALE:
 
   3. INVESTIGATION WITHOUT FILESYSTEM ACCESS
      Without --raw, verifying normalization requires:
-     - Navigate ~/.claude/sessions/*.jsonl or ~/.codex/sessions/*.jsonl
+     - Navigate ~/.claude/projects/*.jsonl or ~/.codex/sessions/*.jsonl
      - Manually correlate timestamps and event IDs
      - Parse provider-specific log formats
 
