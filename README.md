@@ -22,6 +22,10 @@ You are effectively flying a plane without a fuel gauge.
 
 **agtrace** is a local-only telemetry tool that acts as a "Vital Check" for your AI agents. by normalizing logs from various providers, it visualizes the internal state of your agent in real-time.
 
+![agtrace watch demo](demo.gif)
+
+*Live demo of `agtrace watch` - Real-time AI session monitoring*
+
 ![agtrace watch TUI dashboard](docs/images/watch-screenshot-claude.png)
 
 *The dashboard showing Context Window usage, current turn, and token costs*
@@ -80,6 +84,16 @@ cargo install agtrace
 ---
 
 ## 🚀 Quick Start
+
+### 0. Try the Demo (Optional)
+
+See `agtrace watch` in action without setting up logs:
+
+```bash
+agtrace demo
+```
+
+This simulates a live AI session to demonstrate the TUI dashboard. Use `--speed fast` for a quicker preview.
 
 ### 1. Initialize in Your Project
 
