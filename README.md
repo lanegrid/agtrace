@@ -92,6 +92,7 @@ If you prefer not to install globally, run via `npx`.
 
 ```bash
 npx @lanegrid/agtrace@latest init
+npx @lanegrid/agtrace@latest watch
 ```
 
 ### via Cargo (Rust)
@@ -120,6 +121,7 @@ From your project directory:
 
 ```bash
 cd /path/to/your/project
+
 agtrace init
 ```
 
