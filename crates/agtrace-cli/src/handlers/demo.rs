@@ -66,6 +66,7 @@ fn run_simulation(
     let mut events_buffer = VecDeque::new();
     let mut current_notification: Option<String> = None;
     let mut notification_ttl: usize = 0;
+    let mut last_notification_threshold: f64 = 0.0;
 
     let scenario = generate_scenario(&session_id, start_time, DEMO_CONTEXT_WINDOW_LIMIT);
 
@@ -101,19 +102,32 @@ fn run_simulation(
 
         let max_context = state.context_window_limit.map(|x| x as u32);
 
-        // Update notification with TTL (Time To Live)
+        // Calculate current usage percentage
+        let usage_pct = if let Some(limit) = state.context_window_limit {
+            (state.total_tokens().as_u64() as f64 / limit as f64) * 100.0
+        } else {
+            0.0
+        };
+
+        // Update notification based on usage percentage thresholds
         let new_notification = if idx == 0 {
+            last_notification_threshold = 0.0;
             Some("DEMO MODE: Simulating active coding session...".to_string())
-        } else if idx == 3 {
-            Some("Large file detected, context usage spiked!".to_string())
-        } else if idx == 15 {
-            Some("Documentation loaded, context growing...".to_string())
-        } else if idx == 30 {
-            Some("Multiple files in context, approaching limits...".to_string())
-        } else if idx == 50 {
-            Some("⚠ Warning: Context window usage is getting high!".to_string())
-        } else if idx == 70 {
+        } else if usage_pct >= 85.0 && last_notification_threshold < 85.0 {
+            last_notification_threshold = 85.0;
             Some("🔴 Critical: Near maximum context window capacity!".to_string())
+        } else if usage_pct >= 70.0 && last_notification_threshold < 70.0 {
+            last_notification_threshold = 70.0;
+            Some("⚠ Warning: Context window usage is getting high!".to_string())
+        } else if usage_pct >= 50.0 && last_notification_threshold < 50.0 {
+            last_notification_threshold = 50.0;
+            Some("Multiple files in context, approaching limits...".to_string())
+        } else if usage_pct >= 30.0 && last_notification_threshold < 30.0 {
+            last_notification_threshold = 30.0;
+            Some("Documentation loaded, context growing...".to_string())
+        } else if usage_pct >= 15.0 && last_notification_threshold < 15.0 {
+            last_notification_threshold = 15.0;
+            Some("Large file detected, context usage spiked!".to_string())
         } else {
             None
         };
