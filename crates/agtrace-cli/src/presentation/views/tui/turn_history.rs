@@ -247,11 +247,13 @@ impl<'a> TurnHistoryView<'a> {
 
                 lines.push(Line::from(Span::styled(
                     "Note: agtrace requires exact directory match",
-                    Style::default().fg(Color::DarkGray),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
                 )));
                 lines.push(Line::from(Span::styled(
                     "(not parent or subdirectories)",
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().fg(Color::Yellow),
                 )));
                 lines.push(Line::from(""));
 
