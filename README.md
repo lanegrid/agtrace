@@ -4,7 +4,7 @@
   <p><strong>The Observability Layer for AI Coding Agents.</strong></p>
   <p>
     Real-time telemetry and session forensics for Claude Code, Codex, and Gemini.
-    Track context window usage, compaction behavior, and regressions —
+    Track context window usage, compaction boundaries, and agent behavior —
     <strong>locally</strong>, with <strong>zero overhead</strong>.
   </p>
 
@@ -16,14 +16,14 @@
 
 ## 📉 The Problem: No Observability for Context Compaction
 
-Modern AI coding agents rely on context window compaction by design. It is a standard mechanism across Claude Code, Codex, and Gemini.
+Modern AI coding agents rely on context window compaction by design. It is expected behavior across Claude Code, Codex, and Gemini.
 
 The problem is not that compaction happens.
 
 The problem is that you cannot:
-- observe *when* compaction occurs
+- observe *when* compaction occurs (the boundary where context is reduced)
 - measure *how much* context was discarded
-- correlate compaction with regressions, hallucinations, or sudden behavioral shifts
+- pinpoint when failures begin at those boundaries (instruction loss, constraint violations, sudden behavior drift)
 
 In practice, we are running a lossy, stateful system without logs, metrics, or traces for its most critical state transition.
 
@@ -31,7 +31,13 @@ In practice, we are running a lossy, stateful system without logs, metrics, or t
 
 **agtrace** adds the missing observability layer to AI coding agents.
 
+It starts with a quick, practical win — a context window “fuel gauge” — but the core is a provider-normalized event model.
 By normalizing provider logs and exposing real-time context usage and compaction behavior, agtrace makes agent state transitions inspectable and debuggable — without sending sensitive data to the cloud.
+
+Over time, the same normalized telemetry enables deeper workflows:
+- profile sessions (where tokens/time go)
+- attribute behavior drift and cost spikes to concrete events (compaction boundaries, tool calls, retrieval steps)
+- compare runs across providers/models over time
 
 ![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
 
