@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.12] - 2025-12-29
+
+### Bug Fixes
+
+- *(cli)* Improve init output and watch waiting mode behavior ([22c3d71](https://github.com/lanegrid/agtrace/commit/22c3d71417dfc4afa710d29f07a56e967031d2df))
+
+- *(cli)* Correct init hint to use session list instead of list ([ee1414a](https://github.com/lanegrid/agtrace/commit/ee1414a62716b5716991fd47f56f603a6dd92bbf))
+
+
+### Styling
+
+- *(tui)* Make directory match note more visible with yellow bold text ([b58afe3](https://github.com/lanegrid/agtrace/commit/b58afe3d52fa86e8135729edbce0998ce1c162c9))
+
+
 ## [0.1.11] - 2025-12-29
 
 ### Bug Fixes
