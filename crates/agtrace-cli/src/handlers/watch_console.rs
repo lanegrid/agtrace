@@ -64,8 +64,11 @@ pub fn handle_console(
                     .and_then(|sessions| sessions.into_iter().next())
             };
 
-            // Start workspace monitoring
-            let mut builder = watch_service.watch_provider(&name)?;
+            // NOTE: Watch all providers for cross-provider session switching
+            // - Previously: only watched single provider (name)
+            // - Now: watch all enabled providers to detect new sessions from any provider
+            // - This enables real-time switching to sessions from different providers
+            let mut builder = watch_service.watch_all_providers()?;
             if let Some(root) = project_root {
                 builder = builder.with_project_root(root.to_path_buf());
             }
@@ -117,6 +120,7 @@ fn process_provider_events_console(
 ) {
     let mut current_handle: Option<agtrace_runtime::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
+    let mut current_session_mod_time: Option<String> = None;
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
     let mut event_buffer: VecDeque<agtrace_types::AgentEvent> = VecDeque::new();
@@ -173,10 +177,21 @@ fn process_provider_events_console(
             }
             Ok(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
                 session_id,
-                is_new,
+                is_new: _,
+                mod_time,
                 ..
             })) => {
-                if is_new && current_session_id.as_ref() != Some(&session_id) {
+                // NOTE: Switch to "most recently updated" session
+                // Same logic as watch_tui: use mod_time instead of is_new flag
+                let should_switch = if let Some(ref new_mod_time) = mod_time {
+                    current_session_id.as_ref() != Some(&session_id)
+                        && (current_session_mod_time.is_none()
+                            || Some(new_mod_time) > current_session_mod_time.as_ref())
+                } else {
+                    false
+                };
+
+                if should_switch {
                     let event = present_watch::present_watch_attached(session_id.clone());
                     print_event(&event, ViewMode::Compact);
 
@@ -184,6 +199,7 @@ fn process_provider_events_console(
                         Ok(handle) => {
                             current_handle = Some(handle);
                             current_session_id = Some(session_id.clone());
+                            current_session_mod_time = mod_time.clone();
                             session_state = None;
                             event_buffer.clear();
                             assembled_session = None;

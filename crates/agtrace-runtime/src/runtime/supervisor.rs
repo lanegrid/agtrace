@@ -73,6 +73,11 @@ impl WorkspaceSupervisor {
     }
 }
 
+// NOTE: Design rationale for mod_time in SessionUpdated
+// - is_new flag only indicates "first time seeing this session_id in this process"
+// - For "most recently updated" detection, we need actual file modification time
+// - This enables watch mode to switch to actively updated sessions, even if they existed at startup
+// - Without mod_time, watch would only switch to newly created sessions (is_new=true)
 fn handle_fs_event(
     event: &Event,
     contexts: &[WatchContext],
@@ -90,10 +95,17 @@ fn handle_fs_event(
                     let mut seen = seen_sessions.lock().unwrap();
                     let is_new = seen.insert(session_id.clone());
 
+                    // Get file modification time for "most recently updated" detection
+                    let mod_time = std::fs::metadata(path)
+                        .ok()
+                        .and_then(|m| m.modified().ok())
+                        .map(|t| format!("{:?}", t));
+
                     let _ = tx.send(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
                         session_id,
                         provider_name: context.provider_name.clone(),
                         is_new,
+                        mod_time,
                     }));
                 }
             }

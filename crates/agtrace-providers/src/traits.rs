@@ -104,10 +104,18 @@ impl ProbeResult {
 }
 
 /// Session index metadata
+///
+/// NOTE: Design rationale for latest_mod_time
+/// - `timestamp` represents session creation time (when first event was logged)
+/// - `latest_mod_time` represents last file update time (when session was last active)
+/// - For watch mode, we need to track "most recently updated" session, not just "most recently created"
+/// - This enables switching to sessions that are actively being updated, even if they were created earlier
+/// - Since watch bypasses DB indexing for real-time monitoring, we derive this directly from filesystem
 #[derive(Debug, Clone)]
 pub struct SessionIndex {
     pub session_id: String,
     pub timestamp: Option<String>,
+    pub latest_mod_time: Option<String>,
     pub main_file: PathBuf,
     pub sidechain_files: Vec<PathBuf>,
     pub project_root: Option<String>,

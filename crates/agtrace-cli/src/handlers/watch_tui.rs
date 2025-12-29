@@ -220,8 +220,11 @@ fn handle_provider_watch(
             .and_then(|sessions| sessions.into_iter().next())
     };
 
-    // Start background discovery monitoring (like v1)
-    let mut builder = watch_service.watch_provider(provider_name)?;
+    // NOTE: Watch all providers for cross-provider session switching
+    // - Previously: only watched single provider (provider_name)
+    // - Now: watch all enabled providers to detect new sessions from any provider
+    // - This enables real-time switching to sessions from different providers
+    let mut builder = watch_service.watch_all_providers()?;
     if let Some(root) = project_root {
         builder = builder.with_project_root(root.to_path_buf());
     }
@@ -242,9 +245,10 @@ fn handle_provider_watch(
     );
     handler.max_context = Some(200_000); // Default fallback
 
-    // Track current stream handle
+    // Track current stream handle and mod_time for "most recently updated" switching
     let mut current_stream_handle: Option<agtrace_runtime::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
+    let mut current_session_mod_time: Option<String> = None;
 
     // Attach to initial session if available
     if let Some(session) = latest_session {
@@ -294,11 +298,24 @@ fn handle_provider_watch(
             }
             Ok(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
                 session_id,
-                is_new,
+                is_new: _,
+                mod_time,
                 ..
             })) => {
-                // Switch only if it's a new session and different from current
-                if is_new && current_session_id.as_ref() != Some(&session_id) {
+                // NOTE: Switch to "most recently updated" session
+                // - Old logic: only switch if is_new (first time seeing this session_id)
+                // - New logic: switch if mod_time is newer than current session's mod_time
+                // - This enables switching to existing sessions that get updated after startup
+                let should_switch = if let Some(ref new_mod_time) = mod_time {
+                    // Different session AND (no current mod_time OR newer mod_time)
+                    current_session_id.as_ref() != Some(&session_id)
+                        && (current_session_mod_time.is_none()
+                            || Some(new_mod_time) > current_session_mod_time.as_ref())
+                } else {
+                    false
+                };
+
+                if should_switch {
                     handler.notification =
                         Some(format!("Switched to session {}", &session_id[..8]));
                     handler.reset_session_state(session_id.clone(), None);
@@ -307,6 +324,7 @@ fn handle_provider_watch(
                         Ok(handle) => {
                             current_stream_handle = Some(handle);
                             current_session_id = Some(session_id.clone());
+                            current_session_mod_time = mod_time.clone();
                         }
                         Err(e) => {
                             handler

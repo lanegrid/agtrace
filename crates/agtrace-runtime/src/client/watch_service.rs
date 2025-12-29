@@ -93,6 +93,13 @@ impl WatchService {
         ))
     }
 
+    pub fn watch_all_providers(&self) -> Result<MonitorBuilder> {
+        Ok(MonitorBuilder::new(
+            self.db.clone(),
+            self.provider_configs.clone(),
+        ))
+    }
+
     pub fn config(&self) -> &Config {
         &self.config
     }

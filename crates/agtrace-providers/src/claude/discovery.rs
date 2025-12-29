@@ -2,9 +2,27 @@ use crate::traits::{LogDiscovery, ProbeResult, SessionIndex};
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use walkdir::WalkDir;
 
 use super::io::extract_claude_header;
+
+/// NOTE: Helper to get latest modification time from a list of files
+/// Used to track when a session was last active (most recent file write)
+fn get_latest_mod_time(files: &[&Path]) -> Option<String> {
+    let mut latest: Option<SystemTime> = None;
+
+    for path in files {
+        if let Ok(metadata) = std::fs::metadata(path)
+            && let Ok(modified) = metadata.modified()
+            && (latest.is_none() || Some(modified) > latest)
+        {
+            latest = Some(modified);
+        }
+    }
+
+    latest.map(|t| format!("{:?}", t))
+}
 
 pub struct ClaudeDiscovery;
 
@@ -64,6 +82,7 @@ impl LogDiscovery for ClaudeDiscovery {
                 .or_insert_with(|| SessionIndex {
                     session_id: session_id.clone(),
                     timestamp: header.timestamp.clone(),
+                    latest_mod_time: None, // Will be computed after all files are collected
                     main_file: path.to_path_buf(),
                     sidechain_files: Vec::new(),
                     project_root: header.cwd.clone(),
@@ -89,6 +108,15 @@ impl LogDiscovery for ClaudeDiscovery {
                     session.snippet = header.snippet.clone();
                 }
             }
+        }
+
+        // NOTE: Compute latest_mod_time for each session after all files are collected
+        // This tracks when the session was last active (most recent file modification)
+        // Critical for watch mode to identify "most recently updated" vs "most recently created" sessions
+        for session in sessions.values_mut() {
+            let mut all_files = vec![session.main_file.as_path()];
+            all_files.extend(session.sidechain_files.iter().map(|p| p.as_path()));
+            session.latest_mod_time = get_latest_mod_time(&all_files);
         }
 
         Ok(sessions.into_values().collect())

@@ -354,52 +354,44 @@ pub fn run(cli: Cli) -> Result<()> {
     }
 }
 
+// NOTE: Design rationale for finding most recent session
+// - Watch mode needs real-time detection of "most recently updated" sessions
+// - Cannot rely on DB indexing since watch bypasses DB for real-time monitoring
+// - Directly scans filesystem using LogDiscovery::scan_sessions()
+// - Uses SessionIndex.latest_mod_time (file modification time) instead of timestamp (creation time)
+// - This enables switching to sessions that are actively being updated, even if created earlier
 fn find_provider_with_most_recent_session(
     workspace: &agtrace_runtime::AgTrace,
-    project_root: Option<&std::path::Path>,
+    _project_root: Option<&std::path::Path>,
 ) -> Option<String> {
-    use agtrace_providers::ScanContext;
-    use agtrace_runtime::SessionFilter;
-    use agtrace_types::project_hash_from_root;
-    use chrono::DateTime;
-
     let enabled_providers = workspace.config().enabled_providers();
     if enabled_providers.is_empty() {
         return None;
     }
 
-    // Prepare scan context
-    let current_project_root = project_root.map(|p| p.display().to_string());
-    let project_hash = if let Some(root) = &current_project_root {
-        project_hash_from_root(root)
-    } else {
-        "unknown".to_string()
-    };
+    // Track the most recently updated session across all providers
+    let mut most_recent: Option<(String, String)> = None; // (provider_name, latest_mod_time)
 
-    // Get the most recent session from each provider
-    let mut most_recent: Option<(String, DateTime<chrono::FixedOffset>)> = None;
-
-    for (provider_name, _) in enabled_providers {
-        // Quick scan of this provider to pick up new sessions
-        let scan_context = ScanContext {
-            project_hash: project_hash.clone(),
-            project_root: current_project_root.clone(),
-            provider_filter: Some(provider_name.clone()),
+    for (provider_name, provider_config) in enabled_providers {
+        // Create adapter for this provider
+        let adapter = match agtrace_providers::create_adapter(provider_name) {
+            Ok(a) => a,
+            Err(_) => continue,
         };
-        let _ = workspace.projects().scan(&scan_context, false, |_| {});
 
-        // Now check DB for most recent session
-        let filter = SessionFilter::new()
-            .provider(provider_name.clone())
-            .limit(1);
+        // Scan filesystem directly (bypassing DB for real-time detection)
+        let sessions = match adapter.discovery.scan_sessions(&provider_config.log_root) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
 
-        if let Ok(sessions) = workspace.sessions().list_without_refresh(filter)
-            && let Some(session) = sessions.first()
-            && let Some(ts_str) = &session.start_ts
-            && let Ok(ts) = DateTime::parse_from_rfc3339(ts_str)
-            && (most_recent.is_none() || ts > most_recent.as_ref().unwrap().1)
-        {
-            most_recent = Some((provider_name.clone(), ts));
+        // Find the session with the latest modification time in this provider
+        for session in sessions {
+            if let Some(ref mod_time) = session.latest_mod_time
+                && (most_recent.is_none() || Some(mod_time) > most_recent.as_ref().map(|(_, t)| t))
+            {
+                most_recent = Some((provider_name.clone(), mod_time.clone()));
+            }
         }
     }
 

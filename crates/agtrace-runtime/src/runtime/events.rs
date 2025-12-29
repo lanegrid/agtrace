@@ -3,6 +3,10 @@ use agtrace_index::SessionSummary;
 use agtrace_types::AgentEvent;
 use std::path::PathBuf;
 
+/// NOTE: DiscoveryEvent design for real-time session tracking
+/// - SessionUpdated.is_new: True if first time seeing this session_id in this process
+/// - SessionUpdated.mod_time: File modification timestamp for "most recently updated" detection
+/// - Watch handlers use mod_time to switch to actively updated sessions, not just is_new
 #[derive(Debug, Clone)]
 pub enum DiscoveryEvent {
     NewSession {
@@ -12,6 +16,7 @@ pub enum DiscoveryEvent {
         session_id: String,
         provider_name: String,
         is_new: bool,
+        mod_time: Option<String>,
     },
     SessionRemoved {
         session_id: String,
