@@ -296,3 +296,66 @@ log_root = "{}"
 
     Ok(())
 }
+
+/// Test that init displays session count when scanning (not just when skipping)
+///
+/// CURRENT BEHAVIOR (BUG):
+/// - When init performs a scan (scan_needed = true), session count is NOT displayed
+/// - User sees "Scanning logs..." but no result
+///
+/// EXPECTED BEHAVIOR:
+/// - Init should always display session count after indexing
+/// - Whether scanning or skipping, the session count section should appear
+#[test]
+fn test_init_displays_session_count_when_scanning() -> Result<()> {
+    // Given: Fresh directory with session files
+    let mut world = TestWorld::builder().without_data_dir().build();
+    world = world.with_project("my-project");
+
+    let log_root = world.temp_dir().join(".claude");
+    std::fs::create_dir_all(&log_root)?;
+
+    let config_content = format!(
+        r#"
+[providers.claude_code]
+enabled = true
+log_root = "{}"
+"#,
+        log_root.display()
+    );
+    world.write_raw_config(&config_content)?;
+
+    world.set_cwd("my-project");
+    let samples = agtrace_testing::fixtures::SampleFiles::new();
+    let project_path = world.temp_dir().join("my-project");
+    let adapter = TestProvider::Claude.adapter();
+    samples.copy_to_project_with_cwd(
+        "claude_session.jsonl",
+        "session.jsonl",
+        &project_path.to_string_lossy(),
+        &log_root,
+        &adapter,
+    )?;
+
+    // When: Run init (will perform scanning)
+    let result = world.run(&["init"])?;
+
+    // Then: Output should include session count
+    let output = result.stdout();
+
+    // Should show session count in output
+    assert!(
+        output.contains("Sessions:") || output.contains("session"),
+        "Init output should display Sessions section when scanning. Output:\n{}",
+        output
+    );
+
+    // Should not only show "Scanning logs..." without result
+    assert!(
+        output.contains("Found") || output.contains("1") || output.contains("session"),
+        "Init output should show session count result, not just 'Scanning logs...'. Output:\n{}",
+        output
+    );
+
+    Ok(())
+}

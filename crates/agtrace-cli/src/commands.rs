@@ -331,9 +331,20 @@ pub fn run(cli: Cli) -> Result<()> {
                             .watch_service()
                             .find_most_recent_provider(ctx.project_root.as_deref())
                     })
+                    .or_else(|| {
+                        // Fallback: Select first enabled provider from config
+                        // This allows watch to start in waiting mode even when no sessions exist yet
+                        workspace
+                            .watch_service()
+                            .config()
+                            .providers
+                            .iter()
+                            .find(|(_, cfg)| cfg.enabled)
+                            .map(|(name, _)| name.clone())
+                    })
                     .ok_or_else(|| {
                         anyhow::anyhow!(
-                            "No sessions found in any enabled provider. Run 'agtrace init' to index your sessions."
+                            "No enabled providers found. Run 'agtrace init' to setup providers."
                         )
                     })?;
                 handlers::watch_tui::WatchTarget::Provider {

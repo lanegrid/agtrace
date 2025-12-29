@@ -490,3 +490,64 @@ fn test_watch_ignores_events_from_other_projects() -> Result<()> {
 
     Ok(())
 }
+
+/// Test that watch enters waiting mode when no sessions exist at all
+///
+/// CURRENT BEHAVIOR (BUG):
+/// - watch fails with "No sessions found in any enabled provider"
+/// - User cannot start watch before creating first session
+///
+/// EXPECTED BEHAVIOR:
+/// - watch should start in waiting mode (like `tail -f`)
+/// - Shows "Waiting for new session..." message
+/// - Does NOT exit with error
+#[test]
+fn test_watch_waits_when_no_sessions_exist() -> Result<()> {
+    // Given: Initialized workspace with NO sessions at all
+    let mut world = TestWorld::builder().without_data_dir().build();
+    world = world.with_project("my-project");
+
+    world.enable_provider(TestProvider::Claude)?;
+    world.set_cwd("my-project");
+    world.run(&["init"])?;
+
+    // Verify no sessions exist
+    let list_result = world.run(&["session", "list", "--format", "json"])?;
+    let json = list_result.json()?;
+    let sessions = json["content"]["sessions"].as_array().unwrap();
+    assert_eq!(sessions.len(), 0, "Should have 0 sessions initially");
+
+    // When: Run watch WITHOUT specifying --provider (auto-selection)
+    // This is the key scenario that fails: watch should fallback to first enabled provider
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_agtrace"));
+    cmd.current_dir(world.temp_dir().join("my-project"))
+        .arg("--data-dir")
+        .arg(world.data_dir())
+        .args(["watch", "--mode", "console"]); // No --provider flag
+
+    let mut proc = BackgroundProcess::spawn_piped(cmd)?;
+
+    // Then: Should enter waiting mode (not exit with error)
+    let stdout = proc.stdout().expect("Should have stdout");
+    let reader = BufReader::new(stdout);
+
+    let mut found_waiting_or_watching = false;
+    for line in reader.lines().take(10) {
+        let line = line?;
+        // Should either show "Waiting" or "Watching" (not error)
+        if line.contains("Waiting") || line.contains("waiting") || line.contains("Watching") {
+            found_waiting_or_watching = true;
+            break;
+        }
+    }
+
+    // Clean up
+    proc.kill()?;
+
+    assert!(
+        found_waiting_or_watching,
+        "Watch should enter waiting mode when no sessions exist, not fail with error"
+    );
+
+    Ok(())
+}

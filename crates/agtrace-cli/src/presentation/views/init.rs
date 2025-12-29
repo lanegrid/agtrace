@@ -72,7 +72,7 @@ impl<'a> fmt::Display for InitResultView<'a> {
         match &self.data.scan_outcome {
             ScanOutcome::Scanned => {
                 if self.data.scan_needed {
-                    writeln!(f, "  Scanning logs...")?;
+                    writeln!(f, "  Completed scanning")?;
                 } else {
                     writeln!(f, "  Completed")?;
                 }
@@ -87,51 +87,49 @@ impl<'a> fmt::Display for InitResultView<'a> {
             }
         }
 
-        if !self.data.scan_needed {
-            writeln!(f, "\nSessions:")?;
-            if self.data.session_count == 0 {
-                if self.data.all_projects {
-                    writeln!(f, "  No sessions found in global index.")?;
-                    writeln!(f, "\nTips:")?;
-                    writeln!(
-                        f,
-                        "  - Check provider configuration: {}",
-                        cmd::PROVIDER_LIST
-                    )?;
-                    writeln!(f, "  - Run diagnostics: {}", cmd::DOCTOR_RUN)?;
-                } else {
-                    writeln!(
-                        f,
-                        "  Current directory: No sessions linked to this project."
-                    )?;
-                    writeln!(f, "\nTips:")?;
-                    writeln!(
-                        f,
-                        "  - To see all indexed sessions: {}",
-                        cmd::LIST_ALL_PROJECTS
-                    )?;
-                    writeln!(f, "  - To scan all projects: {}", cmd::INIT_ALL_PROJECTS)?;
-                }
+        writeln!(f, "\nSessions:")?;
+        if self.data.session_count == 0 {
+            if self.data.all_projects {
+                writeln!(f, "  No sessions found in global index.")?;
+                writeln!(f, "\nTips:")?;
+                writeln!(
+                    f,
+                    "  - Check provider configuration: {}",
+                    cmd::PROVIDER_LIST
+                )?;
+                writeln!(f, "  - Run diagnostics: {}", cmd::DOCTOR_RUN)?;
             } else {
-                if self.data.all_projects {
-                    writeln!(
-                        f,
-                        "  Found {} sessions across all projects",
-                        self.data.session_count
-                    )?;
-                } else {
-                    writeln!(
-                        f,
-                        "  Found {} sessions for current project",
-                        self.data.session_count
-                    )?;
-                }
-                writeln!(f, "\nNext steps:")?;
-                writeln!(f, "  View recent sessions:")?;
-                writeln!(f, "    {}", cmd::LIST)?;
-                writeln!(f, "\n  View specific session:")?;
-                writeln!(f, "    {}", cmd::SESSION_SHOW_COMPACT)?;
+                writeln!(
+                    f,
+                    "  Current directory: No sessions linked to this project."
+                )?;
+                writeln!(f, "\nTips:")?;
+                writeln!(
+                    f,
+                    "  - To see all indexed sessions: {}",
+                    cmd::LIST_ALL_PROJECTS
+                )?;
+                writeln!(f, "  - To scan all projects: {}", cmd::INIT_ALL_PROJECTS)?;
             }
+        } else {
+            if self.data.all_projects {
+                writeln!(
+                    f,
+                    "  Found {} sessions across all projects",
+                    self.data.session_count
+                )?;
+            } else {
+                writeln!(
+                    f,
+                    "  Found {} sessions for current project",
+                    self.data.session_count
+                )?;
+            }
+            writeln!(f, "\nNext steps:")?;
+            writeln!(f, "  View recent sessions:")?;
+            writeln!(f, "    {}", cmd::LIST)?;
+            writeln!(f, "\n  View specific session:")?;
+            writeln!(f, "    {}", cmd::SESSION_SHOW_COMPACT)?;
         }
 
         Ok(())
