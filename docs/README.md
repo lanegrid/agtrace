@@ -21,9 +21,7 @@ Welcome to the agtrace documentation. This page serves as the central index for 
 
 ### Providers
 
-- [Claude Code](providers/claude-code.md) - Claude Code specific details
-- [Codex](providers/codex.md) - Codex specific details
-- [Gemini](providers/gemini.md) - Gemini specific details
+- [Supported Providers](providers.md) - Provider list and details
 
 ## FAQ
 
