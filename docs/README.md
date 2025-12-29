@@ -1,0 +1,34 @@
+# agtrace Documentation
+
+Welcome to the agtrace documentation. This page serves as the central index for all documentation resources.
+
+## Getting Started
+
+- [Why agtrace?](motivation.md) - Understanding the problem agtrace solves
+- [Getting Started](getting-started.md) - Detailed installation and setup guide
+
+## Reference
+
+### Commands
+
+- [watch](commands/watch.md) - Live dashboard for session monitoring
+- [session](commands/session.md) - Session history and inspection
+- [lab](commands/lab.md) - Advanced history search and analysis
+
+### Architecture
+
+- [Architecture Overview](architecture.md) - Pointer-based indexing and schema-on-read design
+
+### Providers
+
+- [Claude Code](providers/claude-code.md) - Claude Code specific details
+- [Codex](providers/codex.md) - Codex specific details
+- [Gemini](providers/gemini.md) - Gemini specific details
+
+## FAQ
+
+- [Frequently Asked Questions](faq.md) - Common questions and troubleshooting
+
+## Developer Documentation
+
+For developers contributing to agtrace, see the [developer documentation](dev/).
