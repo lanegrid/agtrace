@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.11] - 2025-12-29
+
+### Bug Fixes
+
+- *(cli)* Remove duplicate verbose argument in doctor run command ([17d08d7](https://github.com/lanegrid/agtrace/commit/17d08d715eb1093e30632069731c189deda9bb7a))
+
+- *(watch)* Filter events by project hash to respect project isolation (#12) ([9f5c42a](https://github.com/lanegrid/agtrace/commit/9f5c42a942808eed7a688e00cee67e17d4d34253))
+
+
+### Documentation
+
+- *(cli)* Improve help text with user-friendly descriptions and quick start guide ([8696800](https://github.com/lanegrid/agtrace/commit/869680060e934196dadd194f67478c83ddbbdcfd))
+
+
+### Features
+
+- *(tui)* Add contextual waiting state hints with actionable commands and exact directory match requirement ([a250d81](https://github.com/lanegrid/agtrace/commit/a250d815fb124d8e42ea0b8cd51297b4df32e21c))
+
+
+### Miscellaneous Tasks
+
+- Update CHANGELOG for v0.1.11 ([ae51b18](https://github.com/lanegrid/agtrace/commit/ae51b18cd43a604aa02921670df28d5a008da595))
+
+- Bump version to 0.1.11 ([ce33554](https://github.com/lanegrid/agtrace/commit/ce3355441efafc1536f0750a2bcee11ce2582e82))
+
+
 ## [0.1.12] - 2025-12-29
 
 ### Bug Fixes
