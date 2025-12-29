@@ -217,9 +217,10 @@ pub fn get_latest_mod_time_rfc3339(files: &[&std::path::Path]) -> Option<String>
     for path in files {
         if let Ok(metadata) = std::fs::metadata(path)
             && let Ok(modified) = metadata.modified()
-                && (latest.is_none() || Some(modified) > latest) {
-                    latest = Some(modified);
-                }
+            && (latest.is_none() || Some(modified) > latest)
+        {
+            latest = Some(modified);
+        }
     }
 
     latest.map(|t| {

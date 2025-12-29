@@ -62,5 +62,5 @@ pub use watch::{WatchEventViewModel, WatchStreamStateViewModel, WatchTargetViewM
 pub use watch_tui::{
     ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel, StepPreviewViewModel,
     TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel, TurnHistoryViewModel,
-    TurnItemViewModel,
+    TurnItemViewModel, WaitingKind, WaitingState,
 };

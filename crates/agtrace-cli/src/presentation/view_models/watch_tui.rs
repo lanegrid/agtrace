@@ -89,6 +89,25 @@ pub struct TimelineEventViewModel {
 pub struct TurnHistoryViewModel {
     pub turns: Vec<TurnItemViewModel>,
     pub active_turn_index: Option<usize>,
+    pub waiting_state: Option<WaitingState>,
+}
+
+/// Waiting state information with contextual hints
+#[derive(Debug, Clone, Serialize)]
+pub struct WaitingState {
+    pub kind: WaitingKind,
+    pub session_id: Option<String>,
+    pub project_root: Option<String>,
+    pub event_count: Option<usize>,
+    pub last_activity_relative: Option<String>,
+}
+
+/// Type of waiting state
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub enum WaitingKind {
+    NoSession,      // Waiting for agent to start
+    Analyzing,      // Session detected but not assembled yet
+    MissingContext, // Max context unknown (rare)
 }
 
 /// Single turn item in history

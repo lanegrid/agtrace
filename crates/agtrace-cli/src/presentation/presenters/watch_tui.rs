@@ -14,7 +14,7 @@ use std::collections::VecDeque;
 use crate::presentation::view_models::{
     ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel, StepPreviewViewModel,
     TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel, TurnHistoryViewModel,
-    TurnItemViewModel, common::StatusLevel,
+    TurnItemViewModel, WaitingKind, WaitingState, common::StatusLevel,
 };
 
 /// Build complete screen ViewModel from current domain state
@@ -30,7 +30,7 @@ pub fn build_screen_view_model(
 ) -> TuiScreenViewModel {
     let dashboard = build_dashboard(state, notification);
     let timeline = build_timeline(events);
-    let turn_history = build_turn_history(assembled_session, max_context);
+    let turn_history = build_turn_history(state, assembled_session, max_context);
     let status_bar = build_status_bar(state);
 
     TuiScreenViewModel {
@@ -193,13 +193,18 @@ fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventVie
 
 /// Build turn history ViewModel from assembled session
 fn build_turn_history(
+    state: &agtrace_runtime::SessionState,
     assembled_session: Option<&agtrace_engine::AgentSession>,
     max_context: Option<u32>,
 ) -> TurnHistoryViewModel {
+    // Detect waiting state and provide contextual information
+    let waiting_state = detect_waiting_state(state, assembled_session, max_context);
+
     let Some(session) = assembled_session else {
         return TurnHistoryViewModel {
             turns: Vec::new(),
             active_turn_index: None,
+            waiting_state,
         };
     };
 
@@ -209,6 +214,7 @@ fn build_turn_history(
         return TurnHistoryViewModel {
             turns: Vec::new(),
             active_turn_index: None,
+            waiting_state,
         };
     };
 
@@ -231,6 +237,59 @@ fn build_turn_history(
     TurnHistoryViewModel {
         turns,
         active_turn_index,
+        waiting_state: None, // No waiting state when we have turns
+    }
+}
+
+/// Detect waiting state and provide contextual information
+fn detect_waiting_state(
+    state: &agtrace_runtime::SessionState,
+    assembled_session: Option<&agtrace_engine::AgentSession>,
+    max_context: Option<u32>,
+) -> Option<WaitingState> {
+    let is_waiting_session = state.session_id == "waiting";
+    let has_events = state.event_count > 0;
+
+    // Calculate relative time for last activity
+    let last_activity_relative = if has_events {
+        let now = chrono::Utc::now();
+        Some(format_relative_time(state.last_activity, now))
+    } else {
+        None
+    };
+
+    match (
+        is_waiting_session,
+        assembled_session,
+        max_context,
+        has_events,
+    ) {
+        // No session detected yet
+        (true, _, _, _) => Some(WaitingState {
+            kind: WaitingKind::NoSession,
+            session_id: None,
+            project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
+            event_count: None,
+            last_activity_relative: None,
+        }),
+        // Session detected but not assembled yet (analyzing)
+        (false, None, _, true) => Some(WaitingState {
+            kind: WaitingKind::Analyzing,
+            session_id: Some(state.session_id.chars().take(8).collect()),
+            project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
+            event_count: Some(state.event_count),
+            last_activity_relative,
+        }),
+        // Max context unknown (rare)
+        (false, Some(_), None, _) => Some(WaitingState {
+            kind: WaitingKind::MissingContext,
+            session_id: Some(state.session_id.chars().take(8).collect()),
+            project_root: state.project_root.as_ref().map(|p| p.display().to_string()),
+            event_count: Some(state.event_count),
+            last_activity_relative,
+        }),
+        // No waiting state - we have complete data
+        _ => None,
     }
 }
 

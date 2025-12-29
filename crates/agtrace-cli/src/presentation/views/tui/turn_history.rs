@@ -27,6 +27,12 @@ impl<'a> TurnHistoryView<'a> {
 
 impl<'a> Widget for TurnHistoryView<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
+        // Show waiting state with helpful hints if present
+        if let Some(ref waiting_state) = self.model.waiting_state {
+            self.render_waiting_state(area, buf, waiting_state);
+            return;
+        }
+
         if self.model.turns.is_empty() {
             let block = Block::default()
                 .title("SATURATION HISTORY")
@@ -188,6 +194,160 @@ impl<'a> TurnHistoryView<'a> {
                 Line::from(spans)
             })
             .collect();
+
+        let paragraph = Paragraph::new(lines);
+        paragraph.render(inner, buf);
+    }
+
+    /// Render waiting state with contextual hints and commands
+    fn render_waiting_state(
+        &self,
+        area: Rect,
+        buf: &mut Buffer,
+        waiting_state: &crate::presentation::view_models::WaitingState,
+    ) {
+        use crate::presentation::view_models::WaitingKind;
+        use ratatui::style::Color;
+
+        let block = Block::default()
+            .title("SATURATION HISTORY")
+            .borders(Borders::ALL);
+
+        let inner = block.inner(area);
+        block.render(area, buf);
+
+        let lines = match waiting_state.kind {
+            WaitingKind::NoSession => {
+                let mut lines = vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "No active session detected",
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD),
+                    )),
+                    Line::from(""),
+                    Line::from("Next steps:"),
+                    Line::from("  • Start your AI coding agent (claude, codex, etc.)"),
+                    Line::from("  • Or check past sessions:"),
+                    Line::from(Span::styled(
+                        "    agtrace session list",
+                        Style::default().fg(Color::Cyan),
+                    )),
+                    Line::from(""),
+                ];
+
+                if let Some(ref project_root) = waiting_state.project_root {
+                    lines.push(Line::from(Span::styled(
+                        format!("Monitoring: {}", project_root),
+                        Style::default().fg(Color::DarkGray),
+                    )));
+                    lines.push(Line::from(""));
+                }
+
+                lines.push(Line::from(Span::styled(
+                    "Note: agtrace requires exact directory match",
+                    Style::default().fg(Color::DarkGray),
+                )));
+                lines.push(Line::from(Span::styled(
+                    "(not parent or subdirectories)",
+                    Style::default().fg(Color::DarkGray),
+                )));
+                lines.push(Line::from(""));
+
+                lines.push(Line::from(Span::styled(
+                    "Waiting for new session...",
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .add_modifier(Modifier::DIM),
+                )));
+
+                lines
+            }
+            WaitingKind::Analyzing => {
+                let mut lines = vec![Line::from("")];
+
+                if let Some(ref session_id) = waiting_state.session_id {
+                    lines.push(Line::from(vec![
+                        Span::raw("Session: "),
+                        Span::styled(
+                            session_id.clone(),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]));
+                    lines.push(Line::from(""));
+                }
+
+                lines.push(Line::from(Span::styled(
+                    "Analyzing session data...",
+                    Style::default().fg(Color::Yellow),
+                )));
+
+                if let Some(count) = waiting_state.event_count {
+                    let mut event_line = vec![Span::raw(format!("Events: {} ", count))];
+                    if let Some(ref relative_time) = waiting_state.last_activity_relative {
+                        event_line.push(Span::raw("| Last activity: "));
+                        event_line.push(Span::styled(
+                            relative_time.clone(),
+                            Style::default().fg(Color::Green),
+                        ));
+                    }
+                    lines.push(Line::from(event_line));
+                }
+
+                lines.push(Line::from(""));
+                lines.push(Line::from("Tip: Use this command to export data:"));
+                if let Some(ref session_id) = waiting_state.session_id {
+                    lines.push(Line::from(Span::styled(
+                        format!("  agtrace session show {} --json", session_id),
+                        Style::default().fg(Color::Cyan),
+                    )));
+                } else {
+                    lines.push(Line::from(Span::styled(
+                        "  agtrace session show <id> --json",
+                        Style::default().fg(Color::Cyan),
+                    )));
+                }
+
+                lines
+            }
+            WaitingKind::MissingContext => {
+                let mut lines = vec![Line::from("")];
+
+                if let Some(ref session_id) = waiting_state.session_id {
+                    lines.push(Line::from(vec![
+                        Span::raw("Session: "),
+                        Span::styled(
+                            session_id.clone(),
+                            Style::default()
+                                .fg(Color::Cyan)
+                                .add_modifier(Modifier::BOLD),
+                        ),
+                    ]));
+                    lines.push(Line::from(""));
+                }
+
+                lines.push(Line::from(Span::styled(
+                    "Unable to calculate saturation",
+                    Style::default().fg(Color::Red),
+                )));
+                lines.push(Line::from(Span::styled(
+                    "(waiting for model information...)",
+                    Style::default().fg(Color::DarkGray),
+                )));
+
+                lines.push(Line::from(""));
+                lines.push(Line::from("See raw events:"));
+                lines.push(Line::from(Span::styled(
+                    "  agtrace lab grep \".*\" --limit 10",
+                    Style::default().fg(Color::Cyan),
+                )));
+
+                lines
+            }
+        };
 
         let paragraph = Paragraph::new(lines);
         paragraph.render(inner, buf);
