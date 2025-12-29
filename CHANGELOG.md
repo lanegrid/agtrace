@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2025-12-29
+
+### Bug Fixes
+
+- Pass project_root to console mode handlers for correct display ([dc2c5c9](https://github.com/lanegrid/agtrace/commit/dc2c5c9751c7692049fa3b2dc99a5ecadbfb36b9))
+
+- Watch should scan selected provider only, not all providers ([57a464f](https://github.com/lanegrid/agtrace/commit/57a464ff07246a08017ae16a0333bb5f93592a0e))
+
+- Scan all providers before selecting most recent session for watch ([ec8c4b0](https://github.com/lanegrid/agtrace/commit/ec8c4b002efb5a4cc7a236882d85cff9dde92041))
+
+
+### Features
+
+- Display project_root and log_path in watch stream header ([678a606](https://github.com/lanegrid/agtrace/commit/678a6060661fab5a2a4ca28aaa5eaec093573da5))
+
+- Enable cross-provider session switching in watch mode by tracking latest_mod_time ([3c40948](https://github.com/lanegrid/agtrace/commit/3c40948a2c98fb0dfe2ad4a4d4e46a37496f96c3))
+
+
+### Miscellaneous Tasks
+
+- Apply cargo fmt to demo.rs ([babfbde](https://github.com/lanegrid/agtrace/commit/babfbde99ba0c6bfb367193e0b3b79e610462ec0))
+
+
+### Refactor
+
+- Separate project_root and log_path in SessionState for accurate display ([298a649](https://github.com/lanegrid/agtrace/commit/298a649bd07dd13c2ecc6289aa033052ecd5156b))
+
+- Unify console and TUI view models for watch mode ([bd6728d](https://github.com/lanegrid/agtrace/commit/bd6728da32c7e33a69048ab525e6e9cc12b128ef))
+
+- Consolidate mod_time logic and add layer violation TODOs ([f104fe1](https://github.com/lanegrid/agtrace/commit/f104fe1fc4893c7d212920382bf00eebfc686090))
+
+
+### Testing
+
+- Add cross-provider session switching integration test ([200a00f](https://github.com/lanegrid/agtrace/commit/200a00f4631a695a92b1f6e4ca827ae4fec43d8c))
+
+
 ## [0.1.8] - 2025-12-28
 
 ### Documentation
