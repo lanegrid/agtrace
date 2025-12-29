@@ -22,6 +22,8 @@
 
 ```bash
 npm install -g @lanegrid/agtrace
+# or
+cargo install agtrace
 ```
 
 ## Usage
