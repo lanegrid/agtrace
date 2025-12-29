@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.10] - 2025-12-29
+
+### Documentation
+
+- Split README into focused documentation structure (motivation, getting-started, commands, architecture, faq, providers)
+- Consolidate provider documentation with accurate log paths
+- Simplify documentation by removing redundant sections
+- Add cargo install option to README
+
 ## [0.1.9] - 2025-12-29
 
 ### Bug Fixes
