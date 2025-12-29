@@ -26,10 +26,6 @@ agtrace watch [OPTIONS]
 - **New session detected:** Automatically switches to the new session
 - **No restart needed:** Keep `watch` running across multiple agent sessions
 
-### CWD Scoping
-
-`watch` monitors sessions scoped to the current working directory. To monitor a different project, run `watch` from that project's directory.
-
 ## Key Features
 
 ### Live Session Vitals
@@ -43,26 +39,6 @@ The dashboard displays:
 ### Always-On Monitoring
 
 Keep `watch` running in a terminal pane or tmux session. It will automatically pick up new sessions without requiring a restart.
-
-## Tips
-
-- **Split terminal workflow:** Run `watch` in one pane, your agent in another
-- **tmux integration:** Keep a persistent `watch` session running in tmux
-- **Multiple projects:** `cd` to different project directories and start separate `watch` instances
-
-## Example Workflow
-
-```bash
-# Terminal 1: Start watch
-cd /path/to/your/project
-agtrace watch
-
-# Terminal 2: Start your agent (same directory)
-cd /path/to/your/project
-claude
-
-# watch automatically detects and displays the new session
-```
 
 ## See Also
 

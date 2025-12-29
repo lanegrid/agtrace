@@ -90,10 +90,6 @@ See which tools were called and when:
 agtrace session show <SESSION_ID> --json | jq '.turns[].steps[] | select(.type == "tool_call")'
 ```
 
-## CWD Scoping
-
-`session` commands are scoped to the current working directory. Sessions from other projects won't appear in the list unless you `cd` to that project's directory first.
-
 ## See Also
 
 - [watch](watch.md) - Live session monitoring

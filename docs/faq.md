@@ -70,10 +70,7 @@ No. agtrace runs **100% locally**. It reads log files from your local filesystem
 
 ### Where are my logs stored?
 
-agtrace does not copy or move your logs. It reads them from their original locations:
-- Claude Code: `~/.claude/sessions/`
-- Codex: `~/.codex/sessions/`
-- Gemini: `~/.gemini/sessions/`
+agtrace does not copy or move your logs. It reads them from their original provider locations (see [Supported Providers](providers.md)).
 
 The only files agtrace creates are:
 - `~/.agtrace/agtrace.db` (metadata index)

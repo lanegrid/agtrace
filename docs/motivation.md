@@ -32,11 +32,3 @@ agtrace's core loop:
 3. **Index** metadata without duplicating large logs (pointer-based)
 4. **Analyze** sessions into turns/steps/metrics (schema-on-read)
 5. **Visualize** live and historical runs in human-friendly views
-
-![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
-
-*Live demo of `agtrace watch` — a `top`-like view for your session*
-
-![agtrace watch TUI dashboard](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/watch-screenshot-claude.png)
-
-*The dashboard showing context usage, current turn, and token costs*

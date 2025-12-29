@@ -89,10 +89,6 @@ python analyze_errors.py errors.json
 
 For very large searches, use `--limit` to control output size.
 
-## CWD Scoping
-
-`lab` commands are scoped to the current working directory by default. To search sessions from other projects, `cd` to that project's directory first.
-
 ## See Also
 
 - [session](session.md) - Inspect specific sessions
