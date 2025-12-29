@@ -2,14 +2,16 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Initialize agtrace by detecting provider configurations, creating the database, and scanning logs.
+Initialize agtrace — run this once to get started.
 
-This is typically the first command to run. It will:
-  1. Auto-detect installed providers (Claude Code, Codex, Gemini)
-  2. Create the SQLite index database
-  3. Scan and index existing session logs
+This command will:
+  • Auto-detect installed providers (Claude Code, Codex, Gemini)
+  • Create the local database (~/.agtrace/agtrace.db)
+  • Scan and index existing session logs
 
-Use --refresh to force a re-scan even if recently indexed.
+After running 'init', use 'agtrace watch' to monitor sessions in real-time.
+
+Use --refresh to force a re-scan of all logs.
 
 Usage: agtrace init [OPTIONS]
 

@@ -14,7 +14,7 @@ pub enum Commands {
         command: IndexCommand,
     },
 
-    #[command(about = "View and analyze session data")]
+    #[command(about = "View and analyze past sessions")]
     Session {
         #[command(subcommand)]
         command: SessionCommand,
@@ -71,7 +71,7 @@ pub enum Commands {
         limit: usize,
     },
 
-    #[command(about = "Monitor live session updates in real-time")]
+    #[command(about = "Monitor sessions in real-time (like 'tail -f')")]
     Watch {
         #[arg(long, help = "Filter by provider")]
         provider: Option<ProviderName>,
@@ -91,15 +91,17 @@ pub enum Commands {
     },
 
     #[command(
-        about = "Set up agtrace (detects providers, creates DB, scans logs)",
-        long_about = "Initialize agtrace by detecting provider configurations, creating the database, and scanning logs.
+        about = "Set up agtrace (run once)",
+        long_about = "Initialize agtrace — run this once to get started.
 
-This is typically the first command to run. It will:
-  1. Auto-detect installed providers (Claude Code, Codex, Gemini)
-  2. Create the SQLite index database
-  3. Scan and index existing session logs
+This command will:
+  • Auto-detect installed providers (Claude Code, Codex, Gemini)
+  • Create the local database (~/.agtrace/agtrace.db)
+  • Scan and index existing session logs
 
-Use --refresh to force a re-scan even if recently indexed."
+After running 'init', use 'agtrace watch' to monitor sessions in real-time.
+
+Use --refresh to force a re-scan of all logs."
     )]
     Init {
         #[arg(long, help = "Force re-scan even if recently indexed")]

@@ -2,7 +2,7 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-View and analyze session data
+View and analyze past sessions
 
 Usage: agtrace session [OPTIONS] <COMMAND>
 
