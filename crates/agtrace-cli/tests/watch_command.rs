@@ -283,3 +283,64 @@ fn test_watch_timeout_handling() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_watch_cross_provider_switching() -> Result<()> {
+    // Given: Project with sessions from multiple providers
+    let mut world = TestWorld::new().with_project("my-project");
+
+    // Enable both Claude and Codex providers
+    world.enable_provider(TestProvider::Claude)?;
+    world.enable_provider(TestProvider::Codex)?;
+
+    world.set_cwd("my-project");
+
+    // Create Claude session with older modification time
+    world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
+    let old_time = std::time::SystemTime::now() - Duration::from_secs(10);
+    world.set_file_mtime(TestProvider::Claude, "claude-session.jsonl", old_time)?;
+
+    world.run(&["init", "--all-projects"])?;
+
+    // When: Start watch (should initially attach to Claude session)
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_agtrace"));
+    cmd.current_dir(world.temp_dir().join("my-project"))
+        .arg("--data-dir")
+        .arg(world.data_dir())
+        .args(["watch", "--mode", "console"]);
+
+    let mut proc = BackgroundProcess::spawn_piped(cmd)?;
+
+    // Give watch time to start and attach to initial session
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Create a new Codex session with a newer modification time
+    world.add_session(TestProvider::Codex, "codex-session.jsonl")?;
+
+    // Give watch time to detect the new session and switch
+    std::thread::sleep(Duration::from_secs(2));
+
+    // Then: Watch should switch to the newer Codex session
+    let stdout = proc.stdout().expect("Should have stdout");
+    let reader = BufReader::new(stdout);
+
+    let mut found_switch = false;
+    for line in reader.lines().take(30) {
+        let line = line?;
+        // Look for "Switched to session" or similar indication
+        if line.contains("Switched") || line.contains("Attached") {
+            found_switch = true;
+            break;
+        }
+    }
+
+    // Clean up
+    proc.kill()?;
+
+    assert!(
+        found_switch,
+        "Watch should switch to the newer session from a different provider"
+    );
+
+    Ok(())
+}

@@ -23,6 +23,7 @@ predicates = { workspace = true }
 
 # File operations
 walkdir = { workspace = true }
+filetime = { workspace = true }
 
 # Hashing for sessionId generation
 sha2 = { workspace = true }

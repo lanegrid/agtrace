@@ -526,6 +526,63 @@ impl TestWorld {
             &adapter,
         )
     }
+
+    /// Set file modification time for testing time-based logic.
+    ///
+    /// This is useful for testing features that depend on file modification times,
+    /// such as watch mode's "most recently updated" session detection.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use agtrace_testing::{TestWorld, providers::TestProvider};
+    /// # use std::time::{SystemTime, Duration};
+    /// let mut world = TestWorld::new();
+    /// world.enable_provider(TestProvider::Claude).unwrap();
+    /// world.add_session(TestProvider::Claude, "session1.jsonl").unwrap();
+    ///
+    /// // Set older modification time
+    /// let old_time = SystemTime::now() - Duration::from_secs(3600);
+    /// world.set_file_mtime(TestProvider::Claude, "session1.jsonl", old_time).unwrap();
+    /// ```
+    pub fn set_file_mtime(
+        &self,
+        provider: TestProvider,
+        filename: &str,
+        mtime: std::time::SystemTime,
+    ) -> Result<()> {
+        let log_root = self.temp_dir.path().join(provider.default_log_dir_name());
+        let project_dir = self.cwd.to_string_lossy();
+        let adapter = provider.adapter();
+
+        // Canonicalize target_project_dir to match project_hash_from_root behavior
+        let canonical_project_dir = self.cwd.canonicalize().unwrap_or_else(|_| self.cwd.clone());
+
+        // Use provider-specific directory encoding (same logic as fixtures.rs)
+        let project_log_dir = if let Some(provider_subdir) =
+            adapter.discovery.resolve_log_root(&canonical_project_dir)
+        {
+            // Provider uses project-specific subdirectory (e.g., Gemini uses hash)
+            log_root.join(provider_subdir)
+        } else {
+            // Provider uses flat structure with encoded project names (e.g., Claude)
+            let encoded = project_dir
+                .replace(['/', '.'], "-")
+                .trim_start_matches('-')
+                .to_string();
+            let encoded_dir = format!("-{}", encoded);
+            log_root.join(encoded_dir)
+        };
+
+        let file_path = project_log_dir.join(filename);
+
+        if !file_path.exists() {
+            anyhow::bail!("File does not exist: {}", file_path.display());
+        }
+
+        filetime::set_file_mtime(&file_path, filetime::FileTime::from_system_time(mtime))?;
+
+        Ok(())
+    }
 }
 
 /// Result of a CLI command execution.
