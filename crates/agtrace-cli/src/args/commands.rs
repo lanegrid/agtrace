@@ -296,9 +296,6 @@ Use this when sessions aren't appearing in the index."
         #[arg(long, default_value = "all", help = "Filter by provider")]
         provider: ProviderFilter,
 
-        #[arg(long, help = "Show detailed parsing errors")]
-        verbose: bool,
-
         #[command(flatten)]
         view_mode: ViewModeArgs,
     },

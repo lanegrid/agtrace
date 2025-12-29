@@ -179,14 +179,13 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Doctor { command } => match command {
             DoctorCommand::Run {
                 provider,
-                verbose,
                 view_mode,
             } => {
                 let workspace = ctx.open_workspace()?;
                 handlers::doctor_run::handle(
                     &workspace,
                     provider.to_string(),
-                    verbose,
+                    view_mode.verbose,
                     ctx.format,
                     &view_mode,
                 )
