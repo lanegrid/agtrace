@@ -1,11 +1,10 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
   <h1>agtrace</h1>
-  <p><strong>Observability and Debugging for AI Coding Agent Sessions.</strong></p>
+  <p><strong>top + tail -f for AI Coding Agent Sessions.</strong></p>
   <p>
-    Real-time telemetry and session debugging for Claude Code, Codex, and Gemini.
-    A local-only “top + trace viewer” for agent runs: context, tools, costs, and drift —
-    <strong>with zero overhead</strong>.
+    A local-only TUI to watch and debug Claude Code, Codex, and Gemini sessions.
+    See context pressure, tool activity, costs, and drift in real time — <strong>with zero overhead</strong>.
   </p>
 
   [![npm version](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat)](https://www.npmjs.com/package/@lanegrid/agtrace)
@@ -14,25 +13,30 @@
 
 ---
 
-## 📉 The Problem: Agent Sessions Are Stateful — But Unobservable
+## 📉 The Problem: Session Telemetry Exists — But It’s Fragmented and Hard to Use
 
 AI coding agents behave like stateful, long-running programs. They accumulate context, call tools, read/write files, and make decisions turn by turn.
 
-But when something goes wrong — instruction loss, constraint violations, sudden behavior drift, cost spikes — we usually have no way to answer basic operational questions:
+Most agents *do* provide signals like “X% remaining before compaction” — but in practice those signals are:
+- **inconsistent** (different wording, thresholds, and timing across vendors)
+- **easy to miss** (buried in chat output, not always surfaced at the right moment)
+- **hard to compare** (no shared units, no shared event model, no shared history)
+
+So when something goes wrong — instruction loss, constraint violations, sudden behavior drift, cost spikes — it’s painful to answer basic questions:
 
 - **What changed?** (model, context pressure, tool usage, files touched)
-- **When did it start?** (the exact boundary where behavior shifted)
+- **When did it start?** (the boundary where behavior shifted)
 - **Why this run?** (what was different compared to previous sessions)
 
-Context window compaction is a common example: it’s expected behavior, but compaction boundaries are often invisible. Without telemetry, you only notice after the agent starts behaving differently.
-
-In practice, we are operating a lossy, stateful system without logs, metrics, or traces.
+In short: we’re operating a lossy, stateful system without `top`, `tail -f`, or a usable trace timeline across providers.
 
 ## ⚡ The Solution: agtrace
 
-**agtrace** adds an observability layer to AI coding agents by turning messy provider logs into a consistent, queryable timeline.
+**agtrace** is `top` + `tail -f` for AI coding agent sessions — powered by a normalized event timeline.
 
-It gives you a quick, practical on-ramp — a live “fuel gauge” for your session — while building toward a deeper goal: normalized telemetry you can use to profile, compare, and improve agent workflows.
+It reads local provider logs, normalizes them into a consistent model, and turns them into views you can actually operate with:
+- a live “top” view (`watch`) for context pressure and activity
+- a history you can query (`session` / `lab`) to understand what happened and when
 
 agtrace’s core loop:
 
@@ -44,7 +48,7 @@ agtrace’s core loop:
 
 ![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
 
-*Live demo of `agtrace watch` — real-time session telemetry*
+*Live demo of `agtrace watch` — a `top`-like view for your session*
 
 ![agtrace watch TUI dashboard](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/watch-screenshot-claude.png)
 
@@ -54,7 +58,7 @@ agtrace’s core loop:
 
 ## ✨ Key Features
 
-### 1) Live Telemetry (`watch`)
+### 1) Live “top” View (`watch`)
 A TUI dashboard for “session vitals”:
 - context window usage and pressure (useful around compaction boundaries)
 - current turn, recent activity, and tool usage signals
@@ -65,9 +69,9 @@ Inspect recent sessions and drill into a specific run:
 - context usage, turns, models
 - high-level structure you can compare across runs
 
-### 3) Debugging (“Lab”)
-Search and inspect history at scale:
-- `agtrace lab grep` across thousands of past sessions
+### 3) History Search (`lab grep`)
+Search and inspect past sessions at scale:
+- `agtrace lab grep` across thousands of sessions
 - analyze tool usage patterns
 - inspect raw provider events when debugging schema changes (`--raw`)
 
@@ -158,27 +162,17 @@ claude
 # Or Codex, Gemini, etc.
 ```
 
-That’s it. No integration required — `watch` follows sessions by monitoring logs scoped to your current working directory.
-
 ### 4) Analyze Past Sessions
 
 ```bash
-# List recent sessions
 agtrace session list
-
-# Show analysis of a specific session (context usage, turns, models)
 agtrace session show <session_id>
 ```
 
-### 5) Advanced: The Lab
-
-Debug agent interactions or search for specific patterns:
+### 5) Advanced: History Search (“Lab”)
 
 ```bash
-# Find all file write operations across history
 agtrace lab grep "write_file" --json
-
-# Inspect a raw provider event (useful for debugging schema changes)
 agtrace lab grep "mcp" --raw --limit 1
 ```
 
