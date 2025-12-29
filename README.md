@@ -3,8 +3,8 @@
   <h1>agtrace</h1>
   <p><strong>top + tail -f for AI Coding Agent Sessions.</strong></p>
   <p>
-    A local-only TUI to watch and debug Claude Code, Codex, and Gemini sessions.
-    See context pressure, tool activity, costs, and drift in real time — <strong>with zero overhead</strong>.
+    A local-only TUI for Claude Code, Codex, and Gemini.
+    See context pressure, tool activity, and costs in real time.
   </p>
 
   [![npm version](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat)](https://www.npmjs.com/package/@lanegrid/agtrace)
@@ -28,7 +28,7 @@ So when something goes wrong — instruction loss, constraint violations, sudden
 - **When did it start?** (the boundary where behavior shifted)
 - **Why this run?** (what was different compared to previous sessions)
 
-In short: we’re operating a lossy, stateful system without `top`, `tail -f`, or a usable trace timeline across providers.
+In short: we're operating stateful systems with no `top`, no `tail -f`, and no cross-provider trace.
 
 ## ⚡ The Solution: agtrace
 
@@ -58,31 +58,34 @@ agtrace’s core loop:
 
 ## ✨ Key Features
 
-### 1) Live “top” View (`watch`)
-A TUI dashboard for “session vitals”:
+### 1) Live "top" View (`watch`)
+A TUI dashboard for "session vitals":
 - context window usage and pressure (useful around compaction boundaries)
 - current turn, recent activity, and tool usage signals
-- token/cost telemetry (where available)
+- token/cost telemetry
 
-### 2) Session Summaries (`session list` / `session show`)
+### 2) Always-On Session Tracking
+Keep `watch` running in a terminal pane. It detects new sessions automatically — no restart needed.
+
+### 3) Session Summaries (`session list` / `session show`)
 Inspect recent sessions and drill into a specific run:
 - context usage, turns, models
 - high-level structure you can compare across runs
 
-### 3) History Search (`lab grep`)
+### 4) History Search (`lab grep`)
 Search and inspect past sessions at scale:
 - `agtrace lab grep` across thousands of sessions
 - analyze tool usage patterns
 - inspect raw provider events when debugging schema changes (`--raw`)
 
-### 4) Provider Normalization
+### 5) Provider Normalization
 Whether you use **Claude Code**, **Codex**, or **Gemini**, agtrace converts events into a consistent internal format so you can reason about sessions the same way across providers.
 
-### 5) Local-Only by Default
+### 6) Local-Only by Default
 Agent logs contain sensitive code and secrets. **agtrace runs 100% locally** and reads directly from your local log files (e.g., `~/.claude`). No data is sent to the cloud.
 
-### 6) High-Performance, Minimal Footprint
-Built in **Rust**, agtrace is designed to run continuously without slowing down your machine while you work with heavyweight AI agents.
+### 7) High-Performance, Minimal Footprint
+Built in **Rust**. Parses gigabytes of JSONL logs in seconds. Runs continuously with minimal CPU/memory footprint.
 
 ---
 
@@ -161,6 +164,8 @@ claude
 
 # Or Codex, Gemini, etc.
 ```
+
+That's it. No integration required — `watch` follows sessions by monitoring logs.
 
 ### 4) Analyze Past Sessions
 
