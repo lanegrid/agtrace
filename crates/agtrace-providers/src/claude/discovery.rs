@@ -111,6 +111,13 @@ impl LogDiscovery for ClaudeDiscovery {
             .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
     }
 
+    fn extract_project_hash(&self, path: &Path) -> Result<Option<String>> {
+        let header = extract_claude_header(path)?;
+        Ok(header
+            .cwd
+            .map(|cwd| agtrace_types::project_hash_from_root(&cwd)))
+    }
+
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
         let mut matching_files = Vec::new();
 

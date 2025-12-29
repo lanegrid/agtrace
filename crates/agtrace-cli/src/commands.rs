@@ -327,7 +327,9 @@ pub fn run(cli: Cli) -> Result<()> {
                 let provider_name = provider
                     .map(|p| p.to_string())
                     .or_else(|| {
-                        find_provider_with_most_recent_session(&workspace, ctx.project_root.as_deref())
+                        workspace
+                            .watch_service()
+                            .find_most_recent_provider(ctx.project_root.as_deref())
                     })
                     .ok_or_else(|| {
                         anyhow::anyhow!(
@@ -351,50 +353,6 @@ pub fn run(cli: Cli) -> Result<()> {
             }
         }
     }
-}
-
-// NOTE: Design rationale for finding most recent session
-// - Watch mode needs real-time detection of "most recently updated" sessions
-// - Cannot rely on DB indexing since watch bypasses DB for real-time monitoring
-// - Directly scans filesystem using LogDiscovery::scan_sessions()
-// - Uses SessionIndex.latest_mod_time (file modification time) instead of timestamp (creation time)
-// - This enables switching to sessions that are actively being updated, even if created earlier
-fn find_provider_with_most_recent_session(
-    workspace: &agtrace_runtime::AgTrace,
-    _project_root: Option<&std::path::Path>,
-) -> Option<String> {
-    let enabled_providers = workspace.config().enabled_providers();
-    if enabled_providers.is_empty() {
-        return None;
-    }
-
-    // Track the most recently updated session across all providers
-    let mut most_recent: Option<(String, String)> = None; // (provider_name, latest_mod_time)
-
-    for (provider_name, provider_config) in enabled_providers {
-        // Create adapter for this provider
-        let adapter = match agtrace_providers::create_adapter(provider_name) {
-            Ok(a) => a,
-            Err(_) => continue,
-        };
-
-        // Scan filesystem directly (bypassing DB for real-time detection)
-        let sessions = match adapter.discovery.scan_sessions(&provider_config.log_root) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
-
-        // Find the session with the latest modification time in this provider
-        for session in sessions {
-            if let Some(ref mod_time) = session.latest_mod_time
-                && (most_recent.is_none() || Some(mod_time) > most_recent.as_ref().map(|(_, t)| t))
-            {
-                most_recent = Some((provider_name.clone(), mod_time.clone()));
-            }
-        }
-    }
-
-    most_recent.map(|(provider, _)| provider)
 }
 
 fn expand_tilde(path: &str) -> PathBuf {

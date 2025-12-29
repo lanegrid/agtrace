@@ -344,3 +344,149 @@ fn test_watch_cross_provider_switching() -> Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn test_watch_auto_provider_selection_respects_project_isolation() -> Result<()> {
+    // Given: Two projects with sessions from different providers
+    let mut world = TestWorld::new()
+        .with_project("project-a")
+        .with_project("project-b");
+
+    world.enable_provider(TestProvider::Claude)?;
+    world.enable_provider(TestProvider::Codex)?;
+
+    // Project A: Claude session (older modification time)
+    world.set_cwd("project-a");
+    world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
+    let old_time = std::time::SystemTime::now() - Duration::from_secs(60);
+    world.set_file_mtime(TestProvider::Claude, "claude-session.jsonl", old_time)?;
+
+    // Project B: Codex session (newer modification time, but different project)
+    world.set_cwd("project-b");
+    world.add_session(TestProvider::Codex, "codex-session.jsonl")?;
+    let new_time = std::time::SystemTime::now();
+    world.set_file_mtime(TestProvider::Codex, "codex-session.jsonl", new_time)?;
+
+    world.run(&["init", "--all-projects"])?;
+
+    // Get session IDs for verification
+    world.set_cwd("project-a");
+    let list_a = world.run(&["session", "list", "--format", "json"])?;
+    let json_a = list_a.json()?;
+    let session_a_id = json_a["content"]["sessions"][0]["id"]
+        .as_str()
+        .expect("Should have session ID");
+
+    // When: Run watch in project-a WITHOUT specifying --provider
+    // (automatic provider selection should pick Claude, not Codex)
+    world.set_cwd("project-a");
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_agtrace"));
+    cmd.current_dir(world.temp_dir().join("project-a"))
+        .arg("--data-dir")
+        .arg(world.data_dir())
+        .args(["watch", "--mode", "console"]); // No --provider flag
+
+    let mut proc = BackgroundProcess::spawn_piped(cmd)?;
+
+    // Then: Should attach to project-a's Claude session (not project-b's newer Codex session)
+    let stdout = proc.stdout().expect("Should have stdout");
+    let reader = BufReader::new(stdout);
+
+    let mut found_attachment = false;
+    for line in reader.lines().take(15) {
+        let line = line?;
+        if (line.contains("Attached") || line.contains("Watching"))
+            && line.contains(&session_a_id[..8])
+        {
+            found_attachment = true;
+            break;
+        }
+    }
+
+    // Clean up
+    proc.kill()?;
+
+    assert!(
+        found_attachment,
+        "Watch should attach to current project's session (project-a Claude), \
+         not the globally newest session (project-b Codex)"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_watch_ignores_events_from_other_projects() -> Result<()> {
+    use std::io::Write;
+
+    // Given: Two projects with sessions
+    let mut world = TestWorld::new()
+        .with_project("project-a")
+        .with_project("project-b");
+
+    world.enable_provider(TestProvider::Claude)?;
+
+    // Project A: Has one session
+    world.set_cwd("project-a");
+    world.add_session(TestProvider::Claude, "session-a.jsonl")?;
+
+    // Project B: Has one session
+    world.set_cwd("project-b");
+    world.add_session(TestProvider::Claude, "session-b.jsonl")?;
+
+    world.run(&["init", "--all-projects"])?;
+
+    // Get project-b's session file path for later modification
+    world.set_cwd("project-b");
+    let project_b_session_path =
+        world.get_session_file_path(TestProvider::Claude, "session-b.jsonl")?;
+
+    // When: Start watch in project-a
+    world.set_cwd("project-a");
+    let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_agtrace"));
+    cmd.current_dir(world.temp_dir().join("project-a"))
+        .arg("--data-dir")
+        .arg(world.data_dir())
+        .args(["watch", "--mode", "console", "--provider", "claude_code"]);
+
+    let mut proc = BackgroundProcess::spawn_piped(cmd)?;
+
+    // Wait for watch to start
+    std::thread::sleep(Duration::from_millis(500));
+
+    // Modify project-b's session file (should be ignored)
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&project_b_session_path)?;
+    writeln!(
+        file,
+        "{{\"type\":\"user_message\",\"timestamp\":\"2025-12-30T10:00:00Z\"}}"
+    )?;
+    drop(file);
+
+    // Wait for potential event processing
+    std::thread::sleep(Duration::from_secs(2));
+
+    // Then: Should NOT see any "Switched" messages (project-b events should be ignored)
+    let stdout = proc.stdout().expect("Should have stdout");
+    let reader = BufReader::new(stdout);
+
+    let mut found_switch = false;
+    for line in reader.lines().take(20) {
+        let line = line?;
+        if line.contains("Switched") {
+            found_switch = true;
+            break;
+        }
+    }
+
+    // Clean up
+    proc.kill()?;
+
+    assert!(
+        !found_switch,
+        "Watch should ignore events from other projects (project-b)"
+    );
+
+    Ok(())
+}

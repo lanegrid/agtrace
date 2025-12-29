@@ -1,6 +1,7 @@
 use crate::runtime::events::{DiscoveryEvent, WorkspaceEvent};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
+use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
@@ -23,7 +24,11 @@ pub struct WorkspaceSupervisor {
 }
 
 impl WorkspaceSupervisor {
-    pub fn start(contexts: Vec<WatchContext>, db: Arc<Mutex<Database>>) -> Result<Self> {
+    pub fn start(
+        contexts: Vec<WatchContext>,
+        db: Arc<Mutex<Database>>,
+        project_root: Option<PathBuf>,
+    ) -> Result<Self> {
         let (tx_out, rx_out) = channel();
         let (tx_fs, rx_fs) = channel();
 
@@ -52,7 +57,14 @@ impl WorkspaceSupervisor {
                 loop {
                     match rx_fs.recv_timeout(Duration::from_secs(5)) {
                         Ok(event) => {
-                            handle_fs_event(&event, &contexts, &db, &seen_sessions, &tx_worker);
+                            handle_fs_event(
+                                &event,
+                                &contexts,
+                                &db,
+                                &seen_sessions,
+                                &tx_worker,
+                                project_root.as_deref(),
+                            );
                         }
                         Err(_) => {
                             // Periodic tick
@@ -78,12 +90,17 @@ impl WorkspaceSupervisor {
 // - For "most recently updated" detection, we need actual file modification time
 // - This enables watch mode to switch to actively updated sessions, even if they existed at startup
 // - Without mod_time, watch would only switch to newly created sessions (is_new=true)
+//
+// NOTE: Project filtering
+// - If project_root is Some, only emit events for sessions matching that project
+// - If project_root is None, emit all events (backwards compatible, for --all-projects mode)
 fn handle_fs_event(
     event: &Event,
     contexts: &[WatchContext],
     _db: &Arc<Mutex<Database>>,
     seen_sessions: &Arc<Mutex<HashSet<String>>>,
     tx: &Sender<WorkspaceEvent>,
+    project_root: Option<&Path>,
 ) {
     match event.kind {
         EventKind::Create(_) | EventKind::Modify(_) => {
@@ -92,6 +109,25 @@ fn handle_fs_event(
                     && context.provider.discovery.probe(path).is_match()
                     && let Ok(session_id) = context.provider.discovery.extract_session_id(path)
                 {
+                    // Project filtering: skip sessions from other projects
+                    if let Some(filter_root) = project_root {
+                        let filter_hash =
+                            project_hash_from_root(&filter_root.display().to_string());
+
+                        // Extract session's project hash from log file (lightweight operation)
+                        if let Ok(Some(session_hash)) =
+                            context.provider.discovery.extract_project_hash(path)
+                        {
+                            if filter_hash != session_hash {
+                                // Session belongs to different project, skip it
+                                continue;
+                            }
+                        } else {
+                            // Cannot determine project, skip to be safe
+                            continue;
+                        }
+                    }
+
                     let mut seen = seen_sessions.lock().unwrap();
                     let is_new = seen.insert(session_id.clone());
 

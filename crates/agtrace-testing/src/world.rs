@@ -510,7 +510,7 @@ impl TestWorld {
     /// - Consolidate with fixtures.rs logic
     ///
     /// This abstraction belongs in agtrace-providers, NOT in test utilities.
-    fn get_session_file_path(&self, provider: TestProvider, filename: &str) -> Result<PathBuf> {
+    pub fn get_session_file_path(&self, provider: TestProvider, filename: &str) -> Result<PathBuf> {
         let log_root = self.temp_dir.path().join(provider.default_log_dir_name());
         let project_dir = self.cwd.to_string_lossy();
         let adapter = provider.adapter();

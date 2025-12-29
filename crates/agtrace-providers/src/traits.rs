@@ -26,6 +26,10 @@ pub trait LogDiscovery: Send + Sync {
     /// Extract session ID from file header (lightweight, no full parse)
     fn extract_session_id(&self, path: &Path) -> Result<String>;
 
+    /// Extract project hash from file header (lightweight, no full parse)
+    /// Returns None if the file doesn't contain project information
+    fn extract_project_hash(&self, path: &Path) -> Result<Option<String>>;
+
     /// Find all files belonging to a session (main + sidechains)
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>>;
 }

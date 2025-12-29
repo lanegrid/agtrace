@@ -2,8 +2,9 @@ use crate::client::{MonitorBuilder, StreamHandle};
 use crate::config::Config;
 use crate::runtime::SessionStreamer;
 use agtrace_index::Database;
+use agtrace_types::project_hash_from_root;
 use anyhow::Result;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -106,5 +107,65 @@ impl WatchService {
 
     pub fn database(&self) -> Arc<Mutex<Database>> {
         self.db.clone()
+    }
+
+    /// Find the provider with the most recently updated session.
+    ///
+    /// If `project_root` is specified, only sessions from that project are considered.
+    /// Otherwise, searches across all projects.
+    ///
+    /// Returns the provider name with the most recent session, or None if no sessions found.
+    ///
+    /// # Design Rationale
+    /// - Watch mode needs real-time detection of "most recently updated" sessions
+    /// - Cannot rely on DB indexing since watch bypasses DB for real-time monitoring
+    /// - Directly scans filesystem using LogDiscovery::scan_sessions()
+    /// - Uses SessionIndex.latest_mod_time (file modification time) instead of timestamp (creation time)
+    /// - This enables switching to sessions that are actively being updated, even if created earlier
+    /// - Filters by project_root to ensure watch attaches to sessions in the current project only
+    pub fn find_most_recent_provider(&self, project_root: Option<&Path>) -> Option<String> {
+        // Calculate target project hash if project_root is specified
+        let target_project_hash =
+            project_root.map(|root| project_hash_from_root(&root.display().to_string()));
+
+        // Track the most recently updated session across all providers
+        let mut most_recent: Option<(String, String)> = None; // (provider_name, latest_mod_time)
+
+        for (provider_name, log_root) in self.provider_configs.iter() {
+            // Create adapter for this provider
+            let adapter = match agtrace_providers::create_adapter(provider_name) {
+                Ok(a) => a,
+                Err(_) => continue,
+            };
+
+            // Scan filesystem directly (bypassing DB for real-time detection)
+            let sessions = match adapter.discovery.scan_sessions(log_root) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            // Find the session with the latest modification time in this provider
+            for session in sessions {
+                // Filter by project if project_root is specified
+                if let Some(ref target_hash) = target_project_hash {
+                    let session_hash = session
+                        .project_root
+                        .as_ref()
+                        .map(|root| project_hash_from_root(root));
+                    if session_hash.as_ref() != Some(target_hash) {
+                        continue;
+                    }
+                }
+
+                if let Some(ref mod_time) = session.latest_mod_time
+                    && (most_recent.is_none()
+                        || Some(mod_time) > most_recent.as_ref().map(|(_, t)| t))
+                {
+                    most_recent = Some((provider_name.clone(), mod_time.clone()));
+                }
+            }
+        }
+
+        most_recent.map(|(provider, _)| provider)
     }
 }

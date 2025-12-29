@@ -38,7 +38,7 @@ impl MonitorBuilder {
             }
         }
 
-        let supervisor = WorkspaceSupervisor::start(contexts, self.db.clone())?;
+        let supervisor = WorkspaceSupervisor::start(contexts, self.db.clone(), self.project_root)?;
 
         Ok(WorkspaceMonitor {
             db: self.db,

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-use super::io::extract_gemini_header;
+use super::io::{extract_gemini_header, extract_project_hash_from_gemini_file};
 
 pub struct GeminiDiscovery;
 
@@ -95,6 +95,10 @@ impl LogDiscovery for GeminiDiscovery {
         header
             .session_id
             .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+    }
+
+    fn extract_project_hash(&self, path: &Path) -> Result<Option<String>> {
+        Ok(extract_project_hash_from_gemini_file(path))
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
