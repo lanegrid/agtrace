@@ -24,7 +24,7 @@ pub mod cmd {
 
     // Shorthand aliases
     pub const LIST: &str = "agtrace list";
-    pub const LIST_ALL_PROJECTS: &str = "agtrace list --all-projects";
+    pub const LIST_ALL_PROJECTS: &str = "agtrace session list --all-projects";
 }
 
 pub mod fmt {
