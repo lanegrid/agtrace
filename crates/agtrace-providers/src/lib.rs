@@ -30,6 +30,7 @@ pub mod legacy;
 // Traits
 pub use traits::{
     LogDiscovery, ProbeResult, ProviderAdapter, SessionIndex, SessionParser, ToolMapper,
+    get_latest_mod_time_rfc3339,
 };
 
 // Provider normalize functions

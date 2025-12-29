@@ -201,3 +201,29 @@ impl ProviderAdapter {
         self.parser.parse_file(path)
     }
 }
+
+/// Get the latest modification time from a list of file paths in RFC3339 format.
+///
+/// This utility function is used by discovery implementations to track when
+/// a session was last active (most recent file modification).
+///
+/// Returns None if no files have a valid modification time.
+pub fn get_latest_mod_time_rfc3339(files: &[&std::path::Path]) -> Option<String> {
+    use chrono::{DateTime, Utc};
+    use std::time::SystemTime;
+
+    let mut latest: Option<SystemTime> = None;
+
+    for path in files {
+        if let Ok(metadata) = std::fs::metadata(path)
+            && let Ok(modified) = metadata.modified()
+                && (latest.is_none() || Some(modified) > latest) {
+                    latest = Some(modified);
+                }
+    }
+
+    latest.map(|t| {
+        let dt: DateTime<Utc> = t.into();
+        dt.to_rfc3339()
+    })
+}

@@ -491,6 +491,52 @@ impl TestWorld {
         Ok(())
     }
 
+    /// Get the full path to a session file.
+    ///
+    /// This helper resolves the provider-specific directory encoding and returns
+    /// the absolute path to the session file.
+    ///
+    /// TODO(CRITICAL): This is a LAYER VIOLATION - test code should NOT know provider implementation details
+    ///
+    /// Current issue:
+    /// - Testing layer depends on provider-specific directory encoding logic
+    /// - Same if/else branching duplicated in fixtures.rs
+    /// - Hardcoded knowledge of Claude's "-" encoding vs Gemini's hash-based subdirs
+    ///
+    /// Required fix:
+    /// - Add `encode_project_path(project_root: &Path) -> PathBuf` to LogDiscovery trait
+    /// - Each provider implements its own encoding (Claude: "-Users-foo-bar", Gemini: hash, Codex: flat)
+    /// - Remove this if/else branching and call `adapter.discovery.encode_project_path()`
+    /// - Consolidate with fixtures.rs logic
+    ///
+    /// This abstraction belongs in agtrace-providers, NOT in test utilities.
+    fn get_session_file_path(&self, provider: TestProvider, filename: &str) -> Result<PathBuf> {
+        let log_root = self.temp_dir.path().join(provider.default_log_dir_name());
+        let project_dir = self.cwd.to_string_lossy();
+        let adapter = provider.adapter();
+
+        // Canonicalize target_project_dir to match project_hash_from_root behavior
+        let canonical_project_dir = self.cwd.canonicalize().unwrap_or_else(|_| self.cwd.clone());
+
+        // WORST: Provider-specific branching in test code - MUST move to LogDiscovery trait
+        let project_log_dir = if let Some(provider_subdir) =
+            adapter.discovery.resolve_log_root(&canonical_project_dir)
+        {
+            // Provider uses project-specific subdirectory (e.g., Gemini uses hash)
+            log_root.join(provider_subdir)
+        } else {
+            // Provider uses flat structure with encoded project names (e.g., Claude)
+            let encoded = project_dir
+                .replace(['/', '.'], "-")
+                .trim_start_matches('-')
+                .to_string();
+            let encoded_dir = format!("-{}", encoded);
+            log_root.join(encoded_dir)
+        };
+
+        Ok(project_log_dir.join(filename))
+    }
+
     /// Add a session log for the specified provider.
     ///
     /// This method:
@@ -550,30 +596,7 @@ impl TestWorld {
         filename: &str,
         mtime: std::time::SystemTime,
     ) -> Result<()> {
-        let log_root = self.temp_dir.path().join(provider.default_log_dir_name());
-        let project_dir = self.cwd.to_string_lossy();
-        let adapter = provider.adapter();
-
-        // Canonicalize target_project_dir to match project_hash_from_root behavior
-        let canonical_project_dir = self.cwd.canonicalize().unwrap_or_else(|_| self.cwd.clone());
-
-        // Use provider-specific directory encoding (same logic as fixtures.rs)
-        let project_log_dir = if let Some(provider_subdir) =
-            adapter.discovery.resolve_log_root(&canonical_project_dir)
-        {
-            // Provider uses project-specific subdirectory (e.g., Gemini uses hash)
-            log_root.join(provider_subdir)
-        } else {
-            // Provider uses flat structure with encoded project names (e.g., Claude)
-            let encoded = project_dir
-                .replace(['/', '.'], "-")
-                .trim_start_matches('-')
-                .to_string();
-            let encoded_dir = format!("-{}", encoded);
-            log_root.join(encoded_dir)
-        };
-
-        let file_path = project_log_dir.join(filename);
+        let file_path = self.get_session_file_path(provider, filename)?;
 
         if !file_path.exists() {
             anyhow::bail!("File does not exist: {}", file_path.display());

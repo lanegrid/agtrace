@@ -95,11 +95,14 @@ fn handle_fs_event(
                     let mut seen = seen_sessions.lock().unwrap();
                     let is_new = seen.insert(session_id.clone());
 
-                    // Get file modification time for "most recently updated" detection
+                    // Get file modification time for "most recently updated" detection (RFC3339 format)
                     let mod_time = std::fs::metadata(path)
                         .ok()
                         .and_then(|m| m.modified().ok())
-                        .map(|t| format!("{:?}", t));
+                        .map(|t| {
+                            let dt: chrono::DateTime<chrono::Utc> = t.into();
+                            dt.to_rfc3339()
+                        });
 
                     let _ = tx.send(WorkspaceEvent::Discovery(DiscoveryEvent::SessionUpdated {
                         session_id,

@@ -90,7 +90,19 @@ impl SampleFiles {
             .unwrap_or_else(|_| Path::new(target_project_dir).to_path_buf());
         let canonical_str = canonical_project_dir.to_string_lossy();
 
-        // Use provider-specific directory encoding from the discovery trait
+        // TODO(CRITICAL): LAYER VIOLATION - test code should NOT know provider directory encoding
+        //
+        // Current issue:
+        // - Hardcoded if/else branching based on provider implementation details
+        // - Duplicated logic in world.rs::get_session_file_path()
+        // - Testing layer depends on Claude's "-" encoding vs Gemini's hash subdirs
+        //
+        // Required fix:
+        // - Add `encode_project_path(project_root: &Path) -> PathBuf` to LogDiscovery trait
+        // - Each provider implements its own encoding strategy
+        // - Replace this if/else with: `provider_adapter.discovery.encode_project_path()`
+        //
+        // This abstraction belongs in agtrace-providers, NOT in test utilities.
         let project_log_dir = if let Some(provider_subdir) = provider_adapter
             .discovery
             .resolve_log_root(&canonical_project_dir)
