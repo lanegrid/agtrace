@@ -20,7 +20,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✓ Connected to workspace\n");
 
     // 2. Get the most recent session
-    let sessions = client.list_sessions()?;
+    use agtrace_sdk::types::SessionFilter;
+    let sessions = client.sessions().list(SessionFilter::default())?;
     if sessions.is_empty() {
         println!("No sessions found. Start an agent session first.");
         return Ok(());
@@ -30,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Analyzing session: {}\n", session_id);
 
     // 3. Get session events
-    let session_handle = client.session(session_id);
+    let session_handle = client.sessions().get(session_id)?;
     let events = session_handle.events()?;
     println!("  Loaded {} events", events.len());
 
@@ -47,7 +48,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // 5. Get session summary
-    let summary = session_handle.summary()?;
+    use agtrace_sdk::summarize;
+    let summary = summarize(&session);
     println!("Session Summary:");
     println!("  Total events:   {}", summary.event_counts.total);
     println!("  User messages:  {}", summary.event_counts.user_messages);

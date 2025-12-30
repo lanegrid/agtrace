@@ -11,7 +11,7 @@ use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SessionFilter {
     pub project_hash: Option<agtrace_types::ProjectHash>,
     pub limit: usize,
@@ -21,11 +21,21 @@ pub struct SessionFilter {
     pub until: Option<String>,
 }
 
+impl Default for SessionFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionFilter {
     pub fn new() -> Self {
         Self {
+            project_hash: None,
             limit: 100,
-            ..Default::default()
+            all_projects: false,
+            provider: None,
+            since: None,
+            until: None,
         }
     }
 

@@ -57,6 +57,9 @@ pub use agtrace_engine::{
     extract_state_updates,
 };
 
+// Re-export summarize function with clearer name
+pub use agtrace_engine::session::summary::summarize as summarize_session;
+
 // ============================================================================
 // Export Strategy (from agtrace-engine)
 // ============================================================================
