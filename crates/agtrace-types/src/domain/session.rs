@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::project::ProjectHash;
+use super::project::ProjectHash;
 
 /// Source of the agent log (provider-agnostic identifier)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

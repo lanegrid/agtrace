@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::tool::ToolCallPayload;
+use crate::tool::ToolCallPayload;
 
 /// Event payload variants
 #[derive(Debug, Clone, Serialize, Deserialize)]
