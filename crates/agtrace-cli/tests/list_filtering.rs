@@ -117,7 +117,8 @@ fn test_list_without_all_projects_shows_only_current_project() -> Result<()> {
     assertions::assert_session_count(&json, 2)?;
 
     let project_a_path = world.temp_dir().join("project-a");
-    let expected_hash = agtrace_types::project_hash_from_root(&project_a_path.to_string_lossy());
+    let expected_hash =
+        agtrace_sdk::types::project_hash_from_root(&project_a_path.to_string_lossy());
     assertions::assert_sessions_belong_to_project(&json, expected_hash.as_str())?;
 
     Ok(())

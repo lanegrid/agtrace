@@ -37,7 +37,8 @@ fn test_isolation_project_a_and_b_list_shows_only_current_project() -> Result<()
 
     // Verify project hash matches project A
     let project_a_path = world.temp_dir().join("project-a");
-    let expected_hash = agtrace_types::project_hash_from_root(&project_a_path.to_string_lossy());
+    let expected_hash =
+        agtrace_sdk::types::project_hash_from_root(&project_a_path.to_string_lossy());
     assertions::assert_sessions_belong_to_project(&json, expected_hash.as_str())?;
 
     Ok(())
@@ -93,7 +94,7 @@ fn test_isolation_multiple_sessions_in_same_project() -> Result<()> {
     assertions::assert_session_count(&json, 3)?;
 
     let project_path = world.temp_dir().join("my-project");
-    let expected_hash = agtrace_types::project_hash_from_root(&project_path.to_string_lossy());
+    let expected_hash = agtrace_sdk::types::project_hash_from_root(&project_path.to_string_lossy());
     assertions::assert_sessions_belong_to_project(&json, expected_hash.as_str())?;
 
     Ok(())
