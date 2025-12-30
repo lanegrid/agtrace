@@ -165,14 +165,6 @@ pub struct StepItemViewModel {
     pub token_usage: Option<u32>,
 }
 
-/// Reaction from watch reactor (legacy, may be removed)
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type")]
-pub enum ReactionViewModel {
-    Continue,
-    Warn(String),
-}
-
 // --------------------------------------------------------
 // CreateView Trait Implementations (Bridge to Views)
 // --------------------------------------------------------

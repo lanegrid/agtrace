@@ -39,8 +39,6 @@ pub fn get_provider_metadata(name: &str) -> Option<&'static ProviderMetadata> {
     PROVIDERS.iter().find(|p| p.name == name)
 }
 
-// Legacy functions removed - use create_adapter, create_all_adapters, detect_adapter_from_path instead
-
 pub fn expand_home_path(path: &str) -> Option<PathBuf> {
     if let Some(stripped) = path.strip_prefix("~/")
         && let Some(home) = dirs::home_dir()
