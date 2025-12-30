@@ -1,3 +1,8 @@
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
+//
+// The README.md above is included as documentation and tested by `cargo test --doc`.
+// Below is additional API documentation that only appears in rustdoc.
+
 //! agtrace-sdk: The Observability Platform for AI Agents.
 //!
 //! # Overview

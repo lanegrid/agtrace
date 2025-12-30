@@ -38,11 +38,11 @@ Embed agent observability into your own tools (vital-checkers, IDE plugins, dash
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.1.13"
+agtrace-sdk = "0.1"
 ```
 
 ```rust
-use agtrace_sdk::{Client, Lens, analyze_session, assemble_session};
+use agtrace_sdk::{Client, Lens};
 
 // Connect to the local workspace
 let client = Client::connect("~/.agtrace")?;
@@ -53,14 +53,12 @@ for event in client.watch().all_providers().start()? {
 }
 
 // 2. Session Diagnosis
-let events = client.session("session_123").events()?;
-if let Some(session) = assemble_session(&events) {
-    let report = analyze_session(session)
-        .through(Lens::Failures)
-        .through(Lens::Loops)
-        .report()?;
-    println!("Health: {}", report.score);
-}
+let session_handle = client.sessions().get("session_123")?;
+let report = session_handle.analyze()?
+    .through(Lens::Failures)
+    .through(Lens::Loops)
+    .report()?;
+println!("Health: {}", report.score);
 ```
 
 ## 📚 Documentation

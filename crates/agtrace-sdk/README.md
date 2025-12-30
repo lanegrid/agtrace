@@ -33,7 +33,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.1.13"
+agtrace-sdk = "0.1"
 ```
 
 ## Usage
@@ -42,7 +42,7 @@ agtrace-sdk = "0.1.13"
 
 For most use cases, use the Client-based API which provides stateful operations:
 
-```rust
+```rust,no_run
 use agtrace_sdk::{Client, Lens};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 For scenarios where you don't need a Client (testing, simulations, custom pipelines):
 
-```rust
+```rust,no_run
 use agtrace_sdk::{SessionHandle, types::AgentEvent};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Real-time Monitoring
 
-```rust
+```rust,no_run
 use agtrace_sdk::Client;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -112,7 +112,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Provider-specific Monitoring
 
-```rust
+```rust,no_run
 use agtrace_sdk::Client;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -144,7 +144,7 @@ The SDK provides several built-in lenses for analyzing agent behavior:
 
 ### Building a Monitoring Dashboard
 
-```rust
+```rust,no_run
 use agtrace_sdk::{Client, Lens};
 
 fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Error>> {
@@ -162,7 +162,7 @@ fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Erro
 
 ### Dead Man's Switch (vital-checker)
 
-```rust
+```rust,no_run
 use agtrace_sdk::Client;
 use std::time::{Duration, Instant};
 
@@ -247,20 +247,25 @@ For advanced use cases like building custom TUIs or implementing custom event pr
 
 **Example:**
 
-```rust
+```rust,no_run
 use agtrace_sdk::{Client, utils};
+use agtrace_sdk::watch::{WorkspaceEvent, StreamEvent};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace")?;
     let stream = client.watch().all_providers().start()?;
 
-    for event in stream.take(10) {
-        let updates = utils::extract_state_updates(&event);
-        if updates.is_new_turn {
-            println!("New turn started!");
-        }
-        if let Some(usage) = updates.usage {
-            println!("Token usage: {:?}", usage);
+    for workspace_event in stream.take(10) {
+        if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
+            for event in events {
+                let updates = utils::extract_state_updates(&event);
+                if updates.is_new_turn {
+                    println!("New turn started!");
+                }
+                if let Some(usage) = updates.usage {
+                    println!("Token usage: {:?}", usage);
+                }
+            }
         }
     }
     Ok(())
@@ -275,7 +280,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 **Example:**
 
-```rust
+```rust,no_run
 use agtrace_sdk::utils;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
