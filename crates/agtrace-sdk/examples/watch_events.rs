@@ -9,7 +9,6 @@
 //! Start an agent session in another terminal to see events appear.
 
 use agtrace_sdk::Client;
-use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Real-time Event Watching Example ===\n");
@@ -27,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("(Start an agent session in another terminal to see events)\n");
     println!("Press Ctrl+C to exit\n");
 
-    let mut stream = client.watch().all_providers().start()?;
+    let stream = client.watch().all_providers().start()?;
 
     let mut event_count = 0;
     let start_time = std::time::Instant::now();
@@ -89,4 +88,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("  (Waiting for events... {} seconds elapsed)", elapsed);
         }
     }
+
+    Ok(())
 }

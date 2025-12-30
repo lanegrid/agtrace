@@ -81,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace")?;
 
     // Watch for live events from all providers
-    let mut stream = client.watch().all_providers().start()?;
+    let stream = client.watch().all_providers().start()?;
 
     // Use the Iterator trait for ergonomic event processing
     for event in stream {
@@ -101,7 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace")?;
 
     // Watch only Claude events
-    let mut stream = client
+    let stream = client
         .watch()
         .provider("claude")
         .start()?;

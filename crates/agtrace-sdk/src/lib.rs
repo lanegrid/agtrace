@@ -26,7 +26,7 @@
 //! let client = Client::connect("~/.agtrace")?;
 //!
 //! // 2. Watch for live events (Real-time monitoring)
-//! let mut stream = client.watch().all_providers().start()?;
+//! let stream = client.watch().all_providers().start()?;
 //! for event in stream.take(10) {
 //!     println!("New event: {:?}", event);
 //! }
