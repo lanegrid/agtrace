@@ -90,30 +90,3 @@ pub fn project_hash_from_log_path(log_path: &Path) -> crate::ProjectHash {
     hasher.update(log_path.to_string_lossy().as_bytes());
     crate::ProjectHash::new(format!("{:x}", hasher.finalize()))
 }
-
-/// Project scope for indexing and filtering sessions
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ProjectScope {
-    /// Scan all projects without filtering
-    All,
-    /// Scan specific project by root path
-    Specific { root: String },
-}
-
-impl ProjectScope {
-    /// Get hash for reporting purposes (used in progress events)
-    pub fn hash_for_reporting(&self) -> String {
-        match self {
-            ProjectScope::All => "<all>".to_string(),
-            ProjectScope::Specific { root } => project_hash_from_root(root).to_string(),
-        }
-    }
-
-    /// Get optional root path for filtering
-    pub fn root(&self) -> Option<&str> {
-        match self {
-            ProjectScope::All => None,
-            ProjectScope::Specific { root } => Some(root.as_str()),
-        }
-    }
-}
