@@ -35,7 +35,7 @@ fn build_session_list_view(
         .map(|s| SessionListEntry {
             id: s.id,
             provider: s.provider,
-            project_hash: s.project_hash,
+            project_hash: s.project_hash.to_string(),
             start_ts: s.start_ts,
             snippet: s.snippet,
         })

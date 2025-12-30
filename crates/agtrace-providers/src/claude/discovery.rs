@@ -67,7 +67,7 @@ impl LogDiscovery for ClaudeDiscovery {
                     latest_mod_time: None, // Will be computed after all files are collected
                     main_file: path.to_path_buf(),
                     sidechain_files: Vec::new(),
-                    project_root: header.cwd.clone(),
+                    project_root: header.cwd.clone().map(PathBuf::from),
                     snippet: header.snippet.clone(),
                 });
 
@@ -84,7 +84,7 @@ impl LogDiscovery for ClaudeDiscovery {
                     session.timestamp = header.timestamp.clone();
                 }
                 if session.project_root.is_none() {
-                    session.project_root = header.cwd.clone();
+                    session.project_root = header.cwd.clone().map(PathBuf::from);
                 }
                 if session.snippet.is_none() {
                     session.snippet = header.snippet.clone();

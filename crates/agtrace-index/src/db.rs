@@ -33,7 +33,7 @@ pub struct ProjectRecord {
 #[derive(Debug, Clone)]
 pub struct SessionRecord {
     pub id: String,
-    pub project_hash: String,
+    pub project_hash: agtrace_types::ProjectHash,
     pub provider: String,
     pub start_ts: Option<String>,
     pub end_ts: Option<String>,
@@ -54,7 +54,7 @@ pub struct LogFileRecord {
 pub struct SessionSummary {
     pub id: String,
     pub provider: String,
-    pub project_hash: String,
+    pub project_hash: agtrace_types::ProjectHash,
     pub start_ts: Option<String>,
     pub snippet: Option<String>,
 }
@@ -170,7 +170,7 @@ impl Database {
             "#,
             params![
                 &session.id,
-                &session.project_hash,
+                session.project_hash.as_str(),
                 &session.provider,
                 &session.start_ts,
                 &session.end_ts,
@@ -219,7 +219,7 @@ impl Database {
             Ok(Some(SessionSummary {
                 id: row.get(0)?,
                 provider: row.get(1)?,
-                project_hash: row.get(2)?,
+                project_hash: agtrace_types::ProjectHash::from(row.get::<_, String>(2)?),
                 start_ts: row.get(3)?,
                 snippet: row.get(4)?,
             }))
@@ -263,7 +263,7 @@ impl Database {
                 Ok(SessionSummary {
                     id: row.get(0)?,
                     provider: row.get(1)?,
-                    project_hash: row.get(2)?,
+                    project_hash: agtrace_types::ProjectHash::from(row.get::<_, String>(2)?),
                     start_ts: row.get(3)?,
                     snippet: row.get(4)?,
                 })

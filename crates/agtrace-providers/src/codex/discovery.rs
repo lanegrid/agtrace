@@ -70,7 +70,7 @@ impl LogDiscovery for CodexDiscovery {
                     latest_mod_time: None, // Will be computed after all files are collected
                     main_file: path.to_path_buf(),
                     sidechain_files: Vec::new(),
-                    project_root: header.cwd.clone(),
+                    project_root: header.cwd.clone().map(PathBuf::from),
                     snippet: header.snippet.clone(),
                 });
         }

@@ -5,7 +5,7 @@ use serde_json::Value;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct GeminiSession {
     pub session_id: String,
-    pub project_hash: String,
+    pub project_hash: agtrace_types::ProjectHash,
     pub start_time: String,
     pub last_updated: String,
     pub messages: Vec<GeminiMessage>,

@@ -20,7 +20,11 @@ impl InsightOps {
         }
     }
 
-    pub fn corpus_stats(&self, project_hash: Option<&str>, limit: usize) -> Result<CorpusStats> {
+    pub fn corpus_stats(
+        &self,
+        project_hash: Option<&agtrace_types::ProjectHash>,
+        limit: usize,
+    ) -> Result<CorpusStats> {
         self.ensure_index_is_fresh()?;
 
         let db = self.db.lock().unwrap();

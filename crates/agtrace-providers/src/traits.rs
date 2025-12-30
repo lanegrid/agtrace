@@ -122,7 +122,7 @@ pub struct SessionIndex {
     pub latest_mod_time: Option<String>,
     pub main_file: PathBuf,
     pub sidechain_files: Vec<PathBuf>,
-    pub project_root: Option<String>,
+    pub project_root: Option<PathBuf>,
     pub snippet: Option<String>,
 }
 

@@ -20,8 +20,14 @@ impl<'a> PackService<'a> {
         Self { db }
     }
 
-    pub fn select_sessions(&self, project_hash: Option<&str>, limit: usize) -> Result<PackResult> {
-        let raw_sessions = self.db.list_sessions(project_hash, 1000)?;
+    pub fn select_sessions(
+        &self,
+        project_hash: Option<&agtrace_types::ProjectHash>,
+        limit: usize,
+    ) -> Result<PackResult> {
+        let raw_sessions = self
+            .db
+            .list_sessions(project_hash.map(|h| h.as_str()), 1000)?;
         let balanced_sessions = balance_sessions_by_provider(&raw_sessions, 200);
 
         let mut digests = Vec::new();

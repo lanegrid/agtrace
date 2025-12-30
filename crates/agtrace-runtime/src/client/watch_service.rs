@@ -151,7 +151,7 @@ impl WatchService {
                     let session_hash = session
                         .project_root
                         .as_ref()
-                        .map(|root| project_hash_from_root(root));
+                        .map(|root| project_hash_from_root(&root.to_string_lossy()));
                     if session_hash.as_ref() != Some(target_hash) {
                         continue;
                     }

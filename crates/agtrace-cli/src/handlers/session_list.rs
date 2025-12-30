@@ -8,7 +8,7 @@ pub fn handle(
     workspace: &AgTrace,
     _project_root: Option<&Path>,
     all_projects: bool,
-    project_hash: Option<String>,
+    project_hash: Option<agtrace_types::ProjectHash>,
     limit: usize,
     format: OutputFormat,
     provider: Option<String>,
@@ -23,7 +23,7 @@ pub fn handle(
     // Build filter
     let mut filter = SessionFilter::new().limit(limit);
 
-    let project_filter_summary = project_hash.clone();
+    let project_filter_summary = project_hash.as_ref().map(|h| h.to_string());
 
     if let Some(hash) = project_hash {
         filter = filter.project(hash);

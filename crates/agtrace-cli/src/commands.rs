@@ -4,7 +4,6 @@ use super::args::{
 };
 use super::handlers;
 use agtrace_runtime::AgTrace;
-use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use clap::CommandFactory;
 use is_terminal::IsTerminal;
@@ -42,17 +41,22 @@ impl CommandContext {
         self.data_dir.join("config.toml")
     }
 
-    fn project_hash(&self) -> Option<String> {
+    fn project_hash(&self) -> Option<agtrace_types::ProjectHash> {
         self.project_root
             .as_ref()
-            .map(|p| project_hash_from_root(&p.display().to_string()))
+            .map(|p| agtrace_types::ProjectHash::from_root(&p.display().to_string()))
     }
 
-    fn effective_project_hash(&self, explicit_hash: Option<String>) -> Option<String> {
+    fn effective_project_hash(
+        &self,
+        explicit_hash: Option<String>,
+    ) -> Option<agtrace_types::ProjectHash> {
         if self.all_projects {
             None
         } else {
-            explicit_hash.or_else(|| self.project_hash())
+            explicit_hash
+                .map(agtrace_types::ProjectHash::from)
+                .or_else(|| self.project_hash())
         }
     }
 }

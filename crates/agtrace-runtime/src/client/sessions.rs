@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Default)]
 pub struct SessionFilter {
-    pub project_hash: Option<String>,
+    pub project_hash: Option<agtrace_types::ProjectHash>,
     pub limit: usize,
     pub all_projects: bool,
     pub provider: Option<String>,
@@ -34,7 +34,7 @@ impl SessionFilter {
         self
     }
 
-    pub fn project(mut self, project_hash: String) -> Self {
+    pub fn project(mut self, project_hash: agtrace_types::ProjectHash) -> Self {
         self.project_hash = Some(project_hash);
         self
     }
@@ -145,7 +145,11 @@ impl SessionOps {
         db.find_session_by_prefix(session_id)
     }
 
-    pub fn pack_context(&self, project_hash: Option<&str>, limit: usize) -> Result<PackResult> {
+    pub fn pack_context(
+        &self,
+        project_hash: Option<&agtrace_types::ProjectHash>,
+        limit: usize,
+    ) -> Result<PackResult> {
         self.ensure_index_is_fresh()?;
 
         let db = self.db.lock().unwrap();

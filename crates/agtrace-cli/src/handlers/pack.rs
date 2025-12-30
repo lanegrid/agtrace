@@ -10,18 +10,18 @@ pub fn handle(
     workspace: &AgTrace,
     template: &str,
     limit: usize,
-    project_hash: Option<String>,
+    project_hash: Option<agtrace_types::ProjectHash>,
     all_projects: bool,
     output_format: OutputFormat,
     view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
     let (effective_hash_string, _all_projects) =
-        resolve_effective_project_hash(project_hash.as_deref(), all_projects)?;
-    let effective_project_hash = effective_hash_string.as_deref();
+        resolve_effective_project_hash(project_hash.as_ref().map(|h| h.as_str()), all_projects)?;
+    let effective_project_hash = effective_hash_string.map(agtrace_types::ProjectHash::from);
 
     let result = workspace
         .sessions()
-        .pack_context(effective_project_hash, limit)?;
+        .pack_context(effective_project_hash.as_ref(), limit)?;
 
     let report_template: ReportTemplate = template
         .parse()

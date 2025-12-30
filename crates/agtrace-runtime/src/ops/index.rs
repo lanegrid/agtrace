@@ -103,7 +103,8 @@ impl<'a> IndexService<'a> {
                 .filter(|session| {
                     if let Some(expected_root) = scope.root() {
                         if let Some(session_root) = &session.project_root {
-                            let session_normalized = session_root.trim_end_matches('/');
+                            let session_str = session_root.to_string_lossy();
+                            let session_normalized = session_str.trim_end_matches('/');
                             let expected_normalized = expected_root.trim_end_matches('/');
                             session_normalized == expected_normalized
                         } else {
@@ -143,21 +144,28 @@ impl<'a> IndexService<'a> {
 
                 // Calculate project_hash from session data
                 let session_project_hash = if let Some(ref root) = session.project_root {
-                    agtrace_types::project_hash_from_root(root)
+                    agtrace_types::ProjectHash::from_root(&root.to_string_lossy())
                 } else if provider_name == "gemini" {
                     // For Gemini, extract project_hash directly from the file
                     use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
-                    extract_project_hash_from_gemini_file(&session.main_file).unwrap_or_else(|| {
-                        agtrace_types::project_hash_from_log_path(&session.main_file)
-                    })
+                    let hash_str = extract_project_hash_from_gemini_file(&session.main_file)
+                        .unwrap_or_else(|| {
+                            agtrace_types::project_hash_from_log_path(&session.main_file)
+                        });
+                    agtrace_types::ProjectHash::from(hash_str)
                 } else {
                     // Generate unique hash from log path for orphaned sessions
-                    agtrace_types::project_hash_from_log_path(&session.main_file)
+                    agtrace_types::ProjectHash::from(agtrace_types::project_hash_from_log_path(
+                        &session.main_file,
+                    ))
                 };
 
                 let project_record = ProjectRecord {
-                    hash: session_project_hash.clone(),
-                    root_path: session.project_root.clone(),
+                    hash: session_project_hash.as_str().to_string(),
+                    root_path: session
+                        .project_root
+                        .as_ref()
+                        .map(|p| p.to_string_lossy().to_string()),
                     last_scanned_at: Some(chrono::Utc::now().to_rfc3339()),
                 };
                 self.db.insert_or_update_project(&project_record)?;
