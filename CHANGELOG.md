@@ -2,7 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.11] - 2025-12-29
+## [0.1.13] - 2025-12-30
+
+### Features
+
+- *(sdk)* Add agtrace-sdk facade for building observability tools ([1f99847](https://github.com/lanegrid/agtrace/commit/1f99847bc2e081cabfe87eaf6d6135f946e33489))
+
+- *(sdk)* Add working examples demonstrating SDK usage (connection, analysis, watch) ([d1cc697](https://github.com/lanegrid/agtrace/commit/d1cc69760fc14eafcb482f339a1d5562c8304857))
+
+- *(sdk)* Implement Iterator trait for LiveStream and structured Insight type with Severity ([c8e38f0](https://github.com/lanegrid/agtrace/commit/c8e38f0ef846433669558e310da2acc5f61f331e))
+
+
+### Bug Fixes
+
+- *(sdk)* Remove unused mut and Duration import from watch_events example ([1adfd62](https://github.com/lanegrid/agtrace/commit/1adfd6296349c5eb9a9b4b8bdb5d02a77ea8a6f5))
+
+
+### Documentation
+
+- Reframe agtrace as observability platform with SDK and CLI applications ([891caad](https://github.com/lanegrid/agtrace/commit/891caad8c6290f0a7767e71965ef93b1c06baea9))
+
+- Improve README with Iterator usage, workspace context, and Mermaid architecture diagram ([1910bf0](https://github.com/lanegrid/agtrace/commit/1910bf0ee907951bfcca230c240ab55820d808ec))
+
+
+### Refactor
+
+- Replace String-based project_hash with type-safe ProjectHash throughout codebase ([958233b](https://github.com/lanegrid/agtrace/commit/958233bb737068b1f270cee7d199fca8331f83e6), [2261ac1](https://github.com/lanegrid/agtrace/commit/2261ac1d7e89199cfaf001d0b5d71a3abac36848), [04cc841](https://github.com/lanegrid/agtrace/commit/04cc84124249ddb9f4eb16e6e7abc0a2e0f050cb))
+
+- Migrate from context_window_tokens() to total_tokens() and remove legacy methods ([d59ebec](https://github.com/lanegrid/agtrace/commit/d59ebec8681af13eb9905357acdc496a5bd4fda4), [f2870e6](https://github.com/lanegrid/agtrace/commit/f2870e68e3ceb22d3fa009f3e3bdda711daf22eb), [0d62675](https://github.com/lanegrid/agtrace/commit/0d6267522a326e9aea30983a27be82e0d6a88c8f))
+
+- *(agtrace-types)* Reorganize into domain/, event/, and tool/ modules ([af061aa](https://github.com/lanegrid/agtrace/commit/af061aaab26847291386a4fe5c1d0195439cb8d6))
+
+- *(agtrace-index)* Reorganize db.rs into modular structure (records, schema, queries) ([dec1721](https://github.com/lanegrid/agtrace/commit/dec17219c10daf0bbc61d6a25484268388fff7be))
+
+
+## [0.1.12] - 2025-12-29
 
 ### Bug Fixes
 

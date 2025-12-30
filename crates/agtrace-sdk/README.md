@@ -33,7 +33,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.1.12"
+agtrace-sdk = "0.1.13"
 ```
 
 ## Usage

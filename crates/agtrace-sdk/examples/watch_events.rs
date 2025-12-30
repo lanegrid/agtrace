@@ -84,7 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Show activity indicator every 10 seconds
         let elapsed = start_time.elapsed().as_secs();
-        if event_count == 0 && elapsed > 0 && elapsed % 10 == 0 {
+        if event_count == 0 && elapsed > 0 && elapsed.is_multiple_of(10) {
             eprintln!("  (Waiting for events... {} seconds elapsed)", elapsed);
         }
     }
