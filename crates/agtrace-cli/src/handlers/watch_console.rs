@@ -40,9 +40,9 @@ pub fn handle_console(
 
                 let current_project_root = project_root.map(|p| p.display().to_string());
                 let scope = if let Some(root) = current_project_root {
-                    agtrace_types::ProjectScope::Specific { root }
+                    agtrace_sdk::types::ProjectScope::Specific { root }
                 } else {
-                    agtrace_types::ProjectScope::All
+                    agtrace_sdk::types::ProjectScope::All
                 };
 
                 // Lightweight scan (incremental by default)
@@ -108,18 +108,18 @@ pub fn handle_console(
 }
 
 fn process_provider_events_console(
-    watch_service: &agtrace_runtime::WatchService,
+    watch_service: &agtrace_sdk::types::WatchService,
     rx_discovery: std::sync::mpsc::Receiver<WorkspaceEvent>,
-    initial_session: Option<agtrace_index::SessionSummary>,
+    initial_session: Option<agtrace_sdk::types::SessionSummary>,
     project_root: Option<&Path>,
 ) {
-    let mut current_handle: Option<agtrace_runtime::StreamHandle> = None;
+    let mut current_handle: Option<agtrace_sdk::types::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
     let mut current_session_mod_time: Option<String> = None;
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
-    let mut event_buffer: VecDeque<agtrace_types::AgentEvent> = VecDeque::new();
-    let mut assembled_session: Option<agtrace_engine::AgentSession> = None;
+    let mut event_buffer: VecDeque<agtrace_sdk::types::AgentEvent> = VecDeque::new();
+    let mut assembled_session: Option<agtrace_sdk::types::AgentSession> = None;
     let project_root_buf = project_root.map(|p| p.to_path_buf());
     let poll_timeout = Duration::from_millis(100);
 
@@ -250,7 +250,7 @@ fn process_provider_events_console(
                             state.last_activity = event.timestamp;
                             state.event_count += 1;
 
-                            let updates = agtrace_engine::extract_state_updates(event);
+                            let updates = agtrace_sdk::types::extract_state_updates(event);
                             if updates.is_new_turn {
                                 state.turn_count += 1;
                             }
@@ -279,7 +279,7 @@ fn process_provider_events_console(
                         }
 
                         // Build max_context from state
-                        let token_limits = agtrace_runtime::TokenLimits::new();
+                        let token_limits = agtrace_sdk::types::TokenLimits::new();
                         let token_spec =
                             state.model.as_ref().and_then(|m| token_limits.get_limit(m));
                         let max_context = state
@@ -337,8 +337,8 @@ fn process_stream_events_console(
 ) {
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
-    let mut event_buffer: VecDeque<agtrace_types::AgentEvent> = VecDeque::new();
-    let mut assembled_session: Option<agtrace_engine::AgentSession> = None;
+    let mut event_buffer: VecDeque<agtrace_sdk::types::AgentEvent> = VecDeque::new();
+    let mut assembled_session: Option<agtrace_sdk::types::AgentSession> = None;
     let project_root_buf = project_root.map(|p| p.to_path_buf());
 
     while let Ok(event) = receiver.recv() {
@@ -367,7 +367,7 @@ fn process_stream_events_console(
                         state.last_activity = event.timestamp;
                         state.event_count += 1;
 
-                        let updates = agtrace_engine::extract_state_updates(event);
+                        let updates = agtrace_sdk::types::extract_state_updates(event);
                         if updates.is_new_turn {
                             state.turn_count += 1;
                         }
@@ -396,7 +396,7 @@ fn process_stream_events_console(
                     }
 
                     // Build max_context from state
-                    let token_limits = agtrace_runtime::TokenLimits::new();
+                    let token_limits = agtrace_sdk::types::TokenLimits::new();
                     let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
                     let max_context = state
                         .context_window_limit

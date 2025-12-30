@@ -179,8 +179,8 @@ fn add_session_analysis_guidance(
 }
 
 fn build_turn_analysis(
-    turn: &agtrace_engine::AgentTurn,
-    metric: &agtrace_engine::TurnMetrics,
+    turn: &agtrace_sdk::types::AgentTurn,
+    metric: &agtrace_sdk::types::TurnMetrics,
     max_context: Option<u32>,
 ) -> TurnAnalysisViewModel {
     use crate::presentation::formatters::time;
@@ -285,10 +285,10 @@ fn build_turn_analysis(
 }
 
 fn group_consecutive_tools(
-    tools: &[agtrace_engine::ToolExecution],
+    tools: &[agtrace_sdk::types::ToolExecution],
 ) -> Vec<Vec<AgentStepViewModel>> {
     let mut result: Vec<Vec<AgentStepViewModel>> = Vec::new();
-    let mut current_group: Vec<&agtrace_engine::ToolExecution> = Vec::new();
+    let mut current_group: Vec<&agtrace_sdk::types::ToolExecution> = Vec::new();
     let mut current_name: Option<String> = None;
 
     for tool in tools {
@@ -315,7 +315,9 @@ fn group_consecutive_tools(
     result
 }
 
-fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<AgentStepViewModel> {
+fn create_tool_view_models(
+    tools: &[&agtrace_sdk::types::ToolExecution],
+) -> Vec<AgentStepViewModel> {
     if tools.is_empty() {
         return vec![];
     }
@@ -368,8 +370,8 @@ fn create_tool_view_models(tools: &[&agtrace_engine::ToolExecution]) -> Vec<Agen
     }
 }
 
-pub fn present_session_state(state: &agtrace_runtime::SessionState) -> StreamStateViewModel {
-    let token_limits = agtrace_runtime::TokenLimits::new();
+pub fn present_session_state(state: &agtrace_sdk::types::SessionState) -> StreamStateViewModel {
+    let token_limits = agtrace_sdk::types::TokenLimits::new();
     let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
     let token_limit = state
         .context_window_limit

@@ -8,7 +8,7 @@ use crate::presentation::view_models::{
 };
 
 pub fn present_diagnose_results(
-    results: Vec<agtrace_engine::DiagnoseResult>,
+    results: Vec<agtrace_sdk::types::DiagnoseResult>,
 ) -> CommandResultViewModel<DiagnoseResultsViewModel> {
     let mut total_files = 0;
     let mut total_successful = 0;
@@ -80,13 +80,13 @@ pub fn present_diagnose_results(
 pub fn present_check_result(
     file_path: String,
     provider_name: String,
-    status: agtrace_runtime::CheckStatus,
+    status: agtrace_sdk::types::CheckStatus,
     event_count: usize,
     error_message: Option<String>,
 ) -> CommandResultViewModel<DoctorCheckResultViewModel> {
     let check_status = match status {
-        agtrace_runtime::CheckStatus::Success => CheckStatus::Success,
-        agtrace_runtime::CheckStatus::Failure => CheckStatus::Failure,
+        agtrace_sdk::types::CheckStatus::Success => CheckStatus::Success,
+        agtrace_sdk::types::CheckStatus::Failure => CheckStatus::Failure,
     };
 
     let content = DoctorCheckResultViewModel {

@@ -22,9 +22,9 @@ use crate::presentation::view_models::{
 /// This is the main entry point called by the Handler.
 /// It produces a complete snapshot of what the TUI should display.
 pub fn build_screen_view_model(
-    state: &agtrace_runtime::SessionState,
-    events: &VecDeque<agtrace_types::AgentEvent>,
-    assembled_session: Option<&agtrace_engine::AgentSession>,
+    state: &agtrace_sdk::types::SessionState,
+    events: &VecDeque<agtrace_sdk::types::AgentEvent>,
+    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
     max_context: Option<u32>,
     notification: Option<&str>,
 ) -> TuiScreenViewModel {
@@ -43,13 +43,13 @@ pub fn build_screen_view_model(
 
 /// Build dashboard ViewModel with context usage calculations
 fn build_dashboard(
-    state: &agtrace_runtime::SessionState,
+    state: &agtrace_sdk::types::SessionState,
     notification: Option<&str>,
 ) -> DashboardViewModel {
     use agtrace_sdk::types::ContextLimit;
 
     // Same fallback logic as present_session_state: try context_window_limit first, then model lookup
-    let token_limits = agtrace_runtime::TokenLimits::new();
+    let token_limits = agtrace_sdk::types::TokenLimits::new();
     let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
     let limit_u64 = state
         .context_window_limit
@@ -101,7 +101,7 @@ fn build_dashboard(
 }
 
 /// Build timeline ViewModel from recent events
-fn build_timeline(events: &VecDeque<agtrace_types::AgentEvent>) -> TimelineViewModel {
+fn build_timeline(events: &VecDeque<agtrace_sdk::types::AgentEvent>) -> TimelineViewModel {
     const MAX_TIMELINE_ITEMS: usize = 50;
 
     let total_count = events.len();
@@ -120,8 +120,8 @@ fn build_timeline(events: &VecDeque<agtrace_types::AgentEvent>) -> TimelineViewM
 }
 
 /// Convert a single event to timeline item
-fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventViewModel {
-    use agtrace_types::EventPayload;
+fn event_to_timeline_item(event: &agtrace_sdk::types::AgentEvent) -> TimelineEventViewModel {
+    use agtrace_sdk::types::EventPayload;
 
     let now = Utc::now();
     let relative_time = format_relative_time(event.timestamp, now);
@@ -193,8 +193,8 @@ fn event_to_timeline_item(event: &agtrace_types::AgentEvent) -> TimelineEventVie
 
 /// Build turn history ViewModel from assembled session
 fn build_turn_history(
-    state: &agtrace_runtime::SessionState,
-    assembled_session: Option<&agtrace_engine::AgentSession>,
+    state: &agtrace_sdk::types::SessionState,
+    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
     max_context: Option<u32>,
 ) -> TurnHistoryViewModel {
     // Detect waiting state and provide contextual information
@@ -243,8 +243,8 @@ fn build_turn_history(
 
 /// Detect waiting state and provide contextual information
 fn detect_waiting_state(
-    state: &agtrace_runtime::SessionState,
-    assembled_session: Option<&agtrace_engine::AgentSession>,
+    state: &agtrace_sdk::types::SessionState,
+    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
     max_context: Option<u32>,
 ) -> Option<WaitingState> {
     let is_waiting_session = state.session_id == "waiting";
@@ -295,8 +295,8 @@ fn detect_waiting_state(
 
 /// Build a single turn item with computed metrics
 fn build_turn_item(
-    turn: &agtrace_engine::AgentTurn,
-    metric: &agtrace_engine::TurnMetrics,
+    turn: &agtrace_sdk::types::AgentTurn,
+    metric: &agtrace_sdk::types::TurnMetrics,
     max_context: u64,
 ) -> TurnItemViewModel {
     let title = truncate_text(&turn.user.content.text, 120);
@@ -374,7 +374,7 @@ fn build_turn_item(
 }
 
 /// Build step preview item
-fn build_step_preview(step: &agtrace_engine::AgentStep) -> StepPreviewViewModel {
+fn build_step_preview(step: &agtrace_sdk::types::AgentStep) -> StepPreviewViewModel {
     let (icon, description) = if let Some(reasoning) = &step.reasoning {
         (
             "🤔".to_string(),
@@ -410,7 +410,7 @@ fn build_step_preview(step: &agtrace_engine::AgentStep) -> StepPreviewViewModel 
 }
 
 /// Build status bar ViewModel
-fn build_status_bar(state: &agtrace_runtime::SessionState) -> StatusBarViewModel {
+fn build_status_bar(state: &agtrace_sdk::types::SessionState) -> StatusBarViewModel {
     let session_preview: String = state.session_id.chars().take(8).collect();
     let status_message = format!("Watching session {}...", session_preview);
     let status_level = StatusLevel::Info;

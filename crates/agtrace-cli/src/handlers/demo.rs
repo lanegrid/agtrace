@@ -1,9 +1,9 @@
 use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
-use agtrace_sdk::types::{SessionState, assemble_session};
-use agtrace_types::{
+use agtrace_sdk::types::{
     AgentEvent, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs, MessagePayload,
-    ReasoningPayload, StreamId, TokenUsagePayload, ToolCallPayload, ToolResultPayload, UserPayload,
+    ReasoningPayload, SessionState, StreamId, TokenUsagePayload, ToolCallPayload,
+    ToolResultPayload, UserPayload, assemble_session,
 };
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -79,7 +79,7 @@ fn run_simulation(
         state.event_count += 1;
 
         // Apply state updates using engine logic (same as watch handler)
-        let updates = agtrace_engine::extract_state_updates(&event);
+        let updates = agtrace_sdk::types::extract_state_updates(&event);
         if updates.is_new_turn {
             state.turn_count += 1;
         }

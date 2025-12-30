@@ -86,7 +86,7 @@ pub enum AgentStepViewModel {
     ToolCall {
         name: String,
         #[serde(skip)]
-        arguments: agtrace_types::ToolCallPayload,
+        arguments: agtrace_sdk::types::ToolCallPayload,
         #[serde(rename = "args")]
         args_formatted: Option<String>, // For JSON serialization compatibility
         result: String,
@@ -96,7 +96,7 @@ pub enum AgentStepViewModel {
         name: String,
         count: usize,
         #[serde(skip)]
-        sample_arguments: agtrace_types::ToolCallPayload,
+        sample_arguments: agtrace_sdk::types::ToolCallPayload,
         #[serde(rename = "sample_args")]
         sample_args_formatted: Option<String>, // For JSON serialization compatibility
         has_errors: bool,

@@ -579,8 +579,8 @@ impl<'a> fmt::Display for TurnView<'a> {
 // --------------------------------------------------------
 
 /// Format tool arguments for display
-fn format_tool_args(tool_call: &agtrace_types::ToolCallPayload) -> String {
-    use agtrace_types::ToolCallPayload;
+fn format_tool_args(tool_call: &agtrace_sdk::types::ToolCallPayload) -> String {
+    use agtrace_sdk::types::ToolCallPayload;
 
     match tool_call {
         ToolCallPayload::FileRead { arguments, .. } => {
@@ -751,7 +751,7 @@ mod tests {
     #[test]
     fn test_empty_tool_result_display() {
         use crate::presentation::view_models::session::AgentStepViewModel;
-        use agtrace_types::ToolCallPayload;
+        use agtrace_sdk::types::ToolCallPayload;
 
         let turn = TurnAnalysisViewModel {
             turn_number: 1,

@@ -40,7 +40,7 @@ pub struct LabStatsViewModel {
 }
 
 // Lab grep ViewModels
-use agtrace_types::StreamId;
+use agtrace_sdk::types::StreamId;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 

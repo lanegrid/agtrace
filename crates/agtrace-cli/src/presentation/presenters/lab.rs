@@ -5,7 +5,7 @@ use crate::presentation::view_models::{
     EventPayloadViewModel, EventViewModel, LabExportViewModel, LabGrepViewModel, LabStatsViewModel,
     ProviderStats, ToolCallSample, ToolClassification, ToolStatsEntry,
 };
-use agtrace_types::{AgentEvent, EventPayload};
+use agtrace_sdk::types::{AgentEvent, EventPayload};
 
 // Type aliases for complex nested types
 type ToolStatsMap = BTreeMap<String, (usize, Option<ToolCallSample>)>;

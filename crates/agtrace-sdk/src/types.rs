@@ -10,12 +10,24 @@
 
 // Note: agtrace-types re-exports everything at the top level from domain, event, and tool modules
 pub use agtrace_types::{
+    // Event types
     AgentEvent,
     EventPayload,
+    // Payload types
+    ExecuteArgs,
+    FileEditArgs,
+    FileReadArgs,
+    MessagePayload,
+    // Domain types
     ProjectHash,
     ProjectScope,
+    ReasoningPayload,
     StreamId,
+    TokenUsagePayload,
+    ToolCallPayload,
     ToolKind,
+    ToolResultPayload,
+    UserPayload,
     // Utility functions are also re-exported at top level
     discover_project_root,
     project_hash_from_root,
@@ -38,9 +50,11 @@ pub use agtrace_engine::{
     SessionDigest,
     SessionStats,
     TokenCount,
+    ToolExecution,
     TurnMetrics,
     // Functions
     assemble_session,
+    extract_state_updates,
 };
 
 // ============================================================================
@@ -94,6 +108,7 @@ pub use agtrace_runtime::{
     SessionState,
     StatsResult,
     StreamEvent,
+    StreamHandle,
     TokenLimit,
     TokenLimits,
     WatchService,

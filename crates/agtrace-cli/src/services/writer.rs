@@ -1,4 +1,4 @@
-use agtrace_types::{AgentEvent, EventPayload};
+use agtrace_sdk::types::{AgentEvent, EventPayload};
 use anyhow::{Context, Result};
 use std::fs;
 use std::io::Write;

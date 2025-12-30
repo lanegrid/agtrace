@@ -2,9 +2,9 @@ use crate::presentation::view_models::{
     ConfigStatus, InitResultViewModel, ProviderInfo, ScanOutcome,
 };
 
-pub fn present_init_result(result: agtrace_runtime::InitResult) -> InitResultViewModel {
+pub fn present_init_result(result: agtrace_sdk::types::InitResult) -> InitResultViewModel {
     let config_status = match result.config_status {
-        agtrace_runtime::ConfigStatus::DetectedAndSaved { providers } => {
+        agtrace_sdk::types::ConfigStatus::DetectedAndSaved { providers } => {
             ConfigStatus::DetectedAndSaved {
                 providers: providers
                     .into_iter()
@@ -12,12 +12,12 @@ pub fn present_init_result(result: agtrace_runtime::InitResult) -> InitResultVie
                     .collect(),
             }
         }
-        agtrace_runtime::ConfigStatus::LoadedExisting { config_path } => {
+        agtrace_sdk::types::ConfigStatus::LoadedExisting { config_path } => {
             ConfigStatus::LoadedExisting {
                 config_path: config_path.display().to_string(),
             }
         }
-        agtrace_runtime::ConfigStatus::NoProvidersDetected {
+        agtrace_sdk::types::ConfigStatus::NoProvidersDetected {
             available_providers,
         } => ConfigStatus::NoProvidersDetected {
             available_providers: available_providers
@@ -31,8 +31,8 @@ pub fn present_init_result(result: agtrace_runtime::InitResult) -> InitResultVie
     };
 
     let scan_outcome = match result.scan_outcome {
-        agtrace_runtime::ScanOutcome::Scanned => ScanOutcome::Scanned,
-        agtrace_runtime::ScanOutcome::Skipped { elapsed } => ScanOutcome::Skipped {
+        agtrace_sdk::types::ScanOutcome::Scanned => ScanOutcome::Scanned,
+        agtrace_sdk::types::ScanOutcome::Skipped { elapsed } => ScanOutcome::Skipped {
             elapsed_seconds: elapsed.num_seconds(),
         },
     };

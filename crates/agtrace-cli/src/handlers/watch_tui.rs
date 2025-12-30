@@ -15,8 +15,8 @@ use anyhow::Result;
 
 use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
-use agtrace_sdk::types::AgentSession;
 use agtrace_sdk::Client;
+use agtrace_sdk::types::AgentSession;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 
 pub enum WatchTarget {
@@ -29,7 +29,7 @@ struct WatchHandler {
     /// Session state
     state: SessionState,
     /// Event buffer
-    events: VecDeque<agtrace_types::AgentEvent>,
+    events: VecDeque<agtrace_sdk::types::AgentEvent>,
     /// Assembled session (for turn metrics)
     assembled_session: Option<AgentSession>,
     /// Max context window
@@ -75,7 +75,7 @@ impl WatchHandler {
     /// Send updated ViewModel to renderer
     fn send_update(&self) {
         // Same fallback logic as build_dashboard: try context_window_limit first, then model lookup
-        let token_limits = agtrace_runtime::TokenLimits::new();
+        let token_limits = agtrace_sdk::types::TokenLimits::new();
         let token_spec = self
             .state
             .model
@@ -169,9 +169,9 @@ fn handle_provider_watch(
     let latest_session = {
         let current_project_root = project_root.map(|p| p.display().to_string());
         let scope = if let Some(root) = current_project_root.clone() {
-            agtrace_types::ProjectScope::Specific { root }
+            agtrace_sdk::types::ProjectScope::Specific { root }
         } else {
-            agtrace_types::ProjectScope::All
+            agtrace_sdk::types::ProjectScope::All
         };
 
         // Lightweight scan (incremental by default)
@@ -216,7 +216,7 @@ fn handle_provider_watch(
     handler.max_context = Some(200_000); // Default fallback
 
     // Track current stream handle and mod_time for "most recently updated" switching
-    let mut current_stream_handle: Option<agtrace_runtime::StreamHandle> = None;
+    let mut current_stream_handle: Option<agtrace_sdk::types::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
     let mut current_session_mod_time: Option<String> = None;
 
@@ -326,7 +326,7 @@ fn handle_provider_watch(
                         handler.state.last_activity = event.timestamp;
                         handler.state.event_count += 1;
 
-                        let updates = agtrace_engine::extract_state_updates(event);
+                        let updates = agtrace_sdk::types::extract_state_updates(event);
                         if updates.is_new_turn {
                             handler.state.turn_count += 1;
                         }
@@ -441,7 +441,7 @@ fn handle_session_watch(
                         handler.state.event_count += 1;
 
                         // Extract state updates
-                        let updates = agtrace_engine::extract_state_updates(event);
+                        let updates = agtrace_sdk::types::extract_state_updates(event);
                         if updates.is_new_turn {
                             handler.state.turn_count += 1;
                         }

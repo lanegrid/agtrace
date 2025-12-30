@@ -57,9 +57,9 @@ pub fn present_watch_error(message: String, fatal: bool) -> WatchEventViewModel 
 /// Converts domain data (SessionState + Events + Session) into WatchEventViewModel
 /// using the same presenter logic as TUI mode
 pub fn present_watch_stream_update(
-    state: &agtrace_runtime::SessionState,
-    events: &VecDeque<agtrace_types::AgentEvent>,
-    assembled_session: Option<&agtrace_engine::AgentSession>,
+    state: &agtrace_sdk::types::SessionState,
+    events: &VecDeque<agtrace_sdk::types::AgentEvent>,
+    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
     max_context: Option<u32>,
     notification: Option<&str>,
 ) -> WatchEventViewModel {
