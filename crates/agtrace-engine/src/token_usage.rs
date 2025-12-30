@@ -181,20 +181,14 @@ impl ContextWindowUsage {
         self.output.0
     }
 
-    /// Context window tokens consumed this turn (legacy i32 version, internal use only)
-    /// External code should use `total_tokens()` instead
-    pub(crate) fn context_window_tokens(&self) -> i32 {
-        self.input_tokens() + self.output_tokens()
-    }
-
     /// Context window tokens as type-safe TokenCount
     pub fn total_tokens(&self) -> TokenCount {
-        let total = self.context_window_tokens().max(0);
+        let total = (self.input_tokens() + self.output_tokens()).max(0);
         TokenCount::new(total as u64)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.context_window_tokens() == 0
+        self.total_tokens() == TokenCount::zero()
     }
 }
 
@@ -220,13 +214,13 @@ mod tests {
 
         assert_eq!(usage.input_tokens(), 600);
         assert_eq!(usage.output_tokens(), 50);
-        assert_eq!(usage.context_window_tokens(), 650);
+        assert_eq!(usage.total_tokens(), TokenCount::new(650));
     }
 
     #[test]
     fn test_cache_read_always_included() {
         let usage = ContextWindowUsage::from_raw(10, 20, 5000, 30);
-        assert_eq!(usage.context_window_tokens(), 5060);
+        assert_eq!(usage.total_tokens(), TokenCount::new(5060));
     }
 
     #[test]
@@ -240,14 +234,14 @@ mod tests {
         assert_eq!(total.cache_creation.0, 220);
         assert_eq!(total.cache_read.0, 330);
         assert_eq!(total.output.0, 55);
-        assert_eq!(total.context_window_tokens(), 715);
+        assert_eq!(total.total_tokens(), TokenCount::new(715));
     }
 
     #[test]
     fn test_default_is_empty() {
         let usage = ContextWindowUsage::default();
         assert!(usage.is_empty());
-        assert_eq!(usage.context_window_tokens(), 0);
+        assert_eq!(usage.total_tokens(), TokenCount::zero());
     }
 
     #[test]

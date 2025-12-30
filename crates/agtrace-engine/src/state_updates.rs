@@ -164,7 +164,7 @@ mod tests {
         assert_eq!(usage.output.0, 50);
         assert_eq!(usage.cache_creation.0, 5);
         assert_eq!(usage.cache_read.0, 20);
-        assert_eq!(usage.context_window_tokens(), 175);
+        assert_eq!(usage.total_tokens(), crate::TokenCount::new(175));
 
         assert_eq!(updates.reasoning_tokens, Some(7));
         assert_eq!(
