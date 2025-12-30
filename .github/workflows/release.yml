@@ -274,11 +274,17 @@ jobs:
         env:
           PRERELEASE_FLAG: "${{ fromJson(steps.host.outputs.manifest).announcement_is_prerelease && '--prerelease' || '' }}"
           ANNOUNCEMENT_TITLE: "${{ fromJson(steps.host.outputs.manifest).announcement_title }}"
-          ANNOUNCEMENT_BODY: "${{ fromJson(steps.host.outputs.manifest).announcement_github_body }}"
           RELEASE_COMMIT: "${{ github.sha }}"
         run: |
-          # Write and read notes from a file to avoid quoting breaking things
-          echo "$ANNOUNCEMENT_BODY" > $RUNNER_TEMP/notes.txt
+          # Extract CHANGELOG content for this version
+          CHANGELOG_CONTENT=$(./scripts/extract_changelog.sh "${{ needs.plan.outputs.tag }}" CHANGELOG.md)
+
+          # Use only CHANGELOG content for release notes
+          if [ -n "$CHANGELOG_CONTENT" ]; then
+            echo "$CHANGELOG_CONTENT" > $RUNNER_TEMP/notes.txt
+          else
+            echo "No CHANGELOG content found for ${{ needs.plan.outputs.tag }}" > $RUNNER_TEMP/notes.txt
+          fi
 
           gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" $PRERELEASE_FLAG --title "$ANNOUNCEMENT_TITLE" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
 

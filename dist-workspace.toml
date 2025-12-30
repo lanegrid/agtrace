@@ -19,3 +19,5 @@ hosting = "github"
 install-updater = false
 # Allow custom modifications to the generated workflow (for custom publish jobs)
 allow-dirty = ["ci"]
+# Use CHANGELOG.md for release notes
+changelog = "CHANGELOG.md"
