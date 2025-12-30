@@ -1,7 +1,8 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
   <h1>agtrace</h1>
-  <p><strong>top + tail -f for AI Coding Agent Sessions.</strong></p>
+  <p><strong>The Observability Platform for AI Agents.</strong></p>
+  <p>Local-first OpenTelemetry for Claude, Codex, and Gemini.</p>
 
   [![npm version](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat)](https://www.npmjs.com/package/@lanegrid/agtrace)
   [![crates.io](https://img.shields.io/crates/v/agtrace.svg)](https://crates.io/crates/agtrace)
@@ -11,39 +12,76 @@
 
 ![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
 
-## What it does
+**agtrace** provides a unified timeline and analysis layer for fragmented AI agent logs.
+Use the **CLI** for instant visualization, or build custom monitoring tools with the **SDK**.
 
-- Live dashboard for context pressure, tool activity, and costs
-- Session history you can query and compare
-- Works with Claude Code, Codex, and Gemini
-- 100% local, no cloud
+## 🌟 Core Value
 
-## Install
+1. **Universal Normalization**: Converts diverse provider logs (Claude, Gemini, etc.) into a standard `AgentEvent` model.
+2. **Schema-on-Read**: Resilient to provider updates. No database migrations needed.
+3. **Local-First**: 100% offline. Privacy by design.
+
+## 🚀 Quick Start (CLI)
+
+The reference implementation of the agtrace platform.
 
 ```bash
 npm install -g @lanegrid/agtrace
-# or
-cargo install agtrace
-```
-
-## Usage
-
-```bash
+cd my-project
 agtrace init      # once
-agtrace watch     # in project dir, then start your agent
+agtrace watch     # live dashboard
 ```
 
-## Learn More
+## 🛠️ Building with the SDK
+
+Embed agent observability into your own tools (vital-checkers, IDE plugins, dashboards).
+
+```toml
+[dependencies]
+agtrace-sdk = "0.1.12"
+```
+
+```rust
+use agtrace_sdk::{Client, Lens, analyze_session, assemble_session};
+
+// Connect to the local workspace
+let client = Client::connect("~/.agtrace")?;
+
+// 1. Real-time Monitoring
+let stream = client.watch().all_providers().start()?;
+while let Some(event) = stream.next_blocking() {
+    println!("Activity: {:?}", event);
+}
+
+// 2. Session Diagnosis
+let events = client.session("session_123").events()?;
+if let Some(session) = assemble_session(&events) {
+    let report = analyze_session(session)
+        .through(Lens::Failures)
+        .through(Lens::Loops)
+        .report()?;
+    println!("Health: {}", report.score);
+}
+```
+
+## 📚 Documentation
 
 - [Why agtrace?](docs/motivation.md) - Understanding the problem and solution
 - [Getting Started](docs/getting-started.md) - Detailed installation and usage guide
-- [Full Documentation](docs/README.md) - Commands, architecture, and FAQs
+- [Architecture](docs/architecture.md) - Platform design and principles
+- [SDK Documentation](crates/agtrace-sdk/README.md) - Building custom tools
+- [Full Documentation](docs/README.md) - Commands, FAQs, and more
 
-## Supported Providers
+## 🔌 Supported Providers
 
 - **Claude Code** (Anthropic)
 - **Codex** (OpenAI)
 - **Gemini** (Google)
+
+## 📦 Architecture
+
+- **Core SDK**: `agtrace-sdk`, `agtrace-engine`, `agtrace-providers`
+- **Applications**: `agtrace-cli` (Reference Implementation)
 
 ## License
 

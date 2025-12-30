@@ -2,7 +2,7 @@
 name = "agtrace"
 version.workspace = true
 edition.workspace = true
-description = "A CLI tool to visualize and analyze AI agent execution traces (Claude, Gemini, etc.) in a unified timeline."
+description = "The official CLI for agtrace, built on top of agtrace-sdk. Visualize and analyze AI agent execution traces."
 license.workspace = true
 repository.workspace = true
 homepage = "https://github.com/lanegrid/agtrace"

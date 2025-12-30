@@ -1,6 +1,48 @@
 # Architecture
 
-agtrace is designed around **pointer-based indexing** and **schema-on-read** principles to ensure resilient, low-overhead observability for AI coding agent sessions.
+agtrace is designed as a **layered platform**, separating the core domain logic from the presentation layer. It follows **pointer-based indexing** and **schema-on-read** principles to ensure resilient, low-overhead observability for AI coding agent sessions.
+
+## Layered Platform Design
+
+agtrace is architected as a platform with clear separation of concerns:
+
+```
+┌──────────────────────────────────────────┐
+│         Applications Layer               │
+│  ┌────────────┐  ┌──────────────┐       │
+│  │ agtrace-cli│  │ vital-checker│  ...  │
+│  │    (TUI)   │  │   (Monitor)  │       │
+│  └────────────┘  └──────────────┘       │
+└─────────────┬────────────────────────────┘
+              │
+              ▼
+┌──────────────────────────────────────────┐
+│        Public SDK Layer                  │
+│  ┌────────────────────────────────────┐  │
+│  │        agtrace-sdk                 │  │
+│  │  (Stable, High-level API)          │  │
+│  └────────────────────────────────────┘  │
+└─────────────┬────────────────────────────┘
+              │
+              ▼
+┌──────────────────────────────────────────┐
+│        Core Logic Layer (Internal)       │
+│  ┌──────────┐ ┌─────────┐ ┌───────────┐ │
+│  │ runtime  │ │ engine  │ │   index   │ │
+│  └──────────┘ └─────────┘ └───────────┘ │
+└─────────────┬────────────────────────────┘
+              │
+              ▼
+┌──────────────────────────────────────────┐
+│        Adapter Layer                     │
+│  ┌────────────────────────────────────┐  │
+│  │      agtrace-providers             │  │
+│  │  (Normalize Claude, Codex, Gemini) │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
+```
+
+**Key insight**: The CLI is just one consumer of the SDK. Developers can build custom monitoring tools, dashboards, or IDE integrations using the same stable API.
 
 ## Core Principles
 
@@ -81,7 +123,23 @@ Sessions are scoped by cwd/project boundaries and grouped by a project root hash
 
 ## Key Components
 
-### agtrace-providers
+### agtrace-sdk (Public Facade)
+
+The unified entry point for building observability tools. Provides a stable, high-level API.
+
+**Responsibilities:**
+- Abstract internal complexity (runtime, indexing, providers)
+- Provide clean API for watching, querying, and analyzing sessions
+- Enable third-party tool development (vital-checkers, IDE plugins, dashboards)
+- Maintain API stability across internal refactors
+
+**Example Usage:**
+```rust
+let client = Client::connect("~/.agtrace")?;
+let stream = client.watch().all_providers().start()?;
+```
+
+### agtrace-providers (Adapter Layer)
 
 Normalizes diverse provider log formats into a unified `AgentEvent` model.
 
@@ -91,7 +149,7 @@ Normalizes diverse provider log formats into a unified `AgentEvent` model.
 - Map provider-specific tool names to standard types
 - Handle schema variations across different provider versions
 
-### agtrace-index
+### agtrace-index (Storage Layer)
 
 Maintains a lightweight SQLite database for fast session lookup.
 
@@ -101,7 +159,7 @@ Maintains a lightweight SQLite database for fast session lookup.
 - Track which log files belong to which sessions
 - Never duplicate log content
 
-### agtrace-engine
+### agtrace-engine (Domain Logic)
 
 Reconstructs session timelines and calculates metrics.
 
@@ -110,10 +168,11 @@ Reconstructs session timelines and calculates metrics.
 - Track context window usage over time
 - Calculate token counts and costs
 - Extract reasoning chains and tool usage patterns
+- Provide diagnostic lenses (Failures, Loops, Bottlenecks)
 
-### agtrace-cli
+### agtrace-cli (Reference Application)
 
-User-facing interface for monitoring and querying sessions.
+The official CLI application built on top of `agtrace-sdk`. Demonstrates best practices.
 
 **Responsibilities:**
 - Live `watch` TUI for active sessions

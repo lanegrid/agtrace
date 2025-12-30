@@ -17,18 +17,42 @@ So when something goes wrong — instruction loss, constraint violations, sudden
 
 In short: we're operating stateful systems with no `top`, no `tail -f`, and no cross-provider trace.
 
-## The Solution: agtrace
+## The Solution: agtrace as a Platform
 
-**agtrace** is `top` + `tail -f` for AI coding agent sessions — powered by a normalized event timeline.
+**agtrace** is the observability platform for AI coding agent sessions — powered by a normalized event timeline.
 
-It reads local provider logs, normalizes them into a consistent model, and turns them into views you can actually operate with:
-- a live "top" view (`watch`) for context pressure and activity
-- a history you can query (`session` / `lab`) to understand what happened and when
+It reads local provider logs, normalizes them into a consistent model, and provides both:
+- **A CLI application** (`agtrace-cli`): A reference implementation with live `watch` TUI and session analysis commands
+- **A public SDK** (`agtrace-sdk`): Stable APIs for building custom monitoring tools
 
-agtrace's core loop:
+### The Platform Approach
+
+Rather than being "just a CLI tool," agtrace is architected as a **platform** with multiple consumers:
+
+**For End Users (CLI)**:
+- Live "top" view (`watch`) for context pressure and activity
+- History queries (`session` / `lab`) to understand what happened and when
+
+**For Developers (SDK)**:
+- Build vital-checkers (dead man's switches for agent activity)
+- Create IDE integrations (VS Code, Neovim plugins)
+- Build team dashboards and analytics
+- Integrate with existing observability stacks
+
+### Why a Platform?
+
+Different use cases demand different interfaces:
+- **Solo developers** want a fast, local TUI (`agtrace watch`)
+- **Teams** want centralized dashboards and alerts
+- **IDE users** want inline session replay and cost tracking
+- **Researchers** want programmatic access to event streams
+
+By providing a stable SDK layer, agtrace enables an **ecosystem** of tools rather than being a monolithic application.
+
+### Core Loop
 
 1. **Capture** local provider logs (no cloud)
 2. **Normalize** them into a single event model across providers
 3. **Index** metadata without duplicating large logs (pointer-based)
 4. **Analyze** sessions into turns/steps/metrics (schema-on-read)
-5. **Visualize** live and historical runs in human-friendly views
+5. **Expose** via CLI (for humans) and SDK (for developers)
