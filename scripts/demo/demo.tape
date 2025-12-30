@@ -5,17 +5,9 @@ Set Width 1100
 Set Height 650
 Set Padding 12
 
-Sleep 500ms
+Sleep 200ms
 
-Type "# agtrace watch demo - Real-time AI Session Monitoring"
-Enter
-Sleep 1s
-
-Type "# This demonstrates the TUI dashboard for monitoring AI agents"
-Enter
-Sleep 1.5s
-
-Type "agtrace demo --speed fast"
+Type@50ms "agtrace demo --speed fast"
 Enter
 
 Sleep 20s
