@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.14] - 2025-12-31
+
+### Bug Fixes
+
+- *(sdk)* Make SessionFilter::default() equivalent to new() with reasonable limit ([2f1f481](https://github.com/lanegrid/agtrace/commit/2f1f481e28c76118a4821f0290f47221bcf96540))
+
+
+### Documentation
+
+- Complete SDK-CLI refactor ExecPlan with outcomes and retrospective ([2f4e456](https://github.com/lanegrid/agtrace/commit/2f4e45604fbefe55dd001021ada08b86b2119170))
+
+- Remove completed SDK-CLI refactor planning documents ([cb2a668](https://github.com/lanegrid/agtrace/commit/cb2a6689f4a309e088f779e38c1116ecde6b0305))
+
+
+### Refactor
+
+- *(cli)* Migrate all handlers to use agtrace-sdk instead of internal crates ([548a7b7](https://github.com/lanegrid/agtrace/commit/548a7b7c53f46d63b9a552fa6de8946bf3a8bc4c))
+
+- *(cli)* Replace internal crate imports with SDK in presentation layer ([2e0da9a](https://github.com/lanegrid/agtrace/commit/2e0da9acdd9b8ff3b4f3cfd7a05dcf141c57e513))
+
+- *(cli)* Achieve strict SDK-only dependency by eliminating all internal crate usage ([22a0590](https://github.com/lanegrid/agtrace/commit/22a059038689dd80b7c1d51ead50fa1cf5e826e7))
+
+- *(sdk)* Introduce utils module for low-level API, remove internal re-exports, add SessionHandle::from_events() ([4e48516](https://github.com/lanegrid/agtrace/commit/4e485169ad818ffa8a91ebce3c1a10c11cef717f))
+
+
+### Testing
+
+- Migrate integration tests to use agtrace-sdk types ([aeb458e](https://github.com/lanegrid/agtrace/commit/aeb458ee8d259200335f52daed5b97fc722fa10c))
+
+
 ## [0.1.13] - 2025-12-30
 
 ### Features

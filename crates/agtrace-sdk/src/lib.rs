@@ -108,18 +108,23 @@ pub use watch::{LiveStream, WatchBuilder};
 ///
 /// ```no_run
 /// use agtrace_sdk::{Client, utils};
+/// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let client = Client::connect("~/.agtrace")?;
 /// let stream = client.watch().all_providers().start()?;
 ///
-/// for event in stream.take(10) {
-///     let updates = utils::extract_state_updates(&event);
-///     if updates.is_new_turn {
-///         println!("New turn started!");
-///     }
-///     if let Some(usage) = updates.usage {
-///         println!("Token usage: {:?}", usage);
+/// for workspace_event in stream.take(10) {
+///     if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
+///         for event in events {
+///             let updates = utils::extract_state_updates(&event);
+///             if updates.is_new_turn {
+///                 println!("New turn started!");
+///             }
+///             if let Some(usage) = updates.usage {
+///                 println!("Token usage: {:?}", usage);
+///             }
+///         }
 ///     }
 /// }
 /// # Ok(())
