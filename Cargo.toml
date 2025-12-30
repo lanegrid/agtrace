@@ -5,6 +5,7 @@ members = [
     "crates/agtrace-index",
     "crates/agtrace-engine",
     "crates/agtrace-runtime",
+    "crates/agtrace-sdk",
     "crates/agtrace-cli",
     "crates/agtrace-testing",
 ]
@@ -24,6 +25,7 @@ agtrace-providers = { version = "0.1.12", path = "crates/agtrace-providers" }
 agtrace-index = { version = "0.1.12", path = "crates/agtrace-index" }
 agtrace-engine = { version = "0.1.12", path = "crates/agtrace-engine" }
 agtrace-runtime = { version = "0.1.12", path = "crates/agtrace-runtime" }
+agtrace-sdk = { version = "0.1.12", path = "crates/agtrace-sdk" }
 agtrace = { version = "0.1.12", path = "crates/agtrace-cli" }
 agtrace-testing = { version = "0.1.12", path = "crates/agtrace-testing" }
 

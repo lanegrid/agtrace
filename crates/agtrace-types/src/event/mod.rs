@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 pub mod event;
 pub mod payload;
 pub mod stream;
