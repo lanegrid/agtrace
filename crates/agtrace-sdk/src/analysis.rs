@@ -29,7 +29,7 @@ pub struct SessionAnalyzer {
 }
 
 impl SessionAnalyzer {
-    pub(crate) fn new(session: AgentSession) -> Self {
+    pub fn new(session: AgentSession) -> Self {
         Self {
             session,
             lenses: vec![],

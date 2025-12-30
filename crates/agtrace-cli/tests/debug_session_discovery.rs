@@ -54,7 +54,7 @@ fn debug_session_file_creation() -> Result<()> {
                     eprintln!("Line {}: cwd = {}", i + 1, cwd);
                     // Calculate hash from this cwd
                     if let Some(cwd_str) = cwd.as_str() {
-                        let hash = agtrace_sdk::types::project_hash_from_root(cwd_str);
+                        let hash = agtrace_sdk::utils::project_hash_from_root(cwd_str);
                         eprintln!("         Hash from cwd: {}", hash);
                     }
                 }
@@ -71,7 +71,7 @@ fn debug_session_file_creation() -> Result<()> {
     eprintln!("\n=== Project hash calculation ===");
     let current_cwd = world.cwd();
     eprintln!("Current cwd: {}", current_cwd.display());
-    let expected_hash = agtrace_sdk::types::project_hash_from_root(&current_cwd.to_string_lossy());
+    let expected_hash = agtrace_sdk::utils::project_hash_from_root(&current_cwd.to_string_lossy());
     eprintln!("Expected project hash: {}", expected_hash);
 
     // Step 4: Run init and capture output

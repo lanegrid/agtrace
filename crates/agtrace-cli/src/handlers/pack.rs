@@ -3,7 +3,7 @@ use crate::presentation::presenters;
 use crate::presentation::view_models::{CommandResultViewModel, ReportTemplate};
 use crate::presentation::{ConsoleRenderer, Renderer};
 use agtrace_sdk::Client;
-use agtrace_sdk::types::resolve_effective_project_hash;
+use agtrace_sdk::utils::resolve_effective_project_hash;
 use anyhow::Result;
 
 pub fn handle(

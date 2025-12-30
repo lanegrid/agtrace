@@ -3,8 +3,9 @@ use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer}
 use agtrace_sdk::types::{
     AgentEvent, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs, MessagePayload,
     ReasoningPayload, SessionState, StreamId, TokenUsagePayload, ToolCallPayload,
-    ToolResultPayload, UserPayload, assemble_session,
+    ToolResultPayload, UserPayload,
 };
+use agtrace_sdk::utils::extract_state_updates;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
@@ -79,7 +80,7 @@ fn run_simulation(
         state.event_count += 1;
 
         // Apply state updates using engine logic (same as watch handler)
-        let updates = agtrace_sdk::types::extract_state_updates(&event);
+        let updates = extract_state_updates(&event);
         if updates.is_new_turn {
             state.turn_count += 1;
         }
@@ -143,7 +144,9 @@ fn run_simulation(
         let notification = current_notification.as_ref();
 
         let events_vec: Vec<_> = events_buffer.iter().cloned().collect();
-        let assembled_session = assemble_session(&events_vec);
+        // Using SessionHandle::from_events() for demo simulation (no Client)
+        let handle = agtrace_sdk::SessionHandle::from_events(events_vec);
+        let assembled_session = handle.assemble().ok();
 
         let vm = build_screen_view_model(
             &state,

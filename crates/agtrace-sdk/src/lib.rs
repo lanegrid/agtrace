@@ -18,6 +18,8 @@
 //!
 //! # Usage
 //!
+//! ## Client-based API (Recommended)
+//!
 //! ```no_run
 //! use agtrace_sdk::{Client, Lens};
 //!
@@ -32,21 +34,35 @@
 //! }
 //!
 //! // 3. Analyze a specific session (Diagnosis)
-//! let events = client.session("session_id_123").events()?;
-//! if let Some(session) = agtrace_sdk::assemble_session(&events) {
-//!     let report = agtrace_sdk::analyze_session(session)
-//!         .through(Lens::Failures)
-//!         .through(Lens::Loops)
-//!         .report()?;
+//! let handle = client.sessions().get("session_id_123")?;
+//! let report = handle.analyze()?
+//!     .through(Lens::Failures)
+//!     .through(Lens::Loops)
+//!     .report()?;
 //!
-//!     println!("Health score: {}", report.score);
-//!     for insight in &report.insights {
-//!         println!("Turn {}: {:?} - {}",
-//!             insight.turn_index + 1,
-//!             insight.severity,
-//!             insight.message);
-//!     }
+//! println!("Health score: {}", report.score);
+//! for insight in &report.insights {
+//!     println!("Turn {}: {:?} - {}",
+//!         insight.turn_index + 1,
+//!         insight.severity,
+//!         insight.message);
 //! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Standalone API (for testing/simulations)
+//!
+//! ```no_run
+//! use agtrace_sdk::{SessionHandle, types::AgentEvent};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // When you have raw events without Client (e.g., testing, simulations)
+//! let events: Vec<AgentEvent> = vec![/* ... */];
+//! let handle = SessionHandle::from_events(events);
+//!
+//! let session = handle.assemble()?;
+//! println!("Session has {} turns", session.turns.len());
 //! # Ok(())
 //! # }
 //! ```
@@ -58,8 +74,7 @@ pub mod types;
 pub mod watch;
 
 // Re-export core domain types for convenience
-pub use agtrace_engine::session::summarize;
-pub use agtrace_engine::{AgentSession, assemble_session};
+pub use agtrace_engine::AgentSession;
 
 // Public facade
 pub use analysis::{AnalysisReport, Insight, Lens, Severity};
@@ -72,7 +87,63 @@ pub use types::{
 };
 pub use watch::{LiveStream, WatchBuilder};
 
-// Helper function for analysis
-pub fn analyze_session(session: AgentSession) -> analysis::SessionAnalyzer {
-    analysis::SessionAnalyzer::new(session)
+// ============================================================================
+// Low-level Utilities (Power User API)
+// ============================================================================
+
+/// Utility functions for building custom observability tools.
+///
+/// These are stateless, pure functions that power the CLI and can be used
+/// by external tool developers to replicate or extend agtrace functionality.
+///
+/// # When to use this module
+///
+/// - Building custom TUIs or dashboards that need event stream processing
+/// - Writing tests that need to compute project hashes
+/// - Implementing custom project detection logic
+///
+/// # Examples
+///
+/// ## Event Processing
+///
+/// ```no_run
+/// use agtrace_sdk::{Client, utils};
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let client = Client::connect("~/.agtrace")?;
+/// let stream = client.watch().all_providers().start()?;
+///
+/// for event in stream.take(10) {
+///     let updates = utils::extract_state_updates(&event);
+///     if updates.is_new_turn {
+///         println!("New turn started!");
+///     }
+///     if let Some(usage) = updates.usage {
+///         println!("Token usage: {:?}", usage);
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Project Hash Computation
+///
+/// ```no_run
+/// use agtrace_sdk::utils;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let project_root = utils::discover_project_root(None)?;
+/// let hash = utils::project_hash_from_root(&project_root.to_string_lossy());
+/// println!("Project hash: {}", hash);
+/// # Ok(())
+/// # }
+/// ```
+pub mod utils {
+    // Event processing utilities
+    pub use agtrace_engine::extract_state_updates;
+
+    // Project management utilities
+    pub use agtrace_types::{
+        discover_project_root, project_hash_from_root, resolve_effective_project_hash,
+    };
 }

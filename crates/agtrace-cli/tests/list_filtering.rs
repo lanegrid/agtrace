@@ -118,7 +118,7 @@ fn test_list_without_all_projects_shows_only_current_project() -> Result<()> {
 
     let project_a_path = world.temp_dir().join("project-a");
     let expected_hash =
-        agtrace_sdk::types::project_hash_from_root(&project_a_path.to_string_lossy());
+        agtrace_sdk::utils::project_hash_from_root(&project_a_path.to_string_lossy());
     assertions::assert_sessions_belong_to_project(&json, expected_hash.as_str())?;
 
     Ok(())

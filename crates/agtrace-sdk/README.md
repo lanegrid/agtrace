@@ -38,35 +38,53 @@ agtrace-sdk = "0.1.13"
 
 ## Usage
 
-### Basic Example
+### Client-based API (Recommended)
+
+For most use cases, use the Client-based API which provides stateful operations:
 
 ```rust
-use agtrace_sdk::{Client, Lens, analyze_session, assemble_session};
+use agtrace_sdk::{Client, Lens};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Connect to the workspace
     let client = Client::connect("~/.agtrace")?;
 
     // 2. Get a specific session
-    let session_handle = client.session("session_id_123");
-    let events = session_handle.events()?;
+    let session_handle = client.sessions().get("session_id_123")?;
 
-    // 3. Assemble and analyze the session
-    if let Some(session) = assemble_session(&events) {
-        let report = analyze_session(session)
-            .through(Lens::Failures)
-            .through(Lens::Loops)
-            .through(Lens::Bottlenecks)
-            .report()?;
+    // 3. Analyze the session
+    let report = session_handle.analyze()?
+        .through(Lens::Failures)
+        .through(Lens::Loops)
+        .through(Lens::Bottlenecks)
+        .report()?;
 
-        println!("Health score: {}", report.score);
-        for insight in &report.insights {
-            println!("  Turn {}: {:?} - {}",
-                insight.turn_index + 1,
-                insight.severity,
-                insight.message);
-        }
+    println!("Health score: {}", report.score);
+    for insight in &report.insights {
+        println!("  Turn {}: {:?} - {}",
+            insight.turn_index + 1,
+            insight.severity,
+            insight.message);
     }
+
+    Ok(())
+}
+```
+
+### Standalone API (for testing/simulations)
+
+For scenarios where you don't need a Client (testing, simulations, custom pipelines):
+
+```rust
+use agtrace_sdk::{SessionHandle, types::AgentEvent};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // When you have raw events without Client
+    let events: Vec<AgentEvent> = vec![/* ... */];
+    let handle = SessionHandle::from_events(events);
+
+    let session = handle.assemble()?;
+    println!("Session has {} turns", session.turns.len());
 
     Ok(())
 }
@@ -127,22 +145,18 @@ The SDK provides several built-in lenses for analyzing agent behavior:
 ### Building a Monitoring Dashboard
 
 ```rust
-use agtrace_sdk::{Client, analyze_session, assemble_session, Lens};
+use agtrace_sdk::{Client, Lens};
 
 fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace")?;
-    let events = client.session(session_id).events()?;
+    let session_handle = client.sessions().get(session_id)?;
 
-    if let Some(session) = assemble_session(&events) {
-        let report = analyze_session(session)
-            .through(Lens::Failures)
-            .through(Lens::Loops)
-            .report()?;
+    let report = session_handle.analyze()?
+        .through(Lens::Failures)
+        .through(Lens::Loops)
+        .report()?;
 
-        Ok(report.score)
-    } else {
-        Ok(0)
-    }
+    Ok(report.score)
 }
 ```
 
@@ -176,16 +190,32 @@ fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
 
 ## API Reference
 
-### Client
+### Client-based API (Recommended)
+
+The primary way to interact with agtrace is through the Client-based API, which manages state (database connections, configuration) for you.
+
+#### Client
 
 - `Client::connect(path)`: Connect to an agtrace workspace
+- `.sessions()`: Access session operations
 - `.watch()`: Create a watch builder for real-time monitoring
-- `.session(id)`: Get a handle to a specific session
+- `.projects()`: Access project operations
+- `.insights()`: Access insights/analysis operations
+- `.system()`: Access system operations
 
-### SessionHandle
+#### SessionClient
 
+- `.list(filter)`: List sessions with optional filtering
+- `.get(id)`: Get a handle to a specific session
+
+#### SessionHandle
+
+- `SessionHandle::from_events(events)`: Create a handle from raw events (standalone use)
 - `.events()`: Get all normalized events for the session
-- `.summary()`: Get a summary of the session
+- `.assemble()`: Assemble events into a structured session
+- `.summarize()`: Get a summary of the session
+- `.analyze()`: Analyze session with diagnostic lenses
+- `.export(strategy)`: Export session with specified strategy
 
 ### WatchBuilder
 
@@ -200,11 +230,61 @@ Implements the `Iterator` trait for ergonomic event processing.
 - `.next_blocking()`: Block until next event arrives
 - `.try_next()`: Try to get next event without blocking
 
-### Analysis
+#### SessionAnalyzer
 
-- `analyze_session(session)`: Create an analyzer for a session
+Created by calling `session_handle.analyze()`:
+
 - `.through(lens)`: Apply a diagnostic lens
 - `.report()`: Generate analysis report
+
+### Low-level Utilities (Power User API)
+
+For advanced use cases like building custom TUIs or implementing custom event processing logic, the SDK exposes stateless utility functions through the `utils` module.
+
+#### Event Processing
+
+- `utils::extract_state_updates(&event)`: Extract state changes (tokens, turns, model) from a single event
+
+**Example:**
+
+```rust
+use agtrace_sdk::{Client, utils};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::connect("~/.agtrace")?;
+    let stream = client.watch().all_providers().start()?;
+
+    for event in stream.take(10) {
+        let updates = utils::extract_state_updates(&event);
+        if updates.is_new_turn {
+            println!("New turn started!");
+        }
+        if let Some(usage) = updates.usage {
+            println!("Token usage: {:?}", usage);
+        }
+    }
+    Ok(())
+}
+```
+
+#### Project Management
+
+- `utils::discover_project_root(explicit_root)`: Discover project root from flag/env/cwd
+- `utils::project_hash_from_root(path)`: Compute canonical project hash
+- `utils::resolve_effective_project_hash(hash, all_flag)`: Resolve project scope for commands
+
+**Example:**
+
+```rust
+use agtrace_sdk::utils;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let project_root = utils::discover_project_root(None)?;
+    let hash = utils::project_hash_from_root(&project_root.to_string_lossy());
+    println!("Project hash: {}", hash);
+    Ok(())
+}
+```
 
 ## Contributing
 

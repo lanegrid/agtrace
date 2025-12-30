@@ -18,6 +18,7 @@ use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer}
 use agtrace_sdk::Client;
 use agtrace_sdk::types::AgentSession;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
+use agtrace_sdk::utils::extract_state_updates;
 
 pub enum WatchTarget {
     Provider { name: String },
@@ -326,7 +327,7 @@ fn handle_provider_watch(
                         handler.state.last_activity = event.timestamp;
                         handler.state.event_count += 1;
 
-                        let updates = agtrace_sdk::types::extract_state_updates(event);
+                        let updates = extract_state_updates(event);
                         if updates.is_new_turn {
                             handler.state.turn_count += 1;
                         }
@@ -441,7 +442,7 @@ fn handle_session_watch(
                         handler.state.event_count += 1;
 
                         // Extract state updates
-                        let updates = agtrace_sdk::types::extract_state_updates(event);
+                        let updates = extract_state_updates(event);
                         if updates.is_new_turn {
                             handler.state.turn_count += 1;
                         }

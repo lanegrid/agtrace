@@ -1,6 +1,6 @@
 use crate::args::{OutputFormat, ViewModeArgs};
 use agtrace_sdk::Client;
-use agtrace_sdk::types::{discover_project_root, project_hash_from_root};
+use agtrace_sdk::utils::{discover_project_root, project_hash_from_root};
 use anyhow::Result;
 
 pub fn handle(

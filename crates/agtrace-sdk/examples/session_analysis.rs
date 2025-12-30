@@ -6,7 +6,7 @@
 //! - Analyzing session with diagnostic lenses
 //! - Displaying analysis results
 
-use agtrace_sdk::{Client, Lens, analyze_session, assemble_session};
+use agtrace_sdk::{Client, Lens};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Session Analysis Example ===\n");
@@ -30,15 +30,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let session_id = &sessions[0].id;
     println!("Analyzing session: {}\n", session_id);
 
-    // 3. Get session events
+    // 3. Get session handle and assemble events
     let session_handle = client.sessions().get(session_id)?;
     let events = session_handle.events()?;
     println!("  Loaded {} events", events.len());
 
     // 4. Assemble session
-    let session = match assemble_session(&events) {
-        Some(s) => s,
-        None => {
+    let session = match session_handle.assemble() {
+        Ok(s) => s,
+        Err(_) => {
             println!("  Could not assemble session (may be empty or malformed)");
             return Ok(());
         }
@@ -48,8 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     // 5. Get session summary
-    use agtrace_sdk::summarize;
-    let summary = summarize(&session);
+    let summary = session_handle.summarize()?;
     println!("Session Summary:");
     println!("  Total events:   {}", summary.event_counts.total);
     println!("  User messages:  {}", summary.event_counts.user_messages);
@@ -66,7 +65,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 6. Analyze with diagnostic lenses
     println!("Running diagnostic analysis...");
-    let report = analyze_session(session)
+    let report = session_handle
+        .analyze()?
         .through(Lens::Failures)
         .through(Lens::Loops)
         .through(Lens::Bottlenecks)

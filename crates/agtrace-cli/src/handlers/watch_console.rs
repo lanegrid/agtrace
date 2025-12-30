@@ -4,6 +4,7 @@ use crate::presentation::view_models::{ViewMode, WatchEventViewModel};
 use crate::presentation::views::watch::WatchEventView;
 use agtrace_sdk::Client;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
+use agtrace_sdk::utils::extract_state_updates;
 use anyhow::Result;
 use std::collections::VecDeque;
 use std::path::Path;
@@ -250,7 +251,7 @@ fn process_provider_events_console(
                             state.last_activity = event.timestamp;
                             state.event_count += 1;
 
-                            let updates = agtrace_sdk::types::extract_state_updates(event);
+                            let updates = extract_state_updates(event);
                             if updates.is_new_turn {
                                 state.turn_count += 1;
                             }
@@ -367,7 +368,7 @@ fn process_stream_events_console(
                         state.last_activity = event.timestamp;
                         state.event_count += 1;
 
-                        let updates = agtrace_sdk::types::extract_state_updates(event);
+                        let updates = extract_state_updates(event);
                         if updates.is_new_turn {
                             state.turn_count += 1;
                         }

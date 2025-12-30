@@ -2,7 +2,7 @@ use crate::args::{OutputFormat, ViewModeArgs};
 use crate::handlers::HandlerContext;
 use crate::presentation::presenters;
 use agtrace_sdk::Client;
-use agtrace_sdk::types::{SessionFilter, TokenLimits, assemble_session};
+use agtrace_sdk::types::{SessionFilter, TokenLimits};
 use anyhow::{Context, Result};
 
 pub fn handle(
@@ -14,9 +14,8 @@ pub fn handle(
     let ctx = HandlerContext::new(format, view_mode);
 
     let session_handle = client.sessions().get(&session_id)?;
-    let all_events = session_handle.events()?;
-
-    let session = assemble_session(&all_events)
+    let session = session_handle
+        .assemble()
         .with_context(|| format!("Failed to assemble session: {}", session_id))?;
 
     // TODO: Extract actual model from session metadata or provider-specific data

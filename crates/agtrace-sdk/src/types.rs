@@ -28,10 +28,6 @@ pub use agtrace_types::{
     ToolKind,
     ToolResultPayload,
     UserPayload,
-    // Utility functions are also re-exported at top level
-    discover_project_root,
-    project_hash_from_root,
-    resolve_effective_project_hash,
 };
 
 // ============================================================================
@@ -52,13 +48,7 @@ pub use agtrace_engine::{
     TokenCount,
     ToolExecution,
     TurnMetrics,
-    // Functions
-    assemble_session,
-    extract_state_updates,
 };
-
-// Re-export summarize function with clearer name
-pub use agtrace_engine::session::summary::summarize as summarize_session;
 
 // ============================================================================
 // Export Strategy (from agtrace-engine)
@@ -122,5 +112,5 @@ pub use agtrace_runtime::{
 // Provider Types (from agtrace-providers)
 // ============================================================================
 
-// Re-export provider detection utilities
-pub use agtrace_providers::{create_adapter, detect_adapter_from_path};
+// Note: Provider adapter functions are now internal implementation details.
+// External users should use SystemClient::check_file() instead.

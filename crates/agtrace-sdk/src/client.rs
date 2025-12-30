@@ -69,8 +69,10 @@ impl Client {
     #[deprecated(note = "Use client.sessions().get(id) instead")]
     pub fn session(&self, id: &str) -> SessionHandle {
         SessionHandle {
-            inner: self.inner.clone(),
-            id: id.to_string(),
+            source: SessionSource::Workspace {
+                inner: self.inner.clone(),
+                id: id.to_string(),
+            },
         }
     }
 
@@ -125,8 +127,10 @@ impl SessionClient {
             .map_err(|e| Error::NotFound(format!("Session {}: {}", id_or_prefix, e)))?;
 
         Ok(SessionHandle {
-            inner: self.inner.clone(),
-            id: id_or_prefix.to_string(),
+            source: SessionSource::Workspace {
+                inner: self.inner.clone(),
+                id: id_or_prefix.to_string(),
+            },
         })
     }
 }
@@ -137,20 +141,59 @@ impl SessionClient {
 
 /// Handle to a specific session, providing access to its data.
 pub struct SessionHandle {
-    inner: Arc<agtrace_runtime::AgTrace>,
-    id: String,
+    source: SessionSource,
+}
+
+enum SessionSource {
+    /// Session from a workspace (Client-based)
+    Workspace {
+        inner: Arc<agtrace_runtime::AgTrace>,
+        id: String,
+    },
+    /// Session from raw events (Standalone)
+    Events {
+        events: Vec<crate::types::AgentEvent>,
+    },
 }
 
 impl SessionHandle {
+    /// Create a SessionHandle from raw events (for testing, simulations, custom pipelines).
+    ///
+    /// This allows you to use SessionHandle API without a Client connection.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use agtrace_sdk::{SessionHandle, types::AgentEvent};
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let events: Vec<AgentEvent> = vec![/* ... */];
+    /// let handle = SessionHandle::from_events(events);
+    ///
+    /// let session = handle.assemble()?;
+    /// let summary = handle.summarize()?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn from_events(events: Vec<AgentEvent>) -> Self {
+        Self {
+            source: SessionSource::Events { events },
+        }
+    }
+
     /// Load raw events for this session.
     pub fn events(&self) -> Result<Vec<AgentEvent>> {
-        let session_handle = self
-            .inner
-            .sessions()
-            .find(&self.id)
-            .map_err(|e| Error::NotFound(format!("Session {}: {}", self.id, e)))?;
+        match &self.source {
+            SessionSource::Workspace { inner, id } => {
+                let session_handle = inner
+                    .sessions()
+                    .find(id)
+                    .map_err(|e| Error::NotFound(format!("Session {}: {}", id, e)))?;
 
-        session_handle.events().map_err(Error::Internal)
+                session_handle.events().map_err(Error::Internal)
+            }
+            SessionSource::Events { events } => Ok(events.clone()),
+        }
     }
 
     /// Assemble events into a structured session.
@@ -166,11 +209,22 @@ impl SessionHandle {
         Ok(agtrace_engine::export::transform(&events, strategy))
     }
 
-    /// Get session summary (legacy compatibility).
-    #[deprecated(note = "Use assemble() and summarize() separately")]
-    pub fn summary(&self) -> Result<agtrace_engine::SessionSummary> {
+    /// Summarize session statistics.
+    pub fn summarize(&self) -> Result<agtrace_engine::SessionSummary> {
         let session = self.assemble()?;
         Ok(agtrace_engine::session::summarize(&session))
+    }
+
+    /// Analyze session with diagnostic lenses.
+    pub fn analyze(&self) -> Result<crate::analysis::SessionAnalyzer> {
+        let session = self.assemble()?;
+        Ok(crate::analysis::SessionAnalyzer::new(session))
+    }
+
+    /// Get session summary (legacy compatibility).
+    #[deprecated(note = "Use summarize() instead")]
+    pub fn summary(&self) -> Result<agtrace_engine::SessionSummary> {
+        self.summarize()
     }
 }
 
