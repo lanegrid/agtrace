@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use crate::error::{Error, Result};
 use crate::watch::WatchBuilder;
+use agtrace_index::SessionSummary;
 
 pub struct Client {
     inner: Arc<agtrace_runtime::AgTrace>,
@@ -26,6 +27,14 @@ impl Client {
             client_inner: self.inner.clone(),
             id: id.to_string(),
         }
+    }
+
+    pub fn list_sessions(&self) -> Result<Vec<SessionSummary>> {
+        let filter = agtrace_runtime::SessionFilter::new().limit(100);
+        self.inner
+            .sessions()
+            .list(filter)
+            .map_err(Error::Internal)
     }
 }
 

@@ -55,7 +55,8 @@ pub mod watch;
 
 // Re-export core domain types for convenience
 pub use agtrace_engine::session::summarize;
-pub use agtrace_engine::{AgentSession, SessionSummary, assemble_session};
+pub use agtrace_engine::{AgentSession, assemble_session};
+pub use agtrace_index::SessionSummary;
 pub use agtrace_types::event::AgentEvent;
 pub use agtrace_types::tool::ToolKind;
 

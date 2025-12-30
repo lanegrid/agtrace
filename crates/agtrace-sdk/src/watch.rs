@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use crate::error::Result;
-use agtrace_runtime::WorkspaceEvent;
+
+// Re-export event types for convenient use in examples/client code
+pub use agtrace_runtime::{DiscoveryEvent, StreamEvent, WorkspaceEvent};
 
 pub struct WatchBuilder {
     inner: Arc<agtrace_runtime::AgTrace>,
