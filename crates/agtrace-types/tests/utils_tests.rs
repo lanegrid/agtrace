@@ -9,7 +9,7 @@ fn test_project_hash_from_root() {
     let hash = project_hash_from_root(root);
 
     // Hash should be 64 characters (SHA256 hex)
-    assert_eq!(hash.len(), 64);
+    assert_eq!(hash.as_str().len(), 64);
 
     // Same input should produce same hash
     let hash2 = project_hash_from_root(root);

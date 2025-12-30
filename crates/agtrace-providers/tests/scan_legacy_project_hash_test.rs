@@ -35,7 +35,8 @@ fn test_claude_derives_project_hash_from_session_data() {
     for root in project_roots {
         let project_hash = agtrace_types::project_hash_from_root(root);
         assert_ne!(
-            project_hash, "unknown",
+            project_hash,
+            agtrace_types::ProjectHash::from("unknown"),
             "Project hash derived from cwd should not be 'unknown'"
         );
     }
@@ -59,7 +60,8 @@ fn test_codex_derives_project_hash_from_session_data() {
     // Verify project_hash can be computed from cwd
     let project_hash = agtrace_types::project_hash_from_root(&cwd);
     assert_ne!(
-        project_hash, "unknown",
+        project_hash,
+        agtrace_types::ProjectHash::from("unknown"),
         "Project hash derived from cwd should not be 'unknown'"
     );
 }
@@ -80,7 +82,8 @@ fn test_gemini_derives_project_hash_from_file() {
         .expect("Failed to extract project_hash from Gemini file");
 
     assert_ne!(
-        project_hash, "unknown",
+        project_hash,
+        agtrace_types::ProjectHash::from("unknown"),
         "Gemini project_hash extracted from file should not be 'unknown'"
     );
 }

@@ -205,7 +205,7 @@ mod tests {
     fn test_normalize_user_message() {
         let session = GeminiSession {
             session_id: "test-session".to_string(),
-            project_hash: "test-hash".to_string(),
+            project_hash: agtrace_types::ProjectHash::from("test-hash"),
             start_time: "2024-01-01T00:00:00Z".to_string(),
             last_updated: "2024-01-01T00:00:00Z".to_string(),
             messages: vec![GeminiMessage::User(UserMessage {
@@ -229,7 +229,7 @@ mod tests {
     fn test_normalize_assistant_with_tokens() {
         let session = GeminiSession {
             session_id: "test-session".to_string(),
-            project_hash: "test-hash".to_string(),
+            project_hash: agtrace_types::ProjectHash::from("test-hash"),
             start_time: "2024-01-01T00:00:00Z".to_string(),
             last_updated: "2024-01-01T00:00:00Z".to_string(),
             messages: vec![GeminiMessage::Gemini(GeminiAssistantMessage {

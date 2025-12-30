@@ -97,7 +97,7 @@ impl LogDiscovery for GeminiDiscovery {
             .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
     }
 
-    fn extract_project_hash(&self, path: &Path) -> Result<Option<String>> {
+    fn extract_project_hash(&self, path: &Path) -> Result<Option<agtrace_types::ProjectHash>> {
         Ok(extract_project_hash_from_gemini_file(path))
     }
 

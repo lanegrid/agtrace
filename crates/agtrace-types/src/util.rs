@@ -85,10 +85,10 @@ pub fn truncate(s: &str, max: usize) -> String {
 
 /// Generate unique project hash from log file path
 /// Used only for sessions without discoverable project_root (orphaned sessions)
-pub fn project_hash_from_log_path(log_path: &Path) -> String {
+pub fn project_hash_from_log_path(log_path: &Path) -> crate::ProjectHash {
     let mut hasher = Sha256::new();
     hasher.update(log_path.to_string_lossy().as_bytes());
-    format!("{:x}", hasher.finalize())
+    crate::ProjectHash::new(format!("{:x}", hasher.finalize()))
 }
 
 /// Project scope for indexing and filtering sessions

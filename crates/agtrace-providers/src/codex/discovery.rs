@@ -93,11 +93,11 @@ impl LogDiscovery for CodexDiscovery {
             .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
     }
 
-    fn extract_project_hash(&self, path: &Path) -> Result<Option<String>> {
+    fn extract_project_hash(&self, path: &Path) -> Result<Option<agtrace_types::ProjectHash>> {
         let header = extract_codex_header(path)?;
         Ok(header
             .cwd
-            .map(|cwd| agtrace_types::project_hash_from_root(&cwd).to_string()))
+            .map(|cwd| agtrace_types::project_hash_from_root(&cwd)))
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {

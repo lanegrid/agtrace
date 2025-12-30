@@ -148,16 +148,12 @@ impl<'a> IndexService<'a> {
                 } else if provider_name == "gemini" {
                     // For Gemini, extract project_hash directly from the file
                     use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
-                    let hash_str = extract_project_hash_from_gemini_file(&session.main_file)
-                        .unwrap_or_else(|| {
-                            agtrace_types::project_hash_from_log_path(&session.main_file)
-                        });
-                    agtrace_types::ProjectHash::from(hash_str)
+                    extract_project_hash_from_gemini_file(&session.main_file).unwrap_or_else(|| {
+                        agtrace_types::project_hash_from_log_path(&session.main_file)
+                    })
                 } else {
                     // Generate unique hash from log path for orphaned sessions
-                    agtrace_types::ProjectHash::from(agtrace_types::project_hash_from_log_path(
-                        &session.main_file,
-                    ))
+                    agtrace_types::project_hash_from_log_path(&session.main_file)
                 };
 
                 let project_record = ProjectRecord {

@@ -32,10 +32,10 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<agtrace_types::AgentEven
 }
 
 /// Extract projectHash from a Gemini logs.json file
-pub fn extract_project_hash_from_gemini_file(path: &Path) -> Option<String> {
+pub fn extract_project_hash_from_gemini_file(path: &Path) -> Option<agtrace_types::ProjectHash> {
     let text = std::fs::read_to_string(path).ok()?;
     let session: GeminiSession = serde_json::from_str(&text).ok()?;
-    Some(session.project_hash.to_string())
+    Some(session.project_hash)
 }
 
 #[derive(Debug)]
