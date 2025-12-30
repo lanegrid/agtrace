@@ -8,14 +8,14 @@ use std::path::{Path, PathBuf};
 /// across symlinks and different path representations.
 /// For example, `/var/folders/...` and `/private/var/folders/...` will produce
 /// the same hash on macOS where `/var` is a symlink to `/private/var`.
-pub fn project_hash_from_root(project_root: &str) -> String {
+pub fn project_hash_from_root(project_root: &str) -> crate::ProjectHash {
     // Normalize path to resolve symlinks and relative paths
     let normalized = normalize_path(Path::new(project_root));
     let path_str = normalized.to_string_lossy();
 
     let mut hasher = Sha256::new();
     hasher.update(path_str.as_bytes());
-    format!("{:x}", hasher.finalize())
+    crate::ProjectHash::new(format!("{:x}", hasher.finalize()))
 }
 
 /// Check if string is 64-character hexadecimal
@@ -70,7 +70,7 @@ pub fn resolve_effective_project_hash(
     } else {
         let project_root_path = discover_project_root(None)?;
         let current_project_hash = project_hash_from_root(&project_root_path.to_string_lossy());
-        Ok((Some(current_project_hash), false))
+        Ok((Some(current_project_hash.to_string()), false))
     }
 }
 
@@ -105,7 +105,7 @@ impl ProjectScope {
     pub fn hash_for_reporting(&self) -> String {
         match self {
             ProjectScope::All => "<all>".to_string(),
-            ProjectScope::Specific { root } => project_hash_from_root(root),
+            ProjectScope::Specific { root } => project_hash_from_root(root).to_string(),
         }
     }
 

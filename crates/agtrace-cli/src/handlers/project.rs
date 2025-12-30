@@ -19,7 +19,7 @@ pub fn handle(
 
     let view_model = presenters::present_project_list(
         project_root_path.display().to_string(),
-        project_hash,
+        project_hash.to_string(),
         projects,
     );
 

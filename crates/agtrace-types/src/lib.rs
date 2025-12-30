@@ -70,7 +70,7 @@ impl ProjectHash {
 
     /// Compute ProjectHash from a project root path
     pub fn from_root(project_root: &str) -> Self {
-        Self(project_hash_from_root(project_root))
+        project_hash_from_root(project_root)
     }
 }
 

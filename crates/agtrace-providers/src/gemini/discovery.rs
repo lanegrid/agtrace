@@ -35,7 +35,7 @@ impl LogDiscovery for GeminiDiscovery {
 
     fn resolve_log_root(&self, project_root: &Path) -> Option<PathBuf> {
         let hash = project_hash_from_root(&project_root.to_string_lossy());
-        Some(PathBuf::from(hash))
+        Some(PathBuf::from(hash.to_string()))
     }
 
     fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>> {

@@ -118,7 +118,7 @@ fn handle_fs_event(
                         if let Ok(Some(session_hash)) =
                             context.provider.discovery.extract_project_hash(path)
                         {
-                            if filter_hash != session_hash {
+                            if filter_hash.as_str() != session_hash {
                                 // Session belongs to different project, skip it
                                 continue;
                             }

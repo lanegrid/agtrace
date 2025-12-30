@@ -101,7 +101,7 @@ impl InitService {
             f(InitProgress::ScanPhase);
         }
         let (scan_outcome, scan_needed) =
-            Self::step3_scan(&db, &current_project_hash, config.refresh)?;
+            Self::step3_scan(&db, current_project_hash.as_str(), config.refresh)?;
 
         // Perform actual scan if needed
         if scan_needed {
@@ -133,7 +133,8 @@ impl InitService {
         if let Some(ref mut f) = progress_fn {
             f(InitProgress::SessionPhase);
         }
-        let session_count = Self::step4_sessions(&db, &current_project_hash, config.all_projects)?;
+        let session_count =
+            Self::step4_sessions(&db, current_project_hash.as_str(), config.all_projects)?;
 
         Ok(InitResult {
             config_status,

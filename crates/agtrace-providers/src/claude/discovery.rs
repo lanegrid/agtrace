@@ -115,7 +115,7 @@ impl LogDiscovery for ClaudeDiscovery {
         let header = extract_claude_header(path)?;
         Ok(header
             .cwd
-            .map(|cwd| agtrace_types::project_hash_from_root(&cwd)))
+            .map(|cwd| agtrace_types::project_hash_from_root(&cwd).to_string()))
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
