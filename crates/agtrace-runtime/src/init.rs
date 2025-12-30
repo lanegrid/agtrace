@@ -117,20 +117,17 @@ impl InitService {
                 .collect();
 
             let service = IndexService::new(&db, providers);
-            let project_root_param = if config.all_projects {
-                None
+            let scope = if config.all_projects {
+                agtrace_types::ProjectScope::All
             } else {
-                Some(current_project_root.as_str())
+                agtrace_types::ProjectScope::Specific {
+                    root: current_project_root.clone(),
+                }
             };
 
-            service.run(
-                &current_project_hash,
-                project_root_param,
-                config.refresh,
-                |_progress| {
-                    // Silently index during init - progress is shown by the handler
-                },
-            )?;
+            service.run(scope, config.refresh, |_progress| {
+                // Silently index during init - progress is shown by the handler
+            })?;
         }
 
         if let Some(ref mut f) = progress_fn {

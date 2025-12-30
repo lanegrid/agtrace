@@ -36,23 +36,18 @@ pub fn handle_console(
             // Quick scan to ensure DB has latest sessions
             let latest_session = {
                 use agtrace_runtime::SessionFilter;
-                use agtrace_types::project_hash_from_root;
 
                 let current_project_root = project_root.map(|p| p.display().to_string());
-                let project_hash = if let Some(root) = &current_project_root {
-                    project_hash_from_root(root)
+                let scope = if let Some(root) = current_project_root {
+                    agtrace_types::ProjectScope::Specific { root }
                 } else {
-                    "unknown".to_string()
+                    agtrace_types::ProjectScope::All
                 };
 
                 // Lightweight scan (incremental by default)
-                let _ = workspace.projects().scan(
-                    &project_hash,
-                    current_project_root.as_deref(),
-                    false,
-                    Some(name.as_str()),
-                    |_| {},
-                );
+                let _ = workspace
+                    .projects()
+                    .scan(scope, false, Some(name.as_str()), |_| {});
 
                 // Get latest session from updated DB
                 let filter = SessionFilter::new().provider(name.clone()).limit(1);

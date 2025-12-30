@@ -3,7 +3,6 @@ use crate::ops::{
 };
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
-use agtrace_types::{discover_project_root, project_hash_from_root};
 use anyhow::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -54,14 +53,10 @@ impl InsightOps {
 
         let service = IndexService::new(&db, providers);
 
-        // Scan all projects: project_root=None means no filtering
-        // project_hash is only used for reporting and as fallback
-        let project_hash = discover_project_root(None)
-            .ok()
-            .map(|root| project_hash_from_root(&root.display().to_string()))
-            .unwrap_or_else(|| "unknown".to_string());
+        // Scan all projects without filtering
+        let scope = agtrace_types::ProjectScope::All;
 
-        service.run(&project_hash, None, false, |_progress: IndexProgress| {})?;
+        service.run(scope, false, |_progress: IndexProgress| {})?;
 
         Ok(())
     }

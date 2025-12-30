@@ -82,3 +82,38 @@ pub fn truncate(s: &str, max: usize) -> String {
         s.chars().take(max).collect::<String>() + "...(truncated)"
     }
 }
+
+/// Generate unique project hash from log file path
+/// Used only for sessions without discoverable project_root (orphaned sessions)
+pub fn project_hash_from_log_path(log_path: &Path) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(log_path.to_string_lossy().as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+/// Project scope for indexing and filtering sessions
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ProjectScope {
+    /// Scan all projects without filtering
+    All,
+    /// Scan specific project by root path
+    Specific { root: String },
+}
+
+impl ProjectScope {
+    /// Get hash for reporting purposes (used in progress events)
+    pub fn hash_for_reporting(&self) -> String {
+        match self {
+            ProjectScope::All => "<all>".to_string(),
+            ProjectScope::Specific { root } => project_hash_from_root(root),
+        }
+    }
+
+    /// Get optional root path for filtering
+    pub fn root(&self) -> Option<&str> {
+        match self {
+            ProjectScope::All => None,
+            ProjectScope::Specific { root } => Some(root.as_str()),
+        }
+    }
+}

@@ -2,7 +2,6 @@ use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::presenters;
 use crate::presentation::view_models::IndexEvent;
 use agtrace_runtime::{AgTrace, IndexProgress};
-use agtrace_types::project_hash_from_root;
 use anyhow::Result;
 use std::path::Path;
 
@@ -19,10 +18,12 @@ pub fn handle(
 ) -> Result<()> {
     let current_project_root = project_root.map(|p| p.display().to_string());
 
-    let project_hash = if let Some(root) = &current_project_root {
-        project_hash_from_root(root)
+    let scope = if all_projects {
+        agtrace_types::ProjectScope::All
+    } else if let Some(root) = current_project_root {
+        agtrace_types::ProjectScope::Specific { root }
     } else {
-        "unknown".to_string()
+        agtrace_types::ProjectScope::All
     };
 
     let provider_filter = if provider == "all" {
@@ -31,23 +32,14 @@ pub fn handle(
         Some(provider.as_str())
     };
 
-    let project_root_param = if all_projects {
-        None
-    } else {
-        current_project_root.as_deref()
-    };
-
     // Track final result
     let mut final_total = 0;
     let mut final_scanned = 0;
     let mut final_skipped = 0;
 
-    workspace.projects().scan(
-        &project_hash,
-        project_root_param,
-        force,
-        provider_filter,
-        |progress| {
+    workspace
+        .projects()
+        .scan(scope, force, provider_filter, |progress| {
             // Don't render progress events in JSON mode
             if format == OutputFormat::Json {
                 // Just capture the final stats
@@ -90,8 +82,7 @@ pub fn handle(
                 final_scanned = scanned_files;
                 final_skipped = skipped_files;
             }
-        },
-    )?;
+        })?;
 
     let view_model =
         presenters::present_index_result(final_total, final_scanned, final_skipped, force);

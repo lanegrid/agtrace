@@ -159,7 +159,6 @@ fn handle_provider_watch(
     signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
     use agtrace_runtime::SessionFilter;
-    use agtrace_types::project_hash_from_root;
     use std::sync::mpsc::RecvTimeoutError;
     use std::time::Duration;
 
@@ -168,20 +167,16 @@ fn handle_provider_watch(
     // Quick scan to find latest session
     let latest_session = {
         let current_project_root = project_root.map(|p| p.display().to_string());
-        let project_hash = if let Some(root) = &current_project_root {
-            project_hash_from_root(root)
+        let scope = if let Some(root) = current_project_root.clone() {
+            agtrace_types::ProjectScope::Specific { root }
         } else {
-            "unknown".to_string()
+            agtrace_types::ProjectScope::All
         };
 
         // Lightweight scan (incremental by default)
-        let _ = workspace.projects().scan(
-            &project_hash,
-            current_project_root.as_deref(),
-            false,
-            Some(provider_name),
-            |_| {},
-        );
+        let _ = workspace
+            .projects()
+            .scan(scope, false, Some(provider_name), |_| {});
 
         // Get latest session from updated DB
         let filter = SessionFilter::new()

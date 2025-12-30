@@ -44,8 +44,7 @@ impl<'a> IndexService<'a> {
 
     pub fn run<F>(
         &self,
-        project_hash: &str,
-        project_root: Option<&str>,
+        scope: agtrace_types::ProjectScope,
         force: bool,
         mut on_progress: F,
     ) -> Result<()>
@@ -102,7 +101,7 @@ impl<'a> IndexService<'a> {
             let filtered_sessions: Vec<_> = sessions
                 .into_iter()
                 .filter(|session| {
-                    if let Some(expected_root) = project_root {
+                    if let Some(expected_root) = scope.root() {
                         if let Some(session_root) = &session.project_root {
                             let session_normalized = session_root.trim_end_matches('/');
                             let expected_normalized = expected_root.trim_end_matches('/');
@@ -119,8 +118,8 @@ impl<'a> IndexService<'a> {
             on_progress(IndexProgress::ProviderSessionCount {
                 provider_name: provider_name.to_string(),
                 count: filtered_sessions.len(),
-                project_hash: project_hash.to_string(),
-                all_projects: project_root.is_none(),
+                project_hash: scope.hash_for_reporting(),
+                all_projects: matches!(scope, agtrace_types::ProjectScope::All),
             });
 
             for session in filtered_sessions {
@@ -148,10 +147,12 @@ impl<'a> IndexService<'a> {
                 } else if provider_name == "gemini" {
                     // For Gemini, extract project_hash directly from the file
                     use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
-                    extract_project_hash_from_gemini_file(&session.main_file)
-                        .unwrap_or_else(|| project_hash.to_string())
+                    extract_project_hash_from_gemini_file(&session.main_file).unwrap_or_else(|| {
+                        agtrace_types::project_hash_from_log_path(&session.main_file)
+                    })
                 } else {
-                    project_hash.to_string()
+                    // Generate unique hash from log path for orphaned sessions
+                    agtrace_types::project_hash_from_log_path(&session.main_file)
                 };
 
                 let project_record = ProjectRecord {
