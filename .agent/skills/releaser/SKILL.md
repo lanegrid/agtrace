@@ -1,3 +1,8 @@
+---
+name: releaser
+description: Release Management - Automates safe release preparation with validation, testing, and rollback procedures. Activates when preparing releases or bumping versions.
+---
+
 # Releaser Skill
 
 **Trigger**: When the user requests to prepare a release, create a release, or bump version.
