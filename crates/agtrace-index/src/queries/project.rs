@@ -1,6 +1,6 @@
-use anyhow::Result;
 use agtrace_types::ProjectHash;
-use rusqlite::{params, Connection, OptionalExtension};
+use anyhow::Result;
+use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::records::ProjectRecord;
 
