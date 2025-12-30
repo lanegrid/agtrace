@@ -1,13 +1,14 @@
 use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::presenters;
 use crate::presentation::view_models::IndexEvent;
-use agtrace_runtime::{AgTrace, IndexProgress};
+use agtrace_sdk::Client;
+use agtrace_sdk::types::{IndexProgress, ProjectScope};
 use anyhow::Result;
 use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     project_root: Option<&Path>,
     all_projects: bool,
     provider: String,
@@ -19,11 +20,11 @@ pub fn handle(
     let current_project_root = project_root.map(|p| p.display().to_string());
 
     let scope = if all_projects {
-        agtrace_types::ProjectScope::All
+        ProjectScope::All
     } else if let Some(root) = current_project_root {
-        agtrace_types::ProjectScope::Specific { root }
+        ProjectScope::Specific { root }
     } else {
-        agtrace_types::ProjectScope::All
+        ProjectScope::All
     };
 
     let provider_filter = if provider == "all" {
@@ -37,9 +38,9 @@ pub fn handle(
     let mut final_scanned = 0;
     let mut final_skipped = 0;
 
-    workspace
-        .projects()
-        .scan(scope, force, provider_filter, |progress| {
+    client
+        .system()
+        .reindex(scope, force, provider_filter, |progress| {
             // Don't render progress events in JSON mode
             if format == OutputFormat::Json {
                 // Just capture the final stats
@@ -92,15 +93,13 @@ pub fn handle(
 }
 
 pub fn handle_vacuum(
-    workspace: &AgTrace,
+    client: &Client,
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
     let ctx = crate::handlers::HandlerContext::new(format, view_mode);
 
-    let db = workspace.database();
-    let db = db.lock().unwrap();
-    db.vacuum()?;
+    client.system().vacuum()?;
 
     let view_model = presenters::present_vacuum_result();
     ctx.render(view_model)

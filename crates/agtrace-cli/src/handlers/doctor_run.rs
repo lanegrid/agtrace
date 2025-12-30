@@ -1,9 +1,9 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use agtrace_runtime::AgTrace;
+use agtrace_sdk::Client;
 use anyhow::Result;
 
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     _provider_filter: String,
     _verbose: bool,
     format: OutputFormat,
@@ -12,7 +12,7 @@ pub fn handle(
     use crate::presentation::presenters;
     use crate::presentation::{ConsoleRenderer, Renderer};
 
-    let results = workspace.diagnose()?;
+    let results = client.system().diagnose()?;
 
     let view_model = presenters::present_diagnose_results(results);
 

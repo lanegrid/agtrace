@@ -4,17 +4,17 @@ use crate::presentation::view_models::{
     CommandResultViewModel, ToolCallSample, ToolClassification,
 };
 use crate::presentation::{ConsoleRenderer, Renderer};
-use agtrace_runtime::AgTrace;
+use agtrace_sdk::Client;
 use anyhow::Result;
 
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     limit: Option<usize>,
     provider: Option<String>,
     output_format: OutputFormat,
     view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
-    let result = workspace.insights().tool_usage(limit, provider)?;
+    let result = client.insights().tool_usage(limit, provider)?;
 
     let sorted_stats = result
         .provider_stats

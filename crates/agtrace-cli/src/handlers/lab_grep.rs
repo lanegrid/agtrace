@@ -2,8 +2,8 @@ use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::presenters;
 use crate::presentation::view_models::CommandResultViewModel;
 use crate::presentation::{ConsoleRenderer, Renderer};
-use agtrace_runtime::{AgTrace, SessionFilter};
-use agtrace_types::{AgentEvent, EventPayload};
+use agtrace_sdk::Client;
+use agtrace_sdk::types::{AgentEvent, EventPayload, SessionFilter};
 use anyhow::{Context, Result};
 use regex::Regex;
 
@@ -151,7 +151,7 @@ impl EventMatcher {
 }
 
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     options: GrepOptions,
     output_format: OutputFormat,
     view_mode_args: &ViewModeArgs,
@@ -170,7 +170,7 @@ pub fn handle(
         filter = filter.provider(src);
     }
 
-    let sessions = workspace.sessions().list(filter)?;
+    let sessions = client.sessions().list(filter)?;
     let max_matches = options.limit.unwrap_or(50);
 
     if options.raw_output {
@@ -178,7 +178,7 @@ pub fn handle(
         let mut count = 0;
 
         'outer: for session_summary in sessions {
-            let session = workspace.sessions().find(&session_summary.id)?;
+            let session = client.sessions().get(&session_summary.id)?;
             let events = session.events()?;
 
             for event in &events {
@@ -225,7 +225,7 @@ pub fn handle(
         let mut matches = Vec::new();
 
         'outer: for session_summary in sessions {
-            let session = workspace.sessions().find(&session_summary.id)?;
+            let session = client.sessions().get(&session_summary.id)?;
             let events = session.events()?;
 
             for event in events {

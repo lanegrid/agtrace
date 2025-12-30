@@ -1,9 +1,12 @@
 use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::presenters;
-use crate::presentation::view_models::{CommandResultViewModel, InitProgress};
+use crate::presentation::view_models::{
+    CommandResultViewModel, InitProgress as InitProgressViewModel,
+};
 use crate::presentation::views::init::print_init_progress;
 use crate::presentation::{ConsoleRenderer, Renderer};
-use agtrace_runtime::{AgTrace, InitConfig};
+use agtrace_sdk::SystemClient;
+use agtrace_sdk::types::InitConfig;
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
@@ -22,10 +25,11 @@ pub fn handle(
         refresh,
     };
 
-    let result = AgTrace::setup(
+    let result = SystemClient::initialize(
         config,
-        Some(|progress: InitProgress| {
-            print_init_progress(&progress);
+        Some(|progress: agtrace_sdk::types::InitProgress| {
+            let vm: InitProgressViewModel = progress;
+            print_init_progress(&vm);
         }),
     )?;
 

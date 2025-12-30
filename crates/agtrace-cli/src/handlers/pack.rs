@@ -2,15 +2,15 @@ use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::presenters;
 use crate::presentation::view_models::{CommandResultViewModel, ReportTemplate};
 use crate::presentation::{ConsoleRenderer, Renderer};
-use agtrace_runtime::AgTrace;
-use agtrace_types::resolve_effective_project_hash;
+use agtrace_sdk::Client;
+use agtrace_sdk::types::resolve_effective_project_hash;
 use anyhow::Result;
 
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     template: &str,
     limit: usize,
-    project_hash: Option<agtrace_types::ProjectHash>,
+    project_hash: Option<agtrace_sdk::types::ProjectHash>,
     all_projects: bool,
     output_format: OutputFormat,
     view_mode_args: &ViewModeArgs,
@@ -18,7 +18,7 @@ pub fn handle(
     let (effective_project_hash, _all_projects) =
         resolve_effective_project_hash(project_hash.as_ref(), all_projects)?;
 
-    let result = workspace
+    let result = client
         .sessions()
         .pack_context(effective_project_hash.as_ref(), limit)?;
 

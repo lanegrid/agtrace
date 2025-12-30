@@ -16,7 +16,8 @@ use anyhow::Result;
 use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
 use agtrace_engine::AgentSession;
-use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
+use agtrace_sdk::Client;
+use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 
 pub enum WatchTarget {
     Provider { name: String },
@@ -110,7 +111,7 @@ impl WatchHandler {
 }
 
 /// Main entry point for TUI watch
-pub fn handle(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
+pub fn handle(client: &Client, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
     // Create channels for bidirectional communication
     let (event_tx, event_rx) = mpsc::channel(); // Handler -> Renderer (events)
     let (signal_tx, signal_rx) = mpsc::channel(); // Renderer -> Handler (signals)
@@ -122,7 +123,7 @@ pub fn handle(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTar
     });
 
     // Run handler in main thread
-    let result = run_handler(workspace, project_root, target, event_tx, signal_rx);
+    let result = run_handler(client, project_root, target, event_tx, signal_rx);
 
     // Wait for TUI to finish
     if let Err(e) = tui_handle.join() {
@@ -134,35 +135,35 @@ pub fn handle(workspace: &AgTrace, project_root: Option<&Path>, target: WatchTar
 
 /// Run the handler loop
 fn run_handler(
-    workspace: &AgTrace,
+    client: &Client,
     project_root: Option<&Path>,
     target: WatchTarget,
     tx: Sender<TuiEvent>,
     signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
-    let _watch_service = workspace.watch_service();
+    let _watch_service = client.watch_service();
 
     match target {
         WatchTarget::Provider { name } => {
-            handle_provider_watch(workspace, project_root, &name, tx, signal_rx)
+            handle_provider_watch(client, project_root, &name, tx, signal_rx)
         }
-        WatchTarget::Session { id } => handle_session_watch(workspace, &id, tx, signal_rx),
+        WatchTarget::Session { id } => handle_session_watch(client, &id, tx, signal_rx),
     }
 }
 
 /// Handle provider watch mode
 fn handle_provider_watch(
-    workspace: &AgTrace,
+    client: &Client,
     project_root: Option<&Path>,
     provider_name: &str,
     tx: Sender<TuiEvent>,
     signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
-    use agtrace_runtime::SessionFilter;
+    use agtrace_sdk::types::SessionFilter;
     use std::sync::mpsc::RecvTimeoutError;
     use std::time::Duration;
 
-    let watch_service = workspace.watch_service();
+    let watch_service = client.watch_service();
 
     // Quick scan to find latest session
     let latest_session = {
@@ -174,15 +175,15 @@ fn handle_provider_watch(
         };
 
         // Lightweight scan (incremental by default)
-        let _ = workspace
-            .projects()
-            .scan(scope, false, Some(provider_name), |_| {});
+        let _ = client
+            .system()
+            .reindex(scope, false, Some(provider_name), |_| {});
 
         // Get latest session from updated DB
         let filter = SessionFilter::new()
             .provider(provider_name.to_string())
             .limit(1);
-        workspace
+        client
             .sessions()
             .list(filter)
             .ok()
@@ -386,14 +387,14 @@ fn handle_provider_watch(
 
 /// Handle session watch mode
 fn handle_session_watch(
-    workspace: &AgTrace,
+    client: &Client,
     session_id: &str,
     tx: Sender<TuiEvent>,
     signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
     use std::time::Duration;
 
-    let watch_service = workspace.watch_service();
+    let watch_service = client.watch_service();
 
     // Start watching
     let handle = watch_service.watch_session(session_id)?;

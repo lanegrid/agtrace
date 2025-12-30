@@ -1,14 +1,15 @@
 use crate::args::{OutputFormat, ViewModeArgs};
-use agtrace_runtime::{AgTrace, SessionFilter};
+use agtrace_sdk::Client;
+use agtrace_sdk::types::SessionFilter;
 use anyhow::Result;
 use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     _project_root: Option<&Path>,
     all_projects: bool,
-    project_hash: Option<agtrace_types::ProjectHash>,
+    project_hash: Option<agtrace_sdk::types::ProjectHash>,
     limit: usize,
     format: OutputFormat,
     provider: Option<String>,
@@ -47,9 +48,9 @@ pub fn handle(
 
     // Get sessions (with optional auto-refresh)
     let sessions = if no_auto_refresh {
-        workspace.sessions().list_without_refresh(filter)?
+        client.sessions().list_without_refresh(filter)?
     } else {
-        workspace.sessions().list(filter)?
+        client.sessions().list(filter)?
     };
 
     // Build time range summary

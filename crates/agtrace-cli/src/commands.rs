@@ -3,7 +3,7 @@ use super::args::{
     SessionCommand, ViewModeArgs,
 };
 use super::handlers;
-use agtrace_runtime::AgTrace;
+use agtrace_sdk::Client;
 use anyhow::Result;
 use clap::CommandFactory;
 use is_terminal::IsTerminal;
@@ -33,29 +33,29 @@ impl CommandContext {
         }
     }
 
-    fn open_workspace(&self) -> Result<AgTrace> {
-        AgTrace::open(self.data_dir.clone())
+    fn open_workspace(&self) -> Result<Client> {
+        Ok(Client::connect(self.data_dir.clone())?)
     }
 
     fn config_path(&self) -> PathBuf {
         self.data_dir.join("config.toml")
     }
 
-    fn project_hash(&self) -> Option<agtrace_types::ProjectHash> {
+    fn project_hash(&self) -> Option<agtrace_sdk::types::ProjectHash> {
         self.project_root
             .as_ref()
-            .map(|p| agtrace_types::ProjectHash::from_root(&p.display().to_string()))
+            .map(|p| agtrace_sdk::types::ProjectHash::from_root(&p.display().to_string()))
     }
 
     fn effective_project_hash(
         &self,
         explicit_hash: Option<String>,
-    ) -> Option<agtrace_types::ProjectHash> {
+    ) -> Option<agtrace_sdk::types::ProjectHash> {
         if self.all_projects {
             None
         } else {
             explicit_hash
-                .map(agtrace_types::ProjectHash::from)
+                .map(agtrace_sdk::types::ProjectHash::from)
                 .or_else(|| self.project_hash())
         }
     }
@@ -204,12 +204,16 @@ pub fn run(cli: Cli) -> Result<()> {
                 file_path,
                 provider,
                 view_mode,
-            } => handlers::doctor_check::handle(
-                file_path,
-                provider.map(|p| p.to_string()),
-                ctx.format,
-                &view_mode,
-            ),
+            } => {
+                let workspace = ctx.open_workspace()?;
+                handlers::doctor_check::handle(
+                    &workspace,
+                    file_path,
+                    provider.map(|p| p.to_string()),
+                    ctx.format,
+                    &view_mode,
+                )
+            }
         },
 
         Commands::Project { command } => {

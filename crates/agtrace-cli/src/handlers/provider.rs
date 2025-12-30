@@ -1,7 +1,7 @@
 use crate::args::{OutputFormat, ViewModeArgs};
 use crate::handlers::HandlerContext;
 use crate::presentation::presenters;
-use agtrace_runtime::{Config, ProviderConfig};
+use agtrace_sdk::types::{Config, ProviderConfig};
 use anyhow::Result;
 use std::path::PathBuf;
 

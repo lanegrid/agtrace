@@ -54,19 +54,22 @@
 pub mod analysis;
 pub mod client;
 pub mod error;
+pub mod types;
 pub mod watch;
 
 // Re-export core domain types for convenience
 pub use agtrace_engine::session::summarize;
 pub use agtrace_engine::{AgentSession, assemble_session};
-pub use agtrace_index::SessionSummary;
-pub use agtrace_types::event::AgentEvent;
-pub use agtrace_types::tool::ToolKind;
 
 // Public facade
 pub use analysis::{AnalysisReport, Insight, Lens, Severity};
-pub use client::{Client, SessionHandle};
+pub use client::{
+    Client, InsightClient, ProjectClient, SessionClient, SessionHandle, SystemClient, WatchClient,
+};
 pub use error::{Error, Result};
+pub use types::{
+    AgentEvent, EventPayload, ExportStrategy, SessionFilter, SessionSummary, StreamId, ToolKind,
+};
 pub use watch::{LiveStream, WatchBuilder};
 
 // Helper function for analysis

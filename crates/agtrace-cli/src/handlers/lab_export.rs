@@ -3,13 +3,13 @@ use crate::presentation::presenters;
 use crate::presentation::view_models::CommandResultViewModel;
 use crate::presentation::{ConsoleRenderer, Renderer};
 use crate::services::writer;
-use agtrace_engine::export::ExportStrategy;
-use agtrace_runtime::AgTrace;
+use agtrace_sdk::Client;
+use agtrace_sdk::types::ExportStrategy;
 use anyhow::Result;
 use std::path::PathBuf;
 
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     session_id: String,
     output: Option<PathBuf>,
     format: ExportFormat,
@@ -22,7 +22,7 @@ pub fn handle(
         .parse()
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let session = workspace.sessions().find(&session_id)?;
+    let session = client.sessions().get(&session_id)?;
     let processed_events = session.export(export_strategy)?;
 
     let output_path = output.unwrap_or_else(|| {

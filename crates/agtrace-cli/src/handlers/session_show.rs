@@ -1,22 +1,20 @@
 use crate::args::{OutputFormat, ViewModeArgs};
 use crate::handlers::HandlerContext;
 use crate::presentation::presenters;
-use agtrace_engine::assemble_session;
-use agtrace_runtime::{AgTrace, SessionFilter, TokenLimits};
+use agtrace_sdk::Client;
+use agtrace_sdk::types::{SessionFilter, TokenLimits, assemble_session};
 use anyhow::{Context, Result};
 
 pub fn handle(
-    workspace: &AgTrace,
+    client: &Client,
     session_id: String,
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
     let ctx = HandlerContext::new(format, view_mode);
 
-    let session_ops = workspace.sessions();
-    let session_meta = session_ops.find(&session_id)?;
-
-    let all_events = session_meta.events()?;
+    let session_handle = client.sessions().get(&session_id)?;
+    let all_events = session_handle.events()?;
 
     let session = assemble_session(&all_events)
         .with_context(|| format!("Failed to assemble session: {}", session_id))?;
@@ -26,7 +24,7 @@ pub fn handle(
     let model_name_key = "claude-sonnet-4-5".to_string();
 
     let filter = SessionFilter::default();
-    let session_summaries = workspace.sessions().list(filter)?;
+    let session_summaries = client.sessions().list(filter)?;
     let provider = session_summaries
         .iter()
         .find(|s| s.id == session_id)

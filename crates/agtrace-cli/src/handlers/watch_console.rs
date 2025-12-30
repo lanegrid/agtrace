@@ -2,7 +2,8 @@
 use crate::presentation::presenters::watch as present_watch;
 use crate::presentation::view_models::{ViewMode, WatchEventViewModel};
 use crate::presentation::views::watch::WatchEventView;
-use agtrace_runtime::{AgTrace, DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
+use agtrace_sdk::Client;
+use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 use anyhow::Result;
 use std::collections::VecDeque;
 use std::path::Path;
@@ -12,13 +13,13 @@ use std::time::Duration;
 use super::watch_tui::WatchTarget;
 
 pub fn handle_console(
-    workspace: &AgTrace,
+    client: &Client,
     project_root: Option<&Path>,
     target: WatchTarget,
 ) -> Result<()> {
     use std::thread;
 
-    let watch_service = workspace.watch_service();
+    let watch_service = client.watch_service();
 
     match target {
         WatchTarget::Provider { name } => {
@@ -35,7 +36,7 @@ pub fn handle_console(
 
             // Quick scan to ensure DB has latest sessions
             let latest_session = {
-                use agtrace_runtime::SessionFilter;
+                use agtrace_sdk::types::SessionFilter;
 
                 let current_project_root = project_root.map(|p| p.display().to_string());
                 let scope = if let Some(root) = current_project_root {
@@ -45,13 +46,13 @@ pub fn handle_console(
                 };
 
                 // Lightweight scan (incremental by default)
-                let _ = workspace
-                    .projects()
-                    .scan(scope, false, Some(name.as_str()), |_| {});
+                let _ = client
+                    .system()
+                    .reindex(scope, false, Some(name.as_str()), |_| {});
 
                 // Get latest session from updated DB
                 let filter = SessionFilter::new().provider(name.clone()).limit(1);
-                workspace
+                client
                     .sessions()
                     .list(filter)
                     .ok()

@@ -1,7 +1,6 @@
 use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
-use agtrace_engine::session::assemble_session;
-use agtrace_runtime::SessionState;
+use agtrace_sdk::types::{SessionState, assemble_session};
 use agtrace_types::{
     AgentEvent, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs, MessagePayload,
     ReasoningPayload, StreamId, TokenUsagePayload, ToolCallPayload, ToolResultPayload, UserPayload,

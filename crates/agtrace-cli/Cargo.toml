@@ -19,6 +19,7 @@ name = "agtrace"
 path = "src/main.rs"
 
 [dependencies]
+agtrace-sdk.workspace = true
 agtrace-types.workspace = true
 agtrace-providers.workspace = true
 agtrace-index.workspace = true
