@@ -50,12 +50,6 @@ impl SessionState {
         self.current_usage.output_tokens()
     }
 
-    /// Get total tokens as i32 (legacy compatibility)
-    /// Prefer using `total_tokens()` for type-safe token counting
-    pub fn total_context_window_tokens(&self) -> i32 {
-        self.total_tokens().as_u64() as i32
-    }
-
     /// Get total tokens as type-safe TokenCount
     pub fn total_tokens(&self) -> agtrace_engine::TokenCount {
         self.current_usage.total_tokens()
@@ -114,12 +108,12 @@ mod tests {
         state.current_usage = ContextWindowUsage::from_raw(100, 0, 0, 50);
         assert_eq!(state.total_input_side_tokens(), 100);
         assert_eq!(state.total_output_side_tokens(), 50);
-        assert_eq!(state.total_context_window_tokens(), 150);
+        assert_eq!(state.total_tokens(), agtrace_engine::TokenCount::new(150));
 
         state.current_usage = ContextWindowUsage::from_raw(10, 0, 1000, 60);
         assert_eq!(state.total_input_side_tokens(), 1010);
         assert_eq!(state.total_output_side_tokens(), 60);
-        assert_eq!(state.total_context_window_tokens(), 1070);
+        assert_eq!(state.total_tokens(), agtrace_engine::TokenCount::new(1070));
     }
 
     #[test]
