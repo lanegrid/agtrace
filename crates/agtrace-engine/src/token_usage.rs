@@ -181,8 +181,9 @@ impl ContextWindowUsage {
         self.output.0
     }
 
-    /// Context window tokens consumed this turn (legacy i32 version)
-    pub fn context_window_tokens(&self) -> i32 {
+    /// Context window tokens consumed this turn (legacy i32 version, internal use only)
+    /// External code should use `total_tokens()` instead
+    pub(crate) fn context_window_tokens(&self) -> i32 {
         self.input_tokens() + self.output_tokens()
     }
 

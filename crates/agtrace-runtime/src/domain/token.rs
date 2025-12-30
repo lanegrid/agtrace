@@ -54,7 +54,7 @@ impl TokenLimits {
 
         let input_side = state.total_input_side_tokens() as u64;
         let output_side = state.total_output_side_tokens() as u64;
-        let total = state.total_context_window_tokens() as u64;
+        let total = state.total_tokens().as_u64();
 
         let input_pct = (input_side as f64 / limit_total as f64) * 100.0;
         let output_pct = (output_side as f64 / limit_total as f64) * 100.0;

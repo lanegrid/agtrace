@@ -50,8 +50,10 @@ impl SessionState {
         self.current_usage.output_tokens()
     }
 
+    /// Get total tokens as i32 (legacy compatibility)
+    /// Prefer using `total_tokens()` for type-safe token counting
     pub fn total_context_window_tokens(&self) -> i32 {
-        self.current_usage.context_window_tokens()
+        self.total_tokens().as_u64() as i32
     }
 
     /// Get total tokens as type-safe TokenCount
@@ -66,10 +68,7 @@ impl SessionState {
     }
 
     pub fn validate_tokens(&self, model_limit: Option<u64>) -> Result<(), String> {
-        let total = self.total_context_window_tokens();
-
-        if total < 0
-            || self.current_usage.fresh_input.0 < 0
+        if self.current_usage.fresh_input.0 < 0
             || self.current_usage.output.0 < 0
             || self.current_usage.cache_creation.0 < 0
             || self.current_usage.cache_read.0 < 0
@@ -77,12 +76,14 @@ impl SessionState {
             return Err("Negative token count detected".to_string());
         }
 
+        let total = self.total_tokens();
         if let Some(limit) = model_limit
-            && total as u64 > limit
+            && total.as_u64() > limit
         {
             return Err(format!(
                 "Token count {} exceeds model limit {}",
-                total, limit
+                total.as_u64(),
+                limit
             ));
         }
 
