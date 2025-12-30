@@ -58,24 +58,6 @@ impl WatchHandler {
         }
     }
 
-    /// Handle new event
-    #[allow(dead_code)]
-    fn handle_event(&mut self, event: agtrace_types::AgentEvent) {
-        // Add to buffer (keep last 100 events)
-        const MAX_EVENTS: usize = 100;
-        self.events.push_back(event.clone());
-        if self.events.len() > MAX_EVENTS {
-            self.events.pop_front();
-        }
-
-        // Update state (simplified - real implementation would update token counts, etc.)
-        self.state.event_count += 1;
-        self.state.last_activity = event.timestamp;
-
-        // Rebuild ViewModel and send to renderer
-        self.send_update();
-    }
-
     /// Reset session state (clear all buffers and data)
     fn reset_session_state(&mut self, session_id: String, log_path: Option<std::path::PathBuf>) {
         self.state = SessionState::new(
@@ -86,13 +68,6 @@ impl WatchHandler {
         );
         self.events.clear();
         self.assembled_session = None;
-        self.send_update();
-    }
-
-    /// Handle assembled session update
-    #[allow(dead_code)]
-    fn handle_session_update(&mut self, session: AgentSession) {
-        self.assembled_session = Some(session);
         self.send_update();
     }
 

@@ -103,13 +103,6 @@ impl EventBuilder {
     pub fn get_tool_call_uuid(&self, provider_id: &str) -> Option<Uuid> {
         self.tool_map.get(provider_id).copied()
     }
-
-    /// Reset the event chain for a specific stream
-    /// Not currently used, but available if needed for future logic
-    #[allow(dead_code)]
-    pub fn reset_stream(&mut self, stream_id: &StreamId) {
-        self.stream_tips.remove(stream_id);
-    }
 }
 
 #[cfg(test)]

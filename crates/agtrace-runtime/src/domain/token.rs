@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_get_usage_percentage_from_state() {
         let limits = TokenLimits::new();
-        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        let mut state = SessionState::new("test".to_string(), None, None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
         state.current_usage = ContextWindowUsage::from_raw(1000, 2000, 10000, 500);
 
@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn test_get_usage_percentage_from_state_no_cache() {
         let limits = TokenLimits::new();
-        let mut state = SessionState::new("test".to_string(), None, Utc::now());
+        let mut state = SessionState::new("test".to_string(), None, None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
         state.context_window_limit = Some(200_000);
         state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 0, 4_000);
