@@ -444,7 +444,7 @@ mod tests {
         db.insert_or_update_project(&project).unwrap();
 
         let retrieved = db.get_project("abc123").unwrap().unwrap();
-        assert_eq!(retrieved.hash, "abc123");
+        assert_eq!(retrieved.hash, agtrace_types::ProjectHash::from("abc123"));
         assert_eq!(retrieved.root_path, Some("/path/to/project".to_string()));
     }
 
@@ -461,7 +461,7 @@ mod tests {
 
         let session = SessionRecord {
             id: "session-001".to_string(),
-            project_hash: "abc123".to_string(),
+            project_hash: agtrace_types::ProjectHash::from("abc123"),
             provider: "claude".to_string(),
             start_ts: Some("2025-12-10T10:05:00Z".to_string()),
             end_ts: Some("2025-12-10T10:15:00Z".to_string()),
@@ -471,7 +471,9 @@ mod tests {
 
         db.insert_or_update_session(&session).unwrap();
 
-        let sessions = db.list_sessions(Some("abc123"), 10).unwrap();
+        let sessions = db
+            .list_sessions(Some(&agtrace_types::ProjectHash::from("abc123")), 10)
+            .unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].id, "session-001");
         assert_eq!(sessions[0].provider, "claude");
@@ -490,7 +492,7 @@ mod tests {
 
         let session = SessionRecord {
             id: "session-001".to_string(),
-            project_hash: "abc123".to_string(),
+            project_hash: agtrace_types::ProjectHash::from("abc123"),
             provider: "claude".to_string(),
             start_ts: Some("2025-12-10T10:05:00Z".to_string()),
             end_ts: None,
@@ -529,7 +531,7 @@ mod tests {
         for i in 1..=5 {
             let session = SessionRecord {
                 id: format!("session-{:03}", i),
-                project_hash: "abc123".to_string(),
+                project_hash: agtrace_types::ProjectHash::from("abc123"),
                 provider: "claude".to_string(),
                 start_ts: Some(format!("2025-12-10T10:{:02}:00Z", i)),
                 end_ts: None,
@@ -539,10 +541,14 @@ mod tests {
             db.insert_or_update_session(&session).unwrap();
         }
 
-        let sessions = db.list_sessions(Some("abc123"), 10).unwrap();
+        let sessions = db
+            .list_sessions(Some(&agtrace_types::ProjectHash::from("abc123")), 10)
+            .unwrap();
         assert_eq!(sessions.len(), 5);
 
-        let sessions_limited = db.list_sessions(Some("abc123"), 3).unwrap();
+        let sessions_limited = db
+            .list_sessions(Some(&agtrace_types::ProjectHash::from("abc123")), 3)
+            .unwrap();
         assert_eq!(sessions_limited.len(), 3);
     }
 
@@ -560,7 +566,7 @@ mod tests {
         for i in 1..=3 {
             let session = SessionRecord {
                 id: format!("session-{:03}", i),
-                project_hash: "abc123".to_string(),
+                project_hash: agtrace_types::ProjectHash::from("abc123"),
                 provider: "claude".to_string(),
                 start_ts: Some(format!("2025-12-10T10:{:02}:00Z", i)),
                 end_ts: None,
@@ -636,6 +642,9 @@ mod tests {
 
         let retrieved = db.get_project("abc123").unwrap();
         assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().hash, "abc123");
+        assert_eq!(
+            retrieved.unwrap().hash,
+            agtrace_types::ProjectHash::from("abc123")
+        );
     }
 }
