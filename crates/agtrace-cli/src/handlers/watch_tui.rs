@@ -15,7 +15,7 @@ use anyhow::Result;
 
 use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
-use agtrace_engine::AgentSession;
+use agtrace_sdk::types::AgentSession;
 use agtrace_sdk::Client;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
 

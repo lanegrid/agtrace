@@ -5,8 +5,7 @@ use crate::presentation::view_models::{
     SessionListEntry, SessionListViewModel, StatusBadge, StreamStateViewModel,
     TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
 };
-use agtrace_engine::AgentSession;
-use agtrace_index::SessionSummary;
+use agtrace_sdk::types::{AgentSession, SessionSummary};
 
 pub fn present_session_list(
     sessions: Vec<SessionSummary>,

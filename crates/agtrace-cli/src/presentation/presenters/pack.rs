@@ -1,5 +1,5 @@
 use crate::presentation::view_models::{PackReportViewModel, ReportTemplate, SessionDigest};
-use agtrace_engine::SessionDigest as EngineDigest;
+use agtrace_sdk::types::SessionDigest as EngineDigest;
 
 pub fn present_pack_report(
     digests: Vec<EngineDigest>,

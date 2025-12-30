@@ -2,7 +2,7 @@ use crate::args::hints::cmd;
 use crate::presentation::view_models::{
     CommandResultViewModel, Guidance, ProjectEntryViewModel, ProjectListViewModel, StatusBadge,
 };
-use agtrace_runtime::ProjectInfo;
+use agtrace_sdk::types::ProjectInfo;
 
 pub fn present_project_list(
     current_root: String,

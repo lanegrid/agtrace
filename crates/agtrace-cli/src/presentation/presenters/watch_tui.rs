@@ -46,7 +46,7 @@ fn build_dashboard(
     state: &agtrace_runtime::SessionState,
     notification: Option<&str>,
 ) -> DashboardViewModel {
-    use agtrace_engine::ContextLimit;
+    use agtrace_sdk::types::ContextLimit;
 
     // Same fallback logic as present_session_state: try context_window_limit first, then model lookup
     let token_limits = agtrace_runtime::TokenLimits::new();

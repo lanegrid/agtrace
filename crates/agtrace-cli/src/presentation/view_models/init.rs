@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 // Re-export progress type (not serialized, used for ephemeral console output)
-pub use agtrace_runtime::InitProgress;
+pub use agtrace_sdk::types::InitProgress;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ProviderInfo {
