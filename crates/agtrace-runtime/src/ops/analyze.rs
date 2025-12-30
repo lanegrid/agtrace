@@ -19,7 +19,7 @@ pub fn get_corpus_overview(
     project_hash: Option<&agtrace_types::ProjectHash>,
     limit: usize,
 ) -> Result<CorpusStats> {
-    let raw_sessions = db.list_sessions(project_hash.map(|h| h.as_str()), limit)?;
+    let raw_sessions = db.list_sessions(project_hash, limit)?;
 
     let loader = SessionRepository::new(db);
     let options = LoadOptions::default();

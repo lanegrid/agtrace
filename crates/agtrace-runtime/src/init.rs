@@ -101,7 +101,7 @@ impl InitService {
             f(InitProgress::ScanPhase);
         }
         let (scan_outcome, scan_needed) =
-            Self::step3_scan(&db, current_project_hash.as_str(), config.refresh)?;
+            Self::step3_scan(&db, &current_project_hash, config.refresh)?;
 
         // Perform actual scan if needed
         if scan_needed {
@@ -133,8 +133,7 @@ impl InitService {
         if let Some(ref mut f) = progress_fn {
             f(InitProgress::SessionPhase);
         }
-        let session_count =
-            Self::step4_sessions(&db, current_project_hash.as_str(), config.all_projects)?;
+        let session_count = Self::step4_sessions(&db, &current_project_hash, config.all_projects)?;
 
         Ok(InitResult {
             config_status,
@@ -186,12 +185,12 @@ impl InitService {
 
     fn step3_scan(
         db: &Database,
-        project_hash: &str,
+        project_hash: &agtrace_types::ProjectHash,
         force_refresh: bool,
     ) -> Result<(ScanOutcome, bool)> {
         let should_scan = if force_refresh {
             true
-        } else if let Ok(Some(project)) = db.get_project(project_hash) {
+        } else if let Ok(Some(project)) = db.get_project(project_hash.as_str()) {
             if let Some(last_scanned) = &project.last_scanned_at {
                 if let Ok(last_time) = DateTime::parse_from_rfc3339(last_scanned) {
                     let elapsed = Utc::now().signed_duration_since(last_time.with_timezone(&Utc));
@@ -222,7 +221,11 @@ impl InitService {
         }
     }
 
-    fn step4_sessions(db: &Database, project_hash: &str, all_projects: bool) -> Result<usize> {
+    fn step4_sessions(
+        db: &Database,
+        project_hash: &agtrace_types::ProjectHash,
+        all_projects: bool,
+    ) -> Result<usize> {
         let effective_hash = if all_projects {
             None
         } else {

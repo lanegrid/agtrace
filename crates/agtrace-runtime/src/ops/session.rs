@@ -23,14 +23,13 @@ impl<'a> SessionService<'a> {
     }
 
     pub fn list_sessions(&self, request: ListSessionsRequest) -> Result<Vec<SessionSummary>> {
-        let (effective_hash_string, _all_projects) = resolve_effective_project_hash(
-            request.project_hash.as_ref().map(|h| h.as_str()),
-            request.all_projects,
-        )?;
-        let effective_project_hash = effective_hash_string.as_deref();
+        let (effective_project_hash, _all_projects) =
+            resolve_effective_project_hash(request.project_hash.as_ref(), request.all_projects)?;
 
         let fetch_limit = request.limit * 3;
-        let mut sessions = self.db.list_sessions(effective_project_hash, fetch_limit)?;
+        let mut sessions = self
+            .db
+            .list_sessions(effective_project_hash.as_ref(), fetch_limit)?;
 
         if let Some(src) = request.provider {
             sessions.retain(|s| s.provider == src);

@@ -25,7 +25,7 @@ const SCHEMA_VERSION: i32 = 1;
 
 #[derive(Debug, Clone)]
 pub struct ProjectRecord {
-    pub hash: String,
+    pub hash: agtrace_types::ProjectHash,
     pub root_path: Option<String>,
     pub last_scanned_at: Option<String>,
 }
@@ -149,7 +149,11 @@ impl Database {
                 root_path = COALESCE(?2, root_path),
                 last_scanned_at = ?3
             "#,
-            params![&project.hash, &project.root_path, &project.last_scanned_at],
+            params![
+                project.hash.as_str(),
+                &project.root_path,
+                &project.last_scanned_at
+            ],
         )?;
 
         Ok(())
@@ -230,7 +234,7 @@ impl Database {
 
     pub fn list_sessions(
         &self,
-        project_hash: Option<&str>,
+        project_hash: Option<&agtrace_types::ProjectHash>,
         limit: usize,
     ) -> Result<Vec<SessionSummary>> {
         let query = if let Some(hash) = project_hash {
@@ -242,7 +246,8 @@ impl Database {
                 ORDER BY start_ts DESC
                 LIMIT {}
                 "#,
-                hash, limit
+                hash.as_str(),
+                limit
             )
         } else {
             format!(
@@ -336,7 +341,7 @@ impl Database {
                 [hash],
                 |row| {
                     Ok(ProjectRecord {
-                        hash: row.get(0)?,
+                        hash: agtrace_types::ProjectHash::from(row.get::<_, String>(0)?),
                         root_path: row.get(1)?,
                         last_scanned_at: row.get(2)?,
                     })
@@ -359,7 +364,7 @@ impl Database {
         let projects = stmt
             .query_map([], |row| {
                 Ok(ProjectRecord {
-                    hash: row.get(0)?,
+                    hash: agtrace_types::ProjectHash::from(row.get::<_, String>(0)?),
                     root_path: row.get(1)?,
                     last_scanned_at: row.get(2)?,
                 })
@@ -431,7 +436,7 @@ mod tests {
         let db = Database::open_in_memory().unwrap();
 
         let project = ProjectRecord {
-            hash: "abc123".to_string(),
+            hash: agtrace_types::ProjectHash::from("abc123"),
             root_path: Some("/path/to/project".to_string()),
             last_scanned_at: Some("2025-12-10T10:00:00Z".to_string()),
         };
@@ -448,7 +453,7 @@ mod tests {
         let db = Database::open_in_memory().unwrap();
 
         let project = ProjectRecord {
-            hash: "abc123".to_string(),
+            hash: agtrace_types::ProjectHash::from("abc123"),
             root_path: Some("/path/to/project".to_string()),
             last_scanned_at: Some("2025-12-10T10:00:00Z".to_string()),
         };
@@ -477,7 +482,7 @@ mod tests {
         let db = Database::open_in_memory().unwrap();
 
         let project = ProjectRecord {
-            hash: "abc123".to_string(),
+            hash: agtrace_types::ProjectHash::from("abc123"),
             root_path: Some("/path/to/project".to_string()),
             last_scanned_at: Some("2025-12-10T10:00:00Z".to_string()),
         };
@@ -515,7 +520,7 @@ mod tests {
         let db = Database::open_in_memory().unwrap();
 
         let project = ProjectRecord {
-            hash: "abc123".to_string(),
+            hash: agtrace_types::ProjectHash::from("abc123"),
             root_path: Some("/path/to/project".to_string()),
             last_scanned_at: Some("2025-12-10T10:00:00Z".to_string()),
         };
@@ -546,7 +551,7 @@ mod tests {
         let db = Database::open_in_memory().unwrap();
 
         let project = ProjectRecord {
-            hash: "abc123".to_string(),
+            hash: agtrace_types::ProjectHash::from("abc123"),
             root_path: Some("/path/to/project".to_string()),
             last_scanned_at: Some("2025-12-10T10:00:00Z".to_string()),
         };
@@ -621,7 +626,7 @@ mod tests {
         let db = Database::open_in_memory().unwrap();
 
         let project = ProjectRecord {
-            hash: "abc123".to_string(),
+            hash: agtrace_types::ProjectHash::from("abc123"),
             root_path: Some("/path/to/project".to_string()),
             last_scanned_at: Some("2025-12-10T10:00:00Z".to_string()),
         };

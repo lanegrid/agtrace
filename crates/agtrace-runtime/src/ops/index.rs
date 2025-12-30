@@ -161,7 +161,7 @@ impl<'a> IndexService<'a> {
                 };
 
                 let project_record = ProjectRecord {
-                    hash: session_project_hash.as_str().to_string(),
+                    hash: session_project_hash.clone(),
                     root_path: session
                         .project_root
                         .as_ref()
@@ -172,7 +172,7 @@ impl<'a> IndexService<'a> {
 
                 let session_record = SessionRecord {
                     id: session.session_id.clone(),
-                    project_hash: session_project_hash.clone(),
+                    project_hash: session_project_hash,
                     provider: provider_name.to_string(),
                     start_ts: session.timestamp.clone(),
                     end_ts: None,

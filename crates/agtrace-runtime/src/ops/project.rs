@@ -22,9 +22,9 @@ impl<'a> ProjectService<'a> {
         let projects = self.db.list_projects()?;
         let mut summaries = Vec::new();
         for project in projects {
-            let session_count = self.db.count_sessions_for_project(&project.hash)?;
+            let session_count = self.db.count_sessions_for_project(project.hash.as_str())?;
             summaries.push(ProjectInfo {
-                hash: project.hash,
+                hash: project.hash.to_string(),
                 root_path: project.root_path,
                 session_count,
                 last_scanned: project.last_scanned_at,

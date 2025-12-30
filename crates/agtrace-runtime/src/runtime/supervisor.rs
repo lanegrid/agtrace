@@ -115,10 +115,11 @@ fn handle_fs_event(
                             project_hash_from_root(&filter_root.display().to_string());
 
                         // Extract session's project hash from log file (lightweight operation)
-                        if let Ok(Some(session_hash)) =
+                        if let Ok(Some(session_hash_str)) =
                             context.provider.discovery.extract_project_hash(path)
                         {
-                            if filter_hash.as_str() != session_hash {
+                            let session_hash = agtrace_types::ProjectHash::from(session_hash_str);
+                            if filter_hash != session_hash {
                                 // Session belongs to different project, skip it
                                 continue;
                             }

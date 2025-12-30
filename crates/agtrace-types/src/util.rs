@@ -60,17 +60,17 @@ pub fn discover_project_root(explicit_project_root: Option<&str>) -> Result<Path
 
 /// Resolve effective project hash based on explicit hash or all_projects flag
 pub fn resolve_effective_project_hash(
-    explicit_hash: Option<&str>,
+    explicit_hash: Option<&crate::ProjectHash>,
     all_projects: bool,
-) -> Result<(Option<String>, bool)> {
+) -> Result<(Option<crate::ProjectHash>, bool)> {
     if let Some(hash) = explicit_hash {
-        Ok((Some(hash.to_string()), false))
+        Ok((Some(hash.clone()), false))
     } else if all_projects {
         Ok((None, true))
     } else {
         let project_root_path = discover_project_root(None)?;
         let current_project_hash = project_hash_from_root(&project_root_path.to_string_lossy());
-        Ok((Some(current_project_hash.to_string()), false))
+        Ok((Some(current_project_hash), false))
     }
 }
 

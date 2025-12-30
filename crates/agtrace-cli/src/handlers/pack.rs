@@ -15,9 +15,8 @@ pub fn handle(
     output_format: OutputFormat,
     view_mode_args: &ViewModeArgs,
 ) -> Result<()> {
-    let (effective_hash_string, _all_projects) =
-        resolve_effective_project_hash(project_hash.as_ref().map(|h| h.as_str()), all_projects)?;
-    let effective_project_hash = effective_hash_string.map(agtrace_types::ProjectHash::from);
+    let (effective_project_hash, _all_projects) =
+        resolve_effective_project_hash(project_hash.as_ref(), all_projects)?;
 
     let result = workspace
         .sessions()
