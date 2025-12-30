@@ -1,63 +1,8 @@
 use anyhow::{Context, Result};
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::Connection;
 use std::path::Path;
 
-// Schema version (increment when changing table definitions)
-const SCHEMA_VERSION: i32 = 1;
-
-// NOTE: Database Design Rationale (Pointer Edition)
-//
-// Why Schema-on-Read (not Schema-on-Write)?
-// - Provider logs change format frequently; parsing logic needs flexibility
-// - Event normalization is complex (Gemini unfold, Codex dedup, etc.)
-// - Raw logs are source of truth; DB is just an index for fast lookup
-// - Keeps DB lightweight and migration-free when schema evolves
-//
-// Why hash-based project identification?
-// - Gemini logs contain projectHash but not projectRoot path
-// - Hash allows cross-provider session grouping before path resolution
-// - Enables "same project" detection across Claude/Codex/Gemini
-//
-// Why soft delete (is_valid flag)?
-// - Avoid orphaned log_files entries when session is deleted
-// - Enable "undo" or audit trail without complex cascade logic
-// - Simplifies cleanup: UPDATE instead of multi-table DELETE transaction
-
-#[derive(Debug, Clone)]
-pub struct ProjectRecord {
-    pub hash: agtrace_types::ProjectHash,
-    pub root_path: Option<String>,
-    pub last_scanned_at: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct SessionRecord {
-    pub id: String,
-    pub project_hash: agtrace_types::ProjectHash,
-    pub provider: String,
-    pub start_ts: Option<String>,
-    pub end_ts: Option<String>,
-    pub snippet: Option<String>,
-    pub is_valid: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct LogFileRecord {
-    pub path: String,
-    pub session_id: String,
-    pub role: String,
-    pub file_size: Option<i64>,
-    pub mod_time: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct SessionSummary {
-    pub id: String,
-    pub provider: String,
-    pub project_hash: agtrace_types::ProjectHash,
-    pub start_ts: Option<String>,
-    pub snippet: Option<String>,
-}
+use crate::{queries, records::*, schema};
 
 pub struct Database {
     conn: Connection,
@@ -69,167 +14,41 @@ impl Database {
             .with_context(|| format!("Failed to open database: {}", db_path.display()))?;
 
         let db = Self { conn };
-        db.init_schema()?;
+        schema::init_schema(&db.conn)?;
         Ok(db)
     }
 
     pub fn open_in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
         let db = Self { conn };
-        db.init_schema()?;
+        schema::init_schema(&db.conn)?;
         Ok(db)
     }
 
-    pub fn init_schema(&self) -> Result<()> {
-        let current_version: i32 = self
-            .conn
-            .query_row("PRAGMA user_version", [], |row| row.get(0))?;
-
-        if current_version != SCHEMA_VERSION {
-            self.drop_all_tables()?;
-        }
-
-        self.conn.execute_batch(
-            r#"
-            CREATE TABLE IF NOT EXISTS projects (
-                hash TEXT PRIMARY KEY,
-                root_path TEXT,
-                last_scanned_at TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS sessions (
-                id TEXT PRIMARY KEY,
-                project_hash TEXT NOT NULL,
-                provider TEXT NOT NULL,
-                start_ts TEXT,
-                end_ts TEXT,
-                snippet TEXT,
-                is_valid BOOLEAN DEFAULT 1,
-                FOREIGN KEY (project_hash) REFERENCES projects(hash)
-            );
-
-            CREATE TABLE IF NOT EXISTS log_files (
-                path TEXT PRIMARY KEY,
-                session_id TEXT NOT NULL,
-                role TEXT NOT NULL,
-                file_size INTEGER,
-                mod_time TEXT,
-                FOREIGN KEY (session_id) REFERENCES sessions(id)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_hash);
-            CREATE INDEX IF NOT EXISTS idx_sessions_ts ON sessions(start_ts DESC);
-            CREATE INDEX IF NOT EXISTS idx_files_session ON log_files(session_id);
-            "#,
-        )?;
-
-        self.conn
-            .execute(&format!("PRAGMA user_version = {}", SCHEMA_VERSION), [])?;
-
-        Ok(())
-    }
-
-    fn drop_all_tables(&self) -> Result<()> {
-        self.conn.execute_batch(
-            r#"
-            DROP TABLE IF EXISTS log_files;
-            DROP TABLE IF EXISTS sessions;
-            DROP TABLE IF EXISTS projects;
-            "#,
-        )?;
-        Ok(())
-    }
-
+    // Project operations
     pub fn insert_or_update_project(&self, project: &ProjectRecord) -> Result<()> {
-        self.conn.execute(
-            r#"
-            INSERT INTO projects (hash, root_path, last_scanned_at)
-            VALUES (?1, ?2, ?3)
-            ON CONFLICT(hash) DO UPDATE SET
-                root_path = COALESCE(?2, root_path),
-                last_scanned_at = ?3
-            "#,
-            params![
-                project.hash.as_str(),
-                &project.root_path,
-                &project.last_scanned_at
-            ],
-        )?;
-
-        Ok(())
+        queries::project::insert_or_update(&self.conn, project)
     }
 
+    pub fn get_project(&self, hash: &str) -> Result<Option<ProjectRecord>> {
+        queries::project::get(&self.conn, hash)
+    }
+
+    pub fn list_projects(&self) -> Result<Vec<ProjectRecord>> {
+        queries::project::list(&self.conn)
+    }
+
+    pub fn count_sessions_for_project(&self, project_hash: &str) -> Result<usize> {
+        queries::project::count_sessions(&self.conn, project_hash)
+    }
+
+    // Session operations
     pub fn insert_or_update_session(&self, session: &SessionRecord) -> Result<()> {
-        self.conn.execute(
-            r#"
-            INSERT INTO sessions (id, project_hash, provider, start_ts, end_ts, snippet, is_valid)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-            ON CONFLICT(id) DO UPDATE SET
-                project_hash = ?2,
-                provider = ?3,
-                start_ts = COALESCE(?4, start_ts),
-                end_ts = COALESCE(?5, end_ts),
-                snippet = COALESCE(?6, snippet),
-                is_valid = ?7
-            "#,
-            params![
-                &session.id,
-                session.project_hash.as_str(),
-                &session.provider,
-                &session.start_ts,
-                &session.end_ts,
-                &session.snippet,
-                &session.is_valid
-            ],
-        )?;
-
-        Ok(())
-    }
-
-    pub fn insert_or_update_log_file(&self, log_file: &LogFileRecord) -> Result<()> {
-        self.conn.execute(
-            r#"
-            INSERT INTO log_files (path, session_id, role, file_size, mod_time)
-            VALUES (?1, ?2, ?3, ?4, ?5)
-            ON CONFLICT(path) DO UPDATE SET
-                session_id = ?2,
-                role = ?3,
-                file_size = ?4,
-                mod_time = ?5
-            "#,
-            params![
-                &log_file.path,
-                &log_file.session_id,
-                &log_file.role,
-                &log_file.file_size,
-                &log_file.mod_time
-            ],
-        )?;
-
-        Ok(())
+        queries::session::insert_or_update(&self.conn, session)
     }
 
     pub fn get_session_by_id(&self, session_id: &str) -> Result<Option<SessionSummary>> {
-        let mut stmt = self.conn.prepare(
-            r#"
-            SELECT id, provider, project_hash, start_ts, snippet
-            FROM sessions
-            WHERE id = ?1 AND is_valid = 1
-            "#,
-        )?;
-
-        let mut rows = stmt.query([session_id])?;
-        if let Some(row) = rows.next()? {
-            Ok(Some(SessionSummary {
-                id: row.get(0)?,
-                provider: row.get(1)?,
-                project_hash: agtrace_types::ProjectHash::from(row.get::<_, String>(2)?),
-                start_ts: row.get(3)?,
-                snippet: row.get(4)?,
-            }))
-        } else {
-            Ok(None)
-        }
+        queries::session::get_by_id(&self.conn, session_id)
     }
 
     pub fn list_sessions(
@@ -237,191 +56,39 @@ impl Database {
         project_hash: Option<&agtrace_types::ProjectHash>,
         limit: usize,
     ) -> Result<Vec<SessionSummary>> {
-        let query = if let Some(hash) = project_hash {
-            format!(
-                r#"
-                SELECT id, provider, project_hash, start_ts, snippet
-                FROM sessions
-                WHERE project_hash = '{}' AND is_valid = 1
-                ORDER BY start_ts DESC
-                LIMIT {}
-                "#,
-                hash.as_str(),
-                limit
-            )
-        } else {
-            format!(
-                r#"
-                SELECT id, provider, project_hash, start_ts, snippet
-                FROM sessions
-                WHERE is_valid = 1
-                ORDER BY start_ts DESC
-                LIMIT {}
-                "#,
-                limit
-            )
-        };
+        queries::session::list(&self.conn, project_hash, limit)
+    }
 
-        let mut stmt = self.conn.prepare(&query)?;
-        let sessions = stmt
-            .query_map([], |row| {
-                Ok(SessionSummary {
-                    id: row.get(0)?,
-                    provider: row.get(1)?,
-                    project_hash: agtrace_types::ProjectHash::from(row.get::<_, String>(2)?),
-                    start_ts: row.get(3)?,
-                    snippet: row.get(4)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
+    pub fn find_session_by_prefix(&self, prefix: &str) -> Result<Option<String>> {
+        queries::session::find_by_prefix(&self.conn, prefix)
+    }
 
-        Ok(sessions)
+    // Log file operations
+    pub fn insert_or_update_log_file(&self, log_file: &LogFileRecord) -> Result<()> {
+        queries::log_file::insert_or_update(&self.conn, log_file)
     }
 
     pub fn get_session_files(&self, session_id: &str) -> Result<Vec<LogFileRecord>> {
-        let mut stmt = self.conn.prepare(
-            r#"
-            SELECT path, session_id, role, file_size, mod_time
-            FROM log_files
-            WHERE session_id = ?1
-            ORDER BY role
-            "#,
-        )?;
-
-        let files = stmt
-            .query_map([session_id], |row| {
-                Ok(LogFileRecord {
-                    path: row.get(0)?,
-                    session_id: row.get(1)?,
-                    role: row.get(2)?,
-                    file_size: row.get(3)?,
-                    mod_time: row.get(4)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(files)
+        queries::log_file::get_session_files(&self.conn, session_id)
     }
 
-    /// Find session by ID prefix (supports short IDs like "7f2abd2d")
-    pub fn find_session_by_prefix(&self, prefix: &str) -> Result<Option<String>> {
-        let mut stmt = self.conn.prepare(
-            r#"
-            SELECT id
-            FROM sessions
-            WHERE id LIKE ?1
-            LIMIT 2
-            "#,
-        )?;
-
-        let pattern = format!("{}%", prefix);
-        let mut matches: Vec<String> = stmt
-            .query_map([&pattern], |row| row.get(0))?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        match matches.len() {
-            0 => Ok(None),
-            1 => Ok(Some(matches.remove(0))),
-            _ => anyhow::bail!(
-                "Ambiguous session ID prefix '{}': multiple sessions match",
-                prefix
-            ),
-        }
+    pub fn get_all_log_files(&self) -> Result<Vec<LogFileRecord>> {
+        queries::log_file::get_all(&self.conn)
     }
 
-    pub fn get_project(&self, hash: &str) -> Result<Option<ProjectRecord>> {
-        let result = self
-            .conn
-            .query_row(
-                r#"
-            SELECT hash, root_path, last_scanned_at
-            FROM projects
-            WHERE hash = ?1
-            "#,
-                [hash],
-                |row| {
-                    Ok(ProjectRecord {
-                        hash: agtrace_types::ProjectHash::from(row.get::<_, String>(0)?),
-                        root_path: row.get(1)?,
-                        last_scanned_at: row.get(2)?,
-                    })
-                },
-            )
-            .optional()?;
-
-        Ok(result)
-    }
-
-    pub fn list_projects(&self) -> Result<Vec<ProjectRecord>> {
-        let mut stmt = self.conn.prepare(
-            r#"
-            SELECT hash, root_path, last_scanned_at
-            FROM projects
-            ORDER BY last_scanned_at DESC
-            "#,
-        )?;
-
-        let projects = stmt
-            .query_map([], |row| {
-                Ok(ProjectRecord {
-                    hash: agtrace_types::ProjectHash::from(row.get::<_, String>(0)?),
-                    root_path: row.get(1)?,
-                    last_scanned_at: row.get(2)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(projects)
-    }
-
-    pub fn count_sessions_for_project(&self, project_hash: &str) -> Result<usize> {
-        let count: i64 = self.conn.query_row(
-            r#"
-            SELECT COUNT(*)
-            FROM sessions
-            WHERE project_hash = ?1 AND is_valid = 1
-            "#,
-            [project_hash],
-            |row| row.get(0),
-        )?;
-
-        Ok(count as usize)
-    }
-
+    // Utility operations
     pub fn vacuum(&self) -> Result<()> {
         self.conn.execute("VACUUM", [])?;
         println!("Database vacuumed successfully");
         Ok(())
-    }
-
-    pub fn get_all_log_files(&self) -> Result<Vec<LogFileRecord>> {
-        let mut stmt = self.conn.prepare(
-            r#"
-            SELECT path, session_id, role, file_size, mod_time
-            FROM log_files
-            ORDER BY path
-            "#,
-        )?;
-
-        let files = stmt
-            .query_map([], |row| {
-                Ok(LogFileRecord {
-                    path: row.get(0)?,
-                    session_id: row.get(1)?,
-                    role: row.get(2)?,
-                    file_size: row.get(3)?,
-                    mod_time: row.get(4)?,
-                })
-            })?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(files)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::schema::SCHEMA_VERSION;
+    use rusqlite::params;
 
     #[test]
     fn test_schema_initialization() {
@@ -612,7 +279,7 @@ mod tests {
         .unwrap();
 
         let db = Database { conn };
-        db.init_schema().unwrap();
+        schema::init_schema(&db.conn).unwrap();
 
         let version: i32 = db
             .conn
@@ -638,7 +305,7 @@ mod tests {
         };
         db.insert_or_update_project(&project).unwrap();
 
-        db.init_schema().unwrap();
+        schema::init_schema(&db.conn).unwrap();
 
         let retrieved = db.get_project("abc123").unwrap();
         assert!(retrieved.is_some());
