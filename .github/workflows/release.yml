@@ -341,17 +341,19 @@ jobs:
         run: |
           # Publish crates in dependency order with delays for index updates
           cargo publish -p agtrace-types
-          sleep 30
+          sleep 10
           cargo publish -p agtrace-providers
-          sleep 30
+          sleep 10
           cargo publish -p agtrace-index
-          sleep 30
+          sleep 10
           cargo publish -p agtrace-engine
-          sleep 30
+          sleep 10
           cargo publish -p agtrace-runtime
-          sleep 30
+          sleep 10
+          cargo publish -p agtrace-sdk
+          sleep 10
           cargo publish -p agtrace-testing
-          sleep 30
+          sleep 10
           cargo publish -p agtrace
 
   announce:
