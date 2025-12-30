@@ -28,7 +28,7 @@ The reference implementation of the agtrace platform.
 ```bash
 npm install -g @lanegrid/agtrace
 cd my-project
-agtrace init      # once
+agtrace init      # initialize workspace (~/.agtrace)
 agtrace watch     # live dashboard
 ```
 
@@ -48,8 +48,7 @@ use agtrace_sdk::{Client, Lens, analyze_session, assemble_session};
 let client = Client::connect("~/.agtrace")?;
 
 // 1. Real-time Monitoring
-let stream = client.watch().all_providers().start()?;
-while let Some(event) = stream.next_blocking() {
+for event in client.watch().all_providers().start()? {
     println!("Activity: {:?}", event);
 }
 
@@ -79,6 +78,13 @@ if let Some(session) = assemble_session(&events) {
 - **Gemini** (Google)
 
 ## 📦 Architecture
+
+```mermaid
+graph TD
+    CLI[agtrace-cli] --> SDK[agtrace-sdk]
+    YourApp[Your Tool] --> SDK
+    SDK --> Core[Core Engine & Providers]
+```
 
 - **Core SDK**: `agtrace-sdk`, `agtrace-engine`, `agtrace-providers`
 - **Applications**: `agtrace-cli` (Reference Implementation)
