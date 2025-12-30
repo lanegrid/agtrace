@@ -20,6 +20,13 @@ This SDK acts as a facade over:
 - `agtrace-index`: Metadata storage and querying
 - `agtrace-runtime`: Internal orchestration layer
 
+### Stability Guarantee
+
+- **agtrace-sdk**: Semantic Versioning (SemVer) strictly followed. Public API is stable.
+- **Internal crates** (`agtrace-runtime`, `agtrace-engine`, etc.): Internal APIs, subject to breaking changes without notice.
+
+If you're building tools on top of agtrace, use only the `agtrace-sdk` crate to ensure stability across updates.
+
 ## Installation
 
 Add this to your `Cargo.toml`:
@@ -54,7 +61,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         println!("Health score: {}", report.score);
         for insight in &report.insights {
-            println!("  - {}", insight);
+            println!("  Turn {}: {:?} - {}",
+                insight.turn_index + 1,
+                insight.severity,
+                insight.message);
         }
     }
 
@@ -71,9 +81,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace")?;
 
     // Watch for live events from all providers
-    let stream = client.watch().all_providers().start()?;
+    let mut stream = client.watch().all_providers().start()?;
 
-    while let Some(event) = stream.next_blocking() {
+    // Use the Iterator trait for ergonomic event processing
+    for event in stream {
         println!("New event: {:?}", event);
     }
 
@@ -90,12 +101,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace")?;
 
     // Watch only Claude events
-    let stream = client
+    let mut stream = client
         .watch()
         .provider("claude")
         .start()?;
 
-    while let Some(event) = stream.next_blocking() {
+    for event in stream {
         println!("Claude event: {:?}", event);
     }
 
@@ -183,6 +194,8 @@ fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
 - `.start()`: Start monitoring and return a live stream
 
 ### LiveStream
+
+Implements the `Iterator` trait for ergonomic event processing.
 
 - `.next_blocking()`: Block until next event arrives
 - `.try_next()`: Try to get next event without blocking

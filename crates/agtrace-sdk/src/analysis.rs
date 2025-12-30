@@ -8,6 +8,21 @@ pub enum Lens {
     Bottlenecks,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Severity {
+    Info,
+    Warning,
+    Critical,
+}
+
+#[derive(Debug, Clone)]
+pub struct Insight {
+    pub turn_index: usize,
+    pub lens: Lens,
+    pub message: String,
+    pub severity: Severity,
+}
+
 pub struct SessionAnalyzer {
     session: AgentSession,
     lenses: Vec<Lens>,
@@ -53,7 +68,7 @@ impl SessionAnalyzer {
         })
     }
 
-    fn analyze_failures(&self) -> Vec<String> {
+    fn analyze_failures(&self) -> Vec<Insight> {
         let mut insights = Vec::new();
         for (idx, turn) in self.session.turns.iter().enumerate() {
             let failed_tools: Vec<_> = turn
@@ -64,17 +79,18 @@ impl SessionAnalyzer {
                 .collect();
 
             if !failed_tools.is_empty() {
-                insights.push(format!(
-                    "Turn {}: {} tool execution(s) failed",
-                    idx + 1,
-                    failed_tools.len()
-                ));
+                insights.push(Insight {
+                    turn_index: idx,
+                    lens: Lens::Failures,
+                    message: format!("{} tool execution(s) failed", failed_tools.len()),
+                    severity: Severity::Critical,
+                });
             }
         }
         insights
     }
 
-    fn analyze_loops(&self) -> Vec<String> {
+    fn analyze_loops(&self) -> Vec<Insight> {
         let mut insights = Vec::new();
         let mut prev_tool_sequence: Option<Vec<String>> = None;
         let mut repeat_count = 0;
@@ -91,10 +107,12 @@ impl SessionAnalyzer {
                 if prev == &tool_sequence && !tool_sequence.is_empty() {
                     repeat_count += 1;
                     if repeat_count >= 2 {
-                        insights.push(format!(
-                            "Potential loop detected at turn {}: repeated tool sequence",
-                            idx + 1
-                        ));
+                        insights.push(Insight {
+                            turn_index: idx,
+                            lens: Lens::Loops,
+                            message: "Repeated tool sequence detected".to_string(),
+                            severity: Severity::Warning,
+                        });
                     }
                 } else {
                     repeat_count = 0;
@@ -106,18 +124,22 @@ impl SessionAnalyzer {
         insights
     }
 
-    fn analyze_bottlenecks(&self) -> Vec<String> {
+    fn analyze_bottlenecks(&self) -> Vec<Insight> {
         let mut insights = Vec::new();
         for (idx, turn) in self.session.turns.iter().enumerate() {
             for step in &turn.steps {
                 for tool_exec in &step.tools {
                     if let Some(duration_ms) = tool_exec.duration_ms.filter(|&d| d > 10_000) {
-                        insights.push(format!(
-                            "Turn {}: Slow tool execution ({:?} took {}s)",
-                            idx + 1,
-                            tool_exec.call.content.kind(),
-                            duration_ms / 1000
-                        ));
+                        insights.push(Insight {
+                            turn_index: idx,
+                            lens: Lens::Bottlenecks,
+                            message: format!(
+                                "Slow tool execution ({:?} took {}s)",
+                                tool_exec.call.content.kind(),
+                                duration_ms / 1000
+                            ),
+                            severity: Severity::Warning,
+                        });
                     }
                 }
             }
@@ -125,7 +147,7 @@ impl SessionAnalyzer {
         insights
     }
 
-    fn calculate_health_score(&self, _summary: &SessionSummary, insights: &[String]) -> u8 {
+    fn calculate_health_score(&self, _summary: &SessionSummary, insights: &[Insight]) -> u8 {
         let base_score = 100;
         let penalty_per_insight = 10;
         let total_penalty = (insights.len() as i32) * penalty_per_insight;
@@ -137,6 +159,6 @@ impl SessionAnalyzer {
 #[derive(Debug)]
 pub struct AnalysisReport {
     pub score: u8,
-    pub insights: Vec<String>,
+    pub insights: Vec<Insight>,
     pub summary: SessionSummary,
 }

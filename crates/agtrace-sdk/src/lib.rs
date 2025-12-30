@@ -26,8 +26,8 @@
 //! let client = Client::connect("~/.agtrace")?;
 //!
 //! // 2. Watch for live events (Real-time monitoring)
-//! let stream = client.watch().all_providers().start()?;
-//! if let Some(event) = stream.next_blocking() {
+//! let mut stream = client.watch().all_providers().start()?;
+//! for event in stream.take(10) {
 //!     println!("New event: {:?}", event);
 //! }
 //!
@@ -41,7 +41,10 @@
 //!
 //!     println!("Health score: {}", report.score);
 //!     for insight in &report.insights {
-//!         println!("  - {}", insight);
+//!         println!("Turn {}: {:?} - {}",
+//!             insight.turn_index + 1,
+//!             insight.severity,
+//!             insight.message);
 //!     }
 //! }
 //! # Ok(())
@@ -61,7 +64,7 @@ pub use agtrace_types::event::AgentEvent;
 pub use agtrace_types::tool::ToolKind;
 
 // Public facade
-pub use analysis::{AnalysisReport, Lens};
+pub use analysis::{AnalysisReport, Insight, Lens, Severity};
 pub use client::{Client, SessionHandle};
 pub use error::{Error, Result};
 pub use watch::{LiveStream, WatchBuilder};

@@ -31,10 +31,7 @@ impl Client {
 
     pub fn list_sessions(&self) -> Result<Vec<SessionSummary>> {
         let filter = agtrace_runtime::SessionFilter::new().limit(100);
-        self.inner
-            .sessions()
-            .list(filter)
-            .map_err(Error::Internal)
+        self.inner.sessions().list(filter).map_err(Error::Internal)
     }
 }
 

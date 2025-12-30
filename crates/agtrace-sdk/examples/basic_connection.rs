@@ -40,7 +40,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         if let Some(snippet) = &summary.snippet {
             let trimmed = snippet.chars().take(60).collect::<String>();
-            println!("      Snippet:    {}{}", trimmed, if snippet.len() > 60 { "..." } else { "" });
+            println!(
+                "      Snippet:    {}{}",
+                trimmed,
+                if snippet.len() > 60 { "..." } else { "" }
+            );
         }
         println!();
     }

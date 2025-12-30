@@ -52,3 +52,11 @@ impl LiveStream {
         self.monitor.receiver().try_recv().ok()
     }
 }
+
+impl Iterator for LiveStream {
+    type Item = WorkspaceEvent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_blocking()
+    }
+}

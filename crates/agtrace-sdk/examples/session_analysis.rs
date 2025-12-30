@@ -51,9 +51,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Session Summary:");
     println!("  Total events:   {}", summary.event_counts.total);
     println!("  User messages:  {}", summary.event_counts.user_messages);
-    println!("  AI responses:   {}", summary.event_counts.assistant_messages);
+    println!(
+        "  AI responses:   {}",
+        summary.event_counts.assistant_messages
+    );
     println!("  Tool calls:     {}", summary.event_counts.tool_calls);
-    println!("  Reasoning:      {}", summary.event_counts.reasoning_blocks);
+    println!(
+        "  Reasoning:      {}",
+        summary.event_counts.reasoning_blocks
+    );
     println!();
 
     // 6. Analyze with diagnostic lenses
@@ -72,8 +78,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  ✓ No issues detected");
     } else {
         println!("  Issues found:");
-        for (idx, insight) in report.insights.iter().enumerate() {
-            println!("    [{}] {}", idx + 1, insight);
+        for insight in &report.insights {
+            let severity_icon = match insight.severity {
+                agtrace_sdk::Severity::Info => "ℹ️",
+                agtrace_sdk::Severity::Warning => "⚠️",
+                agtrace_sdk::Severity::Critical => "🔴",
+            };
+            let lens_label = match insight.lens {
+                agtrace_sdk::Lens::Failures => "Failure",
+                agtrace_sdk::Lens::Loops => "Loop",
+                agtrace_sdk::Lens::Bottlenecks => "Bottleneck",
+            };
+            println!(
+                "    {} Turn {}: [{}] {}",
+                severity_icon,
+                insight.turn_index + 1,
+                lens_label,
+                insight.message
+            );
         }
     }
 
