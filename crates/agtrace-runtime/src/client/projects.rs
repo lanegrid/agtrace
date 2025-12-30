@@ -1,6 +1,6 @@
 use crate::ops::{IndexProgress, IndexService, ProjectInfo, ProjectService};
 use agtrace_index::Database;
-use agtrace_providers::{ProviderAdapter, ScanContext};
+use agtrace_providers::ProviderAdapter;
 use agtrace_types::{discover_project_root, project_hash_from_root};
 use anyhow::Result;
 use std::path::PathBuf;
@@ -56,21 +56,17 @@ impl ProjectOps {
             .map(|root| project_hash_from_root(&root.display().to_string()))
             .unwrap_or_else(|| "unknown".to_string());
 
-        let scan_context = ScanContext {
-            project_hash,
-            project_root: None,
-            provider_filter: None,
-        };
-
-        service.run(&scan_context, false, |_progress: IndexProgress| {})?;
+        service.run(&project_hash, None, false, |_progress: IndexProgress| {})?;
 
         Ok(())
     }
 
     pub fn scan<F>(
         &self,
-        scan_context: &ScanContext,
+        project_hash: &str,
+        project_root: Option<&str>,
         force: bool,
+        provider_filter: Option<&str>,
         mut on_progress: F,
     ) -> Result<ScanSummary>
     where
@@ -82,9 +78,8 @@ impl ProjectOps {
             .iter()
             .filter_map(|(name, path)| {
                 // Apply provider filter if specified
-                if let Some(ref filter) = scan_context.provider_filter
-                    && filter != "all"
-                    && name != filter
+                if let Some(filter) = provider_filter
+                    && filter != "all" && name != filter
                 {
                     return None;
                 }
@@ -99,7 +94,7 @@ impl ProjectOps {
         let mut scanned_files = 0;
         let mut skipped_files = 0;
 
-        service.run(scan_context, force, |progress| {
+        service.run(project_hash, project_root, force, |progress| {
             if let IndexProgress::Completed {
                 total_sessions: ts,
                 scanned_files: sf,

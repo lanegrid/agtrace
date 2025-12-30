@@ -5,7 +5,7 @@ use crate::ops::{
 use crate::storage::{RawFileContent, get_raw_files};
 use agtrace_engine::export::ExportStrategy;
 use agtrace_index::{Database, SessionSummary};
-use agtrace_providers::{ProviderAdapter, ScanContext};
+use agtrace_providers::ProviderAdapter;
 use agtrace_types::{AgentEvent, discover_project_root, project_hash_from_root};
 use anyhow::Result;
 use std::path::PathBuf;
@@ -114,13 +114,7 @@ impl SessionOps {
             .map(|root| project_hash_from_root(&root.display().to_string()))
             .unwrap_or_else(|| "unknown".to_string());
 
-        let scan_context = ScanContext {
-            project_hash,
-            project_root: None,
-            provider_filter: None,
-        };
-
-        service.run(&scan_context, false, |_progress: IndexProgress| {})?;
+        service.run(&project_hash, None, false, |_progress: IndexProgress| {})?;
 
         Ok(())
     }

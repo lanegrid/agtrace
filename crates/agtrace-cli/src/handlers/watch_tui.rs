@@ -158,7 +158,6 @@ fn handle_provider_watch(
     tx: Sender<TuiEvent>,
     signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
-    use agtrace_providers::ScanContext;
     use agtrace_runtime::SessionFilter;
     use agtrace_types::project_hash_from_root;
     use std::sync::mpsc::RecvTimeoutError;
@@ -175,14 +174,14 @@ fn handle_provider_watch(
             "unknown".to_string()
         };
 
-        let scan_context = ScanContext {
-            project_hash,
-            project_root: current_project_root.clone(),
-            provider_filter: Some(provider_name.to_string()),
-        };
-
         // Lightweight scan (incremental by default)
-        let _ = workspace.projects().scan(&scan_context, false, |_| {});
+        let _ = workspace.projects().scan(
+            &project_hash,
+            current_project_root.as_deref(),
+            false,
+            Some(provider_name),
+            |_| {},
+        );
 
         // Get latest session from updated DB
         let filter = SessionFilter::new()

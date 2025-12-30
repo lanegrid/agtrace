@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::ops::IndexService;
 use agtrace_index::Database;
-use agtrace_providers::{ScanContext, get_all_providers};
+use agtrace_providers::get_all_providers;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
@@ -117,19 +117,20 @@ impl InitService {
                 .collect();
 
             let service = IndexService::new(&db, providers);
-            let scan_context = ScanContext {
-                project_hash: current_project_hash.clone(),
-                project_root: if config.all_projects {
-                    None
-                } else {
-                    Some(current_project_root.clone())
-                },
-                provider_filter: None,
+            let project_root_param = if config.all_projects {
+                None
+            } else {
+                Some(current_project_root.as_str())
             };
 
-            service.run(&scan_context, config.refresh, |_progress| {
-                // Silently index during init - progress is shown by the handler
-            })?;
+            service.run(
+                &current_project_hash,
+                project_root_param,
+                config.refresh,
+                |_progress| {
+                    // Silently index during init - progress is shown by the handler
+                },
+            )?;
         }
 
         if let Some(ref mut f) = progress_fn {

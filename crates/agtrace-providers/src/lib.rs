@@ -24,9 +24,6 @@ pub mod tool_analyzer;
 // Tool specification
 pub(crate) mod tool_spec;
 
-// Legacy types and backward compatibility
-pub mod legacy;
-
 // Traits
 pub use traits::{
     LogDiscovery, ProbeResult, ProviderAdapter, SessionIndex, SessionParser, ToolMapper,
@@ -49,6 +46,3 @@ pub use tool_analyzer::{classify_common, extract_common_summary, truncate};
 
 // Normalization
 pub use normalization::normalize_tool_call;
-
-// Legacy types
-pub use legacy::{LogFileMetadata, ScanContext, SessionMetadata};

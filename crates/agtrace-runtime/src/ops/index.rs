@@ -1,5 +1,5 @@
 use agtrace_index::{Database, LogFileRecord, ProjectRecord, SessionRecord};
-use agtrace_providers::{ProviderAdapter, ScanContext};
+use agtrace_providers::ProviderAdapter;
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -42,7 +42,13 @@ impl<'a> IndexService<'a> {
         Self { db, providers }
     }
 
-    pub fn run<F>(&self, scan_context: &ScanContext, force: bool, mut on_progress: F) -> Result<()>
+    pub fn run<F>(
+        &self,
+        project_hash: &str,
+        project_root: Option<&str>,
+        force: bool,
+        mut on_progress: F,
+    ) -> Result<()>
     where
         F: FnMut(IndexProgress),
     {
@@ -88,25 +94,47 @@ impl<'a> IndexService<'a> {
             });
 
             let sessions = provider
-                .scan_legacy(log_root, scan_context)
+                .discovery
+                .scan_sessions(log_root)
                 .with_context(|| format!("Failed to scan {}", provider_name))?;
+
+            // Filter sessions by project_root if specified
+            let filtered_sessions: Vec<_> = sessions
+                .into_iter()
+                .filter(|session| {
+                    if let Some(expected_root) = project_root {
+                        if let Some(session_root) = &session.project_root {
+                            let session_normalized = session_root.trim_end_matches('/');
+                            let expected_normalized = expected_root.trim_end_matches('/');
+                            session_normalized == expected_normalized
+                        } else {
+                            provider_name == "gemini"
+                        }
+                    } else {
+                        true
+                    }
+                })
+                .collect();
 
             on_progress(IndexProgress::ProviderSessionCount {
                 provider_name: provider_name.to_string(),
-                count: sessions.len(),
-                project_hash: scan_context.project_hash.clone(),
-                all_projects: scan_context.project_root.is_none(),
+                count: filtered_sessions.len(),
+                project_hash: project_hash.to_string(),
+                all_projects: project_root.is_none(),
             });
 
-            for session in sessions {
-                let all_files_unchanged = !force
-                    && session
-                        .log_files
-                        .iter()
-                        .all(|f| indexed_files.contains(&f.path));
+            for session in filtered_sessions {
+                // Collect all file paths for this session
+                let mut all_files = vec![session.main_file.display().to_string()];
+                for side_file in &session.sidechain_files {
+                    all_files.push(side_file.display().to_string());
+                }
+
+                let all_files_unchanged =
+                    !force && all_files.iter().all(|f| indexed_files.contains(f));
 
                 if all_files_unchanged {
-                    skipped_files += session.log_files.len();
+                    skipped_files += all_files.len();
                     continue;
                 }
 
@@ -114,8 +142,20 @@ impl<'a> IndexService<'a> {
                     session_id: session.session_id.clone(),
                 });
 
+                // Calculate project_hash from session data
+                let session_project_hash = if let Some(ref root) = session.project_root {
+                    agtrace_types::project_hash_from_root(root)
+                } else if provider_name == "gemini" {
+                    // For Gemini, extract project_hash directly from the file
+                    use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
+                    extract_project_hash_from_gemini_file(&session.main_file)
+                        .unwrap_or_else(|| project_hash.to_string())
+                } else {
+                    project_hash.to_string()
+                };
+
                 let project_record = ProjectRecord {
-                    hash: session.project_hash.clone(),
+                    hash: session_project_hash.clone(),
                     root_path: session.project_root.clone(),
                     last_scanned_at: Some(chrono::Utc::now().to_rfc3339()),
                 };
@@ -123,25 +163,38 @@ impl<'a> IndexService<'a> {
 
                 let session_record = SessionRecord {
                     id: session.session_id.clone(),
-                    project_hash: session.project_hash.clone(),
-                    provider: session.provider.clone(),
-                    start_ts: session.start_ts.clone(),
-                    end_ts: session.end_ts.clone(),
+                    project_hash: session_project_hash.clone(),
+                    provider: provider_name.to_string(),
+                    start_ts: session.timestamp.clone(),
+                    end_ts: None,
                     snippet: session.snippet.clone(),
                     is_valid: true,
                 };
                 self.db.insert_or_update_session(&session_record)?;
 
-                for log_file in session.log_files {
-                    scanned_files += 1;
-                    let log_file_record = LogFileRecord {
-                        path: log_file.path,
+                // Register main file
+                let to_log_file_record = |path: &PathBuf, role: &str| -> Result<LogFileRecord> {
+                    let meta = std::fs::metadata(path).ok();
+                    Ok(LogFileRecord {
+                        path: path.display().to_string(),
                         session_id: session.session_id.clone(),
-                        role: log_file.role,
-                        file_size: log_file.file_size,
-                        mod_time: log_file.mod_time,
-                    };
-                    self.db.insert_or_update_log_file(&log_file_record)?;
+                        role: role.to_string(),
+                        file_size: meta.as_ref().map(|m| m.len() as i64),
+                        mod_time: meta
+                            .and_then(|m| m.modified().ok())
+                            .map(|t| format!("{:?}", t)),
+                    })
+                };
+
+                scanned_files += 1;
+                let main_log_file = to_log_file_record(&session.main_file, "main")?;
+                self.db.insert_or_update_log_file(&main_log_file)?;
+
+                // Register sidechain files
+                for side_file in &session.sidechain_files {
+                    scanned_files += 1;
+                    let side_log_file = to_log_file_record(side_file, "sidechain")?;
+                    self.db.insert_or_update_log_file(&side_log_file)?;
                 }
 
                 total_sessions += 1;

@@ -1,7 +1,6 @@
 use crate::args::{OutputFormat, ViewModeArgs};
 use crate::presentation::presenters;
 use crate::presentation::view_models::IndexEvent;
-use agtrace_providers::ScanContext;
 use agtrace_runtime::{AgTrace, IndexProgress};
 use agtrace_types::project_hash_from_root;
 use anyhow::Result;
@@ -29,17 +28,13 @@ pub fn handle(
     let provider_filter = if provider == "all" {
         None
     } else {
-        Some(provider)
+        Some(provider.as_str())
     };
 
-    let scan_context = ScanContext {
-        project_hash,
-        project_root: if all_projects {
-            None
-        } else {
-            current_project_root
-        },
-        provider_filter,
+    let project_root_param = if all_projects {
+        None
+    } else {
+        current_project_root.as_deref()
     };
 
     // Track final result
@@ -47,9 +42,12 @@ pub fn handle(
     let mut final_scanned = 0;
     let mut final_skipped = 0;
 
-    workspace
-        .projects()
-        .scan(&scan_context, force, |progress| {
+    workspace.projects().scan(
+        &project_hash,
+        project_root_param,
+        force,
+        provider_filter,
+        |progress| {
             // Don't render progress events in JSON mode
             if format == OutputFormat::Json {
                 // Just capture the final stats
@@ -92,7 +90,8 @@ pub fn handle(
                 final_scanned = scanned_files;
                 final_skipped = skipped_files;
             }
-        })?;
+        },
+    )?;
 
     let view_model =
         presenters::present_index_result(final_total, final_scanned, final_skipped, force);

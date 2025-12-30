@@ -2,7 +2,7 @@ use crate::ops::{
     CorpusStats, IndexProgress, IndexService, StatsResult, collect_tool_stats, get_corpus_overview,
 };
 use agtrace_index::Database;
-use agtrace_providers::{ProviderAdapter, ScanContext};
+use agtrace_providers::ProviderAdapter;
 use agtrace_types::{discover_project_root, project_hash_from_root};
 use anyhow::Result;
 use std::path::PathBuf;
@@ -61,13 +61,7 @@ impl InsightOps {
             .map(|root| project_hash_from_root(&root.display().to_string()))
             .unwrap_or_else(|| "unknown".to_string());
 
-        let scan_context = ScanContext {
-            project_hash,
-            project_root: None,
-            provider_filter: None,
-        };
-
-        service.run(&scan_context, false, |_progress: IndexProgress| {})?;
+        service.run(&project_hash, None, false, |_progress: IndexProgress| {})?;
 
         Ok(())
     }
