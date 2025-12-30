@@ -25,15 +25,21 @@ for TAG in $TAGS; do
     continue
   fi
 
-  # Check if CHANGELOG content is already in the release notes
-  if echo "$CURRENT_BODY" | grep -q "### Bug Fixes\|### Features\|### Documentation\|### Refactor"; then
-    echo "  CHANGELOG content already present in $TAG, skipping..."
-    continue
+  # Check if the current body is already CHANGELOG-only (no install instructions)
+  if ! echo "$CURRENT_BODY" | grep -q "## Install\|### Install prebuilt"; then
+    # Check if content matches CHANGELOG
+    NORMALIZED_CURRENT=$(echo "$CURRENT_BODY" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$')
+    NORMALIZED_CHANGELOG=$(echo "$CHANGELOG_CONTENT" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$')
+
+    if [ "$NORMALIZED_CURRENT" = "$NORMALIZED_CHANGELOG" ]; then
+      echo "  Release notes already correct for $TAG, skipping..."
+      continue
+    fi
   fi
 
   # Use only CHANGELOG content for release notes
   echo "$CHANGELOG_CONTENT" | gh release edit "$TAG" --notes-file -
-  echo "  Updated release $TAG"
+  echo "  ✅ Updated release $TAG"
 done
 
 echo "Done updating all releases!"
