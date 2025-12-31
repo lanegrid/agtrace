@@ -3,7 +3,7 @@ use rusqlite::Connection;
 use crate::Result;
 
 // Schema version (increment when changing table definitions)
-pub const SCHEMA_VERSION: i32 = 1;
+pub const SCHEMA_VERSION: i32 = 2;
 
 // NOTE: Database Design Rationale (Pointer Edition)
 //
