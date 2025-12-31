@@ -41,25 +41,36 @@ Embed agent observability into your own tools (vital-checkers, IDE plugins, dash
 agtrace-sdk = "0.1"
 ```
 
-```rust
+```rust,no_run
 use agtrace_sdk::{Client, Lens};
+use futures::stream::StreamExt;
 
-// Connect to the local workspace (uses XDG data directory)
-let client = Client::connect_default().await?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Connect to the local workspace (uses XDG data directory)
+    let client = Client::connect_default().await?;
 
-// 1. Real-time Monitoring
-for event in client.watch().all_providers().start()? {
-    println!("Activity: {:?}", event);
+    // 1. Real-time Monitoring
+    let mut stream = client.watch().all_providers().start()?;
+    while let Some(event) = stream.next().await {
+        println!("Activity: {:?}", event);
+    }
+
+    // 2. Session Analysis
+    let sessions = client.sessions().list(Default::default())?;
+    if let Some(summary) = sessions.first() {
+        let handle = client.sessions().get(&summary.id)?;
+        let report = handle.analyze()?
+            .through(Lens::Failures)
+            .report()?;
+        println!("Health: {}/100", report.score);
+    }
+
+    Ok(())
 }
-
-// 2. Session Diagnosis
-let session_handle = client.sessions().get("session_123")?;
-let report = session_handle.analyze()?
-    .through(Lens::Failures)
-    .through(Lens::Loops)
-    .report()?;
-println!("Health: {}", report.score);
 ```
+
+**See also**: [SDK examples](crates/agtrace-sdk/examples/) for complete, runnable code.
 
 ## 📚 Documentation
 
