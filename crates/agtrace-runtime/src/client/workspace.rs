@@ -5,7 +5,7 @@ use crate::ops::{CheckResult, DoctorService, InspectResult};
 use agtrace_engine::DiagnoseResult;
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
-use anyhow::Result;
+use crate::{Error, Result};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -29,13 +29,13 @@ impl AgTrace {
 
         let db = Database::open(&db_path).map_err(|e| {
             if !db_path.exists() {
-                anyhow::anyhow!(
+                Error::NotInitialized(format!(
                     "Database not found. Please run 'agtrace init' to initialize the workspace.\n\
                      Database path: {}",
                     db_path.display()
-                )
+                ))
             } else {
-                e
+                Error::Index(e)
             }
         })?;
 

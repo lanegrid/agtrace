@@ -1,6 +1,6 @@
 use crate::runtime::{SessionStreamer, WatchContext, WorkspaceEvent, WorkspaceSupervisor};
 use agtrace_index::Database;
-use anyhow::Result;
+use crate::{Error, Result};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
@@ -70,7 +70,7 @@ impl WorkspaceMonitor {
             self.provider_configs
                 .first()
                 .map(|(n, _)| n.clone())
-                .ok_or_else(|| anyhow::anyhow!("No providers available"))?
+                .ok_or_else(|| Error::InvalidOperation("No providers available".to_string()))?
         };
 
         let adapter = agtrace_providers::create_adapter(&provider_name)?;

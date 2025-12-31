@@ -1,7 +1,7 @@
 use agtrace_engine::{DiagnoseResult, FailureExample, FailureType, categorize_parse_error};
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
-use anyhow::Result;
+use crate::{Error, Result};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -104,7 +104,7 @@ impl DoctorService {
     fn test_parse_file(
         provider: &ProviderAdapter,
         path: &Path,
-    ) -> Result<(), (FailureType, String)> {
+    ) -> std::result::Result<(), (FailureType, String)> {
         match provider.parser.parse_file(path) {
             Ok(_events) => Ok(()),
             Err(e) => {
@@ -122,7 +122,7 @@ impl DoctorService {
         let path = Path::new(file_path);
 
         if !path.exists() {
-            anyhow::bail!("File not found: {}", file_path);
+            return Err(Error::InvalidOperation(format!("File not found: {}", file_path)));
         }
 
         match provider.parser.parse_file(path) {
@@ -147,7 +147,7 @@ impl DoctorService {
         let path = Path::new(file_path);
 
         if !path.exists() {
-            anyhow::bail!("File not found: {}", file_path);
+            return Err(Error::InvalidOperation(format!("File not found: {}", file_path)));
         }
 
         let file = File::open(path)?;

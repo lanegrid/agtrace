@@ -3,7 +3,7 @@ use agtrace_engine::{AgentSession, assemble_session};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
-use anyhow::Result;
+use crate::{Error, Result};
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -72,7 +72,7 @@ impl StreamContext {
     }
 
     fn load_file(path: &Path, provider: &Arc<ProviderAdapter>) -> Result<Vec<AgentEvent>> {
-        provider.parser.parse_file(path)
+        Ok(provider.parser.parse_file(path)?)
     }
 }
 
@@ -96,7 +96,7 @@ impl SessionStreamer {
             let db_lock = db.lock().unwrap();
             let files = db_lock.get_session_files(&session_id)?;
             if files.is_empty() {
-                anyhow::bail!("Session not found: {}", session_id);
+                return Err(Error::InvalidOperation(format!("Session not found: {}", session_id)));
             }
             files
                 .into_iter()
@@ -117,7 +117,7 @@ impl SessionStreamer {
         let session_files = find_session_files(&log_root, &session_id, &provider)?;
 
         if session_files.is_empty() {
-            anyhow::bail!("No files found for session: {}", session_id);
+            return Err(Error::InvalidOperation(format!("No files found for session: {}", session_id)));
         }
 
         Self::start_core(session_id, session_files, provider)
@@ -134,21 +134,24 @@ impl SessionStreamer {
         let watch_dir = session_files
             .first()
             .and_then(|p| p.parent())
-            .ok_or_else(|| anyhow::anyhow!("Cannot determine watch directory"))?
+            .ok_or_else(|| Error::InvalidOperation("Cannot determine watch directory".to_string()))?
             .to_path_buf();
 
         let config = notify::Config::default().with_poll_interval(Duration::from_millis(500));
 
         let mut watcher = PollWatcher::new(
-            move |res: Result<Event, _>| {
+            move |res: std::result::Result<Event, notify::Error>| {
                 if let Ok(event) = res {
                     let _ = tx_fs.send(event);
                 }
             },
             config,
-        )?;
+        )
+        .map_err(|e| Error::InvalidOperation(format!("Failed to create file watcher: {}", e)))?;
 
-        watcher.watch(&watch_dir, RecursiveMode::Recursive)?;
+        watcher
+            .watch(&watch_dir, RecursiveMode::Recursive)
+            .map_err(|e| Error::InvalidOperation(format!("Failed to watch directory: {}", e)))?;
 
         let tx_attached = tx_out.clone();
         let first_file = session_files.first().cloned().unwrap();

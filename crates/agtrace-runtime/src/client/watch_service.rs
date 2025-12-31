@@ -3,7 +3,7 @@ use crate::config::Config;
 use crate::runtime::SessionStreamer;
 use agtrace_index::Database;
 use agtrace_types::project_hash_from_root;
-use anyhow::Result;
+use crate::{Error, Result};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -68,13 +68,12 @@ impl WatchService {
                             Err(e) => last_error = Some(e),
                         }
                     }
-                    Err(e) => last_error = Some(e),
+                    Err(e) => last_error = Some(Error::Provider(e)),
                 }
             }
 
             return Err(last_error
-                .unwrap_or_else(|| anyhow::anyhow!("No providers configured"))
-                .context(format!("Session not found: {}", resolved_id)));
+                .unwrap_or_else(|| Error::InvalidOperation(format!("Session not found: {}", resolved_id))));
         };
 
         Ok(StreamHandle::new(streamer))
@@ -86,7 +85,7 @@ impl WatchService {
             .iter()
             .find(|(name, _)| name == provider_name)
             .map(|(_, path)| path.clone())
-            .ok_or_else(|| anyhow::anyhow!("Provider '{}' not configured", provider_name))?;
+            .ok_or_else(|| Error::InvalidOperation(format!("Provider '{}' not configured", provider_name)))?;
 
         Ok(MonitorBuilder::new(
             self.db.clone(),

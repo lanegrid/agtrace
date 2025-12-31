@@ -1,6 +1,6 @@
 use agtrace_engine::{SessionDigest, analyze_and_select_sessions, assemble_session};
 use agtrace_index::{Database, SessionSummary};
-use anyhow::Result;
+use crate::Result;
 use std::collections::HashMap;
 
 use crate::storage::{LoadOptions, SessionRepository};

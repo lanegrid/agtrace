@@ -7,7 +7,7 @@ use agtrace_engine::export::ExportStrategy;
 use agtrace_index::{Database, SessionSummary};
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
-use anyhow::Result;
+use crate::{Error, Result};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -142,7 +142,7 @@ impl SessionOps {
             });
         }
 
-        anyhow::bail!("Session not found: {}", session_id)
+        return Err(Error::InvalidOperation(format!("Session not found: {}", session_id)))
     }
 
     fn resolve_session_id(&self, session_id: &str) -> Result<Option<String>> {
@@ -152,7 +152,7 @@ impl SessionOps {
             return Ok(Some(session.id));
         }
 
-        db.find_session_by_prefix(session_id)
+        Ok(db.find_session_by_prefix(session_id)?)
     }
 
     pub fn pack_context(

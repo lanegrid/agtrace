@@ -1,4 +1,4 @@
-use anyhow::Result;
+use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -51,7 +51,7 @@ impl Config {
     pub fn default_path() -> Result<PathBuf> {
         let home = std::env::var("HOME")
             .or_else(|_| std::env::var("USERPROFILE"))
-            .map_err(|_| anyhow::anyhow!("Could not determine home directory"))?;
+            .map_err(|_| Error::Config("Could not determine home directory".to_string()))?;
 
         Ok(PathBuf::from(home).join(".agtrace").join("config.toml"))
     }

@@ -6,6 +6,9 @@ pub(crate) mod ops;
 pub(crate) mod runtime;
 pub(crate) mod storage;
 
+// Error types
+pub mod error;
+
 // Public client interface
 pub mod client;
 
@@ -25,3 +28,6 @@ pub use ops::{
     InspectResult, PackResult, ProjectInfo, StatsResult,
 };
 pub use runtime::{DiscoveryEvent, StreamEvent, WorkspaceEvent};
+
+// Error types
+pub use error::{Error, Result};

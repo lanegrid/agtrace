@@ -2,7 +2,7 @@ use crate::config::Config;
 use crate::ops::IndexService;
 use agtrace_index::Database;
 use agtrace_providers::get_all_providers;
-use anyhow::Result;
+use crate::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -180,7 +180,7 @@ impl InitService {
     }
 
     fn step2_database(db_path: &Path) -> Result<Database> {
-        Database::open(db_path)
+        Ok(Database::open(db_path)?)
     }
 
     fn step3_scan(

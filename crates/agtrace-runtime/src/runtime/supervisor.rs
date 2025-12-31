@@ -2,7 +2,7 @@ use crate::runtime::events::{DiscoveryEvent, WorkspaceEvent};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::project_hash_from_root;
-use anyhow::Result;
+use crate::{Error, Result};
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -35,17 +35,20 @@ impl WorkspaceSupervisor {
         let config = notify::Config::default().with_poll_interval(Duration::from_millis(1000));
 
         let mut watcher = PollWatcher::new(
-            move |res: Result<Event, _>| {
+            move |res: std::result::Result<Event, notify::Error>| {
                 if let Ok(event) = res {
                     let _ = tx_fs.send(event);
                 }
             },
             config,
-        )?;
+        )
+        .map_err(|e| Error::InvalidOperation(format!("Failed to create file watcher: {}", e)))?;
 
         for context in &contexts {
             if context.root.exists() {
-                watcher.watch(&context.root, RecursiveMode::Recursive)?;
+                watcher
+                    .watch(&context.root, RecursiveMode::Recursive)
+                    .map_err(|e| Error::InvalidOperation(format!("Failed to watch directory: {}", e)))?;
             }
         }
 

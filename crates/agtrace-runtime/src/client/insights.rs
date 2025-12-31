@@ -3,7 +3,7 @@ use crate::ops::{
 };
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
-use anyhow::Result;
+use crate::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 

@@ -1,7 +1,7 @@
 use agtrace_index::Database;
 use agtrace_providers::{normalize_claude_file, normalize_codex_file, normalize_gemini_file};
 use agtrace_types::AgentEvent;
-use anyhow::Result;
+use crate::{Error, Result};
 use std::path::Path;
 
 pub struct SessionRepository<'a> {
@@ -21,7 +21,7 @@ impl<'a> SessionRepository<'a> {
         let log_files = self.db.get_session_files(&resolved_id)?;
 
         if log_files.is_empty() {
-            anyhow::bail!("Session not found: {}", session_id);
+            return Err(Error::InvalidOperation(format!("Session not found: {}", session_id)));
         }
 
         let mut all_events = Vec::new();
@@ -36,7 +36,7 @@ impl<'a> SessionRepository<'a> {
             } else if log_file.path.contains(".gemini/") {
                 normalize_gemini_file(path)
             } else {
-                anyhow::bail!("Cannot detect provider from path: {}", log_file.path)
+                return Err(Error::InvalidOperation(format!("Cannot detect provider from path: {}", log_file.path)))
             };
 
             match result {
@@ -60,7 +60,7 @@ impl<'a> SessionRepository<'a> {
             None => {
                 let files = self.db.get_session_files(session_id)?;
                 if files.is_empty() {
-                    anyhow::bail!("Session not found: {}", session_id);
+                    return Err(Error::InvalidOperation(format!("Session not found: {}", session_id)));
                 }
                 Ok(session_id.to_string())
             }

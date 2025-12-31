@@ -1,5 +1,5 @@
 use agtrace_engine::ContextWindowUsage;
-use anyhow::Result;
+use crate::{Error, Result};
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
 
@@ -61,24 +61,24 @@ impl SessionState {
             .map(agtrace_engine::ContextLimit::new)
     }
 
-    pub fn validate_tokens(&self, model_limit: Option<u64>) -> Result<(), String> {
+    pub fn validate_tokens(&self, model_limit: Option<u64>) -> Result<()> {
         if self.current_usage.fresh_input.0 < 0
             || self.current_usage.output.0 < 0
             || self.current_usage.cache_creation.0 < 0
             || self.current_usage.cache_read.0 < 0
         {
-            return Err("Negative token count detected".to_string());
+            return Err(Error::InvalidOperation("Negative token count detected".to_string()));
         }
 
         let total = self.total_tokens();
         if let Some(limit) = model_limit
             && total.as_u64() > limit
         {
-            return Err(format!(
+            return Err(Error::InvalidOperation(format!(
                 "Token count {} exceeds model limit {}",
                 total.as_u64(),
                 limit
-            ));
+            )));
         }
 
         Ok(())
@@ -129,7 +129,8 @@ mod tests {
         state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 0, 150_000);
         let result = state.validate_tokens(Some(200_000));
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("exceeds model limit"));
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("exceeds model limit"));
     }
 
     #[test]
@@ -139,6 +140,7 @@ mod tests {
 
         let result = state.validate_tokens(None);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Negative token count detected");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Negative token count detected"));
     }
 }
