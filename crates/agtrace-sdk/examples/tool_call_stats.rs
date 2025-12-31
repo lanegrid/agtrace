@@ -22,6 +22,7 @@ struct ProviderStats {
     tool_kinds: HashMap<String, usize>,
     tool_names: HashMap<String, usize>,
     execute_commands: HashMap<String, usize>,
+    execute_by_tool: HashMap<String, HashMap<String, usize>>,
     file_paths: HashMap<String, usize>,
     mcp_servers: HashMap<String, usize>,
     mcp_tools: HashMap<String, usize>,
@@ -90,12 +91,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     .entry(arguments.file_path.clone())
                                     .or_insert(0) += 1;
                             }
-                            ToolCallPayload::Execute { arguments, .. } => {
+                            ToolCallPayload::Execute {
+                                name, arguments, ..
+                            } => {
                                 if let Some(command) = arguments.command() {
                                     *stats
                                         .execute_commands
                                         .entry(command.to_string())
                                         .or_insert(0) += 1;
+
+                                    // Track commands by tool name
+                                    stats
+                                        .execute_by_tool
+                                        .entry(name.clone())
+                                        .or_default()
+                                        .entry(command.to_string())
+                                        .and_modify(|c| *c += 1)
+                                        .or_insert(1);
                                 }
                             }
                             ToolCallPayload::Mcp { arguments, .. } => {
@@ -148,6 +160,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!();
         }
 
+        // Execute commands by tool name
+        if !stats.execute_by_tool.is_empty() {
+            println!("  Execute Commands by Tool:");
+            let mut tools: Vec<_> = stats.execute_by_tool.iter().collect();
+            tools.sort_by(|a, b| {
+                let a_total: usize = a.1.values().sum();
+                let b_total: usize = b.1.values().sum();
+                b_total.cmp(&a_total)
+            });
+
+            for (tool_name, commands) in tools {
+                let total: usize = commands.values().sum();
+                println!("    {} (× {} calls):", tool_name, total);
+                print_top_5_double_indented(commands);
+            }
+            println!();
+        }
+
         // Top 5 file paths
         if !stats.file_paths.is_empty() {
             println!("  Top 5 File Paths:");
@@ -190,5 +220,15 @@ fn print_all_sorted_indented(map: &HashMap<String, usize>) {
 
     for (key, count) in items {
         println!("    {} (× {})", key, count);
+    }
+}
+
+/// Print top 5 items with double indentation
+fn print_top_5_double_indented(map: &HashMap<String, usize>) {
+    let mut items: Vec<_> = map.iter().collect();
+    items.sort_by(|a, b| b.1.cmp(a.1));
+
+    for (i, (key, count)) in items.iter().take(5).enumerate() {
+        println!("      {}. {} (× {})", i + 1, key, count);
     }
 }
