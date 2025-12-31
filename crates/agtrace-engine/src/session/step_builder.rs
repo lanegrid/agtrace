@@ -1,4 +1,5 @@
 use super::types::*;
+use agtrace_types::ContextWindowUsage;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
@@ -8,7 +9,7 @@ pub struct StepBuilder {
     pub reasoning: Option<ReasoningBlock>,
     pub message: Option<MessageBlock>,
     pub tool_executions: Vec<ToolExecution>,
-    pub usage: Option<agtrace_types::TokenUsagePayload>,
+    pub usage: Option<ContextWindowUsage>,
 }
 
 impl StepBuilder {

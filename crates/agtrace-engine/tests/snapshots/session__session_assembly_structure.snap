@@ -61,9 +61,10 @@ expression: session
             }
           ],
           "usage": {
-            "input_tokens": 100,
-            "output_tokens": 50,
-            "total_tokens": 150
+            "fresh_input": 100,
+            "cache_creation": 0,
+            "cache_read": 0,
+            "output": 50
           },
           "is_failed": false,
           "status": "done"
@@ -72,13 +73,23 @@ expression: session
       "stats": {
         "duration_ms": 0,
         "step_count": 1,
-        "total_tokens": 150
+        "usage": {
+          "fresh_input": 100,
+          "cache_creation": 0,
+          "cache_read": 0,
+          "output": 50
+        }
       }
     }
   ],
   "stats": {
     "total_turns": 1,
     "duration_seconds": 0,
-    "total_tokens": 150
+    "usage": {
+      "fresh_input": 100,
+      "cache_creation": 0,
+      "cache_read": 0,
+      "output": 50
+    }
   }
 }

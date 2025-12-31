@@ -143,8 +143,14 @@ impl ExecuteIntent {
     fn has_option(cmd: &str, option: &str) -> bool {
         cmd.split_whitespace().any(|word| {
             // Exact match or starts with the option (e.g., "-i" or "-i.bak")
-            word == option || word.starts_with(&format!("{}", option))
-                && (word.len() == option.len() || !word.chars().nth(option.len()).unwrap_or(' ').is_alphanumeric())
+            word == option
+                || word.starts_with(&format!("{}", option))
+                    && (word.len() == option.len()
+                        || !word
+                            .chars()
+                            .nth(option.len())
+                            .unwrap_or(' ')
+                            .is_alphanumeric())
         })
     }
 }
@@ -333,7 +339,10 @@ mod tests {
     #[test]
     fn test_classify_git() {
         assert_eq!(ExecuteIntent::classify("git status"), ExecuteIntent::Git);
-        assert_eq!(ExecuteIntent::classify("git commit -m 'message'"), ExecuteIntent::Git);
+        assert_eq!(
+            ExecuteIntent::classify("git commit -m 'message'"),
+            ExecuteIntent::Git
+        );
     }
 
     #[test]

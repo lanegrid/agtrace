@@ -15,7 +15,10 @@
 //!
 //! Run with: cargo run --release -p agtrace-sdk --example provider_efficiency
 
-use agtrace_sdk::{types::{SessionFilter, ToolKind}, Client};
+use agtrace_sdk::{
+    Client,
+    types::{SessionFilter, ToolKind},
+};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -156,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Ok(session_handle) = client.sessions().get(&session_summary.id) {
             if let Ok(session) = session_handle.assemble() {
                 // Collect token stats from assembled session
-                metrics.total_tokens += session.stats.total_tokens.max(0) as usize;
+                metrics.total_tokens += session.stats.usage.total_tokens().as_u64() as usize;
                 for turn in &session.turns {
                     metrics.total_turns += 1;
 
@@ -285,15 +288,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "  Tokens per session:     {:.0}",
                 metrics.tokens_per_session()
             );
-            println!(
-                "  Tokens per tool call:   {:.0}",
-                metrics.tokens_per_tool()
-            );
+            println!("  Tokens per tool call:   {:.0}", metrics.tokens_per_tool());
 
             // Warn if token stats seem abnormal
             let tpt = metrics.tokens_per_tool();
             if tpt > 10000.0 {
-                println!("  ⚠️  Warning: Abnormally high tokens/tool - possible data quality issue");
+                println!(
+                    "  ⚠️  Warning: Abnormally high tokens/tool - possible data quality issue"
+                );
             }
             println!();
         }
@@ -301,7 +303,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Implementation style
         println!("🎨 Implementation Style:");
         let (read_pct, write_pct, exec_pct) = metrics.read_write_execute_ratio();
-        println!("  Read:    {:>6} calls ({:>5.1}%)", metrics.read_calls, read_pct);
+        println!(
+            "  Read:    {:>6} calls ({:>5.1}%)",
+            metrics.read_calls, read_pct
+        );
         println!(
             "  Write:   {:>6} calls ({:>5.1}%)",
             metrics.write_calls, write_pct
@@ -337,7 +342,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
 
     if reliable_providers.is_empty() {
-        println!("⚠️  Not enough data for reliable comparison (need at least 20 sessions per provider)\n");
+        println!(
+            "⚠️  Not enough data for reliable comparison (need at least 20 sessions per provider)\n"
+        );
         return Ok(());
     }
 

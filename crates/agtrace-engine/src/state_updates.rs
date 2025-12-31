@@ -1,5 +1,4 @@
-use crate::token_usage::ContextWindowUsage;
-use agtrace_types::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, ContextWindowUsage, EventPayload};
 use serde_json::Value;
 
 /// Pure data extracted from an AgentEvent to update runtime session state.

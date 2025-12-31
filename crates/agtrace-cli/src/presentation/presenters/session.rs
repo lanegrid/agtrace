@@ -237,29 +237,21 @@ fn build_turn_analysis(
         .steps
         .iter()
         .filter_map(|s| s.usage.as_ref())
-        .map(|u| {
-            u.input_tokens as i64
-                + u.details
-                    .as_ref()
-                    .and_then(|d| d.cache_creation_input_tokens)
-                    .unwrap_or(0) as i64
-        })
+        .map(|u| (u.fresh_input.0 + u.cache_creation.0) as i64)
         .sum();
 
     let total_output: i64 = turn
         .steps
         .iter()
         .filter_map(|s| s.usage.as_ref())
-        .map(|u| u.output_tokens as i64)
+        .map(|u| u.output.0 as i64)
         .sum();
 
     let cache_read_total: i64 = turn
         .steps
         .iter()
         .filter_map(|s| s.usage.as_ref())
-        .filter_map(|u| u.details.as_ref())
-        .filter_map(|d| d.cache_read_input_tokens)
-        .map(|v| v as i64)
+        .map(|u| u.cache_read.0 as i64)
         .sum();
 
     TurnAnalysisViewModel {

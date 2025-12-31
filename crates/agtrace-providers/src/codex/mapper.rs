@@ -305,7 +305,10 @@ mod tests {
                 assert_eq!(name, "shell");
                 assert_eq!(provider_call_id, Some("call_123".to_string()));
             }
-            _ => panic!("Expected FileRead variant for ls command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected FileRead variant for ls command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -451,7 +454,10 @@ mod tests {
                 assert_eq!(arguments.file_path, Some("file.txt".to_string()));
                 assert_eq!(provider_call_id, Some("call_read".to_string()));
             }
-            _ => panic!("Expected FileRead variant for cat command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected FileRead variant for cat command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -475,7 +481,10 @@ mod tests {
                     Some("packages/extension-inspector/src/App.tsx".to_string())
                 );
             }
-            _ => panic!("Expected FileRead variant for sed -n command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected FileRead variant for sed -n command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -494,7 +503,10 @@ mod tests {
                 assert_eq!(name, "shell");
                 // ls doesn't have a specific file, so file_path is None
             }
-            _ => panic!("Expected FileRead variant for ls command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected FileRead variant for ls command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -513,7 +525,10 @@ mod tests {
                 assert_eq!(name, "shell");
                 // mkdir is a write command, should remain Execute
             }
-            _ => panic!("Expected Execute variant for mkdir command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected Execute variant for mkdir command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -535,7 +550,10 @@ mod tests {
                 assert_eq!(name, "shell_command");
                 assert_eq!(arguments.file_path, Some("file.txt".to_string()));
             }
-            _ => panic!("Expected FileRead variant for cat command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected FileRead variant for cat command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -556,7 +574,10 @@ mod tests {
                 assert_eq!(name, "shell");
                 assert_eq!(arguments.file_path, Some("Cargo.toml".to_string()));
             }
-            _ => panic!("Expected FileRead variant for bash-wrapped cat, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected FileRead variant for bash-wrapped cat, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -577,7 +598,10 @@ mod tests {
                 assert_eq!(name, "shell_command");
                 assert_eq!(arguments.pattern, Some("context window".to_string()));
             }
-            _ => panic!("Expected Search variant for rg command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected Search variant for rg command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -596,7 +620,10 @@ mod tests {
                 assert_eq!(name, "shell_command");
                 // rg --files is file listing, not search
             }
-            _ => panic!("Expected FileRead variant for rg --files, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected FileRead variant for rg --files, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 
@@ -617,7 +644,10 @@ mod tests {
                 assert_eq!(name, "shell");
                 assert_eq!(arguments.pattern, Some("TODO".to_string()));
             }
-            _ => panic!("Expected Search variant for grep command, got: {:?}", payload.kind()),
+            _ => panic!(
+                "Expected Search variant for grep command, got: {:?}",
+                payload.kind()
+            ),
         }
     }
 }

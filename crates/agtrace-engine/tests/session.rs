@@ -154,7 +154,7 @@ fn test_session_assembly_structure() {
     assert_eq!(step.tools[0].call.content.name(), "bash");
     assert!(step.tools[0].result.is_some());
     assert!(step.usage.is_some());
-    assert_eq!(step.usage.as_ref().unwrap().total_tokens, 150);
+    assert_eq!(step.usage.as_ref().unwrap().total_tokens().as_u64(), 150);
 
     insta::assert_json_snapshot!("session_assembly_structure", session);
 }
