@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use crate::Result;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
@@ -7,8 +7,7 @@ use super::schema::CodexRecord;
 
 /// Parse Codex JSONL file and normalize to AgentEvent
 pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read Codex file: {}", path.display()))?;
+    let text = std::fs::read_to_string(path)?;
 
     let mut records: Vec<CodexRecord> = Vec::new();
     let mut session_id_from_meta: Option<String> = None;
@@ -18,8 +17,7 @@ pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent
         if line.is_empty() {
             continue;
         }
-        let record: CodexRecord = serde_json::from_str(line)
-            .with_context(|| format!("Failed to parse JSON line: {}", line))?;
+        let record: CodexRecord = serde_json::from_str(line)?;
 
         // Extract session_id from session_meta record
         if let CodexRecord::SessionMeta(ref meta) = record {
@@ -66,8 +64,7 @@ pub struct CodexHeader {
 
 /// Extract header information from Codex file (for scanning)
 pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("Failed to open file: {}", path.display()))?;
+    let file = std::fs::File::open(path)?;
     let reader = BufReader::new(file);
 
     let mut session_id = None;

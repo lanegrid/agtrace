@@ -1,5 +1,5 @@
 use crate::traits::ProviderAdapter;
-use anyhow::{Result, anyhow};
+use crate::{Error, Result};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -83,6 +83,6 @@ pub fn detect_adapter_from_path(path: &str) -> Result<ProviderAdapter> {
     } else if path.contains(".gemini/") {
         Ok(ProviderAdapter::gemini())
     } else {
-        Err(anyhow!("Cannot detect provider from path: {}", path))
+        Err(Error::Provider(format!("Cannot detect provider from path: {}", path)))
     }
 }

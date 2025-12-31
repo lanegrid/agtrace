@@ -11,7 +11,6 @@ keywords = ["agtrace-internal"]
 agtrace-types.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-anyhow.workspace = true
 walkdir.workspace = true
 dirs.workspace = true
 chrono.workspace = true
@@ -20,3 +19,4 @@ regex.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
+anyhow.workspace = true

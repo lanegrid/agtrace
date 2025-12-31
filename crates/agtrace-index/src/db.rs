@@ -1,8 +1,7 @@
-use anyhow::{Context, Result};
 use rusqlite::Connection;
 use std::path::Path;
 
-use crate::{queries, records::*, schema};
+use crate::{queries, records::*, schema, Result};
 
 pub struct Database {
     conn: Connection,
@@ -10,9 +9,7 @@ pub struct Database {
 
 impl Database {
     pub fn open(db_path: &Path) -> Result<Self> {
-        let conn = Connection::open(db_path)
-            .with_context(|| format!("Failed to open database: {}", db_path.display()))?;
-
+        let conn = Connection::open(db_path)?;
         let db = Self { conn };
         schema::init_schema(&db.conn)?;
         Ok(db)

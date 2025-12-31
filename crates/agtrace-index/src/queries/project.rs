@@ -1,8 +1,7 @@
 use agtrace_types::ProjectHash;
-use anyhow::Result;
 use rusqlite::{Connection, OptionalExtension, params};
 
-use crate::records::ProjectRecord;
+use crate::{records::ProjectRecord, Result};
 
 pub fn insert_or_update(conn: &Connection, project: &ProjectRecord) -> Result<()> {
     conn.execute(
@@ -62,7 +61,7 @@ pub fn list(conn: &Connection) -> Result<Vec<ProjectRecord>> {
                 last_scanned_at: row.get(2)?,
             })
         })?
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
 
     Ok(projects)
 }

@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use crate::{Error, Result};
 use std::path::Path;
 
 use super::parser::normalize_gemini_session;
@@ -6,12 +6,10 @@ use super::schema::GeminiSession;
 
 /// Parse Gemini CLI JSON file and normalize to AgentEvent
 pub fn normalize_gemini_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
+    let text = std::fs::read_to_string(path)?;
 
     // Parse as Value to preserve original JSON
-    let raw_value: serde_json::Value = serde_json::from_str(&text)
-        .with_context(|| format!("Failed to parse Gemini file as JSON: {}", path.display()))?;
+    let raw_value: serde_json::Value = serde_json::from_str(&text)?;
 
     // Try new format (session object) first
     if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
@@ -25,10 +23,10 @@ pub fn normalize_gemini_file(path: &Path) -> Result<Vec<agtrace_types::AgentEven
         return Ok(normalize_gemini_session(&session, raw_messages));
     }
 
-    anyhow::bail!(
+    Err(Error::Parse(format!(
         "Gemini normalization only supports session format: {}",
         path.display()
-    )
+    )))
 }
 
 /// Extract projectHash from a Gemini logs.json file
@@ -47,8 +45,7 @@ pub struct GeminiHeader {
 
 /// Extract header information from Gemini file (for scanning)
 pub fn extract_gemini_header(path: &Path) -> Result<GeminiHeader> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
+    let text = std::fs::read_to_string(path)?;
 
     // Try new format first
     if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
@@ -82,8 +79,8 @@ pub fn extract_gemini_header(path: &Path) -> Result<GeminiHeader> {
         });
     }
 
-    anyhow::bail!(
+    Err(Error::Parse(format!(
         "Failed to parse Gemini file in any known format: {}",
         path.display()
-    )
+    )))
 }

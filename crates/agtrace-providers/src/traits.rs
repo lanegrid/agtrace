@@ -1,7 +1,8 @@
 use agtrace_types::{AgentEvent, ToolCallPayload, ToolKind, ToolOrigin};
-use anyhow::Result;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+
+use crate::{Error, Result};
 
 /// Provider discovery and lifecycle management
 ///
@@ -157,7 +158,7 @@ impl ProviderAdapter {
             "claude_code" | "claude" => Ok(Self::claude()),
             "codex" => Ok(Self::codex()),
             "gemini" => Ok(Self::gemini()),
-            _ => anyhow::bail!("Unknown provider: {}", provider_name),
+            _ => Err(Error::Provider(format!("Unknown provider: {}", provider_name))),
         }
     }
 
@@ -196,11 +197,11 @@ impl ProviderAdapter {
     /// Process a file through the adapter (convenience method)
     pub fn process_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
         if !self.discovery.probe(path).is_match() {
-            anyhow::bail!(
+            return Err(Error::Provider(format!(
                 "Provider {} cannot handle file: {}",
                 self.id(),
                 path.display()
-            );
+            )));
         }
         self.parser.parse_file(path)
     }

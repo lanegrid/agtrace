@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use crate::Result;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
@@ -7,8 +7,7 @@ use super::schema::ClaudeRecord;
 
 /// Parse Claude Code JSONL file and normalize to AgentEvent
 pub fn normalize_claude_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read Claude file: {}", path.display()))?;
+    let text = std::fs::read_to_string(path)?;
 
     let mut records: Vec<ClaudeRecord> = Vec::new();
     for line in text.lines() {
@@ -16,8 +15,7 @@ pub fn normalize_claude_file(path: &Path) -> Result<Vec<agtrace_types::AgentEven
         if line.is_empty() {
             continue;
         }
-        let record: ClaudeRecord = serde_json::from_str(line)
-            .with_context(|| format!("Failed to parse JSON line: {}", line))?;
+        let record: ClaudeRecord = serde_json::from_str(line)?;
         records.push(record);
     }
 
@@ -60,8 +58,7 @@ pub struct ClaudeHeader {
 
 /// Extract header information from Claude file (for scanning)
 pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
-    let file = std::fs::File::open(path)
-        .with_context(|| format!("Failed to open file: {}", path.display()))?;
+    let file = std::fs::File::open(path)?;
     let reader = BufReader::new(file);
 
     let mut session_id = None;

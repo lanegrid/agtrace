@@ -1,3 +1,6 @@
+// Error types
+pub mod error;
+
 // Trait-based architecture (public API)
 pub mod traits;
 
@@ -46,3 +49,6 @@ pub use tool_analyzer::{classify_common, extract_common_summary, truncate};
 
 // Normalization
 pub use normalization::normalize_tool_call;
+
+// Error types
+pub use error::{Error, Result};

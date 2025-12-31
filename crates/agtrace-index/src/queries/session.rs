@@ -1,8 +1,7 @@
 use agtrace_types::ProjectHash;
-use anyhow::Result;
 use rusqlite::{Connection, params};
 
-use crate::records::{SessionRecord, SessionSummary};
+use crate::{records::{SessionRecord, SessionSummary}, Error, Result};
 
 pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()> {
     conn.execute(
@@ -95,7 +94,7 @@ pub fn list(
                 snippet: row.get(4)?,
             })
         })?
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
 
     Ok(sessions)
 }
@@ -113,14 +112,14 @@ pub fn find_by_prefix(conn: &Connection, prefix: &str) -> Result<Option<String>>
     let pattern = format!("{}%", prefix);
     let mut matches: Vec<String> = stmt
         .query_map([&pattern], |row| row.get(0))?
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
 
     match matches.len() {
         0 => Ok(None),
         1 => Ok(Some(matches.remove(0))),
-        _ => anyhow::bail!(
+        _ => Err(Error::Query(format!(
             "Ambiguous session ID prefix '{}': multiple sessions match",
             prefix
-        ),
+        ))),
     }
 }

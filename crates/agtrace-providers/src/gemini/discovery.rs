@@ -1,6 +1,6 @@
 use crate::traits::{LogDiscovery, ProbeResult, SessionIndex};
 use agtrace_types::project_hash_from_root;
-use anyhow::Result;
+use crate::{Error, Result};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -94,7 +94,7 @@ impl LogDiscovery for GeminiDiscovery {
         let header = extract_gemini_header(path)?;
         header
             .session_id
-            .ok_or_else(|| anyhow::anyhow!("No session_id in file: {}", path.display()))
+            .ok_or_else(|| Error::Parse(format!("No session_id in file: {}", path.display())))
     }
 
     fn extract_project_hash(&self, path: &Path) -> Result<Option<agtrace_types::ProjectHash>> {

@@ -1,7 +1,6 @@
-use anyhow::Result;
 use rusqlite::{Connection, params};
 
-use crate::records::LogFileRecord;
+use crate::{records::LogFileRecord, Result};
 
 pub fn insert_or_update(conn: &Connection, log_file: &LogFileRecord) -> Result<()> {
     conn.execute(
@@ -46,7 +45,7 @@ pub fn get_session_files(conn: &Connection, session_id: &str) -> Result<Vec<LogF
                 mod_time: row.get(4)?,
             })
         })?
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
 
     Ok(files)
 }
@@ -70,7 +69,7 @@ pub fn get_all(conn: &Connection) -> Result<Vec<LogFileRecord>> {
                 mod_time: row.get(4)?,
             })
         })?
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
 
     Ok(files)
 }
