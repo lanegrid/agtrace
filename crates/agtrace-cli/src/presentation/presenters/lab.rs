@@ -84,14 +84,11 @@ fn present_event_payload(payload: &EventPayload) -> EventPayloadViewModel {
             text: p.text.clone(),
         },
         EventPayload::TokenUsage(p) => EventPayloadViewModel::TokenUsage {
-            input: p.input_tokens,
-            output: p.output_tokens,
-            total: p.total_tokens,
-            cache_creation: p
-                .details
-                .as_ref()
-                .and_then(|d| d.cache_creation_input_tokens),
-            cache_read: p.details.as_ref().and_then(|d| d.cache_read_input_tokens),
+            input: p.input.total() as i32,
+            output: p.output.total() as i32,
+            total: p.total_tokens() as i32,
+            cache_creation: None, // not tracked separately in new schema
+            cache_read: Some(p.input.cached as i32),
         },
         EventPayload::Notification(p) => EventPayloadViewModel::Notification {
             text: p.text.clone(),
