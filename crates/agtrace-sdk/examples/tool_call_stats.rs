@@ -19,6 +19,7 @@ use std::collections::HashMap;
 #[derive(Default)]
 struct ProviderStats {
     total_calls: usize,
+    tool_kinds: HashMap<String, usize>,
     tool_names: HashMap<String, usize>,
     file_paths: HashMap<String, usize>,
     mcp_servers: HashMap<String, usize>,
@@ -62,7 +63,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         stats.total_calls += 1;
                         let call = &tool_exec.call.content;
 
-                        // Count tool names
+                        // Count normalized tool kinds
+                        let kind = format!("{:?}", call.kind());
+                        *stats.tool_kinds.entry(kind).or_insert(0) += 1;
+
+                        // Count raw tool names
                         *stats.tool_names.entry(call.name().to_string()).or_insert(0) += 1;
 
                         // Categorize by payload type
@@ -117,8 +122,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         println!();
 
-        // Top 5 tool names
-        println!("  Top 5 Tool Names:");
+        // Tool kinds (normalized categories)
+        println!("  Tool Kinds (Normalized):");
+        print_all_sorted_indented(&stats.tool_kinds);
+        println!();
+
+        // Top 5 tool names (raw)
+        println!("  Top 5 Tool Names (Raw):");
         print_top_5_indented(&stats.tool_names);
         println!();
 
@@ -154,5 +164,15 @@ fn print_top_5_indented(map: &HashMap<String, usize>) {
 
     for (i, (key, count)) in items.iter().take(5).enumerate() {
         println!("    {}. {} (× {})", i + 1, key, count);
+    }
+}
+
+/// Print all items sorted by frequency with indentation
+fn print_all_sorted_indented(map: &HashMap<String, usize>) {
+    let mut items: Vec<_> = map.iter().collect();
+    items.sort_by(|a, b| b.1.cmp(a.1));
+
+    for (key, count) in items {
+        println!("    {} (× {})", key, count);
     }
 }
