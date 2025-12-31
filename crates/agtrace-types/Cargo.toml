@@ -13,7 +13,6 @@ serde_json.workspace = true
 chrono.workspace = true
 uuid.workspace = true
 sha2.workspace = true
-anyhow.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

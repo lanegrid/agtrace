@@ -1,4 +1,3 @@
-use anyhow::Result;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
@@ -45,7 +44,7 @@ pub fn paths_equal(path1: &Path, path2: &Path) -> bool {
 /// 1. explicit_project_root (--project-root flag)
 /// 2. AGTRACE_PROJECT_ROOT environment variable
 /// 3. Current working directory
-pub fn discover_project_root(explicit_project_root: Option<&str>) -> Result<PathBuf> {
+pub fn discover_project_root(explicit_project_root: Option<&str>) -> crate::Result<PathBuf> {
     if let Some(root) = explicit_project_root {
         return Ok(PathBuf::from(root));
     }
@@ -62,7 +61,7 @@ pub fn discover_project_root(explicit_project_root: Option<&str>) -> Result<Path
 pub fn resolve_effective_project_hash(
     explicit_hash: Option<&crate::ProjectHash>,
     all_projects: bool,
-) -> Result<(Option<crate::ProjectHash>, bool)> {
+) -> crate::Result<(Option<crate::ProjectHash>, bool)> {
     if let Some(hash) = explicit_hash {
         Ok((Some(hash.clone()), false))
     } else if all_projects {
