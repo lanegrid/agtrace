@@ -2,7 +2,7 @@ use agtrace_types::{ToolCallPayload, ToolKind, ToolOrigin};
 use serde_json::Value;
 
 use crate::codex::tools::{ApplyPatchArgs, PatchOperation, ReadMcpResourceArgs, ShellArgs};
-use agtrace_types::{ExecuteArgs, FileEditArgs, FileWriteArgs};
+use agtrace_types::{ExecuteArgs, FileEditArgs, FileReadArgs, FileWriteArgs};
 
 /// Normalize Codex-specific tool calls
 ///
@@ -61,6 +61,26 @@ pub(crate) fn normalize_codex_tool_call(
             if let Ok(shell_args) = serde_json::from_value::<ShellArgs>(arguments.clone()) {
                 // Convert to standard ExecuteArgs
                 let execute_args = shell_args.to_execute_args();
+
+                // Check if this is a read-oriented command
+                if let Some(command) = &execute_args.command {
+                    if super::execute_intent::classify_execute_command(command) == Some(ToolKind::Read) {
+                        // Extract file path if possible
+                        let file_path = super::execute_intent::extract_file_path(command);
+
+                        return ToolCallPayload::FileRead {
+                            name: tool_name,
+                            arguments: FileReadArgs {
+                                file_path,
+                                path: None,
+                                pattern: None,
+                                extra: serde_json::json!({"command": command}),
+                            },
+                            provider_call_id,
+                        };
+                    }
+                }
+
                 return ToolCallPayload::Execute {
                     name: tool_name,
                     arguments: execute_args,
@@ -83,6 +103,25 @@ pub(crate) fn normalize_codex_tool_call(
         "shell_command" => {
             // shell_command → Execute (already uses string command format)
             if let Ok(args) = serde_json::from_value::<ExecuteArgs>(arguments.clone()) {
+                // Check if this is a read-oriented command
+                if let Some(command) = &args.command {
+                    if super::execute_intent::classify_execute_command(command) == Some(ToolKind::Read) {
+                        // Extract file path if possible
+                        let file_path = super::execute_intent::extract_file_path(command);
+
+                        return ToolCallPayload::FileRead {
+                            name: tool_name,
+                            arguments: FileReadArgs {
+                                file_path,
+                                path: None,
+                                pattern: None,
+                                extra: serde_json::json!({"command": command}),
+                            },
+                            provider_call_id,
+                        };
+                    }
+                }
+
                 return ToolCallPayload::Execute {
                     name: tool_name,
                     arguments: args,
@@ -209,6 +248,7 @@ mod tests {
 
     #[test]
     fn test_normalize_shell_command() {
+        // NOTE: ls is now classified as Read (file listing)
         let arguments = serde_json::json!({
             "command": ["ls", "-la"],
             "cwd": "/home/user",
@@ -219,16 +259,15 @@ mod tests {
             normalize_codex_tool_call("shell".to_string(), arguments, Some("call_123".to_string()));
 
         match payload {
-            ToolCallPayload::Execute {
+            ToolCallPayload::FileRead {
                 name,
-                arguments,
                 provider_call_id,
+                ..
             } => {
                 assert_eq!(name, "shell");
-                assert_eq!(arguments.command, Some("ls -la".to_string()));
                 assert_eq!(provider_call_id, Some("call_123".to_string()));
             }
-            _ => panic!("Expected Execute variant"),
+            _ => panic!("Expected FileRead variant for ls command, got: {:?}", payload.kind()),
         }
     }
 
@@ -351,6 +390,134 @@ mod tests {
                 assert_eq!(provider_call_id, None);
             }
             _ => panic!("Expected Mcp variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_read_command_cat() {
+        let payload = normalize_codex_tool_call(
+            "shell".to_string(),
+            serde_json::json!({
+                "command": ["cat", "file.txt"]
+            }),
+            Some("call_read".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "shell");
+                assert_eq!(arguments.file_path, Some("file.txt".to_string()));
+                assert_eq!(provider_call_id, Some("call_read".to_string()));
+            }
+            _ => panic!("Expected FileRead variant for cat command, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_read_command_sed() {
+        let payload = normalize_codex_tool_call(
+            "shell".to_string(),
+            serde_json::json!({
+                "command": ["sed", "-n", "1,200p", "packages/extension-inspector/src/App.tsx"]
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "shell");
+                assert_eq!(
+                    arguments.file_path,
+                    Some("packages/extension-inspector/src/App.tsx".to_string())
+                );
+            }
+            _ => panic!("Expected FileRead variant for sed -n command, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_read_command_ls() {
+        let payload = normalize_codex_tool_call(
+            "shell".to_string(),
+            serde_json::json!({
+                "command": ["ls", "-la"]
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::FileRead { name, .. } => {
+                assert_eq!(name, "shell");
+                // ls doesn't have a specific file, so file_path is None
+            }
+            _ => panic!("Expected FileRead variant for ls command, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_write_command_mkdir() {
+        let payload = normalize_codex_tool_call(
+            "shell".to_string(),
+            serde_json::json!({
+                "command": ["mkdir", "-p", "mydir"]
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::Execute { name, .. } => {
+                assert_eq!(name, "shell");
+                // mkdir is a write command, should remain Execute
+            }
+            _ => panic!("Expected Execute variant for mkdir command, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_command_read() {
+        let payload = normalize_codex_tool_call(
+            "shell_command".to_string(),
+            serde_json::json!({
+                "command": "grep pattern file.txt"
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "shell_command");
+                assert_eq!(arguments.file_path, Some("file.txt".to_string()));
+            }
+            _ => panic!("Expected FileRead variant for grep command, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_bash_wrapped_read() {
+        let payload = normalize_codex_tool_call(
+            "shell".to_string(),
+            serde_json::json!({
+                "command": ["bash", "-lc", "cat", "Cargo.toml"]
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::FileRead {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "shell");
+                assert_eq!(arguments.file_path, Some("Cargo.toml".to_string()));
+            }
+            _ => panic!("Expected FileRead variant for bash-wrapped cat, got: {:?}", payload.kind()),
         }
     }
 }
