@@ -606,6 +606,37 @@ impl TestWorld {
 
         Ok(())
     }
+
+    /// Get a configured SDK Client for testing without going through CLI.
+    ///
+    /// This enables direct testing of SDK APIs in a type-safe manner.
+    ///
+    /// # Example
+    /// ```
+    /// use agtrace_testing::{TestWorld, providers::TestProvider};
+    ///
+    /// # #[tokio::test]
+    /// # async fn test_example() -> anyhow::Result<()> {
+    /// let mut world = TestWorld::new().with_project("my-project");
+    /// world.enable_provider(TestProvider::Claude)?;
+    /// world.set_cwd("my-project");
+    /// world.add_session(TestProvider::Claude, "session1.jsonl")?;
+    ///
+    /// // Get SDK client
+    /// let client = world.get_client().await?;
+    ///
+    /// // Use SDK APIs directly
+    /// let sessions = client.sessions().list(Default::default())?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn get_client(&self) -> Result<agtrace_sdk::Client> {
+        agtrace_sdk::Client::builder()
+            .path(self.data_dir())
+            .connect()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to connect SDK client: {}", e))
+    }
 }
 
 /// Result of a CLI command execution.
