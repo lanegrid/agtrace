@@ -83,6 +83,9 @@ pub fn detect_adapter_from_path(path: &str) -> Result<ProviderAdapter> {
     } else if path.contains(".gemini/") {
         Ok(ProviderAdapter::gemini())
     } else {
-        Err(Error::Provider(format!("Cannot detect provider from path: {}", path)))
+        Err(Error::Provider(format!(
+            "Cannot detect provider from path: {}",
+            path
+        )))
     }
 }

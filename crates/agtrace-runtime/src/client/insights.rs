@@ -1,9 +1,9 @@
+use crate::Result;
 use crate::ops::{
     CorpusStats, IndexProgress, IndexService, StatsResult, collect_tool_stats, get_corpus_overview,
 };
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
-use crate::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 

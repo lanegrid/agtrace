@@ -3,11 +3,11 @@ use crate::ops::{
     SessionService,
 };
 use crate::storage::{RawFileContent, get_raw_files};
+use crate::{Error, Result};
 use agtrace_engine::export::ExportStrategy;
 use agtrace_index::{Database, SessionSummary};
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
-use crate::{Error, Result};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -142,7 +142,10 @@ impl SessionOps {
             });
         }
 
-        Err(Error::InvalidOperation(format!("Session not found: {}", session_id)))
+        Err(Error::InvalidOperation(format!(
+            "Session not found: {}",
+            session_id
+        )))
     }
 
     fn resolve_session_id(&self, session_id: &str) -> Result<Option<String>> {

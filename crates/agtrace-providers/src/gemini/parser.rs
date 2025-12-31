@@ -1,5 +1,5 @@
-use agtrace_types::*;
 use crate::Result;
+use agtrace_types::*;
 use chrono::DateTime;
 use std::path::Path;
 use uuid::Uuid;

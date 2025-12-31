@@ -1,5 +1,5 @@
-use agtrace_types::*;
 use crate::Result;
+use agtrace_types::*;
 use chrono::DateTime;
 use regex::Regex;
 use std::path::Path;

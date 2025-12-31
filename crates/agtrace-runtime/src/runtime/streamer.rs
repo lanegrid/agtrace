@@ -1,9 +1,9 @@
 use crate::runtime::events::{StreamEvent, WorkspaceEvent};
+use crate::{Error, Result};
 use agtrace_engine::{AgentSession, assemble_session};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
-use crate::{Error, Result};
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -96,7 +96,10 @@ impl SessionStreamer {
             let db_lock = db.lock().unwrap();
             let files = db_lock.get_session_files(&session_id)?;
             if files.is_empty() {
-                return Err(Error::InvalidOperation(format!("Session not found: {}", session_id)));
+                return Err(Error::InvalidOperation(format!(
+                    "Session not found: {}",
+                    session_id
+                )));
             }
             files
                 .into_iter()
@@ -117,7 +120,10 @@ impl SessionStreamer {
         let session_files = find_session_files(&log_root, &session_id, &provider)?;
 
         if session_files.is_empty() {
-            return Err(Error::InvalidOperation(format!("No files found for session: {}", session_id)));
+            return Err(Error::InvalidOperation(format!(
+                "No files found for session: {}",
+                session_id
+            )));
         }
 
         Self::start_core(session_id, session_files, provider)
