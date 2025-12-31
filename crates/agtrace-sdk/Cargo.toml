@@ -27,3 +27,10 @@ futures.workspace = true
 tempfile.workspace = true
 agtrace-testing = { path = "../agtrace-testing" }
 anyhow.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+# README is generated from rustdoc using cargo-rdme
+# To update: cargo rdme --workspace-project agtrace-sdk
+# To check: cargo rdme --workspace-project agtrace-sdk --check

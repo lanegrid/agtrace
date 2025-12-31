@@ -1,9 +1,7 @@
-#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
-//
-// Note: README.md is included for rustdoc display, but markdown code blocks
-// are NOT automatically tested as doctests. The doctests below are the source of truth.
-
 //! agtrace-sdk: The Observability Platform for AI Agents.
+//!
+//! **Note**: README.md is auto-generated from this rustdoc using `cargo-rdme`.
+//! To update: `cargo rdme --workspace-project agtrace-sdk`
 //!
 //! # Overview
 //!

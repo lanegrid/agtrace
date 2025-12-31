@@ -5,13 +5,24 @@ set -e
 echo "=== README Sync Checker ==="
 echo
 
-# 1. Check SDK README examples compile (via include_str! in lib.rs)
+# 1. Check SDK README is up-to-date with rustdoc (via cargo-rdme)
+echo "📚 Checking SDK README is synchronized with rustdoc..."
+if ! command -v cargo-rdme &> /dev/null; then
+    echo "⚠️  cargo-rdme not found. Install with: cargo install cargo-rdme"
+    echo "   Skipping README sync check..."
+else
+    cargo rdme --workspace-project agtrace-sdk --check
+    echo "✓ SDK README is up-to-date with rustdoc"
+fi
+echo
+
+# 2. Check SDK README examples compile (via include_str! in lib.rs)
 echo "📚 Checking SDK README examples compile..."
 cargo test --doc -p agtrace-sdk --quiet
 echo "✓ SDK README examples compile successfully"
 echo
 
-# 2. Check for outdated version references
+# 3. Check for outdated version references
 echo "🔍 Checking version references..."
 CURRENT_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | select(.name == "agtrace-sdk") | .version')
 echo "   Current agtrace-sdk version: $CURRENT_VERSION"

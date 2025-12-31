@@ -1,32 +1,5 @@
 # agtrace-sdk
 
-**The Observability Platform for AI Agents (Public SDK)**
-
-`agtrace-sdk` provides a high-level, stable API for building observability tools on top of agtrace. It abstracts away the internal complexity of providers, indexing, and runtime orchestration, exposing only the essential primitives for monitoring and analyzing AI agent behavior.
-
-## Features
-
-- **Universal Normalization**: Works with multiple AI agent providers (Claude, Codex, Gemini)
-- **Real-time Monitoring**: Watch for live events as agents interact
-- **Session Analysis**: Analyze agent sessions with built-in diagnostic lenses
-- **Clean API**: Simple, type-safe interface for common observability tasks
-
-## Architecture
-
-This SDK acts as a facade over:
-- `agtrace-types`: Core domain models (AgentEvent, etc.)
-- `agtrace-providers`: Multi-provider log normalization
-- `agtrace-engine`: Session analysis and diagnostics
-- `agtrace-index`: Metadata storage and querying
-- `agtrace-runtime`: Internal orchestration layer
-
-### Stability Guarantee
-
-- **agtrace-sdk**: Semantic Versioning (SemVer) strictly followed. Public API is stable.
-- **Internal crates** (`agtrace-runtime`, `agtrace-engine`, etc.): Internal APIs, subject to breaking changes without notice.
-
-If you're building tools on top of agtrace, use only the `agtrace-sdk` crate to ensure stability across updates.
-
 ## Installation
 
 Add this to your `Cargo.toml`:
@@ -36,281 +9,106 @@ Add this to your `Cargo.toml`:
 agtrace-sdk = "0.1"
 ```
 
-## Usage
+<!-- cargo-rdme start -->
 
-**See [`examples/`](examples/) for complete, runnable code.**
+agtrace-sdk: The Observability Platform for AI Agents.
 
-### Client-based API (Recommended)
+**Note**: README.md is auto-generated from this rustdoc using `cargo-rdme`.
+To update: `cargo rdme --workspace-project agtrace-sdk`
 
-For most use cases, use the Client-based API which provides stateful operations:
+### Overview
 
-```rust,no_run
+`agtrace-sdk` provides a high-level, stable API for building observability
+tools on top of agtrace. It abstracts away the internal complexity of
+providers, indexing, and runtime orchestration, exposing only the essential
+primitives for monitoring and analyzing AI agent behavior.
+
+### Quickstart
+
+```rust
 use agtrace_sdk::{Client, Lens, types::SessionFilter};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Connect to the workspace (uses XDG data directory)
-    let client = Client::connect_default().await?;
+// Connect to the local workspace (uses XDG data directory)
+let client = Client::connect_default().await?;
 
-    // 2. List sessions and get the most recent one
-    let sessions = client.sessions().list(SessionFilter::all())?;
-    if let Some(summary) = sessions.first() {
-        let session_handle = client.sessions().get(&summary.id)?;
-
-        // 3. Analyze the session
-        let report = session_handle.analyze()?
-            .through(Lens::Failures)
-            .through(Lens::Loops)
-            .through(Lens::Bottlenecks)
-            .report()?;
-
-        println!("Health score: {}", report.score);
-        for insight in &report.insights {
-            println!("  Turn {}: {:?} - {}",
-                insight.turn_index + 1,
-                insight.severity,
-                insight.message);
-        }
-    }
-
-    Ok(())
+// List sessions and analyze the most recent one
+let sessions = client.sessions().list(SessionFilter::all())?;
+if let Some(summary) = sessions.first() {
+    let handle = client.sessions().get(&summary.id)?;
+    let report = handle.analyze()?
+        .through(Lens::Failures)
+        .report()?;
+    println!("Health: {}/100", report.score);
 }
 ```
 
-### Standalone API (for testing/simulations)
+For complete examples, see the [`examples/`](https://github.com/lanegrid/agtrace/tree/main/crates/agtrace-sdk/examples) directory.
 
-For scenarios where you don't need a Client (testing, simulations, custom pipelines):
+### Architecture
 
-```rust,no_run
-use agtrace_sdk::{SessionHandle, types::AgentEvent};
+This SDK acts as a facade over:
+- `agtrace-types`: Core domain models (AgentEvent, etc.)
+- `agtrace-providers`: Multi-provider log normalization
+- `agtrace-engine`: Session analysis and diagnostics
+- `agtrace-index`: Metadata storage and querying
+- `agtrace-runtime`: Internal orchestration layer
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // When you have raw events without Client
-    let events: Vec<AgentEvent> = vec![/* ... */];
-    let handle = SessionHandle::from_events(events);
+### Usage Patterns
 
-    let session = handle.assemble()?;
-    println!("Session has {} turns", session.turns.len());
+#### Real-time Monitoring
 
-    Ok(())
-}
-```
-
-### Real-time Monitoring
-
-```rust,no_run
+```rust
 use agtrace_sdk::Client;
 use futures::stream::StreamExt;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect_default().await?;
-
-    // Watch for live events from all providers
-    let mut stream = client.watch().all_providers().start()?;
-
-    // Use the Stream trait for ergonomic event processing
-    while let Some(event) = stream.next().await {
-        println!("New event: {:?}", event);
-    }
-
-    Ok(())
+let client = Client::connect_default().await?;
+let mut stream = client.watch().all_providers().start()?;
+let mut count = 0;
+while let Some(event) = stream.next().await {
+    println!("New event: {:?}", event);
+    count += 1;
+    if count >= 10 { break; }
 }
 ```
 
-### Provider-specific Monitoring
+#### Session Analysis
 
-```rust,no_run
-use agtrace_sdk::Client;
-use futures::stream::StreamExt;
+```rust
+use agtrace_sdk::{Client, Lens, types::SessionFilter};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect_default().await?;
-
-    // Watch only Claude events
-    let mut stream = client
-        .watch()
-        .provider("claude")
-        .start()?;
-
-    while let Some(event) = stream.next().await {
-        println!("Claude event: {:?}", event);
-    }
-
-    Ok(())
-}
-```
-
-## Diagnostic Lenses
-
-The SDK provides several built-in lenses for analyzing agent behavior:
-
-- **Failures**: Detects tool execution failures
-- **Loops**: Detects repetitive patterns that might indicate infinite loops
-- **Bottlenecks**: Identifies slow tool executions (>10 seconds)
-
-## Use Cases
-
-### Building a Monitoring Dashboard
-
-```rust,no_run
-use agtrace_sdk::{Client, Lens};
-
-async fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Error>> {
-    let client = Client::connect_default().await?;
-    let session_handle = client.sessions().get(session_id)?;
-
-    let report = session_handle.analyze()?
+let client = Client::connect_default().await?;
+let sessions = client.sessions().list(SessionFilter::all())?;
+if let Some(summary) = sessions.first() {
+    let handle = client.sessions().get(&summary.id)?;
+    let report = handle.analyze()?
         .through(Lens::Failures)
         .through(Lens::Loops)
         .report()?;
 
-    Ok(report.score)
-}
-```
-
-### Dead Man's Switch (vital-checker)
-
-```rust,no_run
-use agtrace_sdk::Client;
-use futures::stream::StreamExt;
-use std::time::{Duration, Instant};
-
-async fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect_default().await?;
-    let mut stream = client.watch().all_providers().start()?;
-
-    let mut last_activity = Instant::now();
-    let timeout = Duration::from_secs(180); // 3 minutes
-
-    // Use try_next for non-blocking checks
-    loop {
-        if let Some(_event) = stream.try_next() {
-            last_activity = Instant::now();
-        }
-
-        if last_activity.elapsed() > timeout {
-            println!("WARNING: No agent activity for 3 minutes!");
-            // Send alert...
-            break;
-        }
-
-        // In a real implementation, add a small delay here
-        // (e.g., tokio::time::sleep with the 'time' feature enabled)
+    println!("Health score: {}", report.score);
+    for insight in &report.insights {
+        println!("Turn {}: {:?} - {}",
+            insight.turn_index + 1,
+            insight.severity,
+            insight.message);
     }
-
-    Ok(())
 }
 ```
 
-## API Reference
+#### Standalone API (for testing/simulations)
 
-### Client-based API (Recommended)
+```rust
+use agtrace_sdk::{SessionHandle, types::AgentEvent};
 
-The primary way to interact with agtrace is through the Client-based API, which manages state (database connections, configuration) for you.
+// When you have raw events without Client (e.g., testing, simulations)
+let events: Vec<AgentEvent> = vec![/* ... */];
+let handle = SessionHandle::from_events(events);
 
-#### Client
-
-- `Client::connect(path)`: Connect to an agtrace workspace
-- `.sessions()`: Access session operations
-- `.watch()`: Create a watch builder for real-time monitoring
-- `.projects()`: Access project operations
-- `.insights()`: Access insights/analysis operations
-- `.system()`: Access system operations
-
-#### SessionClient
-
-- `.list(filter)`: List sessions with optional filtering
-- `.get(id)`: Get a handle to a specific session
-
-#### SessionHandle
-
-- `SessionHandle::from_events(events)`: Create a handle from raw events (standalone use)
-- `.events()`: Get all normalized events for the session
-- `.assemble()`: Assemble events into a structured session
-- `.summarize()`: Get a summary of the session
-- `.analyze()`: Analyze session with diagnostic lenses
-- `.export(strategy)`: Export session with specified strategy
-
-### WatchBuilder
-
-- `.provider(name)`: Filter events by provider
-- `.all_providers()`: Watch all configured providers
-- `.start()`: Start monitoring and return a live stream
-
-### LiveStream
-
-Implements the `Stream` trait for async event processing.
-
-- `.next()`: Asynchronously wait for the next event (requires `StreamExt` trait from `futures`)
-- `.try_next()`: Try to get next event without blocking
-
-#### SessionAnalyzer
-
-Created by calling `session_handle.analyze()`:
-
-- `.through(lens)`: Apply a diagnostic lens
-- `.report()`: Generate analysis report
-
-### Low-level Utilities (Power User API)
-
-For advanced use cases like building custom TUIs or implementing custom event processing logic, the SDK exposes stateless utility functions through the `utils` module.
-
-#### Event Processing
-
-- `utils::extract_state_updates(&event)`: Extract state changes (tokens, turns, model) from a single event
-
-**Example:**
-
-```rust,no_run
-use agtrace_sdk::{Client, utils};
-use agtrace_sdk::watch::{WorkspaceEvent, StreamEvent};
-use futures::stream::StreamExt;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect_default().await?;
-    let mut stream = client.watch().all_providers().start()?;
-
-    let mut count = 0;
-    while let Some(workspace_event) = stream.next().await {
-        if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
-            for event in events {
-                let updates = utils::extract_state_updates(&event);
-                if updates.is_new_turn {
-                    println!("New turn started!");
-                }
-                if let Some(usage) = updates.usage {
-                    println!("Token usage: {:?}", usage);
-                }
-            }
-        }
-        count += 1;
-        if count >= 10 { break; }
-    }
-    Ok(())
-}
+let session = handle.assemble()?;
+println!("Session has {} turns", session.turns.len());
 ```
 
-#### Project Management
-
-- `utils::discover_project_root(explicit_root)`: Discover project root from flag/env/cwd
-- `utils::project_hash_from_root(path)`: Compute canonical project hash
-- `utils::resolve_effective_project_hash(hash, all_flag)`: Resolve project scope for commands
-
-**Example:**
-
-```rust,no_run
-use agtrace_sdk::utils;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let project_root = utils::discover_project_root(None)?;
-    let hash = utils::project_hash_from_root(&project_root.to_string_lossy());
-    println!("Project hash: {}", hash);
-    Ok(())
-}
-```
+<!-- cargo-rdme end -->
 
 ## Contributing
 
