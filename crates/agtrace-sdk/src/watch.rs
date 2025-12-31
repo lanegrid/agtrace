@@ -32,9 +32,9 @@ impl WatchBuilder {
         let monitor = self
             .inner
             .workspace_monitor()
-            .map_err(crate::error::Error::Internal)?
+            .map_err(crate::error::Error::Runtime)?
             .start_background_scan()
-            .map_err(crate::error::Error::Internal)?;
+            .map_err(crate::error::Error::Runtime)?;
         Ok(LiveStream { monitor })
     }
 }

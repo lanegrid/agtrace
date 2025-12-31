@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     NotFound(String),
     InvalidInput(String),
-    Internal(anyhow::Error),
+    Runtime(agtrace_runtime::Error),
 }
 
 impl fmt::Display for Error {
@@ -14,7 +14,7 @@ impl fmt::Display for Error {
         match self {
             Error::NotFound(msg) => write!(f, "Not found: {}", msg),
             Error::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
-            Error::Internal(err) => write!(f, "Internal error: {}", err),
+            Error::Runtime(err) => write!(f, "{}", err),
         }
     }
 }
@@ -22,14 +22,14 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Error::Internal(err) => Some(err.as_ref()),
+            Error::Runtime(err) => Some(err),
             _ => None,
         }
     }
 }
 
-impl From<anyhow::Error> for Error {
-    fn from(err: anyhow::Error) -> Self {
-        Error::Internal(err)
+impl From<agtrace_runtime::Error> for Error {
+    fn from(err: agtrace_runtime::Error) -> Self {
+        Error::Runtime(err)
     }
 }

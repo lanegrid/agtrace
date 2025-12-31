@@ -18,7 +18,7 @@ impl Client {
     /// Connect to an agtrace workspace at the given path.
     pub fn connect(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into();
-        let runtime = agtrace_runtime::AgTrace::open(path).map_err(Error::Internal)?;
+        let runtime = agtrace_runtime::AgTrace::open(path).map_err(Error::Runtime)?;
         Ok(Self {
             inner: Arc::new(runtime),
         })
@@ -79,7 +79,7 @@ impl Client {
     #[deprecated(note = "Use client.sessions().list(filter) instead")]
     pub fn list_sessions(&self) -> Result<Vec<SessionSummary>> {
         let filter = SessionFilter::new().limit(100);
-        self.inner.sessions().list(filter).map_err(Error::Internal)
+        self.inner.sessions().list(filter).map_err(Error::Runtime)
     }
 }
 
@@ -95,7 +95,7 @@ pub struct SessionClient {
 impl SessionClient {
     /// List sessions with optional filtering.
     pub fn list(&self, filter: SessionFilter) -> Result<Vec<SessionSummary>> {
-        self.inner.sessions().list(filter).map_err(Error::Internal)
+        self.inner.sessions().list(filter).map_err(Error::Runtime)
     }
 
     /// List sessions without triggering auto-refresh.
@@ -103,7 +103,7 @@ impl SessionClient {
         self.inner
             .sessions()
             .list_without_refresh(filter)
-            .map_err(Error::Internal)
+            .map_err(Error::Runtime)
     }
 
     /// Pack sessions for context window analysis.
@@ -115,7 +115,7 @@ impl SessionClient {
         self.inner
             .sessions()
             .pack_context(project_hash, limit)
-            .map_err(Error::Internal)
+            .map_err(Error::Runtime)
     }
 
     /// Get a session handle by ID or prefix.
@@ -190,7 +190,7 @@ impl SessionHandle {
                     .find(id)
                     .map_err(|e| Error::NotFound(format!("Session {}: {}", id, e)))?;
 
-                session_handle.events().map_err(Error::Internal)
+                session_handle.events().map_err(Error::Runtime)
             }
             SessionSource::Events { events } => Ok(events.clone()),
         }
@@ -200,7 +200,7 @@ impl SessionHandle {
     pub fn assemble(&self) -> Result<AgentSession> {
         let events = self.events()?;
         agtrace_engine::assemble_session(&events)
-            .ok_or_else(|| Error::Internal(anyhow::anyhow!("Failed to assemble session")))
+            .ok_or_else(|| Error::InvalidInput("Failed to assemble session: insufficient or invalid events".to_string()))
     }
 
     /// Export session with specified strategy.
@@ -240,7 +240,7 @@ pub struct ProjectClient {
 impl ProjectClient {
     /// List all projects in the workspace.
     pub fn list(&self) -> Result<Vec<ProjectInfo>> {
-        self.inner.projects().list().map_err(Error::Internal)
+        self.inner.projects().list().map_err(Error::Runtime)
     }
 }
 
@@ -295,7 +295,7 @@ impl InsightClient {
         self.inner
             .insights()
             .corpus_stats(project_hash, limit)
-            .map_err(Error::Internal)
+            .map_err(Error::Runtime)
     }
 
     /// Get tool usage statistics.
@@ -307,7 +307,7 @@ impl InsightClient {
         self.inner
             .insights()
             .tool_usage(limit, provider)
-            .map_err(Error::Internal)
+            .map_err(Error::Runtime)
     }
 
     /// Pack sessions for analysis (placeholder - needs runtime implementation).
@@ -347,12 +347,12 @@ impl SystemClient {
     where
         F: FnMut(InitProgress),
     {
-        agtrace_runtime::AgTrace::setup(config, on_progress).map_err(Error::Internal)
+        agtrace_runtime::AgTrace::setup(config, on_progress).map_err(Error::Runtime)
     }
 
     /// Run diagnostics on all providers.
     pub fn diagnose(&self) -> Result<Vec<DiagnoseResult>> {
-        self.inner.diagnose().map_err(Error::Internal)
+        self.inner.diagnose().map_err(Error::Runtime)
     }
 
     /// Check if a file can be parsed (requires workspace context).
@@ -374,7 +374,7 @@ impl SystemClient {
         };
 
         agtrace_runtime::AgTrace::check_file(path_str, &adapter, &provider_name)
-            .map_err(Error::Internal)
+            .map_err(Error::Runtime)
     }
 
     /// Inspect file contents with parsing.
@@ -384,7 +384,7 @@ impl SystemClient {
             .ok_or_else(|| Error::InvalidInput("Path contains invalid UTF-8".to_string()))?;
 
         agtrace_runtime::AgTrace::inspect_file(path_str, lines, json_format)
-            .map_err(Error::Internal)
+            .map_err(Error::Runtime)
     }
 
     /// Reindex the workspace.
@@ -402,14 +402,14 @@ impl SystemClient {
             .projects()
             .scan(scope, force, provider_filter, on_progress)
             .map(|_| ()) // Discard the ScanSummary for now
-            .map_err(Error::Internal)
+            .map_err(Error::Runtime)
     }
 
     /// Vacuum the database to reclaim space.
     pub fn vacuum(&self) -> Result<()> {
         let db = self.inner.database();
         let db = db.lock().unwrap();
-        db.vacuum().map_err(Error::Internal)
+        db.vacuum().map_err(|e| Error::Runtime(e.into()))
     }
 
     /// List provider configurations.
@@ -419,7 +419,7 @@ impl SystemClient {
 
     /// Detect providers in current environment.
     pub fn detect_providers() -> Result<Config> {
-        agtrace_runtime::Config::detect_providers().map_err(Error::Internal)
+        agtrace_runtime::Config::detect_providers().map_err(Error::Runtime)
     }
 
     /// Get current configuration.
