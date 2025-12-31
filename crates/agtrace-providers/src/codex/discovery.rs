@@ -97,7 +97,7 @@ impl LogDiscovery for CodexDiscovery {
         let header = extract_codex_header(path)?;
         Ok(header
             .cwd
-            .map(|cwd| agtrace_types::project_hash_from_root(&cwd)))
+            .map(|cwd| agtrace_core::project_hash_from_root(&cwd)))
     }
 
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {

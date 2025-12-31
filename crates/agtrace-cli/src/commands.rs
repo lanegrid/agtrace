@@ -48,7 +48,7 @@ impl CommandContext {
     fn project_hash(&self) -> Option<agtrace_sdk::types::ProjectHash> {
         self.project_root
             .as_ref()
-            .map(|p| agtrace_sdk::types::ProjectHash::from_root(&p.display().to_string()))
+            .map(|p| agtrace_sdk::utils::project_hash_from_root(&p.display().to_string()))
     }
 
     fn effective_project_hash(

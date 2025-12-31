@@ -11,6 +11,7 @@ keywords = ["agtrace-internal"]
 chrono.workspace = true
 notify.workspace = true
 walkdir.workspace = true
+agtrace-core.workspace = true
 agtrace-engine.workspace = true
 agtrace-index.workspace = true
 agtrace-types.workspace = true

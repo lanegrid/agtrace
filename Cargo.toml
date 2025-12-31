@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/agtrace-types",
+    "crates/agtrace-core",
     "crates/agtrace-providers",
     "crates/agtrace-index",
     "crates/agtrace-engine",
@@ -23,6 +24,7 @@ keywords = ["ai", "agent", "llm", "observability", "opentelemetry", "sdk"]
 [workspace.dependencies]
 # Internal crates
 agtrace-types = { version = "0.1.15", path = "crates/agtrace-types" }
+agtrace-core = { version = "0.1.15", path = "crates/agtrace-core" }
 agtrace-providers = { version = "0.1.15", path = "crates/agtrace-providers" }
 agtrace-index = { version = "0.1.15", path = "crates/agtrace-index" }
 agtrace-engine = { version = "0.1.15", path = "crates/agtrace-engine" }

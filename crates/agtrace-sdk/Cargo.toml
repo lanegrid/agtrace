@@ -10,6 +10,7 @@ keywords = ["agtrace", "sdk", "observability", "ai-agents"]
 [dependencies]
 # Core internal dependencies
 agtrace-types.workspace = true
+agtrace-core.workspace = true
 agtrace-providers.workspace = true
 agtrace-engine.workspace = true
 agtrace-index.workspace = true

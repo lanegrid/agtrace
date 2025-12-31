@@ -9,6 +9,7 @@ keywords = ["agtrace-internal"]
 
 [dependencies]
 agtrace-types.workspace = true
+agtrace-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 walkdir.workspace = true

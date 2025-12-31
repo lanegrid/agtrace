@@ -33,7 +33,7 @@ fn test_claude_derives_project_hash_from_session_data() {
 
     // Verify project_hash can be computed from cwd
     for root in project_roots {
-        let project_hash = agtrace_types::project_hash_from_root(root);
+        let project_hash = agtrace_core::project_hash_from_root(root);
         assert_ne!(
             project_hash,
             agtrace_types::ProjectHash::from("unknown"),
@@ -58,7 +58,7 @@ fn test_codex_derives_project_hash_from_session_data() {
         extract_cwd_from_codex_file(&path).expect("Expected to find cwd in Codex session file");
 
     // Verify project_hash can be computed from cwd
-    let project_hash = agtrace_types::project_hash_from_root(&cwd);
+    let project_hash = agtrace_core::project_hash_from_root(&cwd);
     assert_ne!(
         project_hash,
         agtrace_types::ProjectHash::from("unknown"),
