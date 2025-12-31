@@ -49,7 +49,7 @@ fn build_dashboard(
     use agtrace_sdk::types::ContextLimit;
 
     // Same fallback logic as present_session_state: try context_window_limit first, then model lookup
-    let token_limits = agtrace_sdk::types::TokenLimits::new();
+    let token_limits = agtrace_sdk::utils::default_token_limits();
     let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
     let limit_u64 = state
         .context_window_limit

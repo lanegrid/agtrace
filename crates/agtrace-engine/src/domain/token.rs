@@ -1,4 +1,5 @@
 use crate::domain::model::SessionState;
+use agtrace_types::ModelLimitResolver;
 
 #[derive(Debug, Clone)]
 pub struct TokenLimit {
@@ -32,15 +33,18 @@ impl TokenLimit {
     }
 }
 
-pub struct TokenLimits;
+pub struct TokenLimits<R: ModelLimitResolver> {
+    resolver: R,
+}
 
-impl TokenLimits {
-    pub fn new() -> Self {
-        Self
+impl<R: ModelLimitResolver> TokenLimits<R> {
+    pub fn new(resolver: R) -> Self {
+        Self { resolver }
     }
 
     pub fn get_limit(&self, model: &str) -> Option<TokenLimit> {
-        agtrace_providers::token_limits::resolve_model_limit(model)
+        self.resolver
+            .resolve_model_limit(model)
             .map(|spec| TokenLimit::new(spec.max_tokens, spec.compaction_buffer_pct))
     }
 
@@ -64,21 +68,31 @@ impl TokenLimits {
     }
 }
 
-impl Default for TokenLimits {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_engine::ContextWindowUsage;
+    use crate::ContextWindowUsage;
+    use agtrace_types::ModelSpec;
     use chrono::Utc;
+
+    struct MockResolver;
+
+    impl ModelLimitResolver for MockResolver {
+        fn resolve_model_limit(&self, model: &str) -> Option<ModelSpec> {
+            if model.starts_with("claude-3-5-sonnet") {
+                Some(ModelSpec {
+                    max_tokens: 200_000,
+                    compaction_buffer_pct: 22.5,
+                })
+            } else {
+                None
+            }
+        }
+    }
 
     #[test]
     fn test_get_limit_exact_match() {
-        let limits = TokenLimits::new();
+        let limits = TokenLimits::new(MockResolver);
         let limit = limits.get_limit("claude-3-5-sonnet-20241022");
         assert!(limit.is_some());
         let limit = limit.unwrap();
@@ -89,21 +103,21 @@ mod tests {
 
     #[test]
     fn test_get_limit_prefix_match() {
-        let limits = TokenLimits::new();
+        let limits = TokenLimits::new(MockResolver);
         let limit = limits.get_limit("claude-3-5-sonnet");
         assert!(limit.is_some());
     }
 
     #[test]
     fn test_unknown_model() {
-        let limits = TokenLimits::new();
+        let limits = TokenLimits::new(MockResolver);
         let result = limits.get_limit("unknown-model");
         assert!(result.is_none());
     }
 
     #[test]
     fn test_get_usage_percentage_from_state() {
-        let limits = TokenLimits::new();
+        let limits = TokenLimits::new(MockResolver);
         let mut state = SessionState::new("test".to_string(), None, None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
         state.current_usage = ContextWindowUsage::from_raw(1000, 2000, 10000, 500);
@@ -119,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_get_usage_percentage_from_state_no_cache() {
-        let limits = TokenLimits::new();
+        let limits = TokenLimits::new(MockResolver);
         let mut state = SessionState::new("test".to_string(), None, None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
         state.context_window_limit = Some(200_000);

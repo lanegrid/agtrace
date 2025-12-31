@@ -2,7 +2,7 @@ use crate::args::{OutputFormat, ViewModeArgs};
 use crate::handlers::HandlerContext;
 use crate::presentation::presenters;
 use agtrace_sdk::Client;
-use agtrace_sdk::types::{SessionFilter, TokenLimits};
+use agtrace_sdk::types::SessionFilter;
 use anyhow::{Context, Result};
 
 pub fn handle(
@@ -30,7 +30,7 @@ pub fn handle(
         .map(|s| s.provider.clone())
         .unwrap_or_else(|| "unknown".to_string());
 
-    let token_limits = TokenLimits::new();
+    let token_limits = agtrace_sdk::utils::default_token_limits();
     let max_context = token_limits
         .get_limit(&model_name_key)
         .map(|spec| spec.effective_limit() as u32);

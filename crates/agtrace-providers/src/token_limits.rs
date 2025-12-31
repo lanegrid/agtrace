@@ -9,15 +9,15 @@
 use crate::claude::models as claude_models;
 use crate::codex::models as codex_models;
 use crate::gemini::models as gemini_models;
+use agtrace_types::{ModelLimitResolver, ModelSpec};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ModelSpec {
-    pub max_tokens: u64,
-    /// Compaction buffer percentage (0-100)
-    /// When input tokens exceed (100% - compaction_buffer_pct), compaction is triggered
-    /// Example: Claude Code has 22.5% buffer, so compaction happens at 77.5% input usage
-    pub compaction_buffer_pct: f64,
+pub struct ProviderModelLimitResolver;
+
+impl ModelLimitResolver for ProviderModelLimitResolver {
+    fn resolve_model_limit(&self, model: &str) -> Option<ModelSpec> {
+        resolve_model_limit(model)
+    }
 }
 
 /// Resolve model context window limit using longest prefix matching
@@ -43,7 +43,7 @@ pub struct ModelSpec {
 /// - "claude-sonnet-4-5-20250929" matches "claude-sonnet-4-5" (200K)
 /// - "gpt-5.1-codex-max-2025" matches "gpt-5.1-codex-max" (400K)
 /// - "gemini-2.5-flash-exp" matches "gemini-2.5-flash" (1M)
-pub fn resolve_model_limit(model_name: &str) -> Option<ModelSpec> {
+fn resolve_model_limit(model_name: &str) -> Option<ModelSpec> {
     // NOTE: Why aggregate on every call instead of using lazy_static?
     // The aggregation overhead is negligible (< 100 entries, ~microseconds) compared to
     // the benefits of simplicity and testability. If profiling shows this is a bottleneck,

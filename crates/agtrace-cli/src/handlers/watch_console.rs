@@ -288,7 +288,7 @@ fn process_provider_events_console(
                         }
 
                         // Build max_context from state
-                        let token_limits = agtrace_sdk::types::TokenLimits::new();
+                        let token_limits = agtrace_sdk::utils::default_token_limits();
                         let token_spec =
                             state.model.as_ref().and_then(|m| token_limits.get_limit(m));
                         let max_context = state
@@ -405,7 +405,7 @@ fn process_stream_events_console(
                     }
 
                     // Build max_context from state
-                    let token_limits = agtrace_sdk::types::TokenLimits::new();
+                    let token_limits = agtrace_sdk::utils::default_token_limits();
                     let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
                     let max_context = state
                         .context_window_limit

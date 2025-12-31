@@ -193,6 +193,9 @@ pub use watch::{LiveStream, WatchBuilder};
 /// # }
 /// ```
 pub mod utils {
+    use crate::types::TokenLimits;
+    use agtrace_providers::ProviderModelLimitResolver;
+
     // Event processing utilities
     pub use agtrace_engine::extract_state_updates;
 
@@ -201,4 +204,21 @@ pub mod utils {
         discover_project_root, project_hash_from_root, resolve_effective_project_hash,
         resolve_workspace_path,
     };
+
+    /// Create a TokenLimits instance with the default provider resolver.
+    ///
+    /// This is a convenience function for creating TokenLimits without needing
+    /// to manually instantiate the ProviderModelLimitResolver.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use agtrace_sdk::utils;
+    ///
+    /// let token_limits = utils::default_token_limits();
+    /// let limit = token_limits.get_limit("claude-3-5-sonnet");
+    /// ```
+    pub fn default_token_limits() -> TokenLimits<ProviderModelLimitResolver> {
+        TokenLimits::new(ProviderModelLimitResolver)
+    }
 }

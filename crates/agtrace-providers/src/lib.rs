@@ -20,6 +20,7 @@ pub mod registry;
 
 // Token limits resolution
 pub mod token_limits;
+pub use token_limits::ProviderModelLimitResolver;
 
 // Tool analysis
 pub mod tool_analyzer;

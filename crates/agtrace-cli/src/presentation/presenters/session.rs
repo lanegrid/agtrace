@@ -371,7 +371,7 @@ fn create_tool_view_models(
 }
 
 pub fn present_session_state(state: &agtrace_sdk::types::SessionState) -> StreamStateViewModel {
-    let token_limits = agtrace_sdk::types::TokenLimits::new();
+    let token_limits = agtrace_sdk::utils::default_token_limits();
     let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
     let token_limit = state
         .context_window_limit

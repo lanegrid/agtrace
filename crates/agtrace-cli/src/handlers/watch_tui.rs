@@ -76,7 +76,7 @@ impl WatchHandler {
     /// Send updated ViewModel to renderer
     fn send_update(&self) {
         // Same fallback logic as build_dashboard: try context_window_limit first, then model lookup
-        let token_limits = agtrace_sdk::types::TokenLimits::new();
+        let token_limits = agtrace_sdk::utils::default_token_limits();
         let token_spec = self
             .state
             .model
