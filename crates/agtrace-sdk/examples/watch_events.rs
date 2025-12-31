@@ -10,7 +10,8 @@
 
 use agtrace_sdk::Client;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Real-time Event Watching Example ===\n");
 
     // 1. Connect to workspace
@@ -18,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("Could not find home directory")?
         .join(".agtrace");
 
-    let client = Client::connect(&workspace_path)?;
+    let client = Client::connect(&workspace_path).await?;
     println!("✓ Connected to workspace\n");
 
     // 2. Start watching for events from all providers

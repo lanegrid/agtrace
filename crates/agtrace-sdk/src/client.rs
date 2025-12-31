@@ -16,9 +16,9 @@ pub struct Client {
 
 impl Client {
     /// Connect to an agtrace workspace at the given path.
-    pub fn connect(path: impl Into<PathBuf>) -> Result<Self> {
+    pub async fn connect(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into();
-        let runtime = agtrace_runtime::AgTrace::open(path).map_err(Error::Runtime)?;
+        let runtime = agtrace_runtime::AgTrace::open(path).await.map_err(Error::Runtime)?;
         Ok(Self {
             inner: Arc::new(runtime),
         })

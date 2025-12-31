@@ -8,7 +8,8 @@
 
 use agtrace_sdk::{Client, Lens};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Session Analysis Example ===\n");
 
     // 1. Connect to workspace
@@ -16,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok_or("Could not find home directory")?
         .join(".agtrace");
 
-    let client = Client::connect(&workspace_path)?;
+    let client = Client::connect(&workspace_path).await?;
     println!("✓ Connected to workspace\n");
 
     // 2. Get the most recent session
