@@ -24,6 +24,39 @@ impl AgTrace {
         InitService::run(config, progress_fn)
     }
 
+    pub async fn connect_or_create(data_dir: PathBuf) -> Result<Self> {
+        let db_path = data_dir.join("agtrace.db");
+        let config_path = data_dir.join("config.toml");
+
+        if !data_dir.exists() {
+            std::fs::create_dir_all(&data_dir)?;
+        }
+
+        let config = if tokio::fs::try_exists(&config_path).await? {
+            Config::load_from(&config_path)?
+        } else {
+            let detected = Config::detect_providers()?;
+            detected.save_to(&config_path)?;
+            detected
+        };
+
+        let db = task::spawn_blocking(move || Database::open(&db_path).map_err(Error::Index))
+            .await
+            .map_err(|e| Error::InvalidOperation(format!("Task join error: {}", e)))??;
+
+        let provider_configs: Vec<(String, PathBuf)> = config
+            .enabled_providers()
+            .into_iter()
+            .map(|(name, cfg)| (name.clone(), cfg.log_root.clone()))
+            .collect();
+
+        Ok(Self {
+            db: Arc::new(Mutex::new(db)),
+            config: Arc::new(config),
+            provider_configs: Arc::new(provider_configs),
+        })
+    }
+
     pub async fn open(data_dir: PathBuf) -> Result<Self> {
         let db_path = data_dir.join("agtrace.db");
         let config_path = data_dir.join("config.toml");
