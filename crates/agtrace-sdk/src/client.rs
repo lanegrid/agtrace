@@ -54,9 +54,10 @@ impl ClientBuilder {
     }
 
     /// Connect to the workspace using the configured or resolved path.
+    /// If the workspace does not exist, it will be automatically initialized.
     pub async fn connect(self) -> Result<Client> {
         let path = self.resolve_path()?;
-        let runtime = agtrace_runtime::AgTrace::open(path)
+        let runtime = agtrace_runtime::AgTrace::connect_or_create(path)
             .await
             .map_err(Error::Runtime)?;
         Ok(Client {
