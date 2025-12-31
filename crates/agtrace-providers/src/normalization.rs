@@ -128,6 +128,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    #[allow(deprecated)]
     #[test]
     fn test_normalize_file_read() {
         let payload = normalize_tool_call(
@@ -150,6 +151,7 @@ mod tests {
         }
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_normalize_execute() {
         let payload = normalize_tool_call(
@@ -172,6 +174,7 @@ mod tests {
         }
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_normalize_mcp_tool() {
         let payload = normalize_tool_call(
@@ -198,6 +201,7 @@ mod tests {
         }
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_normalize_unknown_tool_fallback() {
         let payload = normalize_tool_call(
@@ -220,6 +224,7 @@ mod tests {
         }
     }
 
+    #[allow(deprecated)]
     #[test]
     fn test_normalize_invalid_arguments_fallback() {
         // FileReadArgs has `extra: Value` field, so it accepts any fields

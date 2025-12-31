@@ -108,7 +108,8 @@ impl EventBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::normalization::normalize_tool_call;
+    use crate::claude::ClaudeToolMapper;
+    use crate::traits::ToolMapper;
 
     #[test]
     fn test_event_builder_chain() {
@@ -147,13 +148,14 @@ mod tests {
         assert_eq!(events[1].parent_id, Some(event1_id));
 
         // Third event has second as parent
+        let mapper = ClaudeToolMapper;
         builder.build_and_push(
             &mut events,
             "test-id-3",
             SemanticSuffix::ToolCall,
             Utc::now(),
-            EventPayload::ToolCall(normalize_tool_call(
-                "bash".to_string(),
+            EventPayload::ToolCall(mapper.normalize_call(
+                "Bash",
                 serde_json::json!({"command": "ls"}),
                 Some("call_123".to_string()),
             )),

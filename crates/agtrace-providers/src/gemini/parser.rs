@@ -255,10 +255,10 @@ mod tests {
                 thoughts: vec![],
                 tool_calls: vec![],
                 tokens: TokenUsage {
-                    input: 10,
-                    output: 5,
+                    input: 8,  // uncached input tokens
+                    output: 4, // normal text generation tokens (total output = output + thoughts + tool = 4 + 1 + 0 = 5)
                     total: 15,
-                    cached: 2,
+                    cached: 2, // cached input tokens (total input = cached + input = 2 + 8 = 10)
                     thoughts: 1,
                     tool: 0,
                 },
@@ -276,17 +276,11 @@ mod tests {
 
         match &events[1].payload {
             EventPayload::TokenUsage(payload) => {
-                assert_eq!(payload.input_tokens, 10);
-                assert_eq!(payload.output_tokens, 5);
-                assert_eq!(payload.total_tokens, 15);
-                assert_eq!(
-                    payload.details.as_ref().unwrap().cache_read_input_tokens,
-                    Some(2)
-                );
-                assert_eq!(
-                    payload.details.as_ref().unwrap().reasoning_output_tokens,
-                    Some(1)
-                );
+                assert_eq!(payload.input.total(), 10);
+                assert_eq!(payload.output.total(), 5);
+                assert_eq!(payload.total_tokens(), 15);
+                assert_eq!(payload.input.cached, 2);
+                assert_eq!(payload.output.reasoning, 1);
             }
             _ => panic!("Expected TokenUsage payload"),
         }

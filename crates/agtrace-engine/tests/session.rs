@@ -1,4 +1,5 @@
 use agtrace_engine::assemble_session;
+#[allow(deprecated)]
 use agtrace_providers::normalize_tool_call;
 use agtrace_types::AgentEvent;
 use std::fs;
@@ -9,8 +10,16 @@ fn load_events_from_fixture(fixture_name: &str) -> Vec<AgentEvent> {
     let path = Path::new("tests/fixtures").join(fixture_name);
     let content = fs::read_to_string(&path)
         .unwrap_or_else(|_| panic!("Failed to read fixture: {}", path.display()));
-    serde_json::from_str(&content)
-        .unwrap_or_else(|_| panic!("Failed to parse fixture: {}", path.display()))
+    serde_json::from_str(&content).unwrap_or_else(|e| {
+        panic!(
+            "Failed to parse fixture: {}\n\
+             Error: {}\n\n\
+             This fixture may be using an outdated schema.\n\
+             Run `cargo run -p agtrace-providers --example generate_engine_fixtures` to regenerate fixtures.",
+            path.display(),
+            e
+        )
+    })
 }
 
 #[test]
@@ -130,12 +139,10 @@ fn test_session_assembly_structure() {
             parent_id: Some(message_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
-            payload: EventPayload::TokenUsage(TokenUsagePayload {
-                input_tokens: 100,
-                output_tokens: 50,
-                total_tokens: 150,
-                details: None,
-            }),
+            payload: EventPayload::TokenUsage(TokenUsagePayload::new(
+                agtrace_types::TokenInput::new(0, 100), // cached=0, uncached=100
+                agtrace_types::TokenOutput::new(50, 0, 0), // generated=50, reasoning=0, tool=0
+            )),
             metadata: None,
         },
     ];

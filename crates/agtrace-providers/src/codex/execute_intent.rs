@@ -156,14 +156,14 @@ pub(crate) fn extract_search_pattern(command: &str) -> Option<String> {
             let remainder = remainder.trim();
 
             // Extract quoted or unquoted pattern
-            if remainder.starts_with('"') {
+            if let Some(stripped) = remainder.strip_prefix('"') {
                 // Find closing quote
-                let end = remainder[1..].find('"')?;
-                Some(remainder[1..=end].to_string())
-            } else if remainder.starts_with('\'') {
+                let end = stripped.find('"')?;
+                Some(stripped[..end].to_string())
+            } else if let Some(stripped) = remainder.strip_prefix('\'') {
                 // Find closing quote
-                let end = remainder[1..].find('\'')?;
-                Some(remainder[1..=end].to_string())
+                let end = stripped.find('\'')?;
+                Some(stripped[..end].to_string())
             } else {
                 // Unquoted pattern - take first word
                 remainder.split_whitespace().next().map(|s| s.to_string())

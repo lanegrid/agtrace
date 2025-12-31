@@ -93,6 +93,7 @@ impl StepBuilder {
 mod tests {
     use super::super::types::StepStatus;
     use super::*;
+    #[allow(deprecated)]
     use agtrace_providers::normalize_tool_call;
 
     #[test]
