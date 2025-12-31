@@ -221,6 +221,8 @@ mod tests {
         let mcp_payload = ToolCallPayload::Mcp {
             name: "mcp__o3__search".to_string(),
             arguments: McpArgs {
+                server: Some("o3".to_string()),
+                tool: Some("search".to_string()),
                 inner: serde_json::json!({}),
             },
             provider_call_id: None,
