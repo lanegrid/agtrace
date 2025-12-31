@@ -142,7 +142,7 @@ impl SessionOps {
             });
         }
 
-        return Err(Error::InvalidOperation(format!("Session not found: {}", session_id)))
+        Err(Error::InvalidOperation(format!("Session not found: {}", session_id)))
     }
 
     fn resolve_session_id(&self, session_id: &str) -> Result<Option<String>> {

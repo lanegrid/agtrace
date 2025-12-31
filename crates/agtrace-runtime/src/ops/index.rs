@@ -95,7 +95,7 @@ impl<'a> IndexService<'a> {
             let sessions = provider
                 .discovery
                 .scan_sessions(log_root)
-                .map_err(|e| Error::Provider(e))?;
+                .map_err(Error::Provider)?;
 
             // Filter sessions by project_root if specified
             let filtered_sessions: Vec<_> = sessions
@@ -144,7 +144,7 @@ impl<'a> IndexService<'a> {
 
                 // Calculate project_hash from session data
                 let session_project_hash = if let Some(ref root) = session.project_root {
-                    agtrace_types::ProjectHash::from_root(&root.to_string_lossy().into_owned())
+                    agtrace_types::ProjectHash::from_root(&root.to_string_lossy())
                 } else if provider_name == "gemini" {
                     // For Gemini, extract project_hash directly from the file
                     use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
