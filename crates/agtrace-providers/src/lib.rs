@@ -61,6 +61,7 @@ pub use registry::{
 pub use tool_analyzer::{classify_common, extract_common_summary, truncate};
 
 // Normalization
+#[allow(deprecated)]
 pub use normalization::normalize_tool_call;
 
 // Error types

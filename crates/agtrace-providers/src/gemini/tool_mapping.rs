@@ -57,3 +57,32 @@ fn extract_todo_summary(args: &Value) -> Option<String> {
         Some(text.to_string())
     }
 }
+
+/// Parse MCP tool name into server and tool components
+///
+/// MCP tools follow the pattern: mcp__{server}__{tool}
+/// Example: "mcp__o3__search" -> ("o3", "search")
+pub fn parse_mcp_name(full_name: &str) -> Option<(String, String)> {
+    if !full_name.starts_with("mcp__") {
+        return None;
+    }
+
+    let rest = &full_name[5..]; // Remove "mcp__"
+    let parts: Vec<&str> = rest.splitn(2, "__").collect();
+
+    if parts.len() == 2 {
+        Some((parts[0].to_string(), parts[1].to_string()))
+    } else {
+        None
+    }
+}
+
+/// Get server name from full MCP tool name
+pub fn mcp_server_name(full_name: &str) -> Option<String> {
+    parse_mcp_name(full_name).map(|(server, _)| server)
+}
+
+/// Get tool name from full MCP tool name
+pub fn mcp_tool_name(full_name: &str) -> Option<String> {
+    parse_mcp_name(full_name).map(|(_, tool)| tool)
+}

@@ -278,7 +278,7 @@ mod tests {
             parent_uuid: None,
             session_id: "session-1".to_string(),
             timestamp: "2024-01-01T00:00:00Z".to_string(),
-            message: UserMessage {
+            message: crate::claude::schema::UserMessage {
                 role: "user".to_string(),
                 content: vec![UserContent::Text {
                     text: "Hello".to_string(),

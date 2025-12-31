@@ -91,8 +91,17 @@ pub(crate) fn normalize_codex_tool_call(
             }
         }
         _ if tool_name.starts_with("mcp__") => {
-            // MCP tools
-            if let Ok(args) = serde_json::from_value(arguments.clone()) {
+            // MCP tools - parse server and tool names using Codex-specific convention
+            let (server, tool) = super::tool_mapping::parse_mcp_name(&tool_name)
+                .map(|(s, t)| (Some(s), Some(t)))
+                .unwrap_or((None, None));
+
+            if let Ok(mut args) =
+                serde_json::from_value::<agtrace_types::McpArgs>(arguments.clone())
+            {
+                args.server = server;
+                args.tool = tool;
+
                 return ToolCallPayload::Mcp {
                     name: tool_name,
                     arguments: args,
@@ -291,6 +300,57 @@ mod tests {
                 assert_eq!(provider_call_id, Some("call_999".to_string()));
             }
             _ => panic!("Expected FileRead variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_mcp_tool_parses_server_and_tool() {
+        let payload = normalize_codex_tool_call(
+            "mcp__filesystem__read".to_string(),
+            serde_json::json!({"path": "/tmp/file.txt"}),
+            Some("call_mcp".to_string()),
+        );
+
+        match payload {
+            ToolCallPayload::Mcp {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "mcp__filesystem__read");
+                assert_eq!(arguments.server, Some("filesystem".to_string()));
+                assert_eq!(arguments.tool, Some("read".to_string()));
+                assert_eq!(
+                    arguments.inner.get("path").and_then(|v| v.as_str()),
+                    Some("/tmp/file.txt")
+                );
+                assert_eq!(provider_call_id, Some("call_mcp".to_string()));
+            }
+            _ => panic!("Expected Mcp variant"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_mcp_tool_handles_malformed_name() {
+        let payload = normalize_codex_tool_call(
+            "mcp__noserver".to_string(),
+            serde_json::json!({"data": "test"}),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::Mcp {
+                name,
+                arguments,
+                provider_call_id,
+            } => {
+                assert_eq!(name, "mcp__noserver");
+                // Malformed MCP name should result in None for both server and tool
+                assert_eq!(arguments.server, None);
+                assert_eq!(arguments.tool, None);
+                assert_eq!(provider_call_id, None);
+            }
+            _ => panic!("Expected Mcp variant"),
         }
     }
 }

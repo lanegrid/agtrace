@@ -15,18 +15,42 @@ use serde_json::Value;
 
 /// Normalize raw tool call data into a typed ToolCallPayload variant
 ///
-/// This function encapsulates provider-specific knowledge about:
-/// - Tool name mapping (e.g., "Read" -> FileRead variant)
-/// - Argument schema parsing (e.g., JSON -> FileReadArgs)
-/// - Fallback handling (unknown tools -> Generic variant)
+/// # Deprecation Notice
 ///
-/// # Arguments
-/// * `name` - Tool name from provider (e.g., "Read", "Bash", "mcp__o3__search")
-/// * `arguments` - Raw JSON arguments from provider
-/// * `provider_call_id` - Optional provider-specific call identifier
+/// **This function is deprecated.** Use provider-specific `ToolMapper::normalize_call` instead.
 ///
-/// # Returns
-/// Typed ToolCallPayload variant with parsed arguments, or Generic variant as fallback
+/// ## Why deprecated?
+///
+/// This function contains provider-specific logic that violates architecture principles:
+/// - Provider details leak into a provider-agnostic layer
+/// - Not scalable: adding providers requires modifying this function
+/// - Responsibility inversion: provider-specific logic should be in provider implementations
+///
+/// ## Migration path
+///
+/// Instead of using this function directly, use the `ToolMapper` trait:
+///
+/// ```rust,ignore
+/// use agtrace_providers::ProviderAdapter;
+///
+/// let adapter = ProviderAdapter::claude();
+/// let payload = adapter.mapper.normalize_call("Read", args, Some("call_123"));
+/// ```
+///
+/// Each provider implements `ToolMapper::normalize_call` with provider-specific logic:
+/// - `ClaudeToolMapper` handles Claude Code tools
+/// - `CodexToolMapper` handles Codex tools
+/// - `GeminiToolMapper` handles Gemini tools
+///
+/// ## Legacy behavior
+///
+/// This function provides generic normalization for common tool patterns.
+/// It does NOT parse provider-specific details like MCP server/tool names.
+/// For full normalization, use provider-specific mappers.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use ToolMapper::normalize_call instead. See function docs for migration path."
+)]
 pub fn normalize_tool_call(
     name: String,
     arguments: Value,
