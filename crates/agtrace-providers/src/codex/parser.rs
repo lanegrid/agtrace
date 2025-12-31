@@ -11,9 +11,9 @@ use crate::codex::schema;
 use crate::codex::schema::CodexRecord;
 
 /// Regex for extracting exit codes from Codex output
-/// Example: "Exit Code: 0" or similar patterns
+/// Example: "Exit code: 0" or "Exit Code: 0" (case-insensitive)
 static EXIT_CODE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"Exit Code:\s*(\d+)").unwrap());
+    LazyLock::new(|| Regex::new(r"(?i)Exit Code:\s*(\d+)").unwrap());
 
 /// Attach model to event metadata when available
 fn attach_model_metadata(
@@ -415,9 +415,20 @@ mod tests {
 
     #[test]
     fn test_extract_exit_code() {
+        // Uppercase (legacy format)
         assert_eq!(extract_exit_code("Exit Code: 0"), Some(0));
         assert_eq!(extract_exit_code("Exit Code: 127"), Some(127));
         assert_eq!(extract_exit_code("Some output\nExit Code: 1\n"), Some(1));
+
+        // Lowercase (actual Codex format)
+        assert_eq!(extract_exit_code("Exit code: 0"), Some(0));
+        assert_eq!(extract_exit_code("Exit code: 127"), Some(127));
+        assert_eq!(extract_exit_code("Some output\nExit code: 1\n"), Some(1));
+
+        // Mixed case
+        assert_eq!(extract_exit_code("EXIT CODE: 42"), Some(42));
+
+        // No match
         assert_eq!(extract_exit_code("No exit code here"), None);
     }
 
