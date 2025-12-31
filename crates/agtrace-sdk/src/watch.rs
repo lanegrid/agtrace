@@ -1,4 +1,8 @@
+use std::pin::Pin;
 use std::sync::Arc;
+use std::task::{Context, Poll};
+
+use futures::stream::Stream;
 
 use crate::error::Result;
 
@@ -35,28 +39,41 @@ impl WatchBuilder {
             .map_err(crate::error::Error::Runtime)?
             .start_background_scan()
             .map_err(crate::error::Error::Runtime)?;
-        Ok(LiveStream { monitor })
+
+        // Create async channel for stream implementation
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+        // Spawn background task to bridge blocking receiver to async sender
+        // The monitor is moved into the task
+        tokio::task::spawn_blocking(move || {
+            while let Ok(event) = monitor.receiver().recv() {
+                if tx.send(event).is_err() {
+                    break; // Receiver dropped
+                }
+            }
+        });
+
+        Ok(LiveStream { receiver: rx })
     }
 }
 
 pub struct LiveStream {
-    monitor: agtrace_runtime::WorkspaceMonitor,
+    receiver: tokio::sync::mpsc::UnboundedReceiver<WorkspaceEvent>,
 }
 
 impl LiveStream {
-    pub fn next_blocking(&self) -> Option<WorkspaceEvent> {
-        self.monitor.receiver().recv().ok()
-    }
-
-    pub fn try_next(&self) -> Option<WorkspaceEvent> {
-        self.monitor.receiver().try_recv().ok()
+    /// Poll for the next event (non-blocking).
+    ///
+    /// Returns `None` if no event is available immediately.
+    pub fn try_next(&mut self) -> Option<WorkspaceEvent> {
+        self.receiver.try_recv().ok()
     }
 }
 
-impl Iterator for LiveStream {
+impl Stream for LiveStream {
     type Item = WorkspaceEvent;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.next_blocking()
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.receiver.poll_recv(cx)
     }
 }

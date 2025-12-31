@@ -95,16 +95,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust,no_run
 use agtrace_sdk::Client;
+use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace").await?;
 
     // Watch for live events from all providers
-    let stream = client.watch().all_providers().start()?;
+    let mut stream = client.watch().all_providers().start()?;
 
-    // Use the Iterator trait for ergonomic event processing
-    for event in stream {
+    // Use the Stream trait for ergonomic event processing
+    while let Some(event) = stream.next().await {
         println!("New event: {:?}", event);
     }
 
@@ -116,18 +117,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust,no_run
 use agtrace_sdk::Client;
+use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace").await?;
 
     // Watch only Claude events
-    let stream = client
+    let mut stream = client
         .watch()
         .provider("claude")
         .start()?;
 
-    for event in stream {
+    while let Some(event) = stream.next().await {
         println!("Claude event: {:?}", event);
     }
 
@@ -167,15 +169,17 @@ async fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error
 
 ```rust,no_run
 use agtrace_sdk::Client;
+use futures::stream::StreamExt;
 use std::time::{Duration, Instant};
 
 async fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace").await?;
-    let stream = client.watch().all_providers().start()?;
+    let mut stream = client.watch().all_providers().start()?;
 
     let mut last_activity = Instant::now();
     let timeout = Duration::from_secs(180); // 3 minutes
 
+    // Use try_next for non-blocking checks
     loop {
         if let Some(_event) = stream.try_next() {
             last_activity = Instant::now();
@@ -184,10 +188,14 @@ async fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
         if last_activity.elapsed() > timeout {
             println!("WARNING: No agent activity for 3 minutes!");
             // Send alert...
+            break;
         }
 
-        std::thread::sleep(Duration::from_secs(1));
+        // In a real implementation, add a small delay here
+        // (e.g., tokio::time::sleep with the 'time' feature enabled)
     }
+
+    Ok(())
 }
 ```
 
@@ -228,9 +236,9 @@ The primary way to interact with agtrace is through the Client-based API, which 
 
 ### LiveStream
 
-Implements the `Iterator` trait for ergonomic event processing.
+Implements the `Stream` trait for async event processing.
 
-- `.next_blocking()`: Block until next event arrives
+- `.next()`: Asynchronously wait for the next event (requires `StreamExt` trait from `futures`)
 - `.try_next()`: Try to get next event without blocking
 
 #### SessionAnalyzer
@@ -253,13 +261,15 @@ For advanced use cases like building custom TUIs or implementing custom event pr
 ```rust,no_run
 use agtrace_sdk::{Client, utils};
 use agtrace_sdk::watch::{WorkspaceEvent, StreamEvent};
+use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::connect("~/.agtrace").await?;
-    let stream = client.watch().all_providers().start()?;
+    let mut stream = client.watch().all_providers().start()?;
 
-    for workspace_event in stream.take(10) {
+    let mut count = 0;
+    while let Some(workspace_event) = stream.next().await {
         if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
             for event in events {
                 let updates = utils::extract_state_updates(&event);
@@ -271,6 +281,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+        count += 1;
+        if count >= 10 { break; }
     }
     Ok(())
 }

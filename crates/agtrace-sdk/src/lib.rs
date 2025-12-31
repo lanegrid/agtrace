@@ -27,6 +27,7 @@
 //!
 //! ```no_run
 //! use agtrace_sdk::{Client, Lens};
+//! use futures::stream::StreamExt;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,9 +35,12 @@
 //! let client = Client::connect("~/.agtrace").await?;
 //!
 //! // 2. Watch for live events (Real-time monitoring)
-//! let stream = client.watch().all_providers().start()?;
-//! for event in stream.take(10) {
+//! let mut stream = client.watch().all_providers().start()?;
+//! let mut count = 0;
+//! while let Some(event) = stream.next().await {
 //!     println!("New event: {:?}", event);
+//!     count += 1;
+//!     if count >= 10 { break; }
 //! }
 //!
 //! // 3. Analyze a specific session (Diagnosis)
@@ -85,7 +89,8 @@ pub use agtrace_engine::AgentSession;
 // Public facade
 pub use analysis::{AnalysisReport, Insight, Lens, Severity};
 pub use client::{
-    Client, InsightClient, ProjectClient, SessionClient, SessionHandle, SystemClient, WatchClient,
+    Client, ClientBuilder, InsightClient, ProjectClient, SessionClient, SessionHandle,
+    SystemClient, WatchClient,
 };
 pub use error::{Error, Result};
 pub use types::{
@@ -115,13 +120,15 @@ pub use watch::{LiveStream, WatchBuilder};
 /// ```no_run
 /// use agtrace_sdk::{Client, utils};
 /// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
+/// use futures::stream::StreamExt;
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let client = Client::connect("~/.agtrace").await?;
-/// let stream = client.watch().all_providers().start()?;
+/// let mut stream = client.watch().all_providers().start()?;
 ///
-/// for workspace_event in stream.take(10) {
+/// let mut count = 0;
+/// while let Some(workspace_event) = stream.next().await {
 ///     if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
 ///         for event in events {
 ///             let updates = utils::extract_state_updates(&event);
@@ -133,6 +140,8 @@ pub use watch::{LiveStream, WatchBuilder};
 ///             }
 ///         }
 ///     }
+///     count += 1;
+///     if count >= 10 { break; }
 /// }
 /// # Ok(())
 /// # }

@@ -9,17 +9,14 @@
 //! Start an agent session in another terminal to see events appear.
 
 use agtrace_sdk::Client;
+use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Real-time Event Watching Example ===\n");
 
-    // 1. Connect to workspace
-    let workspace_path = dirs::home_dir()
-        .ok_or("Could not find home directory")?
-        .join(".agtrace");
-
-    let client = Client::connect(&workspace_path).await?;
+    // 1. Connect to workspace (uses XDG path resolution)
+    let client = Client::connect_default().await?;
     println!("✓ Connected to workspace\n");
 
     // 2. Start watching for events from all providers
@@ -27,13 +24,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("(Start an agent session in another terminal to see events)\n");
     println!("Press Ctrl+C to exit\n");
 
-    let stream = client.watch().all_providers().start()?;
+    let mut stream = client.watch().all_providers().start()?;
 
     let mut event_count = 0;
     let start_time = std::time::Instant::now();
 
-    // 3. Process events as they arrive using the Iterator trait
-    for workspace_event in stream {
+    // 3. Process events as they arrive using the Stream trait
+    while let Some(workspace_event) = stream.next().await {
         use agtrace_sdk::watch::WorkspaceEvent;
 
         match workspace_event {
