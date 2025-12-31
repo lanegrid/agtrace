@@ -301,10 +301,10 @@ mod tests {
     fn test_context_window_usage_total_tokens() {
         // fresh_input=100, cache_read=200, output=300
         // total = (100 + 200) + 300 = 600
-        let usage = ContextWindowUsage::from_raw(100, 200, 300);
+        let usage = ContextWindowUsage::from_raw(100, 0, 200, 300);
         assert_eq!(usage.total_tokens(), TokenCount::new(600));
 
-        let usage_negative = ContextWindowUsage::from_raw(-100, 0, 0);
+        let usage_negative = ContextWindowUsage::from_raw(-100, 0, 0, 0);
         assert_eq!(usage_negative.total_tokens(), TokenCount::zero());
     }
 }
