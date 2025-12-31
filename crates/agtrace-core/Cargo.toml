@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Internal core infrastructure for the agtrace CLI. Not intended for direct use."
 
 [dependencies]
 agtrace-types.workspace = true
