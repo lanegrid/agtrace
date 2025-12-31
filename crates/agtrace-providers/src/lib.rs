@@ -39,6 +39,9 @@ pub use claude::normalize_claude_file;
 pub use codex::normalize_codex_file;
 pub use gemini::normalize_gemini_file;
 
+// Claude Code MCP utilities
+pub use claude::{mcp_server_name, mcp_tool_name, parse_mcp_name};
+
 // Registry
 pub use registry::{
     create_adapter, create_all_adapters, detect_adapter_from_path, get_all_providers,

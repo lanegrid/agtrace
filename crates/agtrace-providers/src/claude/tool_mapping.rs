@@ -83,3 +83,71 @@ fn extract_todo_summary(args: &Value) -> Option<String> {
         Some(text.to_string())
     }
 }
+
+// ==========================================
+// MCP Tool Name Parsing (Claude Code)
+// ==========================================
+
+/// Parse MCP tool name from full name (e.g., "mcp__o3__o3-search" -> ("o3", "o3-search"))
+///
+/// Claude Code MCP tools follow the naming convention: `mcp__{server}__{tool}`
+pub fn parse_mcp_name(full_name: &str) -> Option<(String, String)> {
+    if !full_name.starts_with("mcp__") {
+        return None;
+    }
+
+    let rest = &full_name[5..]; // Remove "mcp__"
+    let parts: Vec<&str> = rest.splitn(2, "__").collect();
+
+    if parts.len() == 2 {
+        Some((parts[0].to_string(), parts[1].to_string()))
+    } else {
+        None
+    }
+}
+
+/// Get server name from full MCP tool name
+pub fn mcp_server_name(full_name: &str) -> Option<String> {
+    parse_mcp_name(full_name).map(|(server, _)| server)
+}
+
+/// Get tool name from full MCP tool name
+pub fn mcp_tool_name(full_name: &str) -> Option<String> {
+    parse_mcp_name(full_name).map(|(_, tool)| tool)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_mcp_name() {
+        assert_eq!(
+            parse_mcp_name("mcp__o3__o3-search"),
+            Some(("o3".to_string(), "o3-search".to_string()))
+        );
+
+        assert_eq!(
+            parse_mcp_name("mcp__sqlite__query"),
+            Some(("sqlite".to_string(), "query".to_string()))
+        );
+
+        assert_eq!(parse_mcp_name("not_mcp_tool"), None);
+        assert_eq!(parse_mcp_name("mcp__only_server"), None);
+    }
+
+    #[test]
+    fn test_mcp_server_and_tool_name() {
+        assert_eq!(
+            mcp_server_name("mcp__o3__o3-search"),
+            Some("o3".to_string())
+        );
+        assert_eq!(
+            mcp_tool_name("mcp__o3__o3-search"),
+            Some("o3-search".to_string())
+        );
+
+        assert_eq!(mcp_server_name("not_mcp_tool"), None);
+        assert_eq!(mcp_tool_name("not_mcp_tool"), None);
+    }
+}
