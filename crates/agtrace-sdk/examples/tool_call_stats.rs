@@ -21,6 +21,7 @@ struct ProviderStats {
     total_calls: usize,
     tool_kinds: HashMap<String, usize>,
     tool_names: HashMap<String, usize>,
+    execute_commands: HashMap<String, usize>,
     file_paths: HashMap<String, usize>,
     mcp_servers: HashMap<String, usize>,
     mcp_tools: HashMap<String, usize>,
@@ -89,6 +90,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     .entry(arguments.file_path.clone())
                                     .or_insert(0) += 1;
                             }
+                            ToolCallPayload::Execute { arguments, .. } => {
+                                if let Some(command) = arguments.command() {
+                                    *stats
+                                        .execute_commands
+                                        .entry(command.to_string())
+                                        .or_insert(0) += 1;
+                                }
+                            }
                             ToolCallPayload::Mcp { arguments, .. } => {
                                 if let Some(server) = &arguments.server {
                                     *stats.mcp_servers.entry(server.clone()).or_insert(0) += 1;
@@ -131,6 +140,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Top 5 Tool Names (Raw):");
         print_top_5_indented(&stats.tool_names);
         println!();
+
+        // Top 5 execute commands
+        if !stats.execute_commands.is_empty() {
+            println!("  Top 5 Execute Commands:");
+            print_top_5_indented(&stats.execute_commands);
+            println!();
+        }
 
         // Top 5 file paths
         if !stats.file_paths.is_empty() {
