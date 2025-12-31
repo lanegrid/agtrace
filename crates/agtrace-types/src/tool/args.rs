@@ -77,8 +77,24 @@ impl SearchArgs {
     }
 }
 
+/// MCP (Model Context Protocol) tool arguments
+///
+/// This struct captures structured information about MCP tools.
+/// The `server` and `tool` fields are populated by provider-specific
+/// normalization logic based on provider naming conventions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpArgs {
+    /// MCP server identifier
+    /// Populated during normalization by provider-specific logic
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server: Option<String>,
+
+    /// MCP tool identifier
+    /// Populated during normalization by provider-specific logic
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<String>,
+
+    /// Raw MCP tool arguments as JSON
     #[serde(flatten)]
     pub inner: Value,
 }
