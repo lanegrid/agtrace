@@ -124,13 +124,14 @@ expression: json_pretty
   },
   "type": "token_usage",
   "content": {
-    "input_tokens": 3505,
-    "output_tokens": 101,
-    "total_tokens": 3606,
-    "details": {
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 64
+    "input": {
+      "cached": 3072,
+      "uncached": 433
+    },
+    "output": {
+      "generated": 101,
+      "reasoning": 64,
+      "tool": 0
     }
   },
   "metadata": {
@@ -271,13 +272,14 @@ expression: json_pretty
   },
   "type": "token_usage",
   "content": {
-    "input_tokens": 3711,
-    "output_tokens": 40,
-    "total_tokens": 3751,
-    "details": {
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
+    "input": {
+      "cached": 3072,
+      "uncached": 639
+    },
+    "output": {
+      "generated": 40,
+      "reasoning": 0,
+      "tool": 0
     }
   },
   "metadata": {
@@ -387,13 +389,14 @@ expression: json_pretty
   },
   "type": "token_usage",
   "content": {
-    "input_tokens": 3815,
-    "output_tokens": 26,
-    "total_tokens": 3841,
-    "details": {
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3584,
-      "reasoning_output_tokens": 0
+    "input": {
+      "cached": 3584,
+      "uncached": 231
+    },
+    "output": {
+      "generated": 26,
+      "reasoning": 0,
+      "tool": 0
     }
   },
   "metadata": {
@@ -536,13 +539,14 @@ expression: json_pretty
   },
   "type": "token_usage",
   "content": {
-    "input_tokens": 3708,
-    "output_tokens": 37,
-    "total_tokens": 3745,
-    "details": {
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
+    "input": {
+      "cached": 3072,
+      "uncached": 636
+    },
+    "output": {
+      "generated": 37,
+      "reasoning": 0,
+      "tool": 0
     }
   },
   "metadata": {
@@ -601,7 +605,7 @@ expression: json_pretty
   "content": {
     "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\n/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted\nerror: target shim binary not found\n",
     "tool_call_id": "65c27d12-fb8a-5747-a853-df4168ecd807",
-    "is_error": false
+    "is_error": true
   },
   "metadata": {
     "model": "gpt-5.1-codex-max",
@@ -684,13 +688,14 @@ expression: json_pretty
   },
   "type": "token_usage",
   "content": {
-    "input_tokens": 3845,
-    "output_tokens": 128,
-    "total_tokens": 3973,
-    "details": {
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 64
+    "input": {
+      "cached": 3072,
+      "uncached": 773
+    },
+    "output": {
+      "generated": 128,
+      "reasoning": 64,
+      "tool": 0
     }
   },
   "metadata": {
@@ -749,7 +754,7 @@ expression: json_pretty
   "content": {
     "output": "Exit code: 1\nWall time: 0.1 seconds\nOutput:\nerror: target shim binary not found\n",
     "tool_call_id": "445053cc-5bf6-518d-beb1-71c7949e4720",
-    "is_error": false
+    "is_error": true
   },
   "metadata": {
     "model": "gpt-5.1-codex-max",
@@ -830,13 +835,14 @@ expression: json_pretty
   },
   "type": "token_usage",
   "content": {
-    "input_tokens": 4017,
-    "output_tokens": 38,
-    "total_tokens": 4055,
-    "details": {
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3072,
-      "reasoning_output_tokens": 0
+    "input": {
+      "cached": 3072,
+      "uncached": 945
+    },
+    "output": {
+      "generated": 38,
+      "reasoning": 0,
+      "tool": 0
     }
   },
   "metadata": {
@@ -975,13 +981,14 @@ expression: json_pretty
   },
   "type": "token_usage",
   "content": {
-    "input_tokens": 4139,
-    "output_tokens": 38,
-    "total_tokens": 4177,
-    "details": {
-      "cache_creation_input_tokens": null,
-      "cache_read_input_tokens": 3968,
-      "reasoning_output_tokens": 0
+    "input": {
+      "cached": 3968,
+      "uncached": 171
+    },
+    "output": {
+      "generated": 38,
+      "reasoning": 0,
+      "tool": 0
     }
   },
   "metadata": {
