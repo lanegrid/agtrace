@@ -86,3 +86,70 @@ pub fn mcp_server_name(full_name: &str) -> Option<String> {
 pub fn mcp_tool_name(full_name: &str) -> Option<String> {
     parse_mcp_name(full_name).map(|(_, tool)| tool)
 }
+
+/// Check if a tool is MCP based on display name
+///
+/// Gemini uses a different naming convention for MCP tools:
+/// - Tool name: "o3-search" (no mcp__ prefix)
+/// - Display name: "o3-search (o3 MCP Server)"
+///
+/// This function extracts the server name from the display name pattern.
+pub fn is_mcp_tool(display_name: Option<&str>) -> bool {
+    display_name
+        .map(|name| name.contains("MCP Server"))
+        .unwrap_or(false)
+}
+
+/// Extract MCP server name from display name
+///
+/// Examples:
+/// - "o3-search (o3 MCP Server)" -> Some("o3")
+/// - "brave-search (brave MCP Server)" -> Some("brave")
+/// - "regular-tool" -> None
+pub fn extract_mcp_server_name(display_name: Option<&str>) -> Option<String> {
+    let name = display_name?;
+
+    // Look for pattern: "xxx (server MCP Server)"
+    let start = name.find('(')?;
+    let end = name.find(" MCP Server)")?;
+
+    if start < end {
+        let server = name[start + 1..end].trim();
+        Some(server.to_string())
+    } else {
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_mcp_tool() {
+        assert_eq!(is_mcp_tool(Some("o3-search (o3 MCP Server)")), true);
+        assert_eq!(is_mcp_tool(Some("brave-search (brave MCP Server)")), true);
+        assert_eq!(is_mcp_tool(Some("Google Web Search")), false);
+        assert_eq!(is_mcp_tool(Some("read_file")), false);
+        assert_eq!(is_mcp_tool(None), false);
+    }
+
+    #[test]
+    fn test_extract_mcp_server_name() {
+        assert_eq!(
+            extract_mcp_server_name(Some("o3-search (o3 MCP Server)")),
+            Some("o3".to_string())
+        );
+        assert_eq!(
+            extract_mcp_server_name(Some("brave-search (brave MCP Server)")),
+            Some("brave".to_string())
+        );
+        assert_eq!(
+            extract_mcp_server_name(Some("sqlite-query (sqlite MCP Server)")),
+            Some("sqlite".to_string())
+        );
+        assert_eq!(extract_mcp_server_name(Some("Google Web Search")), None);
+        assert_eq!(extract_mcp_server_name(Some("read_file")), None);
+        assert_eq!(extract_mcp_server_name(None), None);
+    }
+}

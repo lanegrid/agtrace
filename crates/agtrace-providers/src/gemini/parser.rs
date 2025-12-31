@@ -79,6 +79,7 @@ pub(crate) fn normalize_gemini_session(
                             tool_call.name.clone(),
                             tool_call.args.clone(),
                             Some(tool_call.id.clone()),
+                            tool_call.display_name.clone(),
                         )),
                         Some(raw_value.clone()),
                         StreamId::Main,

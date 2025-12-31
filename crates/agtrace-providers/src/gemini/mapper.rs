@@ -10,10 +10,19 @@ use crate::gemini::tools::{
 ///
 /// Handles Gemini provider-specific tool names and maps them to domain variants.
 /// Uses provider-specific Args structs for proper schema parsing and conversion.
+///
+/// # MCP Tool Detection
+///
+/// Gemini uses a different naming convention for MCP tools compared to other providers:
+/// - Tool name: "o3-search" (no mcp__ prefix)
+/// - Display name: "o3-search (o3 MCP Server)"
+///
+/// We detect MCP tools by checking if display_name contains "MCP Server" pattern.
 pub(crate) fn normalize_gemini_tool_call(
     tool_name: String,
     arguments: serde_json::Value,
     provider_call_id: Option<String>,
+    display_name: Option<String>,
 ) -> ToolCallPayload {
     // Handle Gemini-specific tools with provider-specific types
     match tool_name.as_str() {
@@ -86,26 +95,26 @@ pub(crate) fn normalize_gemini_tool_call(
                 };
             }
         }
-        _ if tool_name.starts_with("mcp__") => {
-            // MCP tools - parse server and tool names using Gemini-specific convention
-            let (server, tool) = super::tool_mapping::parse_mcp_name(&tool_name)
-                .map(|(s, t)| (Some(s), Some(t)))
-                .unwrap_or((None, None));
-
-            if let Ok(mut args) =
-                serde_json::from_value::<agtrace_types::McpArgs>(arguments.clone())
-            {
-                args.server = server;
-                args.tool = tool;
-
-                return ToolCallPayload::Mcp {
-                    name: tool_name,
-                    arguments: args,
-                    provider_call_id,
-                };
-            }
-        }
         _ => {
+            // Check if this is an MCP tool using display name
+            if super::tool_mapping::is_mcp_tool(display_name.as_deref()) {
+                let server = super::tool_mapping::extract_mcp_server_name(display_name.as_deref());
+                let tool = Some(tool_name.clone());
+
+                if let Ok(mut args) =
+                    serde_json::from_value::<agtrace_types::McpArgs>(arguments.clone())
+                {
+                    args.server = server;
+                    args.tool = tool;
+
+                    return ToolCallPayload::Mcp {
+                        name: tool_name,
+                        arguments: args,
+                        provider_call_id,
+                    };
+                }
+            }
+
             // Unknown Gemini tool, fall through to Generic
         }
     }
@@ -128,7 +137,9 @@ impl crate::traits::ToolMapper for GeminiToolMapper {
     }
 
     fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>) -> ToolCallPayload {
-        normalize_gemini_tool_call(name.to_string(), args, call_id)
+        // Note: ToolMapper trait doesn't have display_name parameter,
+        // so we pass None here. The actual display_name is passed from parser.
+        normalize_gemini_tool_call(name.to_string(), args, call_id, None)
     }
 
     fn summarize(&self, kind: ToolKind, args: &Value) -> String {
@@ -146,6 +157,7 @@ mod tests {
             "read_file".to_string(),
             serde_json::json!({"file_path": "src/main.rs"}),
             Some("call_123".to_string()),
+            None,
         );
 
         match payload {
@@ -168,6 +180,7 @@ mod tests {
             "write_file".to_string(),
             serde_json::json!({"file_path": "test.txt", "content": "hello"}),
             Some("call_456".to_string()),
+            None,
         );
 
         match payload {
@@ -191,6 +204,7 @@ mod tests {
             "run_shell_command".to_string(),
             serde_json::json!({"command": "ls -la"}),
             Some("call_789".to_string()),
+            None,
         );
 
         match payload {
@@ -217,6 +231,7 @@ mod tests {
                 "new_string": "new"
             }),
             None,
+            None,
         );
 
         match payload {
@@ -241,6 +256,7 @@ mod tests {
             "unknown_tool".to_string(),
             serde_json::json!({"arg": "value"}),
             None,
+            None,
         );
 
         match payload {
@@ -258,11 +274,12 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_mcp_tool_parses_server_and_tool() {
+    fn test_normalize_mcp_tool_with_display_name() {
         let payload = normalize_gemini_tool_call(
-            "mcp__brave__search".to_string(),
-            serde_json::json!({"query": "rust programming"}),
+            "o3-search".to_string(),
+            serde_json::json!({"input": "ice coffee taste"}),
             Some("call_mcp".to_string()),
+            Some("o3-search (o3 MCP Server)".to_string()),
         );
 
         match payload {
@@ -271,40 +288,33 @@ mod tests {
                 arguments,
                 provider_call_id,
             } => {
-                assert_eq!(name, "mcp__brave__search");
-                assert_eq!(arguments.server, Some("brave".to_string()));
-                assert_eq!(arguments.tool, Some("search".to_string()));
+                assert_eq!(name, "o3-search");
+                assert_eq!(arguments.server, Some("o3".to_string()));
+                assert_eq!(arguments.tool, Some("o3-search".to_string()));
                 assert_eq!(
-                    arguments.inner.get("query").and_then(|v| v.as_str()),
-                    Some("rust programming")
+                    arguments.inner.get("input").and_then(|v| v.as_str()),
+                    Some("ice coffee taste")
                 );
                 assert_eq!(provider_call_id, Some("call_mcp".to_string()));
             }
-            _ => panic!("Expected Mcp variant"),
+            _ => panic!("Expected Mcp variant, got: {:?}", payload.kind()),
         }
     }
 
     #[test]
-    fn test_normalize_mcp_tool_handles_malformed_name() {
+    fn test_normalize_non_mcp_tool_with_non_mcp_display_name() {
         let payload = normalize_gemini_tool_call(
-            "mcp__incomplete".to_string(),
-            serde_json::json!({"param": "value"}),
-            None,
+            "google_web_search".to_string(),
+            serde_json::json!({"query": "rust programming"}),
+            Some("call_123".to_string()),
+            Some("Google Web Search".to_string()),
         );
 
         match payload {
-            ToolCallPayload::Mcp {
-                name,
-                arguments,
-                provider_call_id,
-            } => {
-                assert_eq!(name, "mcp__incomplete");
-                // Malformed MCP name should result in None for both server and tool
-                assert_eq!(arguments.server, None);
-                assert_eq!(arguments.tool, None);
-                assert_eq!(provider_call_id, None);
+            ToolCallPayload::Search { name, .. } => {
+                assert_eq!(name, "google_web_search");
             }
-            _ => panic!("Expected Mcp variant"),
+            _ => panic!("Expected Search variant, got: {:?}", payload.kind()),
         }
     }
 }
