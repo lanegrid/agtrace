@@ -1,5 +1,5 @@
-use agtrace_index::Database;
 use crate::Result;
+use agtrace_index::Database;
 
 #[derive(Debug, Clone)]
 pub struct ProjectInfo {

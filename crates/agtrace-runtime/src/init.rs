@@ -1,8 +1,8 @@
+use crate::Result;
 use crate::config::Config;
 use crate::ops::IndexService;
 use agtrace_index::Database;
 use agtrace_providers::get_all_providers;
-use crate::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

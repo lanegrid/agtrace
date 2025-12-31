@@ -2,10 +2,10 @@ use crate::client::{InsightOps, MonitorBuilder, ProjectOps, SessionOps, WatchSer
 use crate::config::Config;
 use crate::init::{InitConfig, InitProgress, InitResult, InitService};
 use crate::ops::{CheckResult, DoctorService, InspectResult};
+use crate::{Error, Result};
 use agtrace_engine::DiagnoseResult;
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
-use crate::{Error, Result};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::task;

@@ -1,6 +1,6 @@
 use crate::traits::{LogDiscovery, ProbeResult, SessionIndex};
-use agtrace_types::project_hash_from_root;
 use crate::{Error, Result};
+use agtrace_types::project_hash_from_root;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;

@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 use std::path::Path;
 
-use crate::{queries, records::*, schema, Result};
+use crate::{Result, queries, records::*, schema};
 
 pub struct Database {
     conn: Connection,

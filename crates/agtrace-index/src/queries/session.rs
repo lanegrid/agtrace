@@ -1,7 +1,10 @@
 use agtrace_types::ProjectHash;
 use rusqlite::{Connection, params};
 
-use crate::{records::{SessionRecord, SessionSummary}, Error, Result};
+use crate::{
+    Error, Result,
+    records::{SessionRecord, SessionSummary},
+};
 
 pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()> {
     conn.execute(

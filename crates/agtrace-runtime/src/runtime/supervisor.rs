@@ -1,8 +1,8 @@
 use crate::runtime::events::{DiscoveryEvent, WorkspaceEvent};
+use crate::{Error, Result};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::project_hash_from_root;
-use crate::{Error, Result};
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -48,7 +48,9 @@ impl WorkspaceSupervisor {
             if context.root.exists() {
                 watcher
                     .watch(&context.root, RecursiveMode::Recursive)
-                    .map_err(|e| Error::InvalidOperation(format!("Failed to watch directory: {}", e)))?;
+                    .map_err(|e| {
+                        Error::InvalidOperation(format!("Failed to watch directory: {}", e))
+                    })?;
             }
         }
 

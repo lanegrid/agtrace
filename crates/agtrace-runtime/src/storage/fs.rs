@@ -1,5 +1,5 @@
-use agtrace_index::Database;
 use crate::{Error, Result};
+use agtrace_index::Database;
 
 #[derive(Debug, Clone)]
 pub struct RawFileContent {

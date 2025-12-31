@@ -1,6 +1,6 @@
 use crate::runtime::{SessionStreamer, WatchContext, WorkspaceEvent, WorkspaceSupervisor};
-use agtrace_index::Database;
 use crate::{Error, Result};
+use agtrace_index::Database;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};

@@ -1,7 +1,7 @@
 use crate::storage::{LoadOptions, SessionRepository};
+use crate::{Error, Result};
 use agtrace_index::{Database, SessionSummary};
 use agtrace_types::{AgentEvent, resolve_effective_project_hash};
-use crate::{Error, Result};
 use chrono::DateTime;
 
 pub struct ListSessionsRequest {

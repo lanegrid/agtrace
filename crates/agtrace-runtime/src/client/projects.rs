@@ -1,7 +1,7 @@
+use crate::Result;
 use crate::ops::{IndexProgress, IndexService, ProjectInfo, ProjectService};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
-use crate::Result;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 

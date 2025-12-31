@@ -158,7 +158,10 @@ impl ProviderAdapter {
             "claude_code" | "claude" => Ok(Self::claude()),
             "codex" => Ok(Self::codex()),
             "gemini" => Ok(Self::gemini()),
-            _ => Err(Error::Provider(format!("Unknown provider: {}", provider_name))),
+            _ => Err(Error::Provider(format!(
+                "Unknown provider: {}",
+                provider_name
+            ))),
         }
     }
 

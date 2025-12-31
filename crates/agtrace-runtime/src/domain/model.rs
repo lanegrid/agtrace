@@ -1,5 +1,5 @@
-use agtrace_engine::ContextWindowUsage;
 use crate::{Error, Result};
+use agtrace_engine::ContextWindowUsage;
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
 
@@ -67,7 +67,9 @@ impl SessionState {
             || self.current_usage.cache_creation.0 < 0
             || self.current_usage.cache_read.0 < 0
         {
-            return Err(Error::InvalidOperation("Negative token count detected".to_string()));
+            return Err(Error::InvalidOperation(
+                "Negative token count detected".to_string(),
+            ));
         }
 
         let total = self.total_tokens();

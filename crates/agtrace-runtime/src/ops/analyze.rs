@@ -1,9 +1,9 @@
+use crate::Result;
 use crate::storage::{LoadOptions, SessionRepository};
 use agtrace_engine::assemble_session;
 use agtrace_index::Database;
 use agtrace_providers::create_adapter;
 use agtrace_types::EventPayload;
-use crate::Result;
 use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, Clone)]

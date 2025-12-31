@@ -1,7 +1,7 @@
+use crate::Result;
 use agtrace_engine::export::{self, ExportStrategy};
 use agtrace_index::Database;
 use agtrace_types::AgentEvent;
-use crate::Result;
 
 use crate::storage::{LoadOptions, SessionRepository};
 

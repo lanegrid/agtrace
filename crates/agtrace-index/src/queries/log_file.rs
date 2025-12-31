@@ -1,6 +1,6 @@
 use rusqlite::{Connection, params};
 
-use crate::{records::LogFileRecord, Result};
+use crate::{Result, records::LogFileRecord};
 
 pub fn insert_or_update(conn: &Connection, log_file: &LogFileRecord) -> Result<()> {
     conn.execute(

@@ -1,6 +1,6 @@
+use crate::{Error, Result};
 use agtrace_index::{Database, LogFileRecord, ProjectRecord, SessionRecord};
 use agtrace_providers::ProviderAdapter;
-use crate::{Error, Result};
 use std::collections::HashSet;
 use std::path::PathBuf;
 
