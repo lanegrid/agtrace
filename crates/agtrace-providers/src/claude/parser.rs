@@ -211,17 +211,30 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 if let Some(usage) = &asst_record.message.usage {
                     // Attach to last generation event (ToolCall or Message)
                     if last_generation_event_id.is_some() {
+                        // Claude Token Conversion Rationale:
+                        //
+                        // Input mapping (verified from API spec):
+                        //   cached   = cache_read_input_tokens (tokens from cache, still consume context)
+                        //   uncached = input_tokens (fresh tokens, not from cache)
+                        //
+                        // Output mapping (current limitation):
+                        //   generated = output_tokens (all output tokens)
+                        //   reasoning = 0 (not yet separated)
+                        //   tool      = 0 (not yet separated)
+                        //
+                        // Future improvement:
+                        //   Claude's message.content[] has type field ("text", "thinking", "tool_use")
+                        //   which allows separating output_tokens by parsing each content block.
+                        //   This would enable proper reasoning/tool token accounting.
                         let input = TokenInput::new(
                             usage.cache_read_input_tokens.unwrap_or(0) as u64,
                             usage.input_tokens as u64,
                         );
 
-                        // TODO: Parse content[] to separate reasoning/tool tokens
-                        // For now, treat all output as generated
                         let output = TokenOutput::new(
-                            usage.output_tokens as u64, // generated
-                            0,                          // reasoning (to be implemented)
-                            0,                          // tool (to be implemented)
+                            usage.output_tokens as u64, // all output as generated (for now)
+                            0, // reasoning (TODO: parse content[type="thinking"])
+                            0, // tool (TODO: parse content[type="tool_use"])
                         );
 
                         builder.build_and_push(
