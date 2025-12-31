@@ -1,11 +1,16 @@
 use std::fmt;
 
+/// Result type alias for SDK operations.
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Error type for SDK operations.
 #[derive(Debug)]
 pub enum Error {
+    /// Resource not found (session, project, etc.).
     NotFound(String),
+    /// Invalid input parameters or configuration.
     InvalidInput(String),
+    /// Error from the underlying runtime layer.
     Runtime(agtrace_runtime::Error),
 }
 

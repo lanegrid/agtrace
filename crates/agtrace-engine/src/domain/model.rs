@@ -2,19 +2,35 @@ use crate::ContextWindowUsage;
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
 
+/// Real-time session state for live monitoring and watch operations.
+///
+/// Tracks cumulative metrics, token usage, and context window state
+/// as events stream in. Used by the watch service to provide live updates.
 #[derive(Debug, Clone)]
 pub struct SessionState {
+    /// Session UUID.
     pub session_id: String,
+    /// Project root directory, if known.
     pub project_root: Option<PathBuf>,
+    /// Path to the session's log file.
     pub log_path: Option<PathBuf>,
+    /// Session start timestamp.
     pub start_time: DateTime<Utc>,
+    /// Timestamp of the most recent event.
     pub last_activity: DateTime<Utc>,
+    /// Model name/ID being used in this session.
     pub model: Option<String>,
+    /// Maximum context window size for the model.
     pub context_window_limit: Option<u64>,
+    /// Current cumulative token usage.
     pub current_usage: ContextWindowUsage,
+    /// Current cumulative reasoning tokens (o1-style extended thinking).
     pub current_reasoning_tokens: i32,
+    /// Count of errors encountered so far.
     pub error_count: u32,
+    /// Total number of events processed.
     pub event_count: usize,
+    /// Total number of user turns.
     pub turn_count: usize,
 }
 

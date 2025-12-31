@@ -1,20 +1,34 @@
 use super::types::AgentSession;
 use serde::{Deserialize, Serialize};
 
+/// Statistical summary of session event composition.
+///
+/// Provides aggregated counts of different event types within a session
+/// for analysis and reporting purposes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionSummary {
+    /// Breakdown of event counts by type.
     pub event_counts: EventCounts,
 }
 
+/// Count of events by type within a session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventCounts {
+    /// Total number of events in the session.
     pub total: usize,
+    /// Number of user input messages.
     pub user_messages: usize,
+    /// Number of assistant response messages.
     pub assistant_messages: usize,
+    /// Number of tool call invocations.
     pub tool_calls: usize,
+    /// Number of reasoning/thinking blocks.
     pub reasoning_blocks: usize,
 }
 
+/// Generate statistical summary from a session.
+///
+/// Counts all events by type to produce an aggregated view of session composition.
 pub fn summarize(session: &AgentSession) -> SessionSummary {
     let user_count = session.turns.len();
     let mut assistant_count = 0;

@@ -1,28 +1,52 @@
 use crate::error::Result;
 use agtrace_engine::{AgentSession, SessionSummary};
 
+/// Diagnostic lens for session analysis.
+///
+/// Each lens applies a specific diagnostic perspective to identify
+/// potential issues or patterns in agent behavior.
 #[derive(Debug, Clone, Copy)]
 pub enum Lens {
+    /// Detects tool execution failures.
     Failures,
+    /// Detects repeated tool sequences that may indicate stuck behavior.
     Loops,
+    /// Detects slow tool executions that may impact performance.
     Bottlenecks,
 }
 
+/// Severity level of an insight.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
+    /// Informational observation.
     Info,
+    /// Potential issue requiring attention.
     Warning,
+    /// Critical problem requiring immediate attention.
     Critical,
 }
 
+/// Diagnostic insight about a specific turn in a session.
+///
+/// Represents a finding from applying a diagnostic lens to a turn,
+/// including the turn location, the lens that detected it, and
+/// a human-readable message describing the issue.
 #[derive(Debug, Clone)]
 pub struct Insight {
+    /// Zero-based turn index where the insight was detected.
     pub turn_index: usize,
+    /// The diagnostic lens that produced this insight.
     pub lens: Lens,
+    /// Human-readable description of the finding.
     pub message: String,
+    /// Severity level of this insight.
     pub severity: Severity,
 }
 
+/// Builder for analyzing sessions through multiple diagnostic lenses.
+///
+/// Apply one or more lenses to a session to generate an analysis report
+/// with insights and a health score.
 pub struct SessionAnalyzer {
     session: AgentSession,
     lenses: Vec<Lens>,
@@ -156,9 +180,16 @@ impl SessionAnalyzer {
     }
 }
 
+/// Comprehensive analysis report for a session.
+///
+/// Contains a health score (0-100), detailed insights from applied lenses,
+/// and a statistical summary of the session.
 #[derive(Debug)]
 pub struct AnalysisReport {
+    /// Health score (0-100) where 100 indicates no issues detected.
     pub score: u8,
+    /// Diagnostic insights collected from all applied lenses.
     pub insights: Vec<Insight>,
+    /// Statistical summary of the session.
     pub summary: SessionSummary,
 }

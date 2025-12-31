@@ -1,17 +1,31 @@
 use std::collections::HashMap;
 
+/// Result of diagnosing log file parsing health for a provider.
+///
+/// Contains success/failure statistics and categorized failure examples
+/// for identifying systematic parsing issues.
 #[derive(Debug)]
 pub struct DiagnoseResult {
+    /// Provider being diagnosed (claude, codex, gemini).
     pub provider_name: String,
+    /// Total number of log files checked.
     pub total_files: usize,
+    /// Number of files successfully parsed.
     pub successful: usize,
+    /// Failed files grouped by failure type.
     pub failures: HashMap<FailureType, Vec<FailureExample>>,
 }
 
+/// Category of log file parsing failure.
+///
+/// Used to group similar failures together for easier diagnosis.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FailureType {
+    /// Required field is missing from the log entry.
     MissingField(String),
+    /// Field has unexpected type or format.
     TypeMismatch(String),
+    /// Generic parsing error not categorized further.
     ParseError,
 }
 
@@ -25,12 +39,21 @@ impl std::fmt::Display for FailureType {
     }
 }
 
+/// Example of a specific file parsing failure.
+///
+/// Provides the file path and error reason for investigation.
 #[derive(Debug, Clone)]
 pub struct FailureExample {
+    /// Absolute path to the file that failed to parse.
     pub path: String,
+    /// Human-readable description of the failure.
     pub reason: String,
 }
 
+/// Categorize a parse error message into a structured failure type.
+///
+/// Analyzes error text to extract field names and classify the failure
+/// as missing field, type mismatch, or generic parse error.
 pub fn categorize_parse_error(error_msg: &str) -> (FailureType, String) {
     if error_msg.contains("missing field") {
         if let Some(field) = extract_field_name(error_msg) {

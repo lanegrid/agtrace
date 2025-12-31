@@ -9,59 +9,92 @@ use uuid::Uuid;
 // ==========================================
 // 1. Session (entire conversation)
 // ==========================================
+
+/// Complete agent conversation session assembled from normalized events.
+///
+/// Represents a full conversation timeline with the agent, containing all
+/// user interactions (turns) and their corresponding agent responses.
+/// The session is the highest-level construct for analyzing agent behavior.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentSession {
+    /// Unique session identifier.
     pub session_id: Uuid,
+    /// When the session started (first event timestamp).
     pub start_time: DateTime<Utc>,
+    /// When the session ended (last event timestamp), if completed.
     pub end_time: Option<DateTime<Utc>>,
 
+    /// All user-initiated turns in chronological order.
     pub turns: Vec<AgentTurn>,
 
+    /// Aggregated session statistics.
     pub stats: SessionStats,
 }
 
 // ==========================================
 // 2. Turn (user-initiated interaction unit)
 // ==========================================
+
+/// Single user-initiated interaction cycle within a session.
+///
+/// A turn begins with user input and contains all agent steps taken
+/// in response until the next user input or session end.
+/// Autonomous agents may execute multiple steps per turn.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentTurn {
+    /// Unique turn identifier (ID of the user event that initiated this turn).
     pub id: Uuid,
+    /// When the turn started (user input timestamp).
     pub timestamp: DateTime<Utc>,
 
-    /// Turn trigger (Input)
+    /// User input that triggered this turn.
     pub user: UserMessage,
 
-    /// Agent autonomous operation cycle (Steps)
-    /// Single step for simple conversation, multiple steps for autonomous agents
+    /// Agent's response steps in chronological order.
+    /// Single step for simple Q&A, multiple steps for autonomous operation.
     pub steps: Vec<AgentStep>,
 
+    /// Aggregated turn statistics.
     pub stats: TurnStats,
 }
 
 // ==========================================
 // 3. Step (single LLM inference + execution unit)
 // ==========================================
+
+/// Single LLM inference cycle with optional tool executions.
+///
+/// A step represents one round of agent thinking and acting:
+/// 1. Generation phase: LLM produces reasoning, messages, and tool calls
+/// 2. Execution phase: Tools are executed and results collected
+///
+/// Steps are the atomic unit of agent behavior analysis.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentStep {
+    /// Unique step identifier (ID of the first event in this step).
     pub id: Uuid,
+    /// When the step started.
     pub timestamp: DateTime<Utc>,
 
     // --- Phase 1: Generation (Agent Outputs) ---
     // These are generated in parallel or in arbitrary order before seeing tool results
-    /// Reasoning (CoT)
+    /// Chain-of-thought reasoning, if present.
     pub reasoning: Option<ReasoningBlock>,
 
-    /// Text message (answer to user, or declaration of tool execution)
+    /// Text response to user or explanation of tool usage.
     pub message: Option<MessageBlock>,
 
     // --- Phase 2: Execution (System Outputs) ---
-    /// Tool execution pairs (Call + Result)
-    /// Calls are generated in Phase 1, but managed here as pairs with Results
+    /// Tool executions (call + result pairs) performed in this step.
+    /// Calls are generated in Phase 1, paired with results here.
     pub tools: Vec<ToolExecution>,
 
     // --- Meta ---
+    /// Token usage for this step's LLM inference, if available.
     pub usage: Option<TokenUsagePayload>,
+    /// Whether this step encountered any failures.
     pub is_failed: bool,
+    /// Current completion status of this step.
     pub status: StepStatus,
 }
 
@@ -81,70 +114,101 @@ pub enum StepStatus {
 // Components
 // ==========================================
 
-/// Single tool execution unit (Call -> Result)
+/// Paired tool call and result with execution metrics.
+///
+/// Represents a complete tool execution lifecycle:
+/// tool invocation → execution → result collection.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolExecution {
+    /// Tool invocation request.
     pub call: ToolCallBlock,
 
-    /// Execution result (None if incomplete or lost)
+    /// Execution result (None if incomplete, lost, or still pending).
     pub result: Option<ToolResultBlock>,
 
-    /// Latency (result.timestamp - call.timestamp)
+    /// Execution latency in milliseconds (result.timestamp - call.timestamp).
     pub duration_ms: Option<i64>,
 
-    /// Whether this individual tool execution failed
+    /// Whether this tool execution failed (error status in result).
     pub is_error: bool,
 }
 
-// --- ID Wrappers ---
+// --- Event Wrappers ---
 
+/// User input message that initiates a turn.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserMessage {
+    /// ID of the source event.
     pub event_id: Uuid,
+    /// User input content.
     pub content: UserPayload,
 }
 
+/// Agent reasoning/thinking block.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReasoningBlock {
+    /// ID of the source event.
     pub event_id: Uuid,
+    /// Reasoning content.
     pub content: ReasoningPayload,
 }
 
+/// Agent text response message.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageBlock {
+    /// ID of the source event.
     pub event_id: Uuid,
+    /// Message content.
     pub content: MessagePayload,
 }
 
+/// Tool invocation request with timing information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCallBlock {
+    /// ID of the source event.
     pub event_id: Uuid,
+    /// When the tool was invoked.
     pub timestamp: DateTime<Utc>,
+    /// Provider-specific call identifier, if available.
     pub provider_call_id: Option<String>,
+    /// Tool invocation details.
     pub content: ToolCallPayload,
 }
 
+/// Tool execution result with timing information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolResultBlock {
+    /// ID of the source event.
     pub event_id: Uuid,
+    /// When the result was received.
     pub timestamp: DateTime<Utc>,
+    /// ID of the tool call this result corresponds to.
     pub tool_call_id: Uuid,
+    /// Tool execution result details.
     pub content: ToolResultPayload,
 }
 
 // --- Stats ---
 
+/// Aggregated statistics for an entire session.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SessionStats {
+    /// Total number of turns in the session.
     pub total_turns: usize,
+    /// Session duration in seconds (end_time - start_time).
     pub duration_seconds: i64,
+    /// Total tokens consumed across all turns.
     pub total_tokens: i64,
 }
 
+/// Aggregated statistics for a single turn.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TurnStats {
+    /// Turn duration in milliseconds.
     pub duration_ms: i64,
+    /// Number of steps in this turn.
     pub step_count: usize,
+    /// Total tokens consumed in this turn.
     pub total_tokens: i32,
 }
 
@@ -152,13 +216,21 @@ pub struct TurnStats {
 // Computed Metrics (for presentation)
 // ==========================================
 
-/// Computed metrics for a turn, used for presentation layer
+/// Computed context window metrics for turn visualization.
+///
+/// Used by TUI and other presentation layers to show
+/// cumulative token usage and detect high-usage patterns.
 #[derive(Debug, Clone)]
 pub struct TurnMetrics {
+    /// Zero-based turn index.
     pub turn_index: usize,
+    /// Cumulative tokens before this turn.
     pub prev_total: u32,
+    /// Tokens added by this turn.
     pub delta: u32,
+    /// Whether this turn's delta exceeds the heavy threshold.
     pub is_heavy: bool,
+    /// Whether this turn is currently active (in progress).
     pub is_active: bool,
 }
 

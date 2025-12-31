@@ -1,10 +1,21 @@
 use agtrace_types::{AgentEvent, EventPayload};
 
+/// Filters for including/excluding event types.
+///
+/// Supports both allowlist (`only`) and blocklist (`hide`) patterns
+/// for event type filtering.
 pub struct EventFilters {
+    /// Event types to exclude (blocklist).
     pub hide: Option<Vec<String>>,
+    /// Event types to include exclusively (allowlist).
     pub only: Option<Vec<String>>,
 }
 
+/// Filter events by type using inclusion/exclusion patterns.
+///
+/// Applies `only` filter first (if present), then `hide` filter.
+/// Supported patterns: "user", "assistant"/"message", "tool",
+/// "reasoning", "token"/"tokenusage", "notification"/"info".
 pub fn filter_events(events: &[AgentEvent], filters: EventFilters) -> Vec<AgentEvent> {
     let mut filtered = events.to_vec();
 

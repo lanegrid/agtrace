@@ -1,13 +1,23 @@
 use crate::domain::model::SessionState;
 use agtrace_types::ModelLimitResolver;
 
+/// Context window limit configuration for a model.
+///
+/// Defines the total token limit and reserved buffer percentage
+/// for context management operations.
 #[derive(Debug, Clone)]
 pub struct TokenLimit {
+    /// Total context window size in tokens.
     pub total_limit: u64,
+    /// Percentage of context reserved for compaction/management (0-100).
     pub compaction_buffer_pct: f64,
 }
 
 impl TokenLimit {
+    /// Create a new token limit with validation.
+    ///
+    /// # Panics
+    /// Panics if `compaction_buffer_pct` is not in range 0-100.
     pub fn new(total_limit: u64, compaction_buffer_pct: f64) -> Self {
         assert!(
             (0.0..=100.0).contains(&compaction_buffer_pct),
@@ -21,6 +31,10 @@ impl TokenLimit {
         }
     }
 
+    /// Calculate effective usable token limit after buffer reservation.
+    ///
+    /// Returns the actual number of tokens available for use after
+    /// subtracting the compaction buffer.
     pub fn effective_limit(&self) -> u64 {
         if self.compaction_buffer_pct == 0.0 {
             return self.total_limit;
@@ -33,21 +47,34 @@ impl TokenLimit {
     }
 }
 
+/// Token limit lookup service for model specifications.
+///
+/// Wraps a `ModelLimitResolver` to provide token limit queries
+/// and usage percentage calculations for sessions.
 pub struct TokenLimits<R: ModelLimitResolver> {
     resolver: R,
 }
 
 impl<R: ModelLimitResolver> TokenLimits<R> {
+    /// Create a new token limits service with the given resolver.
     pub fn new(resolver: R) -> Self {
         Self { resolver }
     }
 
+    /// Get token limit for a model by name.
+    ///
+    /// Returns `None` if the model is not recognized by the resolver.
     pub fn get_limit(&self, model: &str) -> Option<TokenLimit> {
         self.resolver
             .resolve_model_limit(model)
             .map(|spec| TokenLimit::new(spec.max_tokens, spec.compaction_buffer_pct))
     }
 
+    /// Calculate usage percentages from session state.
+    ///
+    /// Returns `(input_pct, output_pct, total_pct)` where each is
+    /// a percentage (0-100+) relative to the context window limit.
+    /// Returns `None` if model or limit information is unavailable.
     pub fn get_usage_percentage_from_state(&self, state: &SessionState) -> Option<(f64, f64, f64)> {
         let limit_total = if let Some(l) = state.context_window_limit {
             l
