@@ -8,6 +8,7 @@ use agtrace_providers::ProviderAdapter;
 use crate::{Error, Result};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use tokio::task;
 
 pub struct AgTrace {
     db: Arc<Mutex<Database>>,
@@ -23,23 +24,29 @@ impl AgTrace {
         InitService::run(config, progress_fn)
     }
 
-    pub fn open(data_dir: PathBuf) -> Result<Self> {
+    pub async fn open(data_dir: PathBuf) -> Result<Self> {
         let db_path = data_dir.join("agtrace.db");
         let config_path = data_dir.join("config.toml");
 
-        let db = Database::open(&db_path).map_err(|e| {
-            if !db_path.exists() {
-                Error::NotInitialized(format!(
-                    "Database not found. Please run 'agtrace init' to initialize the workspace.\n\
-                     Database path: {}",
-                    db_path.display()
-                ))
-            } else {
-                Error::Index(e)
-            }
-        })?;
+        // Database operations wrapped in spawn_blocking
+        let db = task::spawn_blocking(move || {
+            Database::open(&db_path).map_err(|e| {
+                if !db_path.exists() {
+                    Error::NotInitialized(format!(
+                        "Database not found. Please run 'agtrace init' to initialize the workspace.\n\
+                         Database path: {}",
+                        db_path.display()
+                    ))
+                } else {
+                    Error::Index(e)
+                }
+            })
+        })
+        .await
+        .map_err(|e| Error::InvalidOperation(format!("Task join error: {}", e)))??;
 
-        let config = if config_path.exists() {
+        // File I/O can use tokio::fs
+        let config = if tokio::fs::try_exists(&config_path).await? {
             Config::load_from(&config_path)?
         } else {
             let detected = Config::detect_providers()?;

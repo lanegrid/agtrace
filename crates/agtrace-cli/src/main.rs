@@ -1,7 +1,8 @@
 use agtrace::{Cli, run};
 use clap::Parser;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Reset SIGPIPE to default behavior to prevent panic on broken pipe
     // (e.g., when piping to `head` or `less` that exits early)
     #[cfg(unix)]
@@ -9,7 +10,7 @@ fn main() {
 
     let cli = Cli::parse();
 
-    if let Err(e) = run(cli) {
+    if let Err(e) = run(cli).await {
         eprintln!("Error: {}", e);
         std::process::exit(1);
     }

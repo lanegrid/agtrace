@@ -28,9 +28,10 @@
 //! ```no_run
 //! use agtrace_sdk::{Client, Lens};
 //!
-//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // 1. Connect to the workspace
-//! let client = Client::connect("~/.agtrace")?;
+//! let client = Client::connect("~/.agtrace").await?;
 //!
 //! // 2. Watch for live events (Real-time monitoring)
 //! let stream = client.watch().all_providers().start()?;
@@ -115,8 +116,9 @@ pub use watch::{LiveStream, WatchBuilder};
 /// use agtrace_sdk::{Client, utils};
 /// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
 ///
-/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let client = Client::connect("~/.agtrace")?;
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let client = Client::connect("~/.agtrace").await?;
 /// let stream = client.watch().all_providers().start()?;
 ///
 /// for workspace_event in stream.take(10) {

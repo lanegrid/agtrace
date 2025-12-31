@@ -7,7 +7,8 @@
 
 use agtrace_sdk::Client;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Basic Connection Example ===\n");
 
     // 1. Connect to the agtrace workspace
@@ -17,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Connecting to workspace: {}", workspace_path.display());
 
-    let client = Client::connect(&workspace_path)?;
+    let client = Client::connect(&workspace_path).await?;
     println!("✓ Connected successfully\n");
 
     // 2. List all sessions for the current project

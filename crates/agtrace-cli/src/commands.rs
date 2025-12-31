@@ -33,8 +33,8 @@ impl CommandContext {
         }
     }
 
-    fn open_workspace(&self) -> Result<Client> {
-        Ok(Client::connect(self.data_dir.clone())?)
+    async fn open_workspace(&self) -> Result<Client> {
+        Ok(Client::connect(self.data_dir.clone()).await?)
     }
 
     fn config_path(&self) -> PathBuf {
@@ -65,7 +65,7 @@ fn default_view_mode() -> ViewModeArgs {
     ViewModeArgs::default()
 }
 
-pub fn run(cli: Cli) -> Result<()> {
+pub async fn run(cli: Cli) -> Result<()> {
     let ctx = CommandContext::from_cli(&cli);
 
     let Some(command) = cli.command else {
@@ -86,7 +86,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Commands::Demo { speed } => handlers::demo::handle(speed),
 
         Commands::Index { command } => {
-            let workspace = ctx.open_workspace()?;
+            let workspace = ctx.open_workspace().await?;
             match command {
                 IndexCommand::Update {
                     provider,
@@ -121,7 +121,7 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Session { command } => {
-            let workspace = ctx.open_workspace()?;
+            let workspace = ctx.open_workspace().await?;
             match command {
                 SessionCommand::List {
                     project_hash,
@@ -185,7 +185,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 provider,
                 view_mode,
             } => {
-                let workspace = ctx.open_workspace()?;
+                let workspace = ctx.open_workspace().await?;
                 handlers::doctor_run::handle(
                     &workspace,
                     provider.to_string(),
@@ -205,7 +205,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 provider,
                 view_mode,
             } => {
-                let workspace = ctx.open_workspace()?;
+                let workspace = ctx.open_workspace().await?;
                 handlers::doctor_check::handle(
                     &workspace,
                     file_path,
@@ -217,7 +217,7 @@ pub fn run(cli: Cli) -> Result<()> {
         },
 
         Commands::Project { command } => {
-            let workspace = ctx.open_workspace()?;
+            let workspace = ctx.open_workspace().await?;
             match command {
                 ProjectCommand::List {
                     project_root: proj_root,
@@ -227,7 +227,7 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Lab { command } => {
-            let workspace = ctx.open_workspace()?;
+            let workspace = ctx.open_workspace().await?;
             match command {
                 LabCommand::Export {
                     session_id,
@@ -289,7 +289,7 @@ pub fn run(cli: Cli) -> Result<()> {
             since,
             until,
         } => {
-            let workspace = ctx.open_workspace()?;
+            let workspace = ctx.open_workspace().await?;
             handlers::session_list::handle(
                 &workspace,
                 ctx.project_root.as_deref(),
@@ -306,7 +306,7 @@ pub fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Pack { template, limit } => {
-            let workspace = ctx.open_workspace()?;
+            let workspace = ctx.open_workspace().await?;
             handlers::pack::handle(
                 &workspace,
                 &template.to_string(),
@@ -327,7 +327,7 @@ pub fn run(cli: Cli) -> Result<()> {
                 );
             }
 
-            let workspace = ctx.open_workspace()?;
+            let workspace = ctx.open_workspace().await?;
 
             let target = if let Some(session_id) = id {
                 handlers::watch_tui::WatchTarget::Session { id: session_id }

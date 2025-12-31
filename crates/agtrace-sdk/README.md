@@ -45,9 +45,10 @@ For most use cases, use the Client-based API which provides stateful operations:
 ```rust,no_run
 use agtrace_sdk::{Client, Lens};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Connect to the workspace
-    let client = Client::connect("~/.agtrace")?;
+    let client = Client::connect("~/.agtrace").await?;
 
     // 2. Get a specific session
     let session_handle = client.sessions().get("session_id_123")?;
@@ -95,8 +96,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```rust,no_run
 use agtrace_sdk::Client;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace")?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::connect("~/.agtrace").await?;
 
     // Watch for live events from all providers
     let stream = client.watch().all_providers().start()?;
@@ -115,8 +117,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```rust,no_run
 use agtrace_sdk::Client;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace")?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::connect("~/.agtrace").await?;
 
     // Watch only Claude events
     let stream = client
@@ -147,8 +150,8 @@ The SDK provides several built-in lenses for analyzing agent behavior:
 ```rust,no_run
 use agtrace_sdk::{Client, Lens};
 
-fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace")?;
+async fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Error>> {
+    let client = Client::connect("~/.agtrace").await?;
     let session_handle = client.sessions().get(session_id)?;
 
     let report = session_handle.analyze()?
@@ -166,8 +169,8 @@ fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Erro
 use agtrace_sdk::Client;
 use std::time::{Duration, Instant};
 
-fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace")?;
+async fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::connect("~/.agtrace").await?;
     let stream = client.watch().all_providers().start()?;
 
     let mut last_activity = Instant::now();
@@ -251,8 +254,9 @@ For advanced use cases like building custom TUIs or implementing custom event pr
 use agtrace_sdk::{Client, utils};
 use agtrace_sdk::watch::{WorkspaceEvent, StreamEvent};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace")?;
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::connect("~/.agtrace").await?;
     let stream = client.watch().all_providers().start()?;
 
     for workspace_event in stream.take(10) {
