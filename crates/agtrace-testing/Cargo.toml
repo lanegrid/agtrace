@@ -10,6 +10,7 @@ keywords = ["agtrace-internal"]
 [dependencies]
 # Internal crates
 agtrace-types = { workspace = true }
+agtrace-core = { workspace = true }
 agtrace-providers = { workspace = true }
 
 # Common dependencies

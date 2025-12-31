@@ -119,7 +119,12 @@ impl<'a> IndexService<'a> {
             on_progress(IndexProgress::ProviderSessionCount {
                 provider_name: provider_name.to_string(),
                 count: filtered_sessions.len(),
-                project_hash: scope.hash_for_reporting(),
+                project_hash: match &scope {
+                    agtrace_types::ProjectScope::All => "<all>".to_string(),
+                    agtrace_types::ProjectScope::Specific { root } => {
+                        agtrace_core::project_hash_from_root(root).to_string()
+                    }
+                },
                 all_projects: matches!(scope, agtrace_types::ProjectScope::All),
             });
 
@@ -144,16 +149,16 @@ impl<'a> IndexService<'a> {
 
                 // Calculate project_hash from session data
                 let session_project_hash = if let Some(ref root) = session.project_root {
-                    agtrace_types::ProjectHash::from_root(&root.to_string_lossy())
+                    agtrace_core::project_hash_from_root(&root.to_string_lossy())
                 } else if provider_name == "gemini" {
                     // For Gemini, extract project_hash directly from the file
                     use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
                     extract_project_hash_from_gemini_file(&session.main_file).unwrap_or_else(|| {
-                        agtrace_types::project_hash_from_log_path(&session.main_file)
+                        agtrace_core::project_hash_from_log_path(&session.main_file)
                     })
                 } else {
                     // Generate unique hash from log path for orphaned sessions
-                    agtrace_types::project_hash_from_log_path(&session.main_file)
+                    agtrace_core::project_hash_from_log_path(&session.main_file)
                 };
 
                 let project_record = ProjectRecord {

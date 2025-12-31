@@ -95,7 +95,7 @@ impl InitService {
             .as_ref()
             .map(|p| p.display().to_string())
             .unwrap_or_else(|| ".".to_string());
-        let current_project_hash = agtrace_types::project_hash_from_root(&current_project_root);
+        let current_project_hash = agtrace_core::project_hash_from_root(&current_project_root);
 
         if let Some(ref mut f) = progress_fn {
             f(InitProgress::ScanPhase);

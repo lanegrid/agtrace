@@ -134,7 +134,7 @@ impl SampleFiles {
 
         // Replace projectHash field (Gemini format)
         // Calculate the correct project hash from the canonicalized path
-        let project_hash = agtrace_types::project_hash_from_root(&canonical_str);
+        let project_hash = agtrace_core::project_hash_from_root(&canonical_str);
         modified_content = modified_content.replace(
             r#""projectHash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde""#,
             &format!(r#""projectHash": "{}""#, project_hash),

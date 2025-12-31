@@ -348,9 +348,11 @@ jobs:
           # Publish crates in dependency order with delays for index updates
           cargo publish -p agtrace-types
           sleep 10
-          cargo publish -p agtrace-providers
+          cargo publish -p agtrace-core
           sleep 10
           cargo publish -p agtrace-index
+          sleep 10
+          cargo publish -p agtrace-providers
           sleep 10
           cargo publish -p agtrace-engine
           sleep 10

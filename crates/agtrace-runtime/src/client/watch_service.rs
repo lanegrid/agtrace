@@ -2,8 +2,8 @@ use crate::client::{MonitorBuilder, StreamHandle};
 use crate::config::Config;
 use crate::runtime::SessionStreamer;
 use crate::{Error, Result};
+use agtrace_core::project_hash_from_root;
 use agtrace_index::Database;
-use agtrace_types::project_hash_from_root;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 

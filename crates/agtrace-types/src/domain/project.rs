@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use crate::util::project_hash_from_root;
-
 /// Project identifier computed from canonical project root path via SHA256
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -18,11 +16,6 @@ impl ProjectHash {
     /// Get the hash as a string slice
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-
-    /// Compute ProjectHash from a project root path
-    pub fn from_root(project_root: &str) -> Self {
-        project_hash_from_root(project_root)
     }
 }
 
@@ -66,11 +59,6 @@ impl ProjectRoot {
         &self.0
     }
 
-    /// Compute the project hash for this root
-    pub fn compute_hash(&self) -> ProjectHash {
-        ProjectHash::from_root(&self.0.to_string_lossy())
-    }
-
     /// Get the path as a string (lossy UTF-8 conversion)
     pub fn to_string_lossy(&self) -> String {
         self.0.to_string_lossy().to_string()
@@ -111,14 +99,6 @@ pub enum ProjectScope {
 }
 
 impl ProjectScope {
-    /// Get hash for reporting purposes (used in progress events)
-    pub fn hash_for_reporting(&self) -> String {
-        match self {
-            ProjectScope::All => "<all>".to_string(),
-            ProjectScope::Specific { root } => project_hash_from_root(root).to_string(),
-        }
-    }
-
     /// Get optional root path for filtering
     pub fn root(&self) -> Option<&str> {
         match self {

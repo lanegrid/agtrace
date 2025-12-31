@@ -164,7 +164,7 @@ pub mod utils {
     pub use agtrace_engine::extract_state_updates;
 
     // Project management utilities
-    pub use agtrace_types::{
+    pub use agtrace_core::{
         discover_project_root, project_hash_from_root, resolve_effective_project_hash,
     };
 
