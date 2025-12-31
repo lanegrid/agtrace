@@ -19,7 +19,7 @@ pub fn get_corpus_overview(
     project_hash: Option<&agtrace_types::ProjectHash>,
     limit: usize,
 ) -> Result<CorpusStats> {
-    let raw_sessions = db.list_sessions(project_hash, limit)?;
+    let raw_sessions = db.list_sessions(project_hash, Some(limit))?;
 
     let loader = SessionRepository::new(db);
     let options = LoadOptions::default();
@@ -82,7 +82,7 @@ pub fn collect_tool_stats(
     limit: Option<usize>,
     provider: Option<String>,
 ) -> Result<StatsResult> {
-    let sessions = db.list_sessions(None, limit.unwrap_or(100000))?;
+    let sessions = db.list_sessions(None, limit)?;
     let sessions: Vec<_> = sessions
         .into_iter()
         .filter(|s| {

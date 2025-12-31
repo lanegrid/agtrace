@@ -14,7 +14,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone)]
 pub struct SessionFilter {
     pub scope: agtrace_types::ProjectScope,
-    pub limit: usize,
+    pub limit: Option<usize>,
     pub provider: Option<String>,
     pub since: Option<String>,
     pub until: Option<String>,
@@ -25,7 +25,7 @@ impl SessionFilter {
     pub fn all() -> Self {
         Self {
             scope: agtrace_types::ProjectScope::All,
-            limit: 100,
+            limit: None,
             provider: None,
             since: None,
             until: None,
@@ -36,7 +36,7 @@ impl SessionFilter {
     pub fn project(project_hash: agtrace_types::ProjectHash) -> Self {
         Self {
             scope: agtrace_types::ProjectScope::Specific(project_hash),
-            limit: 100,
+            limit: None,
             provider: None,
             since: None,
             until: None,
@@ -44,7 +44,7 @@ impl SessionFilter {
     }
 
     pub fn limit(mut self, limit: usize) -> Self {
-        self.limit = limit;
+        self.limit = Some(limit);
         self
     }
 

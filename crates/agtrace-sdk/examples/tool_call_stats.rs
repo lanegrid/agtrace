@@ -5,6 +5,7 @@
 //! - Extracting tool calls from session events
 //! - Computing statistics for different tool types (files, MCP, etc.)
 //! - Displaying top 5 patterns for each category
+//! - Breaking down statistics by provider (claude, codex, gemini)
 //!
 //! Run with: cargo run -p agtrace-sdk --example tool_call_stats
 
@@ -36,11 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut mcp_servers: HashMap<String, usize> = HashMap::new();
     let mut mcp_tools: HashMap<String, usize> = HashMap::new();
     let mut tool_names: HashMap<String, usize> = HashMap::new();
+    let mut provider_stats: HashMap<String, usize> = HashMap::new();
 
     let mut total_tool_calls = 0;
 
     for session_summary in &sessions {
         let session_handle = client.sessions().get(&session_summary.id)?;
+        let provider = &session_summary.provider;
 
         // Extract tool calls from assembled session
         if let Ok(session) = session_handle.assemble() {
@@ -49,6 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for tool_exec in &step.tools {
                         total_tool_calls += 1;
                         let call = &tool_exec.call.content;
+
+                        // Count by provider
+                        *provider_stats.entry(provider.clone()).or_insert(0) += 1;
 
                         // Count tool names
                         *tool_names.entry(call.name().to_string()).or_insert(0) += 1;
@@ -84,6 +90,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 4. Display statistics
     println!("Total tool calls: {}\n", total_tool_calls);
+
+    // Provider breakdown
+    if !provider_stats.is_empty() {
+        println!("Tool Calls by Provider:");
+        print_all_sorted(&provider_stats);
+        println!();
+    }
 
     // Top 5 tool names
     println!("Top 5 Tool Names:");
@@ -121,5 +134,15 @@ fn print_top_5(map: &HashMap<String, usize>) {
 
     for (i, (key, count)) in items.iter().take(5).enumerate() {
         println!("  {}. {} (× {})", i + 1, key, count);
+    }
+}
+
+/// Print all items sorted by frequency
+fn print_all_sorted(map: &HashMap<String, usize>) {
+    let mut items: Vec<_> = map.iter().collect();
+    items.sort_by(|a, b| b.1.cmp(a.1));
+
+    for (key, count) in items {
+        println!("  {} (× {})", key, count);
     }
 }

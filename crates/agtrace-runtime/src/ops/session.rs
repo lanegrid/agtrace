@@ -6,7 +6,7 @@ use chrono::DateTime;
 
 pub struct ListSessionsRequest {
     pub scope: agtrace_types::ProjectScope,
-    pub limit: usize,
+    pub limit: Option<usize>,
     pub provider: Option<String>,
     pub since: Option<String>,
     pub until: Option<String>,
@@ -27,7 +27,7 @@ impl<'a> SessionService<'a> {
             agtrace_types::ProjectScope::Specific(hash) => Some(hash.clone()),
         };
 
-        let fetch_limit = request.limit * 3;
+        let fetch_limit = request.limit.map(|l| l * 3);
         let mut sessions = self
             .db
             .list_sessions(effective_project_hash.as_ref(), fetch_limit)?;
@@ -62,7 +62,9 @@ impl<'a> SessionService<'a> {
             });
         }
 
-        sessions.truncate(request.limit);
+        if let Some(limit) = request.limit {
+            sessions.truncate(limit);
+        }
 
         Ok(sessions)
     }

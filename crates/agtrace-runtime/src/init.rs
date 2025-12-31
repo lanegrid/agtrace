@@ -230,7 +230,7 @@ impl InitService {
             Some(project_hash)
         };
 
-        let sessions = db.list_sessions(effective_hash, 10)?;
+        let sessions = db.list_sessions(effective_hash, Some(10))?;
         Ok(sessions.len())
     }
 }

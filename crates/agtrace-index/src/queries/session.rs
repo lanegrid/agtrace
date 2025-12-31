@@ -59,8 +59,10 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
 pub fn list(
     conn: &Connection,
     project_hash: Option<&ProjectHash>,
-    limit: usize,
+    limit: Option<usize>,
 ) -> Result<Vec<SessionSummary>> {
+    let limit_clause = limit.map(|l| format!("LIMIT {}", l)).unwrap_or_default();
+
     let query = if let Some(hash) = project_hash {
         format!(
             r#"
@@ -68,10 +70,10 @@ pub fn list(
             FROM sessions
             WHERE project_hash = '{}' AND is_valid = 1
             ORDER BY start_ts DESC
-            LIMIT {}
+            {}
             "#,
             hash.as_str(),
-            limit
+            limit_clause
         )
     } else {
         format!(
@@ -80,9 +82,9 @@ pub fn list(
             FROM sessions
             WHERE is_valid = 1
             ORDER BY start_ts DESC
-            LIMIT {}
+            {}
             "#,
-            limit
+            limit_clause
         )
     };
 
