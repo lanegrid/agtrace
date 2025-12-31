@@ -67,111 +67,64 @@ When fixing bugs, ensure tests actually validate the fix:
 
 ## Overview of agtrace
 
-The repository is a Rust Workspace organized into modular crates, following a distinct Layered Architecture (Presentation → Runtime → Core Logic → Data Access).
+A Rust Workspace following layered architecture: CLI → SDK → Runtime → (Engine + Index + Providers) → (Core + Types).
 
-### Directory Structure
+### Crate Architecture & Design Principles
 
-#### 1. Interface Layer
+**1. Foundation Layer**
 
-* `crates/agtrace-cli/`
-* Role: The main entry point for the user.
-* Key Files:
-* `args.rs`: Defines the CLI structure (subcommands: `session`, `index`, `doctor`, `lab`, `watch`, etc.) using `clap`.
-* `commands.rs` & `handlers/`: Dispatches CLI commands to the runtime layer.
-* `presentation/`: Handles TUI (Terminal User Interface) and console output formatting.
+* `agtrace-types` (`crates/agtrace-types/`)
+  - **Principle**: Minimal logic. Only stable type definitions and schemas that rarely change.
+  - Dependencies: None
 
+* `agtrace-core` (`crates/agtrace-core/`)
+  - **Principle**: Handles file paths, environment variables, and workspace utilities.
+  - Dependencies: `types`
 
+* `agtrace-testing` (`crates/agtrace-testing/`)
+  - **Principle**: Shared test utilities for `sdk` and `cli`.
+  - Dependencies: Internal crates as needed
 
+**2. Data Layer**
 
-* `crates/agtrace-debug/`
-* Role: A standalone developer tool.
-* Key Files: `main.rs`.
-* Function: specialized utility to watch and debug raw event streams from providers in real-time.
+* `agtrace-engine` (`crates/agtrace-engine/`)
+  - **Principle**: Provider-agnostic and environment-agnostic domain logic accumulation.
+  - Dependencies: `types` only
 
+* `agtrace-providers` (`crates/agtrace-providers/`)
+  - **Principle**: Aggregates all provider-specific implementations (`claude/`, `codex/`, `gemini/`).
+  - Dependencies: `types`, `core`
 
+* `agtrace-index` (`crates/agtrace-index/`)
+  - **Principle**: Provider-agnostic. Handles only local SQLite DB operations (zero-copy, pointer-based).
+  - Dependencies: `types`
 
-#### 2. Orchestration Layer
+**3. Orchestration Layer**
 
-* `crates/agtrace-runtime/`
-* Role: The "glue" that binds components together.
-* Key Files:
-* `init.rs`: Handles the `agtrace init` workflow (DB creation, config detection).
-* `config.rs`: Manages `config.toml` (provider settings).
-* `client.rs` (exported facade): Public API for workspace operations.
+* `agtrace-runtime` (`crates/agtrace-runtime/`)
+  - **Principle**: Orchestrates `engine`, `index`, and `providers` without business logic.
+  - Dependencies: `types`, `core`, `providers`, `index`, `engine`
 
+**4. Public API Layer**
 
-* Function: Manages the application lifecycle, configuration loading, and high-level operations.
+* `agtrace-sdk` (`crates/agtrace-sdk/`)
+  - **Principle**: Public SDK for external observability tools.
+  - Dependencies: All internal crates
 
+**5. Presentation Layer**
 
+* `agtrace-cli` (`crates/agtrace-cli/`)
+  - **Principle**: Depends only on `sdk`. Acts as a sophisticated example of SDK usage.
+  - Dependencies: `sdk` only
 
-#### 3. Core Logic Layer
+### Dependency Rules
 
-* `crates/agtrace-engine/`
-* Role: The "brain" of the application.
-* Key Files:
-* `domain/`: Session state, token limits, event filters (pure domain logic).
-* `session.rs`: Reconstructs linear conversation history (`turns`, `steps`) from raw event streams.
-* `state_updates.rs`: Tracks context window usage and state changes.
-* `export.rs`: Handles data export strategies (Raw vs Clean vs Reasoning).
+`types` has no internal dependencies. `core`, `index`, and `engine` depend only on `types`. `providers` depends on `types` and `core`. `runtime` orchestrates all data layer crates (`engine`, `index`, `providers`) plus `types` and `core`. `sdk` wraps all internal crates. `cli` depends only on `sdk`.
 
+### Data Flow
 
-* Function: Processes normalized events into meaningful session insights and statistics.
-
-
-
-#### 4. Data & Ingestion Layer
-
-* `crates/agtrace-index/`
-* Role: Metadata storage (SQLite).
-* Key Files: `db.rs`.
-* Function: Maintains a lightweight SQLite pointer database (`agtrace.db`) to track projects, sessions, and files without duplicating raw log content (Schema-on-Read approach).
-
-
-* `crates/agtrace-providers/`
-* Role: Data normalization adapters.
-* Key Files:
-* `traits.rs`: Defines generic `LogDiscovery`, `SessionParser`, and `ToolMapper` interfaces.
-* `normalization.rs`: Maps provider-specific JSON to standard domain models.
-* `claude/`, `codex/`, `gemini/`: Specific implementations for different AI providers.
-
-
-* Function: Reads raw logs from specific providers and converts them into standardized `AgentEvent`s.
-
-
-
-#### 5. Shared Domain Layer
-
-* `crates/agtrace-types/`
-* Role: Common type definitions and interfaces.
-* Key Files:
-* `event.rs`: Core `AgentEvent`, `EventPayload` (User, ToolCall, Reasoning), and `StreamId`.
-* `model_limits.rs`: `ModelLimitResolver` trait for dependency inversion.
-* `util.rs`: Hashing and path utility helpers.
-
-
-* Function: The shared "language" and interfaces used by all other crates to ensure type safety and proper layering.
-
-### Crate Dependencies
-
-```
-types (shared domain + interfaces)
-  ↑
-  ├── providers (implements ModelLimitResolver)
-  ├── engine (domain logic + session analysis)
-  ├── index (SQLite metadata)
-  └── core (workspace utilities)
-       ↑
-    runtime (orchestration)
-       ↑
-      sdk (public API)
-       ↑
-      cli (presentation)
-```
-
-### Data Flow Summary
-
-1. Read: `agtrace-providers` reads raw log files from disk.
-2. Normalize: It converts them into `AgentEvent`s (defined in `types`).
-3. Index: `agtrace-index` stores metadata about these sessions in SQLite.
-4. Process: `agtrace-engine` consumes events to calculate tokens, reconstruct session flow, and analyze behavior.
-5. Display: `agtrace-cli` presents the processed data to the user via TUI or JSON output.
+1. **Read**: `providers` discover and read raw log files
+2. **Normalize**: Convert to `AgentEvent` (Schema-on-Read)
+3. **Index**: `index` stores metadata pointers in SQLite
+4. **Analyze**: `engine` reconstructs sessions, calculates tokens
+5. **Present**: `cli` renders via TUI or JSON
