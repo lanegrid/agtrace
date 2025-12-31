@@ -104,7 +104,7 @@ Sessions are scoped by cwd/project boundaries and grouped by a project root hash
          ▼
 ┌─────────────────┐
 │  agtrace-index  │ (Metadata only: session IDs, paths, timestamps)
-│  ~/.agtrace/    │
+│  XDG data dir   │ (e.g., ~/Library/Application Support/agtrace)
 │  agtrace.db     │
 └────────┬────────┘
          │
@@ -135,7 +135,7 @@ The unified entry point for building observability tools. Provides a stable, hig
 
 **Example Usage:**
 ```rust
-let client = Client::connect("~/.agtrace")?;
+let client = Client::connect_default().await?;
 let stream = client.watch().all_providers().start()?;
 ```
 
@@ -183,9 +183,9 @@ The official CLI application built on top of `agtrace-sdk`. Demonstrates best pr
 ## Storage Layout
 
 ```
-~/.agtrace/
-├── agtrace.db          # SQLite metadata index
-└── config.toml         # User configuration
+XDG data directory/agtrace/  # e.g., ~/Library/Application Support/agtrace on macOS
+├── agtrace.db               # SQLite metadata index
+└── config.toml              # User configuration
 
 ~/.claude/              # Example: Claude Code logs (not modified by agtrace)
 └── sessions/

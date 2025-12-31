@@ -18,7 +18,7 @@ struct CommandContext {
 
 impl CommandContext {
     fn from_cli(cli: &Cli) -> Self {
-        let data_dir = expand_tilde(&cli.data_dir);
+        let data_dir = resolve_data_dir(cli.data_dir.as_deref());
         let project_root = cli
             .project_root
             .as_ref()
@@ -372,6 +372,31 @@ pub async fn run(cli: Cli) -> Result<()> {
             }
         }
     }
+}
+
+fn resolve_data_dir(explicit_path: Option<&str>) -> PathBuf {
+    // Priority 1: Explicit path from CLI argument
+    if let Some(path) = explicit_path {
+        return expand_tilde(path);
+    }
+
+    // Priority 2: AGTRACE_PATH environment variable
+    if let Ok(env_path) = std::env::var("AGTRACE_PATH") {
+        return expand_tilde(&env_path);
+    }
+
+    // Priority 3: XDG data directory (recommended default)
+    if let Some(data_dir) = dirs::data_dir() {
+        return data_dir.join("agtrace");
+    }
+
+    // Priority 4: Fallback to ~/.agtrace (last resort for systems without XDG)
+    if let Some(home) = std::env::var_os("HOME") {
+        return PathBuf::from(home).join(".agtrace");
+    }
+
+    // This should never happen, but provide a working directory fallback
+    PathBuf::from(".agtrace")
 }
 
 fn expand_tilde(path: &str) -> PathBuf {

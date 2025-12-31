@@ -28,7 +28,7 @@ The reference implementation of the agtrace platform.
 ```bash
 npm install -g @lanegrid/agtrace
 cd my-project
-agtrace init      # initialize workspace (~/.agtrace)
+agtrace init      # initialize workspace (XDG data directory)
 agtrace watch     # live dashboard
 ```
 
@@ -44,8 +44,8 @@ agtrace-sdk = "0.1"
 ```rust
 use agtrace_sdk::{Client, Lens};
 
-// Connect to the local workspace
-let client = Client::connect("~/.agtrace")?;
+// Connect to the local workspace (uses XDG data directory)
+let client = Client::connect_default().await?;
 
 // 1. Real-time Monitoring
 for event in client.watch().all_providers().start()? {

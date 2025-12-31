@@ -47,8 +47,8 @@ use agtrace_sdk::{Client, Lens};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Connect to the workspace
-    let client = Client::connect("~/.agtrace").await?;
+    // 1. Connect to the workspace (uses XDG data directory)
+    let client = Client::connect_default().await?;
 
     // 2. Get a specific session
     let session_handle = client.sessions().get("session_id_123")?;
@@ -99,7 +99,7 @@ use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace").await?;
+    let client = Client::connect_default().await?;
 
     // Watch for live events from all providers
     let mut stream = client.watch().all_providers().start()?;
@@ -121,7 +121,7 @@ use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace").await?;
+    let client = Client::connect_default().await?;
 
     // Watch only Claude events
     let mut stream = client
@@ -153,7 +153,7 @@ The SDK provides several built-in lenses for analyzing agent behavior:
 use agtrace_sdk::{Client, Lens};
 
 async fn check_session_health(session_id: &str) -> Result<u8, Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace").await?;
+    let client = Client::connect_default().await?;
     let session_handle = client.sessions().get(session_id)?;
 
     let report = session_handle.analyze()?
@@ -173,7 +173,7 @@ use futures::stream::StreamExt;
 use std::time::{Duration, Instant};
 
 async fn monitor_activity() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace").await?;
+    let client = Client::connect_default().await?;
     let mut stream = client.watch().all_providers().start()?;
 
     let mut last_activity = Instant::now();
@@ -265,7 +265,7 @@ use futures::stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::connect("~/.agtrace").await?;
+    let client = Client::connect_default().await?;
     let mut stream = client.watch().all_providers().start()?;
 
     let mut count = 0;

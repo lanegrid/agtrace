@@ -49,7 +49,7 @@ Note: agtrace does not support hierarchical project relationships. Each director
 
 ### Do I need to run `agtrace init` for each project?
 
-No. `agtrace init` is a **global, one-time setup** that creates configuration under `~/.agtrace`. You do not need to run it per project.
+No. `agtrace init` is a **global, one-time setup** that creates configuration in the XDG data directory (e.g., `~/Library/Application Support/agtrace` on macOS). You do not need to run it per project.
 
 ### Can I use agtrace with npx without installing globally?
 
@@ -66,19 +66,19 @@ However, for best performance and convenience (especially for `watch`), global i
 
 ### Does agtrace send data to the cloud?
 
-No. agtrace runs **100% locally**. It reads log files from your local filesystem (e.g., `~/.claude`) and stores metadata in a local SQLite database (`~/.agtrace/agtrace.db`). No data is sent to external servers.
+No. agtrace runs **100% locally**. It reads log files from your local filesystem (e.g., `~/.claude`) and stores metadata in a local SQLite database in the XDG data directory. No data is sent to external servers.
 
 ### Where are my logs stored?
 
 agtrace does not copy or move your logs. It reads them from their original provider locations (see [Supported Providers](providers.md)).
 
-The only files agtrace creates are:
-- `~/.agtrace/agtrace.db` (metadata index)
-- `~/.agtrace/config.toml` (configuration)
+The only files agtrace creates are (in XDG data directory, e.g., `~/Library/Application Support/agtrace`):
+- `agtrace.db` (metadata index)
+- `config.toml` (configuration)
 
 ### Can I delete the agtrace database?
 
-Yes. The database (`~/.agtrace/agtrace.db`) is disposable and can be rebuilt from the original log files at any time. If you delete it, run `agtrace init` to recreate it.
+Yes. The database (`agtrace.db`) is disposable and can be rebuilt from the original log files at any time. If you delete it, run `agtrace init` to recreate it.
 
 ## Usage
 

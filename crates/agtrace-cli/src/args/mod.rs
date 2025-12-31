@@ -32,11 +32,10 @@ use clap::Parser;
 pub struct Cli {
     #[arg(
         long,
-        default_value = "~/.agtrace",
         global = true,
-        help = "Directory for agtrace database and configuration"
+        help = "Directory for agtrace database and configuration (defaults to XDG data directory, or AGTRACE_PATH env var)"
     )]
-    pub data_dir: String,
+    pub data_dir: Option<String>,
 
     #[arg(
         long,

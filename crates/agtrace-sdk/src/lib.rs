@@ -32,7 +32,7 @@
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // 1. Connect to the workspace
-//! let client = Client::connect("~/.agtrace").await?;
+//! let client = Client::connect_default().await?;
 //!
 //! // 2. Watch for live events (Real-time monitoring)
 //! let mut stream = client.watch().all_providers().start()?;
@@ -124,7 +124,7 @@ pub use watch::{LiveStream, WatchBuilder};
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let client = Client::connect("~/.agtrace").await?;
+/// let client = Client::connect_default().await?;
 /// let mut stream = client.watch().all_providers().start()?;
 ///
 /// let mut count = 0;

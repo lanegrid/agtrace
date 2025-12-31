@@ -156,7 +156,7 @@ impl Client {
     /// # use agtrace_sdk::Client;
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = Client::connect("~/.agtrace").await?;
+    /// let client = Client::connect("/custom/agtrace/path").await?;
     /// # Ok(())
     /// # }
     /// ```

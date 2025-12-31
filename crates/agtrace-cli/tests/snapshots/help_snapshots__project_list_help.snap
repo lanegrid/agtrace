@@ -7,7 +7,7 @@ List all indexed projects
 Usage: agtrace project list [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration (defaults to XDG data directory, or AGTRACE_PATH env var)
       --project-root <PROJECT_ROOT>  
       --format <FORMAT>              Output format for command results [default: plain] [possible values: plain, json]
       --quiet                        Minimal output (IDs only, for scripting)

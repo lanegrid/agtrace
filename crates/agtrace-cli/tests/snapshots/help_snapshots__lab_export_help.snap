@@ -10,7 +10,7 @@ Arguments:
   <SESSION_ID>  
 
 Options:
-      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration (defaults to XDG data directory, or AGTRACE_PATH env var)
       --output <OUTPUT>              
       --format <FORMAT>              [default: jsonl] [possible values: jsonl, text]
       --log-level <LOG_LEVEL>        Logging verbosity level [default: info] [possible values: error, warn, info, debug, trace]

@@ -7,7 +7,7 @@ Package sessions for sharing or analysis
 Usage: agtrace pack [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>          Directory for agtrace database and configuration [default: ~/.agtrace]
+      --data-dir <DATA_DIR>          Directory for agtrace database and configuration (defaults to XDG data directory, or AGTRACE_PATH env var)
       --template <TEMPLATE>          [default: compact] [possible values: compact, diagnose, tools]
       --format <FORMAT>              Output format for command results [default: plain] [possible values: plain, json]
       --limit <LIMIT>                [default: 20]
