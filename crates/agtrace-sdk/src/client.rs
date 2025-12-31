@@ -190,23 +190,6 @@ impl Client {
     pub fn watch_service(&self) -> crate::types::WatchService {
         self.inner.watch_service()
     }
-
-    // Legacy compatibility methods (to be deprecated)
-    #[deprecated(note = "Use client.sessions().get(id) instead")]
-    pub fn session(&self, id: &str) -> SessionHandle {
-        SessionHandle {
-            source: SessionSource::Workspace {
-                inner: self.inner.clone(),
-                id: id.to_string(),
-            },
-        }
-    }
-
-    #[deprecated(note = "Use client.sessions().list(filter) instead")]
-    pub fn list_sessions(&self) -> Result<Vec<SessionSummary>> {
-        let filter = SessionFilter::new().limit(100);
-        self.inner.sessions().list(filter).map_err(Error::Runtime)
-    }
 }
 
 // ============================================================================
@@ -348,12 +331,6 @@ impl SessionHandle {
     pub fn analyze(&self) -> Result<crate::analysis::SessionAnalyzer> {
         let session = self.assemble()?;
         Ok(crate::analysis::SessionAnalyzer::new(session))
-    }
-
-    /// Get session summary (legacy compatibility).
-    #[deprecated(note = "Use summarize() instead")]
-    pub fn summary(&self) -> Result<agtrace_engine::SessionSummary> {
-        self.summarize()
     }
 }
 
