@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.15] - 2025-12-31
+
+### Bug Fixes
+
+- Remove duplicate v0.1.12 section in CHANGELOG and update all past releases ([a8ea559](https://github.com/lanegrid/agtrace/commit/a8ea55950c0d037649546ff8c9e26420e9c738c0))
+
+
+### Documentation
+
+- Add README doctest validation to prevent stale examples and version drift ([faf5b88](https://github.com/lanegrid/agtrace/commit/faf5b88c23d73527dd250a36529dafdd1b80d116))
+
+- Add comprehensive releaser skill with safety procedures and rollback script ([517cfc3](https://github.com/lanegrid/agtrace/commit/517cfc324337dcc44bd9959b80ec3ed5f5937ad0))
+
+
+### Features
+
+- Add prepare-release script for automated release workflow ([fdf66ed](https://github.com/lanegrid/agtrace/commit/fdf66eddd182edcf191bed0e7ca4ea175824b291))
+
+- Use CHANGELOG.md content for GitHub release notes instead of cargo-dist default ([4201843](https://github.com/lanegrid/agtrace/commit/42018437f2a3da347ee1444501273699a0dc6dfd))
+
+
+### Miscellaneous Tasks
+
+- Remove releaser skill ([495c1b8](https://github.com/lanegrid/agtrace/commit/495c1b820f24119e2565cc9c38d246a697ca93cb))
+
+
+### Refactor
+
+- Convert releaser skill to standard directory structure with frontmatter ([13a9ff1](https://github.com/lanegrid/agtrace/commit/13a9ff19545c917ecd4f9eb585b0e401a8e1fc80))
+
+- Speed up demo video intro by removing comments and faster typing ([7997475](https://github.com/lanegrid/agtrace/commit/79974752f9b1ac1f22dcd7b85b75b897a24d47ca))
+
+
 ## [0.1.14] - 2025-12-31
 
 ### Bug Fixes
