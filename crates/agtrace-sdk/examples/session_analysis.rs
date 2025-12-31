@@ -12,12 +12,8 @@ use agtrace_sdk::{Client, Lens};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Session Analysis Example ===\n");
 
-    // 1. Connect to workspace
-    let workspace_path = dirs::home_dir()
-        .ok_or("Could not find home directory")?
-        .join(".agtrace");
-
-    let client = Client::connect(&workspace_path).await?;
+    // 1. Connect to workspace (uses XDG path resolution)
+    let client = Client::connect_default().await?;
     println!("✓ Connected to workspace\n");
 
     // 2. Get the most recent session

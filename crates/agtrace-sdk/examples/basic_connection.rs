@@ -11,14 +11,10 @@ use agtrace_sdk::Client;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Basic Connection Example ===\n");
 
-    // 1. Connect to the agtrace workspace
-    let workspace_path = dirs::home_dir()
-        .ok_or("Could not find home directory")?
-        .join(".agtrace");
+    // 1. Connect to the agtrace workspace (uses XDG path resolution)
+    println!("Connecting to workspace...");
 
-    println!("Connecting to workspace: {}", workspace_path.display());
-
-    let client = Client::connect(&workspace_path).await?;
+    let client = Client::connect_default().await?;
     println!("✓ Connected successfully\n");
 
     // 2. List all sessions for the current project

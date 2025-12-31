@@ -6,6 +6,89 @@ use crate::types::*;
 use crate::watch::WatchBuilder;
 
 // ============================================================================
+// ClientBuilder
+// ============================================================================
+
+/// Builder for configuring and connecting to an agtrace workspace.
+///
+/// Provides flexible path resolution with the following priority:
+/// 1. Explicit path via `builder.path()`
+/// 2. `AGTRACE_PATH` environment variable
+/// 3. XDG data directory (e.g., `~/.local/share/agtrace` on Linux, `~/Library/Application Support/agtrace` on macOS)
+///
+/// # Examples
+///
+/// ```no_run
+/// # use agtrace_sdk::Client;
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// // Use default XDG path
+/// let client = Client::connect_default().await?;
+///
+/// // Use explicit path
+/// let client = Client::builder()
+///     .path("/custom/path")
+///     .connect().await?;
+///
+/// // Use AGTRACE_PATH environment variable
+/// // $ export AGTRACE_PATH=/tmp/agtrace
+/// let client = Client::builder().connect().await?;
+/// # Ok(())
+/// # }
+/// ```
+#[derive(Default)]
+pub struct ClientBuilder {
+    path: Option<PathBuf>,
+}
+
+impl ClientBuilder {
+    /// Create a new ClientBuilder with default settings.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set an explicit workspace path (highest priority).
+    pub fn path(mut self, path: impl Into<PathBuf>) -> Self {
+        self.path = Some(path.into());
+        self
+    }
+
+    /// Connect to the workspace using the configured or resolved path.
+    pub async fn connect(self) -> Result<Client> {
+        let path = self.resolve_path()?;
+        let runtime = agtrace_runtime::AgTrace::open(path)
+            .await
+            .map_err(Error::Runtime)?;
+        Ok(Client {
+            inner: Arc::new(runtime),
+        })
+    }
+
+    /// Resolve the workspace path based on priority:
+    /// 1. Explicit path from builder
+    /// 2. AGTRACE_PATH environment variable
+    /// 3. XDG data directory
+    fn resolve_path(&self) -> Result<PathBuf> {
+        // Priority 1: Explicit path
+        if let Some(ref path) = self.path {
+            return Ok(path.clone());
+        }
+
+        // Priority 2: Environment variable
+        if let Ok(env_path) = std::env::var("AGTRACE_PATH") {
+            return Ok(PathBuf::from(env_path));
+        }
+
+        // Priority 3: XDG data directory
+        let data_dir = dirs::data_dir().ok_or_else(|| {
+            Error::InvalidInput("Could not determine system data directory".to_string())
+        })?;
+
+        Ok(data_dir.join("agtrace"))
+    }
+}
+
+// ============================================================================
 // Main Client
 // ============================================================================
 
@@ -15,13 +98,69 @@ pub struct Client {
 }
 
 impl Client {
+    /// Create a new ClientBuilder for configuring workspace connection.
+    ///
+    /// This is the recommended way to connect to a workspace as it supports
+    /// XDG-compliant path resolution and environment variable configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use agtrace_sdk::Client;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Use default path
+    /// let client = Client::builder().connect().await?;
+    ///
+    /// // Use custom path
+    /// let client = Client::builder()
+    ///     .path("/custom/agtrace")
+    ///     .connect().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::new()
+    }
+
+    /// Connect to the default agtrace workspace.
+    ///
+    /// This is a convenience method that uses XDG-compliant path resolution.
+    /// It checks (in order):
+    /// 1. `AGTRACE_PATH` environment variable
+    /// 2. System data directory + "agtrace" (e.g., `~/.local/share/agtrace`)
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use agtrace_sdk::Client;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::connect_default().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn connect_default() -> Result<Self> {
+        Self::builder().connect().await
+    }
+
     /// Connect to an agtrace workspace at the given path.
+    ///
+    /// This is a low-level API. Consider using `Client::builder()` or
+    /// `Client::connect_default()` for better ergonomics and XDG support.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use agtrace_sdk::Client;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::connect("~/.agtrace").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn connect(path: impl Into<PathBuf>) -> Result<Self> {
-        let path = path.into();
-        let runtime = agtrace_runtime::AgTrace::open(path).await.map_err(Error::Runtime)?;
-        Ok(Self {
-            inner: Arc::new(runtime),
-        })
+        Self::builder().path(path).connect().await
     }
 
     /// Access session operations.
@@ -199,8 +338,11 @@ impl SessionHandle {
     /// Assemble events into a structured session.
     pub fn assemble(&self) -> Result<AgentSession> {
         let events = self.events()?;
-        agtrace_engine::assemble_session(&events)
-            .ok_or_else(|| Error::InvalidInput("Failed to assemble session: insufficient or invalid events".to_string()))
+        agtrace_engine::assemble_session(&events).ok_or_else(|| {
+            Error::InvalidInput(
+                "Failed to assemble session: insufficient or invalid events".to_string(),
+            )
+        })
     }
 
     /// Export session with specified strategy.
@@ -383,8 +525,7 @@ impl SystemClient {
             .to_str()
             .ok_or_else(|| Error::InvalidInput("Path contains invalid UTF-8".to_string()))?;
 
-        agtrace_runtime::AgTrace::inspect_file(path_str, lines, json_format)
-            .map_err(Error::Runtime)
+        agtrace_runtime::AgTrace::inspect_file(path_str, lines, json_format).map_err(Error::Runtime)
     }
 
     /// Reindex the workspace.
