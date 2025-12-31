@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn extracts_token_usage_and_reasoning() {
         let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
-            TokenInput::new(20, 100), // cached=20, uncached=100
+            TokenInput::new(20, 100),   // cached=20, uncached=100
             TokenOutput::new(43, 7, 0), // generated=43, reasoning=7, tool=0
         )));
 
@@ -152,7 +152,7 @@ mod tests {
     #[test]
     fn extracts_context_window_limit_from_payload_info() {
         let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
-            TokenInput::new(0, 10), // cached=0, uncached=10
+            TokenInput::new(0, 10),    // cached=0, uncached=10
             TokenOutput::new(5, 0, 0), // generated=5, reasoning=0, tool=0
         )));
 
@@ -216,7 +216,7 @@ mod tests {
 
         let user = base_event(EventPayload::User(UserPayload { text: "hi".into() }));
         let mut usage_event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
-            TokenInput::new(5, 120), // cached=5, uncached=120
+            TokenInput::new(5, 120),    // cached=5, uncached=120
             TokenOutput::new(27, 3, 0), // generated=27, reasoning=3, tool=0
         )));
         let mut meta = serde_json::Map::new();

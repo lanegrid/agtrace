@@ -61,21 +61,28 @@ fn build_dashboard(
 
     // Use assembled session for accurate cumulative token count, fallback to state
     let (total, breakdown) = if let Some(session) = assembled_session {
-        // Get the last turn's last step usage (which contains cumulative totals)
-        let cumulative = session
+        // Calculate cumulative total by iterating through all turns
+        // Same logic as compute_turn_metrics to ensure consistency
+        let mut cumulative_total = 0u32;
+        for turn in &session.turns {
+            cumulative_total = turn.cumulative_total_tokens(cumulative_total);
+        }
+
+        // Get cumulative breakdown from last turn's last step
+        let cumulative_usage = session
             .turns
             .last()
             .and_then(|turn| turn.steps.iter().rev().find_map(|step| step.usage.as_ref()))
             .copied()
             .unwrap_or_default();
 
-        let total = cumulative.total_tokens();
+        let total = agtrace_sdk::types::TokenCount::new(cumulative_total as u64);
         let breakdown = ContextBreakdownViewModel {
-            fresh_input: cumulative.fresh_input.0.max(0) as u64,
-            cache_creation: cumulative.cache_creation.0.max(0) as u64,
-            cache_read: cumulative.cache_read.0.max(0) as u64,
-            output: cumulative.output.0.max(0) as u64,
-            total: total.as_u64(),
+            fresh_input: cumulative_usage.fresh_input.0.max(0) as u64,
+            cache_creation: cumulative_usage.cache_creation.0.max(0) as u64,
+            cache_read: cumulative_usage.cache_read.0.max(0) as u64,
+            output: cumulative_usage.output.0.max(0) as u64,
+            total: cumulative_total as u64,
         };
         (total, breakdown)
     } else {
