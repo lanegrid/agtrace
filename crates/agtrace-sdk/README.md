@@ -6,7 +6,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.1"
+agtrace-sdk = "0.2"
 ```
 
 <!-- cargo-rdme start -->
