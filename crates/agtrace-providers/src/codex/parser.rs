@@ -113,6 +113,17 @@ pub(crate) fn normalize_codex_session(
                             }
                             last_seen_token_usage = Some(usage_triple);
 
+                            // Codex Token Conversion Rationale:
+                            //
+                            // Input mapping (verified from codex-rs implementation):
+                            //   cached   = cached_input_tokens (explicit field)
+                            //   uncached = input_tokens - cached_input_tokens
+                            //              (codex-rs provides non_cached_input() helper for this)
+                            //
+                            // Output mapping (verified from codex-rs schema):
+                            //   generated = output_tokens (normal generation)
+                            //   reasoning = reasoning_output_tokens (explicit field for o1-style reasoning)
+                            //   tool      = 0 (Codex does not separate tool call tokens)
                             builder.build_and_push(
                                 &mut events,
                                 &base_id,

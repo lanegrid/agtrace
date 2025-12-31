@@ -132,6 +132,19 @@ pub(crate) fn normalize_gemini_session(
 
                 // 4. TokenUsage event (sidecar attached to message)
                 // Gemini returns turn-level totals, so we attach to the last generation event
+                //
+                // Gemini Token Conversion Rationale:
+                //
+                // Input mapping (verified from gemini-cli telemetry):
+                //   cached   = cached (cached content tokens, from prompt caching)
+                //   uncached = input (fresh input tokens, not from cache)
+                //   Note: Gemini's schema guarantees: prompt = cached + input
+                //
+                // Output mapping (verified from gemini-cli schema):
+                //   generated = output (normal text generation)
+                //   reasoning = thoughts (thinking/reasoning tokens)
+                //   tool      = tool (tool call tokens)
+                //   Note: All three fields are explicit in Gemini's TokenUsage type
                 builder.build_and_push(
                     &mut events,
                     base_id,
