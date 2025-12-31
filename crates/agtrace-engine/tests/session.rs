@@ -1,6 +1,4 @@
 use agtrace_engine::assemble_session;
-#[allow(deprecated)]
-use agtrace_providers::normalize_tool_call;
 use agtrace_types::AgentEvent;
 use std::fs;
 use std::path::Path;
@@ -102,11 +100,16 @@ fn test_session_assembly_structure() {
             parent_id: Some(reasoning_id),
             timestamp: base_time,
             stream_id: agtrace_types::StreamId::Main,
-            payload: EventPayload::ToolCall(normalize_tool_call(
-                "bash".to_string(),
-                serde_json::json!({"command": "echo hello"}),
-                Some("call_1".to_string()),
-            )),
+            payload: EventPayload::ToolCall(ToolCallPayload::Execute {
+                name: "bash".to_string(),
+                arguments: ExecuteArgs {
+                    command: Some("echo hello".to_string()),
+                    description: None,
+                    timeout: None,
+                    extra: serde_json::json!({}),
+                },
+                provider_call_id: Some("call_1".to_string()),
+            }),
             metadata: None,
         },
         AgentEvent {
@@ -240,11 +243,16 @@ fn test_step_status_determination() {
             parent_id: Some(user2_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(normalize_tool_call(
-                "bash".to_string(),
-                serde_json::json!({"command": "ls"}),
-                Some("call_2".to_string()),
-            )),
+            payload: EventPayload::ToolCall(ToolCallPayload::Execute {
+                name: "bash".to_string(),
+                arguments: ExecuteArgs {
+                    command: Some("ls".to_string()),
+                    description: None,
+                    timeout: None,
+                    extra: serde_json::json!({}),
+                },
+                provider_call_id: Some("call_2".to_string()),
+            }),
             metadata: None,
         },
         // Turn 3: Tool with result -> Done
@@ -265,11 +273,16 @@ fn test_step_status_determination() {
             parent_id: Some(user3_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(normalize_tool_call(
-                "read".to_string(),
-                serde_json::json!({"file": "test.txt"}),
-                Some("call_3".to_string()),
-            )),
+            payload: EventPayload::ToolCall(ToolCallPayload::FileRead {
+                name: "read".to_string(),
+                arguments: FileReadArgs {
+                    file_path: Some("test.txt".to_string()),
+                    path: None,
+                    pattern: None,
+                    extra: serde_json::json!({}),
+                },
+                provider_call_id: Some("call_3".to_string()),
+            }),
             metadata: None,
         },
         AgentEvent {
@@ -326,11 +339,16 @@ fn test_step_status_determination() {
             parent_id: Some(user5_id),
             timestamp: base_time,
             stream_id: StreamId::Main,
-            payload: EventPayload::ToolCall(normalize_tool_call(
-                "bash".to_string(),
-                serde_json::json!({"command": "invalid"}),
-                Some("call_5".to_string()),
-            )),
+            payload: EventPayload::ToolCall(ToolCallPayload::Execute {
+                name: "bash".to_string(),
+                arguments: ExecuteArgs {
+                    command: Some("invalid".to_string()),
+                    description: None,
+                    timeout: None,
+                    extra: serde_json::json!({}),
+                },
+                provider_call_id: Some("call_5".to_string()),
+            }),
             metadata: None,
         },
         AgentEvent {
