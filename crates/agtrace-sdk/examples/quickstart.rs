@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo run -p agtrace-sdk --example quickstart
 
-use agtrace_sdk::{types::SessionFilter, Client, Lens};
+use agtrace_sdk::{Client, Lens, types::SessionFilter};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

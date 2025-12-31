@@ -199,8 +199,6 @@ pub mod utils {
     // Project management utilities
     pub use agtrace_core::{
         discover_project_root, project_hash_from_root, resolve_effective_project_hash,
+        resolve_workspace_path,
     };
-
-    // Workspace path resolution
-    pub use agtrace_runtime::resolve_workspace_path;
 }
