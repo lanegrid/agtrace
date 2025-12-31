@@ -28,6 +28,9 @@ pub use agtrace_types::{
     ReasoningPayload,
     SessionStats,
     StreamId,
+    // Token usage types
+    TokenInput,
+    TokenOutput,
     TokenUsagePayload,
     ToolCallPayload,
     ToolExecution,

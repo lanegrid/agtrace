@@ -59,7 +59,8 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
                 writeln!(
                     file,
                     "Tokens: in={}, out={}",
-                    p.input_tokens, p.output_tokens
+                    p.input.total(),
+                    p.output.total()
                 )?;
             }
             EventPayload::Notification(p) => {

@@ -211,25 +211,25 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 if let Some(usage) = &asst_record.message.usage {
                     // Attach to last generation event (ToolCall or Message)
                     if last_generation_event_id.is_some() {
+                        let input = TokenInput::new(
+                            usage.cache_read_input_tokens.unwrap_or(0) as u64,
+                            usage.input_tokens as u64,
+                        );
+
+                        // TODO: Parse content[] to separate reasoning/tool tokens
+                        // For now, treat all output as generated
+                        let output = TokenOutput::new(
+                            usage.output_tokens as u64, // generated
+                            0,                          // reasoning (to be implemented)
+                            0,                          // tool (to be implemented)
+                        );
+
                         builder.build_and_push(
                             &mut events,
                             base_id,
                             SemanticSuffix::TokenUsage,
                             timestamp,
-                            EventPayload::TokenUsage(TokenUsagePayload {
-                                input_tokens: usage.input_tokens as i32,
-                                output_tokens: usage.output_tokens as i32,
-                                total_tokens: (usage.input_tokens + usage.output_tokens) as i32,
-                                details: Some(TokenUsageDetails {
-                                    cache_creation_input_tokens: usage
-                                        .cache_creation_input_tokens
-                                        .map(|t| t as i32),
-                                    cache_read_input_tokens: usage
-                                        .cache_read_input_tokens
-                                        .map(|t| t as i32),
-                                    reasoning_output_tokens: None, // Claude doesn't separate reasoning tokens
-                                }),
-                            }),
+                            EventPayload::TokenUsage(TokenUsagePayload::new(input, output)),
                             raw_value.clone(),
                             stream_id.clone(),
                         );

@@ -118,20 +118,18 @@ pub(crate) fn normalize_codex_session(
                                 &base_id,
                                 SemanticSuffix::TokenUsage,
                                 timestamp,
-                                EventPayload::TokenUsage(TokenUsagePayload {
-                                    input_tokens: usage.input_tokens as i32,
-                                    output_tokens: usage.output_tokens as i32,
-                                    total_tokens: usage.total_tokens as i32,
-                                    details: Some(TokenUsageDetails {
-                                        cache_creation_input_tokens: None, // Codex doesn't track cache creation separately
-                                        cache_read_input_tokens: Some(
-                                            usage.cached_input_tokens as i32,
-                                        ),
-                                        reasoning_output_tokens: Some(
-                                            usage.reasoning_output_tokens as i32,
-                                        ),
-                                    }),
-                                }),
+                                EventPayload::TokenUsage(TokenUsagePayload::new(
+                                    TokenInput::new(
+                                        usage.cached_input_tokens as u64,
+                                        usage.input_tokens.saturating_sub(usage.cached_input_tokens)
+                                            as u64,
+                                    ),
+                                    TokenOutput::new(
+                                        usage.output_tokens as u64,
+                                        usage.reasoning_output_tokens as u64,
+                                        0, // Codex doesn't separate tool tokens
+                                    ),
+                                )),
                                 raw_value.clone(),
                                 StreamId::Main,
                             );

@@ -51,23 +51,13 @@ pub fn merge_usage(
     target: &mut Option<ContextWindowUsage>,
     source: &agtrace_types::TokenUsagePayload,
 ) {
-    let cache_creation = source
-        .details
-        .as_ref()
-        .and_then(|d| d.cache_creation_input_tokens)
-        .unwrap_or(0);
-    let cache_read = source
-        .details
-        .as_ref()
-        .and_then(|d| d.cache_read_input_tokens)
-        .unwrap_or(0);
-
-    // Convert TokenUsagePayload to ContextWindowUsage
+    // Convert normalized TokenUsagePayload to ContextWindowUsage
+    // Note: cache_creation is not tracked separately in the new schema
     let source_usage = ContextWindowUsage::from_raw(
-        source.input_tokens,
-        cache_creation,
-        cache_read,
-        source.output_tokens,
+        source.input.uncached as i32,
+        0, // cache_creation - not separately tracked
+        source.input.cached as i32,
+        source.output.total() as i32,
     );
 
     // Replace target with source (last wins semantics for cumulative context window reporting)
@@ -77,17 +67,15 @@ pub fn merge_usage(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::{TokenUsageDetails, TokenUsagePayload};
+    use agtrace_types::{TokenInput, TokenOutput, TokenUsagePayload};
 
     #[test]
     fn test_merge_usage_with_none() {
         let mut target = None;
-        let source = TokenUsagePayload {
-            input_tokens: 100,
-            output_tokens: 50,
-            total_tokens: 150,
-            details: None,
-        };
+        let source = TokenUsagePayload::new(
+            TokenInput::new(0, 100),    // 0 cached, 100 uncached
+            TokenOutput::new(50, 0, 0), // 50 generated, 0 reasoning, 0 tool
+        );
 
         merge_usage(&mut target, &source);
 
@@ -101,12 +89,10 @@ mod tests {
     #[test]
     fn test_merge_usage_replaces_with_latest() {
         let mut target = Some(ContextWindowUsage::from_raw(100, 0, 0, 50));
-        let source = TokenUsagePayload {
-            input_tokens: 200,
-            output_tokens: 100,
-            total_tokens: 300,
-            details: None,
-        };
+        let source = TokenUsagePayload::new(
+            TokenInput::new(0, 200),     // 0 cached, 200 uncached
+            TokenOutput::new(100, 0, 0), // 100 generated, 0 reasoning, 0 tool
+        );
 
         merge_usage(&mut target, &source);
 
@@ -118,25 +104,19 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_usage_with_details() {
+    fn test_merge_usage_with_cache() {
         let mut target = Some(ContextWindowUsage::from_raw(100, 10, 20, 50));
-        let source = TokenUsagePayload {
-            input_tokens: 200,
-            output_tokens: 100,
-            total_tokens: 300,
-            details: Some(TokenUsageDetails {
-                cache_creation_input_tokens: Some(15),
-                cache_read_input_tokens: Some(40),
-                reasoning_output_tokens: Some(30),
-            }),
-        };
+        let source = TokenUsagePayload::new(
+            TokenInput::new(40, 200),    // 40 cached, 200 uncached
+            TokenOutput::new(70, 30, 0), // 70 generated, 30 reasoning, 0 tool
+        );
 
         merge_usage(&mut target, &source);
 
         let result = target.unwrap();
         assert_eq!(result.fresh_input.0, 200);
-        assert_eq!(result.output.0, 100);
-        assert_eq!(result.cache_creation.0, 15);
+        assert_eq!(result.output.0, 100); // 70 + 30 + 0
+        assert_eq!(result.cache_creation.0, 0); // not tracked in new schema
         assert_eq!(result.cache_read.0, 40);
     }
 }

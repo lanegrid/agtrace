@@ -2,8 +2,8 @@ use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
 use agtrace_sdk::types::{
     AgentEvent, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs, MessagePayload,
-    ReasoningPayload, SessionState, StreamId, TokenUsagePayload, ToolCallPayload,
-    ToolResultPayload, UserPayload,
+    ReasoningPayload, SessionState, StreamId, TokenInput, TokenOutput, TokenUsagePayload,
+    ToolCallPayload, ToolResultPayload, UserPayload,
 };
 use agtrace_sdk::utils::extract_state_updates;
 use anyhow::Result;
@@ -279,12 +279,10 @@ impl ScenarioBuilder {
             timestamp: ts,
             stream_id: self.stream_id.clone(),
             metadata: None,
-            payload: EventPayload::TokenUsage(TokenUsagePayload {
-                input_tokens: capped_input,
-                output_tokens: self.total_output_tokens,
-                total_tokens: capped_input + self.total_output_tokens,
-                details: None,
-            }),
+            payload: EventPayload::TokenUsage(TokenUsagePayload::new(
+                TokenInput::new(0, capped_input as u64),
+                TokenOutput::new(self.total_output_tokens as u64, 0, 0),
+            )),
         });
 
         self.step_input_tokens = 0;

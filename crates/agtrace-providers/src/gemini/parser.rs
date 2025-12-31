@@ -137,16 +137,17 @@ pub(crate) fn normalize_gemini_session(
                     base_id,
                     SemanticSuffix::TokenUsage,
                     timestamp,
-                    EventPayload::TokenUsage(TokenUsagePayload {
-                        input_tokens: gemini_msg.tokens.input as i32,
-                        output_tokens: gemini_msg.tokens.output as i32,
-                        total_tokens: gemini_msg.tokens.total as i32,
-                        details: Some(TokenUsageDetails {
-                            cache_creation_input_tokens: None, // Gemini doesn't track cache creation separately
-                            cache_read_input_tokens: Some(gemini_msg.tokens.cached as i32),
-                            reasoning_output_tokens: Some(gemini_msg.tokens.thoughts as i32),
-                        }),
-                    }),
+                    EventPayload::TokenUsage(TokenUsagePayload::new(
+                        TokenInput::new(
+                            gemini_msg.tokens.cached as u64,
+                            gemini_msg.tokens.input as u64,
+                        ),
+                        TokenOutput::new(
+                            gemini_msg.tokens.output as u64,
+                            gemini_msg.tokens.thoughts as u64,
+                            gemini_msg.tokens.tool as u64,
+                        ),
+                    )),
                     Some(raw_value),
                     StreamId::Main,
                 );

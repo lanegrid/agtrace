@@ -21,33 +21,14 @@ pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
             updates.is_new_turn = true;
         }
         EventPayload::TokenUsage(usage) => {
-            let cache_creation = usage
-                .details
-                .as_ref()
-                .and_then(|d| d.cache_creation_input_tokens)
-                .unwrap_or(0);
-            let cache_read = usage
-                .details
-                .as_ref()
-                .and_then(|d| d.cache_read_input_tokens)
-                .unwrap_or(0);
-            let reasoning_tokens = usage
-                .details
-                .as_ref()
-                .and_then(|d| d.reasoning_output_tokens)
-                .unwrap_or(0);
-
-            // TODO: Verify if input_tokens includes cache tokens (potential double counting)
-            // Claude API's input_tokens may already include cache_creation + cache_read.
-            // If so, fresh_input should be: usage.input_tokens - cache_creation - cache_read
-            // Need to verify with actual logs using: agtrace lab grep "TokenUsage" --json
+            // Convert normalized TokenUsagePayload to ContextWindowUsage
             updates.usage = Some(ContextWindowUsage::from_raw(
-                usage.input_tokens,
-                cache_creation,
-                cache_read,
-                usage.output_tokens,
+                usage.input.uncached as i32,
+                0, // cache_creation - not separately tracked in new schema
+                usage.input.cached as i32,
+                usage.output.total() as i32,
             ));
-            updates.reasoning_tokens = Some(reasoning_tokens);
+            updates.reasoning_tokens = Some(usage.output.reasoning as i32);
         }
         EventPayload::ToolResult(result) => {
             if result.is_error {
