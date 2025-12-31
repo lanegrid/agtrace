@@ -42,7 +42,7 @@ async fn test_isolation_project_a_and_b_list_shows_only_current_project() -> Res
     let expected_hash =
         agtrace_sdk::utils::project_hash_from_root(&project_a_path.to_string_lossy());
 
-    let filter = SessionFilter::default().project(expected_hash.clone());
+    let filter = SessionFilter::project(expected_hash.clone());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(sessions.len(), 1, "Should show only project A's sessions");
@@ -72,7 +72,7 @@ async fn test_isolation_empty_project_shows_zero_results() -> Result<()> {
     let project_b_hash =
         agtrace_sdk::utils::project_hash_from_root(&project_b_path.to_string_lossy());
 
-    let filter = SessionFilter::default().project(project_b_hash);
+    let filter = SessionFilter::project(project_b_hash);
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(
@@ -101,7 +101,7 @@ async fn test_isolation_multiple_sessions_in_same_project() -> Result<()> {
     let project_path = world.temp_dir().join("my-project");
     let expected_hash = agtrace_sdk::utils::project_hash_from_root(&project_path.to_string_lossy());
 
-    let filter = SessionFilter::default().project(expected_hash.clone());
+    let filter = SessionFilter::project(expected_hash.clone());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(sessions.len(), 3, "Should show all sessions in the project");
@@ -133,9 +133,7 @@ async fn test_isolation_all_projects_flag_shows_all_sessions() -> Result<()> {
     let client = initialize_workspace(&world, true).await?;
 
     // Use all_projects filter to get sessions from all projects
-    let sessions = client
-        .sessions()
-        .list(SessionFilter::default().all_projects())?;
+    let sessions = client.sessions().list(SessionFilter::all())?;
 
     assert_eq!(sessions.len(), 2, "Should show both projects' sessions");
 

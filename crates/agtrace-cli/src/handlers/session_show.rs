@@ -22,7 +22,7 @@ pub fn handle(
     let model_name_display = "Claude 3.5 Sonnet".to_string();
     let model_name_key = "claude-sonnet-4-5".to_string();
 
-    let filter = SessionFilter::default();
+    let filter = SessionFilter::all();
     let session_summaries = client.sessions().list(filter)?;
     let provider = session_summaries
         .iter()

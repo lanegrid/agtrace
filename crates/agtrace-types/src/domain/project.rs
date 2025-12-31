@@ -94,16 +94,16 @@ impl AsRef<Path> for ProjectRoot {
 pub enum ProjectScope {
     /// Scan all projects without filtering
     All,
-    /// Scan specific project by root path
-    Specific { root: String },
+    /// Scan specific project by hash
+    Specific(ProjectHash),
 }
 
 impl ProjectScope {
-    /// Get optional root path for filtering
-    pub fn root(&self) -> Option<&str> {
+    /// Get optional project hash for filtering
+    pub fn hash(&self) -> Option<&ProjectHash> {
         match self {
             ProjectScope::All => None,
-            ProjectScope::Specific { root } => Some(root.as_str()),
+            ProjectScope::Specific(hash) => Some(hash),
         }
     }
 }

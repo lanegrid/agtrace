@@ -168,9 +168,9 @@ fn handle_provider_watch(
 
     // Quick scan to find latest session
     let latest_session = {
-        let current_project_root = project_root.map(|p| p.display().to_string());
-        let scope = if let Some(root) = current_project_root.clone() {
-            agtrace_sdk::types::ProjectScope::Specific { root }
+        let scope = if let Some(root) = project_root {
+            let hash = agtrace_sdk::utils::project_hash_from_root(&root.display().to_string());
+            agtrace_sdk::types::ProjectScope::Specific(hash.clone())
         } else {
             agtrace_sdk::types::ProjectScope::All
         };
@@ -178,12 +178,15 @@ fn handle_provider_watch(
         // Lightweight scan (incremental by default)
         let _ = client
             .system()
-            .reindex(scope, false, Some(provider_name), |_| {});
+            .reindex(scope.clone(), false, Some(provider_name), |_| {});
 
         // Get latest session from updated DB
-        let filter = SessionFilter::new()
-            .provider(provider_name.to_string())
-            .limit(1);
+        let filter = match scope {
+            agtrace_sdk::types::ProjectScope::All => SessionFilter::all(),
+            agtrace_sdk::types::ProjectScope::Specific(hash) => SessionFilter::project(hash),
+        }
+        .provider(provider_name.to_string())
+        .limit(1);
         client
             .sessions()
             .list(filter)

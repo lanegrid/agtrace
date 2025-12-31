@@ -165,7 +165,7 @@ pub fn handle(
         options.tool_name,
     )?;
 
-    let mut filter = SessionFilter::new().limit(1000);
+    let mut filter = SessionFilter::all().limit(1000);
     if let Some(src) = options.provider {
         filter = filter.provider(src);
     }

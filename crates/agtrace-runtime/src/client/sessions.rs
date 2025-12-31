@@ -13,26 +13,30 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct SessionFilter {
-    pub project_hash: Option<agtrace_types::ProjectHash>,
+    pub scope: agtrace_types::ProjectScope,
     pub limit: usize,
-    pub all_projects: bool,
     pub provider: Option<String>,
     pub since: Option<String>,
     pub until: Option<String>,
 }
 
-impl Default for SessionFilter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl SessionFilter {
-    pub fn new() -> Self {
+    /// Create a filter for all projects
+    pub fn all() -> Self {
         Self {
-            project_hash: None,
+            scope: agtrace_types::ProjectScope::All,
             limit: 100,
-            all_projects: false,
+            provider: None,
+            since: None,
+            until: None,
+        }
+    }
+
+    /// Create a filter for a specific project
+    pub fn project(project_hash: agtrace_types::ProjectHash) -> Self {
+        Self {
+            scope: agtrace_types::ProjectScope::Specific(project_hash),
+            limit: 100,
             provider: None,
             since: None,
             until: None,
@@ -41,16 +45,6 @@ impl SessionFilter {
 
     pub fn limit(mut self, limit: usize) -> Self {
         self.limit = limit;
-        self
-    }
-
-    pub fn project(mut self, project_hash: agtrace_types::ProjectHash) -> Self {
-        self.project_hash = Some(project_hash);
-        self
-    }
-
-    pub fn all_projects(mut self) -> Self {
-        self.all_projects = true;
         self
     }
 
@@ -92,9 +86,8 @@ impl SessionOps {
         let db = self.db.lock().unwrap();
         let service = SessionService::new(&db);
         let request = ListSessionsRequest {
-            project_hash: filter.project_hash,
+            scope: filter.scope,
             limit: filter.limit,
-            all_projects: filter.all_projects,
             provider: filter.provider,
             since: filter.since,
             until: filter.until,

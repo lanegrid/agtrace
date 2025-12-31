@@ -120,9 +120,7 @@ impl InitService {
             let scope = if config.all_projects {
                 agtrace_types::ProjectScope::All
             } else {
-                agtrace_types::ProjectScope::Specific {
-                    root: current_project_root.clone(),
-                }
+                agtrace_types::ProjectScope::Specific(current_project_hash.clone())
             };
 
             service.run(scope, config.refresh, |_progress| {
