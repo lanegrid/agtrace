@@ -12,6 +12,10 @@
 pub use agtrace_types::{
     // Event types
     AgentEvent,
+    // Session assembly types (moved from agtrace-engine)
+    AgentSession,
+    AgentStep,
+    AgentTurn,
     EventPayload,
     // Payload types
     ExecuteArgs,
@@ -22,32 +26,28 @@ pub use agtrace_types::{
     ProjectHash,
     ProjectScope,
     ReasoningPayload,
+    SessionStats,
     StreamId,
     TokenUsagePayload,
     ToolCallPayload,
+    ToolExecution,
     ToolKind,
     ToolResultPayload,
+    TurnMetrics,
     UserPayload,
 };
 
 // ============================================================================
-// Session Types (from agtrace-engine)
+// Session Analysis Types (from agtrace-engine)
 // ============================================================================
 
 pub use agtrace_engine::{
-    // Session assembly types
-    AgentSession,
-    AgentStep,
-    AgentTurn,
     // Token usage types
     ContextLimit,
     ContextWindowUsage,
     // Analysis types
     SessionDigest,
-    SessionStats,
     TokenCount,
-    ToolExecution,
-    TurnMetrics,
 };
 
 // ============================================================================
