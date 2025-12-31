@@ -2,7 +2,7 @@ use agtrace_types::{ToolCallPayload, ToolKind, ToolOrigin};
 use serde_json::Value;
 
 use crate::codex::tools::{ApplyPatchArgs, PatchOperation, ReadMcpResourceArgs, ShellArgs};
-use agtrace_types::{ExecuteArgs, FileEditArgs, FileReadArgs, FileWriteArgs};
+use agtrace_types::{ExecuteArgs, FileEditArgs, FileReadArgs, FileWriteArgs, SearchArgs};
 
 /// Normalize Codex-specific tool calls
 ///
@@ -62,22 +62,41 @@ pub(crate) fn normalize_codex_tool_call(
                 // Convert to standard ExecuteArgs
                 let execute_args = shell_args.to_execute_args();
 
-                // Check if this is a read-oriented command
+                // Check if this is a search or read command
                 if let Some(command) = &execute_args.command {
-                    if super::execute_intent::classify_execute_command(command) == Some(ToolKind::Read) {
-                        // Extract file path if possible
-                        let file_path = super::execute_intent::extract_file_path(command);
+                    match super::execute_intent::classify_execute_command(command) {
+                        Some(ToolKind::Search) => {
+                            // Extract search pattern if possible
+                            let pattern = super::execute_intent::extract_search_pattern(command);
 
-                        return ToolCallPayload::FileRead {
-                            name: tool_name,
-                            arguments: FileReadArgs {
-                                file_path,
-                                path: None,
-                                pattern: None,
-                                extra: serde_json::json!({"command": command}),
-                            },
-                            provider_call_id,
-                        };
+                            return ToolCallPayload::Search {
+                                name: tool_name,
+                                arguments: SearchArgs {
+                                    pattern,
+                                    query: None,
+                                    input: None,
+                                    path: None,
+                                    extra: serde_json::json!({"command": command}),
+                                },
+                                provider_call_id,
+                            };
+                        }
+                        Some(ToolKind::Read) => {
+                            // Extract file path if possible
+                            let file_path = super::execute_intent::extract_file_path(command);
+
+                            return ToolCallPayload::FileRead {
+                                name: tool_name,
+                                arguments: FileReadArgs {
+                                    file_path,
+                                    path: None,
+                                    pattern: None,
+                                    extra: serde_json::json!({"command": command}),
+                                },
+                                provider_call_id,
+                            };
+                        }
+                        _ => {}
                     }
                 }
 
@@ -103,22 +122,41 @@ pub(crate) fn normalize_codex_tool_call(
         "shell_command" => {
             // shell_command → Execute (already uses string command format)
             if let Ok(args) = serde_json::from_value::<ExecuteArgs>(arguments.clone()) {
-                // Check if this is a read-oriented command
+                // Check if this is a search or read command
                 if let Some(command) = &args.command {
-                    if super::execute_intent::classify_execute_command(command) == Some(ToolKind::Read) {
-                        // Extract file path if possible
-                        let file_path = super::execute_intent::extract_file_path(command);
+                    match super::execute_intent::classify_execute_command(command) {
+                        Some(ToolKind::Search) => {
+                            // Extract search pattern if possible
+                            let pattern = super::execute_intent::extract_search_pattern(command);
 
-                        return ToolCallPayload::FileRead {
-                            name: tool_name,
-                            arguments: FileReadArgs {
-                                file_path,
-                                path: None,
-                                pattern: None,
-                                extra: serde_json::json!({"command": command}),
-                            },
-                            provider_call_id,
-                        };
+                            return ToolCallPayload::Search {
+                                name: tool_name,
+                                arguments: SearchArgs {
+                                    pattern,
+                                    query: None,
+                                    input: None,
+                                    path: None,
+                                    extra: serde_json::json!({"command": command}),
+                                },
+                                provider_call_id,
+                            };
+                        }
+                        Some(ToolKind::Read) => {
+                            // Extract file path if possible
+                            let file_path = super::execute_intent::extract_file_path(command);
+
+                            return ToolCallPayload::FileRead {
+                                name: tool_name,
+                                arguments: FileReadArgs {
+                                    file_path,
+                                    path: None,
+                                    pattern: None,
+                                    extra: serde_json::json!({"command": command}),
+                                },
+                                provider_call_id,
+                            };
+                        }
+                        _ => {}
                     }
                 }
 
@@ -481,10 +519,11 @@ mod tests {
 
     #[test]
     fn test_normalize_shell_command_read() {
+        // Test with cat instead of grep (grep is now Search)
         let payload = normalize_codex_tool_call(
             "shell_command".to_string(),
             serde_json::json!({
-                "command": "grep pattern file.txt"
+                "command": "cat file.txt"
             }),
             None,
         );
@@ -496,7 +535,7 @@ mod tests {
                 assert_eq!(name, "shell_command");
                 assert_eq!(arguments.file_path, Some("file.txt".to_string()));
             }
-            _ => panic!("Expected FileRead variant for grep command, got: {:?}", payload.kind()),
+            _ => panic!("Expected FileRead variant for cat command, got: {:?}", payload.kind()),
         }
     }
 
@@ -518,6 +557,67 @@ mod tests {
                 assert_eq!(arguments.file_path, Some("Cargo.toml".to_string()));
             }
             _ => panic!("Expected FileRead variant for bash-wrapped cat, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_search_rg() {
+        let payload = normalize_codex_tool_call(
+            "shell_command".to_string(),
+            serde_json::json!({
+                "command": "rg -n \"context window\" docs -S"
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::Search {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "shell_command");
+                assert_eq!(arguments.pattern, Some("context window".to_string()));
+            }
+            _ => panic!("Expected Search variant for rg command, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_read_rg_files() {
+        let payload = normalize_codex_tool_call(
+            "shell_command".to_string(),
+            serde_json::json!({
+                "command": "rg --files docs"
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::FileRead { name, .. } => {
+                assert_eq!(name, "shell_command");
+                // rg --files is file listing, not search
+            }
+            _ => panic!("Expected FileRead variant for rg --files, got: {:?}", payload.kind()),
+        }
+    }
+
+    #[test]
+    fn test_normalize_shell_search_grep() {
+        let payload = normalize_codex_tool_call(
+            "shell".to_string(),
+            serde_json::json!({
+                "command": ["grep", "-n", "TODO", "src/main.rs"]
+            }),
+            None,
+        );
+
+        match payload {
+            ToolCallPayload::Search {
+                name, arguments, ..
+            } => {
+                assert_eq!(name, "shell");
+                assert_eq!(arguments.pattern, Some("TODO".to_string()));
+            }
+            _ => panic!("Expected Search variant for grep command, got: {:?}", payload.kind()),
         }
     }
 }
