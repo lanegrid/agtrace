@@ -23,6 +23,7 @@ struct ProviderStats {
     tool_names: HashMap<String, usize>,
     execute_commands: HashMap<String, usize>,
     execute_by_tool: HashMap<String, HashMap<String, usize>>,
+    command_patterns: HashMap<String, usize>,
     file_paths: HashMap<String, usize>,
     mcp_servers: HashMap<String, usize>,
     mcp_tools: HashMap<String, usize>,
@@ -108,6 +109,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                         .entry(command.to_string())
                                         .and_modify(|c| *c += 1)
                                         .or_insert(1);
+
+                                    // Track command patterns (first word)
+                                    let first_word =
+                                        command.split_whitespace().next().unwrap_or("");
+                                    if !first_word.is_empty() {
+                                        *stats
+                                            .command_patterns
+                                            .entry(first_word.to_string())
+                                            .or_insert(0) += 1;
+                                    }
                                 }
                             }
                             ToolCallPayload::Mcp { arguments, .. } => {
@@ -160,6 +171,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!();
         }
 
+        // Command patterns (first word)
+        if !stats.command_patterns.is_empty() {
+            println!("  Command Patterns (by first word):");
+            print_top_10_indented(&stats.command_patterns);
+            println!();
+        }
+
         // Execute commands by tool name
         if !stats.execute_by_tool.is_empty() {
             println!("  Execute Commands by Tool:");
@@ -174,6 +192,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let total: usize = commands.values().sum();
                 println!("    {} (× {} calls):", tool_name, total);
                 print_top_5_double_indented(commands);
+
+                // Show all unique commands count
+                println!("      ... {} unique commands total", commands.len());
             }
             println!();
         }
@@ -209,6 +230,16 @@ fn print_top_5_indented(map: &HashMap<String, usize>) {
     items.sort_by(|a, b| b.1.cmp(a.1));
 
     for (i, (key, count)) in items.iter().take(5).enumerate() {
+        println!("    {}. {} (× {})", i + 1, key, count);
+    }
+}
+
+/// Print top 10 items from a frequency map with indentation
+fn print_top_10_indented(map: &HashMap<String, usize>) {
+    let mut items: Vec<_> = map.iter().collect();
+    items.sort_by(|a, b| b.1.cmp(a.1));
+
+    for (i, (key, count)) in items.iter().take(10).enumerate() {
         println!("    {}. {} (× {})", i + 1, key, count);
     }
 }
