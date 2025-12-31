@@ -12,6 +12,7 @@ keywords = ["agtrace-internal"]
 agtrace-types = { workspace = true }
 agtrace-core = { workspace = true }
 agtrace-providers = { workspace = true }
+agtrace-sdk = { workspace = true }
 
 # Common dependencies
 anyhow = { workspace = true }
@@ -28,6 +29,9 @@ filetime = { workspace = true }
 
 # Hashing for sessionId generation
 sha2 = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lib]
 name = "agtrace_testing"

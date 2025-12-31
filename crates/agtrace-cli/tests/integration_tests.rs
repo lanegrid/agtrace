@@ -1,20 +1,21 @@
 //! Integration Tests for agtrace-cli
 //!
-//! This module contains comprehensive integration tests that verify
-//! the CLI's behavior in realistic scenarios using the agtrace-testing
-//! infrastructure.
+//! This module contains CLI-specific integration tests that verify
+//! command-line interface behavior including argument parsing, output formatting,
+//! and TUI rendering.
 //!
 //! Test Organization:
-//! - `project_isolation.rs`: Project hash isolation and data segregation
-//! - `init_configuration.rs`: Initialization and configuration workflows
-//! - `list_filtering.rs`: Session list filtering and queries
-//! - `watch_command.rs`: Watch command and live session monitoring
-//! - `provider_filtering.rs`: Provider-specific filtering behavior (--provider)
+//! - `init_configuration.rs`: Init command output and configuration workflows
+//! - `watch_command.rs`: Watch command TUI and console mode
+//! - `provider_filtering.rs`: CLI provider filtering (index/watch/lab commands)
+//! - `debug_session_discovery.rs`: Debug utilities
 //!
-//! All tests should pass with the current implementation.
+//! Note: Core business logic tests (session filtering, project isolation)
+//! have been moved to agtrace-sdk/tests for faster, type-safe testing.
+//!
+//! Note: `help_snapshots.rs` is a separate test file to maintain stable snapshot paths.
 
+mod debug_session_discovery;
 mod init_configuration;
-mod list_filtering;
-mod project_isolation;
 mod provider_filtering;
 mod watch_command;

@@ -25,3 +25,5 @@ futures.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+agtrace-testing = { path = "../agtrace-testing" }
+anyhow.workspace = true
