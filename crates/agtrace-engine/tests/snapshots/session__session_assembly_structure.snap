@@ -62,7 +62,6 @@ expression: session
           ],
           "usage": {
             "fresh_input": 100,
-            "cache_creation": 0,
             "cache_read": 0,
             "output": 50
           },
@@ -75,7 +74,6 @@ expression: session
         "step_count": 1,
         "usage": {
           "fresh_input": 100,
-          "cache_creation": 0,
           "cache_read": 0,
           "output": 50
         }
@@ -87,7 +85,6 @@ expression: session
     "duration_seconds": 0,
     "usage": {
       "fresh_input": 100,
-      "cache_creation": 0,
       "cache_read": 0,
       "output": 50
     }

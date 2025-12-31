@@ -85,7 +85,9 @@ fn extract_context_window_limit(metadata: &Value) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::{TokenUsageDetails, TokenUsagePayload, ToolResultPayload, UserPayload};
+    use agtrace_types::{
+        TokenInput, TokenOutput, TokenUsagePayload, ToolResultPayload, UserPayload,
+    };
     use chrono::Utc;
     use std::str::FromStr;
     use uuid::Uuid;
@@ -115,16 +117,10 @@ mod tests {
 
     #[test]
     fn extracts_token_usage_and_reasoning() {
-        let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload {
-            input_tokens: 100,
-            output_tokens: 50,
-            total_tokens: 150,
-            details: Some(TokenUsageDetails {
-                cache_creation_input_tokens: Some(5),
-                cache_read_input_tokens: Some(20),
-                reasoning_output_tokens: Some(7),
-            }),
-        }));
+        let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
+            TokenInput::new(20, 100), // cached=20, uncached=100
+            TokenOutput::new(43, 7, 0), // generated=43, reasoning=7, tool=0
+        )));
 
         let mut meta = serde_json::Map::new();
         meta.insert(
@@ -140,11 +136,10 @@ mod tests {
         let updates = extract_state_updates(&event);
 
         let usage = updates.usage.expect("usage should be set");
-        assert_eq!(usage.fresh_input.0, 100);
-        assert_eq!(usage.output.0, 50);
-        assert_eq!(usage.cache_creation.0, 5);
-        assert_eq!(usage.cache_read.0, 20);
-        assert_eq!(usage.total_tokens(), crate::TokenCount::new(175));
+        assert_eq!(usage.fresh_input.0, 100); // uncached input
+        assert_eq!(usage.cache_read.0, 20); // cached input
+        assert_eq!(usage.output.0, 50); // generated + reasoning + tool = 43 + 7 + 0
+        assert_eq!(usage.total_tokens(), crate::TokenCount::new(170)); // 100 + 20 + 50
 
         assert_eq!(updates.reasoning_tokens, Some(7));
         assert_eq!(
@@ -156,12 +151,10 @@ mod tests {
 
     #[test]
     fn extracts_context_window_limit_from_payload_info() {
-        let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload {
-            input_tokens: 10,
-            output_tokens: 5,
-            total_tokens: 15,
-            details: None,
-        }));
+        let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
+            TokenInput::new(0, 10), // cached=0, uncached=10
+            TokenOutput::new(5, 0, 0), // generated=5, reasoning=0, tool=0
+        )));
 
         event.metadata = Some(serde_json::json!({
             "payload": {
@@ -222,16 +215,10 @@ mod tests {
         }
 
         let user = base_event(EventPayload::User(UserPayload { text: "hi".into() }));
-        let mut usage_event = base_event(EventPayload::TokenUsage(TokenUsagePayload {
-            input_tokens: 120,
-            output_tokens: 30,
-            total_tokens: 150,
-            details: Some(TokenUsageDetails {
-                cache_creation_input_tokens: Some(10),
-                cache_read_input_tokens: Some(5),
-                reasoning_output_tokens: Some(3),
-            }),
-        }));
+        let mut usage_event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
+            TokenInput::new(5, 120), // cached=5, uncached=120
+            TokenOutput::new(27, 3, 0), // generated=27, reasoning=3, tool=0
+        )));
         let mut meta = serde_json::Map::new();
         meta.insert("model".into(), serde_json::Value::String("claude-3".into()));
         meta.insert(
@@ -257,9 +244,8 @@ mod tests {
         assert_eq!(state.model.as_deref(), Some("claude-3"));
         assert_eq!(state.context_window_limit, Some(100_000));
         assert_eq!(state.usage.fresh_input.0, 120);
-        assert_eq!(state.usage.output.0, 30);
-        assert_eq!(state.usage.cache_creation.0, 10);
         assert_eq!(state.usage.cache_read.0, 5);
+        assert_eq!(state.usage.output.0, 30); // generated + reasoning + tool = 27 + 3 + 0
         assert_eq!(state.reasoning_tokens, 3);
     }
 }

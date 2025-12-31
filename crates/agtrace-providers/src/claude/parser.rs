@@ -226,10 +226,9 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         //   Claude's message.content[] has type field ("text", "thinking", "tool_use")
                         //   which allows separating output_tokens by parsing each content block.
                         //   This would enable proper reasoning/tool token accounting.
-                        let input = TokenInput::new(
-                            usage.cache_read_input_tokens.unwrap_or(0) as u64,
-                            usage.input_tokens as u64,
-                        );
+                        let cached = usage.cache_read_input_tokens.unwrap_or(0) as u64;
+                        let uncached = usage.input_tokens as u64;
+                        let input = TokenInput::new(cached, uncached);
 
                         let output = TokenOutput::new(
                             usage.output_tokens as u64, // all output as generated (for now)
@@ -372,20 +371,12 @@ mod tests {
 
         match &events[2].payload {
             EventPayload::TokenUsage(payload) => {
-                assert_eq!(payload.input_tokens, 100);
-                assert_eq!(payload.output_tokens, 50);
-                assert_eq!(
-                    payload
-                        .details
-                        .as_ref()
-                        .unwrap()
-                        .cache_creation_input_tokens,
-                    None
-                );
-                assert_eq!(
-                    payload.details.as_ref().unwrap().cache_read_input_tokens,
-                    Some(10)
-                );
+                // input_tokens=100, cache_read_input_tokens=10
+                // => cached=10, uncached=100, total=110
+                assert_eq!(payload.input.cached, 10);
+                assert_eq!(payload.input.uncached, 100);
+                assert_eq!(payload.input.total(), 110);
+                assert_eq!(payload.output.total(), 50);
             }
             _ => panic!("Expected TokenUsage payload"),
         }
