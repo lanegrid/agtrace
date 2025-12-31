@@ -2,6 +2,66 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2025-12-31
+
+### Documentation
+
+- Update all references from ~/.agtrace to XDG data directory paths ([e6bbf10](https://github.com/lanegrid/agtrace/commit/e6bbf102d1fed32a4fab8c35b32366d868dc2c32))
+
+- Add quickstart example and improve README SDK usage guide ([cca3c4e](https://github.com/lanegrid/agtrace/commit/cca3c4e821d7da058836423c21eccc596099272d))
+
+- Establish rustdoc as source of truth for SDK usage examples ([c16a0d3](https://github.com/lanegrid/agtrace/commit/c16a0d3f554f4da3d43fa4074359b762c6b35f8f))
+
+- Update AGENTS.md with engine domain and crate dependencies ([5cfaa84](https://github.com/lanegrid/agtrace/commit/5cfaa84f0571e64b0569425836912a21a99b6108))
+
+- Update AGENTS.md with crate design principles and dependency rules ([aaa73f7](https://github.com/lanegrid/agtrace/commit/aaa73f701c8d377c11a33a76005f17cf1901b633))
+
+
+### Features
+
+- Add auto-initialization to SDK Client::connect() for seamless workspace setup (fixes #17) ([7eb8971](https://github.com/lanegrid/agtrace/commit/7eb8971c855ebb897bbb831c46ff3b453ad6e21e))
+
+- *(sdk)* Implement explicit project scope API for SessionFilter (resolves #24) ([f6a9894](https://github.com/lanegrid/agtrace/commit/f6a9894f63541dbe5e0addcd324659ea5f45fdcf))
+
+- Automate SDK README generation with cargo-rdme ([6defa48](https://github.com/lanegrid/agtrace/commit/6defa48a829c8461eeaee2c66a82d688dce5bd8b))
+
+
+### Miscellaneous Tasks
+
+- Apply clippy fixes to runtime layer ([a3ce598](https://github.com/lanegrid/agtrace/commit/a3ce59886e3c3eaf5bba113e00b74be51bce4b2c))
+
+- Apply cargo fmt to workspace ([6b14f17](https://github.com/lanegrid/agtrace/commit/6b14f17b56633b3c3a70877ba531e3c2ff399c7c))
+
+- Increment SCHEMA_VERSION to 2 to trigger re-index ([c3a532d](https://github.com/lanegrid/agtrace/commit/c3a532dee09d9f2d9d918cef137a5869993c1293))
+
+
+### Refactor
+
+- Replace anyhow with structured errors in index and providers layers ([aaa1a39](https://github.com/lanegrid/agtrace/commit/aaa1a3908ce608f57d3c139e842405bdd3d4f3af))
+
+- Replace anyhow with structured errors in runtime layer ([a4cb1d8](https://github.com/lanegrid/agtrace/commit/a4cb1d8d47e3a23d3b7c40ba42063143d40d5518))
+
+- Replace anyhow with structured errors in SDK layer ([b529fe3](https://github.com/lanegrid/agtrace/commit/b529fe388c908bc317c6ef8cbe2e439585fbd8f7))
+
+- Replace anyhow with structured errors in types layer ([27596fd](https://github.com/lanegrid/agtrace/commit/27596fda6d5d5432ea075871fc3e31e192831c49))
+
+- Convert SDK and runtime to async-first architecture ([44ff87a](https://github.com/lanegrid/agtrace/commit/44ff87a933a4e91167780b4eeb6b5b34232f4a9e))
+
+- Add ClientBuilder with XDG path resolution and convert LiveStream to Stream trait ([b4d072d](https://github.com/lanegrid/agtrace/commit/b4d072d761662cdac8790ebdd252841900a5f246))
+
+- Consolidate XDG path resolution logic in runtime, expose via SDK utils ([012349b](https://github.com/lanegrid/agtrace/commit/012349be99d1edc715eb6a2379971da397b2b2f9))
+
+- Consolidate path utilities into new agtrace-core infrastructure crate (fixes #19) ([72a5ba0](https://github.com/lanegrid/agtrace/commit/72a5ba093cf19fd043ca4508502261ace9f363bf))
+
+- Remove deprecated methods from agtrace-sdk ([19eadcf](https://github.com/lanegrid/agtrace/commit/19eadcf8bb15f5ba93cabb9ba53f92714e844b48))
+
+- Migrate integration tests from CLI to SDK for faster type-safe testing ([ef6a7bc](https://github.com/lanegrid/agtrace/commit/ef6a7bc95b5f6983345c442159cdbffe9bfecb20))
+
+- *(sdk)* Re-export resolve_workspace_path directly from core for consistency ([5a47d7b](https://github.com/lanegrid/agtrace/commit/5a47d7b536b16952959e09bc403646b76ddc95cd))
+
+- Move domain from runtime to engine with dependency inversion ([bae964d](https://github.com/lanegrid/agtrace/commit/bae964db4aca70d832161d25242d3dc030a4dd4c))
+
+
 ## [0.1.15] - 2025-12-31
 
 ### Bug Fixes
