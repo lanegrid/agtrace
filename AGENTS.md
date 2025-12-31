@@ -109,6 +109,7 @@ The repository is a Rust Workspace organized into modular crates, following a di
 * `crates/agtrace-engine/`
 * Role: The "brain" of the application.
 * Key Files:
+* `domain/`: Session state, token limits, event filters (pure domain logic).
 * `session.rs`: Reconstructs linear conversation history (`turns`, `steps`) from raw event streams.
 * `state_updates.rs`: Tracks context window usage and state changes.
 * `export.rs`: Handles data export strategies (Raw vs Clean vs Reasoning).
@@ -141,13 +142,31 @@ The repository is a Rust Workspace organized into modular crates, following a di
 #### 5. Shared Domain Layer
 
 * `crates/agtrace-types/`
-* Role: Common type definitions.
+* Role: Common type definitions and interfaces.
 * Key Files:
-* `models.rs`: Defines the core `AgentEvent`, `EventPayload` (User, ToolCall, Reasoning), and `StreamId`.
+* `event.rs`: Core `AgentEvent`, `EventPayload` (User, ToolCall, Reasoning), and `StreamId`.
+* `model_limits.rs`: `ModelLimitResolver` trait for dependency inversion.
 * `util.rs`: Hashing and path utility helpers.
 
 
-* Function: The shared "language" used by all other crates to ensure type safety across the system.
+* Function: The shared "language" and interfaces used by all other crates to ensure type safety and proper layering.
+
+### Crate Dependencies
+
+```
+types (shared domain + interfaces)
+  ↑
+  ├── providers (implements ModelLimitResolver)
+  ├── engine (domain logic + session analysis)
+  ├── index (SQLite metadata)
+  └── core (workspace utilities)
+       ↑
+    runtime (orchestration)
+       ↑
+      sdk (public API)
+       ↑
+      cli (presentation)
+```
 
 ### Data Flow Summary
 
