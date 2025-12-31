@@ -167,4 +167,7 @@ pub mod utils {
     pub use agtrace_types::{
         discover_project_root, project_hash_from_root, resolve_effective_project_hash,
     };
+
+    // Workspace path resolution
+    pub use agtrace_runtime::resolve_workspace_path;
 }

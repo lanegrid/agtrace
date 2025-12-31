@@ -21,6 +21,7 @@ toml.workspace = true
 uuid.workspace = true
 tokio.workspace = true
 futures.workspace = true
+dirs.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

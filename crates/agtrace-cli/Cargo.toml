@@ -39,7 +39,6 @@ ratatui.workspace = true
 regex.workspace = true
 uuid.workspace = true
 tokio.workspace = true
-dirs.workspace = true
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true

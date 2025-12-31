@@ -70,22 +70,8 @@ impl ClientBuilder {
     /// 2. AGTRACE_PATH environment variable
     /// 3. XDG data directory
     fn resolve_path(&self) -> Result<PathBuf> {
-        // Priority 1: Explicit path
-        if let Some(ref path) = self.path {
-            return Ok(path.clone());
-        }
-
-        // Priority 2: Environment variable
-        if let Ok(env_path) = std::env::var("AGTRACE_PATH") {
-            return Ok(PathBuf::from(env_path));
-        }
-
-        // Priority 3: XDG data directory
-        let data_dir = dirs::data_dir().ok_or_else(|| {
-            Error::InvalidInput("Could not determine system data directory".to_string())
-        })?;
-
-        Ok(data_dir.join("agtrace"))
+        let explicit_path = self.path.as_ref().and_then(|p| p.to_str());
+        agtrace_runtime::resolve_workspace_path(explicit_path).map_err(Error::Runtime)
     }
 }
 

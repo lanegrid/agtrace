@@ -20,7 +20,7 @@ pub use client::{
 pub use runtime::SessionStreamer;
 
 // Data types used as inputs/outputs in public APIs
-pub use config::{Config, ProviderConfig};
+pub use config::{Config, ProviderConfig, resolve_workspace_path};
 pub use domain::{EventFilters, SessionState, TokenLimit, TokenLimits, filter_events};
 pub use init::{ConfigStatus, InitConfig, InitProgress, InitResult, ScanOutcome};
 pub use ops::{

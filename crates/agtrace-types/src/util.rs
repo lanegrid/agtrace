@@ -1,6 +1,11 @@
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
+// TODO: Path utilities should not be in agtrace-types (technical debt).
+// agtrace-types should only contain schema definitions (domain models).
+// These utilities are currently here but should be moved to a more appropriate location.
+// See: https://github.com/lanegrid/agtrace/issues/19
+
 /// Calculate project_hash from project_root using SHA256
 ///
 /// This function canonicalizes the path before hashing to ensure consistency
