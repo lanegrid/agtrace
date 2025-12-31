@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2025-12-31
+
+### Bug Fixes
+
+- Add missing description to agtrace-core for crates.io publish ([06907c5](https://github.com/lanegrid/agtrace/commit/06907c58cda845cacd5f30a9c9663503f65e1ff1))
+
+- Make README version check dynamic for major.minor versions ([428d0a3](https://github.com/lanegrid/agtrace/commit/428d0a34399a3c5a6d5f6c7025e5ba2eb859823a))
+
+
+### Documentation
+
+- Update README version references from 0.1 to 0.2 ([7f073b7](https://github.com/lanegrid/agtrace/commit/7f073b7ef2c8bd3eded3eca94bc8430c3b8ae733))
+
+
 ## [0.2.0] - 2025-12-31
 
 ### Documentation
