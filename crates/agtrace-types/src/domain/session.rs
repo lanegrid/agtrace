@@ -3,10 +3,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::project::ProjectHash;
-use crate::{
-    MessagePayload, ReasoningPayload, TokenUsagePayload, ToolCallPayload, ToolResultPayload,
-    UserPayload,
-};
+use super::token_usage::ContextWindowUsage;
+use crate::{MessagePayload, ReasoningPayload, ToolCallPayload, ToolResultPayload, UserPayload};
 
 /// Source of the agent log (provider-agnostic identifier)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -128,7 +126,7 @@ pub struct AgentStep {
 
     // --- Meta ---
     /// Token usage for this step's LLM inference, if available.
-    pub usage: Option<TokenUsagePayload>,
+    pub usage: Option<ContextWindowUsage>,
     /// Whether this step encountered any failures.
     pub is_failed: bool,
     /// Current completion status of this step.
@@ -234,8 +232,8 @@ pub struct SessionStats {
     pub total_turns: usize,
     /// Session duration in seconds (end_time - start_time).
     pub duration_seconds: i64,
-    /// Total tokens consumed across all turns.
-    pub total_tokens: i64,
+    /// Cumulative token usage across all turns.
+    pub usage: ContextWindowUsage,
 }
 
 /// Aggregated statistics for a single turn.
@@ -245,8 +243,8 @@ pub struct TurnStats {
     pub duration_ms: i64,
     /// Number of steps in this turn.
     pub step_count: usize,
-    /// Total tokens consumed in this turn.
-    pub total_tokens: i32,
+    /// Cumulative token usage for this turn.
+    pub usage: ContextWindowUsage,
 }
 
 // ==========================================
@@ -291,19 +289,7 @@ impl AgentTurn {
             .iter()
             .rev()
             .find_map(|step| step.usage.as_ref())
-            .map(|usage| {
-                (usage.input_tokens
-                    + usage
-                        .details
-                        .as_ref()
-                        .and_then(|d| d.cache_creation_input_tokens)
-                        .unwrap_or(0)
-                    + usage
-                        .details
-                        .as_ref()
-                        .and_then(|d| d.cache_read_input_tokens)
-                        .unwrap_or(0)) as u32
-            })
+            .map(|usage| usage.input_tokens() as u32)
             .unwrap_or(fallback)
     }
 
@@ -314,20 +300,7 @@ impl AgentTurn {
             .iter()
             .rev()
             .find_map(|step| step.usage.as_ref())
-            .map(|usage| {
-                (usage.input_tokens
-                    + usage
-                        .details
-                        .as_ref()
-                        .and_then(|d| d.cache_creation_input_tokens)
-                        .unwrap_or(0)
-                    + usage
-                        .details
-                        .as_ref()
-                        .and_then(|d| d.cache_read_input_tokens)
-                        .unwrap_or(0)
-                    + usage.output_tokens) as u32
-            })
+            .map(|usage| (usage.input_tokens() + usage.output_tokens()) as u32)
             .unwrap_or(fallback)
     }
 

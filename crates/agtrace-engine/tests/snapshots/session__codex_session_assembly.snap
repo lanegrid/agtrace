@@ -57,14 +57,10 @@ expression: session
             }
           ],
           "usage": {
-            "input_tokens": 3505,
-            "output_tokens": 101,
-            "total_tokens": 3606,
-            "details": {
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 64
-            }
+            "fresh_input": 3505,
+            "cache_creation": 0,
+            "cache_read": 3072,
+            "output": 101
           },
           "is_failed": false,
           "status": "done"
@@ -113,14 +109,10 @@ expression: session
             }
           ],
           "usage": {
-            "input_tokens": 3815,
-            "output_tokens": 40,
-            "total_tokens": 3841,
-            "details": {
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3584,
-              "reasoning_output_tokens": 0
-            }
+            "fresh_input": 3815,
+            "cache_creation": 0,
+            "cache_read": 3584,
+            "output": 26
           },
           "is_failed": false,
           "status": "done"
@@ -129,7 +121,12 @@ expression: session
       "stats": {
         "duration_ms": 15358,
         "step_count": 2,
-        "total_tokens": 7447
+        "usage": {
+          "fresh_input": 3815,
+          "cache_creation": 0,
+          "cache_read": 3584,
+          "output": 26
+        }
       }
     },
     {
@@ -182,14 +179,10 @@ expression: session
             }
           ],
           "usage": {
-            "input_tokens": 3708,
-            "output_tokens": 37,
-            "total_tokens": 3745,
-            "details": {
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 0
-            }
+            "fresh_input": 3708,
+            "cache_creation": 0,
+            "cache_read": 3072,
+            "output": 37
           },
           "is_failed": false,
           "status": "done"
@@ -236,14 +229,10 @@ expression: session
             }
           ],
           "usage": {
-            "input_tokens": 3845,
-            "output_tokens": 128,
-            "total_tokens": 3973,
-            "details": {
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 64
-            }
+            "fresh_input": 3845,
+            "cache_creation": 0,
+            "cache_read": 3072,
+            "output": 128
           },
           "is_failed": false,
           "status": "done"
@@ -288,14 +277,10 @@ expression: session
             }
           ],
           "usage": {
-            "input_tokens": 4017,
-            "output_tokens": 38,
-            "total_tokens": 4055,
-            "details": {
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3072,
-              "reasoning_output_tokens": 0
-            }
+            "fresh_input": 4017,
+            "cache_creation": 0,
+            "cache_read": 3072,
+            "output": 38
           },
           "is_failed": false,
           "status": "done"
@@ -317,14 +302,10 @@ expression: session
           },
           "tools": [],
           "usage": {
-            "input_tokens": 4139,
-            "output_tokens": 38,
-            "total_tokens": 4177,
-            "details": {
-              "cache_creation_input_tokens": null,
-              "cache_read_input_tokens": 3968,
-              "reasoning_output_tokens": 0
-            }
+            "fresh_input": 4139,
+            "cache_creation": 0,
+            "cache_read": 3968,
+            "output": 38
           },
           "is_failed": false,
           "status": "done"
@@ -333,13 +314,23 @@ expression: session
       "stats": {
         "duration_ms": 20483,
         "step_count": 4,
-        "total_tokens": 15950
+        "usage": {
+          "fresh_input": 4139,
+          "cache_creation": 0,
+          "cache_read": 3968,
+          "output": 38
+        }
       }
     }
   ],
   "stats": {
     "total_turns": 2,
     "duration_seconds": 49,
-    "total_tokens": 23397
+    "usage": {
+      "fresh_input": 7954,
+      "cache_creation": 0,
+      "cache_read": 7552,
+      "output": 64
+    }
   }
 }

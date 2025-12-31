@@ -166,10 +166,7 @@ pub(crate) fn extract_search_pattern(command: &str) -> Option<String> {
                 Some(remainder[1..=end].to_string())
             } else {
                 // Unquoted pattern - take first word
-                remainder
-                    .split_whitespace()
-                    .next()
-                    .map(|s| s.to_string())
+                remainder.split_whitespace().next().map(|s| s.to_string())
             }
         }
         "bash" => {
@@ -276,7 +273,10 @@ mod tests {
     #[test]
     fn test_classify_write_commands() {
         // Write commands should return None (keep as Execute)
-        assert_eq!(classify_execute_command("sed -i 's/foo/bar/' file.txt"), None);
+        assert_eq!(
+            classify_execute_command("sed -i 's/foo/bar/' file.txt"),
+            None
+        );
         assert_eq!(classify_execute_command("mkdir -p dir"), None);
         assert_eq!(classify_execute_command("rm file.txt"), None);
     }
@@ -342,6 +342,9 @@ mod tests {
             Some("TODO".to_string())
         );
         // rg --files has no pattern
-        assert_eq!(extract_search_pattern("rg --files docs"), Some("docs".to_string()));
+        assert_eq!(
+            extract_search_pattern("rg --files docs"),
+            Some("docs".to_string())
+        );
     }
 }

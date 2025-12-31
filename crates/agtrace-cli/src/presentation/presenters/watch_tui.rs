@@ -390,17 +390,7 @@ fn build_step_preview(step: &agtrace_sdk::types::AgentStep) -> StepPreviewViewMo
         ("•".to_string(), "Event".to_string())
     };
 
-    let token_usage = step.usage.as_ref().map(|u| {
-        (u.input_tokens
-            + u.details
-                .as_ref()
-                .and_then(|d| d.cache_creation_input_tokens)
-                .unwrap_or(0)
-            + u.details
-                .as_ref()
-                .and_then(|d| d.cache_read_input_tokens)
-                .unwrap_or(0)) as u32
-    });
+    let token_usage = step.usage.as_ref().map(|u| u.input_tokens() as u32);
 
     StepPreviewViewModel {
         timestamp: step.timestamp,
