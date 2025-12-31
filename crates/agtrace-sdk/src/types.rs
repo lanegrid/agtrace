@@ -45,6 +45,8 @@ pub use agtrace_engine::{
     // Token usage types
     ContextLimit,
     ContextWindowUsage,
+    // Extension traits
+    SessionAnalysisExt,
     // Analysis types
     SessionDigest,
     TokenCount,

@@ -8,6 +8,7 @@
 //! - ALL calculations and logic happen here (colors, widths, truncation)
 //! - Views should only need to map data to widgets, NO decisions
 
+use agtrace_sdk::types::SessionAnalysisExt;
 use chrono::Utc;
 use std::collections::VecDeque;
 
