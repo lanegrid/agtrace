@@ -1,7 +1,7 @@
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 //
-// The README.md above is included as documentation and tested by `cargo test --doc`.
-// Below is additional API documentation that only appears in rustdoc.
+// Note: README.md is included for rustdoc display, but markdown code blocks
+// are NOT automatically tested as doctests. The doctests below are the source of truth.
 
 //! agtrace-sdk: The Observability Platform for AI Agents.
 //!
@@ -12,6 +12,31 @@
 //! providers, indexing, and runtime orchestration, exposing only the essential
 //! primitives for monitoring and analyzing AI agent behavior.
 //!
+//! # Quickstart
+//!
+//! ```no_run
+//! use agtrace_sdk::{Client, Lens, types::SessionFilter};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Connect to the local workspace (uses XDG data directory)
+//! let client = Client::connect_default().await?;
+//!
+//! // List sessions and analyze the most recent one
+//! let sessions = client.sessions().list(SessionFilter::all())?;
+//! if let Some(summary) = sessions.first() {
+//!     let handle = client.sessions().get(&summary.id)?;
+//!     let report = handle.analyze()?
+//!         .through(Lens::Failures)
+//!         .report()?;
+//!     println!("Health: {}/100", report.score);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! For complete examples, see the [`examples/`](https://github.com/lanegrid/agtrace/tree/main/crates/agtrace-sdk/examples) directory.
+//!
 //! # Architecture
 //!
 //! This SDK acts as a facade over:
@@ -21,20 +46,17 @@
 //! - `agtrace-index`: Metadata storage and querying
 //! - `agtrace-runtime`: Internal orchestration layer
 //!
-//! # Usage
+//! # Usage Patterns
 //!
-//! ## Client-based API (Recommended)
+//! ## Real-time Monitoring
 //!
 //! ```no_run
-//! use agtrace_sdk::{Client, Lens};
+//! use agtrace_sdk::Client;
 //! use futures::stream::StreamExt;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // 1. Connect to the workspace
 //! let client = Client::connect_default().await?;
-//!
-//! // 2. Watch for live events (Real-time monitoring)
 //! let mut stream = client.watch().all_providers().start()?;
 //! let mut count = 0;
 //! while let Some(event) = stream.next().await {
@@ -42,20 +64,33 @@
 //!     count += 1;
 //!     if count >= 10 { break; }
 //! }
+//! # Ok(())
+//! # }
+//! ```
 //!
-//! // 3. Analyze a specific session (Diagnosis)
-//! let handle = client.sessions().get("session_id_123")?;
-//! let report = handle.analyze()?
-//!     .through(Lens::Failures)
-//!     .through(Lens::Loops)
-//!     .report()?;
+//! ## Session Analysis
 //!
-//! println!("Health score: {}", report.score);
-//! for insight in &report.insights {
-//!     println!("Turn {}: {:?} - {}",
-//!         insight.turn_index + 1,
-//!         insight.severity,
-//!         insight.message);
+//! ```no_run
+//! use agtrace_sdk::{Client, Lens, types::SessionFilter};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let client = Client::connect_default().await?;
+//! let sessions = client.sessions().list(SessionFilter::all())?;
+//! if let Some(summary) = sessions.first() {
+//!     let handle = client.sessions().get(&summary.id)?;
+//!     let report = handle.analyze()?
+//!         .through(Lens::Failures)
+//!         .through(Lens::Loops)
+//!         .report()?;
+//!
+//!     println!("Health score: {}", report.score);
+//!     for insight in &report.insights {
+//!         println!("Turn {}: {:?} - {}",
+//!             insight.turn_index + 1,
+//!             insight.severity,
+//!             insight.message);
+//!     }
 //! }
 //! # Ok(())
 //! # }

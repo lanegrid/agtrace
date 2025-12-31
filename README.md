@@ -42,35 +42,18 @@ agtrace-sdk = "0.1"
 ```
 
 ```rust,no_run
-use agtrace_sdk::{Client, Lens};
-use futures::stream::StreamExt;
+use agtrace_sdk::{Client, Lens, types::SessionFilter};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Connect to the local workspace (uses XDG data directory)
-    let client = Client::connect_default().await?;
-
-    // 1. Real-time Monitoring
-    let mut stream = client.watch().all_providers().start()?;
-    while let Some(event) = stream.next().await {
-        println!("Activity: {:?}", event);
-    }
-
-    // 2. Session Analysis
-    let sessions = client.sessions().list(Default::default())?;
-    if let Some(summary) = sessions.first() {
-        let handle = client.sessions().get(&summary.id)?;
-        let report = handle.analyze()?
-            .through(Lens::Failures)
-            .report()?;
-        println!("Health: {}/100", report.score);
-    }
-
-    Ok(())
+let client = Client::connect_default().await?;
+let sessions = client.sessions().list(SessionFilter::all())?;
+if let Some(summary) = sessions.first() {
+    let handle = client.sessions().get(&summary.id)?;
+    let report = handle.analyze()?.through(Lens::Failures).report()?;
+    println!("Health: {}/100", report.score);
 }
 ```
 
-**See also**: [SDK examples](crates/agtrace-sdk/examples/) for complete, runnable code.
+**See also**: [SDK Documentation](https://docs.rs/agtrace-sdk) | [Examples](crates/agtrace-sdk/examples/) | [SDK README](crates/agtrace-sdk/README.md)
 
 ## 📚 Documentation
 

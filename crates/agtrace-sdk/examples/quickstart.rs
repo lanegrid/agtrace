@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo run -p agtrace-sdk --example quickstart
 
-use agtrace_sdk::{Client, Lens};
+use agtrace_sdk::{types::SessionFilter, Client, Lens};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -18,7 +18,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✓ Connected to workspace\n");
 
     // List sessions and analyze the most recent one
-    use agtrace_sdk::types::SessionFilter;
     let sessions = client.sessions().list(SessionFilter::all())?;
 
     if let Some(summary) = sessions.first() {

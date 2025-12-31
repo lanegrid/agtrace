@@ -38,34 +38,39 @@ agtrace-sdk = "0.1"
 
 ## Usage
 
+**See [`examples/`](examples/) for complete, runnable code.**
+
 ### Client-based API (Recommended)
 
 For most use cases, use the Client-based API which provides stateful operations:
 
 ```rust,no_run
-use agtrace_sdk::{Client, Lens};
+use agtrace_sdk::{Client, Lens, types::SessionFilter};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Connect to the workspace (uses XDG data directory)
     let client = Client::connect_default().await?;
 
-    // 2. Get a specific session
-    let session_handle = client.sessions().get("session_id_123")?;
+    // 2. List sessions and get the most recent one
+    let sessions = client.sessions().list(SessionFilter::all())?;
+    if let Some(summary) = sessions.first() {
+        let session_handle = client.sessions().get(&summary.id)?;
 
-    // 3. Analyze the session
-    let report = session_handle.analyze()?
-        .through(Lens::Failures)
-        .through(Lens::Loops)
-        .through(Lens::Bottlenecks)
-        .report()?;
+        // 3. Analyze the session
+        let report = session_handle.analyze()?
+            .through(Lens::Failures)
+            .through(Lens::Loops)
+            .through(Lens::Bottlenecks)
+            .report()?;
 
-    println!("Health score: {}", report.score);
-    for insight in &report.insights {
-        println!("  Turn {}: {:?} - {}",
-            insight.turn_index + 1,
-            insight.severity,
-            insight.message);
+        println!("Health score: {}", report.score);
+        for insight in &report.insights {
+            println!("  Turn {}: {:?} - {}",
+                insight.turn_index + 1,
+                insight.severity,
+                insight.message);
+        }
     }
 
     Ok(())
