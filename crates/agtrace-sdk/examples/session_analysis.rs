@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Get the most recent session
     use agtrace_sdk::types::SessionFilter;
-    let sessions = client.sessions().list(SessionFilter::default())?;
+    let sessions = client.sessions().list(SessionFilter::all())?;
     if sessions.is_empty() {
         println!("No sessions found. Start an agent session first.");
         return Ok(());

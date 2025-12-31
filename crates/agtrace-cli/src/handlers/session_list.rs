@@ -22,17 +22,19 @@ pub fn handle(
     use crate::presentation::{ConsoleRenderer, Renderer};
 
     // Build filter
-    let mut filter = SessionFilter::new().limit(limit);
-
-    let project_filter_summary = project_hash.as_ref().map(|h| h.to_string());
-
-    if let Some(hash) = project_hash {
-        filter = filter.project(hash);
+    let mut filter = if all_projects {
+        SessionFilter::all()
+    } else if let Some(hash) = project_hash {
+        SessionFilter::project(hash)
+    } else {
+        SessionFilter::all()
     }
+    .limit(limit);
 
-    if all_projects {
-        filter = filter.all_projects();
-    }
+    let project_filter_summary = match &filter.scope {
+        agtrace_sdk::types::ProjectScope::All => None,
+        agtrace_sdk::types::ProjectScope::Specific(hash) => Some(hash.to_string()),
+    };
 
     if let Some(ref src) = provider {
         filter = filter.provider(src.clone());

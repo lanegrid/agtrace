@@ -17,12 +17,11 @@ pub fn handle(
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
-    let current_project_root = project_root.map(|p| p.display().to_string());
-
     let scope = if all_projects {
         ProjectScope::All
-    } else if let Some(root) = current_project_root {
-        ProjectScope::Specific { root }
+    } else if let Some(root) = project_root {
+        let hash = agtrace_sdk::utils::project_hash_from_root(&root.display().to_string());
+        ProjectScope::Specific(hash)
     } else {
         ProjectScope::All
     };

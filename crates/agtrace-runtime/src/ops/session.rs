@@ -1,14 +1,12 @@
+use crate::Result;
 use crate::storage::{LoadOptions, SessionRepository};
-use crate::{Error, Result};
-use agtrace_core::resolve_effective_project_hash;
 use agtrace_index::{Database, SessionSummary};
 use agtrace_types::AgentEvent;
 use chrono::DateTime;
 
 pub struct ListSessionsRequest {
-    pub project_hash: Option<agtrace_types::ProjectHash>,
+    pub scope: agtrace_types::ProjectScope,
     pub limit: usize,
-    pub all_projects: bool,
     pub provider: Option<String>,
     pub since: Option<String>,
     pub until: Option<String>,
@@ -24,9 +22,10 @@ impl<'a> SessionService<'a> {
     }
 
     pub fn list_sessions(&self, request: ListSessionsRequest) -> Result<Vec<SessionSummary>> {
-        let (effective_project_hash, _all_projects) =
-            resolve_effective_project_hash(request.project_hash.as_ref(), request.all_projects)
-                .map_err(|e| Error::InvalidOperation(e.to_string()))?;
+        let effective_project_hash = match &request.scope {
+            agtrace_types::ProjectScope::All => None,
+            agtrace_types::ProjectScope::Specific(hash) => Some(hash.clone()),
+        };
 
         let fetch_limit = request.limit * 3;
         let mut sessions = self

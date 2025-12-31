@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. List all sessions for the current project
     println!("Listing sessions...");
     use agtrace_sdk::types::SessionFilter;
-    let sessions = client.sessions().list(SessionFilter::default())?;
+    let sessions = client.sessions().list(SessionFilter::all())?;
 
     if sessions.is_empty() {
         println!("  No sessions found. Run 'agtrace init' and start an agent session first.");

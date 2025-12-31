@@ -97,18 +97,26 @@ impl<'a> IndexService<'a> {
                 .scan_sessions(log_root)
                 .map_err(Error::Provider)?;
 
-            // Filter sessions by project_root if specified
+            // Filter sessions by project_hash if specified
             let filtered_sessions: Vec<_> = sessions
                 .into_iter()
                 .filter(|session| {
-                    if let Some(expected_root) = scope.root() {
+                    if let Some(expected_hash) = scope.hash() {
                         if let Some(session_root) = &session.project_root {
-                            let session_str = session_root.to_string_lossy();
-                            let session_normalized = session_str.trim_end_matches('/');
-                            let expected_normalized = expected_root.trim_end_matches('/');
-                            session_normalized == expected_normalized
+                            let session_hash = agtrace_core::project_hash_from_root(&session_root.to_string_lossy());
+                            &session_hash == expected_hash
                         } else {
-                            provider_name == "gemini"
+                            // Gemini sessions might not have project_root, compute hash from file
+                            if provider_name == "gemini" {
+                                use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
+                                if let Some(session_hash) = extract_project_hash_from_gemini_file(&session.main_file) {
+                                    &session_hash == expected_hash
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
                         }
                     } else {
                         true
@@ -121,9 +129,7 @@ impl<'a> IndexService<'a> {
                 count: filtered_sessions.len(),
                 project_hash: match &scope {
                     agtrace_types::ProjectScope::All => "<all>".to_string(),
-                    agtrace_types::ProjectScope::Specific { root } => {
-                        agtrace_core::project_hash_from_root(root).to_string()
-                    }
+                    agtrace_types::ProjectScope::Specific(hash) => hash.to_string(),
                 },
                 all_projects: matches!(scope, agtrace_types::ProjectScope::All),
             });

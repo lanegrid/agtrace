@@ -42,17 +42,13 @@ async fn test_list_filter_by_source_provider() -> Result<()> {
     let project_path = world.temp_dir().join("my-project");
     let project_hash = agtrace_sdk::utils::project_hash_from_root(&project_path.to_string_lossy());
 
-    let filter = SessionFilter::default()
-        .project(project_hash.clone())
-        .provider("claude_code".to_string());
+    let filter = SessionFilter::project(project_hash.clone()).provider("claude_code".to_string());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(sessions.len(), 1, "Should show only Claude sessions");
     assert_eq!(sessions[0].provider, "claude_code");
 
-    let filter = SessionFilter::default()
-        .project(project_hash)
-        .provider("gemini".to_string());
+    let filter = SessionFilter::project(project_hash).provider("gemini".to_string());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(sessions.len(), 1, "Should show only Gemini sessions");
@@ -78,7 +74,7 @@ async fn test_session_list_without_provider_shows_all_providers() -> Result<()> 
     let project_path = world.temp_dir().join("my-project");
     let project_hash = agtrace_sdk::utils::project_hash_from_root(&project_path.to_string_lossy());
 
-    let filter = SessionFilter::default().project(project_hash);
+    let filter = SessionFilter::project(project_hash);
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(sessions.len(), 2, "Should show sessions from all providers");
@@ -100,9 +96,7 @@ async fn test_provider_filter_with_disabled_provider_shows_no_sessions() -> Resu
     let project_path = world.temp_dir().join("my-project");
     let project_hash = agtrace_sdk::utils::project_hash_from_root(&project_path.to_string_lossy());
 
-    let filter = SessionFilter::default()
-        .project(project_hash)
-        .provider("gemini".to_string());
+    let filter = SessionFilter::project(project_hash).provider("gemini".to_string());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(
@@ -139,9 +133,7 @@ async fn test_list_all_projects_shows_sessions_from_all_projects() -> Result<()>
     let client = initialize_workspace(&world).await?;
 
     // Use all_projects filter to show all
-    let sessions = client
-        .sessions()
-        .list(SessionFilter::default().all_projects())?;
+    let sessions = client.sessions().list(SessionFilter::all())?;
 
     assert_eq!(sessions.len(), 3, "Should show all projects' sessions");
 
@@ -170,7 +162,7 @@ async fn test_list_without_all_projects_shows_only_current_project() -> Result<(
     let expected_hash =
         agtrace_sdk::utils::project_hash_from_root(&project_a_path.to_string_lossy());
 
-    let filter = SessionFilter::default().project(expected_hash.clone());
+    let filter = SessionFilter::project(expected_hash.clone());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(sessions.len(), 2, "Should show only project-a's sessions");
@@ -205,7 +197,7 @@ async fn test_list_limit_parameter() -> Result<()> {
     let project_path = world.temp_dir().join("my-project");
     let project_hash = agtrace_sdk::utils::project_hash_from_root(&project_path.to_string_lossy());
 
-    let filter = SessionFilter::default().project(project_hash).limit(3);
+    let filter = SessionFilter::project(project_hash).limit(3);
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(sessions.len(), 3, "Should show only 3 sessions");
@@ -237,9 +229,7 @@ async fn test_list_combined_filters() -> Result<()> {
     let client = initialize_workspace(&world).await?;
 
     // Filter all projects, only Claude provider
-    let filter = SessionFilter::default()
-        .all_projects()
-        .provider("claude_code".to_string());
+    let filter = SessionFilter::all().provider("claude_code".to_string());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(
@@ -281,9 +271,7 @@ async fn test_combined_filters_provider_and_project() -> Result<()> {
     let project_a_hash =
         agtrace_sdk::utils::project_hash_from_root(&project_a_path.to_string_lossy());
 
-    let filter = SessionFilter::default()
-        .project(project_a_hash)
-        .provider("claude_code".to_string());
+    let filter = SessionFilter::project(project_a_hash).provider("claude_code".to_string());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(
@@ -312,7 +300,7 @@ async fn test_list_no_sessions_returns_empty_array() -> Result<()> {
     let project_path = world.temp_dir().join("empty-project");
     let project_hash = agtrace_sdk::utils::project_hash_from_root(&project_path.to_string_lossy());
 
-    let filter = SessionFilter::default().project(project_hash);
+    let filter = SessionFilter::project(project_hash);
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(
