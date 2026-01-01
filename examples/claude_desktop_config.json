@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agtrace": {
+      "command": "agtrace",
+      "args": ["serve"],
+      "env": {}
+    }
+  }
+}

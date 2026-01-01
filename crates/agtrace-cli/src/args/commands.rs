@@ -125,6 +125,24 @@ Perfect for understanding agtrace's capabilities before setting up your own logs
         )]
         speed: String,
     },
+
+    #[command(
+        about = "Start MCP server for AI-native observability",
+        long_about = "Start the Model Context Protocol (MCP) server over stdio.
+
+This enables AI agents (like Claude Desktop) to query historical sessions, analyze failures,
+search event payloads, and debug agent behavior through a standardized protocol.
+
+The server exposes these tools:
+  • list_sessions: Browse session history with filtering
+  • get_session_details: Get complete session analysis
+  • analyze_session: Run diagnostic analysis (failures, loops)
+  • search_events: Search event payloads across sessions
+  • get_project_info: List all indexed projects
+
+Configure in claude_desktop_config.json to use with Claude Desktop."
+    )]
+    Serve,
 }
 
 #[derive(Subcommand)]

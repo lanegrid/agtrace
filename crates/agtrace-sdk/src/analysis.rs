@@ -5,7 +5,7 @@ use agtrace_engine::{AgentSession, SessionSummary};
 ///
 /// Each lens applies a specific diagnostic perspective to identify
 /// potential issues or patterns in agent behavior.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, serde::Serialize)]
 pub enum Lens {
     /// Detects tool execution failures.
     Failures,
@@ -16,7 +16,7 @@ pub enum Lens {
 }
 
 /// Severity level of an insight.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum Severity {
     /// Informational observation.
     Info,
@@ -31,7 +31,7 @@ pub enum Severity {
 /// Represents a finding from applying a diagnostic lens to a turn,
 /// including the turn location, the lens that detected it, and
 /// a human-readable message describing the issue.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Insight {
     /// Zero-based turn index where the insight was detected.
     pub turn_index: usize,
@@ -184,7 +184,7 @@ impl SessionAnalyzer {
 ///
 /// Contains a health score (0-100), detailed insights from applied lenses,
 /// and a statistical summary of the session.
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub struct AnalysisReport {
     /// Health score (0-100) where 100 indicates no issues detected.
     pub score: u8,
