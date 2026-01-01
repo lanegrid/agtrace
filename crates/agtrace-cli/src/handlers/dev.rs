@@ -74,9 +74,33 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
             total_warnings += 1;
         }
 
-        // Test 5: get_session_details
+        // Test 4.5: list_sessions (limit: 20)
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 5: get_session_details");
+        println!("Test 4.5: list_sessions (limit: 20)");
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        let (response, size) = send_request(
+            &mut stdin,
+            &mut reader,
+            "tools/call",
+            json!({
+                "name": "list_sessions",
+                "arguments": { "limit": 20 }
+            }),
+        )?;
+        print_result(
+            "list_sessions (limit: 20)",
+            size,
+            100_000,
+            verbose,
+            &response,
+        );
+        if size > 100_000 {
+            total_warnings += 1;
+        }
+
+        // Test 5: get_session_details (summary - new default)
+        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("Test 5: get_session_details (summary - default)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         let (response, size) = send_request(
             &mut stdin,
@@ -88,21 +112,42 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
             }),
         )?;
         println!("Session ID: {}", sid);
+        print_result(
+            "get_session_details (summary)",
+            size,
+            50_000,
+            verbose,
+            &response,
+        );
+        if size > 50_000 {
+            total_warnings += 1;
+        }
 
-        // Analyze session structure
-        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&response)
-            && let Some(content) = parsed["result"]["content"][0]["text"].as_str()
-                && let Ok(session_data) = serde_json::from_str::<serde_json::Value>(content) {
-                    if let Some(turns) = session_data["turns"].as_array() {
-                        println!("  - turns: {} items", turns.len());
-                    }
-                    if let Some(events) = session_data["events"].as_array() {
-                        println!("  - events: {} items", events.len());
-                    }
+        // Test 5.5: get_session_details (full with truncate)
+        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("Test 5.5: get_session_details (include_steps=true, truncate=true)");
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        let (response, size) = send_request(
+            &mut stdin,
+            &mut reader,
+            "tools/call",
+            json!({
+                "name": "get_session_details",
+                "arguments": {
+                    "session_id": sid,
+                    "include_steps": true,
+                    "truncate_payloads": true
                 }
-
-        print_result("get_session_details", size, 500_000, verbose, &response);
-        if size > 500_000 {
+            }),
+        )?;
+        print_result(
+            "get_session_details (full+truncate)",
+            size,
+            200_000,
+            verbose,
+            &response,
+        );
+        if size > 200_000 {
             total_warnings += 1;
         }
 
@@ -128,9 +173,9 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
             total_warnings += 1;
         }
 
-        // Test 7: search_events
+        // Test 7: search_events (snippet - new default)
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 7: search_events (pattern: 'Read', limit: 5)");
+        println!("Test 7: search_events (pattern: 'Read', limit: 5 - snippet)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         let (response, size) = send_request(
             &mut stdin,
@@ -144,7 +189,35 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
                 }
             }),
         )?;
-        print_result("search_events", size, 100_000, verbose, &response);
+        print_result("search_events (snippet)", size, 50_000, verbose, &response);
+        if size > 50_000 {
+            total_warnings += 1;
+        }
+
+        // Test 7.5: search_events (full payload)
+        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("Test 7.5: search_events (include_full_payload=true, limit: 5)");
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        let (response, size) = send_request(
+            &mut stdin,
+            &mut reader,
+            "tools/call",
+            json!({
+                "name": "search_events",
+                "arguments": {
+                    "pattern": "Read",
+                    "limit": 5,
+                    "include_full_payload": true
+                }
+            }),
+        )?;
+        print_result(
+            "search_events (full payload)",
+            size,
+            100_000,
+            verbose,
+            &response,
+        );
         if size > 100_000 {
             total_warnings += 1;
         }

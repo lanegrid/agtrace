@@ -3,7 +3,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
-use super::tools::*;
+use super::dto::{AnalyzeSessionArgs, GetSessionDetailsArgs, ListSessionsArgs, SearchEventsArgs};
+use super::tools::{
+    handle_analyze_session, handle_get_project_info, handle_get_session_details,
+    handle_list_sessions, handle_search_events,
+};
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
@@ -106,11 +110,13 @@ impl AgTraceServer {
                     },
                     {
                         "name": "get_session_details",
-                        "description": "Get complete details of a specific session including all turns, tool calls, context window usage, and model information.",
+                        "description": "Get session details. By default returns a summary with stats and turn metadata (recommended). Set include_steps=true for full details with all tool calls and results.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
-                                "session_id": {"type": "string", "description": "Session ID (short or full hash)"}
+                                "session_id": {"type": "string", "description": "Session ID (short or full hash)"},
+                                "include_steps": {"type": "boolean", "description": "Include full step details (default: false). WARNING: Can produce large responses for long sessions."},
+                                "truncate_payloads": {"type": "boolean", "description": "Truncate large payloads to 500 chars (default: true). Only applies when include_steps=true."}
                             },
                             "required": ["session_id"]
                         }
@@ -130,14 +136,15 @@ impl AgTraceServer {
                     },
                     {
                         "name": "search_events",
-                        "description": "Search for patterns in event payloads across recent sessions. Useful for investigating tool usage and debugging.",
+                        "description": "Search for patterns in event payloads across recent sessions. Returns snippets by default (300 chars). Set include_full_payload=true for complete event data.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
                                 "pattern": {"type": "string", "description": "Search pattern (substring match)"},
-                                "limit": {"type": "number", "description": "Maximum number of matches (default: 50)"},
+                                "limit": {"type": "number", "description": "Maximum number of matches (default: 5)"},
                                 "provider": {"type": "string", "description": "Filter by provider"},
-                                "event_type": {"type": "string", "description": "Filter by event type"}
+                                "event_type": {"type": "string", "description": "Filter by event type"},
+                                "include_full_payload": {"type": "boolean", "description": "Include full event payload (default: false). WARNING: Can produce large responses."}
                             },
                             "required": ["pattern"]
                         }
