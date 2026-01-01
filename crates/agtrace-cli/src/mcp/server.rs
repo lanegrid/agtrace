@@ -41,7 +41,8 @@ impl AgTraceServer {
     }
 
     async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
-        let id = request.id.clone().unwrap_or(Value::Null);
+        // MCP requires all requests to have an id, use a default if missing
+        let id = request.id.clone().unwrap_or_else(|| Value::Number(serde_json::Number::from(0)));
 
         match request.method.as_str() {
             "initialize" => self.handle_initialize(id, request.params).await,
@@ -308,9 +309,10 @@ pub async fn run_server(client: Client) -> anyhow::Result<()> {
         let request: JsonRpcRequest = match serde_json::from_str(trimmed) {
             Ok(req) => req,
             Err(e) => {
+                // For parse errors, we can't get a valid id, so we use a sentinel value
                 let error_response = JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
-                    id: Value::Null,
+                    id: Value::Number(serde_json::Number::from(-1)),
                     result: None,
                     error: Some(JsonRpcError {
                         code: -32700,
