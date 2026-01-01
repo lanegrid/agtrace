@@ -27,6 +27,7 @@ pub use agtrace_types::{
     ProjectScope,
     ReasoningPayload,
     SessionStats,
+    StepStatus,
     StreamId,
     // Token usage types
     TokenInput,

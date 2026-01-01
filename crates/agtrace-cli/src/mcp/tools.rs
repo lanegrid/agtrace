@@ -3,8 +3,8 @@ use serde_json::Value;
 
 use super::dto::{
     AnalyzeSessionArgs, EventMatchDto, EventPreviewDto, GetSessionDetailsArgs, ListSessionsArgs,
-    ListSessionsResponse, SearchEventsArgs, SearchEventsResponse, SessionOverviewResponse,
-    SessionSummaryDto, truncate_session_payloads,
+    ListSessionsResponse, SearchEventsArgs, SearchEventsResponse, SessionResponseBuilder,
+    SessionSummaryDto,
 };
 
 pub async fn handle_list_sessions(
@@ -61,24 +61,10 @@ pub async fn handle_get_session_details(
         .assemble()
         .map_err(|e| format!("Failed to assemble session: {}", e))?;
 
-    let include_steps = args.include_steps.unwrap_or(false);
-    let truncate_payloads = args.truncate_payloads.unwrap_or(true);
-
-    if include_steps {
-        // Full session with all steps
-        if truncate_payloads {
-            let mut session_value = serde_json::to_value(&session)
-                .map_err(|e| format!("Serialization error: {}", e))?;
-            truncate_session_payloads(&mut session_value);
-            Ok(session_value)
-        } else {
-            serde_json::to_value(&session).map_err(|e| format!("Serialization error: {}", e))
-        }
-    } else {
-        // Summary version: only stats and turn metadata
-        let response = SessionOverviewResponse::from_assembled(session);
-        serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
-    }
+    SessionResponseBuilder::new(session)
+        .detail_level(args.detail_level())
+        .include_reasoning(args.include_reasoning())
+        .build()
 }
 
 pub async fn handle_analyze_session(
@@ -188,9 +174,8 @@ pub async fn handle_search_events(
     let response = SearchEventsResponse {
         matches,
         total: total_matches,
-        hint:
-            "Use get_session_details(session_id, include_steps=true) to see all events in a session"
-                .to_string(),
+        hint: "Use get_session_details(session_id, detail_level='steps') to see all events in a session"
+            .to_string(),
     };
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
