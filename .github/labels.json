@@ -1,0 +1,87 @@
+[
+  {
+    "name": "component:cli",
+    "description": "Related to agtrace CLI (commands, TUI, output)",
+    "color": "0E8A16"
+  },
+  {
+    "name": "component:sdk",
+    "description": "Related to agtrace SDK (public API, client interface)",
+    "color": "0E8A16"
+  },
+  {
+    "name": "component:provider",
+    "description": "Related to provider implementations (discovery, parsing)",
+    "color": "0E8A16"
+  },
+  {
+    "name": "component:runtime",
+    "description": "Related to runtime orchestration layer",
+    "color": "0E8A16"
+  },
+  {
+    "name": "component:engine",
+    "description": "Related to core engine (session assembly, analysis)",
+    "color": "0E8A16"
+  },
+  {
+    "name": "component:index",
+    "description": "Related to SQLite indexing and storage",
+    "color": "0E8A16"
+  },
+  {
+    "name": "provider:claude",
+    "description": "Specific to Claude Code provider",
+    "color": "5319E7"
+  },
+  {
+    "name": "provider:codex",
+    "description": "Specific to Codex provider",
+    "color": "5319E7"
+  },
+  {
+    "name": "provider:gemini",
+    "description": "Specific to Gemini provider",
+    "color": "5319E7"
+  },
+  {
+    "name": "provider",
+    "description": "Request for new provider support",
+    "color": "5319E7"
+  },
+  {
+    "name": "priority:high",
+    "description": "High priority issue",
+    "color": "D93F0B"
+  },
+  {
+    "name": "priority:medium",
+    "description": "Medium priority issue",
+    "color": "FBCA04"
+  },
+  {
+    "name": "priority:low",
+    "description": "Low priority issue",
+    "color": "C5DEF5"
+  },
+  {
+    "name": "breaking-change",
+    "description": "Introduces breaking changes to API or behavior",
+    "color": "B60205"
+  },
+  {
+    "name": "performance",
+    "description": "Performance improvement or optimization",
+    "color": "F9D0C4"
+  },
+  {
+    "name": "dependencies",
+    "description": "Pull requests that update a dependency",
+    "color": "0366D6"
+  },
+  {
+    "name": "needs-triage",
+    "description": "Needs investigation or clarification",
+    "color": "EDEDED"
+  }
+]
