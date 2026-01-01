@@ -147,7 +147,7 @@ mod tests {
         let limits = TokenLimits::new(MockResolver);
         let mut state = SessionState::new("test".to_string(), None, None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
-        state.current_usage = ContextWindowUsage::from_raw(1000, 12000, 500);
+        state.current_usage = ContextWindowUsage::from_raw(1000, 0, 12000, 500);
 
         let (input_pct, output_pct, total_pct) =
             limits.get_usage_percentage_from_state(&state).unwrap();
@@ -164,7 +164,7 @@ mod tests {
         let mut state = SessionState::new("test".to_string(), None, None, Utc::now());
         state.model = Some("claude-3-5-sonnet-20241022".to_string());
         state.context_window_limit = Some(200_000);
-        state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 4_000);
+        state.current_usage = ContextWindowUsage::from_raw(100_000, 0, 0, 4_000);
 
         let (input_pct, output_pct, total_pct) =
             limits.get_usage_percentage_from_state(&state).unwrap();

@@ -29,7 +29,7 @@ pub fn build_screen_view_model(
     max_context: Option<u32>,
     notification: Option<&str>,
 ) -> TuiScreenViewModel {
-    let dashboard = build_dashboard(state, assembled_session, notification);
+    let dashboard = build_dashboard(state, notification);
     let timeline = build_timeline(events);
     let turn_history = build_turn_history(state, assembled_session, max_context);
     let status_bar = build_status_bar(state);
@@ -45,7 +45,6 @@ pub fn build_screen_view_model(
 /// Build dashboard ViewModel with context usage calculations
 fn build_dashboard(
     state: &agtrace_sdk::types::SessionState,
-    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
     notification: Option<&str>,
 ) -> DashboardViewModel {
     use agtrace_sdk::types::ContextLimit;
@@ -58,43 +57,14 @@ fn build_dashboard(
         .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
 
     let limit_opt = limit_u64.map(ContextLimit::new);
+    let total = state.total_tokens();
 
-    // Use assembled session for accurate cumulative token count, fallback to state
-    let (total, breakdown) = if let Some(session) = assembled_session {
-        // Calculate cumulative total by iterating through all turns
-        // Same logic as compute_turn_metrics to ensure consistency
-        let mut cumulative_total = 0u32;
-        for turn in &session.turns {
-            cumulative_total = turn.cumulative_total_tokens(cumulative_total);
-        }
-
-        // Get cumulative breakdown from last turn's last step
-        let cumulative_usage = session
-            .turns
-            .last()
-            .and_then(|turn| turn.steps.iter().rev().find_map(|step| step.usage.as_ref()))
-            .copied()
-            .unwrap_or_default();
-
-        let total = agtrace_sdk::types::TokenCount::new(cumulative_total as u64);
-        let breakdown = ContextBreakdownViewModel {
-            fresh_input: cumulative_usage.fresh_input.0.max(0) as u64,
-            cache_creation: cumulative_usage.cache_creation.0.max(0) as u64,
-            cache_read: cumulative_usage.cache_read.0.max(0) as u64,
-            output: cumulative_usage.output.0.max(0) as u64,
-            total: cumulative_total as u64,
-        };
-        (total, breakdown)
-    } else {
-        let total = state.total_tokens();
-        let breakdown = ContextBreakdownViewModel {
-            fresh_input: state.current_usage.fresh_input.0.max(0) as u64,
-            cache_creation: state.current_usage.cache_creation.0.max(0) as u64,
-            cache_read: state.current_usage.cache_read.0.max(0) as u64,
-            output: state.current_usage.output.0.max(0) as u64,
-            total: total.as_u64(),
-        };
-        (total, breakdown)
+    let breakdown = ContextBreakdownViewModel {
+        fresh_input: state.current_usage.fresh_input.0.max(0) as u64,
+        cache_creation: state.current_usage.cache_creation.0.max(0) as u64,
+        cache_read: state.current_usage.cache_read.0.max(0) as u64,
+        output: state.current_usage.output.0.max(0) as u64,
+        total: total.as_u64(),
     };
 
     // Calculate usage percentage and color only if limit is known

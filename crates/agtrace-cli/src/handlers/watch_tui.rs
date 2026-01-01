@@ -33,6 +33,8 @@ struct WatchHandler {
     events: VecDeque<agtrace_sdk::types::AgentEvent>,
     /// Assembled session (for turn metrics)
     assembled_session: Option<AgentSession>,
+    /// Max context window
+    max_context: Option<u32>,
     /// Notification message (for session switching, etc.)
     notification: Option<String>,
     /// Project root (CWD)
@@ -51,6 +53,7 @@ impl WatchHandler {
             state,
             events: VecDeque::new(),
             assembled_session: None,
+            max_context: None,
             notification: None,
             project_root,
             tx,
@@ -72,17 +75,21 @@ impl WatchHandler {
 
     /// Send updated ViewModel to renderer
     fn send_update(&self) {
-        // Same fallback logic as watch_console: try context_window_limit first, then model lookup
+        // Same fallback logic as build_dashboard: try context_window_limit first, then model lookup
         let token_limits = agtrace_sdk::utils::default_token_limits();
         let token_spec = self
             .state
             .model
             .as_ref()
             .and_then(|m| token_limits.get_limit(m));
-        let max_context_for_metrics = self
+        let limit_from_state_or_model = self
             .state
             .context_window_limit
-            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()))
+            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
+
+        // Fallback to handler's cached max_context if still None
+        let max_context_for_metrics = limit_from_state_or_model
+            .or(self.max_context.map(|c| c as u64))
             .map(|c| c as u32);
 
         // Call Presenter (pure function) to build ViewModel
@@ -210,6 +217,7 @@ fn handle_provider_watch(
         project_root.map(|p| p.to_path_buf()),
         tx.clone(),
     );
+    handler.max_context = Some(200_000); // Default fallback
 
     // Track current stream handle and mod_time for "most recently updated" switching
     let mut current_stream_handle: Option<agtrace_sdk::types::StreamHandle> = None;
@@ -400,6 +408,9 @@ fn handle_session_watch(
     let initial_state = SessionState::new(session_id.to_string(), None, None, chrono::Utc::now());
 
     let mut handler = WatchHandler::new(initial_state, None, tx.clone());
+
+    // Set default fallback (will be updated from actual events)
+    handler.max_context = Some(200_000); // Default to Claude Code's limit
 
     // Event loop
     loop {

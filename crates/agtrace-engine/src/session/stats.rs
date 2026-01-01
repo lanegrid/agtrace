@@ -11,15 +11,12 @@ pub fn calculate_session_stats(
     let duration_seconds = end_time
         .map(|end| (end - start_time).num_seconds())
         .unwrap_or(0);
-    let usage = turns
-        .iter()
-        .map(|t| t.stats.usage)
-        .fold(ContextWindowUsage::default(), |acc, u| acc + u);
+    let total_tokens: i64 = turns.iter().map(|t| t.stats.total_tokens as i64).sum();
 
     SessionStats {
         total_turns,
         duration_seconds,
-        usage,
+        total_tokens,
     }
 }
 
@@ -29,20 +26,16 @@ pub fn calculate_turn_stats(steps: &[AgentStep], turn_start: DateTime<Utc>) -> T
         .last()
         .map(|last| (last.timestamp - turn_start).num_milliseconds())
         .unwrap_or(0);
-
-    // Use last-wins semantics: steps report cumulative context window snapshots
-    // during streaming, so we take the final snapshot as the turn's usage
-    let usage = steps
+    let total_tokens: i32 = steps
         .iter()
-        .rev() // Start from the end
-        .find_map(|s| s.usage.as_ref())
-        .copied()
-        .unwrap_or_default();
+        .filter_map(|s| s.usage.as_ref())
+        .map(|u| u.total_tokens().as_u64() as i32)
+        .sum();
 
     TurnStats {
         duration_ms,
         step_count,
-        usage,
+        total_tokens,
     }
 }
 
@@ -52,16 +45,22 @@ pub fn merge_usage(
     source: &agtrace_types::TokenUsagePayload,
 ) {
     // Convert normalized TokenUsagePayload to ContextWindowUsage
-    // Note: cache_creation is not tracked separately in the new schema
     let source_usage = ContextWindowUsage::from_raw(
         source.input.uncached as i32,
-        0, // cache_creation - not separately tracked
+        0, // cache_creation - not tracked separately in new schema
         source.input.cached as i32,
         source.output.total() as i32,
     );
 
-    // Replace target with source (last wins semantics for cumulative context window reporting)
-    *target = Some(source_usage);
+    if let Some(current) = target {
+        // Use max-based semantics to handle streaming updates
+        current.fresh_input.0 = current.fresh_input.0.max(source_usage.fresh_input.0);
+        current.cache_creation.0 = current.cache_creation.0.max(source_usage.cache_creation.0);
+        current.cache_read.0 = current.cache_read.0.max(source_usage.cache_read.0);
+        current.output.0 = current.output.0.max(source_usage.output.0);
+    } else {
+        *target = Some(source_usage);
+    }
 }
 
 #[cfg(test)]
@@ -87,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_usage_replaces_with_latest() {
+    fn test_merge_usage_with_existing() {
         let mut target = Some(ContextWindowUsage::from_raw(100, 0, 0, 50));
         let source = TokenUsagePayload::new(
             TokenInput::new(0, 200),     // 0 cached, 200 uncached
@@ -97,8 +96,8 @@ mod tests {
         merge_usage(&mut target, &source);
 
         let result = target.unwrap();
-        assert_eq!(result.fresh_input.0, 200);
-        assert_eq!(result.output.0, 100);
+        assert_eq!(result.fresh_input.0, 200); // max(100, 200)
+        assert_eq!(result.output.0, 100); // max(50, 100)
         assert_eq!(result.cache_creation.0, 0);
         assert_eq!(result.cache_read.0, 0);
     }
@@ -114,9 +113,9 @@ mod tests {
         merge_usage(&mut target, &source);
 
         let result = target.unwrap();
-        assert_eq!(result.fresh_input.0, 200);
-        assert_eq!(result.output.0, 100); // 70 + 30 + 0
-        assert_eq!(result.cache_creation.0, 0); // not tracked in new schema
-        assert_eq!(result.cache_read.0, 40);
+        assert_eq!(result.fresh_input.0, 200); // max(100, 200)
+        assert_eq!(result.output.0, 100); // max(50, 100) where 100 = 70+30+0
+        assert_eq!(result.cache_creation.0, 10); // max(10, 0)
+        assert_eq!(result.cache_read.0, 40); // max(20, 40)
     }
 }

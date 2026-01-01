@@ -159,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Ok(session_handle) = client.sessions().get(&session_summary.id) {
             if let Ok(session) = session_handle.assemble() {
                 // Collect token stats from assembled session
-                metrics.total_tokens += session.stats.usage.total_tokens().as_u64() as usize;
+                metrics.total_tokens += session.stats.total_tokens as usize;
                 for turn in &session.turns {
                     metrics.total_turns += 1;
 
