@@ -1,13 +1,20 @@
 // Example: Generate AgentEvent fixtures for engine tests
 //
-// This demonstrates how to use the provider normalization functions to convert
+// This demonstrates how to use the trait-based ProviderAdapter to convert
 // raw provider data into standardized AgentEvent arrays.
 //
 // Usage:
 //   cargo run --package agtrace-providers --example generate_engine_fixtures
 
+use agtrace_providers::ProviderAdapter;
 use std::fs;
 use std::path::Path;
+
+struct ProviderConfig {
+    name: &'static str,
+    sample_path: &'static str,
+    output_file: &'static str,
+}
 
 fn main() -> anyhow::Result<()> {
     let output_dir = Path::new("crates/agtrace-engine/tests/fixtures");
@@ -15,31 +22,41 @@ fn main() -> anyhow::Result<()> {
 
     println!("Generating engine test fixtures from provider samples...\n");
 
-    // Claude session
-    let claude_path = Path::new("crates/agtrace-providers/tests/samples/claude_session.jsonl");
-    if claude_path.exists() {
-        let events = agtrace_providers::normalize_claude_file(claude_path)?;
-        let json = serde_json::to_string_pretty(&events)?;
-        fs::write(output_dir.join("claude_events.json"), json)?;
-        println!("✓ Generated claude_events.json ({} events)", events.len());
-    }
+    let configs = [
+        ProviderConfig {
+            name: "claude",
+            sample_path: "crates/agtrace-providers/tests/samples/claude_session.jsonl",
+            output_file: "claude_events.json",
+        },
+        ProviderConfig {
+            name: "codex",
+            sample_path: "crates/agtrace-providers/tests/samples/codex_session.jsonl",
+            output_file: "codex_events.json",
+        },
+        ProviderConfig {
+            name: "gemini",
+            sample_path: "crates/agtrace-providers/tests/samples/gemini_session.json",
+            output_file: "gemini_events.json",
+        },
+    ];
 
-    // Codex session
-    let codex_path = Path::new("crates/agtrace-providers/tests/samples/codex_session.jsonl");
-    if codex_path.exists() {
-        let events = agtrace_providers::normalize_codex_file(codex_path)?;
-        let json = serde_json::to_string_pretty(&events)?;
-        fs::write(output_dir.join("codex_events.json"), json)?;
-        println!("✓ Generated codex_events.json ({} events)", events.len());
-    }
+    for config in &configs {
+        let sample_path = Path::new(config.sample_path);
+        if !sample_path.exists() {
+            continue;
+        }
 
-    // Gemini session
-    let gemini_path = Path::new("crates/agtrace-providers/tests/samples/gemini_session.json");
-    if gemini_path.exists() {
-        let events = agtrace_providers::normalize_gemini_file(gemini_path)?;
+        let adapter = ProviderAdapter::from_name(config.name)?;
+        // Use parser directly instead of process_file to skip probe checks
+        // (sample files may not match production naming conventions)
+        let events = adapter.parser.parse_file(sample_path)?;
         let json = serde_json::to_string_pretty(&events)?;
-        fs::write(output_dir.join("gemini_events.json"), json)?;
-        println!("✓ Generated gemini_events.json ({} events)", events.len());
+        fs::write(output_dir.join(config.output_file), json)?;
+        println!(
+            "✓ Generated {} ({} events)",
+            config.output_file,
+            events.len()
+        );
     }
 
     println!("\nAll fixtures generated in {}", output_dir.display());
