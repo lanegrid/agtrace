@@ -37,6 +37,7 @@ pub use agtrace_types::{
     ToolKind,
     ToolResultPayload,
     TurnMetrics,
+    TurnStats,
     UserPayload,
 };
 

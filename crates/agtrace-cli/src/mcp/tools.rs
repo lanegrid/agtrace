@@ -1,39 +1,11 @@
 use agtrace_sdk::{Client, Lens, SessionFilter};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ListSessionsArgs {
-    #[serde(default)]
-    pub limit: Option<usize>,
-    pub provider: Option<String>,
-    pub project_hash: Option<String>,
-    pub since: Option<String>,
-    pub until: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GetSessionDetailsArgs {
-    pub session_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AnalyzeSessionArgs {
-    pub session_id: String,
-    #[serde(default)]
-    pub include_failures: Option<bool>,
-    #[serde(default)]
-    pub include_loops: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SearchEventsArgs {
-    pub pattern: String,
-    #[serde(default)]
-    pub limit: Option<usize>,
-    pub provider: Option<String>,
-    pub event_type: Option<String>,
-}
+use super::dto::{
+    AnalyzeSessionArgs, EventMatchDto, EventPreviewDto, GetSessionDetailsArgs, ListSessionsArgs,
+    ListSessionsResponse, SearchEventsArgs, SearchEventsResponse, SessionOverviewResponse,
+    SessionSummaryDto, truncate_session_payloads,
+};
 
 pub async fn handle_list_sessions(
     client: &Client,
@@ -59,23 +31,21 @@ pub async fn handle_list_sessions(
         filter = filter.until(until);
     }
 
-    let mut sessions = client
+    let sessions = client
         .sessions()
         .list(filter)
         .map_err(|e| format!("Failed to list sessions: {}", e))?;
 
-    // Truncate snippets to prevent large responses
-    for session in &mut sessions {
-        if let Some(ref snippet) = session.snippet
-            && snippet.len() > 200 {
-                session.snippet = Some(format!(
-                    "{}...",
-                    &snippet.chars().take(197).collect::<String>()
-                ));
-            }
-    }
+    let response = ListSessionsResponse {
+        sessions: sessions
+            .into_iter()
+            .map(SessionSummaryDto::from_sdk)
+            .collect(),
+        total: limit,
+        hint: "Use get_session_details(session_id) to see turn-by-turn breakdown".to_string(),
+    };
 
-    serde_json::to_value(&sessions).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }
 
 pub async fn handle_get_session_details(
@@ -91,7 +61,24 @@ pub async fn handle_get_session_details(
         .assemble()
         .map_err(|e| format!("Failed to assemble session: {}", e))?;
 
-    serde_json::to_value(&session).map_err(|e| format!("Serialization error: {}", e))
+    let include_steps = args.include_steps.unwrap_or(false);
+    let truncate_payloads = args.truncate_payloads.unwrap_or(true);
+
+    if include_steps {
+        // Full session with all steps
+        if truncate_payloads {
+            let mut session_value = serde_json::to_value(&session)
+                .map_err(|e| format!("Serialization error: {}", e))?;
+            truncate_session_payloads(&mut session_value);
+            Ok(session_value)
+        } else {
+            serde_json::to_value(&session).map_err(|e| format!("Serialization error: {}", e))
+        }
+    } else {
+        // Summary version: only stats and turn metadata
+        let response = SessionOverviewResponse::from_assembled(session);
+        serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+    }
 }
 
 pub async fn handle_analyze_session(
@@ -126,7 +113,8 @@ pub async fn handle_search_events(
     client: &Client,
     args: SearchEventsArgs,
 ) -> Result<Value, String> {
-    let limit = args.limit.unwrap_or(50);
+    let limit = args.limit.unwrap_or(10);
+    let include_full_payload = args.include_full_payload.unwrap_or(false);
 
     let mut filter = SessionFilter::all().limit(1000);
 
@@ -175,21 +163,37 @@ pub async fn handle_search_events(
                     }
                 }
 
-                matches.push(serde_json::json!({
-                    "session_id": session_summary.id,
-                    "timestamp": event.timestamp,
-                    "type": format!("{:?}", event.payload),
-                    "payload": event.payload,
-                }));
+                let match_dto = if include_full_payload {
+                    EventMatchDto::Full {
+                        session_id: session_summary.id.clone(),
+                        timestamp: event.timestamp,
+                        event_type: format!("{:?}", event.payload),
+                        payload: event.payload,
+                    }
+                } else {
+                    EventMatchDto::Snippet {
+                        session_id: session_summary.id.clone(),
+                        timestamp: event.timestamp,
+                        event_type: format!("{:?}", event.payload),
+                        preview: EventPreviewDto::from_payload(&event.payload),
+                    }
+                };
+
+                matches.push(match_dto);
                 total_matches += 1;
             }
         }
     }
 
-    Ok(serde_json::json!({
-        "matches": matches,
-        "total": total_matches,
-    }))
+    let response = SearchEventsResponse {
+        matches,
+        total: total_matches,
+        hint:
+            "Use get_session_details(session_id, include_steps=true) to see all events in a session"
+                .to_string(),
+    };
+
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }
 
 pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
