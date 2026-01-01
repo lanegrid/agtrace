@@ -4,6 +4,7 @@
 # Usage:
 #   ./scripts/prepare-release.sh              # Interactive mode
 #   ./scripts/prepare-release.sh 0.1.15       # Specify version
+#   ./scripts/prepare-release.sh 0.1.15 -y    # Auto-confirm all prompts
 #   ./scripts/prepare-release.sh --dry-run    # Preview changes
 #
 # This script does everything needed for a release:
@@ -14,6 +15,9 @@
 #   5. Generates CHANGELOG
 #   6. Runs fmt and clippy
 #   7. Creates commit and git tag
+#
+# Idempotency: This script can be safely re-run if it fails partway through.
+# It detects partial progress and resumes from where it left off.
 #
 # After success, just push:
 #   git push origin main && git push origin v0.1.15
@@ -28,12 +32,17 @@ NC='\033[0m' # No Color
 
 # Parse arguments
 DRY_RUN=false
+AUTO_YES=false
 NEW_VERSION=""
 
 for arg in "$@"; do
     case $arg in
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --yes|-y)
+            AUTO_YES=true
             shift
             ;;
         *)
@@ -43,12 +52,21 @@ for arg in "$@"; do
     esac
 done
 
-# Get current version
-CURRENT_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | select(.name == "agtrace") | .version')
+# Get current version from Cargo.toml
+CARGO_VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[] | select(.name == "agtrace") | .version')
+
+# Get latest git tag (represents last released version)
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+    RELEASED_VERSION=${LAST_TAG#v}  # Remove 'v' prefix
+else
+    RELEASED_VERSION="0.0.0"
+fi
 
 echo -e "${BLUE}=== agtrace Release Preparation ===${NC}"
 echo
-echo "Current version: $CURRENT_VERSION"
+echo "Last released:   $RELEASED_VERSION (git tag: ${LAST_TAG:-none})"
+echo "Cargo.toml:      $CARGO_VERSION"
 
 # If no version specified, prompt
 if [ -z "$NEW_VERSION" ]; then
@@ -56,7 +74,7 @@ if [ -z "$NEW_VERSION" ]; then
     read NEW_VERSION
 fi
 
-echo "New version:     $NEW_VERSION"
+echo "Target version:  $NEW_VERSION"
 echo
 
 if [ "$DRY_RUN" = true ]; then
@@ -70,10 +88,31 @@ if ! [[ $NEW_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     exit 1
 fi
 
-# Check if version is newer
-if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
-    echo -e "${RED}Error: New version must be different from current version${NC}"
-    exit 1
+# Detect resume mode: Cargo.toml already updated but not yet committed
+RESUME_MODE=false
+if [ "$CARGO_VERSION" = "$NEW_VERSION" ] && [ "$RELEASED_VERSION" != "$NEW_VERSION" ]; then
+    RESUME_MODE=true
+    echo -e "${YELLOW}📍 Resume mode detected: Cargo.toml already updated to $NEW_VERSION${NC}"
+    echo -e "${YELLOW}   Continuing from where we left off...${NC}"
+    echo
+fi
+
+# Check if version is newer than last release
+if [ "$NEW_VERSION" = "$RELEASED_VERSION" ]; then
+    # Check if tag already exists
+    if git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; then
+        echo -e "${RED}Error: Version v$NEW_VERSION is already released (tag exists)${NC}"
+        exit 1
+    fi
+fi
+
+# Validate we're moving forward (unless in resume mode)
+if [ "$RESUME_MODE" = false ]; then
+    if [ "$NEW_VERSION" = "$CARGO_VERSION" ]; then
+        echo -e "${RED}Error: Cargo.toml already at version $NEW_VERSION but no resume state detected${NC}"
+        echo -e "${RED}This shouldn't happen. Check git status and working directory state.${NC}"
+        exit 1
+    fi
 fi
 
 echo -e "${BLUE}Step 1/7: Checking working directory${NC}"
@@ -81,13 +120,15 @@ if [ -n "$(git status --porcelain)" ]; then
     echo -e "${YELLOW}Warning: Working directory has uncommitted changes${NC}"
     git status --short
     echo
-    if [ "$DRY_RUN" = false ]; then
+    if [ "$DRY_RUN" = false ] && [ "$AUTO_YES" = false ]; then
         echo -e "${YELLOW}Continue anyway? (y/n)${NC}"
         read -r response
         if [[ ! $response =~ ^[Yy]$ ]]; then
             echo "Aborted."
             exit 1
         fi
+    elif [ "$AUTO_YES" = true ]; then
+        echo -e "${YELLOW}Continuing automatically (--yes flag)...${NC}"
     fi
 fi
 echo -e "${GREEN}✓ Working directory checked${NC}"
@@ -108,13 +149,15 @@ echo -e "${GREEN}✓ README validation passed${NC}"
 echo
 
 echo -e "${BLUE}Step 4/7: Updating version numbers${NC}"
-if [ "$DRY_RUN" = false ]; then
+if [ "$RESUME_MODE" = true ]; then
+    echo -e "${YELLOW}  Already updated (resume mode), skipping...${NC}"
+elif [ "$DRY_RUN" = false ]; then
     # Update workspace version
-    sed -i.bak "s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" Cargo.toml
+    sed -i.bak "s/^version = \"$CARGO_VERSION\"/version = \"$NEW_VERSION\"/" Cargo.toml
     rm Cargo.toml.bak
 
     # Update all workspace dependency versions
-    sed -i.bak "s/version = \"$CURRENT_VERSION\", path = \"crates\//version = \"$NEW_VERSION\", path = \"crates\//" Cargo.toml
+    sed -i.bak "s/version = \"$CARGO_VERSION\", path = \"crates\//version = \"$NEW_VERSION\", path = \"crates\//" Cargo.toml
     rm Cargo.toml.bak
 else
     echo "  Would update: Cargo.toml"
@@ -150,7 +193,11 @@ echo
 
 echo -e "${BLUE}Step 7/7: Summary${NC}"
 echo "The following changes will be committed:"
-echo "  - Version: $CURRENT_VERSION → $NEW_VERSION"
+if [ "$RESUME_MODE" = true ]; then
+    echo "  - Version: $RELEASED_VERSION → $NEW_VERSION (already in Cargo.toml)"
+else
+    echo "  - Version: $RELEASED_VERSION → $NEW_VERSION"
+fi
 echo "  - CHANGELOG.md updated"
 echo
 
@@ -159,12 +206,16 @@ if [ "$DRY_RUN" = true ]; then
     exit 0
 fi
 
-echo -e "${YELLOW}Create release commit and tag? (y/n)${NC}"
-read -r response
-if [[ ! $response =~ ^[Yy]$ ]]; then
-    echo "Aborted. Changes have been made but not committed."
-    echo "To undo: git checkout Cargo.toml CHANGELOG.md"
-    exit 1
+if [ "$AUTO_YES" = false ]; then
+    echo -e "${YELLOW}Create release commit and tag? (y/n)${NC}"
+    read -r response
+    if [[ ! $response =~ ^[Yy]$ ]]; then
+        echo "Aborted. Changes have been made but not committed."
+        echo "To undo: git checkout Cargo.toml CHANGELOG.md"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}Creating release commit and tag automatically (--yes flag)...${NC}"
 fi
 
 # Commit and tag
