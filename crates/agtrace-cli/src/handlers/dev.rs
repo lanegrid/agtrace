@@ -98,9 +98,9 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
             total_warnings += 1;
         }
 
-        // Test 5: get_session_details (summary - new default)
+        // Test 5: get_session_details (summary - default)
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 5: get_session_details (summary - default)");
+        println!("Test 5: get_session_details (detail_level: summary - default)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         let (response, size) = send_request(
             &mut stdin,
@@ -113,19 +113,19 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
         )?;
         println!("Session ID: {}", sid);
         print_result(
-            "get_session_details (summary)",
+            "detail_level: summary",
             size,
-            50_000,
+            15_000,
             verbose,
             &response,
         );
-        if size > 50_000 {
+        if size > 15_000 {
             total_warnings += 1;
         }
 
-        // Test 5.5: get_session_details (full with truncate)
+        // Test 5.1: get_session_details (turns)
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 5.5: get_session_details (include_steps=true, truncate=true)");
+        println!("Test 5.1: get_session_details (detail_level: turns)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         let (response, size) = send_request(
             &mut stdin,
@@ -135,19 +135,100 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
                 "name": "get_session_details",
                 "arguments": {
                     "session_id": sid,
-                    "include_steps": true,
-                    "truncate_payloads": true
+                    "detail_level": "turns"
                 }
             }),
         )?;
         print_result(
-            "get_session_details (full+truncate)",
+            "detail_level: turns",
             size,
-            200_000,
+            40_000,
             verbose,
             &response,
         );
-        if size > 200_000 {
+        if size > 40_000 {
+            total_warnings += 1;
+        }
+
+        // Test 5.2: get_session_details (turns with reasoning)
+        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("Test 5.2: get_session_details (detail_level: turns, include_reasoning: true)");
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        let (response, size) = send_request(
+            &mut stdin,
+            &mut reader,
+            "tools/call",
+            json!({
+                "name": "get_session_details",
+                "arguments": {
+                    "session_id": sid,
+                    "detail_level": "turns",
+                    "include_reasoning": true
+                }
+            }),
+        )?;
+        print_result(
+            "detail_level: turns + reasoning",
+            size,
+            50_000,
+            verbose,
+            &response,
+        );
+        if size > 50_000 {
+            total_warnings += 1;
+        }
+
+        // Test 5.3: get_session_details (steps)
+        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("Test 5.3: get_session_details (detail_level: steps)");
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        let (response, size) = send_request(
+            &mut stdin,
+            &mut reader,
+            "tools/call",
+            json!({
+                "name": "get_session_details",
+                "arguments": {
+                    "session_id": sid,
+                    "detail_level": "steps"
+                }
+            }),
+        )?;
+        print_result(
+            "detail_level: steps",
+            size,
+            300_000,
+            verbose,
+            &response,
+        );
+        if size > 300_000 {
+            total_warnings += 1;
+        }
+
+        // Test 5.4: get_session_details (full) - with warning
+        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("Test 5.4: get_session_details (detail_level: full) ⚠️  LARGE RESPONSE");
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        let (response, size) = send_request(
+            &mut stdin,
+            &mut reader,
+            "tools/call",
+            json!({
+                "name": "get_session_details",
+                "arguments": {
+                    "session_id": sid,
+                    "detail_level": "full"
+                }
+            }),
+        )?;
+        print_result(
+            "detail_level: full",
+            size,
+            500_000,
+            verbose,
+            &response,
+        );
+        if size > 500_000 {
             total_warnings += 1;
         }
 
