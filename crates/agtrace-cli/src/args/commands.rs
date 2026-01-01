@@ -1,7 +1,7 @@
 use super::common::ViewModeArgs;
 use super::enums::{
-    ExportFormat, ExportStrategy, InspectFormat, OutputFormat, PackTemplate, ProviderFilter,
-    ProviderName, WatchFormat,
+    DumpFormat, ExportFormat, ExportStrategy, InspectFormat, OutputFormat, PackTemplate,
+    ProviderFilter, ProviderName, WatchFormat,
 };
 use clap::Subcommand;
 use std::path::PathBuf;
@@ -225,6 +225,46 @@ Use this to deep-dive into session behavior and performance."
 
         #[arg(long, default_value = "plain", help = "Output format")]
         format: OutputFormat,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
+    },
+
+    #[command(
+        about = "Export session events as structured data for analysis",
+        long_about = "Dump session events in JSONL format for universal debugging and analysis.
+
+Output format (default - normalized events):
+  {\"seq\":0,\"timestamp\":\"...\",\"type\":\"User\",\"content\":{...},\"turn_idx\":0}
+  {\"seq\":1,\"timestamp\":\"...\",\"type\":\"TokenUsage\",\"content\":{...},\"turn_idx\":0,\"step_idx\":0}
+  {\"seq\":2,\"timestamp\":\"...\",\"type\":\"ToolCall\",\"content\":{...},\"turn_idx\":0,\"step_idx\":0}
+
+With --raw flag (includes provider metadata for normalization verification):
+  {\"seq\":0,\"type\":\"TokenUsage\",\"normalized\":{...},\"provider\":{\"name\":\"claude_code\",\"raw_payload\":{...}}}
+
+Use cases:
+  - Token monotonicity: dump <id> | jq -s 'map(select(.type == \"TokenUsage\")) | map(.content.total)'
+  - Tool patterns: dump <id> | jq -r 'select(.type == \"ToolCall\") | .content.name' | sort | uniq -c
+  - Turn boundaries: dump <id> | jq -r 'select(.type == \"User\") | .timestamp'
+  - Verify normalization: dump <id> --raw | jq 'select(.normalized != .provider.raw_payload)'"
+    )]
+    Dump {
+        #[arg(help = "Session ID (short or full hash)")]
+        session_id: String,
+
+        #[arg(
+            long,
+            help = "Include provider raw metadata for normalization verification"
+        )]
+        raw: bool,
+
+        #[arg(
+            long,
+            default_value = "jsonl",
+            value_name = "FORMAT",
+            help = "Output format: jsonl (one event per line) or json (array)"
+        )]
+        output: DumpFormat,
 
         #[command(flatten)]
         view_mode: ViewModeArgs,
