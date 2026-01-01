@@ -20,6 +20,7 @@ Use the **CLI** for instant visualization, or build custom monitoring tools with
 1. **Universal Normalization**: Converts diverse provider logs (Claude, Gemini, etc.) into a standard `AgentEvent` model.
 2. **Schema-on-Read**: Resilient to provider updates. No database migrations needed.
 3. **Local-First**: 100% offline. Privacy by design.
+4. **Zero-Instrumentation**: Automatically detects and watches logs from standard locations (`~/.claude/projects`, `~/.codex/sessions`, `~/.gemini/tmp`). No code changes required.
 
 ## 🚀 Quick Start (CLI)
 
