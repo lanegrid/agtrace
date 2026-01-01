@@ -232,8 +232,8 @@ pub struct SessionStats {
     pub total_turns: usize,
     /// Session duration in seconds (end_time - start_time).
     pub duration_seconds: i64,
-    /// Cumulative token usage across all turns.
-    pub usage: ContextWindowUsage,
+    /// Total tokens consumed across all turns.
+    pub total_tokens: i64,
 }
 
 /// Aggregated statistics for a single turn.
@@ -243,8 +243,8 @@ pub struct TurnStats {
     pub duration_ms: i64,
     /// Number of steps in this turn.
     pub step_count: usize,
-    /// Cumulative token usage for this turn.
-    pub usage: ContextWindowUsage,
+    /// Total tokens consumed in this turn.
+    pub total_tokens: i32,
 }
 
 // ==========================================

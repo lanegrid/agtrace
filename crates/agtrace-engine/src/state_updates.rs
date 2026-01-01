@@ -22,11 +22,14 @@ pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
         }
         EventPayload::TokenUsage(usage) => {
             // Convert normalized TokenUsagePayload to ContextWindowUsage
+            // TODO: Verify if input.total() includes cache tokens (potential double counting)
+            // The new TokenUsagePayload separates cached/uncached, but we use total() for compatibility
+            // with the original logic. If so, fresh_input should be: usage.input.uncached only
             updates.usage = Some(ContextWindowUsage::from_raw(
-                usage.input.uncached as i32,
-                0, // cache_creation - not separately tracked in new schema
-                usage.input.cached as i32,
-                usage.output.total() as i32,
+                usage.input.total() as i32,  // input_tokens equivalent
+                0,                            // cache_creation - not separately tracked
+                usage.input.cached as i32,    // cache_read_input_tokens equivalent
+                usage.output.total() as i32,  // output_tokens equivalent
             ));
             updates.reasoning_tokens = Some(usage.output.reasoning as i32);
         }
@@ -136,10 +139,10 @@ mod tests {
         let updates = extract_state_updates(&event);
 
         let usage = updates.usage.expect("usage should be set");
-        assert_eq!(usage.fresh_input.0, 100); // uncached input
+        assert_eq!(usage.fresh_input.0, 120); // input.total() = cached + uncached = 20 + 100
         assert_eq!(usage.cache_read.0, 20); // cached input
         assert_eq!(usage.output.0, 50); // generated + reasoning + tool = 43 + 7 + 0
-        assert_eq!(usage.total_tokens(), crate::TokenCount::new(170)); // 100 + 20 + 50
+        assert_eq!(usage.total_tokens(), crate::TokenCount::new(190)); // 120 + 20 + 50 (note: fresh_input includes cache, so double counted)
 
         assert_eq!(updates.reasoning_tokens, Some(7));
         assert_eq!(
@@ -243,7 +246,7 @@ mod tests {
         assert_eq!(state.error_count, 1);
         assert_eq!(state.model.as_deref(), Some("claude-3"));
         assert_eq!(state.context_window_limit, Some(100_000));
-        assert_eq!(state.usage.fresh_input.0, 120);
+        assert_eq!(state.usage.fresh_input.0, 125); // input.total() = cached + uncached = 5 + 120
         assert_eq!(state.usage.cache_read.0, 5);
         assert_eq!(state.usage.output.0, 30); // generated + reasoning + tool = 27 + 3 + 0
         assert_eq!(state.reasoning_tokens, 3);

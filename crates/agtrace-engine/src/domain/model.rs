@@ -96,12 +96,12 @@ mod tests {
     fn test_session_state_token_snapshot() {
         let mut state = SessionState::new("test-id".to_string(), None, None, Utc::now());
 
-        state.current_usage = ContextWindowUsage::from_raw(100, 0, 50);
+        state.current_usage = ContextWindowUsage::from_raw(100, 0, 0, 50);
         assert_eq!(state.total_input_side_tokens(), 100);
         assert_eq!(state.total_output_side_tokens(), 50);
         assert_eq!(state.total_tokens(), crate::TokenCount::new(150));
 
-        state.current_usage = ContextWindowUsage::from_raw(10, 1000, 60);
+        state.current_usage = ContextWindowUsage::from_raw(10, 0, 1000, 60);
         assert_eq!(state.total_input_side_tokens(), 1010);
         assert_eq!(state.total_output_side_tokens(), 60);
         assert_eq!(state.total_tokens(), crate::TokenCount::new(1070));

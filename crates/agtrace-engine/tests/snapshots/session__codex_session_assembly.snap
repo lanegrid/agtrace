@@ -58,6 +58,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 433,
+            "cache_creation": 0,
             "cache_read": 3072,
             "output": 165
           },
@@ -109,9 +110,10 @@ expression: session
             }
           ],
           "usage": {
-            "fresh_input": 231,
+            "fresh_input": 639,
+            "cache_creation": 0,
             "cache_read": 3584,
-            "output": 26
+            "output": 40
           },
           "is_failed": false,
           "status": "done"
@@ -120,11 +122,7 @@ expression: session
       "stats": {
         "duration_ms": 15358,
         "step_count": 2,
-        "usage": {
-          "fresh_input": 231,
-          "cache_read": 3584,
-          "output": 26
-        }
+        "total_tokens": 7933
       }
     },
     {
@@ -178,6 +176,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 636,
+            "cache_creation": 0,
             "cache_read": 3072,
             "output": 37
           },
@@ -227,6 +226,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 773,
+            "cache_creation": 0,
             "cache_read": 3072,
             "output": 192
           },
@@ -274,6 +274,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 945,
+            "cache_creation": 0,
             "cache_read": 3072,
             "output": 38
           },
@@ -298,6 +299,7 @@ expression: session
           "tools": [],
           "usage": {
             "fresh_input": 171,
+            "cache_creation": 0,
             "cache_read": 3968,
             "output": 38
           },
@@ -308,21 +310,13 @@ expression: session
       "stats": {
         "duration_ms": 20483,
         "step_count": 4,
-        "usage": {
-          "fresh_input": 171,
-          "cache_read": 3968,
-          "output": 38
-        }
+        "total_tokens": 16014
       }
     }
   ],
   "stats": {
     "total_turns": 2,
     "duration_seconds": 49,
-    "usage": {
-      "fresh_input": 402,
-      "cache_read": 7552,
-      "output": 64
-    }
+    "total_tokens": 23947
   }
 }

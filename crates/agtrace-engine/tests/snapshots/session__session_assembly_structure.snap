@@ -62,6 +62,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 100,
+            "cache_creation": 0,
             "cache_read": 0,
             "output": 50
           },
@@ -72,21 +73,13 @@ expression: session
       "stats": {
         "duration_ms": 0,
         "step_count": 1,
-        "usage": {
-          "fresh_input": 100,
-          "cache_read": 0,
-          "output": 50
-        }
+        "total_tokens": 150
       }
     }
   ],
   "stats": {
     "total_turns": 1,
     "duration_seconds": 0,
-    "usage": {
-      "fresh_input": 100,
-      "cache_read": 0,
-      "output": 50
-    }
+    "total_tokens": 150
   }
 }
