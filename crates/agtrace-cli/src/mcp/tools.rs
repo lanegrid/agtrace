@@ -39,7 +39,7 @@ pub async fn handle_list_sessions(
     client: &Client,
     args: ListSessionsArgs,
 ) -> Result<Value, String> {
-    let limit = args.limit.unwrap_or(50);
+    let limit = args.limit.unwrap_or(10);
 
     let mut filter = if let Some(project_hash) = args.project_hash {
         SessionFilter::project(project_hash.into()).limit(limit)
@@ -59,10 +59,21 @@ pub async fn handle_list_sessions(
         filter = filter.until(until);
     }
 
-    let sessions = client
+    let mut sessions = client
         .sessions()
         .list(filter)
         .map_err(|e| format!("Failed to list sessions: {}", e))?;
+
+    // Truncate snippets to prevent large responses
+    for session in &mut sessions {
+        if let Some(ref snippet) = session.snippet
+            && snippet.len() > 200 {
+                session.snippet = Some(format!(
+                    "{}...",
+                    &snippet.chars().take(197).collect::<String>()
+                ));
+            }
+    }
 
     serde_json::to_value(&sessions).map_err(|e| format!("Serialization error: {}", e))
 }
