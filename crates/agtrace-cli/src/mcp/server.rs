@@ -110,13 +110,13 @@ impl AgTraceServer {
                     },
                     {
                         "name": "get_session_details",
-                        "description": "Get session details. By default returns a summary with stats and turn metadata (recommended). Set include_steps=true for full details with all tool calls and results.",
+                        "description": "Get session details with configurable verbosity. Use detail_level to control response size: 'summary' (5-10KB, default), 'turns' (15-30KB with tool summaries), 'steps' (50-100KB with truncated payloads), or 'full' (complete session data).",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
                                 "session_id": {"type": "string", "description": "Session ID (short or full hash)"},
-                                "include_steps": {"type": "boolean", "description": "Include full step details (default: false). WARNING: Can produce large responses for long sessions."},
-                                "truncate_payloads": {"type": "boolean", "description": "Truncate large payloads to 500 chars (default: true). Only applies when include_steps=true."}
+                                "detail_level": {"type": "string", "enum": ["summary", "turns", "steps", "full"], "description": "Detail level (default: 'summary'). 'turns' shows tool execution summaries, 'steps' includes detailed payloads, 'full' returns everything."},
+                                "include_reasoning": {"type": "boolean", "description": "Include reasoning/thinking content in summaries (default: false). Only applies to 'turns' level."}
                             },
                             "required": ["session_id"]
                         }
