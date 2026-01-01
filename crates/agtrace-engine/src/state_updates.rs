@@ -22,14 +22,13 @@ pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
         }
         EventPayload::TokenUsage(usage) => {
             // Convert normalized TokenUsagePayload to ContextWindowUsage
-            // TODO: Verify if input.total() includes cache tokens (potential double counting)
-            // The new TokenUsagePayload separates cached/uncached, but we use total() for compatibility
-            // with the original logic. If so, fresh_input should be: usage.input.uncached only
+            // The new TokenUsagePayload separates input into cached/uncached.
+            // To avoid double-counting, fresh_input = uncached only (not total).
             updates.usage = Some(ContextWindowUsage::from_raw(
-                usage.input.total() as i32,  // input_tokens equivalent
-                0,                            // cache_creation - not separately tracked
-                usage.input.cached as i32,    // cache_read_input_tokens equivalent
-                usage.output.total() as i32,  // output_tokens equivalent
+                usage.input.uncached as i32, // fresh input tokens (not from cache)
+                0,                           // cache_creation - not separately tracked
+                usage.input.cached as i32,   // cache_read tokens (still consume context)
+                usage.output.total() as i32, // total output tokens
             ));
             updates.reasoning_tokens = Some(usage.output.reasoning as i32);
         }
@@ -139,10 +138,10 @@ mod tests {
         let updates = extract_state_updates(&event);
 
         let usage = updates.usage.expect("usage should be set");
-        assert_eq!(usage.fresh_input.0, 120); // input.total() = cached + uncached = 20 + 100
+        assert_eq!(usage.fresh_input.0, 100); // uncached only (not total)
         assert_eq!(usage.cache_read.0, 20); // cached input
         assert_eq!(usage.output.0, 50); // generated + reasoning + tool = 43 + 7 + 0
-        assert_eq!(usage.total_tokens(), crate::TokenCount::new(190)); // 120 + 20 + 50 (note: fresh_input includes cache, so double counted)
+        assert_eq!(usage.total_tokens(), crate::TokenCount::new(170)); // 100 + 20 + 50
 
         assert_eq!(updates.reasoning_tokens, Some(7));
         assert_eq!(
@@ -179,6 +178,74 @@ mod tests {
 
         let updates = extract_state_updates(&event);
         assert!(updates.is_error);
+    }
+
+    #[test]
+    fn token_usage_conversion_avoids_double_counting_cached_tokens() {
+        // Bug reproduction test: cached tokens should NOT be counted twice
+        //
+        // Given a TokenUsagePayload with:
+        //   input:  cached=20, uncached=100 (total input = 120)
+        //   output: generated=50 (total output = 50)
+        //
+        // Expected ContextWindowUsage:
+        //   fresh_input:    100 (uncached only)
+        //   cache_read:      20 (cached tokens)
+        //   output:          50
+        //   total_tokens:   170 (100 + 20 + 50)
+        //
+        // Bug produces:
+        //   fresh_input:    120 (input.total() = cached + uncached)
+        //   cache_read:      20 (same)
+        //   total_tokens:   190 (120 + 20 + 50) ❌ cached counted twice!
+
+        let event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
+            TokenInput::new(20, 100),   // cached=20, uncached=100
+            TokenOutput::new(50, 0, 0), // generated=50, reasoning=0, tool=0
+        )));
+
+        let updates = extract_state_updates(&event);
+        let usage = updates.usage.expect("usage should be set");
+
+        // CORRECT expectations (this test will FAIL until bug is fixed):
+        assert_eq!(
+            usage.fresh_input.0, 100,
+            "fresh_input should be uncached tokens only (not total)"
+        );
+        assert_eq!(usage.cache_read.0, 20, "cache_read should be cached tokens");
+        assert_eq!(usage.output.0, 50, "output should match");
+        assert_eq!(
+            usage.total_tokens(),
+            crate::TokenCount::new(170),
+            "total should be 100 (fresh) + 20 (cache) + 50 (output) = 170, not 190"
+        );
+    }
+
+    #[test]
+    fn token_usage_conversion_uses_uncached_for_fresh_input() {
+        // Consistency test: The conversion logic should match merge_usage semantics
+        // which correctly uses input.uncached for fresh_input (not input.total())
+        //
+        // This ensures extract_state_updates produces the same result as the
+        // conversion done in session assembly (stats::merge_usage)
+
+        let token_payload = TokenUsagePayload::new(
+            TokenInput::new(30, 200),    // cached=30, uncached=200
+            TokenOutput::new(80, 10, 5), // generated=80, reasoning=10, tool=5
+        );
+
+        let event = base_event(EventPayload::TokenUsage(token_payload));
+        let updates = extract_state_updates(&event);
+        let usage = updates.usage.expect("usage should be set");
+
+        // Should use uncached only for fresh_input (matching merge_usage logic)
+        assert_eq!(
+            usage.fresh_input.0, 200,
+            "fresh_input must be uncached tokens only (200), not total (230)"
+        );
+        assert_eq!(usage.cache_read.0, 30);
+        assert_eq!(usage.output.0, 95); // 80 + 10 + 5
+        assert_eq!(usage.total_tokens(), crate::TokenCount::new(325)); // 200 + 30 + 95
     }
 
     #[test]
@@ -246,7 +313,7 @@ mod tests {
         assert_eq!(state.error_count, 1);
         assert_eq!(state.model.as_deref(), Some("claude-3"));
         assert_eq!(state.context_window_limit, Some(100_000));
-        assert_eq!(state.usage.fresh_input.0, 125); // input.total() = cached + uncached = 5 + 120
+        assert_eq!(state.usage.fresh_input.0, 120); // uncached only (not total)
         assert_eq!(state.usage.cache_read.0, 5);
         assert_eq!(state.usage.output.0, 30); // generated + reasoning + tool = 27 + 3 + 0
         assert_eq!(state.reasoning_tokens, 3);
