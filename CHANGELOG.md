@@ -2,6 +2,78 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-01-01
+
+### Documentation
+
+- Add Zero-Instrumentation point highlighting auto-discovery of provider logs ([ae2d2d9](https://github.com/lanegrid/agtrace/commit/ae2d2d9c56310e8b1a4061aba0039ebff4eae521))
+
+- Add SDK badge (npm for CLI, crates.io for SDK) ([fcb34e0](https://github.com/lanegrid/agtrace/commit/fcb34e0f251e5ae7d689168c269df763ba12ad22))
+
+- Update SDK version references from 0.2 to 0.3 ([8192c38](https://github.com/lanegrid/agtrace/commit/8192c38b21acb7eebf755f3759424a4cc8363aaf))
+
+
+### Miscellaneous Tasks
+
+- Add GitHub issue templates for bug reports, feature requests, and provider support ([80f226d](https://github.com/lanegrid/agtrace/commit/80f226d8f9441762a065dc919ee5276ae4fa8cb1))
+
+- Add GitHub label configuration and setup script ([bdf1407](https://github.com/lanegrid/agtrace/commit/bdf140748d3b0efb60880b194fd971ef75d9ad82))
+
+
+## [0.3.1] - 2026-01-01
+
+### Documentation
+
+- Add Zero-Instrumentation point highlighting auto-discovery of provider logs ([ae2d2d9](https://github.com/lanegrid/agtrace/commit/ae2d2d9c56310e8b1a4061aba0039ebff4eae521))
+
+- Add SDK badge (npm for CLI, crates.io for SDK) ([fcb34e0](https://github.com/lanegrid/agtrace/commit/fcb34e0f251e5ae7d689168c269df763ba12ad22))
+
+- Update SDK version references from 0.2 to 0.3 ([8192c38](https://github.com/lanegrid/agtrace/commit/8192c38b21acb7eebf755f3759424a4cc8363aaf))
+
+
+### Miscellaneous Tasks
+
+- Add GitHub issue templates for bug reports, feature requests, and provider support ([80f226d](https://github.com/lanegrid/agtrace/commit/80f226d8f9441762a065dc919ee5276ae4fa8cb1))
+
+- Add GitHub label configuration and setup script ([bdf1407](https://github.com/lanegrid/agtrace/commit/bdf140748d3b0efb60880b194fd971ef75d9ad82))
+
+
+## [0.3.1] - 2026-01-01
+
+### Documentation
+
+- Add Zero-Instrumentation point highlighting auto-discovery of provider logs ([ae2d2d9](https://github.com/lanegrid/agtrace/commit/ae2d2d9c56310e8b1a4061aba0039ebff4eae521))
+
+- Add SDK badge (npm for CLI, crates.io for SDK) ([fcb34e0](https://github.com/lanegrid/agtrace/commit/fcb34e0f251e5ae7d689168c269df763ba12ad22))
+
+- Update SDK version references from 0.2 to 0.3 ([8192c38](https://github.com/lanegrid/agtrace/commit/8192c38b21acb7eebf755f3759424a4cc8363aaf))
+
+
+### Miscellaneous Tasks
+
+- Add GitHub issue templates for bug reports, feature requests, and provider support ([80f226d](https://github.com/lanegrid/agtrace/commit/80f226d8f9441762a065dc919ee5276ae4fa8cb1))
+
+- Add GitHub label configuration and setup script ([bdf1407](https://github.com/lanegrid/agtrace/commit/bdf140748d3b0efb60880b194fd971ef75d9ad82))
+
+
+## [0.3.1] - 2026-01-01
+
+### Documentation
+
+- Add Zero-Instrumentation point highlighting auto-discovery of provider logs ([ae2d2d9](https://github.com/lanegrid/agtrace/commit/ae2d2d9c56310e8b1a4061aba0039ebff4eae521))
+
+- Add SDK badge (npm for CLI, crates.io for SDK) ([fcb34e0](https://github.com/lanegrid/agtrace/commit/fcb34e0f251e5ae7d689168c269df763ba12ad22))
+
+- Update SDK version references from 0.2 to 0.3 ([8192c38](https://github.com/lanegrid/agtrace/commit/8192c38b21acb7eebf755f3759424a4cc8363aaf))
+
+
+### Miscellaneous Tasks
+
+- Add GitHub issue templates for bug reports, feature requests, and provider support ([80f226d](https://github.com/lanegrid/agtrace/commit/80f226d8f9441762a065dc919ee5276ae4fa8cb1))
+
+- Add GitHub label configuration and setup script ([bdf1407](https://github.com/lanegrid/agtrace/commit/bdf140748d3b0efb60880b194fd971ef75d9ad82))
+
+
 ## [0.3.0] - 2026-01-01
 
 ### Bug Fixes
