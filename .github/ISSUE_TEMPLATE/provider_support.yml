@@ -1,0 +1,70 @@
+name: Provider Support Request
+description: Request support for a new AI agent provider
+labels: ["provider", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Request support for a new AI agent provider. Please provide as much detail as possible.
+
+  - type: input
+    id: provider-name
+    attributes:
+      label: Provider name
+      description: Which AI agent provider would you like to see supported?
+      placeholder: "e.g., Cursor, Aider, Windsurf"
+    validations:
+      required: true
+
+  - type: input
+    id: provider-url
+    attributes:
+      label: Provider URL
+      description: Link to the provider's website or documentation
+      placeholder: "https://..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: log-format
+    attributes:
+      label: Log format and location
+      description: Where does this provider store logs? What format are they in?
+      placeholder: |
+        Logs are stored in ~/.provider/logs/
+        Format: JSON lines, one event per line
+    validations:
+      required: true
+
+  - type: textarea
+    id: log-example
+    attributes:
+      label: Log example
+      description: Paste an example of the log format (sanitize any sensitive data)
+      render: json
+      placeholder: |
+        {"timestamp": "2025-01-01T00:00:00Z", "event": "tool_call", ...}
+    validations:
+      required: false
+
+  - type: dropdown
+    id: popularity
+    attributes:
+      label: How popular is this provider?
+      description: This helps us prioritize which providers to support first
+      options:
+        - Very popular (widely used)
+        - Moderately popular (growing user base)
+        - Niche (small but dedicated user base)
+        - Unknown
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any other information that would help us support this provider
+      placeholder: Add any other context here...
+    validations:
+      required: false
