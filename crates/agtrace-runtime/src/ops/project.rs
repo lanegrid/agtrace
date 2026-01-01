@@ -1,7 +1,7 @@
 use crate::Result;
 use agtrace_index::Database;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct ProjectInfo {
     pub hash: String,
     pub root_path: Option<String>,

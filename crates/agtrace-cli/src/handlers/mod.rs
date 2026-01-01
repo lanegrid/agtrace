@@ -12,6 +12,7 @@ pub mod lab_stats;
 pub mod pack;
 pub mod project;
 pub mod provider;
+pub mod serve;
 pub mod session_list;
 pub mod session_show;
 pub mod watch_console;

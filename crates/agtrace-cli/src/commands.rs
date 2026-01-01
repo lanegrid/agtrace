@@ -375,5 +375,10 @@ pub async fn run(cli: Cli) -> Result<()> {
                 ),
             }
         }
+
+        Commands::Serve => {
+            let workspace = ctx.open_workspace().await?;
+            handlers::serve::handle(&workspace).await
+        }
     }
 }

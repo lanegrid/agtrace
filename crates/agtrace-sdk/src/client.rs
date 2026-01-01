@@ -80,6 +80,7 @@ impl ClientBuilder {
 // ============================================================================
 
 /// Main entry point for interacting with an agtrace workspace.
+#[derive(Clone)]
 pub struct Client {
     inner: Arc<agtrace_runtime::AgTrace>,
 }
