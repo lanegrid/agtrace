@@ -39,7 +39,7 @@ Embed agent observability into your own tools (vital-checkers, IDE plugins, dash
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.2"
+agtrace-sdk = "0.3"
 ```
 
 ```rust,no_run
