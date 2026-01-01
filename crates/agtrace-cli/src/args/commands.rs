@@ -143,6 +143,27 @@ The server exposes these tools:
 Configure in claude_desktop_config.json to use with Claude Desktop."
     )]
     Serve,
+
+    #[command(about = "Development and debugging tools")]
+    Dev {
+        #[command(subcommand)]
+        command: DevCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum DevCommand {
+    #[command(
+        about = "Test MCP server response sizes",
+        long_about = "Test the MCP server by sending requests and measuring response sizes.
+
+This tool helps identify endpoints that return too much data for AI agent consumption.
+It spawns an MCP server instance and tests each endpoint with various parameters."
+    )]
+    TestMcp {
+        #[arg(long, help = "Show detailed response content")]
+        verbose: bool,
+    },
 }
 
 #[derive(Subcommand)]

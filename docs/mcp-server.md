@@ -54,11 +54,13 @@ The MCP server provides the following tools:
 List recent AI agent sessions with optional filtering.
 
 **Parameters**:
-- `limit` (number, optional): Maximum sessions to return (default: 50)
+- `limit` (number, optional): Maximum sessions to return (default: 10, max recommended: 50)
 - `provider` (string, optional): Filter by provider (claude_code, codex, gemini)
 - `project_hash` (string, optional): Filter by project hash
 - `since` (string, optional): Show sessions after this timestamp
 - `until` (string, optional): Show sessions before this timestamp
+
+**Note**: Session snippets are truncated to 200 characters to prevent large responses.
 
 **Example**:
 ```json

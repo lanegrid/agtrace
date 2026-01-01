@@ -1,6 +1,7 @@
 mod context;
 
 pub mod demo;
+pub mod dev;
 pub mod doctor_check;
 pub mod doctor_inspect;
 pub mod doctor_run;

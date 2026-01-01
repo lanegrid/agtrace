@@ -1,6 +1,6 @@
 use super::args::{
-    Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
-    SessionCommand, ViewModeArgs,
+    Cli, Commands, DevCommand, DoctorCommand, IndexCommand, LabCommand, ProjectCommand,
+    ProviderCommand, SessionCommand, ViewModeArgs,
 };
 use super::handlers;
 use agtrace_sdk::Client;
@@ -380,5 +380,12 @@ pub async fn run(cli: Cli) -> Result<()> {
             let workspace = ctx.open_workspace().await?;
             handlers::serve::handle(&workspace).await
         }
+
+        Commands::Dev { command } => match command {
+            DevCommand::TestMcp { verbose } => {
+                let workspace = ctx.open_workspace().await?;
+                handlers::dev::handle_test_mcp(&workspace, verbose).await
+            }
+        },
     }
 }

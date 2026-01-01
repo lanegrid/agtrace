@@ -1,12 +1,13 @@
 use agtrace_sdk::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
 use super::tools::*;
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     id: Option<Value>,
     method: String,
@@ -42,7 +43,10 @@ impl AgTraceServer {
 
     async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         // MCP requires all requests to have an id, use a default if missing
-        let id = request.id.clone().unwrap_or_else(|| Value::Number(serde_json::Number::from(0)));
+        let id = request
+            .id
+            .clone()
+            .unwrap_or_else(|| Value::Number(serde_json::Number::from(0)));
 
         match request.method.as_str() {
             "initialize" => self.handle_initialize(id, request.params).await,
@@ -88,11 +92,11 @@ impl AgTraceServer {
                 "tools": [
                     {
                         "name": "list_sessions",
-                        "description": "List recent AI agent sessions. Returns session summaries including ID, timestamp, provider, and snippet. Use filters to narrow down by provider, project, or time range.",
+                        "description": "List recent AI agent sessions. Returns session summaries including ID, timestamp, provider, and snippet (truncated to 200 chars). Use filters to narrow down by provider, project, or time range.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
-                                "limit": {"type": "number", "description": "Maximum number of sessions to return (default: 50)"},
+                                "limit": {"type": "number", "description": "Maximum number of sessions to return (default: 10, max recommended: 50)"},
                                 "provider": {"type": "string", "description": "Filter by provider (claude_code, codex, gemini)"},
                                 "project_hash": {"type": "string", "description": "Filter by project hash"},
                                 "since": {"type": "string", "description": "Show sessions after this timestamp"},
@@ -165,7 +169,7 @@ impl AgTraceServer {
                         message: "Missing params".to_string(),
                         data: None,
                     }),
-                }
+                };
             }
         };
 
@@ -181,7 +185,7 @@ impl AgTraceServer {
                         message: "Missing tool name".to_string(),
                         data: None,
                     }),
-                }
+                };
             }
         };
 
@@ -201,7 +205,7 @@ impl AgTraceServer {
                                 message: format!("Invalid arguments: {}", e),
                                 data: None,
                             }),
-                        }
+                        };
                     }
                 };
                 handle_list_sessions(&self.client, args).await
@@ -219,7 +223,7 @@ impl AgTraceServer {
                                 message: format!("Invalid arguments: {}", e),
                                 data: None,
                             }),
-                        }
+                        };
                     }
                 };
                 handle_get_session_details(&self.client, args).await
@@ -237,7 +241,7 @@ impl AgTraceServer {
                                 message: format!("Invalid arguments: {}", e),
                                 data: None,
                             }),
-                        }
+                        };
                     }
                 };
                 handle_analyze_session(&self.client, args).await
@@ -255,7 +259,7 @@ impl AgTraceServer {
                                 message: format!("Invalid arguments: {}", e),
                                 data: None,
                             }),
-                        }
+                        };
                     }
                 };
                 handle_search_events(&self.client, args).await
