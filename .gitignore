@@ -20,3 +20,4 @@ Cargo.lock
 
 /tmp/
 OUTPUT.md
+crates/agtrace-sdk/examples/debug/
