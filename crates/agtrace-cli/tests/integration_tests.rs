@@ -15,7 +15,6 @@
 //!
 //! Note: `help_snapshots.rs` is a separate test file to maintain stable snapshot paths.
 
-mod debug_session_discovery;
 mod init_configuration;
 mod provider_filtering;
 mod watch_command;
