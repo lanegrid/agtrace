@@ -2,6 +2,94 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-01-01
+
+### Bug Fixes
+
+- *(types)* Add missing server and tool fields to McpArgs test initialization ([11d6e65](https://github.com/lanegrid/agtrace/commit/11d6e65db8558f0198f5811dff1a6e1f1b798d08))
+
+- *(codex)* Make exit code regex case-insensitive to correctly detect errors ([db204f9](https://github.com/lanegrid/agtrace/commit/db204f9b72d9e8903d18bd1ce9dc24293963f319))
+
+- *(providers)* Resolve all clippy lint warnings and update TokenUsagePayload schema usage ([032a95a](https://github.com/lanegrid/agtrace/commit/032a95a1a4e9db0d3eba498a6ce9bb7431383f6c))
+
+- *(watch)* Remove hardcoded context window fallback in TUI to match console behavior ([5432bc7](https://github.com/lanegrid/agtrace/commit/5432bc783e92fa3488fa191a7e0699f537a117ff))
+
+- *(watch)* Use assembled session for accurate cumulative token display in TUI ([0f9d292](https://github.com/lanegrid/agtrace/commit/0f9d292c9dd0a208b46071c072ec2f98e19b0d04))
+
+- *(watch)* Use same cumulative token logic as SATURATION HISTORY in dashboard ([4862b92](https://github.com/lanegrid/agtrace/commit/4862b92c4ca44947be6f0cf53f84b682dfeae024))
+
+- Correct token double-counting in extract_state_updates (fresh_input should use uncached only) ([f9f4431](https://github.com/lanegrid/agtrace/commit/f9f4431faaf55a0baa9f8627d54d1cf22a73e640))
+
+
+### Documentation
+
+- Add comprehensive doc comments to SDK re-exported types ([9db448b](https://github.com/lanegrid/agtrace/commit/9db448b6204ad68db08e245e810188cf52b24145))
+
+- *(providers)* Add token conversion rationale for each provider (Claude/Codex/Gemini) ([090826c](https://github.com/lanegrid/agtrace/commit/090826c5779941f1929d913ce9a5095bbc98ac5c))
+
+
+### Features
+
+- *(sdk)* Add tool_call_stats example for analyzing tool usage across sessions ([598b74a](https://github.com/lanegrid/agtrace/commit/598b74ad710594529ae6c3fd449d42b93f82178e))
+
+- *(sdk)* Refactor tool_call_stats to show detailed per-provider statistics ([abc9c5f](https://github.com/lanegrid/agtrace/commit/abc9c5f5e72d687e5f0999571ff979f7bbde35f4))
+
+- *(sdk)* Add normalized ToolKind statistics to tool_call_stats example ([8f5cffd](https://github.com/lanegrid/agtrace/commit/8f5cffd7385dfad2cd2d7c084a47bbdf81d52f7b))
+
+- *(sdk)* Add Execute command statistics to tool_call_stats example ([1b9fd49](https://github.com/lanegrid/agtrace/commit/1b9fd49afcb3572b25558dbc46b30cf5e6156c64))
+
+- *(sdk)* Add per-tool-name Execute command breakdown in tool_call_stats ([625ab94](https://github.com/lanegrid/agtrace/commit/625ab949dbec48803ae2583c5720f0938074563a))
+
+- *(sdk)* Add command pattern statistics to tool_call_stats (reveals sed usage in codex) ([c98ff8d](https://github.com/lanegrid/agtrace/commit/c98ff8dfd79d0dfe1a919180d96d0670d17d2b12))
+
+- *(codex)* Classify read-oriented shell commands as Read instead of Execute ([408b4b8](https://github.com/lanegrid/agtrace/commit/408b4b869d3b62f2bbd67db064b6e40c366d1c17))
+
+- *(gemini)* Detect MCP tools via display_name pattern instead of mcp__ prefix ([cb1b83f](https://github.com/lanegrid/agtrace/commit/cb1b83ffd423ec92c871395aa76ef3d12d996163))
+
+- *(codex)* Classify pattern search commands (rg/grep) as Search instead of Read ([27de169](https://github.com/lanegrid/agtrace/commit/27de169379d4b7164277ff88bd0fabe3775311ca))
+
+- *(sdk)* Add provider efficiency comparison example ([37f3350](https://github.com/lanegrid/agtrace/commit/37f335004b5c78a7795f33e6ea62d8436f9219d4))
+
+- *(engine)* Migrate to ContextWindowUsage with last-wins semantics for turn aggregation ([9e433b2](https://github.com/lanegrid/agtrace/commit/9e433b278710b1fbadab86399b638e4e21668c87))
+
+
+### Miscellaneous Tasks
+
+- Move debug examples to sdk/examples/debug and gitignore them ([d3ca56e](https://github.com/lanegrid/agtrace/commit/d3ca56ecd9634e45af8383833d8de9a2089a76a8))
+
+- Remove debug script ([99be7ca](https://github.com/lanegrid/agtrace/commit/99be7caf71fc722c817982f254a0956aaf560df8))
+
+
+### Refactor
+
+- Move AgentSession and related types from agtrace-engine to agtrace-types ([cd7ed18](https://github.com/lanegrid/agtrace/commit/cd7ed18f402dc9b26f07c3eabd89df6ad137376e))
+
+- Extract compute_turn_metrics to SessionAnalysisExt in agtrace-engine ([99ecfeb](https://github.com/lanegrid/agtrace/commit/99ecfebeb6060f4b755e349655e7d7c9896bb350))
+
+- Move MCP tool name parsing from agtrace-types to agtrace-providers ([c86807f](https://github.com/lanegrid/agtrace/commit/c86807f286b6e0039fd4e64820b4c590ab90b772))
+
+- Add MCP tool name parsing to Codex provider ([30eb2d9](https://github.com/lanegrid/agtrace/commit/30eb2d98c9fafb9cabaf65efecef052a144ec416))
+
+- Add server and tool fields to McpArgs for structured MCP data ([6598568](https://github.com/lanegrid/agtrace/commit/65985684c92a13b742e816df354f7598864cbf62))
+
+- Move MCP normalization to provider mappers and deprecate normalize_tool_call (resolves #26) ([0345d6e](https://github.com/lanegrid/agtrace/commit/0345d6e3d9804c43e8d20cb642ff6d9ecd92e473))
+
+- Change SessionFilter.limit to Option<usize> for unlimited session queries and add provider statistics to tool_call_stats example ([7b79cb7](https://github.com/lanegrid/agtrace/commit/7b79cb7a915161762395f4e00ce4e7d7a7f9124a))
+
+- *(providers)* Use trait-based ProviderAdapter in fixture generation example ([0972303](https://github.com/lanegrid/agtrace/commit/0972303479eb55b040756e6f9d651a6174d635e5))
+
+- *(types)* Normalize TokenUsage schema across providers (Claude/Codex/Gemini) ([5fd2334](https://github.com/lanegrid/agtrace/commit/5fd2334001367096fa41cfe5acf017e0360325c6))
+
+- *(engine)* Remove providers dependency from tests to fix layer violation ([9c7a08a](https://github.com/lanegrid/agtrace/commit/9c7a08a1ae02bc0934bc361be6a58b826d700b55))
+
+- Restore original token aggregation logic while preserving TokenUsagePayload schema ([ce0e162](https://github.com/lanegrid/agtrace/commit/ce0e162450b3af7ed16aa23fe84e00e6ec923122))
+
+
+### Testing
+
+- Regenerate fixtures and update snapshots for TokenUsagePayload schema changes ([1f71815](https://github.com/lanegrid/agtrace/commit/1f7181537faaafc80246e04c843c000bf9145b00))
+
+
 ## [0.2.1] - 2025-12-31
 
 ### Bug Fixes
