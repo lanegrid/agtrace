@@ -322,6 +322,23 @@ impl SessionHandle {
         Ok(agtrace_engine::export::transform(&events, strategy))
     }
 
+    /// Get session metadata (DB-derived: project_hash, provider).
+    ///
+    /// Returns None for standalone sessions (created from events without workspace).
+    pub fn metadata(&self) -> Result<Option<crate::types::SessionMetadata>> {
+        match &self.source {
+            SessionSource::Workspace { inner, id } => {
+                let runtime_handle = inner
+                    .sessions()
+                    .find(id)
+                    .map_err(|e| Error::NotFound(format!("Session {}: {}", id, e)))?;
+
+                runtime_handle.metadata().map(Some).map_err(Error::Runtime)
+            }
+            SessionSource::Events { .. } => Ok(None),
+        }
+    }
+
     /// Summarize session statistics.
     pub fn summarize(&self) -> Result<agtrace_engine::SessionSummary> {
         let session = self.assemble()?;

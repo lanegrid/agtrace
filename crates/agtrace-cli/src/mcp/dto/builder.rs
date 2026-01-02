@@ -1,4 +1,4 @@
-use agtrace_sdk::types::AgentSession;
+use agtrace_sdk::types::{AgentSession, SessionMetadata};
 use serde_json::Value;
 
 use super::{
@@ -11,14 +11,16 @@ use super::{
 /// Builder for creating session responses with different detail levels
 pub struct SessionResponseBuilder {
     session: AgentSession,
+    metadata: Option<SessionMetadata>,
     detail_level: DetailLevel,
     include_reasoning: bool,
 }
 
 impl SessionResponseBuilder {
-    pub fn new(session: AgentSession) -> Self {
+    pub fn new(session: AgentSession, metadata: Option<SessionMetadata>) -> Self {
         Self {
             session,
+            metadata,
             detail_level: DetailLevel::default(),
             include_reasoning: false,
         }
@@ -37,7 +39,8 @@ impl SessionResponseBuilder {
     pub fn build(self) -> Result<Value, String> {
         match self.detail_level {
             DetailLevel::Summary => {
-                let response = SessionSummaryResponse::from_session(self.session).with_metadata();
+                let response = SessionSummaryResponse::from_session(self.session, self.metadata)
+                    .with_metadata();
                 serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
             }
             DetailLevel::Turns => {

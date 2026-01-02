@@ -41,6 +41,20 @@ pub struct SessionSummary {
     pub tokens_output_total: u64,
 }
 
+/// Session metadata (DB-derived, not available from events alone).
+///
+/// Contains information inferred from filesystem paths and stored in the index.
+/// Separate from AgentSession which is assembled purely from events.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionMetadata {
+    /// Unique session identifier.
+    pub session_id: Uuid,
+    /// Project hash (inferred from log file path).
+    pub project_hash: ProjectHash,
+    /// Provider name (claude_code, codex, gemini).
+    pub provider: String,
+}
+
 // ==========================================
 // 1. Session (entire conversation)
 // ==========================================

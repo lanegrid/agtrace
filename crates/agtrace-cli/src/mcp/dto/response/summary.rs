@@ -8,7 +8,6 @@ const MAX_SNIPPET_LEN: usize = 200;
 
 /// Session summary response for get_session_summary tool
 /// Target size: ≤5 KB (guaranteed single-page)
-/// TODO: Add project_hash and provider (requires engine::SessionSummary enhancement)
 #[derive(Debug, Serialize)]
 pub struct SessionSummaryResponse {
     pub session_id: String,
@@ -16,6 +15,15 @@ pub struct SessionSummaryResponse {
     pub end_time: Option<DateTime<Utc>>,
     pub stats: SessionStats,
     pub snippet: String,
+
+    /// Project identifier (optional, not available for standalone sessions)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_hash: Option<String>,
+
+    /// Provider name (optional, not available for standalone sessions)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+
     pub _meta: ResponseMeta,
 }
 
@@ -29,7 +37,10 @@ pub struct TurnSummaryDto {
 }
 
 impl SessionSummaryResponse {
-    pub fn from_session(session: AgentSession) -> Self {
+    pub fn from_session(
+        session: AgentSession,
+        metadata: Option<agtrace_sdk::types::SessionMetadata>,
+    ) -> Self {
         // Extract first user message as snippet
         let snippet = session
             .turns
@@ -37,12 +48,18 @@ impl SessionSummaryResponse {
             .map(|turn| truncate_string(&turn.user.content.text, MAX_SNIPPET_LEN))
             .unwrap_or_else(|| "(no turns)".to_string());
 
+        let (project_hash, provider) = metadata
+            .map(|m| (Some(m.project_hash.to_string()), Some(m.provider)))
+            .unwrap_or((None, None));
+
         let response = Self {
             session_id: session.session_id.to_string(),
             start_time: session.start_time,
             end_time: session.end_time,
             stats: session.stats,
             snippet,
+            project_hash,
+            provider,
             _meta: ResponseMeta::from_bytes(0), // Placeholder, calculated after serialization
         };
 
