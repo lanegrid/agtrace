@@ -1,16 +1,29 @@
 ---
 source: crates/agtrace-cli/tests/mcp_snapshots.rs
-expression: response
+expression: content
 ---
 {
-  "id": 1,
-  "jsonrpc": "2.0",
-  "result": {
-    "content": [
-      {
-        "text": "{\n  \"_meta\": {\n    \"bytes\": 456,\n    \"content_level\": \"summary\",\n    \"estimated_tokens\": 114,\n    \"has_more\": false,\n    \"truncation\": {\n      \"fields\": [\n        \"snippet\"\n      ],\n      \"max_len\": 200\n    }\n  },\n  \"end_time\": \"[TIMESTAMP]\",\n  \"project_hash\": \"[PROJECT_HASH]\",\n  \"provider\": \"claude_code\",\n  \"session_id\": \"[ID]\",\n  \"snippet\": \"add myapp directory and create myapp/hoge.py which shows result of print(1+1).\",\n  \"start_time\": \"[TIMESTAMP]\",\n  \"stats\": {\n    \"duration_seconds\": 67,\n    \"total_tokens\": 94471,\n    \"total_turns\": 2\n  }\n}",
-        "type": "text"
-      }
-    ]
+  "_meta": {
+    "bytes": 456,
+    "content_level": "summary",
+    "estimated_tokens": 114,
+    "has_more": false,
+    "truncation": {
+      "fields": [
+        "snippet"
+      ],
+      "max_len": 200
+    }
+  },
+  "end_time": "[TIMESTAMP]",
+  "project_hash": "[PROJECT_HASH]",
+  "provider": "claude_code",
+  "session_id": "[ID]",
+  "snippet": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+  "start_time": "[TIMESTAMP]",
+  "stats": {
+    "duration_seconds": 67,
+    "total_tokens": 94471,
+    "total_turns": 2
   }
 }
