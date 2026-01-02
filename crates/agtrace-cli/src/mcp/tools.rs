@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::dto::{
-    AnalyzeSessionArgs, EventMatchDto, EventPreviewDto, GetSessionDetailsArgs, ListSessionsArgs,
-    ListSessionsResponse, SearchEventsArgs, SearchEventsResponse, SessionResponseBuilder,
-    SessionSummaryDto,
+    AnalyzeSessionArgs, EventDetailsResponse, EventMatchDto, EventPreview, EventPreviewDto,
+    GetEventDetailsArgs, GetSessionDetailsArgs, ListSessionsArgs, ListSessionsResponse, McpError,
+    McpResponse, PaginationMeta, PreviewContent, SearchEventPreviewsArgs, SearchEventPreviewsData,
+    SearchEventsArgs, SearchEventsResponse, SessionResponseBuilder, SessionSummaryDto,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -265,4 +266,172 @@ pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
         .map_err(|e| format!("Failed to list projects: {}", e))?;
 
     serde_json::to_value(&projects).map_err(|e| format!("Serialization error: {}", e))
+}
+
+pub async fn handle_search_event_previews(
+    client: &Client,
+    args: SearchEventPreviewsArgs,
+) -> Result<Value, String> {
+    let limit = args.limit.unwrap_or(10).min(50); // default 10, max 50
+    let offset = args
+        .cursor
+        .as_ref()
+        .and_then(|c| Cursor::decode(c))
+        .map(|c| c.offset)
+        .unwrap_or(0);
+
+    // Build session filter
+    let mut filter = SessionFilter::all().limit(1000);
+
+    if let Some(provider) = args.provider {
+        filter = filter.provider(provider.as_str().to_string());
+    }
+
+    // If searching within specific session, use that
+    let sessions = if let Some(ref session_id) = args.session_id {
+        let handle = client
+            .sessions()
+            .get(session_id)
+            .map_err(|e| format!("Session not found: {}", e))?;
+
+        // Create a minimal session summary
+        vec![agtrace_sdk::SessionSummary {
+            id: session_id.clone(),
+            provider: String::new(), // Will be filled from actual session
+            project_hash: agtrace_sdk::types::ProjectHash::from(String::new()),
+            start_ts: None,
+            snippet: None,
+        }]
+    } else {
+        client
+            .sessions()
+            .list_without_refresh(filter)
+            .map_err(|e| format!("Failed to list sessions: {}", e))?
+    };
+
+    let mut all_matches = Vec::new();
+
+    for session_summary in sessions {
+        let handle = match client.sessions().get(&session_summary.id) {
+            Ok(h) => h,
+            Err(_) => continue,
+        };
+
+        let events = match handle.events() {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        for (event_index, event) in events.iter().enumerate() {
+            // Check event type filter
+            if let Some(ref event_type_filter) = args.event_type
+                && !event_type_filter.matches_payload(&event.payload) {
+                    continue;
+                }
+
+            // Check if query matches
+            let event_json = match serde_json::to_string(&event.payload) {
+                Ok(j) => j,
+                Err(_) => continue,
+            };
+
+            if event_json.contains(&args.query) {
+                let event_type = match &event.payload {
+                    agtrace_sdk::types::EventPayload::ToolCall(_) => {
+                        super::dto::EventType::ToolCall
+                    }
+                    agtrace_sdk::types::EventPayload::ToolResult(_) => {
+                        super::dto::EventType::ToolResult
+                    }
+                    agtrace_sdk::types::EventPayload::Message(_) => super::dto::EventType::Message,
+                    agtrace_sdk::types::EventPayload::User(_) => super::dto::EventType::User,
+                    agtrace_sdk::types::EventPayload::Reasoning(_) => {
+                        super::dto::EventType::Reasoning
+                    }
+                    agtrace_sdk::types::EventPayload::TokenUsage(_) => {
+                        super::dto::EventType::TokenUsage
+                    }
+                    agtrace_sdk::types::EventPayload::Notification(_) => {
+                        super::dto::EventType::Notification
+                    }
+                };
+
+                all_matches.push(EventPreview {
+                    session_id: session_summary.id.clone(),
+                    event_index,
+                    timestamp: event.timestamp,
+                    event_type,
+                    preview: PreviewContent::from_payload(&event.payload),
+                });
+            }
+        }
+    }
+
+    // Apply cursor-based pagination
+    let fetch_limit = limit + 1;
+    let mut matches: Vec<_> = all_matches
+        .into_iter()
+        .skip(offset)
+        .take(fetch_limit)
+        .collect();
+
+    let has_more = matches.len() > limit;
+    if has_more {
+        matches.pop();
+    }
+
+    let next_cursor = if has_more {
+        Some(
+            Cursor {
+                offset: offset + limit,
+            }
+            .encode(),
+        )
+    } else {
+        None
+    };
+
+    let total_in_page = matches.len();
+    let response = McpResponse {
+        data: SearchEventPreviewsData { matches },
+        pagination: Some(PaginationMeta {
+            total_in_page,
+            next_cursor,
+            has_more,
+        }),
+        hint: Some(
+            "Use get_event_details(session_id, event_index) to retrieve full event payload"
+                .to_string(),
+        ),
+    };
+
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+pub async fn handle_get_event_details(
+    client: &Client,
+    args: GetEventDetailsArgs,
+) -> Result<Value, String> {
+    let handle = client
+        .sessions()
+        .get(&args.session_id)
+        .map_err(|e| format!("Session not found: {}", e))?;
+
+    let events = handle
+        .events()
+        .map_err(|e| format!("Failed to load events: {}", e))?;
+
+    if args.event_index >= events.len() {
+        return Err(McpError::invalid_event_index(
+            &args.session_id,
+            args.event_index,
+            events.len() - 1,
+        )
+        .to_string());
+    }
+
+    let event = &events[args.event_index];
+    let response = EventDetailsResponse::from_event(args.session_id, args.event_index, event);
+
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }
