@@ -192,12 +192,6 @@ impl ResponseMeta {
         self.content_level = Some(level);
         self
     }
-
-    /// Set truncation info
-    pub fn with_truncation(mut self, fields: Vec<String>, max_len: usize) -> Self {
-        self.truncation = Some(TruncationInfo { fields, max_len });
-        self
-    }
 }
 
 /// Truncate a string to a maximum length, adding ellipsis if truncated
