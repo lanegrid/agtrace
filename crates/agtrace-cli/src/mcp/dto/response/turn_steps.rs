@@ -59,12 +59,27 @@ pub struct TokenUsageDto {
 }
 
 impl TurnStepsResponse {
-    pub fn from_turn(session_id: String, turn_index: usize, turn: AgentTurn) -> Self {
+    pub fn from_turn(
+        session_id: String,
+        turn_index: usize,
+        turn: AgentTurn,
+        include_reasoning: bool,
+        include_tools: bool,
+        include_message: bool,
+    ) -> Self {
         let steps = turn
             .steps
             .iter()
             .enumerate()
-            .map(|(idx, step)| StepDetailDto::from_step(idx, step))
+            .map(|(idx, step)| {
+                StepDetailDto::from_step(
+                    idx,
+                    step,
+                    include_reasoning,
+                    include_tools,
+                    include_message,
+                )
+            })
             .collect();
 
         let response = Self {
@@ -76,58 +91,99 @@ impl TurnStepsResponse {
             _meta: ResponseMeta::from_bytes(0),
         };
 
-        response.with_metadata()
+        response.with_metadata(include_reasoning, include_tools, include_message)
     }
 
-    pub fn with_metadata(mut self) -> Self {
+    pub fn with_metadata(
+        mut self,
+        include_reasoning: bool,
+        include_tools: bool,
+        include_message: bool,
+    ) -> Self {
         if let Ok(json) = serde_json::to_string(&self) {
             let bytes = json.len();
-            self._meta = ResponseMeta::with_pagination(
+            let mut truncated_fields = Vec::new();
+
+            if include_reasoning {
+                truncated_fields.push("reasoning.text".to_string());
+            }
+            if include_tools {
+                truncated_fields.push("tools[].result_summary".to_string());
+            }
+            if include_message {
+                truncated_fields.push("message.text".to_string());
+            }
+
+            let mut meta = ResponseMeta::with_pagination(
                 bytes,
                 None, // Single page for now
                 self.steps.len(),
                 Some(self.steps.len()),
-            );
+            )
+            .with_content_level(crate::mcp::dto::common::ContentLevel::Steps);
+
+            if !truncated_fields.is_empty() {
+                meta = meta.with_truncation(truncated_fields, 500);
+            }
+
+            self._meta = meta;
         }
         self
     }
 }
 
 impl StepDetailDto {
-    pub fn from_step(step_index: usize, step: &AgentStep) -> Self {
+    pub fn from_step(
+        step_index: usize,
+        step: &AgentStep,
+        include_reasoning: bool,
+        include_tools: bool,
+        include_message: bool,
+    ) -> Self {
         let status = match step.status {
             StepStatus::Done => StepStatusDto::Done,
             StepStatus::InProgress => StepStatusDto::InProgress,
             StepStatus::Failed => StepStatusDto::Failed,
         };
 
-        let reasoning = step.reasoning.as_ref().map(|r| ReasoningDto {
-            text: truncate(&r.content.text, 500),
-        });
-
-        let tools = step
-            .tools
-            .iter()
-            .map(|t| {
-                let input_summary = format!("{:?}", t.call.content); // Simple debug representation
-                let result_summary = t
-                    .result
-                    .as_ref()
-                    .map(|r| truncate(&r.content.output, 200))
-                    .unwrap_or_else(|| "(no result)".to_string());
-
-                ToolExecutionDto {
-                    name: t.call.content.name().to_string(),
-                    input_summary,
-                    result_summary,
-                    is_error: t.is_error,
-                }
+        let reasoning = if include_reasoning {
+            step.reasoning.as_ref().map(|r| ReasoningDto {
+                text: truncate(&r.content.text, 500),
             })
-            .collect();
+        } else {
+            None
+        };
 
-        let message = step.message.as_ref().map(|m| MessageDto {
-            text: truncate(&m.content.text, 500),
-        });
+        let tools = if include_tools {
+            step.tools
+                .iter()
+                .map(|t| {
+                    let input_summary = format!("{:?}", t.call.content); // Simple debug representation
+                    let result_summary = t
+                        .result
+                        .as_ref()
+                        .map(|r| truncate(&r.content.output, 200))
+                        .unwrap_or_else(|| "(no result)".to_string());
+
+                    ToolExecutionDto {
+                        name: t.call.content.name().to_string(),
+                        input_summary,
+                        result_summary,
+                        is_error: t.is_error,
+                    }
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+
+        let message = if include_message {
+            step.message.as_ref().map(|m| MessageDto {
+                text: truncate(&m.content.text, 500),
+            })
+        } else {
+            None
+        };
 
         let tokens = step.usage.as_ref().map(|u| TokenUsageDto {
             input: u.input_tokens() as u64,

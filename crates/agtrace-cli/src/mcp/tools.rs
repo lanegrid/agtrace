@@ -296,6 +296,7 @@ pub async fn handle_search_event_previews(
             total_in_page,
             next_cursor,
             has_more,
+            base_index: Some(offset),
         }),
         hint: None,
     };
@@ -431,7 +432,14 @@ pub async fn handle_get_turn_steps(
             )
         })?;
 
-    let response = TurnStepsResponse::from_turn(args.session_id.clone(), args.turn_index, turn);
+    let response = TurnStepsResponse::from_turn(
+        args.session_id.clone(),
+        args.turn_index,
+        turn,
+        args.should_include_reasoning(),
+        args.should_include_tools(),
+        args.should_include_message(),
+    );
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }

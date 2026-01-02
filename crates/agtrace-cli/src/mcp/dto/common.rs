@@ -67,7 +67,29 @@ impl EventType {
     }
 }
 
-/// Detail level for session responses
+/// Content detail level for responses
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum ContentLevel {
+    /// Lightweight overview (session summary)
+    Summary,
+    /// Turn-level summaries
+    Turns,
+    /// Detailed step information
+    Steps,
+    /// Complete session data with full payloads
+    Full,
+}
+
+/// Information about field truncation in responses
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct TruncationInfo {
+    /// Names of fields that were truncated
+    pub fields: Vec<String>,
+    /// Maximum length used for truncation
+    pub max_len: usize,
+}
+
 /// Pagination metadata for list responses
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PaginationMeta {
@@ -77,6 +99,9 @@ pub struct PaginationMeta {
     pub next_cursor: Option<String>,
     /// Quick check if more results exist
     pub has_more: bool,
+    /// Base index for items in this page (e.g., if offset=10, base_index=10)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_index: Option<usize>,
 }
 
 /// Standardized response wrapper for MCP tools
@@ -118,6 +143,14 @@ pub struct ResponseMeta {
     /// Number of items returned in this response
     #[serde(skip_serializing_if = "Option::is_none")]
     pub returned_count: Option<usize>,
+
+    /// Content detail level of this response
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_level: Option<ContentLevel>,
+
+    /// Information about truncated fields (if any)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub truncation: Option<TruncationInfo>,
 }
 
 impl ResponseMeta {
@@ -130,6 +163,8 @@ impl ResponseMeta {
             next_cursor: None,
             total_items: None,
             returned_count: None,
+            content_level: None,
+            truncation: None,
         }
     }
 
@@ -147,7 +182,21 @@ impl ResponseMeta {
             next_cursor,
             total_items,
             returned_count: Some(returned_count),
+            content_level: None,
+            truncation: None,
         }
+    }
+
+    /// Set content level
+    pub fn with_content_level(mut self, level: ContentLevel) -> Self {
+        self.content_level = Some(level);
+        self
+    }
+
+    /// Set truncation info
+    pub fn with_truncation(mut self, fields: Vec<String>, max_len: usize) -> Self {
+        self.truncation = Some(TruncationInfo { fields, max_len });
+        self
     }
 }
 

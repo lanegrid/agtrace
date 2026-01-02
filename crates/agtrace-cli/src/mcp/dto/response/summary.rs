@@ -28,6 +28,7 @@ pub struct SessionSummaryResponse {
 }
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct TurnSummaryDto {
     pub id: String,
     pub timestamp: DateTime<Utc>,
@@ -52,7 +53,7 @@ impl SessionSummaryResponse {
             .map(|m| (Some(m.project_hash.to_string()), Some(m.provider)))
             .unwrap_or((None, None));
 
-        let response = Self {
+        Self {
             session_id: session.session_id.to_string(),
             start_time: session.start_time,
             end_time: session.end_time,
@@ -61,9 +62,7 @@ impl SessionSummaryResponse {
             project_hash,
             provider,
             _meta: ResponseMeta::from_bytes(0), // Placeholder, calculated after serialization
-        };
-
-        response
+        }
     }
 
     /// Calculate and set metadata after serialization
@@ -71,13 +70,17 @@ impl SessionSummaryResponse {
         // Serialize to calculate size
         if let Ok(json) = serde_json::to_string(&self) {
             let bytes = json.len();
-            self._meta = ResponseMeta::from_bytes(bytes);
+            let truncated_fields = vec!["snippet".to_string()];
+            self._meta = ResponseMeta::from_bytes(bytes)
+                .with_content_level(crate::mcp::dto::common::ContentLevel::Summary)
+                .with_truncation(truncated_fields, MAX_SNIPPET_LEN);
         }
         self
     }
 }
 
 impl TurnSummaryDto {
+    #[allow(dead_code)]
     pub fn from_turn(turn: AgentTurn) -> Self {
         Self {
             id: turn.id.to_string(),
