@@ -13,14 +13,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::models::{
-    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs,
-    GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs, McpError, McpResponse, PaginationMeta,
-    SearchEventPreviewsArgs,
-};
-use super::presenters::{
-    present_analysis, present_event_details, present_event_preview, present_list_sessions,
-    present_project_info, present_search_event_previews, present_session_full,
-    present_session_summary, present_session_turns, present_turn_steps,
+    AnalysisViewModel, AnalyzeSessionArgs, EventDetailsViewModel, EventPreviewViewModel,
+    GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs, GetSessionTurnsArgs,
+    GetTurnStepsArgs, ListSessionsArgs, ListSessionsViewModel, McpError, McpResponse,
+    PaginationMeta, ProjectInfoViewModel, SearchEventPreviewsArgs, SearchEventPreviewsViewModel,
+    SessionFullViewModel, SessionSummaryViewModel, SessionTurnsViewModel, TurnStepsViewModel,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -113,7 +110,7 @@ pub async fn handle_list_sessions(
         None
     };
 
-    let view_model = present_list_sessions(sessions, next_cursor);
+    let view_model = ListSessionsViewModel::new(sessions, next_cursor);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
@@ -143,7 +140,7 @@ pub async fn handle_analyze_session(
         .report()
         .map_err(|e| format!("Failed to generate report: {}", e))?;
 
-    let view_model = present_analysis(report);
+    let view_model = AnalysisViewModel::new(report);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
@@ -154,7 +151,7 @@ pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
         .list()
         .map_err(|e| format!("Failed to list projects: {}", e))?;
 
-    let view_model = present_project_info(projects);
+    let view_model = ProjectInfoViewModel::new(projects);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
@@ -233,7 +230,11 @@ pub async fn handle_search_event_previews(
             };
 
             if event_json.contains(&args.query) {
-                let preview = present_event_preview(session_summary.id.clone(), event_index, event);
+                let preview = EventPreviewViewModel::from_event(
+                    session_summary.id.clone(),
+                    event_index,
+                    event,
+                );
                 all_matches.push(preview);
             }
         }
@@ -264,7 +265,7 @@ pub async fn handle_search_event_previews(
     };
 
     let total_in_page = matches.len();
-    let view_model = present_search_event_previews(matches);
+    let view_model = SearchEventPreviewsViewModel::new(matches);
 
     let response = McpResponse {
         data: view_model,
@@ -307,7 +308,7 @@ pub async fn handle_get_event_details(
     }
 
     let event = &events[args.event_index];
-    let view_model = present_event_details(
+    let view_model = EventDetailsViewModel::new(
         args.session_id,
         args.event_index,
         event.timestamp,
@@ -339,7 +340,7 @@ pub async fn handle_get_session_summary(
         .metadata()
         .map_err(|e| format!("Failed to get session metadata: {}", e))?;
 
-    let view_model = present_session_summary(session, metadata);
+    let view_model = SessionSummaryViewModel::new(session, metadata);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
@@ -381,7 +382,7 @@ pub async fn handle_get_session_turns(
         None
     };
 
-    let view_model = present_session_turns(session, offset, limit, next_cursor);
+    let view_model = SessionTurnsViewModel::new(session, offset, limit, next_cursor);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
@@ -412,7 +413,7 @@ pub async fn handle_get_turn_steps(
             )
         })?;
 
-    let view_model = present_turn_steps(args.session_id.clone(), args.turn_index, turn);
+    let view_model = TurnStepsViewModel::new(args.session_id.clone(), args.turn_index, turn);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
@@ -457,7 +458,7 @@ pub async fn handle_get_session_full(
         None
     };
 
-    let view_model = present_session_full(session, offset, limit, next_cursor);
+    let view_model = SessionFullViewModel::new(session, offset, limit, next_cursor);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
