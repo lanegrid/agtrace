@@ -194,9 +194,7 @@ impl SessionHandle {
         })?;
 
         Ok(agtrace_types::SessionMetadata {
-            session_id: uuid::Uuid::parse_str(&index_summary.id).map_err(|e| {
-                Error::InvalidOperation(format!("Invalid session ID format: {}", e))
-            })?,
+            session_id: index_summary.id.clone(),
             project_hash: index_summary.project_hash,
             provider: index_summary.provider,
         })

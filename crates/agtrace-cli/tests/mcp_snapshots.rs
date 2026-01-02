@@ -1,3 +1,4 @@
+use agtrace_sdk::{Client, types::SessionFilter};
 use agtrace_testing::TestWorld;
 use agtrace_testing::providers::TestProvider;
 use anyhow::Result;
@@ -158,15 +159,14 @@ fn test_mcp_list_sessions() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_mcp_get_session_summary() -> Result<()> {
+#[tokio::test]
+async fn test_mcp_get_session_summary() -> Result<()> {
     let world = setup_world()?;
 
-    let list_output = world.run(&["session", "list", "--format", "json"])?;
-    let list_json = list_output.json()?;
-    let session_id = list_json["content"]["sessions"][0]["id"]
-        .as_str()
-        .expect("Should have session ID");
+    // Get real session ID using SDK
+    let client = Client::connect(world.data_dir()).await?;
+    let sessions = client.sessions().list(SessionFilter::all())?;
+    let session_id = &sessions[0].id;
 
     let mut mcp = McpHarness::new(world.data_dir().to_str().unwrap())?;
 
@@ -185,15 +185,14 @@ fn test_mcp_get_session_summary() -> Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_mcp_get_session_turns() -> Result<()> {
+#[tokio::test]
+async fn test_mcp_get_session_turns() -> Result<()> {
     let world = setup_world()?;
 
-    let list_output = world.run(&["session", "list", "--format", "json"])?;
-    let list_json = list_output.json()?;
-    let session_id = list_json["content"]["sessions"][0]["id"]
-        .as_str()
-        .expect("Should have session ID");
+    // Get real session ID using SDK
+    let client = Client::connect(world.data_dir()).await?;
+    let sessions = client.sessions().list(SessionFilter::all())?;
+    let session_id = &sessions[0].id;
 
     let mut mcp = McpHarness::new(world.data_dir().to_str().unwrap())?;
 

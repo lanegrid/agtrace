@@ -48,7 +48,7 @@ pub struct SessionSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionMetadata {
     /// Unique session identifier.
-    pub session_id: Uuid,
+    pub session_id: String,
     /// Project hash (inferred from log file path).
     pub project_hash: ProjectHash,
     /// Provider name (claude_code, codex, gemini).
