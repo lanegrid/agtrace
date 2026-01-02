@@ -72,15 +72,18 @@ List recent AI agent sessions with optional filtering.
 
 ### `get_session_details`
 
-Get complete details of a specific session including all turns, tool calls, context window usage, and model information.
+Get session details with configurable verbosity to control response size.
 
 **Parameters**:
-- `session_id` (string, required): Session ID (short or full hash)
+- `session_id` (string, required): Session ID (8-char prefix or full UUID)
+- `detail_level` (string, optional): Response verbosity - `summary` (5-10 KB), `turns` (15-30 KB), `steps` (50-100 KB), or `full` (unbounded). Default: `summary`
+- `include_reasoning` (boolean, optional): Include thinking blocks in turn summaries (only applies to `turns` level). Default: `false`
 
 **Example**:
 ```json
 {
-  "session_id": "abc123"
+  "session_id": "fb3cff44",
+  "detail_level": "turns"
 }
 ```
 
@@ -102,23 +105,49 @@ Run diagnostic analysis on a session to identify failures, infinite loops, and o
 }
 ```
 
-### `search_events`
+### `search_event_previews`
 
-Search for patterns in event payloads across recent sessions. Useful for investigating tool usage, discovering argument formats, or debugging specific behaviors.
+Search for patterns in event payloads across sessions, returning lightweight previews (~300 char snippets). Use with `get_event_details` for full payloads.
 
 **Parameters**:
-- `pattern` (string, required): Search pattern (substring match)
-- `limit` (number, optional): Maximum matches to return (default: 50)
-- `provider` (string, optional): Filter by provider
-- `event_type` (string, optional): Filter by event type
+- `query` (string, required): Search query (substring match in event JSON)
+- `limit` (number, optional): Maximum matches to return (default: 10, max: 50)
+- `cursor` (string, optional): Pagination cursor from previous response
+- `provider` (string, optional): Filter by provider (`claude_code`, `codex`, `gemini`)
+- `event_type` (string, optional): Filter by event type (`ToolCall`, `ToolResult`, `Message`, `User`, `Reasoning`, `TokenUsage`, `Notification`)
+- `session_id` (string, optional): Search within specific session only
 
 **Example**:
 ```json
 {
-  "pattern": "Read",
-  "limit": 5
+  "query": "Read",
+  "event_type": "ToolCall",
+  "limit": 10
 }
 ```
+
+**Response includes**:
+- Event previews with `event_index` for retrieval
+- Pagination metadata (`next_cursor`, `has_more`)
+- Hint to use `get_event_details` for full payloads
+
+### `get_event_details`
+
+Retrieve full event payload by session ID and event index (obtained from `search_event_previews`).
+
+**Parameters**:
+- `session_id` (string, required): Session ID (8-char prefix or full UUID)
+- `event_index` (number, required): Zero-based event index within session
+
+**Example**:
+```json
+{
+  "session_id": "fb3cff44",
+  "event_index": 42
+}
+```
+
+**Response includes**: Complete event with timestamp, type, and full untruncated payload.
 
 ### `get_project_info`
 
@@ -132,10 +161,27 @@ Once configured, you can ask Claude Desktop questions like:
 
 - *"Show me my recent sessions"*
 - *"Analyze the last failed session and tell me what went wrong"*
-- *"Search for all times I used the Read tool in the past week"*
+- *"Search for all Read tool calls and show me the first one in detail"*
 - *"What sessions have I run in this project?"*
+- *"Find tool failures in session fb3cff44"*
 
 Claude will automatically use the appropriate agtrace tools to answer these questions by querying your indexed session history.
+
+### Progressive Disclosure Workflow
+
+For efficient context usage, follow this pattern:
+
+1. **Discover**: Use `search_event_previews` to find relevant events
+2. **Drill Down**: Use `get_event_details` to retrieve full payloads for specific events
+3. **Analyze**: Use `analyze_session` for health diagnostics
+4. **Context**: Use `get_session_details` with appropriate `detail_level`
+
+Example conversation:
+```
+User: "Find errors in my last session"
+→ search_event_previews(query="error") returns preview with event_index: 87
+→ get_event_details(session_id="fb3cff44", event_index=87) returns full error
+```
 
 ## Architecture
 
