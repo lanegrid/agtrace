@@ -1,43 +1,31 @@
-// Event Preview Types
-//
-// Rationale: Type-specific previews for different event payloads
-// - MAX_PREVIEW_LEN: 300 chars keeps previews under ~1 KB (safe for LLM context)
-// - PreviewContent::ToolCall truncates arguments to 100 chars (nested JSON safety)
-// - event_index: Enables precise retrieval via get_event_details (key design choice)
-
 use agtrace_sdk::types::EventPayload;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::mcp::dto::common::{EventType, truncate_string};
-use crate::mcp::dto::tool_summary::ToolSummarizer;
+use crate::mcp::models::common::EventType;
 
 const MAX_PREVIEW_LEN: usize = 300;
 
-/// Event preview for search results
 #[derive(Debug, Serialize)]
-pub struct EventPreview {
-    /// Session ID containing this event
+pub struct SearchEventPreviewsViewModel {
+    pub matches: Vec<EventPreviewViewModel>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EventPreviewViewModel {
     pub session_id: String,
-    /// Zero-based index within session (for use with get_event_details)
     pub event_index: usize,
-    /// Event timestamp
     pub timestamp: DateTime<Utc>,
-    /// Event type
     pub event_type: EventType,
-    /// Preview content (~300 chars)
     pub preview: PreviewContent,
 }
 
-/// Preview content based on event type
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum PreviewContent {
     ToolCall {
         tool: String,
-        /// Human-readable summary of what the tool does (e.g., "Read path/to/file.rs")
         summary: String,
-        /// Truncated preview of arguments (max 100 chars per field)
         arguments_preview: serde_json::Value,
     },
     ToolResult {
@@ -54,6 +42,8 @@ pub enum PreviewContent {
 
 impl PreviewContent {
     pub fn from_payload(payload: &EventPayload) -> Self {
+        use crate::mcp::models::common::{ToolSummarizer, truncate_json_value, truncate_string};
+
         match payload {
             EventPayload::ToolCall(tc) => {
                 let tool = tc.name().to_string();
@@ -61,7 +51,7 @@ impl PreviewContent {
                 let args_json = serde_json::to_value(tc)
                     .unwrap_or_else(|e| serde_json::json!({"<error>": e.to_string()}));
                 let arguments_preview = if let Some(args) = args_json.get("arguments") {
-                    super::super::common::truncate_json_value(args, 100)
+                    truncate_json_value(args, 100)
                 } else {
                     serde_json::Value::Object(Default::default())
                 };
@@ -102,44 +92,11 @@ impl PreviewContent {
     }
 }
 
-/// Response for search_event_previews tool
 #[derive(Debug, Serialize)]
-pub struct SearchEventPreviewsData {
-    pub matches: Vec<EventPreview>,
-}
-
-/// Response for get_event_details tool
-#[derive(Debug, Serialize)]
-pub struct EventDetailsResponse {
+pub struct EventDetailsViewModel {
     pub session_id: String,
     pub event_index: usize,
     pub timestamp: DateTime<Utc>,
     pub event_type: EventType,
     pub payload: EventPayload,
-}
-
-impl EventDetailsResponse {
-    pub fn from_event(
-        session_id: String,
-        event_index: usize,
-        event: &agtrace_sdk::types::AgentEvent,
-    ) -> Self {
-        let event_type = match &event.payload {
-            EventPayload::ToolCall(_) => EventType::ToolCall,
-            EventPayload::ToolResult(_) => EventType::ToolResult,
-            EventPayload::Message(_) => EventType::Message,
-            EventPayload::User(_) => EventType::User,
-            EventPayload::Reasoning(_) => EventType::Reasoning,
-            EventPayload::TokenUsage(_) => EventType::TokenUsage,
-            EventPayload::Notification(_) => EventType::Notification,
-        };
-
-        Self {
-            session_id,
-            event_index,
-            timestamp: event.timestamp,
-            event_type,
-            payload: event.payload.clone(),
-        }
-    }
 }

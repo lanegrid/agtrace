@@ -1,6 +1,6 @@
 use agtrace_sdk::types::{ExecuteArgs, FileReadArgs, ToolCallPayload};
 
-use super::common::truncate_string;
+use super::truncate_string;
 
 /// Summarizes tool executions into human-readable one-liners
 pub struct ToolSummarizer;
