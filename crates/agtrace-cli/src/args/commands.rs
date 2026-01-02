@@ -421,27 +421,27 @@ pub enum LabCommand {
     #[command(
         about = "Export session data to various formats",
         after_long_help = "EXAMPLES:
-  # Export to stdout (default JSONL format)
+  # Export to default file (session_abc123de.jsonl)
   agtrace lab export abc123def
 
-  # Export to a file
+  # Export to a specific file
   agtrace lab export abc123def --output session.jsonl
 
   # Export as plain text
-  agtrace lab export abc123def --format text --output session.txt
+  agtrace lab export abc123def --export-format text --output session.txt
 
-  # Export with different strategies
+  # Export with different strategies (filtering events)
   agtrace lab export abc123def --strategy clean --output session.jsonl"
     )]
     Export {
         #[arg(help = "Session ID (short or full hash)")]
         session_id: String,
 
-        #[arg(long, help = "Output file path (defaults to stdout)")]
+        #[arg(long, help = "Output file path (defaults to session_{id}.jsonl)")]
         output: Option<PathBuf>,
 
-        #[arg(long, default_value = "jsonl", help = "Output format")]
-        format: ExportFormat,
+        #[arg(long, default_value = "jsonl", help = "Export file format")]
+        export_format: ExportFormat,
 
         #[arg(long, default_value = "raw", help = "Export strategy")]
         strategy: ExportStrategy,

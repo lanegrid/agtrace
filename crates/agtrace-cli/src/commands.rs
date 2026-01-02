@@ -236,13 +236,13 @@ pub async fn run(cli: Cli) -> Result<()> {
                 LabCommand::Export {
                     session_id,
                     output,
-                    format,
+                    export_format,
                     strategy,
                 } => handlers::lab_export::handle(
                     &workspace,
                     session_id,
                     output,
-                    format,
+                    export_format,
                     strategy,
                     ctx.format,
                     &default_view_mode(),

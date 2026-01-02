@@ -12,10 +12,10 @@ Arguments:
 
 Options:
       --output <OUTPUT>
-          Output file path (defaults to stdout)
+          Output file path (defaults to session_{id}.jsonl)
 
-      --format <FORMAT>
-          Output format
+      --export-format <EXPORT_FORMAT>
+          Export file format
           
           [default: jsonl]
           [possible values: jsonl, text]
@@ -33,6 +33,12 @@ Global Options:
       --data-dir <DATA_DIR>
           Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
 
+      --format <FORMAT>
+          Output format for command results
+          
+          [default: plain]
+          [possible values: plain, json]
+
       --log-level <LOG_LEVEL>
           Logging verbosity level
           
@@ -46,14 +52,14 @@ Global Options:
           Operate on all indexed projects instead of current project only
 
 EXAMPLES:
-  # Export to stdout (default JSONL format)
+  # Export to default file (session_abc123de.jsonl)
   agtrace lab export abc123def
 
-  # Export to a file
+  # Export to a specific file
   agtrace lab export abc123def --output session.jsonl
 
   # Export as plain text
-  agtrace lab export abc123def --format text --output session.txt
+  agtrace lab export abc123def --export-format text --output session.txt
 
-  # Export with different strategies
+  # Export with different strategies (filtering events)
   agtrace lab export abc123def --strategy clean --output session.jsonl
