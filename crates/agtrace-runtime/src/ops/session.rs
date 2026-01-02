@@ -27,14 +27,11 @@ impl<'a> SessionService<'a> {
             agtrace_types::ProjectScope::Specific(hash) => Some(hash.clone()),
         };
 
-        let fetch_limit = request.limit.map(|l| l * 3);
-        let mut sessions = self
-            .db
-            .list_sessions(effective_project_hash.as_ref(), fetch_limit)?;
-
-        if let Some(src) = request.provider {
-            sessions.retain(|s| s.provider == src);
-        }
+        let mut sessions = self.db.list_sessions(
+            effective_project_hash.as_ref(),
+            request.provider.as_deref(),
+            request.limit,
+        )?;
 
         if let Some(since_str) = request.since
             && let Ok(since_dt) = DateTime::parse_from_rfc3339(&since_str)

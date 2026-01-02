@@ -92,12 +92,21 @@ mod tests {
         // Verify cursor field exists
         let schema_value = serde_json::to_value(&schema).unwrap();
         let properties = schema_value["properties"].as_object().unwrap();
-        assert!(properties.contains_key("cursor"), "cursor field should exist in schema");
-        assert!(properties.contains_key("limit"), "limit field should exist in schema");
+        assert!(
+            properties.contains_key("cursor"),
+            "cursor field should exist in schema"
+        );
+        assert!(
+            properties.contains_key("limit"),
+            "limit field should exist in schema"
+        );
 
         // Verify cursor description
         let cursor_desc = properties["cursor"]["description"].as_str().unwrap();
-        assert!(cursor_desc.contains("cursor"), "cursor description should mention cursor");
+        assert!(
+            cursor_desc.contains("cursor"),
+            "cursor description should mention cursor"
+        );
     }
 
     #[test]
@@ -108,12 +117,21 @@ mod tests {
 
         let schema_value = serde_json::to_value(&schema).unwrap();
         let properties = schema_value["properties"].as_object().unwrap();
-        assert!(properties.contains_key("cursor"), "cursor field should exist in schema");
-        assert!(properties.contains_key("pattern"), "pattern field should exist in schema");
+        assert!(
+            properties.contains_key("cursor"),
+            "cursor field should exist in schema"
+        );
+        assert!(
+            properties.contains_key("pattern"),
+            "pattern field should exist in schema"
+        );
 
         // Verify required fields
         let required = schema_value["required"].as_array().unwrap();
-        assert!(required.contains(&serde_json::json!("pattern")), "pattern should be required");
+        assert!(
+            required.contains(&serde_json::json!("pattern")),
+            "pattern should be required"
+        );
     }
 
     #[test]
@@ -124,11 +142,16 @@ mod tests {
 
         let schema_value = serde_json::to_value(&schema).unwrap();
         let properties = schema_value["properties"].as_object().unwrap();
-        assert!(properties.contains_key("detail_level"), "detail_level should exist");
+        assert!(
+            properties.contains_key("detail_level"),
+            "detail_level should exist"
+        );
 
         // Verify detail_level has enum
         let detail_level = &properties["detail_level"];
-        assert!(detail_level.get("anyOf").is_some() || detail_level.get("enum").is_some(),
-                "detail_level should have enum values");
+        assert!(
+            detail_level.get("anyOf").is_some() || detail_level.get("enum").is_some(),
+            "detail_level should have enum values"
+        );
     }
 }
