@@ -151,6 +151,11 @@ pub async fn handle_analyze_session(
     serde_json::to_value(&report).map_err(|e| format!("Serialization error: {}", e))
 }
 
+#[allow(dead_code)]
+#[deprecated(
+    since = "0.4.0",
+    note = "Use handle_search_event_previews + handle_get_event_details instead"
+)]
 pub async fn handle_search_events(
     client: &Client,
     args: SearchEventsArgs,
