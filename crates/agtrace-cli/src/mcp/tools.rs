@@ -12,12 +12,15 @@ use agtrace_sdk::{Client, Lens, SessionFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::dto::{
-    AnalyzeSessionArgs, EventDetailsResponse, EventPreview, GetEventDetailsArgs,
-    GetSessionFullArgs, GetSessionSummaryArgs, GetSessionTurnsArgs, GetTurnStepsArgs,
-    ListSessionsArgs, ListSessionsResponse, McpError, McpResponse, PaginationMeta, PreviewContent,
-    SearchEventPreviewsArgs, SearchEventPreviewsData, SessionFullResponse, SessionSummaryDto,
-    SessionSummaryResponse, SessionTurnsResponse, TurnStepsResponse,
+use super::models::{
+    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs,
+    GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs, McpError, McpResponse, PaginationMeta,
+    SearchEventPreviewsArgs,
+};
+use super::presenters::{
+    present_analysis, present_event_details, present_event_preview, present_list_sessions,
+    present_project_info, present_search_event_previews, present_session_full,
+    present_session_summary, present_session_turns, present_turn_steps,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -110,17 +113,9 @@ pub async fn handle_list_sessions(
         None
     };
 
-    let total_in_page = sessions.len();
-    let response = ListSessionsResponse {
-        sessions: sessions
-            .into_iter()
-            .map(SessionSummaryDto::from_sdk)
-            .collect(),
-        total_in_page,
-        next_cursor,
-    };
+    let view_model = present_list_sessions(sessions, next_cursor);
 
-    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 pub async fn handle_analyze_session(
@@ -148,7 +143,9 @@ pub async fn handle_analyze_session(
         .report()
         .map_err(|e| format!("Failed to generate report: {}", e))?;
 
-    serde_json::to_value(&report).map_err(|e| format!("Serialization error: {}", e))
+    let view_model = present_analysis(report);
+
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
@@ -157,7 +154,9 @@ pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
         .list()
         .map_err(|e| format!("Failed to list projects: {}", e))?;
 
-    serde_json::to_value(&projects).map_err(|e| format!("Serialization error: {}", e))
+    let view_model = present_project_info(projects);
+
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 // search_event_previews: Lightweight event discovery (returns ~300 char previews)
@@ -234,33 +233,8 @@ pub async fn handle_search_event_previews(
             };
 
             if event_json.contains(&args.query) {
-                let event_type = match &event.payload {
-                    agtrace_sdk::types::EventPayload::ToolCall(_) => {
-                        super::dto::EventType::ToolCall
-                    }
-                    agtrace_sdk::types::EventPayload::ToolResult(_) => {
-                        super::dto::EventType::ToolResult
-                    }
-                    agtrace_sdk::types::EventPayload::Message(_) => super::dto::EventType::Message,
-                    agtrace_sdk::types::EventPayload::User(_) => super::dto::EventType::User,
-                    agtrace_sdk::types::EventPayload::Reasoning(_) => {
-                        super::dto::EventType::Reasoning
-                    }
-                    agtrace_sdk::types::EventPayload::TokenUsage(_) => {
-                        super::dto::EventType::TokenUsage
-                    }
-                    agtrace_sdk::types::EventPayload::Notification(_) => {
-                        super::dto::EventType::Notification
-                    }
-                };
-
-                all_matches.push(EventPreview {
-                    session_id: session_summary.id.clone(),
-                    event_index,
-                    timestamp: event.timestamp,
-                    event_type,
-                    preview: PreviewContent::from_payload(&event.payload),
-                });
+                let preview = present_event_preview(session_summary.id.clone(), event_index, event);
+                all_matches.push(preview);
             }
         }
     }
@@ -290,8 +264,10 @@ pub async fn handle_search_event_previews(
     };
 
     let total_in_page = matches.len();
+    let view_model = present_search_event_previews(matches);
+
     let response = McpResponse {
-        data: SearchEventPreviewsData { matches },
+        data: view_model,
         pagination: Some(PaginationMeta {
             total_in_page,
             next_cursor,
@@ -331,9 +307,14 @@ pub async fn handle_get_event_details(
     }
 
     let event = &events[args.event_index];
-    let response = EventDetailsResponse::from_event(args.session_id, args.event_index, event);
+    let view_model = present_event_details(
+        args.session_id,
+        args.event_index,
+        event.timestamp,
+        event.payload.clone(),
+    );
 
-    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 // ============================================================================
@@ -358,9 +339,9 @@ pub async fn handle_get_session_summary(
         .metadata()
         .map_err(|e| format!("Failed to get session metadata: {}", e))?;
 
-    let response = SessionSummaryResponse::from_session(session, metadata).with_metadata();
+    let view_model = present_session_summary(session, metadata);
 
-    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 /// Get turn-level summaries with pagination (10-30 KB per page)
@@ -400,10 +381,9 @@ pub async fn handle_get_session_turns(
         None
     };
 
-    let response =
-        SessionTurnsResponse::from_session_paginated(session, offset, limit, next_cursor);
+    let view_model = present_session_turns(session, offset, limit, next_cursor);
 
-    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 /// Get detailed steps for a specific turn (20-50 KB)
@@ -432,16 +412,9 @@ pub async fn handle_get_turn_steps(
             )
         })?;
 
-    let response = TurnStepsResponse::from_turn(
-        args.session_id.clone(),
-        args.turn_index,
-        turn,
-        args.should_include_reasoning(),
-        args.should_include_tools(),
-        args.should_include_message(),
-    );
+    let view_model = present_turn_steps(args.session_id.clone(), args.turn_index, turn);
 
-    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 /// Get complete session data with full payloads (50-100 KB per chunk, paginated)
@@ -484,7 +457,7 @@ pub async fn handle_get_session_full(
         None
     };
 
-    let response = SessionFullResponse::from_session_paginated(session, offset, limit, next_cursor);
+    let view_model = present_session_full(session, offset, limit, next_cursor);
 
-    response.into_value()
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }

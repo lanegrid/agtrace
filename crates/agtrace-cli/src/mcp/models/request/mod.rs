@@ -108,18 +108,6 @@ impl GetTurnStepsArgs {
     pub fn limit(&self) -> usize {
         self.limit.unwrap_or(20).min(100)
     }
-
-    pub fn should_include_reasoning(&self) -> bool {
-        self.include_reasoning.unwrap_or(true)
-    }
-
-    pub fn should_include_tools(&self) -> bool {
-        self.include_tools.unwrap_or(true)
-    }
-
-    pub fn should_include_message(&self) -> bool {
-        self.include_message.unwrap_or(true)
-    }
 }
 
 /// Get complete session data with full payloads (50-100 KB per chunk, requires pagination)

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
-use super::dto::{
+use super::models::{
     AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs,
     GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs, SearchEventPreviewsArgs,
 };
