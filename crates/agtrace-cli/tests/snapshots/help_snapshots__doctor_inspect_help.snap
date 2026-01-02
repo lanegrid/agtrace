@@ -13,9 +13,6 @@ Arguments:
           Path to the log file
 
 Options:
-      --data-dir <DATA_DIR>
-          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
-
       --lines <LINES>
           Number of lines to display
           
@@ -27,26 +24,31 @@ Options:
           [default: raw]
           [possible values: raw, json]
 
-      --log-level <LOG_LEVEL>
-          Logging verbosity level
-          
-          [default: info]
-          [possible values: error, warn, info, debug, trace]
+  -h, --help
+          Print help (see a summary with '-h')
 
+Output Options:
       --quiet
           Minimal output (IDs only, for scripting)
 
       --compact
           Compact output (one line per item)
 
+      --verbose
+          Verbose output (all metadata)
+
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
       --project-root <PROJECT_ROOT>
           Override project root directory (defaults to current directory)
 
       --all-projects
           Operate on all indexed projects instead of current project only
-
-      --verbose
-          Verbose output (all metadata)
-
-  -h, --help
-          Print help (see a summary with '-h')

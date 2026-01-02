@@ -15,26 +15,34 @@ Use this when sessions aren't appearing in the index.
 Usage: agtrace doctor run [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>
-          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
-
       --provider <PROVIDER>
           Filter by provider
           
           [default: all]
           [possible values: claude_code, codex, gemini, all]
 
-      --format <FORMAT>
-          Output format for command results
-          
-          [default: plain]
-          [possible values: plain, json]
+  -h, --help
+          Print help (see a summary with '-h')
 
+Output Options:
       --quiet
           Minimal output (IDs only, for scripting)
 
       --compact
           Compact output (one line per item)
+
+      --verbose
+          Verbose output (all metadata)
+
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+
+      --format <FORMAT>
+          Output format for command results
+          
+          [default: plain]
+          [possible values: plain, json]
 
       --log-level <LOG_LEVEL>
           Logging verbosity level
@@ -45,11 +53,5 @@ Options:
       --project-root <PROJECT_ROOT>
           Override project root directory (defaults to current directory)
 
-      --verbose
-          Verbose output (all metadata)
-
       --all-projects
           Operate on all indexed projects instead of current project only
-
-  -h, --help
-          Print help (see a summary with '-h')

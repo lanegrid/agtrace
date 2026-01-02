@@ -33,6 +33,7 @@ pub struct Cli {
     #[arg(
         long,
         global = true,
+        help_heading = "Global Options",
         help = "Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)"
     )]
     pub data_dir: Option<String>,
@@ -41,6 +42,7 @@ pub struct Cli {
         long,
         default_value = "plain",
         global = true,
+        help_heading = "Global Options",
         help = "Output format for command results"
     )]
     pub format: OutputFormat,
@@ -49,6 +51,7 @@ pub struct Cli {
         long,
         default_value = "info",
         global = true,
+        help_heading = "Global Options",
         help = "Logging verbosity level"
     )]
     pub log_level: LogLevel,
@@ -56,6 +59,7 @@ pub struct Cli {
     #[arg(
         long,
         global = true,
+        help_heading = "Global Options",
         help = "Override project root directory (defaults to current directory)"
     )]
     pub project_root: Option<String>,
@@ -63,6 +67,7 @@ pub struct Cli {
     #[arg(
         long,
         global = true,
+        help_heading = "Global Options",
         help = "Operate on all indexed projects instead of current project only"
     )]
     pub all_projects: bool,

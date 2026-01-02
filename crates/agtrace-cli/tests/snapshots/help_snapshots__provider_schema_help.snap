@@ -1,5 +1,0 @@
----
-source: crates/agtrace-cli/tests/help_snapshots.rs
-expression: help
----
-

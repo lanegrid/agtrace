@@ -4,15 +4,26 @@ use clap::Args;
 pub struct ViewModeArgs {
     #[arg(
         long,
+        help_heading = "Output Options",
         help = "Minimal output (IDs only, for scripting)",
         group = "view_mode"
     )]
     pub quiet: bool,
 
-    #[arg(long, help = "Compact output (one line per item)", group = "view_mode")]
+    #[arg(
+        long,
+        help_heading = "Output Options",
+        help = "Compact output (one line per item)",
+        group = "view_mode"
+    )]
     pub compact: bool,
 
-    #[arg(long, help = "Verbose output (all metadata)", group = "view_mode")]
+    #[arg(
+        long,
+        help_heading = "Output Options",
+        help = "Verbose output (all metadata)",
+        group = "view_mode"
+    )]
     pub verbose: bool,
 }
 

@@ -16,23 +16,37 @@ Arguments:
           Provider name (claude_code, codex, gemini)
 
 Options:
-      --data-dir <DATA_DIR>
-          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
-
       --log-root <LOG_ROOT>
           Path to the provider's log directory
 
       --enable
           Enable this provider for indexing
 
+      --disable
+          Disable this provider from indexing
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Output Options:
+      --quiet
+          Minimal output (IDs only, for scripting)
+
+      --compact
+          Compact output (one line per item)
+
+      --verbose
+          Verbose output (all metadata)
+
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+
       --format <FORMAT>
           Output format for command results
           
           [default: plain]
           [possible values: plain, json]
-
-      --disable
-          Disable this provider from indexing
 
       --log-level <LOG_LEVEL>
           Logging verbosity level
@@ -43,17 +57,5 @@ Options:
       --project-root <PROJECT_ROOT>
           Override project root directory (defaults to current directory)
 
-      --quiet
-          Minimal output (IDs only, for scripting)
-
       --all-projects
           Operate on all indexed projects instead of current project only
-
-      --compact
-          Compact output (one line per item)
-
-      --verbose
-          Verbose output (all metadata)
-
-  -h, --help
-          Print help (see a summary with '-h')

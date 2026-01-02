@@ -14,14 +14,22 @@ Detected providers are saved to the configuration file.
 Usage: agtrace provider detect [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>
-          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+  -h, --help
+          Print help (see a summary with '-h')
 
+Output Options:
       --quiet
           Minimal output (IDs only, for scripting)
 
       --compact
           Compact output (one line per item)
+
+      --verbose
+          Verbose output (all metadata)
+
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
 
       --format <FORMAT>
           Output format for command results
@@ -35,14 +43,8 @@ Options:
           [default: info]
           [possible values: error, warn, info, debug, trace]
 
-      --verbose
-          Verbose output (all metadata)
-
       --project-root <PROJECT_ROOT>
           Override project root directory (defaults to current directory)
 
       --all-projects
           Operate on all indexed projects instead of current project only
-
-  -h, --help
-          Print help (see a summary with '-h')

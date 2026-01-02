@@ -80,12 +80,6 @@ fn test_provider_set_help() {
 }
 
 #[test]
-fn test_provider_schema_help() {
-    let help = run_help(&["provider", "schema"]);
-    insta::assert_snapshot!("provider_schema_help", help);
-}
-
-#[test]
 fn test_doctor_help() {
     let help = run_help(&["doctor"]);
     insta::assert_snapshot!("doctor_help", help);

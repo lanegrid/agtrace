@@ -10,9 +10,6 @@ Use filters to narrow down by provider, time range, or project.
 Usage: agtrace session list [OPTIONS]
 
 Options:
-      --data-dir <DATA_DIR>
-          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
-
       --project-hash <PROJECT_HASH>
           Filter by project hash
 
@@ -26,20 +23,8 @@ Options:
           
           [default: 50]
 
-      --log-level <LOG_LEVEL>
-          Logging verbosity level
-          
-          [default: info]
-          [possible values: error, warn, info, debug, trace]
-
-      --project-root <PROJECT_ROOT>
-          Override project root directory (defaults to current directory)
-
       --since <SINCE>
           Show sessions after this timestamp
-
-      --all-projects
-          Operate on all indexed projects instead of current project only
 
       --until <UNTIL>
           Show sessions before this timestamp
@@ -53,6 +38,10 @@ Options:
           [default: plain]
           [possible values: plain, json]
 
+  -h, --help
+          Print help (see a summary with '-h')
+
+Output Options:
       --quiet
           Minimal output (IDs only, for scripting)
 
@@ -62,5 +51,34 @@ Options:
       --verbose
           Verbose output (all metadata)
 
-  -h, --help
-          Print help (see a summary with '-h')
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --project-root <PROJECT_ROOT>
+          Override project root directory (defaults to current directory)
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+EXAMPLES:
+  # List 10 most recent sessions
+  agtrace session list --limit 10
+
+  # Filter by provider
+  agtrace session list --provider claude_code
+
+  # Show sessions from the last 2 hours (ISO 8601 format)
+  agtrace session list --since 2025-01-02T10:00:00Z
+
+  # Show sessions from a specific time range
+  agtrace session list --since 2025-01-01T00:00:00Z --until 2025-01-02T00:00:00Z
+
+  # JSON output for scripting
+  agtrace session list --format json --limit 5

@@ -23,6 +23,13 @@ Commands:
   help      Print this message or the help of the given subcommand(s)
 
 Options:
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+Global Options:
       --data-dir <DATA_DIR>
           Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
 
@@ -43,12 +50,6 @@ Options:
 
       --all-projects
           Operate on all indexed projects instead of current project only
-
-  -h, --help
-          Print help (see a summary with '-h')
-
-  -V, --version
-          Print version
 
 Quick Start:
   agtrace init      # Run once to set up

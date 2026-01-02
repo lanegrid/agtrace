@@ -216,7 +216,22 @@ pub enum SessionCommand {
         long_about = "List recent AI agent sessions from the index.
 
 Sessions are displayed with timestamps, snippets, and metadata.
-Use filters to narrow down by provider, time range, or project."
+Use filters to narrow down by provider, time range, or project.",
+        after_long_help = "EXAMPLES:
+  # List 10 most recent sessions
+  agtrace session list --limit 10
+
+  # Filter by provider
+  agtrace session list --provider claude_code
+
+  # Show sessions from the last 2 hours (ISO 8601 format)
+  agtrace session list --since 2025-01-02T10:00:00Z
+
+  # Show sessions from a specific time range
+  agtrace session list --since 2025-01-01T00:00:00Z --until 2025-01-02T00:00:00Z
+
+  # JSON output for scripting
+  agtrace session list --format json --limit 5"
     )]
     List {
         #[arg(long, help = "Filter by project hash")]
@@ -366,7 +381,16 @@ Useful for debugging parsing issues or understanding log file structure."
         long_about = "Test if a specific log file can be successfully parsed.
 
 Returns success/failure status and event count.
-Useful for validating log files before indexing."
+Useful for validating log files before indexing.",
+        after_long_help = "EXAMPLES:
+  # Check if a log file can be parsed (auto-detect provider)
+  agtrace doctor check ~/.claude/projects/my-project/session.jsonl
+
+  # Explicitly specify provider
+  agtrace doctor check --provider claude_code ~/.claude/projects/my-project/session.jsonl
+
+  # Check multiple files
+  agtrace doctor check ~/.codex/sessions/*.jsonl"
     )]
     Check {
         #[arg(help = "Path to the log file")]
@@ -394,17 +418,32 @@ pub enum ProjectCommand {
 
 #[derive(Subcommand)]
 pub enum LabCommand {
-    #[command(about = "Export session data to various formats")]
+    #[command(
+        about = "Export session data to various formats",
+        after_long_help = "EXAMPLES:
+  # Export to stdout (default JSONL format)
+  agtrace lab export abc123def
+
+  # Export to a file
+  agtrace lab export abc123def --output session.jsonl
+
+  # Export as plain text
+  agtrace lab export abc123def --format text --output session.txt
+
+  # Export with different strategies
+  agtrace lab export abc123def --strategy clean --output session.jsonl"
+    )]
     Export {
+        #[arg(help = "Session ID (short or full hash)")]
         session_id: String,
 
-        #[arg(long)]
+        #[arg(long, help = "Output file path (defaults to stdout)")]
         output: Option<PathBuf>,
 
-        #[arg(long, default_value = "jsonl")]
+        #[arg(long, default_value = "jsonl", help = "Output format")]
         format: ExportFormat,
 
-        #[arg(long, default_value = "raw")]
+        #[arg(long, default_value = "raw", help = "Export strategy")]
         strategy: ExportStrategy,
     },
 

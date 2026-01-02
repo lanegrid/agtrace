@@ -7,14 +7,53 @@ Export session data to various formats
 Usage: agtrace lab export [OPTIONS] <SESSION_ID>
 
 Arguments:
-  <SESSION_ID>  
+  <SESSION_ID>
+          Session ID (short or full hash)
 
 Options:
-      --data-dir <DATA_DIR>          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
-      --output <OUTPUT>              
-      --format <FORMAT>              [default: jsonl] [possible values: jsonl, text]
-      --log-level <LOG_LEVEL>        Logging verbosity level [default: info] [possible values: error, warn, info, debug, trace]
-      --strategy <STRATEGY>          [default: raw] [possible values: raw, clean, reasoning]
-      --project-root <PROJECT_ROOT>  Override project root directory (defaults to current directory)
-      --all-projects                 Operate on all indexed projects instead of current project only
-  -h, --help                         Print help
+      --output <OUTPUT>
+          Output file path (defaults to stdout)
+
+      --format <FORMAT>
+          Output format
+          
+          [default: jsonl]
+          [possible values: jsonl, text]
+
+      --strategy <STRATEGY>
+          Export strategy
+          
+          [default: raw]
+          [possible values: raw, clean, reasoning]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --project-root <PROJECT_ROOT>
+          Override project root directory (defaults to current directory)
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+EXAMPLES:
+  # Export to stdout (default JSONL format)
+  agtrace lab export abc123def
+
+  # Export to a file
+  agtrace lab export abc123def --output session.jsonl
+
+  # Export as plain text
+  agtrace lab export abc123def --format text --output session.txt
+
+  # Export with different strategies
+  agtrace lab export abc123def --strategy clean --output session.jsonl
