@@ -2,8 +2,6 @@ use agtrace_sdk::types::AgentTurn;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::mcp::models::common::{ContentLevel, ResponseMeta};
-
 /// Get detailed steps for a specific turn (20-50 KB)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetTurnStepsArgs {
@@ -49,31 +47,14 @@ pub struct TurnStepsViewModel {
     pub session_id: String,
     pub turn_index: usize,
     pub turn: AgentTurn,
-    pub _meta: ResponseMeta,
 }
 
 impl TurnStepsViewModel {
     pub fn new(session_id: String, turn_index: usize, turn: AgentTurn) -> Self {
-        let mut vm = Self {
+        Self {
             session_id,
             turn_index,
             turn,
-            _meta: ResponseMeta::from_bytes(0),
-        };
-
-        if let Ok(json) = serde_json::to_string(&vm) {
-            let bytes = json.len();
-            let meta = ResponseMeta::with_pagination(
-                bytes,
-                None,
-                vm.turn.steps.len(),
-                Some(vm.turn.steps.len()),
-            )
-            .with_content_level(ContentLevel::Steps);
-
-            vm._meta = meta;
         }
-
-        vm
     }
 }

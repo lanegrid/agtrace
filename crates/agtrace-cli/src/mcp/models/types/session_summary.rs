@@ -2,8 +2,6 @@ use agtrace_sdk::types::AgentSession;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::mcp::models::common::{ContentLevel, ResponseMeta};
-
 /// Get lightweight session overview (≤5 KB, always single-page)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetSessionSummaryArgs {
@@ -23,8 +21,6 @@ pub struct SessionSummaryViewModel {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
-
-    pub _meta: ResponseMeta,
 }
 
 impl SessionSummaryViewModel {
@@ -36,18 +32,10 @@ impl SessionSummaryViewModel {
             .map(|m| (Some(m.project_hash.to_string()), Some(m.provider)))
             .unwrap_or((None, None));
 
-        let mut vm = Self {
+        Self {
             session,
             project_hash,
             provider,
-            _meta: ResponseMeta::from_bytes(0),
-        };
-
-        if let Ok(json) = serde_json::to_string(&vm) {
-            let bytes = json.len();
-            vm._meta = ResponseMeta::from_bytes(bytes).with_content_level(ContentLevel::Summary);
         }
-
-        vm
     }
 }

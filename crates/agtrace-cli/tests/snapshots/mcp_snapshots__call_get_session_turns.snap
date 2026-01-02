@@ -3,14 +3,6 @@ source: crates/agtrace-cli/tests/mcp_snapshots.rs
 expression: content
 ---
 {
-  "_meta": {
-    "bytes": 7926,
-    "content_level": "turns",
-    "estimated_tokens": 1981,
-    "has_more": false,
-    "returned_count": 2,
-    "total_items": 2
-  },
   "end_time": "[TIMESTAMP]",
   "session_id": "[ID]",
   "start_time": "[TIMESTAMP]",
@@ -19,6 +11,7 @@ expression: content
     "total_tokens": 94471,
     "total_turns": 2
   },
+  "total_turns": 2,
   "turns": [
     {
       "id": "[ID]",

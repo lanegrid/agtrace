@@ -34,11 +34,16 @@ pub struct SearchEventPreviewsArgs {
 #[derive(Debug, Serialize)]
 pub struct SearchEventPreviewsViewModel {
     pub matches: Vec<EventPreviewViewModel>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 
 impl SearchEventPreviewsViewModel {
-    pub fn new(matches: Vec<EventPreviewViewModel>) -> Self {
-        Self { matches }
+    pub fn new(matches: Vec<EventPreviewViewModel>, next_cursor: Option<String>) -> Self {
+        Self {
+            matches,
+            next_cursor,
+        }
     }
 }
 

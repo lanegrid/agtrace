@@ -3,8 +3,6 @@ use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::mcp::models::common::{ContentLevel, ResponseMeta};
-
 /// Get turn-level summaries with pagination (10-30 KB per page)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetSessionTurnsArgs {
@@ -35,7 +33,9 @@ pub struct SessionTurnsViewModel {
     pub end_time: Option<DateTime<Utc>>,
     pub stats: SessionStats,
     pub turns: Vec<TurnWithIndex>,
-    pub _meta: ResponseMeta,
+    pub total_turns: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 
 impl SessionTurnsViewModel {
@@ -58,27 +58,15 @@ impl SessionTurnsViewModel {
             })
             .collect();
 
-        let mut vm = Self {
+        Self {
             session_id: session.session_id.to_string(),
             start_time: session.start_time,
             end_time: session.end_time,
             stats: session.stats,
             turns,
-            _meta: ResponseMeta::from_bytes(0),
-        };
-
-        if let Ok(json) = serde_json::to_string(&vm) {
-            let bytes = json.len();
-            vm._meta = ResponseMeta::with_pagination(
-                bytes,
-                next_cursor,
-                vm.turns.len(),
-                Some(total_turns),
-            )
-            .with_content_level(ContentLevel::Turns);
+            total_turns,
+            next_cursor,
         }
-
-        vm
     }
 }
 

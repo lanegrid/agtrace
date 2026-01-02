@@ -15,9 +15,9 @@ use serde_json::Value;
 use super::models::{
     AnalysisViewModel, AnalyzeSessionArgs, EventDetailsViewModel, EventPreviewViewModel,
     GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs, GetSessionTurnsArgs,
-    GetTurnStepsArgs, ListSessionsArgs, ListSessionsViewModel, McpError, McpResponse,
-    PaginationMeta, ProjectInfoViewModel, SearchEventPreviewsArgs, SearchEventPreviewsViewModel,
-    SessionFullViewModel, SessionSummaryViewModel, SessionTurnsViewModel, TurnStepsViewModel,
+    GetTurnStepsArgs, ListSessionsArgs, ListSessionsViewModel, McpError, ProjectInfoViewModel,
+    SearchEventPreviewsArgs, SearchEventPreviewsViewModel, SessionFullViewModel,
+    SessionSummaryViewModel, SessionTurnsViewModel, TurnStepsViewModel,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -264,21 +264,9 @@ pub async fn handle_search_event_previews(
         None
     };
 
-    let total_in_page = matches.len();
-    let view_model = SearchEventPreviewsViewModel::new(matches);
+    let view_model = SearchEventPreviewsViewModel::new(matches, next_cursor);
 
-    let response = McpResponse {
-        data: view_model,
-        pagination: Some(PaginationMeta {
-            total_in_page,
-            next_cursor,
-            has_more,
-            base_index: Some(offset),
-        }),
-        hint: None,
-    };
-
-    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+    serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
 // get_event_details: Retrieve full event payload by index
