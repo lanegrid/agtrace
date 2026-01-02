@@ -137,7 +137,11 @@ pub async fn handle_get_session_details(
         .assemble()
         .map_err(|e| format!("Failed to assemble session: {}", e))?;
 
-    SessionResponseBuilder::new(session)
+    let metadata = handle
+        .metadata()
+        .map_err(|e| format!("Failed to get session metadata: {}", e))?;
+
+    SessionResponseBuilder::new(session, metadata)
         .detail_level(args.detail_level())
         .include_reasoning(args.include_reasoning())
         .build()
@@ -373,7 +377,11 @@ pub async fn handle_get_session_summary(
         .assemble()
         .map_err(|e| format!("Failed to assemble session: {}", e))?;
 
-    let response = SessionSummaryResponse::from_session(session).with_metadata();
+    let metadata = handle
+        .metadata()
+        .map_err(|e| format!("Failed to get session metadata: {}", e))?;
+
+    let response = SessionSummaryResponse::from_session(session, metadata).with_metadata();
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }

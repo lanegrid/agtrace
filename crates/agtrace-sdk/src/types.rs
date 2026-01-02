@@ -26,6 +26,7 @@ pub use agtrace_types::{
     ProjectHash,
     ProjectScope,
     ReasoningPayload,
+    SessionMetadata,
     SessionStats,
     StepStatus,
     StreamId,

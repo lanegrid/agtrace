@@ -187,6 +187,21 @@ impl SessionHandle {
         service.export_session(&self.id, strategy)
     }
 
+    pub fn metadata(&self) -> Result<agtrace_types::SessionMetadata> {
+        let db = self.db.lock().unwrap();
+        let index_summary = db.get_session_by_id(&self.id)?.ok_or_else(|| {
+            Error::InvalidOperation(format!("Session metadata not found: {}", self.id))
+        })?;
+
+        Ok(agtrace_types::SessionMetadata {
+            session_id: uuid::Uuid::parse_str(&index_summary.id).map_err(|e| {
+                Error::InvalidOperation(format!("Invalid session ID format: {}", e))
+            })?,
+            project_hash: index_summary.project_hash,
+            provider: index_summary.provider,
+        })
+    }
+
     pub fn id(&self) -> &str {
         &self.id
     }
