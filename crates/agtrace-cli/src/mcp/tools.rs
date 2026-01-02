@@ -53,8 +53,17 @@ pub async fn handle_list_sessions(
     // Fetch limit + 1 to check if there are more results
     let fetch_limit = limit + 1;
 
-    let mut filter = if let Some(project_hash) = args.project_hash {
-        SessionFilter::project(project_hash.into()).limit(fetch_limit + offset)
+    // Resolve project filter: project_root takes priority over project_hash
+    let project_hash_filter = if let Some(root) = args.project_root {
+        // Calculate hash from root path (server-side resolution)
+        Some(agtrace_sdk::utils::project_hash_from_root(&root))
+    } else {
+        // Use explicit hash if provided
+        args.project_hash.map(|h| h.into())
+    };
+
+    let mut filter = if let Some(hash) = project_hash_filter {
+        SessionFilter::project(hash).limit(fetch_limit + offset)
     } else {
         SessionFilter::all().limit(fetch_limit + offset)
     };
@@ -108,7 +117,7 @@ pub async fn handle_list_sessions(
             .collect(),
         total_in_page,
         next_cursor,
-        hint: "Use get_session_details(id, detail_level='summary') for turn breakdown".to_string(),
+        hint: "Use get_session_details(id, detail_level='summary') for turn breakdown. Filter by project_root='/path/to/project' to see only relevant sessions.".to_string(),
     };
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))

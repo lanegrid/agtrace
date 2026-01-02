@@ -49,6 +49,45 @@ impl AgTraceServer {
         Self { client }
     }
 
+    /// Convert serde deserialization error to MCP-compliant JSON-RPC error
+    /// According to MCP spec 2024-11-05, missing required parameters should return:
+    /// - code: -32602 (Invalid params)
+    /// - message: "Invalid params: ..." format
+    /// - data: structured information about missing fields
+    fn parse_validation_error(tool_name: &str, error: serde_json::Error) -> JsonRpcError {
+        let error_msg = error.to_string();
+
+        // Check if it's a "missing field" error
+        // Format: "missing field `field_name`" or "missing field \"field_name\""
+        if error_msg.contains("missing field")
+            && let Some(field_start) = error_msg.find('`')
+            && let Some(field_end) = error_msg[field_start + 1..].find('`')
+        {
+            let field_name = &error_msg[field_start + 1..field_start + 1 + field_end];
+            return JsonRpcError {
+                code: -32602,
+                message: format!(
+                    "Invalid params: missing required field \"{}\"",
+                    field_name
+                ),
+                data: Some(json!({
+                    "missing": [field_name],
+                    "tool": tool_name,
+                })),
+            };
+        }
+
+        // Fallback for other validation errors
+        JsonRpcError {
+            code: -32602,
+            message: format!("Invalid params: {}", error),
+            data: Some(json!({
+                "tool": tool_name,
+                "detail": error_msg,
+            })),
+        }
+    }
+
     async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
         // MCP requires all requests to have an id, use a default if missing
         let id = request
@@ -188,11 +227,7 @@ impl AgTraceServer {
                             jsonrpc: "2.0".to_string(),
                             id,
                             result: None,
-                            error: Some(JsonRpcError {
-                                code: -32602,
-                                message: format!("Invalid arguments: {}", e),
-                                data: None,
-                            }),
+                            error: Some(Self::parse_validation_error("list_sessions", e)),
                         };
                     }
                 };
@@ -206,11 +241,7 @@ impl AgTraceServer {
                             jsonrpc: "2.0".to_string(),
                             id,
                             result: None,
-                            error: Some(JsonRpcError {
-                                code: -32602,
-                                message: format!("Invalid arguments: {}", e),
-                                data: None,
-                            }),
+                            error: Some(Self::parse_validation_error("get_session_details", e)),
                         };
                     }
                 };
@@ -224,11 +255,7 @@ impl AgTraceServer {
                             jsonrpc: "2.0".to_string(),
                             id,
                             result: None,
-                            error: Some(JsonRpcError {
-                                code: -32602,
-                                message: format!("Invalid arguments: {}", e),
-                                data: None,
-                            }),
+                            error: Some(Self::parse_validation_error("analyze_session", e)),
                         };
                     }
                 };
@@ -242,11 +269,7 @@ impl AgTraceServer {
                             jsonrpc: "2.0".to_string(),
                             id,
                             result: None,
-                            error: Some(JsonRpcError {
-                                code: -32602,
-                                message: format!("Invalid arguments: {}", e),
-                                data: None,
-                            }),
+                            error: Some(Self::parse_validation_error("search_event_previews", e)),
                         };
                     }
                 };
@@ -260,11 +283,7 @@ impl AgTraceServer {
                             jsonrpc: "2.0".to_string(),
                             id,
                             result: None,
-                            error: Some(JsonRpcError {
-                                code: -32602,
-                                message: format!("Invalid arguments: {}", e),
-                                data: None,
-                            }),
+                            error: Some(Self::parse_validation_error("get_event_details", e)),
                         };
                     }
                 };
@@ -344,4 +363,66 @@ pub async fn run_server(client: Client) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_validation_error_missing_field() {
+        // Simulate serde error for missing field
+        let json_str = r#"{}"#;
+        let result: Result<super::super::dto::GetSessionDetailsArgs, _> =
+            serde_json::from_str(json_str);
+
+        let error = result.unwrap_err();
+        let json_error = AgTraceServer::parse_validation_error("get_session_details", error);
+
+        assert_eq!(json_error.code, -32602);
+        assert!(
+            json_error.message.starts_with("Invalid params:"),
+            "Message should start with 'Invalid params:'"
+        );
+        assert!(
+            json_error.message.contains("session_id"),
+            "Message should mention the missing field"
+        );
+
+        // Verify data field structure
+        let data = json_error.data.expect("data field should be present");
+        assert_eq!(data["tool"], "get_session_details");
+        assert!(
+            data["missing"].is_array(),
+            "missing field should be an array"
+        );
+        let missing = data["missing"].as_array().unwrap();
+        assert_eq!(missing.len(), 1);
+        assert_eq!(missing[0], "session_id");
+    }
+
+    #[test]
+    fn test_parse_validation_error_other_errors() {
+        // Simulate serde error for invalid type
+        let json_str = r#"{"session_id": 123}"#; // number instead of string
+        let result: Result<super::super::dto::GetSessionDetailsArgs, _> =
+            serde_json::from_str(json_str);
+
+        let error = result.unwrap_err();
+        let json_error = AgTraceServer::parse_validation_error("get_session_details", error);
+
+        assert_eq!(json_error.code, -32602);
+        assert!(
+            json_error.message.starts_with("Invalid params:"),
+            "Message should start with 'Invalid params:'"
+        );
+
+        // For non-missing-field errors, should have detail field
+        let data = json_error.data.expect("data field should be present");
+        assert_eq!(data["tool"], "get_session_details");
+        assert!(
+            data["detail"].is_string(),
+            "detail field should contain error message"
+        );
+    }
 }

@@ -21,7 +21,12 @@ pub struct ListSessionsArgs {
     pub cursor: Option<String>,
     /// Filter by provider
     pub provider: Option<Provider>,
-    /// Filter by project hash
+    /// Filter by project root path (e.g., "/Users/me/projects/my-app").
+    /// Prefer this over project_hash when the agent knows the current working directory.
+    /// Server will automatically resolve this to the correct project hash.
+    pub project_root: Option<String>,
+    /// Filter by project hash (internal ID).
+    /// Use only when you have the exact hash; prefer project_root for ergonomic filtering.
     pub project_hash: Option<String>,
     /// Show sessions after this timestamp (ISO 8601)
     pub since: Option<String>,
@@ -122,7 +127,7 @@ mod tests {
         let json = serde_json::to_string_pretty(&schema).unwrap();
         println!("\n=== ListSessionsArgs Schema ===\n{}\n", json);
 
-        // Verify cursor field exists
+        // Verify required fields exist
         let schema_value = serde_json::to_value(&schema).unwrap();
         let properties = schema_value["properties"].as_object().unwrap();
         assert!(
@@ -133,12 +138,31 @@ mod tests {
             properties.contains_key("limit"),
             "limit field should exist in schema"
         );
+        assert!(
+            properties.contains_key("project_root"),
+            "project_root field should exist in schema"
+        );
+        assert!(
+            properties.contains_key("project_hash"),
+            "project_hash field should exist in schema"
+        );
 
         // Verify cursor description
         let cursor_desc = properties["cursor"]["description"].as_str().unwrap();
         assert!(
             cursor_desc.contains("cursor"),
             "cursor description should mention cursor"
+        );
+
+        // Verify project_root description
+        let project_root_desc = properties["project_root"]["description"].as_str().unwrap();
+        assert!(
+            project_root_desc.contains("project root"),
+            "project_root description should mention project root"
+        );
+        assert!(
+            project_root_desc.contains("working directory") || project_root_desc.contains("cwd"),
+            "project_root description should mention working directory or cwd"
         );
     }
 
@@ -160,6 +184,21 @@ mod tests {
         assert!(
             detail_level.get("anyOf").is_some() || detail_level.get("enum").is_some(),
             "detail_level should have enum values"
+        );
+
+        // Verify required fields
+        let required = schema_value["required"].as_array().unwrap();
+        assert!(
+            required.contains(&serde_json::Value::String("session_id".to_string())),
+            "session_id should be in required array"
+        );
+        assert!(
+            !required.contains(&serde_json::Value::String("detail_level".to_string())),
+            "detail_level should NOT be in required array (it's optional)"
+        );
+        assert!(
+            !required.contains(&serde_json::Value::String("include_reasoning".to_string())),
+            "include_reasoning should NOT be in required array (it's optional)"
         );
     }
 }
