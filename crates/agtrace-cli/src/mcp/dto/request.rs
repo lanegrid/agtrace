@@ -37,8 +37,10 @@ pub struct ListSessionsArgs {
 /// Get session details with configurable verbosity
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetSessionDetailsArgs {
-    /// Session ID: 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// Session ID obtained from list_sessions response (use the 'id' field).
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
     /// Ambiguous prefixes matching multiple sessions will return an error with matched IDs.
+    /// REQUIRED: Cannot be empty.
     pub session_id: String,
 
     /// Response size control:
@@ -72,7 +74,9 @@ impl GetSessionDetailsArgs {
 /// Run diagnostic analysis on a session to identify failures, loops, and issues
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AnalyzeSessionArgs {
-    /// Session ID to analyze
+    /// Session ID obtained from list_sessions response (use the 'id' field).
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// REQUIRED: Cannot be empty.
     pub session_id: String,
     /// Include failure analysis (default: true)
     #[serde(default)]
@@ -109,10 +113,13 @@ pub struct SearchEventPreviewsArgs {
 /// Retrieve full event payload by session and index
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetEventDetailsArgs {
-    /// Session ID: 8-character prefix or full UUID
+    /// Session ID obtained from search_event_previews response (use the 'session_id' field).
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// REQUIRED: Cannot be empty.
     pub session_id: String,
 
-    /// Zero-based event index within session
+    /// Zero-based event index obtained from search_event_previews response (use the 'event_index' field).
+    /// REQUIRED: Must specify a valid index (0 to session event count - 1).
     pub event_index: usize,
 }
 
