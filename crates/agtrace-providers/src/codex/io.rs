@@ -101,7 +101,7 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                     if snippet.is_none()
                         && let super::schema::EventMsgPayload::UserMessage(msg) = &event.payload
                     {
-                        snippet = Some(msg.message.clone());
+                        snippet = Some(agtrace_types::truncate(&msg.message, 200));
                     }
                 }
                 CodexRecord::ResponseItem(response) => {
@@ -113,9 +113,11 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                         && msg.role == "user"
                     {
                         let text = msg.content.iter().find_map(|c| match c {
-                            super::schema::MessageContent::InputText { text } => Some(text.clone()),
+                            super::schema::MessageContent::InputText { text } => {
+                                Some(agtrace_types::truncate(text, 200))
+                            }
                             super::schema::MessageContent::OutputText { text } => {
-                                Some(text.clone())
+                                Some(agtrace_types::truncate(text, 200))
                             }
                             _ => None,
                         });

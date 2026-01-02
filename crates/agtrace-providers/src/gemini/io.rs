@@ -52,7 +52,9 @@ pub fn extract_gemini_header(path: &Path) -> Result<GeminiHeader> {
         let snippet = session.messages.iter().find_map(|msg| {
             use super::schema::GeminiMessage;
             match msg {
-                GeminiMessage::User(user_msg) => Some(user_msg.content.clone()),
+                GeminiMessage::User(user_msg) => {
+                    Some(agtrace_types::truncate(&user_msg.content, 200))
+                }
                 _ => None,
             }
         });
@@ -70,7 +72,9 @@ pub fn extract_gemini_header(path: &Path) -> Result<GeminiHeader> {
     {
         let session_id = legacy_messages.first().map(|m| m.session_id.clone());
         let timestamp = legacy_messages.first().map(|m| m.timestamp.clone());
-        let snippet = legacy_messages.first().map(|m| m.message.clone());
+        let snippet = legacy_messages
+            .first()
+            .map(|m| agtrace_types::truncate(&m.message, 200));
 
         return Ok(GeminiHeader {
             session_id,

@@ -107,7 +107,9 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                     // Also skip messages whose parent is meta
                     if snippet.is_none() && !user.is_sidechain && !user.is_meta && !parent_is_meta {
                         snippet = user.message.content.iter().find_map(|c| match c {
-                            super::schema::UserContent::Text { text } => Some(text.clone()),
+                            super::schema::UserContent::Text { text } => {
+                                Some(agtrace_types::truncate(text, 200))
+                            }
                             _ => None,
                         });
                     }
