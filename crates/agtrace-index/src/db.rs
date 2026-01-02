@@ -51,9 +51,10 @@ impl Database {
     pub fn list_sessions(
         &self,
         project_hash: Option<&agtrace_types::ProjectHash>,
+        provider: Option<&str>,
         limit: Option<usize>,
     ) -> Result<Vec<SessionSummary>> {
-        queries::session::list(&self.conn, project_hash, limit)
+        queries::session::list(&self.conn, project_hash, provider, limit)
     }
 
     pub fn find_session_by_prefix(&self, prefix: &str) -> Result<Option<String>> {
@@ -136,7 +137,11 @@ mod tests {
         db.insert_or_update_session(&session).unwrap();
 
         let sessions = db
-            .list_sessions(Some(&agtrace_types::ProjectHash::from("abc123")), Some(10))
+            .list_sessions(
+                Some(&agtrace_types::ProjectHash::from("abc123")),
+                None,
+                Some(10),
+            )
             .unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].id, "session-001");
@@ -206,12 +211,20 @@ mod tests {
         }
 
         let sessions = db
-            .list_sessions(Some(&agtrace_types::ProjectHash::from("abc123")), Some(10))
+            .list_sessions(
+                Some(&agtrace_types::ProjectHash::from("abc123")),
+                None,
+                Some(10),
+            )
             .unwrap();
         assert_eq!(sessions.len(), 5);
 
         let sessions_limited = db
-            .list_sessions(Some(&agtrace_types::ProjectHash::from("abc123")), Some(3))
+            .list_sessions(
+                Some(&agtrace_types::ProjectHash::from("abc123")),
+                None,
+                Some(3),
+            )
             .unwrap();
         assert_eq!(sessions_limited.len(), 3);
     }

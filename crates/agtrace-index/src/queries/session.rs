@@ -59,38 +59,40 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
 pub fn list(
     conn: &Connection,
     project_hash: Option<&ProjectHash>,
+    provider: Option<&str>,
     limit: Option<usize>,
 ) -> Result<Vec<SessionSummary>> {
+    let mut where_clauses = vec!["is_valid = 1"];
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(hash) = project_hash {
+        where_clauses.push("project_hash = ?");
+        params.push(Box::new(hash.as_str().to_string()));
+    }
+
+    if let Some(prov) = provider {
+        where_clauses.push("provider = ?");
+        params.push(Box::new(prov.to_string()));
+    }
+
+    let where_clause = where_clauses.join(" AND ");
     let limit_clause = limit.map(|l| format!("LIMIT {}", l)).unwrap_or_default();
 
-    let query = if let Some(hash) = project_hash {
-        format!(
-            r#"
-            SELECT id, provider, project_hash, start_ts, snippet
-            FROM sessions
-            WHERE project_hash = '{}' AND is_valid = 1
-            ORDER BY start_ts DESC
-            {}
-            "#,
-            hash.as_str(),
-            limit_clause
-        )
-    } else {
-        format!(
-            r#"
-            SELECT id, provider, project_hash, start_ts, snippet
-            FROM sessions
-            WHERE is_valid = 1
-            ORDER BY start_ts DESC
-            {}
-            "#,
-            limit_clause
-        )
-    };
+    let query = format!(
+        r#"
+        SELECT id, provider, project_hash, start_ts, snippet
+        FROM sessions
+        WHERE {}
+        ORDER BY start_ts DESC
+        {}
+        "#,
+        where_clause, limit_clause
+    );
 
     let mut stmt = conn.prepare(&query)?;
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
     let sessions = stmt
-        .query_map([], |row| {
+        .query_map(param_refs.as_slice(), |row| {
             Ok(SessionSummary {
                 id: row.get(0)?,
                 provider: row.get(1)?,
@@ -126,5 +128,84 @@ pub fn find_by_prefix(conn: &Connection, prefix: &str) -> Result<Option<String>>
             "Ambiguous session ID prefix '{}': multiple sessions match",
             prefix
         ))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Database;
+    use crate::records::SessionRecord;
+
+    #[test]
+    fn test_list_with_provider_filter() -> Result<()> {
+        let db = Database::open_in_memory()?;
+        let project_hash = ProjectHash::from("test_project".to_string());
+
+        // Insert project first to satisfy foreign key constraint
+        let project = crate::records::ProjectRecord {
+            hash: project_hash.clone(),
+            root_path: Some("/test/path".to_string()),
+            last_scanned_at: None,
+        };
+        db.insert_or_update_project(&project)?;
+
+        let session1 = SessionRecord {
+            id: "session1".to_string(),
+            project_hash: project_hash.clone(),
+            provider: "claude_code".to_string(),
+            start_ts: Some("2024-01-01T00:00:00Z".to_string()),
+            end_ts: None,
+            snippet: Some("test1".to_string()),
+            is_valid: true,
+        };
+
+        let session2 = SessionRecord {
+            id: "session2".to_string(),
+            project_hash: project_hash.clone(),
+            provider: "codex".to_string(),
+            start_ts: Some("2024-01-02T00:00:00Z".to_string()),
+            end_ts: None,
+            snippet: Some("test2".to_string()),
+            is_valid: true,
+        };
+
+        let session3 = SessionRecord {
+            id: "session3".to_string(),
+            project_hash: project_hash.clone(),
+            provider: "gemini".to_string(),
+            start_ts: Some("2024-01-03T00:00:00Z".to_string()),
+            end_ts: None,
+            snippet: Some("test3".to_string()),
+            is_valid: true,
+        };
+
+        db.insert_or_update_session(&session1)?;
+        db.insert_or_update_session(&session2)?;
+        db.insert_or_update_session(&session3)?;
+
+        // Test filter by provider
+        let sessions = db.list_sessions(None, Some("codex"), None)?;
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].provider, "codex");
+
+        let sessions = db.list_sessions(None, Some("gemini"), None)?;
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].provider, "gemini");
+
+        let sessions = db.list_sessions(None, Some("claude_code"), None)?;
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].provider, "claude_code");
+
+        // Test no filter returns all
+        let sessions = db.list_sessions(None, None, None)?;
+        assert_eq!(sessions.len(), 3);
+
+        // Test combined project_hash and provider filter
+        let sessions = db.list_sessions(Some(&project_hash), Some("codex"), None)?;
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].provider, "codex");
+
+        Ok(())
     }
 }

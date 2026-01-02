@@ -25,7 +25,7 @@ impl<'a> PackService<'a> {
         project_hash: Option<&agtrace_types::ProjectHash>,
         limit: usize,
     ) -> Result<PackResult> {
-        let raw_sessions = self.db.list_sessions(project_hash, Some(1000))?;
+        let raw_sessions = self.db.list_sessions(project_hash, None, Some(1000))?;
         let balanced_sessions = balance_sessions_by_provider(&raw_sessions, 200);
 
         let mut digests = Vec::new();
