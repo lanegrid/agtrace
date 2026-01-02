@@ -143,32 +143,32 @@ impl AgTraceServer {
                 "tools": [
                     {
                         "name": "list_sessions",
-                        "description": "List recent AI agent sessions with cursor-based pagination",
+                        "description": "List recent AI agent sessions with cursor-based pagination. WORKFLOW: Call this first to discover available sessions, then use session IDs with other tools. Safe to call multiple times with different filters.",
                         "inputSchema": serde_json::to_value(&list_sessions_schema).unwrap(),
                     },
                     {
                         "name": "get_session_details",
-                        "description": "Get session details with configurable verbosity (summary/turns/steps/full)",
+                        "description": "Get details for a specific session with configurable verbosity (summary/turns/steps/full). WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
                         "inputSchema": serde_json::to_value(&get_session_details_schema).unwrap(),
                     },
                     {
                         "name": "analyze_session",
-                        "description": "Run diagnostic analysis on a session to identify failures, loops, and issues",
+                        "description": "Run diagnostic analysis on a session to identify failures, loops, and issues. WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
                         "inputSchema": serde_json::to_value(&analyze_session_schema).unwrap(),
                     },
                     {
                         "name": "search_event_previews",
-                        "description": "Search for patterns in event payloads across sessions (returns previews, ~300 char snippets)",
+                        "description": "Search for patterns in event payloads across sessions (returns previews, ~300 char snippets). WORKFLOW: Use this to find events matching a pattern, then optionally drill down with get_event_details. Safe to call with different queries in parallel.",
                         "inputSchema": serde_json::to_value(&search_event_previews_schema).unwrap(),
                     },
                     {
                         "name": "get_event_details",
-                        "description": "Retrieve full event payload by session ID and event index",
+                        "description": "Retrieve full event payload by session ID and event index. WORKFLOW: First call search_event_previews to find events of interest, then use the returned session_id and event_index fields with this tool. Safe to call in parallel for multiple known event locations.",
                         "inputSchema": serde_json::to_value(&get_event_details_schema).unwrap(),
                     },
                     {
                         "name": "get_project_info",
-                        "description": "List all projects that have been indexed by agtrace with their metadata",
+                        "description": "List all projects that have been indexed by agtrace with their metadata. WORKFLOW: Use this to discover available projects and their hashes. Safe to call anytime.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {}
