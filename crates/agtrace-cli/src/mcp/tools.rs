@@ -14,11 +14,10 @@ use serde_json::Value;
 
 use super::dto::{
     AnalyzeSessionArgs, EventDetailsResponse, EventPreview, GetEventDetailsArgs,
-    GetSessionDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs, GetSessionTurnsArgs,
-    GetTurnStepsArgs, ListSessionsArgs, ListSessionsResponse, McpError, McpResponse,
-    PaginationMeta, PreviewContent, SearchEventPreviewsArgs, SearchEventPreviewsData,
-    SessionFullResponse, SessionResponseBuilder, SessionSummaryDto, SessionSummaryResponse,
-    SessionTurnsResponse, TurnStepsResponse,
+    GetSessionFullArgs, GetSessionSummaryArgs, GetSessionTurnsArgs, GetTurnStepsArgs,
+    ListSessionsArgs, ListSessionsResponse, McpError, McpResponse, PaginationMeta, PreviewContent,
+    SearchEventPreviewsArgs, SearchEventPreviewsData, SessionFullResponse, SessionSummaryDto,
+    SessionSummaryResponse, SessionTurnsResponse, TurnStepsResponse,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -122,29 +121,6 @@ pub async fn handle_list_sessions(
     };
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
-}
-
-pub async fn handle_get_session_details(
-    client: &Client,
-    args: GetSessionDetailsArgs,
-) -> Result<Value, String> {
-    let handle = client
-        .sessions()
-        .get(&args.session_id)
-        .map_err(|e| format!("Session not found: {}", e))?;
-
-    let session = handle
-        .assemble()
-        .map_err(|e| format!("Failed to assemble session: {}", e))?;
-
-    let metadata = handle
-        .metadata()
-        .map_err(|e| format!("Failed to get session metadata: {}", e))?;
-
-    SessionResponseBuilder::new(session, metadata)
-        .detail_level(args.detail_level())
-        .include_reasoning(args.include_reasoning())
-        .build()
 }
 
 pub async fn handle_analyze_session(

@@ -8,7 +8,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::common::{DetailLevel, EventType, Provider};
+use super::common::{EventType, Provider};
 
 /// List recent AI agent sessions with cursor-based pagination
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -34,55 +34,8 @@ pub struct ListSessionsArgs {
     pub until: Option<String>,
 }
 
-/// Get session details with configurable verbosity
-///
-/// DEPRECATED: Use specialized tools instead:
-/// - get_session_summary for lightweight overview
-/// - get_session_turns for turn-level summaries
-/// - get_turn_steps for detailed step analysis
-/// - get_session_full for complete data with pagination
-#[deprecated(
-    since = "0.4.0",
-    note = "Use get_session_summary, get_session_turns, get_turn_steps, or get_session_full instead"
-)]
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-pub struct GetSessionDetailsArgs {
-    /// Session ID obtained from list_sessions response (use the 'id' field).
-    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
-    /// Ambiguous prefixes matching multiple sessions will return an error with matched IDs.
-    /// REQUIRED: Cannot be empty.
-    pub session_id: String,
-
-    /// Response size control:
-    /// - 'summary': 5-10 KB (turn count, no payloads)
-    /// - 'turns': 15-30 KB (tool usage per turn)
-    /// - 'steps': 50-100 KB (full structure, truncated payloads to 500 chars)
-    /// - 'full': Unbounded (complete session, use with caution)
-    ///
-    /// Default: 'summary'
-    #[serde(default)]
-    pub detail_level: Option<DetailLevel>,
-
-    /// Include <thinking> blocks in turn summaries.
-    /// WARNING: Only valid when detail_level='turns'. Ignored for other levels.
-    /// Adds ~5-10 KB per turn with reasoning content.
-    /// Default: false
-    #[serde(default)]
-    pub include_reasoning: Option<bool>,
-}
-
-impl GetSessionDetailsArgs {
-    pub fn detail_level(&self) -> DetailLevel {
-        self.detail_level.unwrap_or_default()
-    }
-
-    pub fn include_reasoning(&self) -> bool {
-        self.include_reasoning.unwrap_or(false)
-    }
-}
-
 // ============================================================================
-// New Specialized Session Tools (Approach B)
+// Specialized Session Tools
 // ============================================================================
 
 /// Get lightweight session overview (≤5 KB, always single-page)
@@ -273,42 +226,6 @@ mod tests {
         assert!(
             project_root_desc.contains("working directory") || project_root_desc.contains("cwd"),
             "project_root description should mention working directory or cwd"
-        );
-    }
-
-    #[test]
-    fn test_get_session_details_schema() {
-        let schema = schema_for!(GetSessionDetailsArgs);
-        let json = serde_json::to_string_pretty(&schema).unwrap();
-        println!("\n=== GetSessionDetailsArgs Schema ===\n{}\n", json);
-
-        let schema_value = serde_json::to_value(&schema).unwrap();
-        let properties = schema_value["properties"].as_object().unwrap();
-        assert!(
-            properties.contains_key("detail_level"),
-            "detail_level should exist"
-        );
-
-        // Verify detail_level has enum
-        let detail_level = &properties["detail_level"];
-        assert!(
-            detail_level.get("anyOf").is_some() || detail_level.get("enum").is_some(),
-            "detail_level should have enum values"
-        );
-
-        // Verify required fields
-        let required = schema_value["required"].as_array().unwrap();
-        assert!(
-            required.contains(&serde_json::Value::String("session_id".to_string())),
-            "session_id should be in required array"
-        );
-        assert!(
-            !required.contains(&serde_json::Value::String("detail_level".to_string())),
-            "detail_level should NOT be in required array (it's optional)"
-        );
-        assert!(
-            !required.contains(&serde_json::Value::String("include_reasoning".to_string())),
-            "include_reasoning should NOT be in required array (it's optional)"
         );
     }
 }

@@ -5,15 +5,13 @@ use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
 use super::dto::{
-    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionDetailsArgs, GetSessionFullArgs,
-    GetSessionSummaryArgs, GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs,
-    SearchEventPreviewsArgs,
+    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs,
+    GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs, SearchEventPreviewsArgs,
 };
 use super::tools::{
     handle_analyze_session, handle_get_event_details, handle_get_project_info,
-    handle_get_session_details, handle_get_session_full, handle_get_session_summary,
-    handle_get_session_turns, handle_get_turn_steps, handle_list_sessions,
-    handle_search_event_previews,
+    handle_get_session_full, handle_get_session_summary, handle_get_session_turns,
+    handle_get_turn_steps, handle_list_sessions, handle_search_event_previews,
 };
 
 #[derive(Debug, Deserialize)]
@@ -134,8 +132,6 @@ impl AgTraceServer {
     async fn handle_list_tools(&self, id: Value) -> JsonRpcResponse {
         // Generate JSON Schemas from Rust types - single source of truth!
         let list_sessions_schema = schema_for!(ListSessionsArgs);
-        #[allow(deprecated)]
-        let get_session_details_schema = schema_for!(GetSessionDetailsArgs);
         let get_session_summary_schema = schema_for!(GetSessionSummaryArgs);
         let get_session_turns_schema = schema_for!(GetSessionTurnsArgs);
         let get_turn_steps_schema = schema_for!(GetTurnStepsArgs);
@@ -173,11 +169,6 @@ impl AgTraceServer {
                         "name": "get_session_full",
                         "description": "Get complete session data with full payloads (50-100 KB per chunk). REQUIRES pagination cursor. Returns untruncated tool inputs/outputs. Use sparingly—only when you need complete data.",
                         "inputSchema": serde_json::to_value(&get_session_full_schema).unwrap(),
-                    },
-                    {
-                        "name": "get_session_by_id",
-                        "description": "DEPRECATED: Use get_session_summary, get_session_turns, get_turn_steps, or get_session_full instead. This tool will be removed in a future version.",
-                        "inputSchema": serde_json::to_value(&get_session_details_schema).unwrap(),
                     },
                     {
                         "name": "analyze_session",
@@ -314,21 +305,6 @@ impl AgTraceServer {
                 };
                 handle_get_session_full(&self.client, args).await
             }
-            "get_session_by_id" => {
-                #[allow(deprecated)]
-                let args: GetSessionDetailsArgs = match serde_json::from_value(arguments) {
-                    Ok(args) => args,
-                    Err(e) => {
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id,
-                            result: None,
-                            error: Some(Self::parse_validation_error("get_session_by_id", e)),
-                        };
-                    }
-                };
-                handle_get_session_details(&self.client, args).await
-            }
             "analyze_session" => {
                 let args: AnalyzeSessionArgs = match serde_json::from_value(arguments) {
                     Ok(args) => args,
@@ -450,61 +426,4 @@ pub async fn run_server(client: Client) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_parse_validation_error_missing_field() {
-        // Simulate serde error for missing field
-        let json_str = r#"{}"#;
-        let result: Result<super::super::dto::GetSessionDetailsArgs, _> =
-            serde_json::from_str(json_str);
-
-        let error = result.unwrap_err();
-        let json_error = AgTraceServer::parse_validation_error("get_session_by_id", error);
-
-        assert_eq!(json_error.code, -32602);
-        assert!(
-            json_error.message.starts_with("Invalid params:"),
-            "Message should start with 'Invalid params:'"
-        );
-        assert!(
-            json_error.message.contains("session_id"),
-            "Message should mention the missing field"
-        );
-
-        // Verify data field structure
-        let data = json_error.data.expect("data field should be present");
-        assert_eq!(data["tool"], "get_session_by_id");
-        assert!(
-            data["missing"].is_array(),
-            "missing field should be an array"
-        );
-        let missing = data["missing"].as_array().unwrap();
-        assert_eq!(missing.len(), 1);
-        assert_eq!(missing[0], "session_id");
-    }
-
-    #[test]
-    fn test_parse_validation_error_other_errors() {
-        // Simulate serde error for invalid type
-        let json_str = r#"{"session_id": 123}"#; // number instead of string
-        let result: Result<super::super::dto::GetSessionDetailsArgs, _> =
-            serde_json::from_str(json_str);
-
-        let error = result.unwrap_err();
-        let json_error = AgTraceServer::parse_validation_error("get_session_by_id", error);
-
-        assert_eq!(json_error.code, -32602);
-        assert!(
-            json_error.message.starts_with("Invalid params:"),
-            "Message should start with 'Invalid params:'"
-        );
-
-        // For non-missing-field errors, should have detail field
-        let data = json_error.data.expect("data field should be present");
-        assert_eq!(data["tool"], "get_session_by_id");
-        assert!(
-            data["detail"].is_string(),
-            "detail field should contain error message"
-        );
-    }
 }
