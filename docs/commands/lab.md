@@ -26,7 +26,9 @@ agtrace lab grep <PATTERN> [OPTIONS]
 - `--json` - Output matching events in JSON format
 - `--raw` - Show raw provider events (before normalization)
 - `--limit N` - Limit results to N matches
-- `--session <SESSION_ID>` - Search only within a specific session
+- `--provider <PROVIDER>` - Filter by provider (claude_code, codex, gemini)
+- `--type <TYPE>` - Filter by event type (ToolCall, ToolResult, User, Message, etc.)
+- `--tool <TOOL>` - Filter by tool name (only for ToolCall events)
 
 **Examples:**
 
@@ -40,9 +42,9 @@ Find MCP usage (raw events):
 agtrace lab grep "mcp" --raw --limit 1
 ```
 
-Search within a specific session:
+Search for specific tool usage:
 ```bash
-agtrace lab grep "error" --session abc123def456
+agtrace lab grep "Read" --type ToolCall --limit 5
 ```
 
 ## Use Cases

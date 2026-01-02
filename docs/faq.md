@@ -102,10 +102,11 @@ agtrace session list
 
 ### Can I export session data?
 
-Yes. Use the `--json` flag with most commands to export data in JSON format:
+Yes. Use the `--format json` flag to export data in JSON format:
 
 ```bash
-agtrace session show <session-id> --json > session.json
+agtrace session show <session-id> --format json > session.json
+agtrace session list --format json > sessions.json
 agtrace lab grep "pattern" --json > results.json
 ```
 

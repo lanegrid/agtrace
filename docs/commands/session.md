@@ -28,12 +28,13 @@ agtrace session list [OPTIONS]
 - Context usage
 
 **Options:**
-- `--json` - Output in JSON format for programmatic use
+- `--format json` - Output in JSON format for programmatic use
 - `--limit N` - Show only the N most recent sessions
 
 **Example:**
 ```bash
 agtrace session list --limit 10
+agtrace session list --format json --limit 5
 ```
 
 ### session show
@@ -52,13 +53,12 @@ agtrace session show <SESSION_ID> [OPTIONS]
 - Token counts and costs
 
 **Options:**
-- `--json` - Output in JSON format
-- `--raw` - Show raw provider events (useful for debugging)
+- `--format json` - Output in JSON format
 
 **Example:**
 ```bash
 agtrace session show abc123def456
-agtrace session show abc123def456 --json > session.json
+agtrace session show abc123def456 --format json > session.json
 ```
 
 ## Use Cases
@@ -68,8 +68,8 @@ agtrace session show abc123def456 --json > session.json
 Compare two sessions to understand what changed:
 
 ```bash
-agtrace session show session1 --json > s1.json
-agtrace session show session2 --json > s2.json
+agtrace session show session1 --format json > s1.json
+agtrace session show session2 --format json > s2.json
 diff s1.json s2.json
 ```
 
@@ -87,7 +87,7 @@ agtrace session show <SESSION_ID>
 See which tools were called and when:
 
 ```bash
-agtrace session show <SESSION_ID> --json | jq '.turns[].steps[] | select(.type == "tool_call")'
+agtrace session show <SESSION_ID> --format json | jq '.turns[].steps[] | select(.type == "tool_call")'
 ```
 
 ## See Also
