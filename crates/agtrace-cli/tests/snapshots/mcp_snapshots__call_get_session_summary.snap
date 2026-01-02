@@ -1,0 +1,12 @@
+---
+source: crates/agtrace-cli/tests/mcp_snapshots.rs
+expression: response
+---
+{
+  "error": {
+    "code": -32603,
+    "message": "Failed to get session metadata: Invalid operation: Invalid session ID format: invalid character: expected an optional prefix of `urn:uuid:` followed by [0-9a-fA-F-], found `t` at 1"
+  },
+  "id": 1,
+  "jsonrpc": "2.0"
+}

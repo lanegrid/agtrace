@@ -1,0 +1,461 @@
+---
+source: crates/agtrace-cli/tests/mcp_snapshots.rs
+expression: response
+---
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "tools": [
+      {
+        "description": "List recent AI agent sessions with cursor-based pagination. WORKFLOW: Call this first to discover available sessions, then use session IDs with other tools. Safe to call multiple times with different filters.",
+        "inputSchema": {
+          "$defs": {
+            "Provider": {
+              "description": "Provider type for filtering sessions",
+              "oneOf": [
+                {
+                  "const": "claude_code",
+                  "description": "Claude Code (Anthropic)",
+                  "type": "string"
+                },
+                {
+                  "const": "codex",
+                  "description": "GitHub Copilot Codex",
+                  "type": "string"
+                },
+                {
+                  "const": "gemini",
+                  "description": "Google Gemini",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "List recent AI agent sessions with cursor-based pagination",
+          "properties": {
+            "cursor": {
+              "default": null,
+              "description": "Pagination cursor from previous response's next_cursor field. Omit for first page.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limit": {
+              "default": null,
+              "description": "Maximum number of sessions to return (default: 10, max: 50)",
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "project_hash": {
+              "description": "Filter by project hash (internal ID).\nUse only when you have the exact hash; prefer project_root for ergonomic filtering.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "project_root": {
+              "description": "Filter by project root path (e.g., \"/Users/me/projects/my-app\").\nPrefer this over project_hash when the agent knows the current working directory.\nServer will automatically resolve this to the correct project hash.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "provider": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Provider"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by provider"
+            },
+            "since": {
+              "description": "Show sessions after this timestamp (ISO 8601)",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "until": {
+              "description": "Show sessions before this timestamp (ISO 8601)",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "title": "ListSessionsArgs",
+          "type": "object"
+        },
+        "name": "list_sessions"
+      },
+      {
+        "description": "Get lightweight session overview (≤5 KB, always single-page). Returns session metadata, turn count, token stats, and first message snippet. Use this first to understand the session before drilling deeper.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Get lightweight session overview (≤5 KB, always single-page)",
+          "properties": {
+            "session_id": {
+              "description": "Session ID obtained from list_sessions response (use the 'id' field).\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.\nREQUIRED: Cannot be empty.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "GetSessionSummaryArgs",
+          "type": "object"
+        },
+        "name": "get_session_summary"
+      },
+      {
+        "description": "Get turn-level summaries with pagination (10-30 KB per page). Shows key actions, outcomes, and tool usage per turn. Supports cursor-based pagination. Start here after reviewing summary.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Get turn-level summaries with pagination (10-30 KB per page)",
+          "properties": {
+            "cursor": {
+              "default": null,
+              "description": "Pagination cursor from previous response's next_cursor field. Omit for first page.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limit": {
+              "default": null,
+              "description": "Maximum number of turns to return per page (default: 10, max: 50)",
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "session_id": {
+              "description": "Session ID obtained from list_sessions response (use the 'id' field).\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.\nREQUIRED: Cannot be empty.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "GetSessionTurnsArgs",
+          "type": "object"
+        },
+        "name": "get_session_turns"
+      },
+      {
+        "description": "Get detailed steps for a specific turn (20-50 KB). Shows tool calls, results (truncated to 500 chars), and reasoning. Use after identifying interesting turns.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Get detailed steps for a specific turn (20-50 KB)",
+          "properties": {
+            "cursor": {
+              "default": null,
+              "description": "Pagination cursor for turns with many steps. Omit for first page.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "include_message": {
+              "default": null,
+              "description": "Include assistant messages in response (default: true)",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "include_reasoning": {
+              "default": null,
+              "description": "Include reasoning/thinking blocks in response (default: true)",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "include_tools": {
+              "default": null,
+              "description": "Include tool executions in response (default: true)",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "limit": {
+              "default": null,
+              "description": "Maximum number of steps to return (default: 20, max: 100)",
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "session_id": {
+              "description": "Session ID obtained from list_sessions or get_session_turns response.\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.\nREQUIRED: Cannot be empty.",
+              "type": "string"
+            },
+            "turn_index": {
+              "description": "Zero-based turn index (obtained from get_session_turns response).\nREQUIRED: Must be valid (0 to turn_count - 1).",
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "session_id",
+            "turn_index"
+          ],
+          "title": "GetTurnStepsArgs",
+          "type": "object"
+        },
+        "name": "get_turn_steps"
+      },
+      {
+        "description": "Get complete session data with full payloads (50-100 KB per chunk). REQUIRES pagination cursor. Returns untruncated tool inputs/outputs. Use sparingly—only when you need complete data.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Get complete session data with full payloads (50-100 KB per chunk, requires pagination)",
+          "properties": {
+            "cursor": {
+              "default": null,
+              "description": "Pagination cursor. Use null/\"start\" for first call, then next_cursor from responses.\nREQUIRED for safety: forces explicit pagination awareness.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "limit": {
+              "default": null,
+              "description": "Maximum number of turns per chunk (default: 5, max: 10).\nKept small to ensure chunks stay under 100 KB.",
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "session_id": {
+              "description": "Session ID obtained from list_sessions response (use the 'id' field).\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.\nREQUIRED: Cannot be empty.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "GetSessionFullArgs",
+          "type": "object"
+        },
+        "name": "get_session_full"
+      },
+      {
+        "description": "Run diagnostic analysis on a session to identify failures, loops, and issues. WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Run diagnostic analysis on a session to identify failures, loops, and issues",
+          "properties": {
+            "include_failures": {
+              "default": null,
+              "description": "Include failure analysis (default: true)",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "include_loops": {
+              "default": null,
+              "description": "Include loop detection (default: false)",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "session_id": {
+              "description": "Session ID obtained from list_sessions response (use the 'id' field).\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.\nREQUIRED: Cannot be empty.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "AnalyzeSessionArgs",
+          "type": "object"
+        },
+        "name": "analyze_session"
+      },
+      {
+        "description": "Search for patterns in event payloads across sessions (returns previews, ~300 char snippets). WORKFLOW: Use this to find events matching a pattern, then optionally drill down with get_event_details. Safe to call with different queries in parallel.",
+        "inputSchema": {
+          "$defs": {
+            "EventType": {
+              "description": "Event type for filtering and classification",
+              "oneOf": [
+                {
+                  "const": "ToolCall",
+                  "description": "Tool/function call from assistant",
+                  "type": "string"
+                },
+                {
+                  "const": "ToolResult",
+                  "description": "Tool execution result",
+                  "type": "string"
+                },
+                {
+                  "const": "Message",
+                  "description": "Assistant message/response",
+                  "type": "string"
+                },
+                {
+                  "const": "User",
+                  "description": "User input",
+                  "type": "string"
+                },
+                {
+                  "const": "Reasoning",
+                  "description": "Reasoning/thinking blocks",
+                  "type": "string"
+                },
+                {
+                  "const": "TokenUsage",
+                  "description": "Token usage statistics",
+                  "type": "string"
+                },
+                {
+                  "const": "Notification",
+                  "description": "System notification",
+                  "type": "string"
+                }
+              ]
+            },
+            "Provider": {
+              "description": "Provider type for filtering sessions",
+              "oneOf": [
+                {
+                  "const": "claude_code",
+                  "description": "Claude Code (Anthropic)",
+                  "type": "string"
+                },
+                {
+                  "const": "codex",
+                  "description": "GitHub Copilot Codex",
+                  "type": "string"
+                },
+                {
+                  "const": "gemini",
+                  "description": "Google Gemini",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Search for patterns in event payloads (returns previews only, ~300 char snippets)",
+          "properties": {
+            "cursor": {
+              "default": null,
+              "description": "Pagination cursor from previous response's next_cursor field. Omit for first page.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "event_type": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/EventType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by event type (e.g., ToolCall, ToolResult, Message)"
+            },
+            "limit": {
+              "default": null,
+              "description": "Maximum results per page (default: 10, max: 50)",
+              "format": "uint",
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "provider": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Provider"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by provider"
+            },
+            "query": {
+              "description": "Search query (substring match in event JSON payloads)",
+              "type": "string"
+            },
+            "session_id": {
+              "description": "Search within specific session only (optional)",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "SearchEventPreviewsArgs",
+          "type": "object"
+        },
+        "name": "search_event_previews"
+      },
+      {
+        "description": "Retrieve full event payload by session ID and event index. WORKFLOW: First call search_event_previews to find events of interest, then use the returned session_id and event_index fields with this tool. Safe to call in parallel for multiple known event locations.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Retrieve full event payload by session and index",
+          "properties": {
+            "event_index": {
+              "description": "Zero-based event index obtained from search_event_previews response (use the 'event_index' field).\nREQUIRED: Must specify a valid index (0 to session event count - 1).",
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "description": "Session ID obtained from search_event_previews response (use the 'session_id' field).\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.\nREQUIRED: Cannot be empty.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id",
+            "event_index"
+          ],
+          "title": "GetEventDetailsArgs",
+          "type": "object"
+        },
+        "name": "get_event_details"
+      },
+      {
+        "description": "List all projects that have been indexed by agtrace with their metadata. WORKFLOW: Use this to discover available projects and their hashes. Safe to call anytime.",
+        "inputSchema": {
+          "properties": {},
+          "type": "object"
+        },
+        "name": "get_project_info"
+      }
+    ]
+  }
+}

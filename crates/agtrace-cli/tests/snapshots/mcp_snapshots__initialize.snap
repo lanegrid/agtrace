@@ -1,0 +1,19 @@
+---
+source: crates/agtrace-cli/tests/mcp_snapshots.rs
+expression: response
+---
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "capabilities": {
+      "tools": {}
+    },
+    "instructions": "AgTrace MCP Server - AI-native observability for agent execution traces. Use these tools to query historical sessions, analyze failures, search event payloads, and debug agent behavior.",
+    "protocolVersion": "2024-11-05",
+    "serverInfo": {
+      "name": "agtrace",
+      "version": "[VERSION]"
+    }
+  }
+}

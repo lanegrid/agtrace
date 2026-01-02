@@ -1,0 +1,16 @@
+---
+source: crates/agtrace-cli/tests/mcp_snapshots.rs
+expression: response
+---
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "content": [
+      {
+        "text": "{\n  \"next_cursor\": null,\n  \"sessions\": [\n    {\n      \"duration_seconds\": null,\n      \"id\": \"[ID]\",\n      \"project_hash\": \"[PROJECT_HASH]\",\n      \"provider\": \"claude_code\",\n      \"snippet\": \"add myapp directory and create myapp/hoge.py which shows result of print(1+1).\",\n      \"start_time\": \"[TIMESTAMP]\",\n      \"total_tokens\": null,\n      \"turn_count\": null\n    }\n  ],\n  \"total_in_page\": 1\n}",
+        "type": "text"
+      }
+    ]
+  }
+}

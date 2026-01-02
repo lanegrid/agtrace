@@ -63,7 +63,7 @@ ctrlc = "3.5"
 ratatui = "0.29.0"
 
 # Dev dependencies
-insta = { version = "1.45", features = ["json"] }
+insta = { version = "1.45", features = ["json", "redactions"] }
 tempfile = "3.24"
 assert_cmd = "2.1"
 predicates = "3.1"
