@@ -41,6 +41,7 @@ pub struct GetSessionDetailsArgs {
     /// - 'turns': 15-30 KB (tool usage per turn)
     /// - 'steps': 50-100 KB (full structure, truncated payloads to 500 chars)
     /// - 'full': Unbounded (complete session, use with caution)
+    ///
     /// Default: 'summary'
     #[serde(default)]
     pub detail_level: Option<DetailLevel>,
@@ -110,30 +111,6 @@ pub struct GetEventDetailsArgs {
     pub event_index: usize,
 }
 
-/// DEPRECATED: Use search_event_previews + get_event_details instead
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
-#[deprecated(
-    since = "0.4.0",
-    note = "Use search_event_previews for discovery, then get_event_details for full payloads"
-)]
-pub struct SearchEventsArgs {
-    /// Search pattern (substring match)
-    pub pattern: String,
-    /// Maximum number of matches (default: 5, max: 20)
-    #[serde(default)]
-    pub limit: Option<usize>,
-    /// Pagination cursor from previous response's next_cursor field. Omit for first page.
-    #[serde(default)]
-    pub cursor: Option<String>,
-    /// Filter by provider
-    pub provider: Option<String>,
-    /// Filter by event type
-    pub event_type: Option<String>,
-    /// Include full event payload (default: false). WARNING: Can produce large responses.
-    #[serde(default)]
-    pub include_full_payload: Option<bool>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -162,31 +139,6 @@ mod tests {
         assert!(
             cursor_desc.contains("cursor"),
             "cursor description should mention cursor"
-        );
-    }
-
-    #[test]
-    fn test_search_events_schema() {
-        let schema = schema_for!(SearchEventsArgs);
-        let json = serde_json::to_string_pretty(&schema).unwrap();
-        println!("\n=== SearchEventsArgs Schema ===\n{}\n", json);
-
-        let schema_value = serde_json::to_value(&schema).unwrap();
-        let properties = schema_value["properties"].as_object().unwrap();
-        assert!(
-            properties.contains_key("cursor"),
-            "cursor field should exist in schema"
-        );
-        assert!(
-            properties.contains_key("pattern"),
-            "pattern field should exist in schema"
-        );
-
-        // Verify required fields
-        let required = schema_value["required"].as_array().unwrap();
-        assert!(
-            required.contains(&serde_json::json!("pattern")),
-            "pattern should be required"
         );
     }
 
