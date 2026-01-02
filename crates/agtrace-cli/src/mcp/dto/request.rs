@@ -77,3 +77,58 @@ pub struct SearchEventsArgs {
     #[serde(default)]
     pub include_full_payload: Option<bool>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use schemars::schema_for;
+
+    #[test]
+    fn test_list_sessions_schema() {
+        let schema = schema_for!(ListSessionsArgs);
+        let json = serde_json::to_string_pretty(&schema).unwrap();
+        println!("\n=== ListSessionsArgs Schema ===\n{}\n", json);
+
+        // Verify cursor field exists
+        let schema_value = serde_json::to_value(&schema).unwrap();
+        let properties = schema_value["properties"].as_object().unwrap();
+        assert!(properties.contains_key("cursor"), "cursor field should exist in schema");
+        assert!(properties.contains_key("limit"), "limit field should exist in schema");
+
+        // Verify cursor description
+        let cursor_desc = properties["cursor"]["description"].as_str().unwrap();
+        assert!(cursor_desc.contains("cursor"), "cursor description should mention cursor");
+    }
+
+    #[test]
+    fn test_search_events_schema() {
+        let schema = schema_for!(SearchEventsArgs);
+        let json = serde_json::to_string_pretty(&schema).unwrap();
+        println!("\n=== SearchEventsArgs Schema ===\n{}\n", json);
+
+        let schema_value = serde_json::to_value(&schema).unwrap();
+        let properties = schema_value["properties"].as_object().unwrap();
+        assert!(properties.contains_key("cursor"), "cursor field should exist in schema");
+        assert!(properties.contains_key("pattern"), "pattern field should exist in schema");
+
+        // Verify required fields
+        let required = schema_value["required"].as_array().unwrap();
+        assert!(required.contains(&serde_json::json!("pattern")), "pattern should be required");
+    }
+
+    #[test]
+    fn test_get_session_details_schema() {
+        let schema = schema_for!(GetSessionDetailsArgs);
+        let json = serde_json::to_string_pretty(&schema).unwrap();
+        println!("\n=== GetSessionDetailsArgs Schema ===\n{}\n", json);
+
+        let schema_value = serde_json::to_value(&schema).unwrap();
+        let properties = schema_value["properties"].as_object().unwrap();
+        assert!(properties.contains_key("detail_level"), "detail_level should exist");
+
+        // Verify detail_level has enum
+        let detail_level = &properties["detail_level"];
+        assert!(detail_level.get("anyOf").is_some() || detail_level.get("enum").is_some(),
+                "detail_level should have enum values");
+    }
+}
