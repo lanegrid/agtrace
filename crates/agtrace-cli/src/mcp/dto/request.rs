@@ -35,6 +35,16 @@ pub struct ListSessionsArgs {
 }
 
 /// Get session details with configurable verbosity
+///
+/// DEPRECATED: Use specialized tools instead:
+/// - get_session_summary for lightweight overview
+/// - get_session_turns for turn-level summaries
+/// - get_turn_steps for detailed step analysis
+/// - get_session_full for complete data with pagination
+#[deprecated(
+    since = "0.4.0",
+    note = "Use get_session_summary, get_session_turns, get_turn_steps, or get_session_full instead"
+)]
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetSessionDetailsArgs {
     /// Session ID obtained from list_sessions response (use the 'id' field).
@@ -68,6 +78,99 @@ impl GetSessionDetailsArgs {
 
     pub fn include_reasoning(&self) -> bool {
         self.include_reasoning.unwrap_or(false)
+    }
+}
+
+// ============================================================================
+// New Specialized Session Tools (Approach B)
+// ============================================================================
+
+/// Get lightweight session overview (≤5 KB, always single-page)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetSessionSummaryArgs {
+    /// Session ID obtained from list_sessions response (use the 'id' field).
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// REQUIRED: Cannot be empty.
+    pub session_id: String,
+}
+
+/// Get turn-level summaries with pagination (10-30 KB per page)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetSessionTurnsArgs {
+    /// Session ID obtained from list_sessions response (use the 'id' field).
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// REQUIRED: Cannot be empty.
+    pub session_id: String,
+
+    /// Pagination cursor from previous response's next_cursor field. Omit for first page.
+    #[serde(default)]
+    pub cursor: Option<String>,
+
+    /// Maximum number of turns to return per page (default: 10, max: 50)
+    #[serde(default)]
+    pub limit: Option<usize>,
+}
+
+impl GetSessionTurnsArgs {
+    pub fn limit(&self) -> usize {
+        self.limit.unwrap_or(10).min(50)
+    }
+}
+
+/// Get detailed steps for a specific turn (20-50 KB)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetTurnStepsArgs {
+    /// Session ID obtained from list_sessions or get_session_turns response.
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// REQUIRED: Cannot be empty.
+    pub session_id: String,
+
+    /// Zero-based turn index (obtained from get_session_turns response).
+    /// REQUIRED: Must be valid (0 to turn_count - 1).
+    pub turn_index: usize,
+
+    /// Pagination cursor for turns with many steps. Omit for first page.
+    #[serde(default)]
+    pub cursor: Option<String>,
+
+    /// Maximum number of steps to return (default: 20, max: 100)
+    #[serde(default)]
+    pub limit: Option<usize>,
+}
+
+impl GetTurnStepsArgs {
+    pub fn limit(&self) -> usize {
+        self.limit.unwrap_or(20).min(100)
+    }
+}
+
+/// Get complete session data with full payloads (50-100 KB per chunk, requires pagination)
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetSessionFullArgs {
+    /// Session ID obtained from list_sessions response (use the 'id' field).
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// REQUIRED: Cannot be empty.
+    pub session_id: String,
+
+    /// Pagination cursor. Use null/"start" for first call, then next_cursor from responses.
+    /// REQUIRED for safety: forces explicit pagination awareness.
+    #[serde(default)]
+    pub cursor: Option<String>,
+
+    /// Maximum number of turns per chunk (default: 5, max: 10).
+    /// Kept small to ensure chunks stay under 100 KB.
+    #[serde(default)]
+    pub limit: Option<usize>,
+}
+
+impl GetSessionFullArgs {
+    pub fn limit(&self) -> usize {
+        self.limit.unwrap_or(5).min(10)
+    }
+
+    /// Check if this is the initial request (no cursor or "start")
+    pub fn is_initial(&self) -> bool {
+        self.cursor.is_none() || self.cursor.as_deref() == Some("start")
     }
 }
 

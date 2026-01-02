@@ -10,10 +10,12 @@ pub use builder::SessionResponseBuilder;
 pub use common::{EventType, McpResponse, PaginationMeta};
 pub use error::McpError;
 pub use request::{
-    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionDetailsArgs, ListSessionsArgs,
+    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionDetailsArgs, GetSessionFullArgs,
+    GetSessionSummaryArgs, GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs,
     SearchEventPreviewsArgs,
 };
 pub use response::{
     EventDetailsResponse, EventPreview, ListSessionsResponse, PreviewContent,
-    SearchEventPreviewsData, SessionSummaryDto,
+    SearchEventPreviewsData, SessionFullResponse, SessionSummaryDto, SessionSummaryResponse,
+    SessionTurnsResponse, TurnStepsResponse,
 };

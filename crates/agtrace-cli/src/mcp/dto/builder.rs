@@ -37,7 +37,7 @@ impl SessionResponseBuilder {
     pub fn build(self) -> Result<Value, String> {
         match self.detail_level {
             DetailLevel::Summary => {
-                let response = SessionSummaryResponse::from_session(self.session);
+                let response = SessionSummaryResponse::from_session(self.session).with_metadata();
                 serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
             }
             DetailLevel::Turns => {
