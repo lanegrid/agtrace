@@ -1,7 +1,7 @@
-use agtrace_testing::providers::TestProvider;
 use agtrace_testing::TestWorld;
+use agtrace_testing::providers::TestProvider;
 use anyhow::Result;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 
@@ -12,7 +12,7 @@ struct McpHarness {
 
 impl McpHarness {
     fn new(data_dir: &str) -> Result<Self> {
-        let process = Command::new(assert_cmd::cargo::cargo_bin("agtrace"))
+        let process = Command::new(assert_cmd::cargo::cargo_bin!("agtrace"))
             .arg("serve")
             .arg("--data-dir")
             .arg(data_dir)
@@ -53,7 +53,10 @@ impl Drop for McpHarness {
 }
 
 /// Redact dynamic values in nested MCP JSON content
-fn redact_mcp_content(value: insta::internals::Content, _path: insta::internals::ContentPath) -> String {
+fn redact_mcp_content(
+    value: insta::internals::Content,
+    _path: insta::internals::ContentPath,
+) -> String {
     let text = match value {
         insta::internals::Content::String(s) => s,
         _ => return "[NON_STRING_CONTENT]".to_string(),
