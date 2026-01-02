@@ -1,6 +1,13 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// Structured Error Handling
+//
+// Rationale: Rich error context instead of free-text strings
+// - ErrorCode: Machine-readable error classification
+// - details: Context-specific data (e.g., matched session IDs for ambiguous prefix)
+// - retryable: Helps LLMs decide whether to retry or ask user for clarification
+
 /// Structured error response for MCP tools
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct McpError {

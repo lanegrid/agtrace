@@ -1,3 +1,10 @@
+// MCP Tool Request Types
+//
+// Design Notes:
+// - All schemas auto-generated from Rust types via schemars (single source of truth)
+// - DetailLevel: Progressive disclosure for get_session_details (summary → turns → steps → full)
+// - SearchEventPreviewsArgs: Separated from deprecated SearchEventsArgs for clarity
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

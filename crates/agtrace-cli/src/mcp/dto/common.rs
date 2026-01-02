@@ -1,3 +1,10 @@
+// MCP Common Types
+//
+// Design Rationale:
+// - EventType/Provider enums: Type safety over string filters (prevents typos, enables validation)
+// - McpResponse wrapper: Consistent pagination structure across list operations
+// - PaginationMeta: MCP 2024-11-05 spec (cursor-based, not offset-based)
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

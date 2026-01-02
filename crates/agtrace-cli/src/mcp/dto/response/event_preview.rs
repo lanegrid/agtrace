@@ -1,3 +1,10 @@
+// Event Preview Types
+//
+// Rationale: Type-specific previews for different event payloads
+// - MAX_PREVIEW_LEN: 300 chars keeps previews under ~1 KB (safe for LLM context)
+// - PreviewContent::ToolCall truncates arguments to 100 chars (nested JSON safety)
+// - event_index: Enables precise retrieval via get_event_details (key design choice)
+
 use agtrace_sdk::types::EventPayload;
 use chrono::{DateTime, Utc};
 use serde::Serialize;

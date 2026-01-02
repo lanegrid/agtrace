@@ -1,3 +1,13 @@
+// MCP Tools Implementation
+//
+// Design Rationale:
+// - Progressive Disclosure: search_event_previews (breadth) → get_event_details (depth)
+//   to avoid overwhelming LLM context with large payloads
+// - Response Size Targets: Follow MCP best practices (< 30 KB per response)
+// - Cursor-based Pagination: MCP 2024-11-05 spec compliance (stable, opaque tokens)
+// - Structured Errors: McpError with codes/details instead of free-text strings
+// - Type Safety: EventType/Provider enums prevent invalid filter values
+
 use agtrace_sdk::{Client, Lens, SessionFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -151,6 +161,12 @@ pub async fn handle_analyze_session(
     serde_json::to_value(&report).map_err(|e| format!("Serialization error: {}", e))
 }
 
+// DEPRECATED: search_events
+// Why deprecated:
+// - include_full_payload toggle created inconsistent response sizes (5 KB vs 100 KB)
+// - Violated progressive disclosure principle (dump everything vs drill-down)
+// - No event_index meant clients had to re-search to get full payloads
+// Migration: Use search_event_previews (discovery) → get_event_details (retrieval)
 #[allow(dead_code)]
 #[deprecated(
     since = "0.4.0",
@@ -273,6 +289,11 @@ pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
     serde_json::to_value(&projects).map_err(|e| format!("Serialization error: {}", e))
 }
 
+// search_event_previews: Lightweight event discovery (returns ~300 char previews)
+// Rationale: Replaces search_events with better progressive disclosure.
+// - Always returns previews (consistent sizing, ~10-15 KB per page)
+// - Provides event_index for precise retrieval via get_event_details
+// - Supports session_id filter for scoped searches (not available in old API)
 pub async fn handle_search_event_previews(
     client: &Client,
     args: SearchEventPreviewsArgs,
@@ -413,6 +434,10 @@ pub async fn handle_search_event_previews(
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }
 
+// get_event_details: Retrieve full event payload by index
+// Rationale: Complements search_event_previews for drill-down workflow.
+// - event_index enables precise, efficient retrieval (no re-search needed)
+// - No truncation or size limits (single event ~1-5 KB is safe)
 pub async fn handle_get_event_details(
     client: &Client,
     args: GetEventDetailsArgs,
