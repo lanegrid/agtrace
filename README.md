@@ -33,6 +33,46 @@ agtrace init      # initialize workspace (system data directory)
 agtrace watch     # live dashboard
 ```
 
+## 🤖 AI-Native Observability (MCP)
+
+**New in v0.4.0**: Enable AI agents to query their own execution history.
+
+agtrace exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that allows AI assistants like Claude Desktop to:
+- Browse session history and analyze failures
+- Search event payloads across thousands of sessions
+- Run diagnostic analysis (failures, loops, bottlenecks)
+- Debug agent behavior without manual CLI commands
+
+### Setup with Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "agtrace": {
+      "command": "agtrace",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+After restarting Claude Desktop, ask questions like:
+- *"Show me sessions from the last 2 hours that had failures"*
+- *"Search for all tool calls containing 'write_file'"*
+- *"Analyze the most recent session for performance issues"*
+
+### Available MCP Tools
+
+- `list_sessions` - Browse session history with filtering
+- `get_session_details` - Get session overview, turns, or full details
+- `analyze_session` - Run diagnostic analysis (failures, loops)
+- `search_events` - Search event payloads across sessions
+- `get_project_info` - List all indexed projects
+
+**See also**: Run `agtrace mcp serve --help` for details.
+
 ## 🛠️ Building with the SDK
 
 Embed agent observability into your own tools (vital-checkers, IDE plugins, dashboards).
