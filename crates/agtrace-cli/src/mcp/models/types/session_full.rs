@@ -2,8 +2,6 @@ use agtrace_sdk::types::AgentSession;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::mcp::models::common::{ContentLevel, ResponseMeta};
-
 /// Get complete session data with full payloads (50-100 KB per chunk, requires pagination)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetSessionFullArgs {
@@ -36,9 +34,11 @@ impl GetSessionFullArgs {
 
 #[derive(Debug, Serialize)]
 pub struct SessionFullViewModel {
-    session: AgentSession,
-    #[serde(rename = "_meta")]
-    meta: ResponseMeta,
+    #[serde(flatten)]
+    pub session: AgentSession,
+    pub total_turns: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 
 impl SessionFullViewModel {
@@ -52,18 +52,10 @@ impl SessionFullViewModel {
 
         session.turns = session.turns.into_iter().skip(offset).take(limit).collect();
 
-        let mut meta = ResponseMeta::from_bytes(0);
-        if let Ok(json) = serde_json::to_string(&session) {
-            let bytes = json.len();
-            meta = ResponseMeta::with_pagination(
-                bytes,
-                next_cursor,
-                session.turns.len(),
-                Some(total_turns),
-            )
-            .with_content_level(ContentLevel::Full);
+        Self {
+            session,
+            total_turns,
+            next_cursor,
         }
-
-        Self { session, meta }
     }
 }

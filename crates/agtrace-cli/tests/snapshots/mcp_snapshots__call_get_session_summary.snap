@@ -3,12 +3,6 @@ source: crates/agtrace-cli/tests/mcp_snapshots.rs
 expression: content
 ---
 {
-  "_meta": {
-    "bytes": 8003,
-    "content_level": "summary",
-    "estimated_tokens": 2000,
-    "has_more": false
-  },
   "end_time": "[TIMESTAMP]",
   "project_hash": "[PROJECT_HASH]",
   "provider": "claude_code",
