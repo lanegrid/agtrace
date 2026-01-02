@@ -1,4 +1,6 @@
-use agtrace_sdk::types::{AgentSession, AgentStep, AgentTurn, SessionStats, TurnStats};
+use agtrace_sdk::types::{
+    AgentSession, AgentStep, AgentTurn, SessionStats, ToolCallPayload, TurnStats,
+};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -124,17 +126,23 @@ impl TurnOverview {
 }
 
 fn summarize_step(step: &AgentStep) -> String {
-    // Collect tool names from this step
-    let tool_names: Vec<String> = step
+    // Collect tool summaries with minimal context from this step
+    let tool_summaries: Vec<String> = step
         .tools
         .iter()
         .map(|t| {
             let status = if t.is_error { "FAILED" } else { "OK" };
-            format!("{} [{}]", t.call.content.name(), status)
+            let context = extract_tool_context(&t.call.content);
+
+            if context.is_empty() {
+                format!("{} [{}]", t.call.content.name(), status)
+            } else {
+                format!("{} {} [{}]", t.call.content.name(), context, status)
+            }
         })
         .collect();
 
-    if tool_names.is_empty() {
+    if tool_summaries.is_empty() {
         // No tools - likely just a message response
         if step.message.is_some() {
             "Message".to_string()
@@ -145,6 +153,76 @@ fn summarize_step(step: &AgentStep) -> String {
         }
     } else {
         // Join multiple tool calls with comma
-        tool_names.join(", ")
+        tool_summaries.join(", ")
+    }
+}
+
+/// Extract minimal context from tool call for overview purposes
+fn extract_tool_context(payload: &ToolCallPayload) -> String {
+    match payload {
+        ToolCallPayload::FileRead { arguments, .. } => {
+            // Show basename of file path
+            if let Some(path) = arguments.file_path.as_ref().or(arguments.path.as_ref()) {
+                std::path::Path::new(path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or(path)
+                    .to_string()
+            } else if let Some(pattern) = &arguments.pattern {
+                truncate_string(pattern, 20)
+            } else {
+                String::new()
+            }
+        }
+        ToolCallPayload::FileEdit { arguments, .. } => {
+            // Show basename of file path
+            std::path::Path::new(&arguments.file_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(&arguments.file_path)
+                .to_string()
+        }
+        ToolCallPayload::FileWrite { arguments, .. } => {
+            // Show basename of file path
+            std::path::Path::new(&arguments.file_path)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(&arguments.file_path)
+                .to_string()
+        }
+        ToolCallPayload::Execute { arguments, .. } => {
+            // Show first part of command
+            arguments
+                .command
+                .as_ref()
+                .map(|cmd| {
+                    let truncated = truncate_string(cmd, 30);
+                    format!("'{}'", truncated)
+                })
+                .unwrap_or_default()
+        }
+        ToolCallPayload::Search { arguments, .. } => {
+            // Show search pattern
+            if let Some(pattern) = &arguments.pattern {
+                format!("'{}'", truncate_string(pattern, 20))
+            } else if let Some(query) = &arguments.query {
+                format!("'{}'", truncate_string(query, 20))
+            } else {
+                String::new()
+            }
+        }
+        ToolCallPayload::Mcp { arguments, .. } => {
+            // Show server/tool combination
+            match (&arguments.server, &arguments.tool) {
+                (Some(server), Some(tool)) => format!("{}::{}", server, tool),
+                (Some(server), None) => server.clone(),
+                (None, Some(tool)) => tool.clone(),
+                (None, None) => String::new(),
+            }
+        }
+        ToolCallPayload::Generic { .. } => {
+            // Generic tools don't have predictable structure
+            String::new()
+        }
     }
 }
