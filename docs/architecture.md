@@ -104,7 +104,7 @@ Sessions are scoped by cwd/project boundaries and grouped by a project root hash
          ▼
 ┌─────────────────┐
 │  agtrace-index  │ (Metadata only: session IDs, paths, timestamps)
-│  XDG data dir   │ (e.g., ~/Library/Application Support/agtrace)
+│  System data    │ (e.g., ~/Library/Application Support/agtrace)
 │  agtrace.db     │
 └────────┬────────┘
          │
@@ -183,7 +183,7 @@ The official CLI application built on top of `agtrace-sdk`. Demonstrates best pr
 ## Storage Layout
 
 ```
-XDG data directory/agtrace/  # e.g., ~/Library/Application Support/agtrace on macOS
+System data directory/agtrace/  # e.g., ~/Library/Application Support/agtrace on macOS
 ├── agtrace.db               # SQLite metadata index
 └── config.toml              # User configuration
 

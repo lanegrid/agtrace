@@ -96,7 +96,7 @@ pub enum Commands {
 
 This command will:
   • Auto-detect installed providers (Claude Code, Codex, Gemini)
-  • Create the local database (XDG data directory, e.g., ~/Library/Application Support/agtrace on macOS)
+  • Create the local database (system data directory, e.g., ~/Library/Application Support/agtrace on macOS)
   • Scan and index existing session logs
 
 After running 'init', use 'agtrace watch' to monitor sessions in real-time.

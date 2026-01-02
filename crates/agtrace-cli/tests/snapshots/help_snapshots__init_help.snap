@@ -6,7 +6,7 @@ Initialize agtrace — run this once to get started.
 
 This command will:
   • Auto-detect installed providers (Claude Code, Codex, Gemini)
-  • Create the local database (XDG data directory, e.g., ~/Library/Application Support/agtrace on macOS)
+  • Create the local database (system data directory, e.g., ~/Library/Application Support/agtrace on macOS)
   • Scan and index existing session logs
 
 After running 'init', use 'agtrace watch' to monitor sessions in real-time.
@@ -17,7 +17,7 @@ Usage: agtrace init [OPTIONS]
 
 Options:
       --data-dir <DATA_DIR>
-          Directory for agtrace database and configuration (defaults to XDG data directory, or AGTRACE_PATH env var)
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
 
       --refresh
           Force re-scan even if recently indexed

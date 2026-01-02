@@ -6,8 +6,8 @@ use std::path::PathBuf;
 /// Resolve the workspace data directory path based on priority:
 /// 1. Explicit path (with tilde expansion)
 /// 2. AGTRACE_PATH environment variable (with tilde expansion)
-/// 3. XDG data directory (recommended default)
-/// 4. ~/.agtrace (fallback for systems without XDG)
+/// 3. System data directory (recommended default)
+/// 4. ~/.agtrace (fallback for systems without standard data directory)
 pub fn resolve_workspace_path(explicit_path: Option<&str>) -> Result<PathBuf> {
     agtrace_core::resolve_workspace_path(explicit_path).map_err(|e| match e {
         agtrace_core::path::Error::Io(io_err) => Error::Io(io_err),

@@ -28,7 +28,7 @@ primitives for monitoring and analyzing AI agent behavior.
 ```rust
 use agtrace_sdk::{Client, Lens, types::SessionFilter};
 
-// Connect to the local workspace (uses XDG data directory)
+// Connect to the local workspace (uses system data directory)
 let client = Client::connect_default().await?;
 
 // List sessions and analyze the most recent one

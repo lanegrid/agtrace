@@ -11,7 +11,7 @@ use agtrace_sdk::Client;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Basic Connection Example ===\n");
 
-    // 1. Connect to the agtrace workspace (uses XDG path resolution)
+    // 1. Connect to the agtrace workspace (uses system path resolution)
     println!("Connecting to workspace...");
 
     let client = Client::connect_default().await?;

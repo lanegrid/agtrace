@@ -17,7 +17,7 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Connect to the local workspace (uses XDG data directory)
+//! // Connect to the local workspace (uses system data directory)
 //! let client = Client::connect_default().await?;
 //!
 //! // List sessions and analyze the most recent one

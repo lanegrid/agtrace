@@ -37,8 +37,8 @@ impl From<std::io::Error> for Error {
 /// Resolve the workspace data directory path based on priority:
 /// 1. Explicit path (with tilde expansion)
 /// 2. AGTRACE_PATH environment variable (with tilde expansion)
-/// 3. XDG data directory (recommended default)
-/// 4. ~/.agtrace (fallback for systems without XDG)
+/// 3. System data directory (recommended default)
+/// 4. ~/.agtrace (fallback for systems without standard data directory)
 pub fn resolve_workspace_path(explicit_path: Option<&str>) -> Result<PathBuf> {
     // Priority 1: Explicit path
     if let Some(path) = explicit_path {
@@ -50,19 +50,19 @@ pub fn resolve_workspace_path(explicit_path: Option<&str>) -> Result<PathBuf> {
         return Ok(expand_tilde(&env_path));
     }
 
-    // Priority 3: XDG data directory (recommended default)
+    // Priority 3: System data directory (recommended default)
     if let Some(data_dir) = dirs::data_dir() {
         return Ok(data_dir.join("agtrace"));
     }
 
-    // Priority 4: Fallback to ~/.agtrace (last resort for systems without XDG)
+    // Priority 4: Fallback to ~/.agtrace (last resort for systems without standard data directory)
     if let Some(home) = std::env::var_os("HOME") {
         return Ok(PathBuf::from(home).join(".agtrace"));
     }
 
     // This should never happen, but provide a working directory fallback
     Err(Error::Config(
-        "Could not determine workspace path: no HOME directory or XDG data directory found"
+        "Could not determine workspace path: no HOME directory or system data directory found"
             .to_string(),
     ))
 }

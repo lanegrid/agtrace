@@ -33,7 +33,7 @@ pub struct Cli {
     #[arg(
         long,
         global = true,
-        help = "Directory for agtrace database and configuration (defaults to XDG data directory, or AGTRACE_PATH env var)"
+        help = "Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)"
     )]
     pub data_dir: Option<String>,
 

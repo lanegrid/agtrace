@@ -14,7 +14,7 @@ use crate::watch::WatchBuilder;
 /// Provides flexible path resolution with the following priority:
 /// 1. Explicit path via `builder.path()`
 /// 2. `AGTRACE_PATH` environment variable
-/// 3. XDG data directory (e.g., `~/.local/share/agtrace` on Linux, `~/Library/Application Support/agtrace` on macOS)
+/// 3. System data directory (e.g., `~/.local/share/agtrace` on Linux, `~/Library/Application Support/agtrace` on macOS)
 ///
 /// # Examples
 ///
@@ -22,7 +22,7 @@ use crate::watch::WatchBuilder;
 /// # use agtrace_sdk::Client;
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// // Use default XDG path
+/// // Use default system path
 /// let client = Client::connect_default().await?;
 ///
 /// // Use explicit path
@@ -68,7 +68,7 @@ impl ClientBuilder {
     /// Resolve the workspace path based on priority:
     /// 1. Explicit path from builder
     /// 2. AGTRACE_PATH environment variable
-    /// 3. XDG data directory
+    /// 3. System data directory
     fn resolve_path(&self) -> Result<PathBuf> {
         let explicit_path = self.path.as_ref().and_then(|p| p.to_str());
         agtrace_runtime::resolve_workspace_path(explicit_path).map_err(Error::Runtime)
@@ -89,7 +89,7 @@ impl Client {
     /// Create a new ClientBuilder for configuring workspace connection.
     ///
     /// This is the recommended way to connect to a workspace as it supports
-    /// XDG-compliant path resolution and environment variable configuration.
+    /// platform-standard path resolution and environment variable configuration.
     ///
     /// # Examples
     ///
@@ -113,7 +113,7 @@ impl Client {
 
     /// Connect to the default agtrace workspace.
     ///
-    /// This is a convenience method that uses XDG-compliant path resolution.
+    /// This is a convenience method that uses platform-standard path resolution.
     /// It checks (in order):
     /// 1. `AGTRACE_PATH` environment variable
     /// 2. System data directory + "agtrace" (e.g., `~/.local/share/agtrace`)
@@ -135,7 +135,7 @@ impl Client {
     /// Connect to an agtrace workspace at the given path.
     ///
     /// This is a low-level API. Consider using `Client::builder()` or
-    /// `Client::connect_default()` for better ergonomics and XDG support.
+    /// `Client::connect_default()` for better ergonomics and system path support.
     ///
     /// # Examples
     ///

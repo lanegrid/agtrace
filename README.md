@@ -29,7 +29,7 @@ The reference implementation of the agtrace platform.
 ```bash
 npm install -g @lanegrid/agtrace
 cd my-project
-agtrace init      # initialize workspace (XDG data directory)
+agtrace init      # initialize workspace (system data directory)
 agtrace watch     # live dashboard
 ```
 

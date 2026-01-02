@@ -34,7 +34,7 @@ cargo install agtrace
 
 Run `agtrace init` **once** on your machine.
 
-This creates local configuration and caches in the XDG data directory (e.g., `~/Library/Application Support/agtrace` on macOS, `~/.local/share/agtrace` on Linux).
+This creates local configuration and caches in the system data directory (e.g., `~/Library/Application Support/agtrace` on macOS, `~/.local/share/agtrace` on Linux).
 It does **not** modify any project directory, and you do **not** need to run it per project.
 
 ```bash

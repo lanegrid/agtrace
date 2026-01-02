@@ -11,7 +11,7 @@ Usage: agtrace index update [OPTIONS]
 
 Options:
       --data-dir <DATA_DIR>
-          Directory for agtrace database and configuration (defaults to XDG data directory, or AGTRACE_PATH env var)
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
 
       --provider <PROVIDER>
           Filter by provider

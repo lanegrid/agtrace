@@ -12,7 +12,7 @@ use agtrace_sdk::{Client, Lens};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== agtrace SDK: Session Analysis Example ===\n");
 
-    // 1. Connect to workspace (uses XDG path resolution)
+    // 1. Connect to workspace (uses system path resolution)
     let client = Client::connect_default().await?;
     println!("✓ Connected to workspace\n");
 
