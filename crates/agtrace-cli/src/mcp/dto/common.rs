@@ -1,6 +1,65 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Provider type for filtering sessions
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Provider {
+    /// Claude Code (Anthropic)
+    ClaudeCode,
+    /// GitHub Copilot Codex
+    Codex,
+    /// Google Gemini
+    Gemini,
+}
+
+impl Provider {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Provider::ClaudeCode => "claude_code",
+            Provider::Codex => "codex",
+            Provider::Gemini => "gemini",
+        }
+    }
+}
+
+/// Event type for filtering and classification
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
+pub enum EventType {
+    /// Tool/function call from assistant
+    ToolCall,
+    /// Tool execution result
+    ToolResult,
+    /// Assistant message/response
+    Message,
+    /// User input
+    User,
+    /// Reasoning/thinking blocks
+    Reasoning,
+    /// Token usage statistics
+    TokenUsage,
+    /// System notification
+    Notification,
+}
+
+impl EventType {
+    /// Match against agtrace_sdk::types::EventPayload variant name
+    pub fn matches_payload(self, payload: &agtrace_sdk::types::EventPayload) -> bool {
+        use agtrace_sdk::types::EventPayload;
+        matches!(
+            (self, payload),
+            (EventType::ToolCall, EventPayload::ToolCall(_))
+                | (EventType::ToolResult, EventPayload::ToolResult(_))
+                | (EventType::Message, EventPayload::Message(_))
+                | (EventType::User, EventPayload::User(_))
+                | (EventType::Reasoning, EventPayload::Reasoning(_))
+                | (EventType::TokenUsage, EventPayload::TokenUsage(_))
+                | (EventType::Notification, EventPayload::Notification(_))
+        )
+    }
+}
+
 /// Detail level for session responses
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
@@ -19,6 +78,30 @@ impl Default for DetailLevel {
     fn default() -> Self {
         Self::Summary
     }
+}
+
+/// Pagination metadata for list responses
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct PaginationMeta {
+    /// Number of items in current page
+    pub total_in_page: usize,
+    /// Opaque cursor for next page (null if this is the last page)
+    pub next_cursor: Option<String>,
+    /// Quick check if more results exist
+    pub has_more: bool,
+}
+
+/// Standardized response wrapper for MCP tools
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct McpResponse<T> {
+    /// Response data
+    pub data: T,
+    /// Pagination info (for list operations)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pagination: Option<PaginationMeta>,
+    /// Usage hint for next steps
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
 }
 
 /// Truncate a string to a maximum length, adding ellipsis if truncated

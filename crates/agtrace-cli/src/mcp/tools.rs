@@ -49,7 +49,7 @@ pub async fn handle_list_sessions(
     };
 
     if let Some(provider) = args.provider {
-        filter = filter.provider(provider);
+        filter = filter.provider(provider.as_str().to_string());
     }
 
     if let Some(since) = args.since {
