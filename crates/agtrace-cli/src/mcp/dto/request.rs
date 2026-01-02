@@ -89,11 +89,36 @@ pub struct GetTurnStepsArgs {
     /// Maximum number of steps to return (default: 20, max: 100)
     #[serde(default)]
     pub limit: Option<usize>,
+
+    /// Include reasoning/thinking blocks in response (default: true)
+    #[serde(default)]
+    pub include_reasoning: Option<bool>,
+
+    /// Include tool executions in response (default: true)
+    #[serde(default)]
+    pub include_tools: Option<bool>,
+
+    /// Include assistant messages in response (default: true)
+    #[serde(default)]
+    pub include_message: Option<bool>,
 }
 
 impl GetTurnStepsArgs {
+    #[allow(dead_code)]
     pub fn limit(&self) -> usize {
         self.limit.unwrap_or(20).min(100)
+    }
+
+    pub fn should_include_reasoning(&self) -> bool {
+        self.include_reasoning.unwrap_or(true)
+    }
+
+    pub fn should_include_tools(&self) -> bool {
+        self.include_tools.unwrap_or(true)
+    }
+
+    pub fn should_include_message(&self) -> bool {
+        self.include_message.unwrap_or(true)
     }
 }
 

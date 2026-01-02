@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::mcp::dto::common::{EventType, truncate_string};
+use crate::mcp::dto::tool_summary::ToolSummarizer;
 
 const MAX_PREVIEW_LEN: usize = 300;
 
@@ -34,7 +35,10 @@ pub struct EventPreview {
 pub enum PreviewContent {
     ToolCall {
         tool: String,
-        arguments: serde_json::Value,
+        /// Human-readable summary of what the tool does (e.g., "Read path/to/file.rs")
+        summary: String,
+        /// Truncated preview of arguments (max 100 chars per field)
+        arguments_preview: serde_json::Value,
     },
     ToolResult {
         preview: String,
@@ -53,14 +57,19 @@ impl PreviewContent {
         match payload {
             EventPayload::ToolCall(tc) => {
                 let tool = tc.name().to_string();
+                let summary = ToolSummarizer::summarize_call(tc);
                 let args_json = serde_json::to_value(tc)
                     .unwrap_or_else(|e| serde_json::json!({"<error>": e.to_string()}));
-                let arguments = if let Some(args) = args_json.get("arguments") {
+                let arguments_preview = if let Some(args) = args_json.get("arguments") {
                     super::super::common::truncate_json_value(args, 100)
                 } else {
                     serde_json::Value::Object(Default::default())
                 };
-                PreviewContent::ToolCall { tool, arguments }
+                PreviewContent::ToolCall {
+                    tool,
+                    summary,
+                    arguments_preview,
+                }
             }
             EventPayload::ToolResult(tr) => {
                 let result_str = serde_json::to_string(tr)

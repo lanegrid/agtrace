@@ -23,13 +23,15 @@ pub struct SessionTurnsResponse {
 
 #[derive(Debug, Serialize)]
 pub struct TurnDetailDto {
+    /// Global turn index (always 0-based position in full session, not page-relative)
     pub turn_index: usize,
     pub id: String,
     pub timestamp: DateTime<Utc>,
     pub user_message: String,
     pub steps: Vec<StepSummaryDto>,
     pub outcome: TurnOutcome,
-    pub key_actions: Vec<String>,
+    /// Structured key actions for agent-friendly parsing
+    pub key_actions: Vec<KeyAction>,
 }
 
 #[derive(Debug, Serialize)]
@@ -55,7 +57,29 @@ pub enum TurnOutcome {
     Failed,
 }
 
+/// Structured key action for agent-friendly parsing
+#[derive(Debug, Serialize)]
+pub struct KeyAction {
+    /// Type of action
+    #[serde(rename = "type")]
+    pub kind: KeyActionKind,
+    /// Details specific to the action type
+    pub details: serde_json::Value,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum KeyActionKind {
+    /// Tools were used
+    ToolUsage,
+    /// Tool executions failed
+    Failure,
+    /// Steps were incomplete
+    Incomplete,
+}
+
 impl SessionTurnsResponse {
+    #[allow(dead_code)]
     pub fn from_session(session: AgentSession, include_reasoning: bool) -> Self {
         let turns = session
             .turns
@@ -82,13 +106,15 @@ impl SessionTurnsResponse {
         next_cursor: Option<String>,
     ) -> Self {
         let total_turns = session.turns.len();
+        // IMPORTANT: turn_index must be global index (not page-relative)
+        // So we enumerate first, then skip
         let turns: Vec<_> = session
             .turns
             .into_iter()
             .enumerate()
             .skip(offset)
             .take(limit)
-            .map(|(idx, turn)| TurnDetailDto::from_turn(idx, turn, false))
+            .map(|(global_idx, turn)| TurnDetailDto::from_turn(global_idx, turn, false))
             .collect();
 
         let response = Self {
@@ -100,18 +126,26 @@ impl SessionTurnsResponse {
             _meta: ResponseMeta::from_bytes(0),
         };
 
-        response.with_metadata(next_cursor, total_turns)
+        response.with_metadata(next_cursor, total_turns, offset)
     }
 
-    pub fn with_metadata(mut self, next_cursor: Option<String>, total_turns: usize) -> Self {
+    pub fn with_metadata(
+        mut self,
+        next_cursor: Option<String>,
+        total_turns: usize,
+        _offset: usize,
+    ) -> Self {
         if let Ok(json) = serde_json::to_string(&self) {
             let bytes = json.len();
+            let truncated_fields = vec!["user_message".to_string()];
             self._meta = ResponseMeta::with_pagination(
                 bytes,
                 next_cursor,
                 self.turns.len(),
                 Some(total_turns),
-            );
+            )
+            .with_content_level(crate::mcp::dto::common::ContentLevel::Turns)
+            .with_truncation(truncated_fields, MAX_SNIPPET_LEN);
         }
         self
     }
@@ -161,22 +195,28 @@ impl TurnDetailDto {
         }
     }
 
-    fn extract_key_actions(steps: &[AgentStep]) -> Vec<String> {
+    fn extract_key_actions(steps: &[AgentStep]) -> Vec<KeyAction> {
         let mut actions = Vec::new();
 
         // Collect unique tool types used
         let mut tool_types: Vec<String> = Vec::new();
         for step in steps {
             for tool_exec in &step.tools {
-                let tool_name = tool_exec.call.content.name();
-                if !tool_types.contains(&tool_name.to_string()) {
-                    tool_types.push(tool_name.to_string());
+                let tool_name = tool_exec.call.content.name().to_string();
+                if !tool_types.contains(&tool_name) {
+                    tool_types.push(tool_name);
                 }
             }
         }
 
         if !tool_types.is_empty() {
-            actions.push(format!("Used tools: {}", tool_types.join(", ")));
+            actions.push(KeyAction {
+                kind: KeyActionKind::ToolUsage,
+                details: serde_json::json!({
+                    "tools": tool_types,
+                    "count": tool_types.len(),
+                }),
+            });
         }
 
         // Count successful vs failed tools
@@ -188,10 +228,22 @@ impl TurnDetailDto {
             .count();
 
         if failed_tools > 0 {
-            actions.push(format!(
-                "{} of {} tool executions failed",
-                failed_tools, total_tools
-            ));
+            // Collect names of failed tools
+            let failed_tool_names: Vec<String> = steps
+                .iter()
+                .flat_map(|s| &s.tools)
+                .filter(|t| t.is_error)
+                .map(|t| t.call.content.name().to_string())
+                .collect();
+
+            actions.push(KeyAction {
+                kind: KeyActionKind::Failure,
+                details: serde_json::json!({
+                    "failed_count": failed_tools,
+                    "total_count": total_tools,
+                    "failed_tools": failed_tool_names,
+                }),
+            });
         }
 
         // Check for incomplete steps
@@ -200,7 +252,12 @@ impl TurnDetailDto {
             .filter(|s| matches!(s.status, StepStatus::InProgress))
             .count();
         if incomplete > 0 {
-            actions.push(format!("{} step(s) incomplete", incomplete));
+            actions.push(KeyAction {
+                kind: KeyActionKind::Incomplete,
+                details: serde_json::json!({
+                    "count": incomplete,
+                }),
+            });
         }
 
         actions

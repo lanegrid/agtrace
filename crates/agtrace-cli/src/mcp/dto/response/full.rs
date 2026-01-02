@@ -15,6 +15,7 @@ pub struct SessionFullResponse {
 }
 
 impl SessionFullResponse {
+    #[allow(dead_code)]
     pub fn from_session(session: AgentSession) -> Self {
         Self {
             session,
@@ -46,6 +47,7 @@ impl SessionFullResponse {
                 response.session.turns.len(),
                 Some(total_turns),
             )
+            .with_content_level(crate::mcp::dto::common::ContentLevel::Full)
         } else {
             ResponseMeta::from_bytes(0)
         };
