@@ -13,33 +13,6 @@ pub struct GetTurnStepsArgs {
     /// Zero-based turn index (obtained from get_session_turns response).
     /// REQUIRED: Must be valid (0 to turn_count - 1).
     pub turn_index: usize,
-
-    /// Pagination cursor for turns with many steps. Omit for first page.
-    #[serde(default)]
-    pub cursor: Option<String>,
-
-    /// Maximum number of steps to return (default: 20, max: 100)
-    #[serde(default)]
-    pub limit: Option<usize>,
-
-    /// Include reasoning/thinking blocks in response (default: true)
-    #[serde(default)]
-    pub include_reasoning: Option<bool>,
-
-    /// Include tool executions in response (default: true)
-    #[serde(default)]
-    pub include_tools: Option<bool>,
-
-    /// Include assistant messages in response (default: true)
-    #[serde(default)]
-    pub include_message: Option<bool>,
-}
-
-impl GetTurnStepsArgs {
-    #[allow(dead_code)]
-    pub fn limit(&self) -> usize {
-        self.limit.unwrap_or(20).min(100)
-    }
 }
 
 #[derive(Debug, Serialize)]
