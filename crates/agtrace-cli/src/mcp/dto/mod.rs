@@ -10,4 +10,3 @@ pub use request::{AnalyzeSessionArgs, GetSessionDetailsArgs, ListSessionsArgs, S
 pub use response::{
     EventMatchDto, EventPreviewDto, ListSessionsResponse, SearchEventsResponse, SessionSummaryDto,
 };
-pub use tool_summary::ToolSummarizer;

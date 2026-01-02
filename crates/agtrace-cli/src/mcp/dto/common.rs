@@ -20,30 +20,6 @@ impl Default for DetailLevel {
     }
 }
 
-/// Truncation limits for different content types
-pub struct TruncationLimits {
-    pub snippet: usize,
-    pub preview: usize,
-    pub payload: usize,
-    pub reasoning: usize,
-}
-
-impl TruncationLimits {
-    pub const DEFAULT: Self = Self {
-        snippet: 200,
-        preview: 300,
-        payload: 500,
-        reasoning: 500,
-    };
-
-    pub const TURNS_LEVEL: Self = Self {
-        snippet: 200,
-        preview: 100,
-        payload: 200,
-        reasoning: 100,
-    };
-}
-
 /// Truncate a string to a maximum length, adding ellipsis if truncated
 pub fn truncate_string(s: &str, max_len: usize) -> String {
     if s.len() > max_len {

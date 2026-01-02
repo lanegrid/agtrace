@@ -1,6 +1,4 @@
-use agtrace_sdk::types::{
-    EventPayload, ExecuteArgs, FileReadArgs, ToolCallPayload, ToolResultPayload,
-};
+use agtrace_sdk::types::{ExecuteArgs, FileReadArgs, ToolCallPayload, ToolResultPayload};
 
 use super::common::truncate_string;
 
@@ -100,31 +98,6 @@ impl ToolSummarizer {
         };
 
         format!("{} '{}'", name, cmd_str)
-    }
-
-    /// Summarize a payload into a preview string
-    pub fn summarize_payload(payload: &EventPayload) -> String {
-        match payload {
-            EventPayload::ToolCall(tc) => Self::summarize_call(tc),
-            EventPayload::ToolResult(tr) => {
-                let preview = serde_json::to_string(tr)
-                    .unwrap_or_default()
-                    .chars()
-                    .take(100)
-                    .collect::<String>();
-                format!("Result: {}", preview)
-            }
-            EventPayload::User(u) => truncate_string(&u.text, 100),
-            EventPayload::Message(m) => truncate_string(&m.text, 100),
-            EventPayload::Reasoning(r) => truncate_string(&r.text, 100),
-            EventPayload::TokenUsage(tu) => {
-                format!("Tokens: {}in/{}out", tu.input.total(), tu.output.total())
-            }
-            EventPayload::Notification(n) => {
-                let s = serde_json::to_string(n).unwrap_or_default();
-                truncate_string(&s, 100)
-            }
-        }
     }
 
     /// Truncate a file path, keeping the filename visible

@@ -1,4 +1,5 @@
 use agtrace_sdk::{Client, Lens, SessionFilter};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::dto::{
@@ -7,16 +8,44 @@ use super::dto::{
     SessionSummaryDto,
 };
 
+#[derive(Debug, Serialize, Deserialize)]
+struct Cursor {
+    offset: usize,
+}
+
+impl Cursor {
+    fn encode(&self) -> String {
+        let json = serde_json::to_string(self).unwrap_or_default();
+        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, json.as_bytes())
+    }
+
+    fn decode(cursor: &str) -> Option<Self> {
+        let bytes =
+            base64::Engine::decode(&base64::engine::general_purpose::STANDARD, cursor).ok()?;
+        let json = String::from_utf8(bytes).ok()?;
+        serde_json::from_str(&json).ok()
+    }
+}
+
 pub async fn handle_list_sessions(
     client: &Client,
     args: ListSessionsArgs,
 ) -> Result<Value, String> {
-    let limit = args.limit.unwrap_or(10);
+    let limit = args.limit.unwrap_or(10).min(50); // max 50 per spec
+    let offset = args
+        .cursor
+        .as_ref()
+        .and_then(|c| Cursor::decode(c))
+        .map(|c| c.offset)
+        .unwrap_or(0);
+
+    // Fetch limit + 1 to check if there are more results
+    let fetch_limit = limit + 1;
 
     let mut filter = if let Some(project_hash) = args.project_hash {
-        SessionFilter::project(project_hash.into()).limit(limit)
+        SessionFilter::project(project_hash.into()).limit(fetch_limit + offset)
     } else {
-        SessionFilter::all().limit(limit)
+        SessionFilter::all().limit(fetch_limit + offset)
     };
 
     if let Some(provider) = args.provider {
@@ -31,18 +60,44 @@ pub async fn handle_list_sessions(
         filter = filter.until(until);
     }
 
-    let sessions = client
+    let all_sessions = client
         .sessions()
         .list(filter)
         .map_err(|e| format!("Failed to list sessions: {}", e))?;
 
+    // Skip offset and take limit + 1
+    let mut sessions: Vec<_> = all_sessions
+        .into_iter()
+        .skip(offset)
+        .take(fetch_limit)
+        .collect();
+
+    // Determine if there are more results
+    let has_more = sessions.len() > limit;
+    if has_more {
+        sessions.pop(); // Remove the extra item
+    }
+
+    let next_cursor = if has_more {
+        Some(
+            Cursor {
+                offset: offset + limit,
+            }
+            .encode(),
+        )
+    } else {
+        None
+    };
+
+    let total_in_page = sessions.len();
     let response = ListSessionsResponse {
         sessions: sessions
             .into_iter()
             .map(SessionSummaryDto::from_sdk)
             .collect(),
-        total: limit,
-        hint: "Use get_session_details(session_id) to see turn-by-turn breakdown".to_string(),
+        total_in_page,
+        next_cursor,
+        hint: "Use get_session_details(id, detail_level='summary') for turn breakdown".to_string(),
     };
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
@@ -99,7 +154,13 @@ pub async fn handle_search_events(
     client: &Client,
     args: SearchEventsArgs,
 ) -> Result<Value, String> {
-    let limit = args.limit.unwrap_or(10);
+    let limit = args.limit.unwrap_or(5).min(20); // default 5, max 20 per spec
+    let offset = args
+        .cursor
+        .as_ref()
+        .and_then(|c| Cursor::decode(c))
+        .map(|c| c.offset)
+        .unwrap_or(0);
     let include_full_payload = args.include_full_payload.unwrap_or(false);
 
     let mut filter = SessionFilter::all().limit(1000);
@@ -113,14 +174,9 @@ pub async fn handle_search_events(
         .list_without_refresh(filter)
         .map_err(|e| format!("Failed to list sessions: {}", e))?;
 
-    let mut matches = Vec::new();
-    let mut total_matches = 0;
+    let mut all_matches = Vec::new();
 
     for session_summary in sessions {
-        if total_matches >= limit {
-            break;
-        }
-
         let handle = match client.sessions().get(&session_summary.id) {
             Ok(h) => h,
             Err(_) => continue,
@@ -132,10 +188,6 @@ pub async fn handle_search_events(
         };
 
         for event in events {
-            if total_matches >= limit {
-                break;
-            }
-
             let event_json = match serde_json::to_string(&event.payload) {
                 Ok(j) => j,
                 Err(_) => continue,
@@ -165,15 +217,40 @@ pub async fn handle_search_events(
                     }
                 };
 
-                matches.push(match_dto);
-                total_matches += 1;
+                all_matches.push(match_dto);
             }
         }
     }
 
+    // Apply cursor-based pagination
+    let fetch_limit = limit + 1;
+    let mut matches: Vec<_> = all_matches
+        .into_iter()
+        .skip(offset)
+        .take(fetch_limit)
+        .collect();
+
+    let has_more = matches.len() > limit;
+    if has_more {
+        matches.pop();
+    }
+
+    let next_cursor = if has_more {
+        Some(
+            Cursor {
+                offset: offset + limit,
+            }
+            .encode(),
+        )
+    } else {
+        None
+    };
+
+    let total = matches.len();
     let response = SearchEventsResponse {
         matches,
-        total: total_matches,
+        total,
+        next_cursor,
         hint: "Use get_session_details(session_id, detail_level='steps') to see all events in a session"
             .to_string(),
     };

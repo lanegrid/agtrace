@@ -39,6 +39,7 @@ ratatui.workspace = true
 regex.workspace = true
 uuid.workspace = true
 tokio.workspace = true
+base64 = "0.22.1"
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true
