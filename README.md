@@ -58,6 +58,31 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
+**Troubleshooting**: If you use a Node.js version manager (mise, nvm, asdf, volta), Claude Desktop may not find `node` in its PATH. Use the explicit Node.js path instead:
+
+```bash
+# Find your Node.js and agtrace paths
+which node
+npm root -g
+```
+
+Then configure with explicit paths:
+
+```json
+{
+  "mcpServers": {
+    "agtrace": {
+      "command": "/path/to/node",
+      "args": [
+        "/path/to/global/node_modules/@lanegrid/agtrace/run-agtrace.js",
+        "mcp",
+        "serve"
+      ]
+    }
+  }
+}
+```
+
 After restarting Claude Desktop, ask questions like:
 - *"Show me sessions from the last 2 hours that had failures"*
 - *"Search for all tool calls containing 'write_file'"*
