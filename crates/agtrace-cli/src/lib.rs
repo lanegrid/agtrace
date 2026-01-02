@@ -33,7 +33,7 @@ pub mod presentation;
 mod services;
 
 pub use args::{
-    Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
-    SessionCommand,
+    Cli, Commands, DoctorCommand, IndexCommand, LabCommand, McpCommand, ProjectCommand,
+    ProviderCommand, SessionCommand,
 };
 pub use commands::run;

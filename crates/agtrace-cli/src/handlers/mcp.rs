@@ -1,10 +1,24 @@
+use crate::McpCommand;
+use crate::mcp;
 use agtrace_sdk::Client;
 use anyhow::Result;
 use serde_json::json;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, Command, Stdio};
 
-pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
+pub async fn handle(client: &Client, command: &McpCommand) -> Result<()> {
+    match command {
+        McpCommand::Serve => handle_serve(client).await,
+        McpCommand::Test { verbose } => handle_test(client, *verbose).await,
+    }
+}
+
+async fn handle_serve(client: &Client) -> Result<()> {
+    // Clone the client since run_server takes ownership
+    mcp::run_server((*client).clone()).await
+}
+
+async fn handle_test(client: &Client, verbose: bool) -> Result<()> {
     println!("Starting MCP server test...\n");
 
     let mut server = spawn_mcp_server()?;
@@ -325,6 +339,7 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
 fn spawn_mcp_server() -> Result<Child> {
     let exe = std::env::current_exe()?;
     let child = Command::new(exe)
+        .arg("mcp")
         .arg("serve")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

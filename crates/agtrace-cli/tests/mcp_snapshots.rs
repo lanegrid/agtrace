@@ -14,6 +14,7 @@ struct McpHarness {
 impl McpHarness {
     fn new(data_dir: &str) -> Result<Self> {
         let process = Command::new(assert_cmd::cargo::cargo_bin!("agtrace"))
+            .arg("mcp")
             .arg("serve")
             .arg("--data-dir")
             .arg(data_dir)

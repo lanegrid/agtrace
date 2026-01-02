@@ -126,6 +126,15 @@ Perfect for understanding agtrace's capabilities before setting up your own logs
         speed: String,
     },
 
+    #[command(about = "Model Context Protocol (MCP) server commands")]
+    Mcp {
+        #[command(subcommand)]
+        command: McpCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum McpCommand {
     #[command(
         about = "Start MCP server for AI-native observability",
         long_about = "Start the Model Context Protocol (MCP) server over stdio.
@@ -144,15 +153,6 @@ Configure in claude_desktop_config.json to use with Claude Desktop."
     )]
     Serve,
 
-    #[command(about = "Development and debugging tools")]
-    Dev {
-        #[command(subcommand)]
-        command: DevCommand,
-    },
-}
-
-#[derive(Subcommand)]
-pub enum DevCommand {
     #[command(
         about = "Test MCP server response sizes",
         long_about = "Test the MCP server by sending requests and measuring response sizes.
@@ -160,7 +160,7 @@ pub enum DevCommand {
 This tool helps identify endpoints that return too much data for AI agent consumption.
 It spawns an MCP server instance and tests each endpoint with various parameters."
     )]
-    TestMcp {
+    Test {
         #[arg(long, help = "Show detailed response content")]
         verbose: bool,
     },
