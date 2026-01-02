@@ -2,6 +2,120 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-01-02
+
+### Bug Fixes
+
+- Use numeric id instead of null in MCP error responses for Zod validation ([2014a57](https://github.com/lanegrid/agtrace/commit/2014a575a2c5a523f8d14b7b1d8232cc634750b2))
+
+- Add cursor parameter to MCP tool schemas for list_sessions and search_events ([d3dfdb5](https://github.com/lanegrid/agtrace/commit/d3dfdb5b232d95053dee4ebce89e0491d579af53))
+
+- Move provider filter from app layer to DB layer for accurate session filtering ([5d2ef3f](https://github.com/lanegrid/agtrace/commit/5d2ef3f4df1b36b15714176c579bbf9c41e097db))
+
+- Resolve clippy warnings in MCP tests (use cargo_bin! macro, remove unused import) ([a390e7d](https://github.com/lanegrid/agtrace/commit/a390e7de39940b8f868fcd8dac8adcdb895d6fdd))
+
+- Change SessionMetadata.session_id from Uuid to String for test compatibility ([8a73f01](https://github.com/lanegrid/agtrace/commit/8a73f0132a55f4573611de55f9af15fc850fc3a4))
+
+- *(providers)* Truncate session snippets to 200 chars to prevent oversized MCP responses ([9273aa9](https://github.com/lanegrid/agtrace/commit/9273aa9689ada47d4773234613e27ef45d14d95f))
+
+- *(mcp)* Truncate session summary and turns to prevent token limit errors ([9bf6fd9](https://github.com/lanegrid/agtrace/commit/9bf6fd9a067c2e850fc7580b1f5ab6d774893832))
+
+- *(cli)* Rename lab export --format to --export-format to avoid conflict with global --format ([dc2e583](https://github.com/lanegrid/agtrace/commit/dc2e583645cf3f691154d9c5eea6249857bef10a))
+
+
+### Documentation
+
+- *(mcp)* Update tools interface for v0.4.0 with search_event_previews, get_event_details, structured errors, and migration guide ([821add1](https://github.com/lanegrid/agtrace/commit/821add115517c546e82ef189f2c1aacf0e85e677))
+
+- *(mcp)* Update mcp-server.md for v0.4.0 tools and suppress deprecated search_events warning ([c3d8c7c](https://github.com/lanegrid/agtrace/commit/c3d8c7cb3f0f871acb9cf6553c6be8e5616bdbee))
+
+- Replace XDG terminology with system data directory ([1e22a18](https://github.com/lanegrid/agtrace/commit/1e22a1836964d9375d1ad19f9c279845c7bd16cb))
+
+- Fix command examples to match actual CLI implementation ([1c41c6e](https://github.com/lanegrid/agtrace/commit/1c41c6e3b26fc2a9b3c8f4aaa39f31d5a75a6ba8))
+
+- Add MCP (Model Context Protocol) section for v0.4.0 ([a15fc90](https://github.com/lanegrid/agtrace/commit/a15fc900e5064dd4c554b1fdac450e9fbeb9c654))
+
+
+### Features
+
+- Add idempotent resume mode and --yes flag to prepare-release.sh ([f862e15](https://github.com/lanegrid/agtrace/commit/f862e153d2e655dc63b96662106f3377cc7128e3))
+
+- Add MCP server for AI-native observability (issue #32) ([a288dff](https://github.com/lanegrid/agtrace/commit/a288dff780fc8391ec56f2dc1745e43e100105b5))
+
+- Add dev test-mcp command to diagnose MCP response sizes and fix list_sessions default limit ([54f0eef](https://github.com/lanegrid/agtrace/commit/54f0eef0e9460ae68be7d3d453426d5c6c4bc183))
+
+- Add comprehensive tests for all detail_level options in dev test-mcp command ([d55e877](https://github.com/lanegrid/agtrace/commit/d55e877546da38777ec8efc83ea30cc43be0aebf))
+
+- Implement cursor-based pagination for MCP tools per specification ([79d9176](https://github.com/lanegrid/agtrace/commit/79d9176fc4006e65cc4e89123a380bd7b13bce5c))
+
+- *(mcp)* Add foundational types for MCP tools redesign (Provider, EventType, McpError, McpResponse) ([9eb77db](https://github.com/lanegrid/agtrace/commit/9eb77db2b8d1f9dc83990fed005f2bdead22fad9))
+
+- *(mcp)* Complete tools redesign - split search_events, add structured errors, standardize responses ([ad8449e](https://github.com/lanegrid/agtrace/commit/ad8449e2c89759edb8692d463ab75fd22916609d))
+
+- *(mcp)* Improve error responses per MCP spec 2024-11-05 and add project_root parameter ([602fce3](https://github.com/lanegrid/agtrace/commit/602fce3c8a2f5b3066707c23254c4f94fbf4259b))
+
+- *(mcp)* Add workflow and data source hints to tool descriptions ([ce74fd7](https://github.com/lanegrid/agtrace/commit/ce74fd79f4dbf0dbda1d3f3129d86d013ee8dde2))
+
+- *(mcp)* Implement approach-b specialized session tools with response metadata ([b919a73](https://github.com/lanegrid/agtrace/commit/b919a73009080b4a395c443dfe8630ddaf6ef155))
+
+- *(types)* Add SessionMetadata for clean separation of DB-derived and event-derived data ([324784b](https://github.com/lanegrid/agtrace/commit/324784b97953da31197748194114a44bcfb3626c))
+
+- *(mcp)* Add tool-aware smart truncation for turn steps ([1965937](https://github.com/lanegrid/agtrace/commit/1965937f46daf04b606eb23e35f50f69f8192b72))
+
+- *(mcp)* Add minimal context to tool summaries in get_session_turns ([e67cab9](https://github.com/lanegrid/agtrace/commit/e67cab9069139156d8ad794aba719408392b64e4))
+
+
+### Miscellaneous Tasks
+
+- Remove unnecessary docs ([7c7ff89](https://github.com/lanegrid/agtrace/commit/7c7ff897ffad19bc25ebb9143cd45c93cde43e7f))
+
+
+### Refactor
+
+- Add typed DTOs for MCP tools interface to improve type safety and maintainability ([f7a77fb](https://github.com/lanegrid/agtrace/commit/f7a77fb4a5a564fb8a221178a0a210f780b7a738))
+
+- Restructure MCP DTOs with hierarchical detail levels and smart tool summarization ([a59c55c](https://github.com/lanegrid/agtrace/commit/a59c55cf1a47cffa6e762e0f8cabd24bda03c0d5))
+
+- Use schemars to auto-generate JSON Schema from Rust types, eliminating schema drift ([d767cac](https://github.com/lanegrid/agtrace/commit/d767cacf79b148d7bead8a2346d711864ab2d5c0))
+
+- *(mcp)* Remove docs, consolidate design rationale into code comments ([d68ad61](https://github.com/lanegrid/agtrace/commit/d68ad61c79dbe018f1d34b61760eaf555f78fd96))
+
+- *(mcp)* Remove deprecated SearchEventsArgs and fix all lint warnings ([55ab644](https://github.com/lanegrid/agtrace/commit/55ab644da53e645735e4a4c8b0527e6af839aa2d))
+
+- *(mcp)* Remove hint fields from MCP responses ([45e537f](https://github.com/lanegrid/agtrace/commit/45e537f463fdc46ffb89b63c4eba577759c474e3))
+
+- *(mcp)* Rename get_session_details to get_session_by_id ([489fc28](https://github.com/lanegrid/agtrace/commit/489fc28c5e1480a66db9782a3ddd42e66a311e6f))
+
+- *(mcp)* Remove deprecated get_session_by_id and related code ([b4e04f9](https://github.com/lanegrid/agtrace/commit/b4e04f9cbb404e51825fba5055768ca09325dd42))
+
+- *(mcp)* Enhance agent UX with content levels, index stability, semantic previews, and structured actions ([d53b0d1](https://github.com/lanegrid/agtrace/commit/d53b0d1cc32c3e28a93ef6da6bf6003dd346f65d))
+
+- *(test)* Extract and prettify MCP response text content in snapshots ([4efbc1e](https://github.com/lanegrid/agtrace/commit/4efbc1e7feeff84cd8335d26fd9e049954c3989f))
+
+- *(mcp/dto)* Return original models directly to preserve complete session data ([b472ad2](https://github.com/lanegrid/agtrace/commit/b472ad2ba3b7967845d6f554586684b08cc7ab63))
+
+- *(mcp)* Unify dto/view_models into models with presenter layer ([1c467cc](https://github.com/lanegrid/agtrace/commit/1c467ccc60df036a519f98144a1ebc4992bd3098))
+
+- *(mcp)* Consolidate request/response types into tool-specific files under models/types/ ([0122771](https://github.com/lanegrid/agtrace/commit/0122771b620c0532432d1bf5205e56c87e982efc))
+
+- *(mcp)* Merge ToolSummarizer into event_previews for better cohesion ([94e9014](https://github.com/lanegrid/agtrace/commit/94e901498a64f4c1baa90c0460a91d423ab71bf9))
+
+- *(mcp)* Remove _meta and add pagination fields directly to ViewModels ([e78b930](https://github.com/lanegrid/agtrace/commit/e78b9301f27ea428b47357b6af08e941a16c82ca))
+
+- *(mcp)* Remove unused fields and wrapper types ([4b50bfb](https://github.com/lanegrid/agtrace/commit/4b50bfb6e10b92eadb148c6a90e9bd88ef897790))
+
+- *(cli)* Rename serve to mcp serve and consolidate MCP commands ([e465b01](https://github.com/lanegrid/agtrace/commit/e465b0133b8bba3bbf6e1873f02d62d8a16681cb))
+
+- *(cli)* Improve help text with option grouping and examples ([cf37d54](https://github.com/lanegrid/agtrace/commit/cf37d546dde282ac3abfe5fc762ca492f5e581f6))
+
+
+### Testing
+
+- Add schema verification tests for auto-generated JSON schemas ([2119be3](https://github.com/lanegrid/agtrace/commit/2119be3eaca266c453aaa087749f39455f4c144c))
+
+- *(mcp)* Add snapshot tests for MCP server JSON-RPC protocol ([b0c587e](https://github.com/lanegrid/agtrace/commit/b0c587ebbb2b55088a88db2b3a7e741c4b6ab8b6))
+
+
 ## [0.3.1] - 2026-01-01
 
 ### Documentation
