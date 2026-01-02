@@ -1,4 +1,5 @@
 use agtrace_sdk::Client;
+use schemars::schema_for;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
@@ -89,6 +90,12 @@ impl AgTraceServer {
     }
 
     async fn handle_list_tools(&self, id: Value) -> JsonRpcResponse {
+        // Generate JSON Schemas from Rust types - single source of truth!
+        let list_sessions_schema = schema_for!(ListSessionsArgs);
+        let get_session_details_schema = schema_for!(GetSessionDetailsArgs);
+        let analyze_session_schema = schema_for!(AnalyzeSessionArgs);
+        let search_events_schema = schema_for!(SearchEventsArgs);
+
         JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             id,
@@ -96,64 +103,27 @@ impl AgTraceServer {
                 "tools": [
                     {
                         "name": "list_sessions",
-                        "description": "List recent AI agent sessions with cursor-based pagination. Returns session summaries including ID, timestamp, provider, and snippet (truncated to 200 chars). Use filters to narrow down by provider, project, or time range. Check next_cursor in response to fetch additional pages.",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "limit": {"type": "number", "description": "Maximum number of sessions to return (default: 10, max: 50)"},
-                                "cursor": {"type": "string", "description": "Pagination cursor from previous response's next_cursor field. Omit for first page."},
-                                "provider": {"type": "string", "description": "Filter by provider (claude_code, codex, gemini)"},
-                                "project_hash": {"type": "string", "description": "Filter by project hash"},
-                                "since": {"type": "string", "description": "Show sessions after this timestamp"},
-                                "until": {"type": "string", "description": "Show sessions before this timestamp"}
-                            }
-                        }
+                        "description": "List recent AI agent sessions with cursor-based pagination",
+                        "inputSchema": serde_json::to_value(&list_sessions_schema).unwrap(),
                     },
                     {
                         "name": "get_session_details",
-                        "description": "Get session details with configurable verbosity. Use detail_level to control response size: 'summary' (5-10KB, default), 'turns' (15-30KB with tool summaries), 'steps' (50-100KB with truncated payloads), or 'full' (complete session data).",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "session_id": {"type": "string", "description": "Session ID (short or full hash)"},
-                                "detail_level": {"type": "string", "enum": ["summary", "turns", "steps", "full"], "description": "Detail level (default: 'summary'). 'turns' shows tool execution summaries, 'steps' includes detailed payloads, 'full' returns everything."},
-                                "include_reasoning": {"type": "boolean", "description": "Include reasoning/thinking content in summaries (default: false). Only applies to 'turns' level."}
-                            },
-                            "required": ["session_id"]
-                        }
+                        "description": "Get session details with configurable verbosity",
+                        "inputSchema": serde_json::to_value(&get_session_details_schema).unwrap(),
                     },
                     {
                         "name": "analyze_session",
-                        "description": "Run diagnostic analysis on a session to identify failures, infinite loops, and other issues. Returns a health score and detailed insights.",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "session_id": {"type": "string", "description": "Session ID to analyze"},
-                                "include_failures": {"type": "boolean", "description": "Include failure analysis (default: true)"},
-                                "include_loops": {"type": "boolean", "description": "Include loop detection (default: false)"}
-                            },
-                            "required": ["session_id"]
-                        }
+                        "description": "Run diagnostic analysis on a session to identify failures, loops, and issues",
+                        "inputSchema": serde_json::to_value(&analyze_session_schema).unwrap(),
                     },
                     {
                         "name": "search_events",
-                        "description": "Search for patterns in event payloads across recent sessions with cursor-based pagination. Returns snippets by default (300 chars). Set include_full_payload=true for complete event data. Check next_cursor in response to fetch additional matches.",
-                        "inputSchema": {
-                            "type": "object",
-                            "properties": {
-                                "pattern": {"type": "string", "description": "Search pattern (substring match)"},
-                                "limit": {"type": "number", "description": "Maximum number of matches (default: 5, max: 20)"},
-                                "cursor": {"type": "string", "description": "Pagination cursor from previous response's next_cursor field. Omit for first page."},
-                                "provider": {"type": "string", "description": "Filter by provider"},
-                                "event_type": {"type": "string", "description": "Filter by event type"},
-                                "include_full_payload": {"type": "boolean", "description": "Include full event payload (default: false). WARNING: Can produce large responses."}
-                            },
-                            "required": ["pattern"]
-                        }
+                        "description": "Search for patterns in event payloads across recent sessions with cursor-based pagination",
+                        "inputSchema": serde_json::to_value(&search_events_schema).unwrap(),
                     },
                     {
                         "name": "get_project_info",
-                        "description": "List all projects that have been indexed by agtrace with their metadata.",
+                        "description": "List all projects that have been indexed by agtrace with their metadata",
                         "inputSchema": {
                             "type": "object",
                             "properties": {}
