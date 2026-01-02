@@ -1,16 +1,141 @@
 ---
 source: crates/agtrace-cli/tests/mcp_snapshots.rs
-expression: response
+expression: content
 ---
 {
-  "id": 1,
-  "jsonrpc": "2.0",
-  "result": {
-    "content": [
-      {
-        "text": "{\n  \"_meta\": {\n    \"bytes\": 1982,\n    \"content_level\": \"turns\",\n    \"estimated_tokens\": 495,\n    \"has_more\": false,\n    \"returned_count\": 2,\n    \"total_items\": 2,\n    \"truncation\": {\n      \"fields\": [\n        \"user_message\"\n      ],\n      \"max_len\": 200\n    }\n  },\n  \"end_time\": \"[TIMESTAMP]\",\n  \"session_id\": \"[ID]\",\n  \"start_time\": \"[TIMESTAMP]\",\n  \"stats\": {\n    \"duration_seconds\": 67,\n    \"total_tokens\": 94471,\n    \"total_turns\": 2\n  },\n  \"turns\": [\n    {\n      \"id\": \"[ID]\",\n      \"key_actions\": [\n        {\n          \"details\": {\n            \"count\": 2,\n            \"tools\": [\n              \"Bash\",\n              \"Write\"\n            ]\n          },\n          \"type\": \"tool_usage\"\n        }\n      ],\n      \"outcome\": \"success\",\n      \"steps\": [\n        {\n          \"failed_tools\": 0,\n          \"step_index\": 0,\n          \"summary\": \"Bash 'mkdir -p myapp' (ok) | Response: I'll create the myapp directory and then create the hoge.py file with the print statement.\",\n          \"tokens\": {\n            \"input\": 12145,\n            \"output\": 436\n          },\n          \"tool_calls\": 1\n        },\n        {\n          \"failed_tools\": 0,\n          \"step_index\": 1,\n          \"summary\": \"Write .../hoge.py (1 lines, 11 bytes) (ok)\",\n          \"tokens\": {\n            \"input\": 16042,\n            \"output\": 126\n          },\n          \"tool_calls\": 1\n        },\n        {\n          \"failed_tools\": 0,\n          \"step_index\": 2,\n          \"summary\": \"Response: Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `pri...\",\n          \"tokens\": {\n            \"input\": 16499,\n            \"output\": 112\n          },\n          \"tool_calls\": 0\n        }\n      ],\n      \"timestamp\": \"[TIMESTAMP]\",\n      \"turn_index\": 0,\n      \"user_message\": \"add myapp directory and create myapp/hoge.py which shows result of print(1+1).\"\n    },\n    {\n      \"id\": \"[ID]\",\n      \"key_actions\": [\n        {\n          \"details\": {\n            \"count\": 1,\n            \"tools\": [\n              \"Bash\"\n            ]\n          },\n          \"type\": \"tool_usage\"\n        },\n        {\n          \"details\": {\n            \"failed_count\": 1,\n            \"failed_tools\": [\n              \"Bash\"\n            ],\n            \"total_count\": 2\n          },\n          \"type\": \"failure\"\n        }\n      ],\n      \"outcome\": \"partial\",\n      \"steps\": [\n        {\n          \"failed_tools\": 1,\n          \"step_index\": 0,\n          \"summary\": \"Bash 'cd myapp && python hoge.py' (failed)\",\n          \"tokens\": {\n            \"input\": 16038,\n            \"output\": 123\n          },\n          \"tool_calls\": 1\n        },\n        {\n          \"failed_tools\": 0,\n          \"step_index\": 1,\n          \"summary\": \"Bash 'cd myapp && python3 hoge.py' (ok)\",\n          \"tokens\": {\n            \"input\": 16375,\n            \"output\": 1\n          },\n          \"tool_calls\": 1\n        },\n        {\n          \"failed_tools\": 0,\n          \"step_index\": 2,\n          \"summary\": \"Response: Perfect! The script executed successfully and output `2`, which is the result of `1+1`.\",\n          \"tokens\": {\n            \"input\": 16528,\n            \"output\": 46\n          },\n          \"tool_calls\": 0\n        }\n      ],\n      \"timestamp\": \"[TIMESTAMP]\",\n      \"turn_index\": 1,\n      \"user_message\": \"cd to myapp and run python hoge.py\"\n    }\n  ]\n}",
-        "type": "text"
-      }
-    ]
-  }
+  "_meta": {
+    "bytes": 1982,
+    "content_level": "turns",
+    "estimated_tokens": 495,
+    "has_more": false,
+    "returned_count": 2,
+    "total_items": 2,
+    "truncation": {
+      "fields": [
+        "user_message"
+      ],
+      "max_len": 200
+    }
+  },
+  "end_time": "[TIMESTAMP]",
+  "session_id": "[ID]",
+  "start_time": "[TIMESTAMP]",
+  "stats": {
+    "duration_seconds": 67,
+    "total_tokens": 94471,
+    "total_turns": 2
+  },
+  "turns": [
+    {
+      "id": "[ID]",
+      "key_actions": [
+        {
+          "details": {
+            "count": 2,
+            "tools": [
+              "Bash",
+              "Write"
+            ]
+          },
+          "type": "tool_usage"
+        }
+      ],
+      "outcome": "success",
+      "steps": [
+        {
+          "failed_tools": 0,
+          "step_index": 0,
+          "summary": "Bash 'mkdir -p myapp' (ok) | Response: I'll create the myapp directory and then create the hoge.py file with the print statement.",
+          "tokens": {
+            "input": 12145,
+            "output": 436
+          },
+          "tool_calls": 1
+        },
+        {
+          "failed_tools": 0,
+          "step_index": 1,
+          "summary": "Write .../hoge.py (1 lines, 11 bytes) (ok)",
+          "tokens": {
+            "input": 16042,
+            "output": 126
+          },
+          "tool_calls": 1
+        },
+        {
+          "failed_tools": 0,
+          "step_index": 2,
+          "summary": "Response: Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `pri...",
+          "tokens": {
+            "input": 16499,
+            "output": 112
+          },
+          "tool_calls": 0
+        }
+      ],
+      "timestamp": "[TIMESTAMP]",
+      "turn_index": 0,
+      "user_message": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
+    },
+    {
+      "id": "[ID]",
+      "key_actions": [
+        {
+          "details": {
+            "count": 1,
+            "tools": [
+              "Bash"
+            ]
+          },
+          "type": "tool_usage"
+        },
+        {
+          "details": {
+            "failed_count": 1,
+            "failed_tools": [
+              "Bash"
+            ],
+            "total_count": 2
+          },
+          "type": "failure"
+        }
+      ],
+      "outcome": "partial",
+      "steps": [
+        {
+          "failed_tools": 1,
+          "step_index": 0,
+          "summary": "Bash 'cd myapp && python hoge.py' (failed)",
+          "tokens": {
+            "input": 16038,
+            "output": 123
+          },
+          "tool_calls": 1
+        },
+        {
+          "failed_tools": 0,
+          "step_index": 1,
+          "summary": "Bash 'cd myapp && python3 hoge.py' (ok)",
+          "tokens": {
+            "input": 16375,
+            "output": 1
+          },
+          "tool_calls": 1
+        },
+        {
+          "failed_tools": 0,
+          "step_index": 2,
+          "summary": "Response: Perfect! The script executed successfully and output `2`, which is the result of `1+1`.",
+          "tokens": {
+            "input": 16528,
+            "output": 46
+          },
+          "tool_calls": 0
+        }
+      ],
+      "timestamp": "[TIMESTAMP]",
+      "turn_index": 1,
+      "user_message": "cd to myapp and run python hoge.py"
+    }
+  ]
 }

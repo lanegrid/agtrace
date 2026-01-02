@@ -53,49 +53,43 @@ impl Drop for McpHarness {
     }
 }
 
-/// Redact dynamic values in nested MCP JSON content
-fn redact_mcp_content(
-    value: insta::internals::Content,
-    _path: insta::internals::ContentPath,
-) -> String {
-    let text = match value {
-        insta::internals::Content::String(s) => s,
-        _ => return "[NON_STRING_CONTENT]".to_string(),
-    };
-
-    let mut inner_json: Value = match serde_json::from_str(&text) {
-        Ok(v) => v,
-        Err(_) => return "[NON_JSON_CONTENT]".to_string(),
-    };
-
-    fn mask_recursive(v: &mut Value) {
-        match v {
-            Value::Object(map) => {
-                for (key, val) in map.iter_mut() {
-                    if key == "id" || key == "session_id" || key == "turn_id" {
-                        *val = serde_json::json!("[ID]");
-                    } else if key.contains("time") || key == "timestamp" {
-                        *val = serde_json::json!("[TIMESTAMP]");
-                    } else if key.contains("path") || key == "root" || key == "project_root" {
-                        *val = serde_json::json!("[PATH]");
-                    } else if key == "project_hash" {
-                        *val = serde_json::json!("[PROJECT_HASH]");
-                    } else {
-                        mask_recursive(val);
-                    }
+/// Mask dynamic values recursively
+fn mask_recursive(v: &mut Value) {
+    match v {
+        Value::Object(map) => {
+            for (key, val) in map.iter_mut() {
+                if key == "id" || key == "session_id" || key == "turn_id" {
+                    *val = serde_json::json!("[ID]");
+                } else if key.contains("time") || key == "timestamp" {
+                    *val = serde_json::json!("[TIMESTAMP]");
+                } else if key.contains("path") || key == "root" || key == "project_root" {
+                    *val = serde_json::json!("[PATH]");
+                } else if key == "project_hash" {
+                    *val = serde_json::json!("[PROJECT_HASH]");
+                } else {
+                    mask_recursive(val);
                 }
             }
-            Value::Array(arr) => {
-                for item in arr {
-                    mask_recursive(item);
-                }
-            }
-            _ => {}
         }
+        Value::Array(arr) => {
+            for item in arr {
+                mask_recursive(item);
+            }
+        }
+        _ => {}
     }
+}
 
-    mask_recursive(&mut inner_json);
-    serde_json::to_string_pretty(&inner_json).unwrap()
+/// Extract and parse MCP response text content with redaction
+fn extract_mcp_text_content(response: &Value) -> Result<Value> {
+    let text = response["result"]["content"][0]["text"]
+        .as_str()
+        .expect("Should have text content");
+
+    let mut content: Value = serde_json::from_str(text)?;
+    mask_recursive(&mut content);
+
+    Ok(content)
 }
 
 /// Setup test world with sample session data
@@ -152,9 +146,8 @@ fn test_mcp_list_sessions() -> Result<()> {
         }),
     )?;
 
-    insta::assert_json_snapshot!("call_list_sessions", response, {
-        ".result.content[0].text" => insta::dynamic_redaction(redact_mcp_content)
-    });
+    let content = extract_mcp_text_content(&response)?;
+    insta::assert_json_snapshot!("call_list_sessions", content);
 
     Ok(())
 }
@@ -178,9 +171,8 @@ async fn test_mcp_get_session_summary() -> Result<()> {
         }),
     )?;
 
-    insta::assert_json_snapshot!("call_get_session_summary", response, {
-        ".result.content[0].text" => insta::dynamic_redaction(redact_mcp_content)
-    });
+    let content = extract_mcp_text_content(&response)?;
+    insta::assert_json_snapshot!("call_get_session_summary", content);
 
     Ok(())
 }
@@ -204,9 +196,8 @@ async fn test_mcp_get_session_turns() -> Result<()> {
         }),
     )?;
 
-    insta::assert_json_snapshot!("call_get_session_turns", response, {
-        ".result.content[0].text" => insta::dynamic_redaction(redact_mcp_content)
-    });
+    let content = extract_mcp_text_content(&response)?;
+    insta::assert_json_snapshot!("call_get_session_turns", content);
 
     Ok(())
 }
