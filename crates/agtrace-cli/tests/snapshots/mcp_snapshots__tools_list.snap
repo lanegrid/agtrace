@@ -160,48 +160,6 @@ expression: response
           "$schema": "https://json-schema.org/draft/2020-12/schema",
           "description": "Get detailed steps for a specific turn (20-50 KB)",
           "properties": {
-            "cursor": {
-              "default": null,
-              "description": "Pagination cursor for turns with many steps. Omit for first page.",
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "include_message": {
-              "default": null,
-              "description": "Include assistant messages in response (default: true)",
-              "type": [
-                "boolean",
-                "null"
-              ]
-            },
-            "include_reasoning": {
-              "default": null,
-              "description": "Include reasoning/thinking blocks in response (default: true)",
-              "type": [
-                "boolean",
-                "null"
-              ]
-            },
-            "include_tools": {
-              "default": null,
-              "description": "Include tool executions in response (default: true)",
-              "type": [
-                "boolean",
-                "null"
-              ]
-            },
-            "limit": {
-              "default": null,
-              "description": "Maximum number of steps to return (default: 20, max: 100)",
-              "format": "uint",
-              "minimum": 0,
-              "type": [
-                "integer",
-                "null"
-              ]
-            },
             "session_id": {
               "description": "Session ID obtained from list_sessions or get_session_turns response.\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.\nREQUIRED: Cannot be empty.",
               "type": "string"

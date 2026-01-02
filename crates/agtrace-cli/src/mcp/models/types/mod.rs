@@ -28,11 +28,3 @@ pub use session_full::SessionFullViewModel;
 pub use session_summary::SessionSummaryViewModel;
 pub use session_turns::SessionTurnsViewModel;
 pub use turn_steps::TurnStepsViewModel;
-
-// Internal types (used within ViewModels, but not exported to higher levels)
-#[allow(unused_imports)]
-pub(crate) use event_previews::PreviewContent;
-#[allow(unused_imports)]
-pub(crate) use list_sessions::SessionSummaryDto;
-#[allow(unused_imports)]
-pub(crate) use session_turns::TurnWithIndex;

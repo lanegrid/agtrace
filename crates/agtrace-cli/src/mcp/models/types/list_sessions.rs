@@ -29,7 +29,7 @@ pub struct ListSessionsArgs {
 
 #[derive(Debug, Serialize)]
 pub struct ListSessionsViewModel {
-    pub sessions: Vec<SessionSummaryDto>,
+    pub sessions: Vec<agtrace_sdk::SessionSummary>,
     pub total_in_page: usize,
     pub next_cursor: Option<String>,
 }
@@ -38,16 +38,12 @@ impl ListSessionsViewModel {
     pub fn new(sessions: Vec<agtrace_sdk::SessionSummary>, next_cursor: Option<String>) -> Self {
         let total_in_page = sessions.len();
         Self {
-            sessions: sessions.into_iter().map(SessionSummaryDto).collect(),
+            sessions,
             total_in_page,
             next_cursor,
         }
     }
 }
-
-#[derive(Debug, Serialize)]
-#[serde(transparent)]
-pub struct SessionSummaryDto(pub agtrace_sdk::SessionSummary);
 
 #[cfg(test)]
 mod tests {
