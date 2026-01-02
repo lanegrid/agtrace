@@ -4,10 +4,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
-use super::dto::{AnalyzeSessionArgs, GetSessionDetailsArgs, ListSessionsArgs, SearchEventsArgs};
+use super::dto::{
+    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionDetailsArgs, ListSessionsArgs,
+    SearchEventPreviewsArgs,
+};
 use super::tools::{
-    handle_analyze_session, handle_get_project_info, handle_get_session_details,
-    handle_list_sessions, handle_search_events,
+    handle_analyze_session, handle_get_event_details, handle_get_project_info,
+    handle_get_session_details, handle_list_sessions, handle_search_event_previews,
 };
 
 #[derive(Debug, Deserialize)]
@@ -94,7 +97,8 @@ impl AgTraceServer {
         let list_sessions_schema = schema_for!(ListSessionsArgs);
         let get_session_details_schema = schema_for!(GetSessionDetailsArgs);
         let analyze_session_schema = schema_for!(AnalyzeSessionArgs);
-        let search_events_schema = schema_for!(SearchEventsArgs);
+        let search_event_previews_schema = schema_for!(SearchEventPreviewsArgs);
+        let get_event_details_schema = schema_for!(GetEventDetailsArgs);
 
         JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
@@ -108,7 +112,7 @@ impl AgTraceServer {
                     },
                     {
                         "name": "get_session_details",
-                        "description": "Get session details with configurable verbosity",
+                        "description": "Get session details with configurable verbosity (summary/turns/steps/full)",
                         "inputSchema": serde_json::to_value(&get_session_details_schema).unwrap(),
                     },
                     {
@@ -117,9 +121,14 @@ impl AgTraceServer {
                         "inputSchema": serde_json::to_value(&analyze_session_schema).unwrap(),
                     },
                     {
-                        "name": "search_events",
-                        "description": "Search for patterns in event payloads across recent sessions with cursor-based pagination",
-                        "inputSchema": serde_json::to_value(&search_events_schema).unwrap(),
+                        "name": "search_event_previews",
+                        "description": "Search for patterns in event payloads across sessions (returns previews, ~300 char snippets)",
+                        "inputSchema": serde_json::to_value(&search_event_previews_schema).unwrap(),
+                    },
+                    {
+                        "name": "get_event_details",
+                        "description": "Retrieve full event payload by session ID and event index",
+                        "inputSchema": serde_json::to_value(&get_event_details_schema).unwrap(),
                     },
                     {
                         "name": "get_project_info",
@@ -225,8 +234,8 @@ impl AgTraceServer {
                 };
                 handle_analyze_session(&self.client, args).await
             }
-            "search_events" => {
-                let args: SearchEventsArgs = match serde_json::from_value(arguments) {
+            "search_event_previews" => {
+                let args: SearchEventPreviewsArgs = match serde_json::from_value(arguments) {
                     Ok(args) => args,
                     Err(e) => {
                         return JsonRpcResponse {
@@ -241,7 +250,25 @@ impl AgTraceServer {
                         };
                     }
                 };
-                handle_search_events(&self.client, args).await
+                handle_search_event_previews(&self.client, args).await
+            }
+            "get_event_details" => {
+                let args: GetEventDetailsArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(JsonRpcError {
+                                code: -32602,
+                                message: format!("Invalid arguments: {}", e),
+                                data: None,
+                            }),
+                        };
+                    }
+                };
+                handle_get_event_details(&self.client, args).await
             }
             "get_project_info" => handle_get_project_info(&self.client).await,
             _ => Err(format!("Unknown tool: {}", tool_name)),
