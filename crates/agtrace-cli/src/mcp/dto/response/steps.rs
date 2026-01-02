@@ -19,16 +19,6 @@ impl SessionStepsResponse {
 
         truncate_session_payloads(&mut session_value);
 
-        if let Some(obj) = session_value.as_object_mut() {
-            obj.insert(
-                "hint".to_string(),
-                Value::String(
-                    "Payloads are truncated to 500 chars. Use search_events(pattern) to find specific content, or detail_level='full' for complete data"
-                        .to_string(),
-                ),
-            );
-        }
-
         Ok(session_value)
     }
 }
@@ -277,30 +267,5 @@ mod tests {
         assert_eq!(truncated.chars().count(), 50);
         assert!(truncated.ends_with("..."));
         assert!(truncated.is_char_boundary(truncated.len()));
-    }
-
-    #[test]
-    fn test_steps_response_includes_hint() {
-        use agtrace_sdk::types::SessionStats;
-        use chrono::Utc;
-        use uuid::Uuid;
-
-        let session = agtrace_sdk::types::AgentSession {
-            session_id: Uuid::new_v4(),
-            start_time: Utc::now(),
-            end_time: Some(Utc::now()),
-            turns: vec![],
-            stats: SessionStats::default(),
-        };
-
-        let response = SessionStepsResponse::from_session(session);
-        let value = response.into_value().unwrap();
-
-        let hint = value.get("hint").and_then(|h| h.as_str());
-        assert!(hint.is_some(), "Hint should be present");
-        assert!(
-            hint.unwrap().contains("search_events"),
-            "Hint should mention search_events"
-        );
     }
 }

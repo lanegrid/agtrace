@@ -82,8 +82,6 @@ mod tests {
             .build();
 
         assert!(result.is_ok());
-        let value = result.unwrap();
-        assert!(value.get("hint").is_some());
     }
 
     #[test]

@@ -23,7 +23,6 @@ pub struct ListSessionsResponse {
     pub sessions: Vec<SessionSummaryDto>,
     pub total_in_page: usize,
     pub next_cursor: Option<String>,
-    pub hint: String,
 }
 
 #[derive(Debug, Serialize)]

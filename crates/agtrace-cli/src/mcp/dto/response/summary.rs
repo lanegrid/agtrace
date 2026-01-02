@@ -15,7 +15,6 @@ pub struct SessionSummaryResponse {
     pub end_time: Option<DateTime<Utc>>,
     pub stats: SessionStats,
     pub turns: Vec<TurnSummaryDto>,
-    pub hint: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -39,7 +38,6 @@ impl SessionSummaryResponse {
                 .into_iter()
                 .map(TurnSummaryDto::from_turn)
                 .collect(),
-            hint: "Use detail_level='turns' to see tool execution summaries, or 'steps' for detailed payloads".to_string(),
         }
     }
 }

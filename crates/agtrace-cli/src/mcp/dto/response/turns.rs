@@ -15,7 +15,6 @@ pub struct SessionTurnsResponse {
     pub end_time: Option<DateTime<Utc>>,
     pub stats: SessionStats,
     pub turns: Vec<TurnDetailDto>,
-    pub hint: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -67,7 +66,6 @@ impl SessionTurnsResponse {
             end_time: session.end_time,
             stats: session.stats,
             turns,
-            hint: "Use detail_level='steps' to see full step details with payloads".to_string(),
         }
     }
 }

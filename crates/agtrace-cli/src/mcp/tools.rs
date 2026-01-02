@@ -117,7 +117,6 @@ pub async fn handle_list_sessions(
             .collect(),
         total_in_page,
         next_cursor,
-        hint: "Use get_session_details(id, detail_level='summary') for turn breakdown. Filter by project_root='/path/to/project' to see only relevant sessions.".to_string(),
     };
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
@@ -316,10 +315,7 @@ pub async fn handle_search_event_previews(
             next_cursor,
             has_more,
         }),
-        hint: Some(
-            "Use get_event_details(session_id, event_index) to retrieve full event payload"
-                .to_string(),
-        ),
+        hint: None,
     };
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
