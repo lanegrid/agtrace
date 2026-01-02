@@ -424,6 +424,4 @@ pub async fn run_server(client: Client) -> anyhow::Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-}
+mod tests {}
