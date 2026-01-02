@@ -44,6 +44,7 @@ pub enum ErrorCode {
 }
 
 impl McpError {
+    #[allow(dead_code)]
     pub fn session_not_found(session_id: &str) -> Self {
         Self {
             code: ErrorCode::SessionNotFound,
@@ -53,6 +54,7 @@ impl McpError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn ambiguous_prefix(prefix: &str, matches: Vec<String>) -> Self {
         Self {
             code: ErrorCode::AmbiguousSessionPrefix,
@@ -85,6 +87,7 @@ impl McpError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn invalid_cursor(cursor: &str) -> Self {
         Self {
             code: ErrorCode::InvalidCursor,
@@ -94,6 +97,7 @@ impl McpError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn invalid_parameter(param_name: &str, reason: &str) -> Self {
         Self {
             code: ErrorCode::InvalidParameter,
@@ -118,15 +122,7 @@ impl McpError {
 
 impl From<agtrace_sdk::Error> for McpError {
     fn from(err: agtrace_sdk::Error) -> Self {
-        // Convert SDK errors to MCP errors
-        let message = err.to_string();
-
-        // Try to detect specific error types from message
-        if message.contains("not found") || message.contains("Not found") {
-            Self::internal_error(message)
-        } else {
-            Self::internal_error(message)
-        }
+        Self::internal_error(err.to_string())
     }
 }
 

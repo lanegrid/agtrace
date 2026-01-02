@@ -11,9 +11,9 @@ pub use common::{EventType, McpResponse, PaginationMeta};
 pub use error::McpError;
 pub use request::{
     AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionDetailsArgs, ListSessionsArgs,
-    SearchEventPreviewsArgs, SearchEventsArgs,
+    SearchEventPreviewsArgs,
 };
 pub use response::{
-    EventDetailsResponse, EventMatchDto, EventPreview, EventPreviewDto, ListSessionsResponse,
-    PreviewContent, SearchEventPreviewsData, SearchEventsResponse, SessionSummaryDto,
+    EventDetailsResponse, EventPreview, ListSessionsResponse, PreviewContent,
+    SearchEventPreviewsData, SessionSummaryDto,
 };

@@ -13,10 +13,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::dto::{
-    AnalyzeSessionArgs, EventDetailsResponse, EventMatchDto, EventPreview, EventPreviewDto,
-    GetEventDetailsArgs, GetSessionDetailsArgs, ListSessionsArgs, ListSessionsResponse, McpError,
-    McpResponse, PaginationMeta, PreviewContent, SearchEventPreviewsArgs, SearchEventPreviewsData,
-    SearchEventsArgs, SearchEventsResponse, SessionResponseBuilder, SessionSummaryDto,
+    AnalyzeSessionArgs, EventDetailsResponse, EventPreview, GetEventDetailsArgs,
+    GetSessionDetailsArgs, ListSessionsArgs, ListSessionsResponse, McpError, McpResponse,
+    PaginationMeta, PreviewContent, SearchEventPreviewsArgs, SearchEventPreviewsData,
+    SessionResponseBuilder, SessionSummaryDto,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,125 +161,6 @@ pub async fn handle_analyze_session(
     serde_json::to_value(&report).map_err(|e| format!("Serialization error: {}", e))
 }
 
-// DEPRECATED: search_events
-// Why deprecated:
-// - include_full_payload toggle created inconsistent response sizes (5 KB vs 100 KB)
-// - Violated progressive disclosure principle (dump everything vs drill-down)
-// - No event_index meant clients had to re-search to get full payloads
-// Migration: Use search_event_previews (discovery) → get_event_details (retrieval)
-#[allow(dead_code)]
-#[deprecated(
-    since = "0.4.0",
-    note = "Use handle_search_event_previews + handle_get_event_details instead"
-)]
-pub async fn handle_search_events(
-    client: &Client,
-    args: SearchEventsArgs,
-) -> Result<Value, String> {
-    let limit = args.limit.unwrap_or(5).min(20); // default 5, max 20 per spec
-    let offset = args
-        .cursor
-        .as_ref()
-        .and_then(|c| Cursor::decode(c))
-        .map(|c| c.offset)
-        .unwrap_or(0);
-    let include_full_payload = args.include_full_payload.unwrap_or(false);
-
-    let mut filter = SessionFilter::all().limit(1000);
-
-    if let Some(provider) = args.provider {
-        filter = filter.provider(provider);
-    }
-
-    let sessions = client
-        .sessions()
-        .list_without_refresh(filter)
-        .map_err(|e| format!("Failed to list sessions: {}", e))?;
-
-    let mut all_matches = Vec::new();
-
-    for session_summary in sessions {
-        let handle = match client.sessions().get(&session_summary.id) {
-            Ok(h) => h,
-            Err(_) => continue,
-        };
-
-        let events = match handle.events() {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-
-        for event in events {
-            let event_json = match serde_json::to_string(&event.payload) {
-                Ok(j) => j,
-                Err(_) => continue,
-            };
-
-            if event_json.contains(&args.pattern) {
-                if let Some(ref event_type_filter) = args.event_type {
-                    let event_type = format!("{:?}", event.payload);
-                    if !event_type.starts_with(event_type_filter) {
-                        continue;
-                    }
-                }
-
-                let match_dto = if include_full_payload {
-                    EventMatchDto::Full {
-                        session_id: session_summary.id.clone(),
-                        timestamp: event.timestamp,
-                        event_type: format!("{:?}", event.payload),
-                        payload: event.payload,
-                    }
-                } else {
-                    EventMatchDto::Snippet {
-                        session_id: session_summary.id.clone(),
-                        timestamp: event.timestamp,
-                        event_type: format!("{:?}", event.payload),
-                        preview: EventPreviewDto::from_payload(&event.payload),
-                    }
-                };
-
-                all_matches.push(match_dto);
-            }
-        }
-    }
-
-    // Apply cursor-based pagination
-    let fetch_limit = limit + 1;
-    let mut matches: Vec<_> = all_matches
-        .into_iter()
-        .skip(offset)
-        .take(fetch_limit)
-        .collect();
-
-    let has_more = matches.len() > limit;
-    if has_more {
-        matches.pop();
-    }
-
-    let next_cursor = if has_more {
-        Some(
-            Cursor {
-                offset: offset + limit,
-            }
-            .encode(),
-        )
-    } else {
-        None
-    };
-
-    let total = matches.len();
-    let response = SearchEventsResponse {
-        matches,
-        total,
-        next_cursor,
-        hint: "Use get_session_details(session_id, detail_level='steps') to see all events in a session"
-            .to_string(),
-    };
-
-    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
-}
-
 pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
     let projects = client
         .projects()
@@ -315,7 +196,7 @@ pub async fn handle_search_event_previews(
 
     // If searching within specific session, use that
     let sessions = if let Some(ref session_id) = args.session_id {
-        let handle = client
+        let _handle = client
             .sessions()
             .get(session_id)
             .map_err(|e| format!("Session not found: {}", e))?;
@@ -351,9 +232,10 @@ pub async fn handle_search_event_previews(
         for (event_index, event) in events.iter().enumerate() {
             // Check event type filter
             if let Some(ref event_type_filter) = args.event_type
-                && !event_type_filter.matches_payload(&event.payload) {
-                    continue;
-                }
+                && !event_type_filter.matches_payload(&event.payload)
+            {
+                continue;
+            }
 
             // Check if query matches
             let event_json = match serde_json::to_string(&event.payload) {
