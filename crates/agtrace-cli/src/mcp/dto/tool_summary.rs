@@ -1,4 +1,4 @@
-use agtrace_sdk::types::{ExecuteArgs, FileReadArgs, ToolCallPayload, ToolResultPayload};
+use agtrace_sdk::types::{ExecuteArgs, FileReadArgs, ToolCallPayload};
 
 use super::common::truncate_string;
 
@@ -6,24 +6,6 @@ use super::common::truncate_string;
 pub struct ToolSummarizer;
 
 impl ToolSummarizer {
-    /// Generate a one-line summary of a tool execution
-    pub fn summarize_execution(
-        call: &ToolCallPayload,
-        result: Option<&ToolResultPayload>,
-        is_error: bool,
-    ) -> String {
-        let base = Self::summarize_call(call);
-        let status = if is_error {
-            "failed"
-        } else if result.is_some() {
-            "ok"
-        } else {
-            "pending"
-        };
-
-        format!("{} ({})", base, status)
-    }
-
     /// Summarize just the tool call (without result)
     pub fn summarize_call(call: &ToolCallPayload) -> String {
         use ToolCallPayload::*;

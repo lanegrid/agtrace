@@ -58,7 +58,13 @@ fn mask_recursive(v: &mut Value) {
     match v {
         Value::Object(map) => {
             for (key, val) in map.iter_mut() {
-                if key == "id" || key == "session_id" || key == "turn_id" {
+                if key == "id"
+                    || key == "session_id"
+                    || key == "turn_id"
+                    || key == "event_id"
+                    || key == "tool_call_id"
+                    || key == "provider_call_id"
+                {
                     *val = serde_json::json!("[ID]");
                 } else if key.contains("time") || key == "timestamp" {
                     *val = serde_json::json!("[TIMESTAMP]");

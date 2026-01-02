@@ -6,14 +6,11 @@ expression: content
   "next_cursor": null,
   "sessions": [
     {
-      "duration_seconds": null,
       "id": "[ID]",
       "project_hash": "[PROJECT_HASH]",
       "provider": "claude_code",
       "snippet": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
-      "start_time": "[TIMESTAMP]",
-      "total_tokens": null,
-      "turn_count": null
+      "start_ts": "2025-12-09T19:47:42.930Z"
     }
   ],
   "total_in_page": 1
