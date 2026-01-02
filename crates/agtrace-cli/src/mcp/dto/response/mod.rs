@@ -5,8 +5,8 @@ mod turns;
 
 pub use full::SessionFullResponse;
 pub use steps::SessionStepsResponse;
-pub use summary::{SessionSummaryResponse, TurnSummaryDto};
-pub use turns::{SessionTurnsResponse, StepSummaryDto, TokenSummary, TurnDetailDto, TurnOutcome};
+pub use summary::SessionSummaryResponse;
+pub use turns::SessionTurnsResponse;
 
 use agtrace_sdk::types::EventPayload;
 use chrono::{DateTime, Utc};
@@ -22,7 +22,8 @@ const MAX_PREVIEW_LEN: usize = 300;
 #[derive(Debug, Serialize)]
 pub struct ListSessionsResponse {
     pub sessions: Vec<SessionSummaryDto>,
-    pub total: usize,
+    pub total_in_page: usize,
+    pub next_cursor: Option<String>,
     pub hint: String,
 }
 
@@ -33,6 +34,9 @@ pub struct SessionSummaryDto {
     pub provider: String,
     pub start_time: Option<String>,
     pub snippet: Option<String>,
+    pub turn_count: Option<usize>,
+    pub duration_seconds: Option<u64>,
+    pub total_tokens: Option<u64>,
 }
 
 impl SessionSummaryDto {
@@ -45,6 +49,9 @@ impl SessionSummaryDto {
             snippet: summary
                 .snippet
                 .map(|s| truncate_string(&s, MAX_SNIPPET_LEN)),
+            turn_count: None,       // TODO: Add to SessionSummary in index layer
+            duration_seconds: None, // TODO: Add to SessionSummary in index layer
+            total_tokens: None,     // TODO: Add to SessionSummary in index layer
         }
     }
 }
@@ -53,6 +60,7 @@ impl SessionSummaryDto {
 pub struct SearchEventsResponse {
     pub matches: Vec<EventMatchDto>,
     pub total: usize,
+    pub next_cursor: Option<String>,
     pub hint: String,
 }
 
@@ -99,7 +107,9 @@ impl EventPreviewDto {
         match payload {
             EventPayload::ToolCall(tc) => {
                 let tool = tc.name().to_string();
-                let args_json = serde_json::to_value(tc).unwrap_or_default();
+                let args_json = serde_json::to_value(tc).unwrap_or_else(
+                    |e| serde_json::json!({"<serialization_error>": e.to_string()}),
+                );
                 let arguments = if let Some(args) = args_json.get("arguments") {
                     super::common::truncate_json_value(args, 100)
                 } else {
@@ -108,7 +118,8 @@ impl EventPreviewDto {
                 EventPreviewDto::ToolCall { tool, arguments }
             }
             EventPayload::ToolResult(tr) => {
-                let result_str = serde_json::to_string(tr).unwrap_or_default();
+                let result_str = serde_json::to_string(tr)
+                    .unwrap_or_else(|e| format!("<serialization_error: {}>", e));
                 EventPreviewDto::ToolResult {
                     preview: truncate_string(&result_str, MAX_PREVIEW_LEN),
                 }
@@ -127,7 +138,8 @@ impl EventPreviewDto {
                 output: tu.output.total(),
             },
             EventPayload::Notification(n) => {
-                let notif_str = serde_json::to_string(n).unwrap_or_default();
+                let notif_str = serde_json::to_string(n)
+                    .unwrap_or_else(|e| format!("<serialization_error: {}>", e));
                 EventPreviewDto::Text {
                     text: truncate_string(&notif_str, MAX_PREVIEW_LEN),
                 }

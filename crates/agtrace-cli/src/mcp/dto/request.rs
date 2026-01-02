@@ -6,6 +6,8 @@ use super::common::DetailLevel;
 pub struct ListSessionsArgs {
     #[serde(default)]
     pub limit: Option<usize>,
+    #[serde(default)]
+    pub cursor: Option<String>,
     pub provider: Option<String>,
     pub project_hash: Option<String>,
     pub since: Option<String>,
@@ -45,6 +47,8 @@ pub struct SearchEventsArgs {
     pub pattern: String,
     #[serde(default)]
     pub limit: Option<usize>,
+    #[serde(default)]
+    pub cursor: Option<String>,
     pub provider: Option<String>,
     pub event_type: Option<String>,
     #[serde(default)]

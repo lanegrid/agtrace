@@ -1,6 +1,53 @@
 # AgTrace MCP Tools Interface Design
 
-**Design Principle**: Each tool should return 5-50 KB responses. Enable conversational drill-down rather than dumping everything at once.
+**Design Philosophy**: Build MCP tools optimized for LLM context efficiency and progressive disclosure. Follow [MCP 2024-11-05 specification](https://modelcontextprotocol.io/specification/2024-11-05/server/utilities/pagination) and industry best practices for large-payload handling.
+
+**Target Models**: Optimized for advanced reasoning models (o3, Claude 3.5 Sonnet) with 100k+ context windows but limited tolerance for noise.
+
+---
+
+## Core Design Principles
+
+### 1. Response Size Guidelines (MCP Best Practices 2024)
+
+| Category | Target | Max | Rationale |
+|----------|--------|-----|-----------|
+| **Single Response** | 10-20 KB | 30 KB | Safe for all LLMs (~4-6k tokens) |
+| **Detail Response** | 20-30 KB | 50 KB | Acceptable for focused queries |
+| **Full Data** | N/A | 100 KB | Hard cap; prefer pagination beyond this |
+| **Total Investigation** | 40-100 KB | 200 KB | Across 3-8 tool calls |
+
+**Key Insight**: Keep each tool response < 30 KB to avoid overwhelming LLM working memory. Use cursor-based pagination for larger datasets.
+
+### 2. Progressive Disclosure Pattern
+
+```
+Breadth (10 items × 1 KB each)
+  ↓
+Overview (1 item × 10 KB)
+  ↓
+Detail (1 turn × 30 KB)
+  ↓
+Full Event (1 event × 5 KB)
+```
+
+**Never**: Dump 500 KB of data in a single response. **Always**: Let the LLM drill down conversationally.
+
+### 3. Cursor-Based Pagination (MCP Specification)
+
+All list operations MUST support opaque cursor tokens:
+
+```typescript
+{
+  items: [...],
+  next_cursor: "eyJsYXN0X2lkIjo0Mjd9" | null  // null = final page
+}
+```
+
+**Why cursors over offsets**:
+- Stable across concurrent modifications
+- Opaque implementation details
+- MCP 2024-11-05 specification compliance
 
 ---
 
@@ -8,10 +55,12 @@
 
 ```
 Projects
-  └─ Sessions (list)
-      └─ Session (overview)
-          └─ Turn (details)
-              └─ Event (full payload)
+  └─ Sessions (paginated list)
+      ├─ Session Overview (summary)
+      ├─ Session Analysis (diagnostics)
+      └─ Turns (indexed access)
+          └─ Events (by ID)
+              └─ Full Payload
 ```
 
 ---
@@ -19,13 +68,16 @@ Projects
 ## 1. Discovery & Navigation Tools
 
 ### `list_sessions`
-**Purpose**: Browse recent sessions
-**Response Size**: ~10 KB (10 sessions)
+
+**Purpose**: Browse recent sessions with pagination
+**Response Size**: ~10 KB per page (10 sessions)
+**Pagination**: Cursor-based (MCP spec compliant)
 
 ```typescript
 // Request
 {
   limit?: number,           // default: 10, max: 50
+  cursor?: string,          // opaque pagination token
   provider?: string,        // "claude_code" | "codex" | "gemini"
   project_hash?: string,
   since?: string,           // ISO 8601
@@ -46,14 +98,21 @@ Projects
       total_tokens: 3074273
     }
   ],
-  total: 25,
-  hint: "Use get_session_overview(id) to see turn-by-turn breakdown"
+  total_in_page: 10,
+  next_cursor: "eyJvZmZzZXQiOjEwfQ==" | null,  // null = last page
+  hint: "Use get_session_details(id, detail_level='summary') for turn breakdown"
 }
 ```
+
+**Implementation Notes**:
+- Server determines page size; clients MUST NOT assume fixed size
+- Cursors are opaque and MAY change format without notice
+- Always check `next_cursor == null` to detect final page
 
 ---
 
 ### `get_project_info`
+
 **Purpose**: List all indexed projects
 **Response Size**: ~10 KB
 
@@ -78,17 +137,26 @@ Projects
 
 ## 2. Session-Level Tools
 
-### `get_session_overview`
-**Purpose**: High-level session stats + turn summaries
-**Response Size**: ~5-15 KB (6 turns)
+### `get_session_details`
+
+**Purpose**: Retrieve session data with configurable detail level
+**Response Size**: 5 KB (summary) to 100 KB (full)
+**Detail Levels**: Progressive disclosure hierarchy
 
 ```typescript
 // Request
 {
-  session_id: string  // "fb3cff44" or full UUID
+  session_id: string,        // "fb3cff44" or full UUID
+  detail_level?: "summary" | "turns" | "steps" | "full",  // default: "summary"
+  include_reasoning?: boolean  // default: false (only for 'turns' level)
 }
 
-// Response
+// Response varies by detail_level
+```
+
+#### Detail Level: `summary` (Target: 5-10 KB)
+
+```typescript
 {
   session_id: "fb3cff44-13ae-41a6-a6df-f287e0552835",
   start_time: "2026-01-01T21:40:05Z",
@@ -100,26 +168,92 @@ Projects
   },
   turns: [
     {
-      turn_index: 0,
+      id: "turn-0",
       timestamp: "2026-01-01T21:40:05Z",
       user_message: "過去コミット2個くらいでmcpを作った...", // max 200 chars
       step_count: 14,
-      tool_call_count: 12,
-      failed_tools: 1,
-      tokens: { input: 50000, output: 8000 },
-      duration_ms: 86445
-    },
-    // ... 5 more turns
+      stats: { input_tokens: 50000, output_tokens: 8000 }
+    }
   ],
-  hint: "Use get_turn_details(session_id, turn_index) to see tool calls and results"
+  hint: "Use detail_level='turns' to see tool execution summaries"
 }
 ```
+
+#### Detail Level: `turns` (Target: 15-30 KB)
+
+```typescript
+{
+  session_id: "...",
+  turns: [
+    {
+      turn_index: 0,
+      user_message: "...",
+      steps: [
+        {
+          step_index: 0,
+          summary: "Read /path/to/file.rs (ok), Write /path/to/output.rs (ok)",
+          tool_calls: 2,
+          failed_tools: 0,
+          tokens: { input: 5000, output: 800 }
+        }
+      ],
+      outcome: "success" | "partial" | "failed",
+      key_actions: ["Used tools: Read, Write"]
+    }
+  ],
+  hint: "Use detail_level='steps' for detailed payloads"
+}
+```
+
+#### Detail Level: `steps` (Target: 50-100 KB)
+
+Returns full `AgentSession` structure with **truncated payloads** (500 chars):
+
+```typescript
+{
+  // Full session structure
+  turns: [
+    {
+      steps: [
+        {
+          reasoning: { text: "思考内容..." },  // truncated to 500 chars
+          tools: [
+            {
+              call: { name: "Read", arguments: {...} },
+              result: { content: "1→use agtrace..." }  // truncated to 500 chars
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  hint: "Payloads are truncated to 500 chars. Use search_events(pattern) to find specific content, or detail_level='full' for complete data"
+}
+```
+
+#### Detail Level: `full` (Target: Unbounded, use with caution)
+
+Returns complete `AgentSession` without any truncation:
+
+```typescript
+{
+  // Complete session with all payloads
+  hint: "Response may be large. Use search_events(pattern) to find specific events, or detail_level='steps' for truncated payloads"
+}
+```
+
+**Design Rationale**:
+- **summary**: Quick scan of session structure
+- **turns**: Tool usage patterns and outcomes
+- **steps**: Detailed debugging with size control
+- **full**: Last resort when complete context needed
 
 ---
 
 ### `analyze_session`
-**Purpose**: Diagnostic health check
-**Response Size**: ~1 KB
+
+**Purpose**: Diagnostic health check (failures, loops, anomalies)
+**Response Size**: ~1-5 KB
 
 ```typescript
 // Request
@@ -131,12 +265,12 @@ Projects
 
 // Response
 {
-  score: 80,  // 0-100
+  score: 80,  // 0-100 health score
   insights: [
     {
       turn_index: 0,
-      severity: "Critical",
-      lens: "Failures",
+      severity: "Critical" | "Warning" | "Info",
+      lens: "Failures" | "Loops" | "TokenUsage",
       message: "1 tool execution(s) failed"
     }
   ],
@@ -153,105 +287,23 @@ Projects
 
 ---
 
-## 3. Turn-Level Tools (Deep Dive)
-
-### `get_turn_details`
-**Purpose**: Complete details for a specific turn
-**Response Size**: ~20-50 KB per turn
-
-```typescript
-// Request
-{
-  session_id: string,
-  turn_index: number  // 0-based
-}
-
-// Response
-{
-  turn: {
-    turn_index: 0,
-    user_message: "過去コミット2個くらいでmcpを作った...",  // full text
-    timestamp: "2026-01-01T21:40:05Z",
-    steps: [
-      {
-        step_index: 0,
-        reasoning: [
-          { text: "MCPサーバーの実装を確認..." }  // truncated to 500 chars
-        ],
-        tool_calls: [
-          {
-            event_id: "evt_abc123",  // NEW: for get_event_details()
-            tool: "Read",
-            arguments: { file_path: "/path/to/file.rs" },
-            result_preview: "1→use agtrace_sdk::Client;...",  // 200 chars
-            is_error: false,
-            duration_ms: 45
-          }
-        ],
-        message: { text: "コードを確認しました..." },
-        tokens: { input: 5000, output: 800 }
-      }
-      // ... more steps
-    ],
-    stats: {
-      step_count: 14,
-      tool_call_count: 12,
-      failed_tools: 1,
-      tokens: { input: 50000, output: 8000 }
-    }
-  },
-  hint: "Use get_event_details(session_id, event_id) for full tool result content"
-}
-```
-
-**Key Design Decision**:
-- Tool results are **previewed** (200 chars)
-- Full content requires `get_event_details()`
-
----
-
-## 4. Event-Level Tools (Maximum Detail)
-
-### `get_event_details`
-**Purpose**: Get complete payload for a specific event
-**Response Size**: ~1-10 KB per event
-
-```typescript
-// Request
-{
-  session_id: string,
-  event_id: string  // from get_turn_details()
-}
-
-// Response
-{
-  event: {
-    id: "evt_abc123",
-    timestamp: "2026-01-01T21:40:05Z",
-    type: "ToolResult",
-    payload: {
-      content: "<FULL BASH OUTPUT - 5000 chars>",  // NO TRUNCATION
-      is_error: false
-    }
-  }
-}
-```
-
----
-
-## 5. Search Tools
+## 3. Search Tools
 
 ### `search_events`
+
 **Purpose**: Find events across sessions
-**Response Size**: ~5-10 KB (5 matches)
+**Response Size**: ~5-10 KB per page (5 matches)
+**Pagination**: Cursor-based
 
 ```typescript
 // Request
 {
   pattern: string,        // substring match
   limit?: number,         // default: 5, max: 20
+  cursor?: string,        // pagination token
   provider?: string,
-  event_type?: string     // "ToolCall" | "ToolResult" | etc
+  event_type?: string,    // "ToolCall" | "ToolResult" | etc
+  include_full_payload?: boolean  // default: false
 }
 
 // Response
@@ -259,120 +311,155 @@ Projects
   matches: [
     {
       session_id: "fb3cff44",
-      event_id: "evt_abc123",     // NEW: for drill-down
       timestamp: "2026-01-01T21:44:41Z",
       type: "ToolCall",
-      summary: "Read /path/to/file.rs"  // 1-line description
+      preview: {  // When include_full_payload=false (default)
+        tool: "Read",
+        arguments: { file_path: "..." }  // truncated to 100 chars
+      }
+      // OR
+      payload: { ... }  // When include_full_payload=true
     }
   ],
-  total_matches: 25,
-  hint: "Use get_event_details(session_id, event_id) for full payload"
+  total: 5,
+  next_cursor: "eyJ..." | null,
+  hint: "Use get_session_details(session_id, detail_level='steps') to see all events in a session"
 }
 ```
 
-**Key Change**: Returns **summaries** by default, not full payloads
+**Key Design Decision**: Return **previews** by default to stay within 30 KB limit. LLM can request full payloads explicitly.
 
 ---
 
 ## Tool Flow Examples
 
-### Example 1: Debug a Failed Session
+### Example 1: Debug Failed Tools in o3 Session
 
 ```
-1. User: "Show me recent sessions"
-   → list_sessions()
-   → AI sees session "fb3cff44" with 6 turns
+1. User: "Show me recent o3 sessions"
+   → list_sessions(provider="claude_code", limit=10)
+   → 10 KB response with session summaries
 
-2. User: "What went wrong in fb3cff44?"
+2. AI: "I see session fb3cff44 with 273k tokens. Let me check health."
    → analyze_session("fb3cff44")
-   → Score: 80, "Turn 0 and 1 had failed tools"
+   → 2 KB response: Score 65, "Turn 2 and 5 had failures"
 
-3. User: "Show me turn 0"
-   → get_turn_details("fb3cff44", 0)
-   → AI sees 12 tool calls, 1 failed
+3. AI: "Turn 2 looks critical. Let me examine it."
+   → get_session_details("fb3cff44", detail_level="turns")
+   → 25 KB response with turn summaries
 
-4. User: "What was the failed tool's output?"
-   → get_event_details("fb3cff44", "evt_xyz")
-   → Full error message: "File not found: /path/to/file.rs"
+4. AI: "Turn 2 step 3 failed. Let me see full details."
+   → get_session_details("fb3cff44", detail_level="steps")
+   → 80 KB response with truncated payloads
+
+5. User: "What was the exact error message?"
+   → search_events(pattern="error", session_id="fb3cff44", include_full_payload=true)
+   → 8 KB response with full error details
 ```
 
-**Response sizes**: 10 KB → 1 KB → 30 KB → 2 KB = **43 KB total**
+**Total Response Size**: 10 + 2 + 25 + 80 + 8 = **125 KB** across 5 calls
+**Context Efficiency**: ✅ Within 200 KB budget
 
 ---
 
-### Example 2: Investigate Tool Usage
+### Example 2: Investigate Token Usage Pattern
 
 ```
-1. User: "Find all times I used the Read tool"
-   → search_events(pattern="Read", limit=10)
-   → 10 summaries: "Read /path/to/file.rs"
+1. AI: "Let me check token distribution"
+   → get_session_details("abc123", detail_level="summary")
+   → 8 KB: See that Turn 3 consumed 150k tokens
 
-2. User: "Show me the third one"
-   → get_event_details("abc123", "evt_def456")
-   → Full ToolCall payload with arguments
+2. AI: "That's unusually high. What tools were used?"
+   → get_session_details("abc123", detail_level="turns")
+   → 20 KB: Turn 3 had 47 tool calls (mostly Read)
 
-3. User: "What was the result?"
-   → (AI already has event_id from search)
-   → get_event_details("abc123", "evt_result_789")
-   → Full file content
+3. User: "Show me what files were read"
+   → search_events(pattern="Read", limit=20)
+   → 15 KB: List of all Read tool calls with file paths
 ```
 
-**Response sizes**: 8 KB → 2 KB → 5 KB = **15 KB total**
+**Total Response Size**: 8 + 20 + 15 = **43 KB**
+**Context Efficiency**: ✅ Excellent
 
 ---
 
-## Design Decisions Summary
+## Best Practices Summary
 
-### ✅ Good Patterns
-1. **Layered disclosure**: summary → overview → details → full payload
-2. **Event IDs**: Enable precise drill-down without re-searching
-3. **Hints**: Guide AI to next action
-4. **Size limits**: Each tool < 50 KB
-5. **Defaults**: Conservative (limit=5-10)
+### ✅ Recommended Patterns
 
-### ❌ Avoided Patterns
-1. ~~Single "get everything" tool~~
-2. ~~Untruncated large payloads by default~~
-3. ~~No way to get full details~~
-4. ~~Pagination (complex for AI)~~
+1. **Cursor-based pagination**: Use opaque tokens for all list operations
+2. **Progressive disclosure**: Start with summaries, drill down on demand
+3. **Size awareness**: Include response size estimates in hints
+4. **Idempotent operations**: Same request = same response (for retry safety)
+5. **Defensive truncation**: Always truncate by default; provide opt-in for full data
 
-### 🤔 Optional Future Extensions
-- `compare_sessions(id1, id2)` - Diff two sessions
-- `get_reasoning_chain(session_id, turn_index)` - Just reasoning, no tools
-- Field selection (`fields=["id", "timestamp"]`)
+### ❌ Anti-Patterns to Avoid
 
----
+1. ~~Offset-based pagination~~ (not stable, not MCP-compliant)
+2. ~~Single "dump everything" tool~~ (overwhelms context)
+3. ~~No way to get full details~~ (blocks deep debugging)
+4. ~~Assuming fixed page sizes~~ (violates MCP spec)
+5. ~~Returning 500 KB tool results~~ (exceeds best practice limits)
 
-## Implementation Priority
+### 🔒 Security & Privacy Safeguards
 
-### Phase 1 (MVP - Must Have)
-1. ✅ `list_sessions` (already exists, needs truncation)
-2. ✅ `get_project_info` (already exists)
-3. ✅ `analyze_session` (already exists)
-4. **NEW**: `get_session_overview` (replaces current get_session_details default)
-5. **FIX**: `search_events` (return summaries, not payloads)
-
-### Phase 2 (Deep Dive)
-6. **NEW**: `get_turn_details`
-7. **NEW**: `get_event_details`
-
-### Phase 3 (Optional)
-8. `compare_sessions`
-9. Field selection
-10. Advanced filters
+1. **Server-side size limits**: Enforce max 100 KB per response regardless of client request
+2. **Redact secrets**: Never return API keys, tokens, or credentials in event payloads
+3. **Audit logging**: Track request/response sizes for monitoring
+4. **Timeout protection**: Cap expensive searches at 30 seconds
 
 ---
 
-## Response Size Targets
+## Implementation Roadmap
 
-| Tool | Target Size | Max Size |
-|------|-------------|----------|
-| list_sessions (10) | 10 KB | 20 KB |
-| get_session_overview | 10 KB | 30 KB |
-| analyze_session | 1 KB | 5 KB |
-| search_events (5) | 5 KB | 15 KB |
-| get_turn_details | 30 KB | 80 KB |
-| get_event_details | 2 KB | 20 KB |
-| get_project_info | 10 KB | 20 KB |
+### Phase 1: MCP Spec Compliance (Priority: HIGH)
 
-**Total for typical investigation**: 40-100 KB across 3-5 tool calls
+- [x] ~~`detail_level` hierarchy~~ (implemented)
+- [x] ~~Response size hints~~ (implemented)
+- [x] ~~Error handling improvements~~ (implemented)
+- [ ] **Cursor pagination for `list_sessions`** (REQUIRED)
+- [ ] **Cursor pagination for `search_events`** (RECOMMENDED)
+
+### Phase 2: Advanced Features (Priority: MEDIUM)
+
+- [ ] Response size warnings (> 30 KB alert)
+- [ ] Field selection (`fields=["id", "timestamp"]`)
+- [ ] Streaming support for very large sessions (> 1 MB)
+
+### Phase 3: Optional Enhancements (Priority: LOW)
+
+- [ ] `compare_sessions(id1, id2)` - Diff tool
+- [ ] `get_reasoning_chain()` - Extract only thinking steps
+- [ ] Advanced filters (regex, date ranges, token thresholds)
+
+---
+
+## Response Size Targets (Updated for Best Practices)
+
+| Tool | Target | Max | Status |
+|------|--------|-----|--------|
+| `list_sessions` (10 items) | 10 KB | 20 KB | ✅ Compliant |
+| `get_session_details` (summary) | 8 KB | 15 KB | ✅ Compliant |
+| `get_session_details` (turns) | 20 KB | 30 KB | ✅ Compliant |
+| `get_session_details` (steps) | 60 KB | **100 KB** | ⚠️ Review needed |
+| `get_session_details` (full) | N/A | **Unbounded** | ❌ Needs pagination |
+| `analyze_session` | 2 KB | 5 KB | ✅ Compliant |
+| `search_events` (5 items) | 8 KB | 15 KB | ✅ Compliant |
+| `get_project_info` | 10 KB | 20 KB | ✅ Compliant |
+
+**Compliance Rate**: 6/8 tools within best practices (75%)
+
+---
+
+## References
+
+- [MCP 2024-11-05 Specification - Pagination](https://modelcontextprotocol.io/specification/2024-11-05/server/utilities/pagination)
+- [MCP Best Practices Guide](https://modelcontextprotocol.info/docs/best-practices/)
+- [15 Best Practices for Production MCP Servers](https://thenewstack.io/15-best-practices-for-building-mcp-servers-in-production/)
+- Industry guidelines: Single response < 30 KB, total investigation < 200 KB
+
+---
+
+**Last Updated**: 2026-01-02
+**Specification Version**: MCP 2024-11-05
+**Implementation Status**: Phase 1 (75% complete)

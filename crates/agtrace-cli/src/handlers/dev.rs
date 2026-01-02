@@ -112,13 +112,7 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
             }),
         )?;
         println!("Session ID: {}", sid);
-        print_result(
-            "detail_level: summary",
-            size,
-            15_000,
-            verbose,
-            &response,
-        );
+        print_result("detail_level: summary", size, 15_000, verbose, &response);
         if size > 15_000 {
             total_warnings += 1;
         }
@@ -139,13 +133,7 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
                 }
             }),
         )?;
-        print_result(
-            "detail_level: turns",
-            size,
-            40_000,
-            verbose,
-            &response,
-        );
+        print_result("detail_level: turns", size, 40_000, verbose, &response);
         if size > 40_000 {
             total_warnings += 1;
         }
@@ -194,13 +182,7 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
                 }
             }),
         )?;
-        print_result(
-            "detail_level: steps",
-            size,
-            300_000,
-            verbose,
-            &response,
-        );
+        print_result("detail_level: steps", size, 300_000, verbose, &response);
         if size > 300_000 {
             total_warnings += 1;
         }
@@ -221,13 +203,7 @@ pub async fn handle_test_mcp(client: &Client, verbose: bool) -> Result<()> {
                 }
             }),
         )?;
-        print_result(
-            "detail_level: full",
-            size,
-            500_000,
-            verbose,
-            &response,
-        );
+        print_result("detail_level: full", size, 500_000, verbose, &response);
         if size > 500_000 {
             total_warnings += 1;
         }

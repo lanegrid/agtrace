@@ -46,8 +46,8 @@ impl SessionResponseBuilder {
                 serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
             }
             DetailLevel::Steps => {
-                let response = SessionStepsResponse::from_session(self.session)?;
-                Ok(response.into_value())
+                let response = SessionStepsResponse::from_session(self.session);
+                response.into_value()
             }
             DetailLevel::Full => {
                 let response = SessionFullResponse::from_session(self.session);
