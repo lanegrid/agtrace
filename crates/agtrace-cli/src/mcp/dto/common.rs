@@ -68,25 +68,6 @@ impl EventType {
 }
 
 /// Detail level for session responses
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum DetailLevel {
-    /// Only session stats and turn metadata (5-10 KB)
-    Summary,
-    /// Turn-level summaries with tool outcomes (15-30 KB)
-    Turns,
-    /// Step-level details with truncated payloads (50-100 KB)
-    Steps,
-    /// Complete session with all payloads (unbounded, use with caution)
-    Full,
-}
-
-impl Default for DetailLevel {
-    fn default() -> Self {
-        Self::Summary
-    }
-}
-
 /// Pagination metadata for list responses
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct PaginationMeta {

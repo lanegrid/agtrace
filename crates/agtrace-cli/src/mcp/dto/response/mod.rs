@@ -1,6 +1,5 @@
 pub mod event_preview;
 mod full;
-mod steps;
 mod summary;
 mod turn_steps;
 mod turns;
@@ -9,7 +8,6 @@ pub use event_preview::{
     EventDetailsResponse, EventPreview, PreviewContent, SearchEventPreviewsData,
 };
 pub use full::SessionFullResponse;
-pub use steps::SessionStepsResponse;
 pub use summary::SessionSummaryResponse;
 pub use turn_steps::TurnStepsResponse;
 pub use turns::SessionTurnsResponse;
