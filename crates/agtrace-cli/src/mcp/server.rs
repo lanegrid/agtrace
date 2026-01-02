@@ -66,10 +66,7 @@ impl AgTraceServer {
             let field_name = &error_msg[field_start + 1..field_start + 1 + field_end];
             return JsonRpcError {
                 code: -32602,
-                message: format!(
-                    "Invalid params: missing required field \"{}\"",
-                    field_name
-                ),
+                message: format!("Invalid params: missing required field \"{}\"", field_name),
                 data: Some(json!({
                     "missing": [field_name],
                     "tool": tool_name,
