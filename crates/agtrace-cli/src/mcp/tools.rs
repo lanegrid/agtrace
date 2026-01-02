@@ -14,9 +14,11 @@ use serde_json::Value;
 
 use super::dto::{
     AnalyzeSessionArgs, EventDetailsResponse, EventPreview, GetEventDetailsArgs,
-    GetSessionDetailsArgs, ListSessionsArgs, ListSessionsResponse, McpError, McpResponse,
+    GetSessionDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs, GetSessionTurnsArgs,
+    GetTurnStepsArgs, ListSessionsArgs, ListSessionsResponse, McpError, McpResponse,
     PaginationMeta, PreviewContent, SearchEventPreviewsArgs, SearchEventPreviewsData,
-    SessionResponseBuilder, SessionSummaryDto,
+    SessionFullResponse, SessionResponseBuilder, SessionSummaryDto, SessionSummaryResponse,
+    SessionTurnsResponse, TurnStepsResponse,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -351,4 +353,146 @@ pub async fn handle_get_event_details(
     let response = EventDetailsResponse::from_event(args.session_id, args.event_index, event);
 
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+// ============================================================================
+// New Specialized Session Tools (Approach B)
+// ============================================================================
+
+/// Get lightweight session overview (≤5 KB, guaranteed single-page)
+pub async fn handle_get_session_summary(
+    client: &Client,
+    args: GetSessionSummaryArgs,
+) -> Result<Value, String> {
+    let handle = client
+        .sessions()
+        .get(&args.session_id)
+        .map_err(|e| format!("Session not found: {}", e))?;
+
+    let session = handle
+        .assemble()
+        .map_err(|e| format!("Failed to assemble session: {}", e))?;
+
+    let response = SessionSummaryResponse::from_session(session).with_metadata();
+
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Get turn-level summaries with pagination (10-30 KB per page)
+pub async fn handle_get_session_turns(
+    client: &Client,
+    args: GetSessionTurnsArgs,
+) -> Result<Value, String> {
+    let handle = client
+        .sessions()
+        .get(&args.session_id)
+        .map_err(|e| format!("Session not found: {}", e))?;
+
+    let session = handle
+        .assemble()
+        .map_err(|e| format!("Failed to assemble session: {}", e))?;
+
+    let limit = args.limit();
+    let offset = args
+        .cursor
+        .as_ref()
+        .and_then(|c| Cursor::decode(c))
+        .map(|c| c.offset)
+        .unwrap_or(0);
+
+    let total_turns = session.turns.len();
+    let remaining = total_turns.saturating_sub(offset);
+    let has_more = remaining > limit;
+
+    let next_cursor = if has_more {
+        Some(
+            Cursor {
+                offset: offset + limit,
+            }
+            .encode(),
+        )
+    } else {
+        None
+    };
+
+    let response =
+        SessionTurnsResponse::from_session_paginated(session, offset, limit, next_cursor);
+
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Get detailed steps for a specific turn (20-50 KB)
+pub async fn handle_get_turn_steps(
+    client: &Client,
+    args: GetTurnStepsArgs,
+) -> Result<Value, String> {
+    let handle = client
+        .sessions()
+        .get(&args.session_id)
+        .map_err(|e| format!("Session not found: {}", e))?;
+
+    let session = handle
+        .assemble()
+        .map_err(|e| format!("Failed to assemble session: {}", e))?;
+
+    let total_turns = session.turns.len();
+    let turn = session
+        .turns
+        .into_iter()
+        .nth(args.turn_index)
+        .ok_or_else(|| {
+            format!(
+                "Turn index {} out of range (session has {} turns)",
+                args.turn_index, total_turns
+            )
+        })?;
+
+    let response = TurnStepsResponse::from_turn(args.session_id.clone(), args.turn_index, turn);
+
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Get complete session data with full payloads (50-100 KB per chunk, paginated)
+pub async fn handle_get_session_full(
+    client: &Client,
+    args: GetSessionFullArgs,
+) -> Result<Value, String> {
+    let handle = client
+        .sessions()
+        .get(&args.session_id)
+        .map_err(|e| format!("Session not found: {}", e))?;
+
+    let session = handle
+        .assemble()
+        .map_err(|e| format!("Failed to assemble session: {}", e))?;
+
+    let limit = args.limit();
+    let offset = if args.is_initial() {
+        0
+    } else {
+        args.cursor
+            .as_ref()
+            .and_then(|c| Cursor::decode(c))
+            .map(|c| c.offset)
+            .unwrap_or(0)
+    };
+
+    let total_turns = session.turns.len();
+    let remaining = total_turns.saturating_sub(offset);
+    let has_more = remaining > limit;
+
+    let next_cursor = if has_more {
+        Some(
+            Cursor {
+                offset: offset + limit,
+            }
+            .encode(),
+        )
+    } else {
+        None
+    };
+
+    let response = SessionFullResponse::from_session_paginated(session, offset, limit, next_cursor);
+
+    response.into_value()
 }

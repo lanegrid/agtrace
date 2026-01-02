@@ -5,12 +5,15 @@ use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
 use super::dto::{
-    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionDetailsArgs, ListSessionsArgs,
+    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionDetailsArgs, GetSessionFullArgs,
+    GetSessionSummaryArgs, GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs,
     SearchEventPreviewsArgs,
 };
 use super::tools::{
     handle_analyze_session, handle_get_event_details, handle_get_project_info,
-    handle_get_session_details, handle_list_sessions, handle_search_event_previews,
+    handle_get_session_details, handle_get_session_full, handle_get_session_summary,
+    handle_get_session_turns, handle_get_turn_steps, handle_list_sessions,
+    handle_search_event_previews,
 };
 
 #[derive(Debug, Deserialize)]
@@ -131,7 +134,12 @@ impl AgTraceServer {
     async fn handle_list_tools(&self, id: Value) -> JsonRpcResponse {
         // Generate JSON Schemas from Rust types - single source of truth!
         let list_sessions_schema = schema_for!(ListSessionsArgs);
+        #[allow(deprecated)]
         let get_session_details_schema = schema_for!(GetSessionDetailsArgs);
+        let get_session_summary_schema = schema_for!(GetSessionSummaryArgs);
+        let get_session_turns_schema = schema_for!(GetSessionTurnsArgs);
+        let get_turn_steps_schema = schema_for!(GetTurnStepsArgs);
+        let get_session_full_schema = schema_for!(GetSessionFullArgs);
         let analyze_session_schema = schema_for!(AnalyzeSessionArgs);
         let search_event_previews_schema = schema_for!(SearchEventPreviewsArgs);
         let get_event_details_schema = schema_for!(GetEventDetailsArgs);
@@ -147,8 +155,28 @@ impl AgTraceServer {
                         "inputSchema": serde_json::to_value(&list_sessions_schema).unwrap(),
                     },
                     {
+                        "name": "get_session_summary",
+                        "description": "Get lightweight session overview (≤5 KB, always single-page). Returns session metadata, turn count, token stats, and first message snippet. Use this first to understand the session before drilling deeper.",
+                        "inputSchema": serde_json::to_value(&get_session_summary_schema).unwrap(),
+                    },
+                    {
+                        "name": "get_session_turns",
+                        "description": "Get turn-level summaries with pagination (10-30 KB per page). Shows key actions, outcomes, and tool usage per turn. Supports cursor-based pagination. Start here after reviewing summary.",
+                        "inputSchema": serde_json::to_value(&get_session_turns_schema).unwrap(),
+                    },
+                    {
+                        "name": "get_turn_steps",
+                        "description": "Get detailed steps for a specific turn (20-50 KB). Shows tool calls, results (truncated to 500 chars), and reasoning. Use after identifying interesting turns.",
+                        "inputSchema": serde_json::to_value(&get_turn_steps_schema).unwrap(),
+                    },
+                    {
+                        "name": "get_session_full",
+                        "description": "Get complete session data with full payloads (50-100 KB per chunk). REQUIRES pagination cursor. Returns untruncated tool inputs/outputs. Use sparingly—only when you need complete data.",
+                        "inputSchema": serde_json::to_value(&get_session_full_schema).unwrap(),
+                    },
+                    {
                         "name": "get_session_by_id",
-                        "description": "Get details for a specific session with configurable verbosity (summary/turns/steps/full). WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
+                        "description": "DEPRECATED: Use get_session_summary, get_session_turns, get_turn_steps, or get_session_full instead. This tool will be removed in a future version.",
                         "inputSchema": serde_json::to_value(&get_session_details_schema).unwrap(),
                     },
                     {
@@ -230,7 +258,64 @@ impl AgTraceServer {
                 };
                 handle_list_sessions(&self.client, args).await
             }
+            "get_session_summary" => {
+                let args: GetSessionSummaryArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("get_session_summary", e)),
+                        };
+                    }
+                };
+                handle_get_session_summary(&self.client, args).await
+            }
+            "get_session_turns" => {
+                let args: GetSessionTurnsArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("get_session_turns", e)),
+                        };
+                    }
+                };
+                handle_get_session_turns(&self.client, args).await
+            }
+            "get_turn_steps" => {
+                let args: GetTurnStepsArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("get_turn_steps", e)),
+                        };
+                    }
+                };
+                handle_get_turn_steps(&self.client, args).await
+            }
+            "get_session_full" => {
+                let args: GetSessionFullArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("get_session_full", e)),
+                        };
+                    }
+                };
+                handle_get_session_full(&self.client, args).await
+            }
             "get_session_by_id" => {
+                #[allow(deprecated)]
                 let args: GetSessionDetailsArgs = match serde_json::from_value(arguments) {
                     Ok(args) => args,
                     Err(e) => {

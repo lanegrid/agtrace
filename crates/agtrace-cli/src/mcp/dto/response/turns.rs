@@ -2,12 +2,15 @@ use agtrace_sdk::types::{AgentSession, AgentStep, AgentTurn, SessionStats, StepS
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::mcp::dto::{common::truncate_string, tool_summary::ToolSummarizer};
+use crate::mcp::dto::{
+    common::{ResponseMeta, truncate_string},
+    tool_summary::ToolSummarizer,
+};
 
 const MAX_SNIPPET_LEN: usize = 200;
 
-/// Session turns response (detail_level: turns)
-/// Target size: 15-30 KB
+/// Session turns response for get_session_turns tool
+/// Target size: 10-30 KB per page (paginated)
 #[derive(Debug, Serialize)]
 pub struct SessionTurnsResponse {
     pub session_id: String,
@@ -15,6 +18,7 @@ pub struct SessionTurnsResponse {
     pub end_time: Option<DateTime<Utc>>,
     pub stats: SessionStats,
     pub turns: Vec<TurnDetailDto>,
+    pub _meta: ResponseMeta,
 }
 
 #[derive(Debug, Serialize)]
@@ -66,7 +70,50 @@ impl SessionTurnsResponse {
             end_time: session.end_time,
             stats: session.stats,
             turns,
+            _meta: ResponseMeta::from_bytes(0), // Placeholder
         }
+    }
+
+    /// Create paginated response with metadata
+    pub fn from_session_paginated(
+        session: AgentSession,
+        offset: usize,
+        limit: usize,
+        next_cursor: Option<String>,
+    ) -> Self {
+        let total_turns = session.turns.len();
+        let turns: Vec<_> = session
+            .turns
+            .into_iter()
+            .enumerate()
+            .skip(offset)
+            .take(limit)
+            .map(|(idx, turn)| TurnDetailDto::from_turn(idx, turn, false))
+            .collect();
+
+        let response = Self {
+            session_id: session.session_id.to_string(),
+            start_time: session.start_time,
+            end_time: session.end_time,
+            stats: session.stats,
+            turns,
+            _meta: ResponseMeta::from_bytes(0),
+        };
+
+        response.with_metadata(next_cursor, total_turns)
+    }
+
+    pub fn with_metadata(mut self, next_cursor: Option<String>, total_turns: usize) -> Self {
+        if let Ok(json) = serde_json::to_string(&self) {
+            let bytes = json.len();
+            self._meta = ResponseMeta::with_pagination(
+                bytes,
+                next_cursor,
+                self.turns.len(),
+                Some(total_turns),
+            );
+        }
+        self
     }
 }
 

@@ -111,6 +111,65 @@ pub struct McpResponse<T> {
     pub hint: Option<String>,
 }
 
+/// Response metadata for size tracking and pagination
+///
+/// Included in all MCP tool responses to help LLMs manage context window constraints.
+/// Based on MCP best practices for progressive disclosure and token budgeting.
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct ResponseMeta {
+    /// Actual JSON response size in bytes
+    pub bytes: usize,
+
+    /// Estimated token count (bytes / 4, conservative estimate for JSON)
+    pub estimated_tokens: usize,
+
+    /// Whether more data is available via pagination
+    pub has_more: bool,
+
+    /// Opaque cursor for next page (null if no more data)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
+
+    /// Total number of items across all pages (if known)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_items: Option<usize>,
+
+    /// Number of items returned in this response
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub returned_count: Option<usize>,
+}
+
+impl ResponseMeta {
+    /// Create metadata from serialized response bytes
+    pub fn from_bytes(bytes: usize) -> Self {
+        Self {
+            bytes,
+            estimated_tokens: bytes / 4, // Conservative estimate for JSON
+            has_more: false,
+            next_cursor: None,
+            total_items: None,
+            returned_count: None,
+        }
+    }
+
+    /// Create metadata with pagination info
+    pub fn with_pagination(
+        bytes: usize,
+        next_cursor: Option<String>,
+        returned_count: usize,
+        total_items: Option<usize>,
+    ) -> Self {
+        Self {
+            bytes,
+            estimated_tokens: bytes / 4,
+            has_more: next_cursor.is_some(),
+            next_cursor,
+            total_items,
+            returned_count: Some(returned_count),
+        }
+    }
+}
+
 /// Truncate a string to a maximum length, adding ellipsis if truncated
 pub fn truncate_string(s: &str, max_len: usize) -> String {
     if s.len() > max_len {
