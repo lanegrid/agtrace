@@ -147,7 +147,7 @@ impl AgTraceServer {
                         "inputSchema": serde_json::to_value(&list_sessions_schema).unwrap(),
                     },
                     {
-                        "name": "get_session_details",
+                        "name": "get_session_by_id",
                         "description": "Get details for a specific session with configurable verbosity (summary/turns/steps/full). WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
                         "inputSchema": serde_json::to_value(&get_session_details_schema).unwrap(),
                     },
@@ -230,7 +230,7 @@ impl AgTraceServer {
                 };
                 handle_list_sessions(&self.client, args).await
             }
-            "get_session_details" => {
+            "get_session_by_id" => {
                 let args: GetSessionDetailsArgs = match serde_json::from_value(arguments) {
                     Ok(args) => args,
                     Err(e) => {
@@ -238,7 +238,7 @@ impl AgTraceServer {
                             jsonrpc: "2.0".to_string(),
                             id,
                             result: None,
-                            error: Some(Self::parse_validation_error("get_session_details", e)),
+                            error: Some(Self::parse_validation_error("get_session_by_id", e)),
                         };
                     }
                 };
@@ -374,7 +374,7 @@ mod tests {
             serde_json::from_str(json_str);
 
         let error = result.unwrap_err();
-        let json_error = AgTraceServer::parse_validation_error("get_session_details", error);
+        let json_error = AgTraceServer::parse_validation_error("get_session_by_id", error);
 
         assert_eq!(json_error.code, -32602);
         assert!(
@@ -388,7 +388,7 @@ mod tests {
 
         // Verify data field structure
         let data = json_error.data.expect("data field should be present");
-        assert_eq!(data["tool"], "get_session_details");
+        assert_eq!(data["tool"], "get_session_by_id");
         assert!(
             data["missing"].is_array(),
             "missing field should be an array"
@@ -406,7 +406,7 @@ mod tests {
             serde_json::from_str(json_str);
 
         let error = result.unwrap_err();
-        let json_error = AgTraceServer::parse_validation_error("get_session_details", error);
+        let json_error = AgTraceServer::parse_validation_error("get_session_by_id", error);
 
         assert_eq!(json_error.code, -32602);
         assert!(
@@ -416,7 +416,7 @@ mod tests {
 
         // For non-missing-field errors, should have detail field
         let data = json_error.data.expect("data field should be present");
-        assert_eq!(data["tool"], "get_session_details");
+        assert_eq!(data["tool"], "get_session_by_id");
         assert!(
             data["detail"].is_string(),
             "detail field should contain error message"
