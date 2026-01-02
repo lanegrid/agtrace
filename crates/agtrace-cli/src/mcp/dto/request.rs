@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::common::DetailLevel;
+use super::common::{DetailLevel, EventType, Provider};
 
 /// List recent AI agent sessions with cursor-based pagination
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -12,8 +12,8 @@ pub struct ListSessionsArgs {
     /// Pagination cursor from previous response's next_cursor field. Omit for first page.
     #[serde(default)]
     pub cursor: Option<String>,
-    /// Filter by provider (claude_code, codex, gemini)
-    pub provider: Option<String>,
+    /// Filter by provider
+    pub provider: Option<Provider>,
     /// Filter by project hash
     pub project_hash: Option<String>,
     /// Show sessions after this timestamp (ISO 8601)
@@ -25,12 +25,23 @@ pub struct ListSessionsArgs {
 /// Get session details with configurable verbosity
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetSessionDetailsArgs {
-    /// Session ID (short or full UUID)
+    /// Session ID: 8-character prefix (e.g., "fb3cff44") or full UUID.
+    /// Ambiguous prefixes matching multiple sessions will return an error with matched IDs.
     pub session_id: String,
-    /// Detail level: 'summary' (5-10KB), 'turns' (15-30KB), 'steps' (50-100KB), or 'full' (complete data)
+
+    /// Response size control:
+    /// - 'summary': 5-10 KB (turn count, no payloads)
+    /// - 'turns': 15-30 KB (tool usage per turn)
+    /// - 'steps': 50-100 KB (full structure, truncated payloads to 500 chars)
+    /// - 'full': Unbounded (complete session, use with caution)
+    /// Default: 'summary'
     #[serde(default)]
     pub detail_level: Option<DetailLevel>,
-    /// Include reasoning/thinking content in summaries (only applies to 'turns' level)
+
+    /// Include <thinking> blocks in turn summaries.
+    /// WARNING: Only valid when detail_level='turns'. Ignored for other levels.
+    /// Adds ~5-10 KB per turn with reasoning content.
+    /// Default: false
     #[serde(default)]
     pub include_reasoning: Option<bool>,
 }
@@ -58,8 +69,46 @@ pub struct AnalyzeSessionArgs {
     pub include_loops: Option<bool>,
 }
 
-/// Search for patterns in event payloads across recent sessions with cursor-based pagination
+/// Search for patterns in event payloads (returns previews only, ~300 char snippets)
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct SearchEventPreviewsArgs {
+    /// Search query (substring match in event JSON payloads)
+    pub query: String,
+
+    /// Maximum results per page (default: 10, max: 50)
+    #[serde(default)]
+    pub limit: Option<usize>,
+
+    /// Pagination cursor from previous response's next_cursor field. Omit for first page.
+    #[serde(default)]
+    pub cursor: Option<String>,
+
+    /// Filter by provider
+    pub provider: Option<Provider>,
+
+    /// Filter by event type (e.g., ToolCall, ToolResult, Message)
+    pub event_type: Option<EventType>,
+
+    /// Search within specific session only (optional)
+    pub session_id: Option<String>,
+}
+
+/// Retrieve full event payload by session and index
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetEventDetailsArgs {
+    /// Session ID: 8-character prefix or full UUID
+    pub session_id: String,
+
+    /// Zero-based event index within session
+    pub event_index: usize,
+}
+
+/// DEPRECATED: Use search_event_previews + get_event_details instead
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[deprecated(
+    since = "0.4.0",
+    note = "Use search_event_previews for discovery, then get_event_details for full payloads"
+)]
 pub struct SearchEventsArgs {
     /// Search pattern (substring match)
     pub pattern: String,
