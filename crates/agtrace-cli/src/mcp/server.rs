@@ -96,11 +96,12 @@ impl AgTraceServer {
                 "tools": [
                     {
                         "name": "list_sessions",
-                        "description": "List recent AI agent sessions. Returns session summaries including ID, timestamp, provider, and snippet (truncated to 200 chars). Use filters to narrow down by provider, project, or time range.",
+                        "description": "List recent AI agent sessions with cursor-based pagination. Returns session summaries including ID, timestamp, provider, and snippet (truncated to 200 chars). Use filters to narrow down by provider, project, or time range. Check next_cursor in response to fetch additional pages.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
-                                "limit": {"type": "number", "description": "Maximum number of sessions to return (default: 10, max recommended: 50)"},
+                                "limit": {"type": "number", "description": "Maximum number of sessions to return (default: 10, max: 50)"},
+                                "cursor": {"type": "string", "description": "Pagination cursor from previous response's next_cursor field. Omit for first page."},
                                 "provider": {"type": "string", "description": "Filter by provider (claude_code, codex, gemini)"},
                                 "project_hash": {"type": "string", "description": "Filter by project hash"},
                                 "since": {"type": "string", "description": "Show sessions after this timestamp"},
@@ -136,12 +137,13 @@ impl AgTraceServer {
                     },
                     {
                         "name": "search_events",
-                        "description": "Search for patterns in event payloads across recent sessions. Returns snippets by default (300 chars). Set include_full_payload=true for complete event data.",
+                        "description": "Search for patterns in event payloads across recent sessions with cursor-based pagination. Returns snippets by default (300 chars). Set include_full_payload=true for complete event data. Check next_cursor in response to fetch additional matches.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
                                 "pattern": {"type": "string", "description": "Search pattern (substring match)"},
-                                "limit": {"type": "number", "description": "Maximum number of matches (default: 5)"},
+                                "limit": {"type": "number", "description": "Maximum number of matches (default: 5, max: 20)"},
+                                "cursor": {"type": "string", "description": "Pagination cursor from previous response's next_cursor field. Omit for first page."},
                                 "provider": {"type": "string", "description": "Filter by provider"},
                                 "event_type": {"type": "string", "description": "Filter by event type"},
                                 "include_full_payload": {"type": "boolean", "description": "Include full event payload (default: false). WARNING: Can produce large responses."}
