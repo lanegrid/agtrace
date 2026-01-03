@@ -50,6 +50,14 @@ impl<'a> SessionListView<'a> {
             return Ok(());
         }
 
+        // Print header
+        writeln!(
+            f,
+            "{:<8}  {:<12}  {:<11}  {:<35}  SNIPPET",
+            "SESSION", "TIME", "PROVIDER", "PROJECT"
+        )?;
+        writeln!(f, "{}", "-".repeat(120))?;
+
         for session in &self.data.sessions {
             // Shorten ID to first 8 chars (like git commit hash)
             let id_short = session
@@ -72,23 +80,44 @@ impl<'a> SessionListView<'a> {
                 .map(|s| text::normalize_and_clean(s, SNIPPET_MAX_LENGTH))
                 .unwrap_or_else(|| "--".to_string());
 
+            // Shorten project root for display
+            let project_display = if let Some(ref root) = session.project_root {
+                text::shorten_home_path(root)
+            } else {
+                let hash_prefix = if session.project_hash.len() >= 8 {
+                    &session.project_hash[..8]
+                } else {
+                    &session.project_hash
+                };
+                format!("{}...", hash_prefix)
+            };
+
             writeln!(
                 f,
-                "{} {} [{}] {}",
-                id_short, time_display, session.provider, snippet
+                "{:<8}  {:<12}  {:<11}  {:<35}  {}",
+                id_short, time_display, session.provider, project_display, snippet
             )?;
         }
         Ok(())
     }
 
     fn render_standard(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Standard: Table format (current behavior)
+        // Standard: Table format with header and aligned columns
         if self.data.sessions.is_empty() {
             writeln!(f, "No sessions found.")?;
             self.show_filter_info(f)?;
             return Ok(());
         }
 
+        // Print header
+        writeln!(
+            f,
+            "{:<8}  {:<20}  {:<11}  {:<35}  SNIPPET",
+            "SESSION", "TIME", "PROVIDER", "PROJECT"
+        )?;
+        writeln!(f, "{}", "-".repeat(120))?;
+
+        // Print sessions
         for session in &self.data.sessions {
             let id_short = if session.id.len() > SESSION_ID_SHORT_LENGTH {
                 &session.id[..SESSION_ID_SHORT_LENGTH]
@@ -97,12 +126,30 @@ impl<'a> SessionListView<'a> {
             };
 
             let time_str = session.start_ts.as_deref().unwrap_or("unknown");
-            let snippet = session.snippet.as_deref().unwrap_or("--");
+
+            // Normalize snippet to single line
+            let snippet = session
+                .snippet
+                .as_ref()
+                .map(|s| text::normalize_and_clean(s, SNIPPET_MAX_LENGTH))
+                .unwrap_or_else(|| "--".to_string());
+
+            // Shorten project root for display
+            let project_display = if let Some(ref root) = session.project_root {
+                text::shorten_home_path(root)
+            } else {
+                let hash_prefix = if session.project_hash.len() >= 8 {
+                    &session.project_hash[..8]
+                } else {
+                    &session.project_hash
+                };
+                format!("{}...", hash_prefix)
+            };
 
             writeln!(
                 f,
-                "{} {} {} {}",
-                time_str, id_short, session.provider, snippet
+                "{:<8}  {:<20}  {:<11}  {:<35}  {}",
+                id_short, time_str, session.provider, project_display, snippet
             )?;
         }
 
@@ -682,9 +729,10 @@ mod tests {
         let session = SessionListEntry {
             id: "abc123def456".to_string(),
             provider: "test_provider".to_string(),
+            project_hash: "hash123".to_string(),
+            project_root: None,
             start_ts: Some("2025-12-24T12:00:00Z".to_string()),
             snippet: Some("Test snippet".to_string()),
-            project_hash: "hash123".to_string(),
         };
         let data = SessionListViewModel {
             sessions: vec![session],
@@ -710,9 +758,10 @@ mod tests {
         let session = SessionListEntry {
             id: "test123".to_string(),
             provider: "test".to_string(),
+            project_hash: "hash".to_string(),
+            project_root: None,
             start_ts: None,
             snippet: None,
-            project_hash: "hash".to_string(),
         };
         let data = SessionListViewModel {
             sessions: vec![session],

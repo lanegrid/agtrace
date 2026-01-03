@@ -35,6 +35,7 @@ fn build_session_list_view(
             id: s.id,
             provider: s.provider,
             project_hash: s.project_hash.to_string(),
+            project_root: s.project_root,
             start_ts: s.start_ts,
             snippet: s.snippet,
         })

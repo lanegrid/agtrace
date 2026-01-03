@@ -65,6 +65,8 @@ pub struct SessionSummary {
     pub provider: String,
     /// Project this session belongs to.
     pub project_hash: ProjectHash,
+    /// Absolute path to project root directory, if known.
+    pub project_root: Option<String>,
     /// Session start timestamp (ISO 8601).
     pub start_ts: Option<String>,
     /// First user message snippet for display.

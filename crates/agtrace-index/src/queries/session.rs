@@ -36,9 +36,10 @@ pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()
 pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSummary>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT id, provider, project_hash, start_ts, snippet
-        FROM sessions
-        WHERE id = ?1 AND is_valid = 1
+        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_hash = p.hash
+        WHERE s.id = ?1 AND s.is_valid = 1
         "#,
     )?;
 
@@ -48,8 +49,9 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
             id: row.get(0)?,
             provider: row.get(1)?,
             project_hash: ProjectHash::from(row.get::<_, String>(2)?),
-            start_ts: row.get(3)?,
-            snippet: row.get(4)?,
+            project_root: row.get(3)?,
+            start_ts: row.get(4)?,
+            snippet: row.get(5)?,
         }))
     } else {
         Ok(None)
@@ -80,10 +82,11 @@ pub fn list(
 
     let query = format!(
         r#"
-        SELECT id, provider, project_hash, start_ts, snippet
-        FROM sessions
+        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_hash = p.hash
         WHERE {}
-        ORDER BY start_ts DESC
+        ORDER BY s.start_ts DESC
         {}
         "#,
         where_clause, limit_clause
@@ -97,8 +100,9 @@ pub fn list(
                 id: row.get(0)?,
                 provider: row.get(1)?,
                 project_hash: ProjectHash::from(row.get::<_, String>(2)?),
-                start_ts: row.get(3)?,
-                snippet: row.get(4)?,
+                project_root: row.get(3)?,
+                start_ts: row.get(4)?,
+                snippet: row.get(5)?,
             })
         })?
         .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;

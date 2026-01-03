@@ -20,6 +20,7 @@ pub struct SessionListEntry {
     pub id: String,
     pub provider: String,
     pub project_hash: String,
+    pub project_root: Option<String>,
     pub start_ts: Option<String>,
     pub snippet: Option<String>,
 }

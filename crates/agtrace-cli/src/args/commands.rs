@@ -80,7 +80,7 @@ Use --refresh to force a re-scan of all logs."
         #[arg(long)]
         provider: Option<ProviderName>,
 
-        #[arg(long, default_value = "50")]
+        #[arg(long, default_value = "10")]
         limit: usize,
 
         #[arg(long)]
@@ -255,7 +255,7 @@ Use filters to narrow down by provider, time range, or project.",
 
         #[arg(
             long,
-            default_value = "50",
+            default_value = "10",
             help = "Maximum number of sessions to show"
         )]
         limit: usize,

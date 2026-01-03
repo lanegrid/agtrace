@@ -21,7 +21,7 @@ Options:
       --limit <LIMIT>
           Maximum number of sessions to show
           
-          [default: 50]
+          [default: 10]
 
       --since <SINCE>
           Show sessions after this timestamp

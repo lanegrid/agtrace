@@ -205,6 +205,7 @@ pub async fn handle_search_event_previews(
             id: session_id.clone(),
             provider: String::new(), // Will be filled from actual session
             project_hash: agtrace_sdk::types::ProjectHash::from(String::new()),
+            project_root: None,
             start_ts: None,
             snippet: None,
         }]
