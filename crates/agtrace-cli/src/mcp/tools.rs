@@ -155,7 +155,6 @@ pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
-
 // ============================================================================
 // New Random Access APIs with Safety Valves
 // ============================================================================

@@ -1,0 +1,26 @@
+---
+source: crates/agtrace-cli/tests/mcp_snapshots.rs
+expression: content
+---
+{
+  "turns": [
+    {
+      "steps": [
+        {
+          "is_error": false,
+          "tool_args": "{\"arguments\":{\"command\":\"mkdir -p myapp\",\"description\":\"Create myapp directory\"},\"name\":\"Bash\",\"provider_call_id\":\"[ID]\"}",
+          "tool_name": "Bash",
+          "tool_result": "{\"content\":{\"is_error\":false,\"output\":\"\",\"tool_call_id\":\"[ID]\"},\"event_id\":\"[ID]\",\"timestamp\":\"[TIMESTAMP]\",\"tool_call_id\":\"[ID]\"}"
+        },
+        {
+          "is_error": false,
+          "tool_args": "{\"arguments\":{\"content\":\"print(1+1)\\n\",\"file_path\":\"[PATH]\"},\"name\":\"Write\",\"provider_call_id\":\"[ID]\"}",
+          "tool_name": "Write",
+          "tool_result": "{\"content\":{\"is_error\":false,\"output\":\"File created successfully at: /Users/test_user/agent-sample/myapp/hoge.py\",\"tool_call_id\":\"[ID]\"},\"event_id\":\"[ID]\",\"timestamp\":\"[TIMESTAMP]\",\"tool_call_id\":\"[ID]\"}"
+        }
+      ],
+      "turn_index": 0,
+      "user_content": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
+    }
+  ]
+}

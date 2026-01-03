@@ -9,7 +9,7 @@ expression: response
       "missing": [
         "session_id"
       ],
-      "tool": "get_session_summary"
+      "tool": "get_turns"
     },
     "message": "Invalid params: missing required field \"session_id\""
   },

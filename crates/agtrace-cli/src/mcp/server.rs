@@ -170,7 +170,7 @@ impl AgTraceServer {
                     },
                     {
                         "name": "get_turns",
-                        "description": "Get specific turns with safety valves. Supports sparse access via turn_indices array. Includes configurable truncation (default: enabled) with max_chars_per_field (default: 15,000) and max_steps_limit (default: 50) to prevent memory issues.",
+                        "description": "Get details for specific turns. Defaults are tuned for safety based on data distribution (max 30 steps/turn, 3000 chars/field). WORKFLOW: Fetch 1-2 turns at a time to avoid token limits. If data is marked '[TRUNCATED]' and critical, retry with higher limits.",
                         "inputSchema": serde_json::to_value(&get_turns_schema).unwrap(),
                     }
                 ]

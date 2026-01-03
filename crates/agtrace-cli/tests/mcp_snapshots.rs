@@ -54,7 +54,7 @@ impl Drop for McpHarness {
     }
 }
 
-/// Mask dynamic values recursively
+/// Mask dynamic values recursively, including JSON strings
 fn mask_recursive(v: &mut Value) {
     match v {
         Value::Object(map) => {
@@ -81,6 +81,18 @@ fn mask_recursive(v: &mut Value) {
         Value::Array(arr) => {
             for item in arr {
                 mask_recursive(item);
+            }
+        }
+        Value::String(s) => {
+            // If string looks like JSON, try to parse and mask it
+            if (s.starts_with('{') && s.ends_with('}')) || (s.starts_with('[') && s.ends_with(']'))
+            {
+                if let Ok(mut nested) = serde_json::from_str::<Value>(s) {
+                    mask_recursive(&mut nested);
+                    if let Ok(masked_str) = serde_json::to_string(&nested) {
+                        *s = masked_str;
+                    }
+                }
             }
         }
         _ => {}
@@ -159,8 +171,9 @@ fn test_mcp_list_sessions() -> Result<()> {
     Ok(())
 }
 
+// Tests for Random Access APIs (list_turns, get_turns)
 #[tokio::test]
-async fn test_mcp_get_session_summary() -> Result<()> {
+async fn test_mcp_list_turns() -> Result<()> {
     let world = setup_world()?;
 
     // Get real session ID using SDK
@@ -173,19 +186,19 @@ async fn test_mcp_get_session_summary() -> Result<()> {
     let response = mcp.request(
         "tools/call",
         json!({
-            "name": "get_session_summary",
+            "name": "list_turns",
             "arguments": { "session_id": session_id }
         }),
     )?;
 
     let content = extract_mcp_text_content(&response)?;
-    insta::assert_json_snapshot!("call_get_session_summary", content);
+    insta::assert_json_snapshot!("call_list_turns", content);
 
     Ok(())
 }
 
 #[tokio::test]
-async fn test_mcp_get_session_turns() -> Result<()> {
+async fn test_mcp_get_turns() -> Result<()> {
     let world = setup_world()?;
 
     // Get real session ID using SDK
@@ -198,13 +211,13 @@ async fn test_mcp_get_session_turns() -> Result<()> {
     let response = mcp.request(
         "tools/call",
         json!({
-            "name": "get_session_turns",
-            "arguments": { "session_id": session_id, "limit": 3 }
+            "name": "get_turns",
+            "arguments": { "session_id": session_id, "turn_indices": [0] }
         }),
     )?;
 
     let content = extract_mcp_text_content(&response)?;
-    insta::assert_json_snapshot!("call_get_session_turns", content);
+    insta::assert_json_snapshot!("call_get_turns", content);
 
     Ok(())
 }
@@ -217,7 +230,7 @@ fn test_mcp_error_invalid_params() -> Result<()> {
     let response = mcp.request(
         "tools/call",
         json!({
-            "name": "get_session_summary",
+            "name": "get_turns",
             "arguments": {}
         }),
     )?;
@@ -235,7 +248,7 @@ fn test_mcp_error_session_not_found() -> Result<()> {
     let response = mcp.request(
         "tools/call",
         json!({
-            "name": "get_session_summary",
+            "name": "list_turns",
             "arguments": { "session_id": "nonexistent-id-12345678" }
         }),
     )?;

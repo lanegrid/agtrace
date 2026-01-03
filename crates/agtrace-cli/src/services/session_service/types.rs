@@ -207,8 +207,13 @@ impl ListTurnsResponse {
 // Get Turns API
 // ============================================================================
 
-const DEFAULT_MAX_CHARS_PER_FIELD: usize = 15_000;
-const DEFAULT_MAX_STEPS_LIMIT: usize = 50;
+// Data-driven defaults based on actual distribution analysis:
+// - 3,000 chars covers P90 (2,552 bytes) without truncation for most events
+// - 30 steps covers P50 (15) comfortably and approaches P75 (38), allowing ~70% of turns to be read fully
+// Worst case: 3,000 × 30 = 90k chars ≈ 22k tokens (still safe for 1-2 turns per request)
+// Average case: 1,176 × 30 ≈ 35k chars ≈ 8k tokens (very safe)
+const DEFAULT_MAX_CHARS_PER_FIELD: usize = 3_000;
+const DEFAULT_MAX_STEPS_LIMIT: usize = 30;
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct GetTurnsArgs {
@@ -290,21 +295,9 @@ impl GetTurnsResponse {
                 turn.user.content.text.clone()
             };
 
-            let total_steps = turn.steps.len();
-            let steps_truncated = if should_truncate && total_steps > max_steps {
-                Some(true)
-            } else {
-                None
-            };
-
-            let steps: Vec<StepDetail> = turn
+            let all_steps: Vec<StepDetail> = turn
                 .steps
                 .iter()
-                .take(if should_truncate {
-                    max_steps
-                } else {
-                    total_steps
-                })
                 .flat_map(|step| {
                     step.tools.iter().map(|tool| {
                         let args_json = serde_json::to_string(&tool.call.content)
@@ -329,6 +322,19 @@ impl GetTurnsResponse {
                     })
                 })
                 .collect();
+
+            let total_tool_calls = all_steps.len();
+            let steps: Vec<StepDetail> = if should_truncate && total_tool_calls > max_steps {
+                all_steps.into_iter().take(max_steps).collect()
+            } else {
+                all_steps
+            };
+
+            let steps_truncated = if should_truncate && total_tool_calls > max_steps {
+                Some(true)
+            } else {
+                None
+            };
 
             turns.push(TurnDetail {
                 turn_index,
