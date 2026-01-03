@@ -2,7 +2,7 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Index and manage the session database
+Manage the session index (update, rebuild, vacuum)
 
 Usage: agtrace index [OPTIONS] <COMMAND>
 

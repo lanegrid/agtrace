@@ -8,40 +8,53 @@ use std::path::PathBuf;
 
 #[derive(Subcommand)]
 pub enum Commands {
-    #[command(about = "Index and manage the session database")]
-    Index {
+    #[command(
+        about = "Initialize agtrace workspace (run once to get started)",
+        long_about = "Initialize agtrace — run this once to get started.
+
+This command will:
+  • Auto-detect installed providers (Claude Code, Codex, Gemini)
+  • Create the local database (system data directory, e.g., ~/Library/Application Support/agtrace on macOS)
+  • Scan and index existing session logs
+
+After running 'init', use 'agtrace watch' to monitor sessions in real-time.
+
+Use --refresh to force a re-scan of all logs."
+    )]
+    Init {
+        #[arg(long, help = "Force re-scan even if recently indexed")]
+        refresh: bool,
+    },
+
+    #[command(about = "Monitor live agent sessions in real-time (TUI dashboard)")]
+    Watch {
+        #[arg(long, help = "Filter by provider")]
+        provider: Option<ProviderName>,
+
+        #[arg(
+            long,
+            help = "Explicit session ID or file path to watch (bypasses liveness detection)"
+        )]
+        id: Option<String>,
+
+        #[arg(
+            long,
+            default_value = "tui",
+            help = "Display mode: tui (interactive) or console (streaming text)"
+        )]
+        mode: WatchFormat,
+    },
+
+    #[command(about = "AI-native observability via MCP (Model Context Protocol)")]
+    Mcp {
         #[command(subcommand)]
-        command: IndexCommand,
+        command: McpCommand,
     },
 
     #[command(about = "View and analyze past sessions")]
     Session {
         #[command(subcommand)]
         command: SessionCommand,
-    },
-
-    #[command(about = "Configure log sources (Claude Code, Codex, Gemini)")]
-    Provider {
-        #[command(subcommand)]
-        command: ProviderCommand,
-    },
-
-    #[command(about = "Diagnose and troubleshoot log parsing issues")]
-    Doctor {
-        #[command(subcommand)]
-        command: DoctorCommand,
-    },
-
-    #[command(about = "List all indexed projects")]
-    Project {
-        #[command(subcommand)]
-        command: ProjectCommand,
-    },
-
-    #[command(about = "Advanced analysis tools (grep, export, stats)")]
-    Lab {
-        #[command(subcommand)]
-        command: LabCommand,
     },
 
     #[command(about = "List recent sessions (shorthand for 'session list')")]
@@ -62,6 +75,36 @@ pub enum Commands {
         until: Option<String>,
     },
 
+    #[command(about = "Advanced analysis tools (grep, export, stats)")]
+    Lab {
+        #[command(subcommand)]
+        command: LabCommand,
+    },
+
+    #[command(about = "Manage the session index (update, rebuild, vacuum)")]
+    Index {
+        #[command(subcommand)]
+        command: IndexCommand,
+    },
+
+    #[command(about = "Configure log sources (Claude Code, Codex, Gemini)")]
+    Provider {
+        #[command(subcommand)]
+        command: ProviderCommand,
+    },
+
+    #[command(about = "List all indexed projects")]
+    Project {
+        #[command(subcommand)]
+        command: ProjectCommand,
+    },
+
+    #[command(about = "Diagnose and troubleshoot log parsing issues")]
+    Doctor {
+        #[command(subcommand)]
+        command: DoctorCommand,
+    },
+
     #[command(about = "Package sessions for sharing or analysis")]
     Pack {
         #[arg(long, default_value = "compact")]
@@ -69,43 +112,6 @@ pub enum Commands {
 
         #[arg(long, default_value = "20")]
         limit: usize,
-    },
-
-    #[command(about = "Monitor sessions in real-time (like 'tail -f')")]
-    Watch {
-        #[arg(long, help = "Filter by provider")]
-        provider: Option<ProviderName>,
-
-        #[arg(
-            long,
-            help = "Explicit session ID or file path to watch (bypasses liveness detection)"
-        )]
-        id: Option<String>,
-
-        #[arg(
-            long,
-            default_value = "tui",
-            help = "Display mode: tui (interactive) or console (streaming text)"
-        )]
-        mode: WatchFormat,
-    },
-
-    #[command(
-        about = "Set up agtrace (run once)",
-        long_about = "Initialize agtrace — run this once to get started.
-
-This command will:
-  • Auto-detect installed providers (Claude Code, Codex, Gemini)
-  • Create the local database (system data directory, e.g., ~/Library/Application Support/agtrace on macOS)
-  • Scan and index existing session logs
-
-After running 'init', use 'agtrace watch' to monitor sessions in real-time.
-
-Use --refresh to force a re-scan of all logs."
-    )]
-    Init {
-        #[arg(long, help = "Force re-scan even if recently indexed")]
-        refresh: bool,
     },
 
     #[command(
@@ -124,12 +130,6 @@ Perfect for understanding agtrace's capabilities before setting up your own logs
             help = "Simulation speed: slow, normal, or fast"
         )]
         speed: String,
-    },
-
-    #[command(about = "Model Context Protocol (MCP) server commands")]
-    Mcp {
-        #[command(subcommand)]
-        command: McpCommand,
     },
 }
 

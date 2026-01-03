@@ -8,18 +8,18 @@ Works like 'top' + 'tail -f' for AI agents — 100% local, no cloud.
 Usage: agtrace [OPTIONS] [COMMAND]
 
 Commands:
-  index     Index and manage the session database
+  init      Initialize agtrace workspace (run once to get started)
+  watch     Monitor live agent sessions in real-time (TUI dashboard)
+  mcp       AI-native observability via MCP (Model Context Protocol)
   session   View and analyze past sessions
-  provider  Configure log sources (Claude Code, Codex, Gemini)
-  doctor    Diagnose and troubleshoot log parsing issues
-  project   List all indexed projects
-  lab       Advanced analysis tools (grep, export, stats)
   sessions  List recent sessions (shorthand for 'session list')
+  lab       Advanced analysis tools (grep, export, stats)
+  index     Manage the session index (update, rebuild, vacuum)
+  provider  Configure log sources (Claude Code, Codex, Gemini)
+  project   List all indexed projects
+  doctor    Diagnose and troubleshoot log parsing issues
   pack      Package sessions for sharing or analysis
-  watch     Monitor sessions in real-time (like 'tail -f')
-  init      Set up agtrace (run once)
   demo      Run a simulated live demo of the TUI dashboard
-  mcp       Model Context Protocol (MCP) server commands
   help      Print this message or the help of the given subcommand(s)
 
 Options:
