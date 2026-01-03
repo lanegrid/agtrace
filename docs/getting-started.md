@@ -1,10 +1,14 @@
 # Getting Started with agtrace
 
-This guide walks you through installing and using agtrace for the first time.
+This guide walks you through installing and using agtrace to give your AI agents memory.
 
 ## Installation
 
-For best performance and easy access to `watch`, install globally.
+agtrace works in two modes:
+1. **MCP Server** — Gives agents access to their session history (recommended)
+2. **CLI Tools** — For manual session inspection and debugging
+
+For both modes, install globally:
 
 ### via npm (Recommended)
 
@@ -30,66 +34,74 @@ cargo install agtrace
 
 ## Quick Start
 
-### 0) Initialize Once (Global)
+### Option A: MCP Setup (Recommended)
 
-Run `agtrace init` **once** on your machine.
+Give your AI agent memory by connecting agtrace via MCP:
 
-This creates local configuration and caches in the system data directory (e.g., `~/Library/Application Support/agtrace` on macOS, `~/.local/share/agtrace` on Linux).
-It does **not** modify any project directory, and you do **not** need to run it per project.
-
+**1. Initialize agtrace:**
 ```bash
 agtrace init
 ```
 
-### 1) Open Your Project Directory (CWD matters)
+**2. Connect to your AI assistant:**
 
-`agtrace` scopes monitoring by the **current working directory (cwd)**.
+For **Claude Code**:
+```bash
+claude mcp add agtrace -- agtrace mcp serve
+```
 
-To ensure `agtrace` can locate and follow the right session logs, run it from the **same working directory** where your AI coding agent is started.
+For **Codex (OpenAI)**:
+```bash
+codex mcp add agtrace -- agtrace mcp serve
+```
 
+For **Claude Desktop**, add to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "agtrace": { "command": "agtrace", "args": ["mcp", "serve"] }
+  }
+}
+```
+
+**3. Start using it:**
+
+Now your agent can query its own history:
+- *"What did we decide about the database schema?"*
+- *"Show me errors from previous attempts"*
+- *"Continue where we left off yesterday"*
+
+See [MCP Integration Guide](mcp-integration.md) for details.
+
+### Option B: CLI Tools
+
+For manual session inspection and debugging:
+
+**1. Initialize agtrace:**
+```bash
+agtrace init
+```
+
+**2. Navigate to your project:**
 ```bash
 cd /path/to/your/project
 ```
 
-### 2) Start `watch` (either order works)
-
-In one terminal pane (from the project directory), run:
-
+**3. Start live monitoring:**
 ```bash
 agtrace watch
 ```
 
-`watch` can be started before or after your AI coding agent.
-
-* If no active session exists yet, it stays in **waiting mode** (or opens the latest session if available).
-* When a new session starts, agtrace detects the new logs and **automatically switches** to it.
-* You do **not** need to restart `agtrace watch` per session.
-
-### 3) Start Your AI Coding Agent (Same CWD)
-
-In another terminal (same project directory), launch your agent:
-
+**4. Start your AI agent (same directory):**
 ```bash
-# Example: Claude Code
-claude
-
-# Or Codex, Gemini, etc.
+claude  # or codex, gemini, etc.
 ```
 
-That's it. No integration required — `watch` follows sessions by monitoring logs.
-
-### 4) Analyze Past Sessions
-
+**5. Explore session history:**
 ```bash
 agtrace session list
 agtrace session show <session_id>
-```
-
-### 5) Advanced: History Search ("Lab")
-
-```bash
-agtrace lab grep "write_file" --json
-agtrace lab grep "mcp" --raw --limit 1
+agtrace lab grep "error" --json
 ```
 
 ## Next Steps

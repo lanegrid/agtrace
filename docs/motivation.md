@@ -1,58 +1,75 @@
 # Why agtrace?
 
-## The Problem: Session Telemetry Exists — But It's Fragmented and Hard to Use
+## The Problem: AI Agents Lack Session Memory
 
-AI coding agents behave like stateful, long-running programs. They accumulate context, call tools, read/write files, and make decisions turn by turn.
+AI coding agents work well within a single session, but they start fresh every time.
 
-Most agents *do* provide signals like "X% remaining before compaction" — but in practice those signals are:
-- **inconsistent** (different wording, thresholds, and timing across vendors)
-- **easy to miss** (buried in chat output, not always surfaced at the right moment)
-- **hard to compare** (no shared units, no shared event model, no shared history)
+This creates practical problems:
+- **Context loss** — You must re-explain project constraints and design decisions every session
+- **Repeated mistakes** — Agents retry approaches that already failed yesterday
+- **Knowledge fragmentation** — Important discussions are buried in chat logs across multiple sessions
+- **No learning** — Agents can't build on past successes or avoid past failures
 
-So when something goes wrong — instruction loss, constraint violations, sudden behavior drift, cost spikes — it's painful to answer basic questions:
+When you switch projects or resume work the next day, the agent has no memory of:
+- Why you made specific technical decisions
+- What alternatives were already considered and rejected
+- What implementation approaches worked or failed
+- The evolution of your codebase over time
 
-- **What changed?** (model, context pressure, tool usage, files touched)
-- **When did it start?** (the boundary where behavior shifted)
-- **Why this run?** (what was different compared to previous sessions)
+In short: AI agents treat every session as their first session, forcing you to be the only source of historical knowledge.
 
-In short: we're operating stateful systems with no `top`, no `tail -f`, and no cross-provider trace.
+## The Solution: Agent Memory via MCP
 
-## The Solution: agtrace as a Platform
+**agtrace** gives AI agents access to their own execution history through the [Model Context Protocol (MCP)](https://modelcontextprotocol.io).
 
-**agtrace** is the observability platform for AI coding agent sessions — powered by a normalized event timeline.
+### How It Works
 
-It reads local provider logs, normalizes them into a consistent model, and provides both:
-- **A CLI application** (`agtrace-cli`): A reference implementation with live `watch` TUI and session analysis commands
-- **A public SDK** (`agtrace-sdk`): Stable APIs for building custom monitoring tools
+1. **Auto-discovery** — agtrace finds and indexes logs from Claude Code, Codex, and Gemini
+2. **Normalization** — Converts diverse log formats into a unified event timeline
+3. **MCP Server** — Exposes session history through standardized tools
+4. **Agent queries** — Your AI assistant can now search, analyze, and learn from past sessions
 
-### The Platform Approach
+### What Agents Can Do
 
-Rather than being "just a CLI tool," agtrace is architected as a **platform** with multiple consumers:
+Once connected via MCP, agents gain powerful memory capabilities:
 
-**For End Users (CLI)**:
-- Live "top" view (`watch`) for context pressure and activity
-- History queries (`session` / `lab`) to understand what happened and when
+**Context retrieval:**
+- *"What did we decide about the authentication system?"*
+- *"Show me the discussion about database migration"*
+- *"What were the constraints on the API design?"*
 
-**For Developers (SDK)**:
-- Build vital-checkers (dead man's switches for agent activity)
-- Create IDE integrations (VS Code, Neovim plugins)
-- Build team dashboards and analytics
-- Integrate with existing observability stacks
+**Learning from failures:**
+- *"We tried to implement this before—what went wrong?"*
+- *"Show me previous attempts at optimizing this query"*
+- *"What errors occurred in yesterday's refactoring?"*
 
-### Why a Platform?
+**Session continuity:**
+- *"Continue the work we started in the last session"*
+- *"Review what we accomplished this week"*
+- *"What files did we modify during the migration?"*
 
-Different use cases demand different interfaces:
-- **Solo developers** want a fast, local TUI (`agtrace watch`)
-- **Teams** want centralized dashboards and alerts
-- **IDE users** want inline session replay and cost tracking
-- **Researchers** want programmatic access to event streams
+### Multi-Layer Architecture
 
-By providing a stable SDK layer, agtrace enables an **ecosystem** of tools rather than being a monolithic application.
+agtrace is built as a **platform** with multiple access layers:
 
-### Core Loop
+**For AI Agents (MCP)**:
+- Query historical sessions and analyze past decisions
+- Search across all sessions for specific patterns or events
+- Build context-aware responses based on project history
 
-1. **Capture** local provider logs (no cloud)
-2. **Normalize** them into a single event model across providers
-3. **Index** metadata without duplicating large logs (pointer-based)
-4. **Analyze** sessions into turns/steps/metrics (schema-on-read)
-5. **Expose** via CLI (for humans) and SDK (for developers)
+**For Developers (CLI)**:
+- Live monitoring with `watch` (like `top` for agents)
+- Manual session inspection with `session` and `lab` commands
+- Debug agent behavior and performance issues
+
+**For Builders (SDK)**:
+- Embed agtrace into custom tools and dashboards
+- Build IDE plugins with inline session replay
+- Create team analytics and vital-checkers
+
+### Core Principles
+
+1. **Local-first** — All data stays on your machine, no cloud dependencies
+2. **Zero-copy indexing** — SQLite pointers reference original logs, minimal storage overhead
+3. **Schema-on-read** — Raw logs are source of truth, parsing happens at query time
+4. **Universal normalization** — Single event model works across all providers

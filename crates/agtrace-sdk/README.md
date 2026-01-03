@@ -11,16 +11,17 @@ agtrace-sdk = "0.4"
 
 <!-- cargo-rdme start -->
 
-agtrace-sdk: The Observability Platform for AI Agents.
+agtrace-sdk: SDK for AI agent observability and memory.
 
 **Note**: README.md is auto-generated from this rustdoc using `cargo-rdme`.
 To update: `cargo rdme --workspace-project agtrace-sdk`
 
 ### Overview
 
-`agtrace-sdk` provides a high-level, stable API for building observability
-tools on top of agtrace. It abstracts away the internal complexity of
-providers, indexing, and runtime orchestration, exposing only the essential
+`agtrace-sdk` provides a high-level, stable API for building tools on top of agtrace.
+It powers agtrace's MCP server (giving agents memory) and CLI tools (for debugging),
+and can be embedded in your own applications. It abstracts away the internal complexity
+of providers, indexing, and runtime orchestration, exposing only the essential
 primitives for monitoring and analyzing AI agent behavior.
 
 ### Quickstart

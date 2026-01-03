@@ -1,6 +1,6 @@
 # MCP Integration Guide
 
-agtrace exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that enables AI coding assistants to query agent execution history, analyze failures, and debug behavior.
+agtrace exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that gives AI coding assistants memory—enabling them to query their own execution history, learn from past sessions, and maintain context across conversations.
 
 ## Supported MCP Clients
 
