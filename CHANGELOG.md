@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-01-03
+
+### Bug Fixes
+
+- Unify top-level help message between -h and --help ([5631f15](https://github.com/lanegrid/agtrace/commit/5631f15e0b7aeea3aebdc7a1b7c347fa29c9692f))
+
+
+### Documentation
+
+- Add MCP troubleshooting for Node.js version managers ([0f99972](https://github.com/lanegrid/agtrace/commit/0f999728ef04e7b2cd6742de6ca4250c467906ce))
+
+- Modernize MCP messaging and restructure README around watch and mcp values ([ef14681](https://github.com/lanegrid/agtrace/commit/ef146816220164b4e80b0104e836faa2214e732a))
+
+- Fix Gemini CLI mcp add syntax (uses positional args, not -- separator) ([e458773](https://github.com/lanegrid/agtrace/commit/e4587732bac670a9228a6c44afde375744e8679c))
+
+- Note Gemini CLI not yet supported (requires Content-Length framing) ([43a745d](https://github.com/lanegrid/agtrace/commit/43a745d130d9ac367201a01e382db72878a9710f))
+
+
+### Refactor
+
+- Update MCP tools from get_session_details/search_events to specialized tools ([31a7919](https://github.com/lanegrid/agtrace/commit/31a791934b2c52cdbf271b19fc6e5768004fc9bc))
+
+- Reorder subcommands by importance and improve descriptions ([59ad2eb](https://github.com/lanegrid/agtrace/commit/59ad2eb31943ddd5c3ec679cd588d88a503c86a1))
+
+- Hide less-used global options in -h to shorten help output ([8589bf0](https://github.com/lanegrid/agtrace/commit/8589bf09987c29edb26a19b1b1b7f85fdbdf0c86))
+
+
 ## [0.4.0] - 2026-01-02
 
 ### Bug Fixes
