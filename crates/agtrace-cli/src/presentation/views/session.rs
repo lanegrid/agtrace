@@ -8,7 +8,6 @@ use crate::presentation::view_models::{
 // Display constants
 const SESSION_ID_SHORT_LENGTH: usize = 8;
 const SNIPPET_MAX_LENGTH: usize = 50;
-const QUERY_PREVIEW_LENGTH: usize = 50;
 const QUERY_DISPLAY_LENGTH: usize = 200;
 const QUERY_MAX_LINES: usize = 5;
 const THINKING_PREVIEW_LENGTH: usize = 200;
@@ -238,21 +237,14 @@ impl<'a> SessionAnalysisView<'a> {
             writeln!(f, "Project:  {}... (hash only)", hash_prefix)?;
         }
 
+        writeln!(f, "{}", "=".repeat(80))?;
         writeln!(f)?;
 
+        // Show turns with metadata like verbose, but more compact
         for turn in &self.data.turns {
-            let tool_count = turn
-                .steps
-                .iter()
-                .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
-                .count();
-            let query_preview = text::normalize_and_clean(&turn.user_query, QUERY_PREVIEW_LENGTH);
-            writeln!(
-                f,
-                "  #{:02} | {} tools | {}",
-                turn.turn_number, tool_count, query_preview
-            )?;
+            write!(f, "{}", TurnView::new(turn, self.mode))?;
         }
+
         Ok(())
     }
 
@@ -390,18 +382,19 @@ impl<'a> TurnView<'a> {
                     .map(|d| format!(" ({})", d))
                     .unwrap_or_default();
 
-                if matches!(self.mode, ViewMode::Standard | ViewMode::Verbose) {
-                    writeln!(f, "{} 🧠 Thinking{}", prefix, duration_str)?;
-                    if !preview.is_empty() {
-                        self.write_thinking_content(f, preview, is_last)?;
-                    }
-                } else {
-                    // Abbreviated mode: show char count and hint
+                if matches!(self.mode, ViewMode::Minimal) {
+                    // Minimal only: show char count and hint
                     writeln!(
                         f,
                         "{} 🧠 Thinking{} ({} chars) 💡 --verbose to expand",
                         prefix, duration_str, char_count
                     )?;
+                } else {
+                    // Compact, Standard, Verbose: show full thinking content
+                    writeln!(f, "{} 🧠 Thinking{}", prefix, duration_str)?;
+                    if !preview.is_empty() {
+                        self.write_thinking_content(f, preview, is_last)?;
+                    }
                 }
             }
             AgentStepViewModel::ToolCall {
@@ -542,6 +535,21 @@ impl<'a> fmt::Display for TurnView<'a> {
                 number::format_compact(usage.max_tokens as i64)
             )?;
         }
+
+        // Compact mode: show only metadata and tool count
+        if matches!(self.mode, ViewMode::Compact) {
+            let tool_count = self
+                .data
+                .steps
+                .iter()
+                .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
+                .count();
+            writeln!(f, "│ {} tools", tool_count)?;
+            writeln!(f)?;
+            return Ok(());
+        }
+
+        // Standard/Verbose modes: show full details
         writeln!(f, "│")?;
 
         // Calculate total items to display (user + steps)
