@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
+use crate::services::{GetTurnsArgs, ListTurnsArgs, SearchEventsArgs};
+
 use super::models::{
     AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs,
     GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs, SearchEventPreviewsArgs,
@@ -11,7 +13,8 @@ use super::models::{
 use super::tools::{
     handle_analyze_session, handle_get_event_details, handle_get_project_info,
     handle_get_session_full, handle_get_session_summary, handle_get_session_turns,
-    handle_get_turn_steps, handle_list_sessions, handle_search_event_previews,
+    handle_get_turn_steps, handle_get_turns, handle_list_sessions, handle_list_turns,
+    handle_search_event_previews, handle_search_events,
 };
 
 #[derive(Debug, Deserialize)]
@@ -140,6 +143,11 @@ impl AgTraceServer {
         let search_event_previews_schema = schema_for!(SearchEventPreviewsArgs);
         let get_event_details_schema = schema_for!(GetEventDetailsArgs);
 
+        // New Random Access APIs
+        let search_events_schema = schema_for!(SearchEventsArgs);
+        let list_turns_schema = schema_for!(ListTurnsArgs);
+        let get_turns_schema = schema_for!(GetTurnsArgs);
+
         JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             id,
@@ -192,6 +200,21 @@ impl AgTraceServer {
                             "type": "object",
                             "properties": {}
                         }
+                    },
+                    {
+                        "name": "search_events",
+                        "description": "Search for events and return navigation coordinates (session_id, event_index, turn_index, step_index). Use this to find specific events, then use turn_index with list_turns or get_turns for detailed analysis.",
+                        "inputSchema": serde_json::to_value(&search_events_schema).unwrap(),
+                    },
+                    {
+                        "name": "list_turns",
+                        "description": "List turns with metadata only (no payload content). Returns turn statistics including step_count, duration_ms, total_tokens, and tools_used. Use this to get an overview before drilling down with get_turns.",
+                        "inputSchema": serde_json::to_value(&list_turns_schema).unwrap(),
+                    },
+                    {
+                        "name": "get_turns",
+                        "description": "Get specific turns with safety valves. Supports sparse access via turn_indices array. Includes configurable truncation (default: enabled) with max_chars_per_field (default: 15,000) and max_steps_limit (default: 50) to prevent memory issues.",
+                        "inputSchema": serde_json::to_value(&get_turns_schema).unwrap(),
                     }
                 ]
             })),
@@ -348,6 +371,48 @@ impl AgTraceServer {
                 handle_get_event_details(&self.client, args).await
             }
             "get_project_info" => handle_get_project_info(&self.client).await,
+            "search_events" => {
+                let args: SearchEventsArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("search_events", e)),
+                        };
+                    }
+                };
+                handle_search_events(&self.client, args).await
+            }
+            "list_turns" => {
+                let args: ListTurnsArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("list_turns", e)),
+                        };
+                    }
+                };
+                handle_list_turns(&self.client, args).await
+            }
+            "get_turns" => {
+                let args: GetTurnsArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("get_turns", e)),
+                        };
+                    }
+                };
+                handle_get_turns(&self.client, args).await
+            }
             _ => Err(format!("Unknown tool: {}", tool_name)),
         };
 

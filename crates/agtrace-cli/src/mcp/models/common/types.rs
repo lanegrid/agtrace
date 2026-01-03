@@ -63,6 +63,20 @@ impl EventType {
                 | (EventType::Notification, EventPayload::Notification(_))
         )
     }
+
+    /// Create EventType from EventPayload
+    pub fn from_payload(payload: &agtrace_sdk::types::EventPayload) -> Self {
+        use agtrace_sdk::types::EventPayload;
+        match payload {
+            EventPayload::ToolCall(_) => EventType::ToolCall,
+            EventPayload::ToolResult(_) => EventType::ToolResult,
+            EventPayload::Message(_) => EventType::Message,
+            EventPayload::User(_) => EventType::User,
+            EventPayload::Reasoning(_) => EventType::Reasoning,
+            EventPayload::TokenUsage(_) => EventType::TokenUsage,
+            EventPayload::Notification(_) => EventType::Notification,
+        }
+    }
 }
 
 /// Truncate a string to a maximum length, adding ellipsis if truncated

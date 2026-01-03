@@ -1,4 +1,4 @@
-mod models;
+pub mod models;
 mod server;
 mod tools;
 

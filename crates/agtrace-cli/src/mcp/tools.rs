@@ -12,6 +12,8 @@ use agtrace_sdk::{Client, Lens, SessionFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::services::{GetTurnsArgs, ListTurnsArgs, SearchEventsArgs, SessionService};
+
 use super::models::{
     AnalysisViewModel, AnalyzeSessionArgs, EventDetailsViewModel, EventPreviewViewModel,
     GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs, GetSessionTurnsArgs,
@@ -463,4 +465,32 @@ pub async fn handle_get_session_full(
     let view_model = SessionFullViewModel::new(session, offset, limit, next_cursor);
 
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
+}
+
+// ============================================================================
+// New Random Access APIs with Safety Valves
+// ============================================================================
+
+/// Search events and return navigation coordinates
+pub async fn handle_search_events(
+    client: &Client,
+    args: SearchEventsArgs,
+) -> Result<Value, String> {
+    let service = SessionService::new(client);
+    let response = service.search_events(args).await?;
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// List turns with metadata only (no payload)
+pub async fn handle_list_turns(client: &Client, args: ListTurnsArgs) -> Result<Value, String> {
+    let service = SessionService::new(client);
+    let response = service.list_turns(args).await?;
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Get specific turns with safety valves
+pub async fn handle_get_turns(client: &Client, args: GetTurnsArgs) -> Result<Value, String> {
+    let service = SessionService::new(client);
+    let response = service.get_turns(args).await?;
+    serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }
