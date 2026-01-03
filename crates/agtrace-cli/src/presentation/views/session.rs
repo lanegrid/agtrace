@@ -245,6 +245,22 @@ impl<'a> SessionAnalysisView<'a> {
             write!(f, "{}", TurnView::new(turn, self.mode))?;
         }
 
+        // Show final context summary
+        let tokens_display = if let Some(max) = self.data.context_summary.max_tokens {
+            format!(
+                "Context: {} / {} ({:.1}%)",
+                number::format_compact(self.data.context_summary.current_tokens as i64),
+                number::format_compact(max as i64),
+                (self.data.context_summary.current_tokens as f64 / max as f64) * 100.0
+            )
+        } else {
+            format!(
+                "Context: {}",
+                number::format_compact(self.data.context_summary.current_tokens as i64)
+            )
+        };
+        writeln!(f, "{}", tokens_display)?;
+
         Ok(())
     }
 
@@ -506,10 +522,30 @@ impl<'a> fmt::Display for TurnView<'a> {
             "Normal"
         };
 
-        // Extract delta for visual indicator
-        let delta_indicator = self.extract_delta_indicator();
+        // Compact mode: show only basic metadata, tool count, and user message
+        if matches!(self.mode, ViewMode::Compact) {
+            let tool_count = self
+                .data
+                .steps
+                .iter()
+                .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
+                .count();
 
-        // Build context transition display
+            writeln!(
+                f,
+                "[Turn #{:02}] {} {} | {} tools",
+                self.data.turn_number, status_icon, status_label, tool_count
+            )?;
+
+            // Show normalized user message in one line
+            let user_msg = text::normalize_and_clean(&self.data.user_query, 100);
+            writeln!(f, "👤 User: {}", user_msg)?;
+            writeln!(f)?;
+            return Ok(());
+        }
+
+        // Standard/Verbose modes: show full context information
+        let delta_indicator = self.extract_delta_indicator();
         let prev_str = number::format_compact(self.data.prev_tokens as i64);
         let curr_str = number::format_compact(self.data.current_tokens as i64);
         let context_transition = format!("{} -> {}", prev_str, curr_str);
@@ -534,19 +570,6 @@ impl<'a> fmt::Display for TurnView<'a> {
                 number::format_compact(usage.current_tokens as i64),
                 number::format_compact(usage.max_tokens as i64)
             )?;
-        }
-
-        // Compact mode: show only metadata and tool count
-        if matches!(self.mode, ViewMode::Compact) {
-            let tool_count = self
-                .data
-                .steps
-                .iter()
-                .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
-                .count();
-            writeln!(f, "│ {} tools", tool_count)?;
-            writeln!(f)?;
-            return Ok(());
         }
 
         // Standard/Verbose modes: show full details
