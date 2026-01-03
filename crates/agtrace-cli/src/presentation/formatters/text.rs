@@ -25,11 +25,12 @@ pub fn truncate_path(path: &str, max_len: usize) -> String {
     }
 
     // Try to show the filename and some parent context
-    // Format: "...parent/filename"
+    // Format: ".../parent/filename" (with slash after ...)
     let ellipsis = "...";
+
+    // Take last chars, accounting for ellipsis
     let available = max_len - ellipsis.len();
 
-    // Take last 'available' chars
     let suffix: String = path
         .chars()
         .rev()
@@ -39,7 +40,17 @@ pub fn truncate_path(path: &str, max_len: usize) -> String {
         .rev()
         .collect();
 
-    format!("{}{}", ellipsis, suffix)
+    // If suffix starts with '/', great! Otherwise, skip to first '/'
+    if suffix.starts_with('/') {
+        format!("{}{}", ellipsis, suffix)
+    } else if let Some(slash_pos) = suffix.find('/') {
+        // Skip partial component before first '/', add one char for the '/' we're adding after ...
+        let trimmed = &suffix[slash_pos..]; // includes the '/'
+        format!("{}{}", ellipsis, trimmed)
+    } else {
+        // No slash found, just use as-is
+        format!("{}{}", ellipsis, suffix)
+    }
 }
 
 /// Format empty or whitespace-only strings for display
@@ -100,6 +111,16 @@ pub fn normalize_and_clean(text: &str, max_chars: usize) -> String {
     truncate(&cleaned, max_chars)
 }
 
+/// Replace home directory with tilde for compact display
+pub fn shorten_home_path(path: &str) -> String {
+    if let Ok(home) = std::env::var("HOME")
+        && path.starts_with(&home)
+    {
+        return path.replacen(&home, "~", 1);
+    }
+    path.to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,10 +147,10 @@ mod tests {
         let path = "/foo-bar-hoge-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/crates/cli/src/main.rs";
         let result = truncate_path(path, 40);
 
-        // Should end with filename and parent dirs
-        assert!(result.starts_with("..."));
+        // Should end with filename and parent dirs, with clean slash after ...
+        assert!(result.starts_with(".../"));
         assert!(result.ends_with("main.rs"));
-        assert_eq!(result.len(), 40);
+        assert!(result.len() <= 40);
     }
 
     #[test]
@@ -137,8 +158,9 @@ mod tests {
         let path = "/very/long/path/to/some/important/file.txt";
         let result = truncate_path(path, 25);
 
+        assert!(result.starts_with(".../"));
         assert!(result.contains("file.txt"));
-        assert_eq!(result.len(), 25);
+        assert!(result.len() <= 25);
     }
 
     #[test]
@@ -185,5 +207,19 @@ mod tests {
         let result = truncate_multiline(text, 2, 20);
         assert_eq!(result.lines().count(), 3); // 2 lines + "..."
         assert!(result.contains("..."));
+    }
+
+    #[test]
+    fn test_shorten_home_path() {
+        // Test with actual HOME env var
+        if let Ok(home) = std::env::var("HOME") {
+            let full_path = format!("{}/projects/test", home);
+            let shortened = shorten_home_path(&full_path);
+            assert_eq!(shortened, "~/projects/test");
+
+            // Test path not starting with HOME
+            let other_path = "/usr/local/bin";
+            assert_eq!(shorten_home_path(other_path), other_path);
+        }
     }
 }

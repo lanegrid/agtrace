@@ -244,45 +244,63 @@ impl<'a> SessionAnalysisView<'a> {
     }
 
     fn render_standard(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Standard: Full display (current behavior)
+        // Standard: Full display with improved readability
         writeln!(f, "{}", "=".repeat(80))?;
-        write!(f, "SESSION: {}", self.data.header.session_id)?;
-        if let Some(ref model) = self.data.header.model {
-            write!(f, " ({})", model)?;
-        }
-        writeln!(f)?;
-        writeln!(f, "PROVIDER: {}", self.data.header.provider)?;
+
+        // Session ID
+        writeln!(f, "Session ID: {}", self.data.header.session_id)?;
+
+        // Provider
+        writeln!(f, "Provider:   {}", self.data.header.provider)?;
+
+        // Project with smart home path replacement
         if let Some(ref project_root) = self.data.header.project_root {
-            writeln!(f, "PROJECT:  {}", text::truncate_path(project_root, 60))?;
+            let smart_path = text::shorten_home_path(project_root);
+            writeln!(f, "Project:    {}", smart_path)?;
+            writeln!(
+                f,
+                "            (hash: {}...)",
+                &self.data.header.project_hash[..16]
+            )?;
         } else {
             writeln!(
                 f,
-                "PROJECT:  {} (hash)",
-                &self.data.header.project_hash[..16]
+                "Project:    {} (hash only)",
+                self.data.header.project_hash
             )?;
         }
-        writeln!(f, "STATUS:   {}", self.data.header.status)?;
 
-        // Context summary
-        let context_display = if let Some(max) = self.data.context_summary.max_tokens {
-            let bar = display::build_progress_bar(
-                self.data.context_summary.current_tokens,
-                max,
-                CONTEXT_BAR_WIDTH_STANDARD,
-            );
+        // Model
+        if let Some(ref model) = self.data.header.model {
+            writeln!(f, "Model:      {}", model)?;
+        }
+
+        // Status
+        writeln!(f, "Status:     {}", self.data.header.status)?;
+
+        // Turns
+        writeln!(f, "Turns:      {}", self.data.turns.len())?;
+
+        // Tokens
+        let tokens_display = if let Some(max) = self.data.context_summary.max_tokens {
             format!(
-                "{} ({} / {})",
-                bar,
+                "{} / {} ({:.1}%)",
                 number::format_compact(self.data.context_summary.current_tokens as i64),
-                number::format_compact(max as i64)
+                number::format_compact(max as i64),
+                (self.data.context_summary.current_tokens as f64 / max as f64) * 100.0
             )
         } else {
-            format!(
-                "Total: {}",
-                number::format_compact(self.data.context_summary.current_tokens as i64)
-            )
+            number::format_compact(self.data.context_summary.current_tokens as i64)
         };
-        writeln!(f, "CONTEXT: {}", context_display)?;
+        writeln!(f, "Tokens:     {}", tokens_display)?;
+
+        // Start time and duration (if available)
+        if let Some(ref start) = self.data.header.start_time {
+            writeln!(f, "Started:    {}", start)?;
+        }
+        if let Some(ref dur) = self.data.header.duration {
+            writeln!(f, "Duration:   {}", dur)?;
+        }
 
         writeln!(f, "{}", "=".repeat(80))?;
         writeln!(f)?;
@@ -296,53 +314,70 @@ impl<'a> SessionAnalysisView<'a> {
     }
 
     fn render_verbose(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Verbose: Standard + additional metadata
+        // Verbose: Extended information with all metadata
         writeln!(f, "{}", "=".repeat(80))?;
-        write!(f, "SESSION: {}", self.data.header.session_id)?;
-        if let Some(ref model) = self.data.header.model {
-            write!(f, " ({})", model)?;
-        }
-        writeln!(f)?;
-        writeln!(f, "PROVIDER: {}", self.data.header.provider)?;
+
+        // Session ID
+        writeln!(f, "Session ID:    {}", self.data.header.session_id)?;
+
+        // Provider
+        writeln!(f, "Provider:      {}", self.data.header.provider)?;
+
+        // Project with full information
         if let Some(ref project_root) = self.data.header.project_root {
-            writeln!(f, "PROJECT:  {}", project_root)?;
-            writeln!(f, "          (hash: {})", self.data.header.project_hash)?;
+            let smart_path = text::shorten_home_path(project_root);
+            writeln!(f, "Project:       {}", smart_path)?;
+            writeln!(f, "               (full: {})", project_root)?;
+            writeln!(f, "Project Hash:  {}", self.data.header.project_hash)?;
         } else {
-            writeln!(f, "PROJECT:  {} (hash only)", self.data.header.project_hash)?;
-        }
-        writeln!(f, "STATUS:   {}", self.data.header.status)?;
-        if let Some(ref start) = self.data.header.start_time {
-            writeln!(f, "START:    {}", start)?;
-        }
-        if let Some(ref dur) = self.data.header.duration {
-            writeln!(f, "DURATION: {}", dur)?;
+            writeln!(f, "Project Hash:  {}", self.data.header.project_hash)?;
+            writeln!(f, "               (no root path available)")?;
         }
 
-        // Context summary
-        let context_display = if let Some(max) = self.data.context_summary.max_tokens {
+        // Model
+        if let Some(ref model) = self.data.header.model {
+            writeln!(f, "Model:         {}", model)?;
+        }
+
+        // Status
+        writeln!(f, "Status:        {}", self.data.header.status)?;
+
+        // Turns
+        writeln!(f, "Turns:         {}", self.data.turns.len())?;
+
+        // Tokens with context bar
+        let tokens_display = if let Some(max) = self.data.context_summary.max_tokens {
+            format!(
+                "{} / {} ({:.1}%)",
+                number::format_compact(self.data.context_summary.current_tokens as i64),
+                number::format_compact(max as i64),
+                (self.data.context_summary.current_tokens as f64 / max as f64) * 100.0
+            )
+        } else {
+            number::format_compact(self.data.context_summary.current_tokens as i64)
+        };
+        writeln!(f, "Tokens:        {}", tokens_display)?;
+        if let Some(max) = self.data.context_summary.max_tokens {
             let bar = display::build_progress_bar(
                 self.data.context_summary.current_tokens,
                 max,
                 CONTEXT_BAR_WIDTH_STANDARD,
             );
-            format!(
-                "{} ({} / {})",
-                bar,
-                number::format_compact(self.data.context_summary.current_tokens as i64),
-                number::format_compact(max as i64)
-            )
-        } else {
-            format!(
-                "Total: {}",
-                number::format_compact(self.data.context_summary.current_tokens as i64)
-            )
-        };
-        writeln!(f, "CONTEXT:  {}", context_display)?;
+            writeln!(f, "               {}", bar)?;
+        }
+
+        // Start time and duration
+        if let Some(ref start) = self.data.header.start_time {
+            writeln!(f, "Started:       {}", start)?;
+        }
+        if let Some(ref dur) = self.data.header.duration {
+            writeln!(f, "Duration:      {}", dur)?;
+        }
 
         writeln!(f, "{}", "=".repeat(80))?;
         writeln!(f)?;
 
-        // Turns (verbose mode shows all details, same as standard)
+        // Turns
         for turn in &self.data.turns {
             write!(f, "{}", TurnView::new(turn))?;
         }
