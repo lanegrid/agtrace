@@ -123,7 +123,7 @@ impl AgTraceServer {
                     "name": "agtrace",
                     "version": env!("CARGO_PKG_VERSION")
                 },
-                "instructions": "AgTrace MCP Server - AI-native observability for agent execution traces. Use these tools to query historical sessions, analyze failures, search event payloads, and debug agent behavior."
+                "instructions": "AgTrace MCP Server - AI agent execution observability. Use these tools to query historical sessions, analyze failures, search event payloads, and debug agent behavior."
             })),
             error: None,
         }

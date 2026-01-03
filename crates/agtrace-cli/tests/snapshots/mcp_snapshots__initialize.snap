@@ -9,7 +9,7 @@ expression: response
     "capabilities": {
       "tools": {}
     },
-    "instructions": "AgTrace MCP Server - AI-native observability for agent execution traces. Use these tools to query historical sessions, analyze failures, search event payloads, and debug agent behavior.",
+    "instructions": "AgTrace MCP Server - AI agent execution observability. Use these tools to query historical sessions, analyze failures, search event payloads, and debug agent behavior.",
     "protocolVersion": "2024-11-05",
     "serverInfo": {
       "name": "agtrace",

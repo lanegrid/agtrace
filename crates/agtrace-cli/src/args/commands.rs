@@ -46,7 +46,7 @@ Use --refresh to force a re-scan of all logs."
         mode: WatchFormat,
     },
 
-    #[command(about = "AI-native observability via MCP (Model Context Protocol)")]
+    #[command(about = "Enable agent self-reflection via MCP (Model Context Protocol)")]
     Mcp {
         #[command(subcommand)]
         command: McpCommand,
@@ -145,11 +145,11 @@ Perfect for understanding agtrace's capabilities before setting up your own logs
 #[derive(Subcommand)]
 pub enum McpCommand {
     #[command(
-        about = "Start MCP server for AI-native observability",
+        about = "Start MCP server for agent self-reflection",
         long_about = "Start the Model Context Protocol (MCP) server over stdio.
 
-This enables AI agents (like Claude Desktop) to query historical sessions, analyze failures,
-search event payloads, and debug agent behavior through a standardized protocol.
+This enables AI coding assistants (Claude Code, Codex, Gemini CLI, Claude Desktop) to query
+their own execution history, analyze failures, search event payloads, and debug behavior.
 
 The server exposes these tools:
   • list_sessions: Browse session history with filtering

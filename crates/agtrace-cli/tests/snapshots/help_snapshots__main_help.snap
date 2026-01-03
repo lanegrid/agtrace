@@ -10,7 +10,7 @@ Usage: agtrace [OPTIONS] [COMMAND]
 Commands:
   init      Initialize agtrace workspace (run once to get started)
   watch     Monitor live agent sessions in real-time (TUI dashboard)
-  mcp       AI-native observability via MCP (Model Context Protocol)
+  mcp       Enable agent self-reflection via MCP (Model Context Protocol)
   session   View and analyze past sessions
   provider  Configure log sources (Claude Code, Codex, Gemini)
   sessions  List recent sessions (shorthand for 'session list')

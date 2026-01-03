@@ -12,41 +12,61 @@
 
 ![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
 
-**agtrace** provides a unified timeline and analysis layer for fragmented AI agent logs.
-Use the **CLI** for instant visualization, or build custom monitoring tools with the **SDK**.
+**agtrace** is an observability platform for AI agent execution traces.
+Local-first, privacy-preserving, and zero-instrumentation.
 
-## 🌟 Core Value
+## Two Ways to Use agtrace
 
-1. **Universal Normalization**: Converts diverse provider logs (Claude, Gemini, etc.) into a standard `AgentEvent` model.
-2. **Schema-on-Read**: Resilient to provider updates. No database migrations needed.
-3. **Local-First**: 100% offline. Privacy by design.
-4. **Zero-Instrumentation**: Automatically detects and watches logs from standard locations (`~/.claude/projects`, `~/.codex/sessions`, `~/.gemini/tmp`). No code changes required.
+### 1. 🔍 Live Monitoring with `watch`
 
-## 🚀 Quick Start (CLI)
+Real-time TUI dashboard for agent sessions. Like `top` + `tail -f` for AI agents.
 
-The reference implementation of the agtrace platform.
+- **100% local and offline** — Privacy by design, no cloud dependencies
+- **Auto-discovery** — Finds logs from Claude Code, Codex, and Gemini automatically
+- **Zero instrumentation** — No code changes or configuration needed
+- **Universal timeline** — Unified view across all providers
+
+### 2. 🤖 Agent Self-Reflection via MCP
+
+Connects to AI coding assistants via [Model Context Protocol](https://modelcontextprotocol.io), enabling agents to query their own execution history.
+
+- **Query past sessions** — "Show me sessions with failures in the last hour"
+- **Search across traces** — Find specific tool calls, events, or patterns
+- **Analyze performance** — Detect loops, failures, and bottlenecks
+- **Debug behavior** — Inspect reasoning chains and tool usage
+
+**Supported MCP clients:** Claude Code, Codex (OpenAI), Gemini CLI, Claude Desktop
+
+## 🚀 Quick Start
 
 ```bash
 npm install -g @lanegrid/agtrace
 cd my-project
-agtrace init      # initialize workspace (system data directory)
-agtrace watch     # live dashboard
+agtrace init      # Initialize workspace (one-time setup)
+agtrace watch     # Launch live dashboard
 ```
 
-## 🤖 AI-Native Observability (MCP)
+## 🔌 MCP Integration
 
-**New in v0.4.0**: Enable AI agents to query their own execution history.
+Enable agent self-reflection in your AI coding assistant:
 
-agtrace exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that allows AI assistants like Claude Desktop to:
-- Browse session history and analyze failures
-- Search event payloads across thousands of sessions
-- Run diagnostic analysis (failures, loops, bottlenecks)
-- Debug agent behavior without manual CLI commands
+**Claude Code:**
+```bash
+claude code mcp add agtrace -- agtrace mcp serve
+```
 
-### Setup with Claude Desktop
+**Codex (OpenAI):**
+```bash
+codex mcp add agtrace -- agtrace mcp serve
+```
 
+**Gemini CLI:**
+```bash
+gemini mcp add agtrace -- agtrace mcp serve
+```
+
+**Claude Desktop:**
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
 ```json
 {
   "mcpServers": {
@@ -58,49 +78,12 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-**Troubleshooting**: If you use a Node.js version manager (mise, nvm, asdf, volta), Claude Desktop may not find `node` in its PATH. Use the explicit Node.js path instead:
-
-```bash
-# Find your Node.js and agtrace paths
-which node
-npm root -g
-```
-
-Then configure with explicit paths:
-
-```json
-{
-  "mcpServers": {
-    "agtrace": {
-      "command": "/path/to/node",
-      "args": [
-        "/path/to/global/node_modules/@lanegrid/agtrace/run-agtrace.js",
-        "mcp",
-        "serve"
-      ]
-    }
-  }
-}
-```
-
-After restarting Claude Desktop, ask questions like:
-- *"Show me sessions from the last 2 hours that had failures"*
-- *"Search for all tool calls containing 'write_file'"*
+**Example queries after setup:**
+- *"Show sessions from the last hour with failures"*
+- *"Search for tool calls containing 'write_file'"*
 - *"Analyze the most recent session for performance issues"*
 
-### Available MCP Tools
-
-- `list_sessions` - Browse session history with filtering
-- `get_session_summary` - Get lightweight session overview (≤5 KB)
-- `get_session_turns` - Get turn-level summaries with pagination
-- `get_turn_steps` - Get detailed steps for a specific turn
-- `get_session_full` - Get complete session data with full payloads
-- `analyze_session` - Run diagnostic analysis (failures, loops)
-- `search_event_previews` - Search event payloads across sessions
-- `get_event_details` - Retrieve full event payload by index
-- `get_project_info` - List all indexed projects
-
-**See also**: Run `agtrace mcp serve --help` for details.
+For detailed setup instructions and troubleshooting, see the [MCP Integration Guide](docs/mcp-integration.md).
 
 ## 🛠️ Building with the SDK
 
