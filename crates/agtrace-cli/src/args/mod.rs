@@ -57,10 +57,11 @@ pub struct Cli {
     pub log_level: LogLevel,
 
     #[arg(
-        long,
+        long = "project",
+        alias = "project-root",
         global = true,
         help_heading = "Global Options",
-        help = "Override project root directory (defaults to current directory)"
+        help = "Target project directory (defaults to current directory)"
     )]
     pub project_root: Option<String>,
 
