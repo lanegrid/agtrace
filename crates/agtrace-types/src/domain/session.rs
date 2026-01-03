@@ -27,6 +27,22 @@ pub enum ToolStatus {
     Unknown,
 }
 
+/// Order for session listing
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionOrder {
+    /// Most recent first (end_ts DESC, start_ts DESC)
+    NewestFirst,
+    /// Oldest first (start_ts ASC, end_ts ASC)
+    OldestFirst,
+}
+
+impl Default for SessionOrder {
+    fn default() -> Self {
+        Self::NewestFirst
+    }
+}
+
 /// Session summary for listing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionSummary {

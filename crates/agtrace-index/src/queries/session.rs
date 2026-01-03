@@ -1,4 +1,4 @@
-use agtrace_types::ProjectHash;
+use agtrace_types::{ProjectHash, SessionOrder};
 use rusqlite::{Connection, params};
 
 use crate::{
@@ -62,6 +62,7 @@ pub fn list(
     conn: &Connection,
     project_hash: Option<&ProjectHash>,
     provider: Option<&str>,
+    order: SessionOrder,
     limit: Option<usize>,
 ) -> Result<Vec<SessionSummary>> {
     let mut where_clauses = vec!["is_valid = 1"];
@@ -78,6 +79,10 @@ pub fn list(
     }
 
     let where_clause = where_clauses.join(" AND ");
+    let order_clause = match order {
+        SessionOrder::NewestFirst => "ORDER BY s.end_ts DESC, s.start_ts DESC",
+        SessionOrder::OldestFirst => "ORDER BY s.start_ts ASC, s.end_ts ASC",
+    };
     let limit_clause = limit.map(|l| format!("LIMIT {}", l)).unwrap_or_default();
 
     let query = format!(
@@ -86,10 +91,10 @@ pub fn list(
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
         WHERE {}
-        ORDER BY s.start_ts DESC
+        {}
         {}
         "#,
-        where_clause, limit_clause
+        where_clause, order_clause, limit_clause
     );
 
     let mut stmt = conn.prepare(&query)?;
@@ -189,26 +194,99 @@ mod tests {
         db.insert_or_update_session(&session3)?;
 
         // Test filter by provider
-        let sessions = db.list_sessions(None, Some("codex"), None)?;
+        let sessions = db.list_sessions(None, Some("codex"), SessionOrder::default(), None)?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "codex");
 
-        let sessions = db.list_sessions(None, Some("gemini"), None)?;
+        let sessions = db.list_sessions(None, Some("gemini"), SessionOrder::default(), None)?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "gemini");
 
-        let sessions = db.list_sessions(None, Some("claude_code"), None)?;
+        let sessions =
+            db.list_sessions(None, Some("claude_code"), SessionOrder::default(), None)?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "claude_code");
 
         // Test no filter returns all
-        let sessions = db.list_sessions(None, None, None)?;
+        let sessions = db.list_sessions(None, None, SessionOrder::default(), None)?;
         assert_eq!(sessions.len(), 3);
 
         // Test combined project_hash and provider filter
-        let sessions = db.list_sessions(Some(&project_hash), Some("codex"), None)?;
+        let sessions = db.list_sessions(
+            Some(&project_hash),
+            Some("codex"),
+            SessionOrder::default(),
+            None,
+        )?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "codex");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_session_ordering() -> Result<()> {
+        let db = Database::open_in_memory()?;
+        let project_hash = ProjectHash::from("test_project".to_string());
+
+        // Insert project first to satisfy foreign key constraint
+        let project = crate::records::ProjectRecord {
+            hash: project_hash.clone(),
+            root_path: Some("/test/path".to_string()),
+            last_scanned_at: None,
+        };
+        db.insert_or_update_project(&project)?;
+
+        // Insert sessions with different timestamps
+        let session1 = SessionRecord {
+            id: "session1".to_string(),
+            project_hash: project_hash.clone(),
+            provider: "claude_code".to_string(),
+            start_ts: Some("2024-01-01T00:00:00Z".to_string()),
+            end_ts: Some("2024-01-01T01:00:00Z".to_string()),
+            snippet: Some("First session".to_string()),
+            is_valid: true,
+        };
+
+        let session2 = SessionRecord {
+            id: "session2".to_string(),
+            project_hash: project_hash.clone(),
+            provider: "claude_code".to_string(),
+            start_ts: Some("2024-01-02T00:00:00Z".to_string()),
+            end_ts: Some("2024-01-02T01:00:00Z".to_string()),
+            snippet: Some("Second session".to_string()),
+            is_valid: true,
+        };
+
+        let session3 = SessionRecord {
+            id: "session3".to_string(),
+            project_hash: project_hash.clone(),
+            provider: "claude_code".to_string(),
+            start_ts: Some("2024-01-03T00:00:00Z".to_string()),
+            end_ts: Some("2024-01-03T01:00:00Z".to_string()),
+            snippet: Some("Third session".to_string()),
+            is_valid: true,
+        };
+
+        db.insert_or_update_session(&session1)?;
+        db.insert_or_update_session(&session2)?;
+        db.insert_or_update_session(&session3)?;
+
+        // Test NewestFirst ordering (default)
+        let sessions =
+            db.list_sessions(Some(&project_hash), None, SessionOrder::NewestFirst, None)?;
+        assert_eq!(sessions.len(), 3);
+        assert_eq!(sessions[0].id, "session3");
+        assert_eq!(sessions[1].id, "session2");
+        assert_eq!(sessions[2].id, "session1");
+
+        // Test OldestFirst ordering
+        let sessions =
+            db.list_sessions(Some(&project_hash), None, SessionOrder::OldestFirst, None)?;
+        assert_eq!(sessions.len(), 3);
+        assert_eq!(sessions[0].id, "session1");
+        assert_eq!(sessions[1].id, "session2");
+        assert_eq!(sessions[2].id, "session3");
 
         Ok(())
     }

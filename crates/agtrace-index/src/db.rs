@@ -52,9 +52,10 @@ impl Database {
         &self,
         project_hash: Option<&agtrace_types::ProjectHash>,
         provider: Option<&str>,
+        order: agtrace_types::SessionOrder,
         limit: Option<usize>,
     ) -> Result<Vec<SessionSummary>> {
-        queries::session::list(&self.conn, project_hash, provider, limit)
+        queries::session::list(&self.conn, project_hash, provider, order, limit)
     }
 
     pub fn find_session_by_prefix(&self, prefix: &str) -> Result<Option<String>> {
@@ -140,6 +141,7 @@ mod tests {
             .list_sessions(
                 Some(&agtrace_types::ProjectHash::from("abc123")),
                 None,
+                agtrace_types::SessionOrder::default(),
                 Some(10),
             )
             .unwrap();
@@ -214,6 +216,7 @@ mod tests {
             .list_sessions(
                 Some(&agtrace_types::ProjectHash::from("abc123")),
                 None,
+                agtrace_types::SessionOrder::default(),
                 Some(10),
             )
             .unwrap();
@@ -223,6 +226,7 @@ mod tests {
             .list_sessions(
                 Some(&agtrace_types::ProjectHash::from("abc123")),
                 None,
+                agtrace_types::SessionOrder::default(),
                 Some(3),
             )
             .unwrap();

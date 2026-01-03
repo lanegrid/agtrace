@@ -16,6 +16,7 @@ pub struct SessionFilter {
     pub scope: agtrace_types::ProjectScope,
     pub limit: Option<usize>,
     pub provider: Option<String>,
+    pub order: agtrace_types::SessionOrder,
     pub since: Option<String>,
     pub until: Option<String>,
 }
@@ -27,6 +28,7 @@ impl SessionFilter {
             scope: agtrace_types::ProjectScope::All,
             limit: None,
             provider: None,
+            order: agtrace_types::SessionOrder::default(),
             since: None,
             until: None,
         }
@@ -38,6 +40,7 @@ impl SessionFilter {
             scope: agtrace_types::ProjectScope::Specific(project_hash),
             limit: None,
             provider: None,
+            order: agtrace_types::SessionOrder::default(),
             since: None,
             until: None,
         }
@@ -50,6 +53,11 @@ impl SessionFilter {
 
     pub fn provider(mut self, provider: String) -> Self {
         self.provider = Some(provider);
+        self
+    }
+
+    pub fn order(mut self, order: agtrace_types::SessionOrder) -> Self {
+        self.order = order;
         self
     }
 
@@ -89,6 +97,7 @@ impl SessionOps {
             scope: filter.scope,
             limit: filter.limit,
             provider: filter.provider,
+            order: filter.order,
             since: filter.since,
             until: filter.until,
         };

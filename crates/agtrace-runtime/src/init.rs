@@ -230,7 +230,12 @@ impl InitService {
             Some(project_hash)
         };
 
-        let sessions = db.list_sessions(effective_hash, None, Some(10))?;
+        let sessions = db.list_sessions(
+            effective_hash,
+            None,
+            agtrace_types::SessionOrder::default(),
+            Some(10),
+        )?;
         Ok(sessions.len())
     }
 }

@@ -8,6 +8,7 @@ pub struct ListSessionsRequest {
     pub scope: agtrace_types::ProjectScope,
     pub limit: Option<usize>,
     pub provider: Option<String>,
+    pub order: agtrace_types::SessionOrder,
     pub since: Option<String>,
     pub until: Option<String>,
 }
@@ -30,6 +31,7 @@ impl<'a> SessionService<'a> {
         let mut sessions = self.db.list_sessions(
             effective_project_hash.as_ref(),
             request.provider.as_deref(),
+            request.order,
             request.limit,
         )?;
 
