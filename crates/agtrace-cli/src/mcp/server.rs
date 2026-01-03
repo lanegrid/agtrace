@@ -6,15 +6,10 @@ use std::io::{BufRead, BufReader, Write};
 
 use crate::services::{GetTurnsArgs, ListTurnsArgs, SearchEventsArgs};
 
-use super::models::{
-    AnalyzeSessionArgs, GetEventDetailsArgs, GetSessionFullArgs, GetSessionSummaryArgs,
-    GetSessionTurnsArgs, GetTurnStepsArgs, ListSessionsArgs, SearchEventPreviewsArgs,
-};
+use super::models::{AnalyzeSessionArgs, ListSessionsArgs};
 use super::tools::{
-    handle_analyze_session, handle_get_event_details, handle_get_project_info,
-    handle_get_session_full, handle_get_session_summary, handle_get_session_turns,
-    handle_get_turn_steps, handle_get_turns, handle_list_sessions, handle_list_turns,
-    handle_search_event_previews, handle_search_events,
+    handle_analyze_session, handle_get_project_info, handle_get_turns, handle_list_sessions,
+    handle_list_turns, handle_search_events,
 };
 
 #[derive(Debug, Deserialize)]
@@ -135,15 +130,7 @@ impl AgTraceServer {
     async fn handle_list_tools(&self, id: Value) -> JsonRpcResponse {
         // Generate JSON Schemas from Rust types - single source of truth!
         let list_sessions_schema = schema_for!(ListSessionsArgs);
-        let get_session_summary_schema = schema_for!(GetSessionSummaryArgs);
-        let get_session_turns_schema = schema_for!(GetSessionTurnsArgs);
-        let get_turn_steps_schema = schema_for!(GetTurnStepsArgs);
-        let get_session_full_schema = schema_for!(GetSessionFullArgs);
         let analyze_session_schema = schema_for!(AnalyzeSessionArgs);
-        let search_event_previews_schema = schema_for!(SearchEventPreviewsArgs);
-        let get_event_details_schema = schema_for!(GetEventDetailsArgs);
-
-        // New Random Access APIs
         let search_events_schema = schema_for!(SearchEventsArgs);
         let list_turns_schema = schema_for!(ListTurnsArgs);
         let get_turns_schema = schema_for!(GetTurnsArgs);
@@ -159,47 +146,17 @@ impl AgTraceServer {
                         "inputSchema": serde_json::to_value(&list_sessions_schema).unwrap(),
                     },
                     {
-                        "name": "get_session_summary",
-                        "description": "Get lightweight session overview (≤5 KB, always single-page). Returns session metadata, turn count, token stats, and first message snippet. Use this first to understand the session before drilling deeper.",
-                        "inputSchema": serde_json::to_value(&get_session_summary_schema).unwrap(),
-                    },
-                    {
-                        "name": "get_session_turns",
-                        "description": "Get turn-level summaries with pagination (10-30 KB per page). Shows key actions, outcomes, and tool usage per turn. Supports cursor-based pagination. Start here after reviewing summary.",
-                        "inputSchema": serde_json::to_value(&get_session_turns_schema).unwrap(),
-                    },
-                    {
-                        "name": "get_turn_steps",
-                        "description": "Get detailed steps for a specific turn (20-50 KB). Shows tool calls, results (truncated to 500 chars), and reasoning. Use after identifying interesting turns.",
-                        "inputSchema": serde_json::to_value(&get_turn_steps_schema).unwrap(),
-                    },
-                    {
-                        "name": "get_session_full",
-                        "description": "Get complete session data with full payloads (50-100 KB per chunk). REQUIRES pagination cursor. Returns untruncated tool inputs/outputs. Use sparingly—only when you need complete data.",
-                        "inputSchema": serde_json::to_value(&get_session_full_schema).unwrap(),
-                    },
-                    {
-                        "name": "analyze_session",
-                        "description": "Run diagnostic analysis on a session to identify failures, loops, and issues. WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
-                        "inputSchema": serde_json::to_value(&analyze_session_schema).unwrap(),
-                    },
-                    {
-                        "name": "search_event_previews",
-                        "description": "Search for patterns in event payloads across sessions (returns previews, ~300 char snippets). WORKFLOW: Use this to find events matching a pattern, then optionally drill down with get_event_details. Safe to call with different queries in parallel.",
-                        "inputSchema": serde_json::to_value(&search_event_previews_schema).unwrap(),
-                    },
-                    {
-                        "name": "get_event_details",
-                        "description": "Retrieve full event payload by session ID and event index. WORKFLOW: First call search_event_previews to find events of interest, then use the returned session_id and event_index fields with this tool. Safe to call in parallel for multiple known event locations.",
-                        "inputSchema": serde_json::to_value(&get_event_details_schema).unwrap(),
-                    },
-                    {
                         "name": "get_project_info",
                         "description": "List all projects that have been indexed by agtrace with their metadata. WORKFLOW: Use this to discover available projects and their hashes. Safe to call anytime.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {}
                         }
+                    },
+                    {
+                        "name": "analyze_session",
+                        "description": "Run diagnostic analysis on a session to identify failures, loops, and issues. WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
+                        "inputSchema": serde_json::to_value(&analyze_session_schema).unwrap(),
                     },
                     {
                         "name": "search_events",
@@ -272,62 +229,7 @@ impl AgTraceServer {
                 };
                 handle_list_sessions(&self.client, args).await
             }
-            "get_session_summary" => {
-                let args: GetSessionSummaryArgs = match serde_json::from_value(arguments) {
-                    Ok(args) => args,
-                    Err(e) => {
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id,
-                            result: None,
-                            error: Some(Self::parse_validation_error("get_session_summary", e)),
-                        };
-                    }
-                };
-                handle_get_session_summary(&self.client, args).await
-            }
-            "get_session_turns" => {
-                let args: GetSessionTurnsArgs = match serde_json::from_value(arguments) {
-                    Ok(args) => args,
-                    Err(e) => {
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id,
-                            result: None,
-                            error: Some(Self::parse_validation_error("get_session_turns", e)),
-                        };
-                    }
-                };
-                handle_get_session_turns(&self.client, args).await
-            }
-            "get_turn_steps" => {
-                let args: GetTurnStepsArgs = match serde_json::from_value(arguments) {
-                    Ok(args) => args,
-                    Err(e) => {
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id,
-                            result: None,
-                            error: Some(Self::parse_validation_error("get_turn_steps", e)),
-                        };
-                    }
-                };
-                handle_get_turn_steps(&self.client, args).await
-            }
-            "get_session_full" => {
-                let args: GetSessionFullArgs = match serde_json::from_value(arguments) {
-                    Ok(args) => args,
-                    Err(e) => {
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id,
-                            result: None,
-                            error: Some(Self::parse_validation_error("get_session_full", e)),
-                        };
-                    }
-                };
-                handle_get_session_full(&self.client, args).await
-            }
+            "get_project_info" => handle_get_project_info(&self.client).await,
             "analyze_session" => {
                 let args: AnalyzeSessionArgs = match serde_json::from_value(arguments) {
                     Ok(args) => args,
@@ -342,35 +244,6 @@ impl AgTraceServer {
                 };
                 handle_analyze_session(&self.client, args).await
             }
-            "search_event_previews" => {
-                let args: SearchEventPreviewsArgs = match serde_json::from_value(arguments) {
-                    Ok(args) => args,
-                    Err(e) => {
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id,
-                            result: None,
-                            error: Some(Self::parse_validation_error("search_event_previews", e)),
-                        };
-                    }
-                };
-                handle_search_event_previews(&self.client, args).await
-            }
-            "get_event_details" => {
-                let args: GetEventDetailsArgs = match serde_json::from_value(arguments) {
-                    Ok(args) => args,
-                    Err(e) => {
-                        return JsonRpcResponse {
-                            jsonrpc: "2.0".to_string(),
-                            id,
-                            result: None,
-                            error: Some(Self::parse_validation_error("get_event_details", e)),
-                        };
-                    }
-                };
-                handle_get_event_details(&self.client, args).await
-            }
-            "get_project_info" => handle_get_project_info(&self.client).await,
             "search_events" => {
                 let args: SearchEventsArgs = match serde_json::from_value(arguments) {
                     Ok(args) => args,
