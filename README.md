@@ -62,7 +62,7 @@ codex mcp add agtrace -- agtrace mcp serve
 
 **Gemini CLI:**
 ```bash
-gemini mcp add agtrace -- agtrace mcp serve
+gemini mcp add agtrace agtrace mcp serve
 ```
 
 **Claude Desktop:**

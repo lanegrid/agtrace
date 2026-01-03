@@ -38,13 +38,15 @@ codex mcp list
 ### Gemini CLI
 
 ```bash
-gemini mcp add agtrace -- agtrace mcp serve
+gemini mcp add agtrace agtrace mcp serve
 ```
 
 Verify:
 ```bash
 gemini mcp list
 ```
+
+**Note:** Gemini CLI uses positional arguments (not `--` separator like Claude Code and Codex).
 
 ### Claude Desktop
 
