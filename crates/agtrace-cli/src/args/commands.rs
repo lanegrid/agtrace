@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 #[derive(Subcommand)]
 pub enum Commands {
+    // Core Commands (no heading - highest priority)
     #[command(
         about = "Initialize agtrace workspace (run once to get started)",
         long_about = "Initialize agtrace — run this once to get started.
@@ -51,13 +52,27 @@ Use --refresh to force a re-scan of all logs."
         command: McpCommand,
     },
 
-    #[command(about = "View and analyze past sessions")]
+    // Session & Provider Management
+    #[command(
+        next_help_heading = "Session & Provider Management",
+        about = "View and analyze past sessions"
+    )]
     Session {
         #[command(subcommand)]
         command: SessionCommand,
     },
 
-    #[command(about = "List recent sessions (shorthand for 'session list')")]
+    #[command(about = "Configure log sources (Claude Code, Codex, Gemini)")]
+    Provider {
+        #[command(subcommand)]
+        command: ProviderCommand,
+    },
+
+    // Additional Commands
+    #[command(
+        next_help_heading = "Additional Commands",
+        about = "List recent sessions (shorthand for 'session list')"
+    )]
     Sessions {
         #[arg(long)]
         project_hash: Option<String>,
@@ -85,12 +100,6 @@ Use --refresh to force a re-scan of all logs."
     Index {
         #[command(subcommand)]
         command: IndexCommand,
-    },
-
-    #[command(about = "Configure log sources (Claude Code, Codex, Gemini)")]
-    Provider {
-        #[command(subcommand)]
-        command: ProviderCommand,
     },
 
     #[command(about = "List all indexed projects")]

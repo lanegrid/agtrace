@@ -12,10 +12,10 @@ Commands:
   watch     Monitor live agent sessions in real-time (TUI dashboard)
   mcp       AI-native observability via MCP (Model Context Protocol)
   session   View and analyze past sessions
+  provider  Configure log sources (Claude Code, Codex, Gemini)
   sessions  List recent sessions (shorthand for 'session list')
   lab       Advanced analysis tools (grep, export, stats)
   index     Manage the session index (update, rebuild, vacuum)
-  provider  Configure log sources (Claude Code, Codex, Gemini)
   project   List all indexed projects
   doctor    Diagnose and troubleshoot log parsing issues
   pack      Package sessions for sharing or analysis

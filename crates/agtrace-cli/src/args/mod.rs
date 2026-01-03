@@ -33,6 +33,7 @@ pub struct Cli {
     #[arg(
         long,
         global = true,
+        hide_short_help = true,
         help_heading = "Global Options",
         help = "Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)"
     )]
@@ -51,6 +52,7 @@ pub struct Cli {
         long,
         default_value = "info",
         global = true,
+        hide_short_help = true,
         help_heading = "Global Options",
         help = "Logging verbosity level"
     )]
@@ -67,6 +69,7 @@ pub struct Cli {
     #[arg(
         long,
         global = true,
+        hide_short_help = true,
         help_heading = "Global Options",
         help = "Operate on all indexed projects instead of current project only"
     )]
