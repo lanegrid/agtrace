@@ -498,7 +498,7 @@ impl<'a> TurnView<'a> {
         let display_text = if result.trim().is_empty() {
             text::format_empty(result)
         } else {
-            text::truncate(result, TOOL_RESULT_LENGTH)
+            text::normalize_and_clean(result, TOOL_RESULT_LENGTH)
         };
         writeln!(f, "{}", display_text)?;
         Ok(())
