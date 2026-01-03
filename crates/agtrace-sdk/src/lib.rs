@@ -113,6 +113,7 @@
 
 pub mod analysis;
 pub mod client;
+pub mod dump;
 pub mod error;
 pub mod types;
 pub mod watch;
