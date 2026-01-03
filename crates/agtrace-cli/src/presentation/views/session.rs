@@ -522,7 +522,7 @@ impl<'a> fmt::Display for TurnView<'a> {
             "Normal"
         };
 
-        // Compact mode: show only basic metadata, tool count, and user message
+        // Compact mode: show everything in one line per turn
         if matches!(self.mode, ViewMode::Compact) {
             let tool_count = self
                 .data
@@ -531,16 +531,13 @@ impl<'a> fmt::Display for TurnView<'a> {
                 .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
                 .count();
 
+            let user_msg = text::normalize_and_clean(&self.data.user_query, 80);
+
             writeln!(
                 f,
-                "[Turn #{:02}] {} {} | {} tools",
-                self.data.turn_number, status_icon, status_label, tool_count
+                "[Turn #{:02}] {} {} | {} tools | {}",
+                self.data.turn_number, status_icon, status_label, tool_count, user_msg
             )?;
-
-            // Show normalized user message in one line
-            let user_msg = text::normalize_and_clean(&self.data.user_query, 100);
-            writeln!(f, "👤 User: {}", user_msg)?;
-            writeln!(f)?;
             return Ok(());
         }
 
