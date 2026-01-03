@@ -203,7 +203,8 @@ impl fmt::Display for SessionAnalysisViewModel {
 
 impl fmt::Display for TurnAnalysisViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::presentation::ViewMode;
         use crate::presentation::views::session::TurnView;
-        write!(f, "{}", TurnView::new(self))
+        write!(f, "{}", TurnView::new(self, ViewMode::Standard))
     }
 }
