@@ -212,9 +212,11 @@ impl<'a> SessionAnalysisView<'a> {
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Compact: Multi-line header with clear key-value pairs + one-line per turn
-        writeln!(f, "Session:  {}", self.data.header.session_id)?;
+        let session_id = self.data.header.session_id.replace(['\n', '\r'], "");
+        writeln!(f, "Session:  {}", session_id)?;
 
-        write!(f, "Provider: {}", self.data.header.provider)?;
+        let provider = self.data.header.provider.replace(['\n', '\r'], "");
+        write!(f, "Provider: {}", provider)?;
         write!(f, " | Turns: {}", self.data.turns.len())?;
         writeln!(
             f,
@@ -223,13 +225,17 @@ impl<'a> SessionAnalysisView<'a> {
         )?;
 
         if let Some(ref root) = self.data.header.project_root {
-            writeln!(f, "Project:  {}", text::truncate_path(root, 60))?;
+            // Normalize first (handle newlines), then truncate path
+            let normalized = root.replace(['\n', '\r'], "");
+            writeln!(f, "Project:  {}", text::truncate_path(&normalized, 60))?;
         } else {
-            writeln!(
-                f,
-                "Project:  {}... (hash only)",
-                &self.data.header.project_hash[..8]
-            )?;
+            let hash_normalized = self.data.header.project_hash.replace(['\n', '\r'], "");
+            let hash_prefix = if hash_normalized.len() >= 8 {
+                &hash_normalized[..8]
+            } else {
+                &hash_normalized
+            };
+            writeln!(f, "Project:  {}... (hash only)", hash_prefix)?;
         }
 
         writeln!(f)?;
