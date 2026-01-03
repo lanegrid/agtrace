@@ -4,12 +4,10 @@ agtrace exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io
 
 ## Supported MCP Clients
 
-- **Claude Code** (Anthropic)
-- **Codex** (OpenAI)
-- **Gemini CLI** (Google)
-- **Claude Desktop** (Anthropic)
-
-All clients support both local (stdio) and remote (HTTP) MCP servers as of 2025.
+- **Claude Code** (Anthropic) ✅
+- **Codex** (OpenAI) ✅
+- **Claude Desktop** (Anthropic) ✅
+- **Gemini CLI** (Google) ⚠️ Not yet supported (see Known Issues below)
 
 ## Quick Setup
 
@@ -34,19 +32,6 @@ Verify:
 ```bash
 codex mcp list
 ```
-
-### Gemini CLI
-
-```bash
-gemini mcp add agtrace agtrace mcp serve
-```
-
-Verify:
-```bash
-gemini mcp list
-```
-
-**Note:** Gemini CLI uses positional arguments (not `--` separator like Claude Code and Codex).
 
 ### Claude Desktop
 
@@ -156,6 +141,19 @@ Once MCP is configured, you can ask your AI assistant:
 4. **Results are returned** as structured JSON for analysis
 
 The MCP server provides a lightweight, paginated API to prevent overwhelming the AI assistant with large payloads. Use `get_session_summary` and `get_session_turns` for quick overviews, and `get_session_full` only when you need complete data.
+
+## Known Issues
+
+### Gemini CLI Not Supported
+
+Gemini CLI currently does not connect to agtrace MCP server. This is because:
+
+1. **Transport framing mismatch**: agtrace uses newline-delimited JSON-RPC (`{json}\n`), while Gemini CLI strictly requires Content-Length framing (`Content-Length: XXX\r\n\r\n{json}`)
+2. **MCP_STDIO_MODE not supported**: Gemini CLI does not respect the `MCP_STDIO_MODE=nl` environment variable to enable newline-delimited mode
+
+**Workaround**: None currently available.
+
+**Fix plan**: Implement Content-Length framing support in agtrace MCP server (tracked in issue #TBD).
 
 ## Learn More
 

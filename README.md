@@ -35,7 +35,8 @@ Connects to AI coding assistants via [Model Context Protocol](https://modelconte
 - **Analyze performance** — Detect loops, failures, and bottlenecks
 - **Debug behavior** — Inspect reasoning chains and tool usage
 
-**Supported MCP clients:** Claude Code, Codex (OpenAI), Gemini CLI, Claude Desktop
+**Supported MCP clients:** Claude Code, Codex (OpenAI), Claude Desktop
+**Note:** Gemini CLI support is planned (requires Content-Length framing implementation)
 
 ## 🚀 Quick Start
 
@@ -58,11 +59,6 @@ claude code mcp add agtrace -- agtrace mcp serve
 **Codex (OpenAI):**
 ```bash
 codex mcp add agtrace -- agtrace mcp serve
-```
-
-**Gemini CLI:**
-```bash
-gemini mcp add agtrace agtrace mcp serve
 ```
 
 **Claude Desktop:**
