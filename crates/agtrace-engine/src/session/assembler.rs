@@ -1,18 +1,30 @@
 use super::stats::calculate_session_stats;
 use super::turn_builder::TurnBuilder;
 use super::types::*;
-use agtrace_types::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload, StreamId};
 
 pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
     if events.is_empty() {
         return None;
     }
 
-    let session_id = events.first()?.session_id;
-    let start_time = events.first()?.timestamp;
-    let end_time = events.last().map(|e| e.timestamp);
+    // Filter out sidechain/subagent events by default
+    // Only keep main stream events for primary session analysis
+    let main_events: Vec<_> = events
+        .iter()
+        .filter(|e| matches!(e.stream_id, StreamId::Main))
+        .cloned()
+        .collect();
 
-    let turns = build_turns(events);
+    if main_events.is_empty() {
+        return None;
+    }
+
+    let session_id = main_events.first()?.session_id;
+    let start_time = main_events.first()?.timestamp;
+    let end_time = main_events.last().map(|e| e.timestamp);
+
+    let turns = build_turns(&main_events);
     let stats = calculate_session_stats(&turns, start_time, end_time);
 
     Some(AgentSession {

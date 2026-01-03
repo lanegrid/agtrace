@@ -4,7 +4,7 @@ use crate::presentation::view_models::{ViewMode, WatchEventViewModel};
 use crate::presentation::views::watch::WatchEventView;
 use agtrace_sdk::Client;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
-use agtrace_sdk::utils::extract_state_updates;
+use agtrace_sdk::utils::{extract_state_updates, filter_display_events};
 use anyhow::Result;
 use std::collections::VecDeque;
 use std::path::Path;
@@ -241,7 +241,9 @@ fn process_provider_events_console(
                 Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, session })) => {
                     const MAX_EVENTS: usize = 100;
 
-                    if session_state.is_none() && !events.is_empty() {
+                    let display_events = filter_display_events(&events);
+
+                    if session_state.is_none() && !display_events.is_empty() {
                         let session_id = current_session_id
                             .clone()
                             .unwrap_or_else(|| "unknown".to_string());
@@ -250,12 +252,12 @@ fn process_provider_events_console(
                             session_id,
                             project_root_buf.clone(),
                             current_log_path.clone(),
-                            events[0].timestamp,
+                            display_events[0].timestamp,
                         ));
                     }
 
                     if let Some(state) = &mut session_state {
-                        for event in &events {
+                        for event in &display_events {
                             state.last_activity = event.timestamp;
                             state.event_count += 1;
 
@@ -360,19 +362,21 @@ fn process_stream_events_console(
             WorkspaceEvent::Stream(StreamEvent::Events { events, session }) => {
                 const MAX_EVENTS: usize = 100;
 
+                let display_events = filter_display_events(&events);
+
                 // Initialize state on first events
-                if session_state.is_none() && !events.is_empty() {
+                if session_state.is_none() && !display_events.is_empty() {
                     session_state = Some(SessionState::new(
                         session_id.clone(),
                         project_root_buf.clone(),
                         current_log_path.clone(),
-                        events[0].timestamp,
+                        display_events[0].timestamp,
                     ));
                 }
 
                 if let Some(state) = &mut session_state {
                     // Update state from events
-                    for event in &events {
+                    for event in &display_events {
                         state.last_activity = event.timestamp;
                         state.event_count += 1;
 

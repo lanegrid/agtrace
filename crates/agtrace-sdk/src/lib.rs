@@ -221,4 +221,83 @@ pub mod utils {
     pub fn default_token_limits() -> TokenLimits<ProviderModelLimitResolver> {
         TokenLimits::new(ProviderModelLimitResolver)
     }
+
+    // Event filtering utilities
+
+    /// Filter events suitable for display (excludes sidechain/subagent events).
+    ///
+    /// This is the recommended way to filter events for user-facing displays
+    /// like TUI or console output. It removes internal agent communication
+    /// (sidechains) and shows only main stream events.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use agtrace_sdk::{Client, utils};
+    /// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
+    /// use futures::stream::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::connect_default().await?;
+    /// let mut stream = client.watch().all_providers().start()?;
+    ///
+    /// let mut count = 0;
+    /// while let Some(workspace_event) = stream.next().await {
+    ///     if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
+    ///         let display_events = utils::filter_display_events(&events);
+    ///         for event in display_events {
+    ///             println!("Event: {:?}", event.payload);
+    ///         }
+    ///     }
+    ///     count += 1;
+    ///     if count >= 10 { break; }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn filter_display_events(
+        events: &[crate::types::AgentEvent],
+    ) -> Vec<crate::types::AgentEvent> {
+        events
+            .iter()
+            .filter(|e| matches!(e.stream_id, crate::types::StreamId::Main))
+            .cloned()
+            .collect()
+    }
+
+    /// Check if an event should be displayed (non-sidechain).
+    ///
+    /// Returns `true` for main stream events, `false` for sidechain/subagent events.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use agtrace_sdk::{Client, utils};
+    /// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
+    /// use futures::stream::StreamExt;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::connect_default().await?;
+    /// let mut stream = client.watch().all_providers().start()?;
+    ///
+    /// let mut count = 0;
+    /// while let Some(workspace_event) = stream.next().await {
+    ///     if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
+    ///         for event in &events {
+    ///             if utils::is_display_event(event) {
+    ///                 println!("Display event: {:?}", event.payload);
+    ///             }
+    ///         }
+    ///     }
+    ///     count += 1;
+    ///     if count >= 10 { break; }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn is_display_event(event: &crate::types::AgentEvent) -> bool {
+        matches!(event.stream_id, crate::types::StreamId::Main)
+    }
 }

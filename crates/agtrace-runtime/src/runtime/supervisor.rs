@@ -114,6 +114,12 @@ fn handle_fs_event(
                     && context.provider.discovery.probe(path).is_match()
                     && let Ok(session_id) = context.provider.discovery.extract_session_id(path)
                 {
+                    // Skip sidechain files - only main files should trigger session updates
+                    // This prevents watch mode from switching sessions when sidechains are updated
+                    if let Ok(true) = context.provider.discovery.is_sidechain_file(path) {
+                        continue;
+                    }
+
                     // Project filtering: skip sessions from other projects
                     if let Some(filter_root) = project_root {
                         let filter_hash =

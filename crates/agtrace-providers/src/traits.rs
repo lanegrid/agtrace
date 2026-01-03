@@ -33,6 +33,10 @@ pub trait LogDiscovery: Send + Sync {
 
     /// Find all files belonging to a session (main + sidechains)
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>>;
+
+    /// Check if a file is a sidechain file (lightweight, no full parse)
+    /// Returns false for providers that don't support sidechains (Codex, Gemini)
+    fn is_sidechain_file(&self, path: &Path) -> Result<bool>;
 }
 
 /// Session data normalization

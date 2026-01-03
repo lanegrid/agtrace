@@ -124,4 +124,9 @@ impl LogDiscovery for GeminiDiscovery {
 
         Ok(matching_files)
     }
+
+    fn is_sidechain_file(&self, _path: &Path) -> Result<bool> {
+        // Gemini doesn't support sidechains
+        Ok(false)
+    }
 }

@@ -141,4 +141,9 @@ impl LogDiscovery for ClaudeDiscovery {
 
         Ok(matching_files)
     }
+
+    fn is_sidechain_file(&self, path: &Path) -> Result<bool> {
+        let header = extract_claude_header(path)?;
+        Ok(header.is_sidechain)
+    }
 }

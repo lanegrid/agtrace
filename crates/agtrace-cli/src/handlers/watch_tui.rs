@@ -18,7 +18,7 @@ use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer}
 use agtrace_sdk::Client;
 use agtrace_sdk::types::AgentSession;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
-use agtrace_sdk::utils::extract_state_updates;
+use agtrace_sdk::utils::{extract_state_updates, filter_display_events};
 
 pub enum WatchTarget {
     Provider { name: String },
@@ -326,7 +326,9 @@ fn handle_provider_watch(
                     // Batch process events
                     const MAX_EVENTS: usize = 100;
 
-                    for event in &events {
+                    let display_events = filter_display_events(&events);
+
+                    for event in &display_events {
                         handler.state.last_activity = event.timestamp;
                         handler.state.event_count += 1;
 
@@ -439,7 +441,9 @@ fn handle_session_watch(
                     // Batch process events to avoid spamming TUI with updates
                     const MAX_EVENTS: usize = 100;
 
-                    for event in &events {
+                    let display_events = filter_display_events(&events);
+
+                    for event in &display_events {
                         // Update state with event data
                         handler.state.last_activity = event.timestamp;
                         handler.state.event_count += 1;

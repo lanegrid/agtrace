@@ -119,4 +119,9 @@ impl LogDiscovery for CodexDiscovery {
 
         Ok(matching_files)
     }
+
+    fn is_sidechain_file(&self, _path: &Path) -> Result<bool> {
+        // Codex doesn't support sidechains
+        Ok(false)
+    }
 }
