@@ -233,7 +233,7 @@ impl<'a> SessionAnalysisView<'a> {
                 .iter()
                 .filter(|s| matches!(s, AgentStepViewModel::ToolCall { .. }))
                 .count();
-            let query_preview = text::truncate(&turn.user_query, QUERY_PREVIEW_LENGTH);
+            let query_preview = text::normalize_and_clean(&turn.user_query, QUERY_PREVIEW_LENGTH);
             writeln!(
                 f,
                 "  #{:02} | {} tools | {}",
