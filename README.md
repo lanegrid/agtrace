@@ -105,7 +105,7 @@ Build custom tools on top of agtrace:
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.4"
+agtrace-sdk = "0.5"
 ```
 
 ```rust

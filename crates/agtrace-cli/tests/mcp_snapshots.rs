@@ -85,13 +85,13 @@ fn mask_recursive(v: &mut Value) {
         }
         Value::String(s) => {
             // If string looks like JSON, try to parse and mask it
-            if (s.starts_with('{') && s.ends_with('}')) || (s.starts_with('[') && s.ends_with(']'))
+            if ((s.starts_with('{') && s.ends_with('}'))
+                || (s.starts_with('[') && s.ends_with(']')))
+                && let Ok(mut nested) = serde_json::from_str::<Value>(s)
             {
-                if let Ok(mut nested) = serde_json::from_str::<Value>(s) {
-                    mask_recursive(&mut nested);
-                    if let Ok(masked_str) = serde_json::to_string(&nested) {
-                        *s = masked_str;
-                    }
+                mask_recursive(&mut nested);
+                if let Ok(masked_str) = serde_json::to_string(&nested) {
+                    *s = masked_str;
                 }
             }
         }

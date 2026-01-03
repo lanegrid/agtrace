@@ -2,6 +2,134 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-01-03
+
+### Bug Fixes
+
+- Session show displays correct ID, provider, and project info ([c72835b](https://github.com/lanegrid/agtrace/commit/c72835b2791098a962bc1f1e04ed805095001a79))
+
+- Normalize turn snippets to single line in compact view ([5667977](https://github.com/lanegrid/agtrace/commit/56679774946434db89b865842ee8dece10ddcd48))
+
+- Normalize text truncation in user-facing views to handle newlines ([f37a2f8](https://github.com/lanegrid/agtrace/commit/f37a2f8f128dc39ce1b01c15f0d70bee6e1f7450))
+
+- Change default ViewMode to Compact and merge Standard into Verbose (#34) ([5c2d6e9](https://github.com/lanegrid/agtrace/commit/5c2d6e9356329954fb69a472f3878057b958c0bd))
+
+- Normalize all session header fields to prevent newline display issues ([e87960b](https://github.com/lanegrid/agtrace/commit/e87960b6471b382ad112e260835c09f2829328f4))
+
+- Tune MCP get_turns defaults to data-driven limits (3k chars, 30 steps) for safe token usage ([d47d295](https://github.com/lanegrid/agtrace/commit/d47d295cad45e85213f909ce46551c2498a6147b))
+
+
+### Documentation
+
+- Add real-world MCP workflow example and fix broken links ([bcc5b9a](https://github.com/lanegrid/agtrace/commit/bcc5b9a069c959cd477c42787d858f4722e15c85))
+
+- Update MCP tool references to Random Access APIs and remove unused legacy types ([f2b04a7](https://github.com/lanegrid/agtrace/commit/f2b04a7b9df598d82f0aa450f39af40d102605a9))
+
+- Update MCP API references in comments and help text to Random Access APIs ([d176a0c](https://github.com/lanegrid/agtrace/commit/d176a0c774bb5bebba32032c024db1a46e7cad64))
+
+- Reposition agtrace as memory system for AI agents via MCP ([ffb68ce](https://github.com/lanegrid/agtrace/commit/ffb68ce32033f17e7754348a81fba822709caabc))
+
+
+### Features
+
+- Change --project-root to --project with --project-root as alias ([346ecda](https://github.com/lanegrid/agtrace/commit/346ecdaae4b095b01f531eaeeee8e34ea663c3ff))
+
+- Display both project_hash and project_root in session show ([40b1e8d](https://github.com/lanegrid/agtrace/commit/40b1e8ddfb28a4eaba32948484827520c3b27ed7))
+
+- Improve session show display with vertical layout and smart path formatting ([f6a4a32](https://github.com/lanegrid/agtrace/commit/f6a4a320322a77f16ad08a43ecc914d1f50dbfd0))
+
+- *(mcp)* Add project filter to search_event_previews ([211d667](https://github.com/lanegrid/agtrace/commit/211d6678aa997ed4f4578f09764ba44a16363085))
+
+- Limit project list to top 10 by session count ([11a49e5](https://github.com/lanegrid/agtrace/commit/11a49e5d822fa8135697d00d1cdf0d0b009a4c46))
+
+- Improve compact session header with clear key-value format ([298e209](https://github.com/lanegrid/agtrace/commit/298e20990aa1a77a8ae33a18aa29e56fe7d4c7ce))
+
+- Compact mode shows turn metadata and tool count only ([506a2cd](https://github.com/lanegrid/agtrace/commit/506a2cd69c79ec19edeada05319d244df01af972))
+
+- Add project root column and aligned headers to session list ([6435acf](https://github.com/lanegrid/agtrace/commit/6435acf9af401ed903c0dce334beff9b5b221228))
+
+- Auto-fix README version references in release script ([e8cd078](https://github.com/lanegrid/agtrace/commit/e8cd0786c44b5930c8f92898743519afd954497c))
+
+- Add Random Access API service layer with safety valves ([197d61a](https://github.com/lanegrid/agtrace/commit/197d61a6fca01065e0bf72408d47030200bc3340))
+
+- Update MCP test suite for Random Access APIs with UTF-8 safe truncation ([31196e0](https://github.com/lanegrid/agtrace/commit/31196e028c3f24b9a29e155992b4ef0dc913c277))
+
+- Add SessionOrder parameter to session listing queries ([edc3544](https://github.com/lanegrid/agtrace/commit/edc3544cdbd90d83ba6674ebc083d2b4fd5b477d))
+
+
+### Refactor
+
+- Simplify compact mode to show turn metadata and user msg only ([a07ea3b](https://github.com/lanegrid/agtrace/commit/a07ea3b6e3e167a6950b2702b2bc60a0c3b27915))
+
+- Compact mode displays one line per turn ([4af279e](https://github.com/lanegrid/agtrace/commit/4af279e0f80282cbc5cfb15dc485ac57dbd8aaee))
+
+- Remove legacy MCP APIs, keep only Random Access APIs ([63968e5](https://github.com/lanegrid/agtrace/commit/63968e533168f32255a66cf6e71f26562210f190))
+
+
+## [0.5.0] - 2026-01-03
+
+### Bug Fixes
+
+- Session show displays correct ID, provider, and project info ([c72835b](https://github.com/lanegrid/agtrace/commit/c72835b2791098a962bc1f1e04ed805095001a79))
+
+- Normalize turn snippets to single line in compact view ([5667977](https://github.com/lanegrid/agtrace/commit/56679774946434db89b865842ee8dece10ddcd48))
+
+- Normalize text truncation in user-facing views to handle newlines ([f37a2f8](https://github.com/lanegrid/agtrace/commit/f37a2f8f128dc39ce1b01c15f0d70bee6e1f7450))
+
+- Change default ViewMode to Compact and merge Standard into Verbose (#34) ([5c2d6e9](https://github.com/lanegrid/agtrace/commit/5c2d6e9356329954fb69a472f3878057b958c0bd))
+
+- Normalize all session header fields to prevent newline display issues ([e87960b](https://github.com/lanegrid/agtrace/commit/e87960b6471b382ad112e260835c09f2829328f4))
+
+- Tune MCP get_turns defaults to data-driven limits (3k chars, 30 steps) for safe token usage ([d47d295](https://github.com/lanegrid/agtrace/commit/d47d295cad45e85213f909ce46551c2498a6147b))
+
+
+### Documentation
+
+- Add real-world MCP workflow example and fix broken links ([bcc5b9a](https://github.com/lanegrid/agtrace/commit/bcc5b9a069c959cd477c42787d858f4722e15c85))
+
+- Update MCP tool references to Random Access APIs and remove unused legacy types ([f2b04a7](https://github.com/lanegrid/agtrace/commit/f2b04a7b9df598d82f0aa450f39af40d102605a9))
+
+- Update MCP API references in comments and help text to Random Access APIs ([d176a0c](https://github.com/lanegrid/agtrace/commit/d176a0c774bb5bebba32032c024db1a46e7cad64))
+
+- Reposition agtrace as memory system for AI agents via MCP ([ffb68ce](https://github.com/lanegrid/agtrace/commit/ffb68ce32033f17e7754348a81fba822709caabc))
+
+
+### Features
+
+- Change --project-root to --project with --project-root as alias ([346ecda](https://github.com/lanegrid/agtrace/commit/346ecdaae4b095b01f531eaeeee8e34ea663c3ff))
+
+- Display both project_hash and project_root in session show ([40b1e8d](https://github.com/lanegrid/agtrace/commit/40b1e8ddfb28a4eaba32948484827520c3b27ed7))
+
+- Improve session show display with vertical layout and smart path formatting ([f6a4a32](https://github.com/lanegrid/agtrace/commit/f6a4a320322a77f16ad08a43ecc914d1f50dbfd0))
+
+- *(mcp)* Add project filter to search_event_previews ([211d667](https://github.com/lanegrid/agtrace/commit/211d6678aa997ed4f4578f09764ba44a16363085))
+
+- Limit project list to top 10 by session count ([11a49e5](https://github.com/lanegrid/agtrace/commit/11a49e5d822fa8135697d00d1cdf0d0b009a4c46))
+
+- Improve compact session header with clear key-value format ([298e209](https://github.com/lanegrid/agtrace/commit/298e20990aa1a77a8ae33a18aa29e56fe7d4c7ce))
+
+- Compact mode shows turn metadata and tool count only ([506a2cd](https://github.com/lanegrid/agtrace/commit/506a2cd69c79ec19edeada05319d244df01af972))
+
+- Add project root column and aligned headers to session list ([6435acf](https://github.com/lanegrid/agtrace/commit/6435acf9af401ed903c0dce334beff9b5b221228))
+
+- Auto-fix README version references in release script ([e8cd078](https://github.com/lanegrid/agtrace/commit/e8cd0786c44b5930c8f92898743519afd954497c))
+
+- Add Random Access API service layer with safety valves ([197d61a](https://github.com/lanegrid/agtrace/commit/197d61a6fca01065e0bf72408d47030200bc3340))
+
+- Update MCP test suite for Random Access APIs with UTF-8 safe truncation ([31196e0](https://github.com/lanegrid/agtrace/commit/31196e028c3f24b9a29e155992b4ef0dc913c277))
+
+- Add SessionOrder parameter to session listing queries ([edc3544](https://github.com/lanegrid/agtrace/commit/edc3544cdbd90d83ba6674ebc083d2b4fd5b477d))
+
+
+### Refactor
+
+- Simplify compact mode to show turn metadata and user msg only ([a07ea3b](https://github.com/lanegrid/agtrace/commit/a07ea3b6e3e167a6950b2702b2bc60a0c3b27915))
+
+- Compact mode displays one line per turn ([4af279e](https://github.com/lanegrid/agtrace/commit/4af279e0f80282cbc5cfb15dc485ac57dbd8aaee))
+
+- Remove legacy MCP APIs, keep only Random Access APIs ([63968e5](https://github.com/lanegrid/agtrace/commit/63968e533168f32255a66cf6e71f26562210f190))
+
+
 ## [0.4.2] - 2026-01-03
 
 ### Refactor
