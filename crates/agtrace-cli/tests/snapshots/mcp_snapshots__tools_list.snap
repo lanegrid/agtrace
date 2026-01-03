@@ -349,6 +349,20 @@ expression: response
                 "null"
               ]
             },
+            "project_hash": {
+              "description": "Filter by project hash (internal ID).\nUse only when you have the exact hash; prefer project_root for ergonomic filtering.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "project_root": {
+              "description": "Filter by project root path (e.g., \"/Users/me/projects/my-app\").\nPrefer this over project_hash when the agent knows the current working directory.\nServer will automatically resolve this to the correct project hash.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "provider": {
               "anyOf": [
                 {

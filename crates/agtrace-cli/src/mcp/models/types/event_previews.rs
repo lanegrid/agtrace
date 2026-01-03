@@ -27,6 +27,15 @@ pub struct SearchEventPreviewsArgs {
     /// Filter by event type (e.g., ToolCall, ToolResult, Message)
     pub event_type: Option<EventType>,
 
+    /// Filter by project root path (e.g., "/Users/me/projects/my-app").
+    /// Prefer this over project_hash when the agent knows the current working directory.
+    /// Server will automatically resolve this to the correct project hash.
+    pub project_root: Option<String>,
+
+    /// Filter by project hash (internal ID).
+    /// Use only when you have the exact hash; prefer project_root for ergonomic filtering.
+    pub project_hash: Option<String>,
+
     /// Search within specific session only (optional)
     pub session_id: Option<String>,
 }

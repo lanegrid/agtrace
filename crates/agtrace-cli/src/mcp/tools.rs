@@ -173,8 +173,21 @@ pub async fn handle_search_event_previews(
         .map(|c| c.offset)
         .unwrap_or(0);
 
+    // Resolve project filter: project_root takes priority over project_hash
+    let project_hash_filter = if let Some(root) = args.project_root {
+        // Calculate hash from root path (server-side resolution)
+        Some(agtrace_sdk::utils::project_hash_from_root(&root))
+    } else {
+        // Use explicit hash if provided
+        args.project_hash.map(|h| h.into())
+    };
+
     // Build session filter
-    let mut filter = SessionFilter::all().limit(1000);
+    let mut filter = if let Some(hash) = project_hash_filter {
+        SessionFilter::project(hash).limit(1000)
+    } else {
+        SessionFilter::all().limit(1000)
+    };
 
     if let Some(provider) = args.provider {
         filter = filter.provider(provider.as_str().to_string());
