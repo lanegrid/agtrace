@@ -93,18 +93,29 @@ fn add_session_list_guidance(
 /// Present session analysis with context-aware metrics
 pub fn present_session_analysis(
     session: &AgentSession,
+    session_id: &str,
     provider: &str,
+    project_hash: &str,
     model: &str,
     max_context: Option<u32>,
 ) -> CommandResultViewModel<SessionAnalysisViewModel> {
-    let view = build_session_analysis_view(session, provider, model, max_context);
+    let view = build_session_analysis_view(
+        session,
+        session_id,
+        provider,
+        project_hash,
+        model,
+        max_context,
+    );
     let result = CommandResultViewModel::new(view);
     add_session_analysis_guidance(result)
 }
 
 fn build_session_analysis_view(
     session: &AgentSession,
+    session_id: &str,
     provider: &str,
+    project_hash: &str,
     model: &str,
     max_context: Option<u32>,
 ) -> SessionAnalysisViewModel {
@@ -138,8 +149,9 @@ fn build_session_analysis_view(
 
     // Build header
     let header = SessionHeader {
-        session_id: session.session_id.to_string(),
+        session_id: session_id.to_string(),
         provider: provider.to_string(),
+        project_hash: Some(project_hash.to_string()),
         model: Some(model.to_string()),
         status: if session.turns.is_empty() {
             "Empty".to_string()

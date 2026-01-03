@@ -44,6 +44,7 @@ pub struct SessionAnalysisViewModel {
 pub struct SessionHeader {
     pub session_id: String,
     pub provider: String,
+    pub project_hash: Option<String>,
     pub model: Option<String>,
     pub status: String,
     pub duration: Option<String>,

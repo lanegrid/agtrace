@@ -212,13 +212,21 @@ impl<'a> SessionAnalysisView<'a> {
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Compact: Single-line header + one-line per turn
+        let project_info = self
+            .data
+            .header
+            .project_hash
+            .as_ref()
+            .map(|h| format!(" | project: {}", &h[..8]))
+            .unwrap_or_default();
         writeln!(
             f,
-            "{} | {} | {} turns | {} tokens",
+            "{} | {} | {} turns | {} tokens{}",
             self.data.header.session_id,
             self.data.header.provider,
             self.data.turns.len(),
-            number::format_compact(self.data.context_summary.current_tokens as i64)
+            number::format_compact(self.data.context_summary.current_tokens as i64),
+            project_info
         )?;
 
         for turn in &self.data.turns {
@@ -245,7 +253,11 @@ impl<'a> SessionAnalysisView<'a> {
             write!(f, " ({})", model)?;
         }
         writeln!(f)?;
-        writeln!(f, "STATUS:  {}", self.data.header.status)?;
+        writeln!(f, "PROVIDER: {}", self.data.header.provider)?;
+        if let Some(ref project_hash) = self.data.header.project_hash {
+            writeln!(f, "PROJECT:  {}...", &project_hash[..16])?;
+        }
+        writeln!(f, "STATUS:   {}", self.data.header.status)?;
 
         // Context summary
         let context_display = if let Some(max) = self.data.context_summary.max_tokens {
@@ -288,6 +300,9 @@ impl<'a> SessionAnalysisView<'a> {
         }
         writeln!(f)?;
         writeln!(f, "PROVIDER: {}", self.data.header.provider)?;
+        if let Some(ref project_hash) = self.data.header.project_hash {
+            writeln!(f, "PROJECT:  {}", project_hash)?;
+        }
         writeln!(f, "STATUS:   {}", self.data.header.status)?;
         if let Some(ref start) = self.data.header.start_time {
             writeln!(f, "START:    {}", start)?;
@@ -729,6 +744,7 @@ mod tests {
             header: SessionHeader {
                 session_id: "test-session-id".to_string(),
                 provider: "test_provider".to_string(),
+                project_hash: Some("test-project-hash".to_string()),
                 model: Some("test-model".to_string()),
                 status: "Complete".to_string(),
                 start_time: None,
