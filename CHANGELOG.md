@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2] - 2026-01-03
+
+### Refactor
+
+- Encapsulate sidechain filtering in SDK layer ([000cae9](https://github.com/lanegrid/agtrace/commit/000cae9f381660398ed52fe08683c78ed2246278))
+
+
 ## [0.4.1] - 2026-01-03
 
 ### Bug Fixes

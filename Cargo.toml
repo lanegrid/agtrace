@@ -14,7 +14,7 @@ default-members = ["crates/agtrace-cli"]
 resolver = "2"
 
 [workspace.package]
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/lanegrid/agtrace"
@@ -23,15 +23,15 @@ keywords = ["ai", "agent", "llm", "observability", "opentelemetry", "sdk"]
 
 [workspace.dependencies]
 # Internal crates
-agtrace-types = { version = "0.4.1", path = "crates/agtrace-types" }
-agtrace-core = { version = "0.4.1", path = "crates/agtrace-core" }
-agtrace-providers = { version = "0.4.1", path = "crates/agtrace-providers" }
-agtrace-index = { version = "0.4.1", path = "crates/agtrace-index" }
-agtrace-engine = { version = "0.4.1", path = "crates/agtrace-engine" }
-agtrace-runtime = { version = "0.4.1", path = "crates/agtrace-runtime" }
-agtrace-sdk = { version = "0.4.1", path = "crates/agtrace-sdk" }
-agtrace = { version = "0.4.1", path = "crates/agtrace-cli" }
-agtrace-testing = { version = "0.4.1", path = "crates/agtrace-testing" }
+agtrace-types = { version = "0.4.2", path = "crates/agtrace-types" }
+agtrace-core = { version = "0.4.2", path = "crates/agtrace-core" }
+agtrace-providers = { version = "0.4.2", path = "crates/agtrace-providers" }
+agtrace-index = { version = "0.4.2", path = "crates/agtrace-index" }
+agtrace-engine = { version = "0.4.2", path = "crates/agtrace-engine" }
+agtrace-runtime = { version = "0.4.2", path = "crates/agtrace-runtime" }
+agtrace-sdk = { version = "0.4.2", path = "crates/agtrace-sdk" }
+agtrace = { version = "0.4.2", path = "crates/agtrace-cli" }
+agtrace-testing = { version = "0.4.2", path = "crates/agtrace-testing" }
 
 # Common dependencies
 serde = { version = "1.0", features = ["derive"] }
