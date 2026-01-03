@@ -211,21 +211,28 @@ impl<'a> SessionAnalysisView<'a> {
     }
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Compact: Single-line header + one-line per turn
-        let project_info = if let Some(ref root) = self.data.header.project_root {
-            format!(" | project: {}", text::truncate_path(root, 30))
-        } else {
-            format!(" | project: {}...", &self.data.header.project_hash[..8])
-        };
+        // Compact: Multi-line header with clear key-value pairs + one-line per turn
+        writeln!(f, "Session:  {}", self.data.header.session_id)?;
+
+        write!(f, "Provider: {}", self.data.header.provider)?;
+        write!(f, " | Turns: {}", self.data.turns.len())?;
         writeln!(
             f,
-            "{} | {} | {} turns | {} tokens{}",
-            self.data.header.session_id,
-            self.data.header.provider,
-            self.data.turns.len(),
-            number::format_compact(self.data.context_summary.current_tokens as i64),
-            project_info
+            " | Tokens: {}",
+            number::format_compact(self.data.context_summary.current_tokens as i64)
         )?;
+
+        if let Some(ref root) = self.data.header.project_root {
+            writeln!(f, "Project:  {}", text::truncate_path(root, 60))?;
+        } else {
+            writeln!(
+                f,
+                "Project:  {}... (hash only)",
+                &self.data.header.project_hash[..8]
+            )?;
+        }
+
+        writeln!(f)?;
 
         for turn in &self.data.turns {
             let tool_count = turn
@@ -751,7 +758,7 @@ mod tests {
 
         assert!(output.contains("test-session-id"));
         assert!(output.contains("test_provider"));
-        assert!(output.contains("0 turns"));
+        assert!(output.contains("Turns: 0"));
     }
 
     #[test]
