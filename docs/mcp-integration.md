@@ -109,9 +109,57 @@ agtrace sessions
 | `get_event_details` | Retrieve full event payload by session and index |
 | `get_project_info` | List all indexed projects |
 
+## Real-World Example: Agent Self-Reflection
+
+Here's an actual workflow showing how agents use agtrace MCP for context-aware decision making:
+
+**User Request:**
+> "Read previous sessions and help me reconsider a design decision we made earlier."
+
+**Agent Workflow (9 steps, 491 seconds):**
+
+1. **Discover project history** (`list_sessions`):
+   ```json
+   {"project_root": "/path/to/project", "limit": 10}
+   ```
+   → Found 5 recent sessions, identified relevant discussion
+
+2. **Understand past decisions** (`get_session_summary` → `get_session_turns`):
+   ```json
+   {"session_id": "cc7fe4ef"}
+   ```
+   → Retrieved the original reasoning and implementation details
+
+3. **Search for related changes** (`search_event_previews`):
+   ```json
+   {"query": "deprecated_feature", "event_type": "ToolCall"}
+   ```
+   → Examined 34KB of discussion across 3 turns
+
+4. **Create informed response**:
+   - Generated comprehensive specification based on past context
+   - Addressed why the original decision was made
+   - Proposed migration path that respects historical constraints
+
+**Token efficiency:** 334,872 tokens total, with prompt caching reducing costs by 85%
+
+**Key Insight:** Without MCP, the agent would lack:
+- Why the original decision was made
+- What alternatives were considered
+- What constraints shaped the design
+
+This is **Agent Self-Reflection**: understanding history to make better future decisions.
+
+---
+
 ## Example Queries
 
 Once MCP is configured, you can ask your AI assistant:
+
+**Context-aware development:**
+- *"Read previous sessions for this project and understand why we deprecated feature X"*
+- *"What did we decide about error handling in the last session?"*
+- *"Show me how we implemented similar features before"*
 
 **Session exploration:**
 - *"Show me sessions from the last 2 hours"*
@@ -127,11 +175,6 @@ Once MCP is configured, you can ask your AI assistant:
 - *"Analyze the most recent session for performance issues"*
 - *"Check the last session for loops or repeated tool calls"*
 - *"What were the failure modes in yesterday's sessions?"*
-
-**Deep inspection:**
-- *"Show me the full conversation from session abc123"*
-- *"What tool calls were made in turn 5 of the current session?"*
-- *"Get the complete payload for event 42 in session xyz789"*
 
 ## How It Works
 
@@ -157,6 +200,5 @@ Gemini CLI currently does not connect to agtrace MCP server. This is because:
 
 ## Learn More
 
-- [Model Context Protocol Specification](https://spec.modelcontextprotocol.io)
+- [Model Context Protocol Specification](https://modelcontextprotocol.io/specification)
 - [agtrace CLI Documentation](./README.md)
-- [MCP Tools Reference](./mcp-tools.md) *(coming soon)*

@@ -15,6 +15,10 @@ Welcome to the agtrace documentation. This page serves as the central index for 
 - [session](commands/session.md) - Session history and inspection
 - [lab](commands/lab.md) - Advanced history search and analysis
 
+### Integration
+
+- [MCP Integration](mcp-integration.md) - Enable agent self-reflection via Model Context Protocol
+
 ### Architecture
 
 - [Architecture Overview](architecture.md) - Pointer-based indexing and schema-on-read design

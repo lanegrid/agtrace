@@ -75,11 +75,14 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```
 
 **Example queries after setup:**
+- *"Read previous sessions and help me understand why we made decision X"*
 - *"Show sessions from the last hour with failures"*
-- *"Search for tool calls containing 'write_file'"*
+- *"Search for tool calls that modified the database schema"*
 - *"Analyze the most recent session for performance issues"*
 
-For detailed setup instructions and troubleshooting, see the [MCP Integration Guide](docs/mcp-integration.md).
+**Real-world workflow:** An agent used `list_sessions` → `get_session_summary` → `get_session_turns` to retrieve 34KB of historical context, then generated a specification that respected past design constraints. 334K tokens processed with 85% cache efficiency.
+
+For detailed setup and real examples, see the [MCP Integration Guide](docs/mcp-integration.md).
 
 ## 🛠️ Building with the SDK
 
