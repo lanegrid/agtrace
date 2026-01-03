@@ -36,6 +36,7 @@ pub fn handle(
         &metadata.session_id,
         &metadata.provider,
         metadata.project_hash.as_ref(),
+        metadata.project_root.as_deref(),
         &model_name_display,
         max_context,
     );

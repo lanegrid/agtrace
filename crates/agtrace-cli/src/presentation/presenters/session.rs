@@ -96,6 +96,7 @@ pub fn present_session_analysis(
     session_id: &str,
     provider: &str,
     project_hash: &str,
+    project_root: Option<&str>,
     model: &str,
     max_context: Option<u32>,
 ) -> CommandResultViewModel<SessionAnalysisViewModel> {
@@ -104,6 +105,7 @@ pub fn present_session_analysis(
         session_id,
         provider,
         project_hash,
+        project_root,
         model,
         max_context,
     );
@@ -116,6 +118,7 @@ fn build_session_analysis_view(
     session_id: &str,
     provider: &str,
     project_hash: &str,
+    project_root: Option<&str>,
     model: &str,
     max_context: Option<u32>,
 ) -> SessionAnalysisViewModel {
@@ -151,7 +154,8 @@ fn build_session_analysis_view(
     let header = SessionHeader {
         session_id: session_id.to_string(),
         provider: provider.to_string(),
-        project_hash: Some(project_hash.to_string()),
+        project_hash: project_hash.to_string(),
+        project_root: project_root.map(|s| s.to_string()),
         model: Some(model.to_string()),
         status: if session.turns.is_empty() {
             "Empty".to_string()

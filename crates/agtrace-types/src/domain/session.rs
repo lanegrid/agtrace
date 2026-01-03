@@ -51,6 +51,8 @@ pub struct SessionMetadata {
     pub session_id: String,
     /// Project hash (inferred from log file path).
     pub project_hash: ProjectHash,
+    /// Project root path (resolved from project_hash).
+    pub project_root: Option<String>,
     /// Provider name (claude_code, codex, gemini).
     pub provider: String,
 }

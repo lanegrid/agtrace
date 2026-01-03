@@ -212,13 +212,11 @@ impl<'a> SessionAnalysisView<'a> {
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Compact: Single-line header + one-line per turn
-        let project_info = self
-            .data
-            .header
-            .project_hash
-            .as_ref()
-            .map(|h| format!(" | project: {}", &h[..8]))
-            .unwrap_or_default();
+        let project_info = if let Some(ref root) = self.data.header.project_root {
+            format!(" | project: {}", text::truncate_path(root, 30))
+        } else {
+            format!(" | project: {}...", &self.data.header.project_hash[..8])
+        };
         writeln!(
             f,
             "{} | {} | {} turns | {} tokens{}",
@@ -254,8 +252,14 @@ impl<'a> SessionAnalysisView<'a> {
         }
         writeln!(f)?;
         writeln!(f, "PROVIDER: {}", self.data.header.provider)?;
-        if let Some(ref project_hash) = self.data.header.project_hash {
-            writeln!(f, "PROJECT:  {}...", &project_hash[..16])?;
+        if let Some(ref project_root) = self.data.header.project_root {
+            writeln!(f, "PROJECT:  {}", text::truncate_path(project_root, 60))?;
+        } else {
+            writeln!(
+                f,
+                "PROJECT:  {} (hash)",
+                &self.data.header.project_hash[..16]
+            )?;
         }
         writeln!(f, "STATUS:   {}", self.data.header.status)?;
 
@@ -300,8 +304,11 @@ impl<'a> SessionAnalysisView<'a> {
         }
         writeln!(f)?;
         writeln!(f, "PROVIDER: {}", self.data.header.provider)?;
-        if let Some(ref project_hash) = self.data.header.project_hash {
-            writeln!(f, "PROJECT:  {}", project_hash)?;
+        if let Some(ref project_root) = self.data.header.project_root {
+            writeln!(f, "PROJECT:  {}", project_root)?;
+            writeln!(f, "          (hash: {})", self.data.header.project_hash)?;
+        } else {
+            writeln!(f, "PROJECT:  {} (hash only)", self.data.header.project_hash)?;
         }
         writeln!(f, "STATUS:   {}", self.data.header.status)?;
         if let Some(ref start) = self.data.header.start_time {
@@ -744,7 +751,8 @@ mod tests {
             header: SessionHeader {
                 session_id: "test-session-id".to_string(),
                 provider: "test_provider".to_string(),
-                project_hash: Some("test-project-hash".to_string()),
+                project_hash: "test-project-hash-12345678".to_string(),
+                project_root: Some("/test/project/root".to_string()),
                 model: Some("test-model".to_string()),
                 status: "Complete".to_string(),
                 start_time: None,

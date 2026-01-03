@@ -193,9 +193,15 @@ impl SessionHandle {
             Error::InvalidOperation(format!("Session metadata not found: {}", self.id))
         })?;
 
+        // Resolve project_root from project_hash
+        let project_root = db
+            .get_project(index_summary.project_hash.as_str())?
+            .and_then(|p| p.root_path);
+
         Ok(agtrace_types::SessionMetadata {
             session_id: index_summary.id.clone(),
             project_hash: index_summary.project_hash,
+            project_root,
             provider: index_summary.provider,
         })
     }
