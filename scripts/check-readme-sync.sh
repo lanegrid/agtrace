@@ -2,7 +2,21 @@
 # Check that README examples are up-to-date and compile correctly
 set -e
 
+# Parse arguments
+FIX_MODE=false
+for arg in "$@"; do
+    case $arg in
+        --fix)
+            FIX_MODE=true
+            shift
+            ;;
+    esac
+done
+
 echo "=== README Sync Checker ==="
+if [ "$FIX_MODE" = true ]; then
+    echo "(--fix mode: will automatically update version references)"
+fi
 echo
 
 # 1. Check SDK README is up-to-date with rustdoc (via cargo-rdme)
@@ -40,7 +54,16 @@ else
     echo "   Expected: agtrace-sdk = \"$MAJOR_MINOR\" or \"$CURRENT_VERSION\""
     echo "   Found:"
     grep 'agtrace-sdk = ' crates/agtrace-sdk/README.md || echo "   (no version found)"
-    exit 1
+
+    if [ "$FIX_MODE" = true ]; then
+        echo "   🔧 Fixing SDK README version reference..."
+        # Replace any version string with major.minor
+        sed -i.bak "s/agtrace-sdk = \"[0-9.]*\"/agtrace-sdk = \"$MAJOR_MINOR\"/" crates/agtrace-sdk/README.md
+        rm crates/agtrace-sdk/README.md.bak
+        echo "   ✓ Updated to agtrace-sdk = \"$MAJOR_MINOR\""
+    else
+        exit 1
+    fi
 fi
 
 # Root README should also use consistent versioning
@@ -53,7 +76,16 @@ else
     echo "   Expected: agtrace-sdk = \"$MAJOR_MINOR\" or \"$CURRENT_VERSION\""
     echo "   Found:"
     grep 'agtrace-sdk = ' README.md || echo "   (no version found)"
-    exit 1
+
+    if [ "$FIX_MODE" = true ]; then
+        echo "   🔧 Fixing root README version reference..."
+        # Replace any version string with major.minor
+        sed -i.bak "s/agtrace-sdk = \"[0-9.]*\"/agtrace-sdk = \"$MAJOR_MINOR\"/" README.md
+        rm README.md.bak
+        echo "   ✓ Updated to agtrace-sdk = \"$MAJOR_MINOR\""
+    else
+        exit 1
+    fi
 fi
 
 echo

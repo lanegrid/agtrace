@@ -10,7 +10,7 @@
 # This script does everything needed for a release:
 #   1. Validates working directory
 #   2. Runs all tests
-#   3. Validates README examples compile
+#   3. Validates and auto-fixes README version references
 #   4. Updates version numbers
 #   5. Generates CHANGELOG
 #   6. Runs fmt and clippy
@@ -143,7 +143,8 @@ echo
 
 echo -e "${BLUE}Step 3/7: Checking README sync${NC}"
 if [ "$DRY_RUN" = false ]; then
-    ./scripts/check-readme-sync.sh
+    # Use --fix to automatically update version references in READMEs
+    ./scripts/check-readme-sync.sh --fix
 fi
 echo -e "${GREEN}✓ README validation passed${NC}"
 echo
@@ -219,7 +220,7 @@ else
 fi
 
 # Commit and tag
-git add Cargo.toml CHANGELOG.md
+git add Cargo.toml CHANGELOG.md README.md crates/agtrace-sdk/README.md
 git commit -m "chore: bump version to $NEW_VERSION and update CHANGELOG"
 git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
 
