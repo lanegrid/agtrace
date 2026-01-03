@@ -91,9 +91,13 @@ After restarting Claude Desktop, ask questions like:
 ### Available MCP Tools
 
 - `list_sessions` - Browse session history with filtering
-- `get_session_details` - Get session overview, turns, or full details
+- `get_session_summary` - Get lightweight session overview (≤5 KB)
+- `get_session_turns` - Get turn-level summaries with pagination
+- `get_turn_steps` - Get detailed steps for a specific turn
+- `get_session_full` - Get complete session data with full payloads
 - `analyze_session` - Run diagnostic analysis (failures, loops)
-- `search_events` - Search event payloads across sessions
+- `search_event_previews` - Search event payloads across sessions
+- `get_event_details` - Retrieve full event payload by index
 - `get_project_info` - List all indexed projects
 
 **See also**: Run `agtrace mcp serve --help` for details.
