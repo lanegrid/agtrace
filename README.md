@@ -80,7 +80,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 - *"Search for tool calls that modified the database schema"*
 - *"Analyze the most recent session for performance issues"*
 
-**Real-world workflow:** An agent used `list_sessions` → `get_session_summary` → `get_session_turns` to retrieve 34KB of historical context, then generated a specification that respected past design constraints. 334K tokens processed with 85% cache efficiency.
+**Real-world workflow:** An agent used `list_sessions` → `list_turns` → `get_turns` to retrieve 34KB of historical context, then generated a specification that respected past design constraints. 334K tokens processed with 85% cache efficiency.
 
 For detailed setup and real examples, see the [MCP Integration Guide](docs/mcp-integration.md).
 

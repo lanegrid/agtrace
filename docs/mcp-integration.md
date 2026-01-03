@@ -99,15 +99,12 @@ agtrace sessions
 
 | Tool | Description |
 |------|-------------|
-| `list_sessions` | Browse session history with filtering (by time, provider, project) |
-| `get_session_summary` | Lightweight overview (≤5 KB): metadata, turn count, token stats |
-| `get_session_turns` | Turn-level summaries with pagination (10-30 KB per page) |
-| `get_turn_steps` | Detailed steps for a specific turn (20-50 KB): tool calls, results |
-| `get_session_full` | Complete session data with full payloads (50-100 KB per chunk) |
-| `analyze_session` | Diagnostic analysis: failures, loops, bottlenecks |
-| `search_event_previews` | Search event payloads (returns ~300 char snippets) |
-| `get_event_details` | Retrieve full event payload by session and index |
-| `get_project_info` | List all indexed projects |
+| `list_sessions` | List recent AI agent sessions with cursor-based pagination. WORKFLOW: Call this first to discover available sessions, then use session IDs with other tools. Safe to call multiple times with different filters. |
+| `get_project_info` | List all projects that have been indexed by agtrace with their metadata. WORKFLOW: Use this to discover available projects and their hashes. Safe to call anytime. |
+| `analyze_session` | Run diagnostic analysis on a session to identify failures, loops, and issues. WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs. |
+| `search_events` | Search for events and return navigation coordinates (session_id, event_index, turn_index, step_index). Use this to find specific events, then use turn_index with list_turns or get_turns for detailed analysis. |
+| `list_turns` | List turns with metadata only (no payload content). Returns turn statistics including step_count, duration_ms, total_tokens, and tools_used. Use this to get an overview before drilling down with get_turns. |
+| `get_turns` | Get details for specific turns. Defaults are tuned for safety based on data distribution (max 30 steps/turn, 3000 chars/field). WORKFLOW: Fetch 1-2 turns at a time to avoid token limits. If data is marked '[TRUNCATED]' and critical, retry with higher limits. |
 
 ## Real-World Example: Agent Self-Reflection
 
@@ -124,13 +121,13 @@ Here's an actual workflow showing how agents use agtrace MCP for context-aware d
    ```
    → Found 5 recent sessions, identified relevant discussion
 
-2. **Understand past decisions** (`get_session_summary` → `get_session_turns`):
+2. **Understand past decisions** (`list_turns` → `get_turns`):
    ```json
-   {"session_id": "cc7fe4ef"}
+   {"session_id": "cc7fe4ef", "turn_indices": [0, 1, 2]}
    ```
    → Retrieved the original reasoning and implementation details
 
-3. **Search for related changes** (`search_event_previews`):
+3. **Search for related changes** (`search_events`):
    ```json
    {"query": "deprecated_feature", "event_type": "ToolCall"}
    ```
@@ -166,10 +163,15 @@ Once MCP is configured, you can ask your AI assistant:
 - *"List all sessions from the my-app project"*
 - *"What sessions had failures today?"*
 
+**Turn-level analysis:**
+- *"List turns from the most recent session and show me what tools were used"*
+- *"Get details for turn 3 from session abc123"*
+- *"Show me the reasoning from the first few turns of that session"*
+
 **Event search:**
-- *"Search for tool calls containing 'write_file'"*
+- *"Search for events containing 'write_file'"*
 - *"Find all reasoning events with 'refactor' in them"*
-- *"Show me sessions where the agent used the Bash tool"*
+- *"Show me where the agent used the Bash tool"*
 
 **Analysis:**
 - *"Analyze the most recent session for performance issues"*
@@ -183,7 +185,7 @@ Once MCP is configured, you can ask your AI assistant:
 3. **AI assistant calls tools** to query the index
 4. **Results are returned** as structured JSON for analysis
 
-The MCP server provides a lightweight, paginated API to prevent overwhelming the AI assistant with large payloads. Use `get_session_summary` and `get_session_turns` for quick overviews, and `get_session_full` only when you need complete data.
+The MCP server provides a lightweight, paginated API to prevent overwhelming the AI assistant with large payloads. Use `list_sessions` to discover sessions, `list_turns` for turn-level overviews, and `get_turns` when you need detailed turn data. Use `search_events` to find specific events across sessions.
 
 ## Known Issues
 
