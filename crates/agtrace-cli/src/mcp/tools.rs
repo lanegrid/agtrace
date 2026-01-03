@@ -1,7 +1,7 @@
 // MCP Tools Implementation
 //
 // Design Rationale:
-// - Progressive Disclosure: search_event_previews (breadth) → get_event_details (depth)
+// - Progressive Disclosure: list_turns (breadth) → get_turns (depth)
 //   to avoid overwhelming LLM context with large payloads
 // - Response Size Targets: Follow MCP best practices (< 30 KB per response)
 // - Cursor-based Pagination: MCP 2024-11-05 spec compliance (stable, opaque tokens)
