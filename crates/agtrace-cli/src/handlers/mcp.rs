@@ -112,99 +112,105 @@ async fn handle_test(client: &Client, verbose: bool) -> Result<()> {
             total_warnings += 1;
         }
 
-        // Test 5: get_session_summary
+        // Test 5: search_events (scoped to session)
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 5: get_session_summary");
+        println!("Test 5: search_events (scoped to session, query: 'Read')");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        let (response, size) = send_request(
+        match send_request(
             &mut stdin,
             &mut reader,
             "tools/call",
             json!({
-                "name": "get_session_summary",
-                "arguments": { "session_id": sid }
+                "name": "search_events",
+                "arguments": {
+                    "query": "Read",
+                    "session_id": sid,
+                    "limit": 5
+                }
             }),
-        )?;
-        println!("Session ID: {}", sid);
-        print_result("get_session_summary", size, 5_000, verbose, &response);
-        if size > 5_000 {
-            total_warnings += 1;
+        ) {
+            Ok((response, size)) => {
+                print_result("search_events", size, 15_000, verbose, &response);
+                if size > 15_000 {
+                    total_warnings += 1;
+                }
+            }
+            Err(e) => {
+                println!("⚠️  Test failed: {}", e);
+                total_warnings += 1;
+            }
         }
 
-        // Test 5.1: get_session_turns (default pagination)
+        // Test 6: list_turns
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 5.1: get_session_turns (default limit: 10)");
+        println!("Test 6: list_turns (session overview)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        let (response, size) = send_request(
+        println!("Session ID: {}", sid);
+        run_test(
             &mut stdin,
             &mut reader,
-            "tools/call",
+            "list_turns",
             json!({
-                "name": "get_session_turns",
+                "name": "list_turns",
                 "arguments": { "session_id": sid }
             }),
-        )?;
-        print_result(
-            "get_session_turns (default)",
-            size,
             30_000,
             verbose,
-            &response,
-        );
-        if size > 30_000 {
-            total_warnings += 1;
-        }
+            &mut total_warnings,
+        )?;
 
-        // Test 5.2: get_turn_steps (turn 0)
+        // Test 7: get_turns (single turn)
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 5.2: get_turn_steps (turn_index: 0)");
+        println!("Test 7: get_turns (turn_indices: [0], with truncation)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        let (response, size) = send_request(
+        run_test(
             &mut stdin,
             &mut reader,
-            "tools/call",
+            "get_turns (single)",
             json!({
-                "name": "get_turn_steps",
+                "name": "get_turns",
                 "arguments": {
                     "session_id": sid,
-                    "turn_index": 0
+                    "turn_indices": [0],
+                    "truncate": true
                 }
             }),
+            50_000,
+            verbose,
+            &mut total_warnings,
         )?;
-        print_result("get_turn_steps", size, 50_000, verbose, &response);
-        if size > 50_000 {
-            total_warnings += 1;
-        }
 
-        // Test 5.3: get_session_full (first page)
+        // Test 8: get_turns (sparse access)
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 5.3: get_session_full (first page) ⚠️  LARGE RESPONSE");
+        println!("Test 8: get_turns (sparse: [0, 1], safety valves)");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        let (response, size) = send_request(
+        run_test(
             &mut stdin,
             &mut reader,
-            "tools/call",
+            "get_turns (sparse)",
             json!({
-                "name": "get_session_full",
+                "name": "get_turns",
                 "arguments": {
                     "session_id": sid,
-                    "cursor": null
+                    "turn_indices": [0, 1],
+                    "truncate": true,
+                    "max_chars_per_field": 15000,
+                    "max_steps_limit": 50
                 }
             }),
+            100_000,
+            verbose,
+            &mut total_warnings,
         )?;
-        print_result("get_session_full", size, 100_000, verbose, &response);
-        if size > 100_000 {
-            total_warnings += 1;
-        }
 
-        // Test 6: analyze_session
+        // Test 9: analyze_session
         println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 6: analyze_session");
+        println!("Test 9: analyze_session");
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        let (response, size) = send_request(
+        run_test(
             &mut stdin,
             &mut reader,
-            "tools/call",
+            "analyze_session",
             json!({
                 "name": "analyze_session",
                 "arguments": {
@@ -213,39 +219,17 @@ async fn handle_test(client: &Client, verbose: bool) -> Result<()> {
                     "include_loops": false
                 }
             }),
+            200_000,
+            verbose,
+            &mut total_warnings,
         )?;
-        print_result("analyze_session", size, 200_000, verbose, &response);
-        if size > 200_000 {
-            total_warnings += 1;
-        }
-
-        // Test 7: search_event_previews
-        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        println!("Test 7: search_event_previews (query: 'Read', limit: 5)");
-        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        let (response, size) = send_request(
-            &mut stdin,
-            &mut reader,
-            "tools/call",
-            json!({
-                "name": "search_event_previews",
-                "arguments": {
-                    "query": "Read",
-                    "limit": 5
-                }
-            }),
-        )?;
-        print_result("search_event_previews", size, 15_000, verbose, &response);
-        if size > 15_000 {
-            total_warnings += 1;
-        }
     } else {
         println!("\n⚠️  No sessions found. Skipping session-specific tests.");
     }
 
-    // Test 8: get_project_info
+    // Test 10: get_project_info
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Test 8: get_project_info");
+    println!("Test 10: get_project_info");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     let (response, size) = send_request(
         &mut stdin,
@@ -290,7 +274,7 @@ fn spawn_mcp_server() -> Result<Child> {
         .arg("serve")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::inherit()) // Enable stderr for debugging
         .spawn()?;
     Ok(child)
 }
@@ -312,7 +296,12 @@ fn send_request(
     stdin.flush()?;
 
     let mut response_line = String::new();
-    reader.read_line(&mut response_line)?;
+    let bytes_read = reader.read_line(&mut response_line)?;
+
+    if bytes_read == 0 {
+        anyhow::bail!("Server closed connection or returned empty response");
+    }
+
     let size = response_line.len();
 
     Ok((response_line, size))
@@ -353,4 +342,29 @@ fn get_first_session_id(client: &Client) -> Result<Option<String>> {
     let sessions = client.sessions().list(SessionFilter::all().limit(1))?;
 
     Ok(sessions.first().map(|s| s.id.clone()))
+}
+
+fn run_test(
+    stdin: &mut std::process::ChildStdin,
+    reader: &mut BufReader<std::process::ChildStdout>,
+    test_name: &str,
+    params: serde_json::Value,
+    threshold: usize,
+    verbose: bool,
+    total_warnings: &mut i32,
+) -> Result<()> {
+    match send_request(stdin, reader, "tools/call", params) {
+        Ok((response, size)) => {
+            print_result(test_name, size, threshold, verbose, &response);
+            if size > threshold {
+                *total_warnings += 1;
+            }
+            Ok(())
+        }
+        Err(e) => {
+            println!("⚠️  Test failed: {}", e);
+            *total_warnings += 1;
+            Ok(()) // Continue with next test
+        }
+    }
 }

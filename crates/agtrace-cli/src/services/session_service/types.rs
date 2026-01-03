@@ -92,7 +92,8 @@ impl EventMatch {
         };
 
         if text.len() > 200 {
-            format!("{}...", &text[..200])
+            let truncated: String = text.chars().take(200).collect();
+            format!("{}...", truncated)
         } else {
             text
         }

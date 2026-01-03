@@ -297,7 +297,7 @@ impl AgTraceServer {
                     "content": [
                         {
                             "type": "text",
-                            "text": serde_json::to_string_pretty(&content).unwrap_or_else(|_| content.to_string())
+                            "text": serde_json::to_string(&content).unwrap_or_else(|_| content.to_string())
                         }
                     ]
                 })),
