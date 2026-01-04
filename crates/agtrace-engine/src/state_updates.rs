@@ -174,6 +174,7 @@ mod tests {
             tool_call_id: Uuid::from_str("00000000-0000-0000-0000-000000000003").unwrap(),
             output: "err".to_string(),
             is_error: true,
+            agent_id: None,
         }));
 
         let updates = extract_state_updates(&event);
@@ -301,6 +302,7 @@ mod tests {
             tool_call_id: Uuid::from_str("00000000-0000-0000-0000-000000000009").unwrap(),
             output: "boom".into(),
             is_error: true,
+            agent_id: None,
         }));
 
         let mut state = SessionState::default();

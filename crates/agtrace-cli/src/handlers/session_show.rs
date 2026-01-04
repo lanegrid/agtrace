@@ -2,6 +2,7 @@ use crate::args::{OutputFormat, ViewModeArgs};
 use crate::handlers::HandlerContext;
 use crate::presentation::presenters;
 use agtrace_sdk::Client;
+use agtrace_sdk::types::StreamId;
 use anyhow::{Context, Result};
 
 pub fn handle(
@@ -18,11 +19,20 @@ pub fn handle(
         .metadata()?
         .ok_or_else(|| anyhow::anyhow!("Session metadata not available"))?;
 
-    let session = session_handle
-        .assemble()
+    // Use assemble_all() to get all streams (Main + Sidechain + Subagent)
+    let mut sessions = session_handle
+        .assemble_all()
         .with_context(|| format!("Failed to assemble session: {}", session_id))?;
 
-    let log_files = session_handle
+    // Sort: Main first, then others by stream_id string
+    sessions.sort_by(|a, b| match (&a.stream_id, &b.stream_id) {
+        (StreamId::Main, StreamId::Main) => std::cmp::Ordering::Equal,
+        (StreamId::Main, _) => std::cmp::Ordering::Less,
+        (_, StreamId::Main) => std::cmp::Ordering::Greater,
+        (a_id, b_id) => a_id.as_str().cmp(&b_id.as_str()),
+    });
+
+    let log_files: Vec<String> = session_handle
         .raw_files()?
         .into_iter()
         .map(|f| f.path)
@@ -37,16 +47,43 @@ pub fn handle(
         .get_limit(&model_name_key)
         .map(|spec| spec.effective_limit() as u32);
 
-    let view_model = presenters::present_session_analysis(
-        &session,
-        &metadata.session_id,
-        &metadata.provider,
-        metadata.project_hash.as_ref(),
-        metadata.project_root.as_deref(),
-        &model_name_display,
-        max_context,
-        log_files,
-    );
+    // Present each stream
+    for (idx, session) in sessions.iter().enumerate() {
+        if idx > 0 {
+            // Add separator between streams with spawn context
+            println!("\n{}", "─".repeat(80));
+            let spawn_info = session
+                .spawned_by
+                .as_ref()
+                .map(|ctx| {
+                    format!(
+                        " (spawned by Turn #{}, Step #{})",
+                        ctx.turn_index + 1,
+                        ctx.step_index + 1
+                    )
+                })
+                .unwrap_or_default();
+            println!(
+                "Additional Stream: {}{}\n",
+                session.stream_id.as_str(),
+                spawn_info
+            );
+        }
 
-    ctx.render(view_model)
+        let view_model = presenters::present_session_analysis(
+            session,
+            &metadata.session_id,
+            &metadata.provider,
+            metadata.project_hash.as_ref(),
+            metadata.project_root.as_deref(),
+            &model_name_display,
+            max_context,
+            // Only show log_files for the first (main) stream
+            if idx == 0 { log_files.clone() } else { vec![] },
+        );
+
+        ctx.render(view_model)?;
+    }
+
+    Ok(())
 }

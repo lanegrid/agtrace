@@ -3,12 +3,13 @@ use std::collections::HashMap;
 use super::stats::calculate_session_stats;
 use super::turn_builder::TurnBuilder;
 use super::types::*;
-use agtrace_types::{AgentEvent, EventPayload, StreamId};
+use agtrace_types::{AgentEvent, EventPayload, SpawnContext, StreamId};
 
 /// Assemble all streams from events into separate sessions.
 ///
 /// Returns a Vec of AgentSession, one per distinct StreamId found in the events.
 /// Each session contains only events from its respective stream.
+/// For sidechain sessions, attempts to link back to the parent turn/step via spawned_by.
 pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
     if events.is_empty() {
         return Vec::new();
@@ -23,13 +24,49 @@ pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
             .push(event.clone());
     }
 
+    // First, assemble the main session to build spawn context map
+    let main_events = streams.get(&StreamId::Main).cloned().unwrap_or_default();
+    let spawn_map = build_spawn_context_map(&main_events);
+
     // Assemble each stream into a session
     streams
         .into_iter()
         .filter_map(|(stream_id, stream_events)| {
-            assemble_session_for_stream(&stream_events, stream_id)
+            let spawned_by = match &stream_id {
+                StreamId::Sidechain { agent_id } => spawn_map.get(agent_id).cloned(),
+                _ => None,
+            };
+            assemble_session_for_stream(&stream_events, stream_id, spawned_by)
         })
         .collect()
+}
+
+/// Build a map from agent_id to SpawnContext by scanning ToolResult events with agent_id.
+fn build_spawn_context_map(events: &[AgentEvent]) -> HashMap<String, SpawnContext> {
+    let mut spawn_map = HashMap::new();
+
+    // Build turns first to get proper indices
+    let turns = build_turns(events);
+
+    for (turn_idx, turn) in turns.iter().enumerate() {
+        for (step_idx, step) in turn.steps.iter().enumerate() {
+            for tool in &step.tools {
+                if let Some(ref result) = tool.result {
+                    if let Some(ref agent_id) = result.content.agent_id {
+                        spawn_map.insert(
+                            agent_id.clone(),
+                            SpawnContext {
+                                turn_index: turn_idx,
+                                step_index: step_idx,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    spawn_map
 }
 
 /// Assemble the main stream from events into a session.
@@ -52,11 +89,15 @@ pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
         return None;
     }
 
-    assemble_session_for_stream(&main_events, StreamId::Main)
+    assemble_session_for_stream(&main_events, StreamId::Main, None)
 }
 
 /// Internal: Assemble a session from events belonging to a single stream.
-fn assemble_session_for_stream(events: &[AgentEvent], stream_id: StreamId) -> Option<AgentSession> {
+fn assemble_session_for_stream(
+    events: &[AgentEvent],
+    stream_id: StreamId,
+    spawned_by: Option<SpawnContext>,
+) -> Option<AgentSession> {
     if events.is_empty() {
         return None;
     }
@@ -71,6 +112,7 @@ fn assemble_session_for_stream(events: &[AgentEvent], stream_id: StreamId) -> Op
     Some(AgentSession {
         session_id,
         stream_id,
+        spawned_by,
         start_time,
         end_time,
         turns,

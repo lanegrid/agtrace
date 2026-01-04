@@ -110,6 +110,7 @@ pub(crate) fn normalize_gemini_session(
                                 output,
                                 tool_call_id: tool_call_uuid, // Reference to ToolCall UUID
                                 is_error,
+                                agent_id: None,
                             }),
                             Some(raw_value.clone()),
                             StreamId::Main,

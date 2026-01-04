@@ -51,6 +51,108 @@ pub(crate) struct UserRecord {
     pub version: Option<String>,
     #[serde(default)]
     pub thinking_metadata: Option<Value>,
+    /// Subagent execution result (contains agentId for sidechain linking)
+    #[serde(default, skip_serializing_if = "skip_empty_tool_use_result")]
+    pub tool_use_result: Option<ToolUseResult>,
+}
+
+/// Subagent execution result metadata
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ToolUseResult {
+    pub status: Option<String>,
+    pub prompt: Option<String>,
+    /// Agent ID linking this tool result to its sidechain (e.g., "be466c0a")
+    pub agent_id: Option<String>,
+}
+
+impl ToolUseResult {
+    /// Check if all fields are None (considered "empty" for serialization skip)
+    pub fn is_empty(&self) -> bool {
+        self.status.is_none() && self.prompt.is_none() && self.agent_id.is_none()
+    }
+}
+
+/// Skip serializing Option<ToolUseResult> if None or empty
+pub(crate) fn skip_empty_tool_use_result(opt: &Option<ToolUseResult>) -> bool {
+    match opt {
+        None => true,
+        Some(r) => r.is_empty(),
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for ToolUseResult {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::{MapAccess, Visitor};
+        use std::fmt;
+
+        struct ToolUseResultVisitor;
+
+        impl<'de> Visitor<'de> for ToolUseResultVisitor {
+            type Value = ToolUseResult;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map or any value for ToolUseResult")
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut result = ToolUseResult::default();
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "status" => result.status = map.next_value()?,
+                        "prompt" => result.prompt = map.next_value()?,
+                        "agentId" => result.agent_id = map.next_value()?,
+                        _ => {
+                            let _ = map.next_value::<serde::de::IgnoredAny>()?;
+                        }
+                    }
+                }
+                Ok(result)
+            }
+
+            // Handle string values (e.g., error messages)
+            fn visit_str<E>(self, _: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(ToolUseResult::default())
+            }
+
+            fn visit_string<E>(self, _: String) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(ToolUseResult::default())
+            }
+        }
+
+        deserializer.deserialize_any(ToolUseResultVisitor)
+    }
+}
+
+impl serde::Serialize for ToolUseResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+        let mut map = serializer.serialize_map(None)?;
+        if let Some(ref status) = self.status {
+            map.serialize_entry("status", status)?;
+        }
+        if let Some(ref prompt) = self.prompt {
+            map.serialize_entry("prompt", prompt)?;
+        }
+        if let Some(ref agent_id) = self.agent_id {
+            map.serialize_entry("agentId", agent_id)?;
+        }
+        map.end()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -167,9 +167,6 @@ mod tests {
             end_ts: None,
             snippet: Some("test1".to_string()),
             is_valid: true,
-            subagent_id: None,
-            subagent_type: None,
-            parent_session_id: None,
         };
 
         let session2 = SessionRecord {
@@ -180,9 +177,6 @@ mod tests {
             end_ts: None,
             snippet: Some("test2".to_string()),
             is_valid: true,
-            subagent_id: None,
-            subagent_type: None,
-            parent_session_id: None,
         };
 
         let session3 = SessionRecord {
@@ -193,9 +187,6 @@ mod tests {
             end_ts: None,
             snippet: Some("test3".to_string()),
             is_valid: true,
-            subagent_id: None,
-            subagent_type: None,
-            parent_session_id: None,
         };
 
         db.insert_or_update_session(&session1)?;
@@ -255,9 +246,6 @@ mod tests {
             end_ts: Some("2024-01-01T01:00:00Z".to_string()),
             snippet: Some("First session".to_string()),
             is_valid: true,
-            subagent_id: None,
-            subagent_type: None,
-            parent_session_id: None,
         };
 
         let session2 = SessionRecord {
@@ -268,9 +256,6 @@ mod tests {
             end_ts: Some("2024-01-02T01:00:00Z".to_string()),
             snippet: Some("Second session".to_string()),
             is_valid: true,
-            subagent_id: None,
-            subagent_type: None,
-            parent_session_id: None,
         };
 
         let session3 = SessionRecord {
@@ -281,9 +266,6 @@ mod tests {
             end_ts: Some("2024-01-03T01:00:00Z".to_string()),
             snippet: Some("Third session".to_string()),
             is_valid: true,
-            subagent_id: None,
-            subagent_type: None,
-            parent_session_id: None,
         };
 
         db.insert_or_update_session(&session1)?;

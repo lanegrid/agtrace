@@ -307,6 +307,9 @@ impl SessionHandle {
     }
 
     /// Assemble events into a structured session.
+    ///
+    /// Returns only the main stream. For multi-stream sessions (with sidechains
+    /// or subagents), use `assemble_all()` instead.
     pub fn assemble(&self) -> Result<AgentSession> {
         let events = self.events()?;
         agtrace_engine::assemble_session(&events).ok_or_else(|| {
@@ -314,6 +317,21 @@ impl SessionHandle {
                 "Failed to assemble session: insufficient or invalid events".to_string(),
             )
         })
+    }
+
+    /// Assemble all streams from events into separate sessions.
+    ///
+    /// Unlike `assemble()` which returns only the main stream, this method
+    /// returns all streams (Main, Sidechain, Subagent) found in the session's events.
+    pub fn assemble_all(&self) -> Result<Vec<AgentSession>> {
+        let events = self.events()?;
+        let sessions = agtrace_engine::assemble_sessions(&events);
+        if sessions.is_empty() {
+            return Err(Error::InvalidInput(
+                "Failed to assemble session: insufficient or invalid events".to_string(),
+            ));
+        }
+        Ok(sessions)
     }
 
     /// Export session with specified strategy.

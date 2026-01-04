@@ -100,6 +100,15 @@ pub struct SessionMetadata {
 // 1. Session (entire conversation)
 // ==========================================
 
+/// Context about how a sidechain was spawned from a parent session.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpawnContext {
+    /// Turn index (0-based) in the parent session where this sidechain was spawned.
+    pub turn_index: usize,
+    /// Step index (0-based) within the turn where the Task tool was called.
+    pub step_index: usize,
+}
+
 /// Complete agent conversation session assembled from normalized events.
 ///
 /// Represents a full conversation timeline with the agent, containing all
@@ -112,6 +121,10 @@ pub struct AgentSession {
     /// Stream identifier for multi-stream sessions.
     /// Indicates whether this is the main conversation, a sidechain, or a subagent.
     pub stream_id: StreamId,
+    /// For sidechain sessions: context about where this was spawned from in the parent session.
+    /// None for main stream sessions or sidechains without identifiable parent context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawned_by: Option<SpawnContext>,
     /// When the session started (first event timestamp).
     pub start_time: DateTime<Utc>,
     /// When the session ended (last event timestamp), if completed.

@@ -374,6 +374,7 @@ impl ScenarioBuilder {
                 output: output_str,
                 tool_call_id: call_id,
                 is_error: false,
+                agent_id: None,
             }),
         });
         self
@@ -433,6 +434,7 @@ impl ScenarioBuilder {
                 ),
                 tool_call_id: call_id,
                 is_error: false,
+                agent_id: None,
             }),
         });
         self
@@ -486,6 +488,7 @@ impl ScenarioBuilder {
                 output: output_str,
                 tool_call_id: call_id,
                 is_error,
+                agent_id: None,
             }),
         });
         self

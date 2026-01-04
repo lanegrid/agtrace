@@ -224,6 +224,7 @@ expression: metadata_json_pretty
   "message": {
     "content": [
       {
+        "agentId": null,
         "content": "",
         "is_error": false,
         "tool_use_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
@@ -365,6 +366,7 @@ expression: metadata_json_pretty
   "message": {
     "content": [
       {
+        "agentId": null,
         "content": "File created successfully at: /Users/test_user/agent-sample/myapp/hoge.py",
         "is_error": false,
         "tool_use_id": "toolu_0154S2y9CNPch89dTHGJpmnx",
@@ -639,6 +641,7 @@ expression: metadata_json_pretty
   "message": {
     "content": [
       {
+        "agentId": null,
         "content": "error: target shim binary not found",
         "is_error": true,
         "tool_use_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
@@ -780,6 +783,7 @@ expression: metadata_json_pretty
   "message": {
     "content": [
       {
+        "agentId": null,
         "content": "2",
         "is_error": false,
         "tool_use_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",

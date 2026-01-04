@@ -84,11 +84,13 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     .unwrap_or("")
                                     .to_string();
 
-                                // Subagent information (agent_id) is extracted during header scanning
-                                // (see io::extract_claude_header) and stored in the index database.
-                                // The agent_id field here contains the subagent identifier (e.g., "ba2ed465")
-                                // when this ToolResult is from a subagent execution.
-                                let _ = agent_id; // Acknowledge the field exists for documentation
+                                // Prefer agent_id from content block, fall back to tool_use_result
+                                let effective_agent_id = agent_id.clone().or_else(|| {
+                                    user_record
+                                        .tool_use_result
+                                        .as_ref()
+                                        .and_then(|r| r.agent_id.clone())
+                                });
 
                                 builder.build_and_push(
                                     &mut events,
@@ -99,6 +101,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         output,
                                         tool_call_id,
                                         is_error: *is_error,
+                                        agent_id: effective_agent_id,
                                     }),
                                     raw_value.clone(),
                                     stream_id.clone(),
@@ -201,6 +204,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         output: output.clone(),
                                         tool_call_id,
                                         is_error: *is_error,
+                                        agent_id: None,
                                     }),
                                     raw_value.clone(),
                                     stream_id.clone(),
