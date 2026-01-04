@@ -10,10 +10,10 @@
 # This script does everything needed for a release:
 #   1. Validates working directory
 #   2. Runs all tests
-#   3. Validates and auto-fixes README version references
-#   4. Updates version numbers
-#   5. Generates CHANGELOG
-#   6. Runs fmt and clippy
+#   3. Runs fmt and clippy
+#   4. Validates and auto-fixes README version references
+#   5. Updates version numbers
+#   6. Generates CHANGELOG
 #   7. Creates commit and git tag
 #
 # Idempotency: This script can be safely re-run if it fails partway through.
@@ -141,7 +141,15 @@ fi
 echo -e "${GREEN}✓ Tests passed${NC}"
 echo
 
-echo -e "${BLUE}Step 3/7: Checking README sync${NC}"
+echo -e "${BLUE}Step 3/7: Running checks${NC}"
+if [ "$DRY_RUN" = false ]; then
+    cargo fmt --all
+    cargo clippy --all-targets -- -D warnings
+fi
+echo -e "${GREEN}✓ Formatting and linting passed${NC}"
+echo
+
+echo -e "${BLUE}Step 4/7: Checking README sync${NC}"
 if [ "$DRY_RUN" = false ]; then
     # Use --fix to automatically update version references in READMEs
     ./scripts/check-readme-sync.sh --fix
@@ -149,7 +157,7 @@ fi
 echo -e "${GREEN}✓ README validation passed${NC}"
 echo
 
-echo -e "${BLUE}Step 4/7: Updating version numbers${NC}"
+echo -e "${BLUE}Step 5/7: Updating version numbers${NC}"
 if [ "$RESUME_MODE" = true ]; then
     echo -e "${YELLOW}  Already updated (resume mode), skipping...${NC}"
 elif [ "$DRY_RUN" = false ]; then
@@ -166,7 +174,7 @@ fi
 echo -e "${GREEN}✓ Version numbers updated${NC}"
 echo
 
-echo -e "${BLUE}Step 5/7: Generating CHANGELOG${NC}"
+echo -e "${BLUE}Step 6/7: Generating CHANGELOG${NC}"
 if [ "$DRY_RUN" = false ]; then
     # Get the last tag
     LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -182,14 +190,6 @@ else
     echo "  Would run: git cliff ... --tag v$NEW_VERSION --prepend CHANGELOG.md"
 fi
 echo -e "${GREEN}✓ CHANGELOG generated${NC}"
-echo
-
-echo -e "${BLUE}Step 6/7: Running checks${NC}"
-if [ "$DRY_RUN" = false ]; then
-    cargo fmt --all
-    cargo clippy --all-targets -- -D warnings
-fi
-echo -e "${GREEN}✓ Formatting and linting passed${NC}"
 echo
 
 echo -e "${BLUE}Step 7/7: Summary${NC}"
