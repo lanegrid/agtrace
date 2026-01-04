@@ -4,6 +4,9 @@ expression: session
 ---
 {
   "session_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "start_time": "2025-12-09T19:55:16.336Z",
   "end_time": "2025-12-09T19:56:06.181Z",
   "turns": [

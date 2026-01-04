@@ -4,6 +4,9 @@ expression: session
 ---
 {
   "session_id": "00000000-0000-0000-0000-000000000001",
+  "stream_id": {
+    "stream_type": "main"
+  },
   "start_time": "2025-12-14T00:00:00Z",
   "end_time": "2025-12-14T00:00:00Z",
   "turns": [

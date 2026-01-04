@@ -90,14 +90,11 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                         timestamp = Some(meta.timestamp.clone());
                     }
                     // Extract subagent information from source field
-                    if subagent_type.is_none() {
-                        if let super::schema::SessionSource::Subagent { subagent } =
+                    if subagent_type.is_none()
+                        && let super::schema::SessionSource::Subagent { subagent } =
                             &meta.payload.source
-                        {
-                            subagent_type = Some(subagent.clone());
-                            // For Codex subagents, the parent session ID is typically in metadata
-                            // For now, we don't have parent_session_id in the schema yet
-                        }
+                    {
+                        subagent_type = Some(subagent.clone());
                     }
                 }
                 CodexRecord::TurnContext(turn) => {

@@ -4,7 +4,9 @@ use uuid::Uuid;
 
 use super::project::ProjectHash;
 use super::token_usage::ContextWindowUsage;
-use crate::{MessagePayload, ReasoningPayload, ToolCallPayload, ToolResultPayload, UserPayload};
+use crate::{
+    MessagePayload, ReasoningPayload, StreamId, ToolCallPayload, ToolResultPayload, UserPayload,
+};
 
 /// Source of the agent log (provider-agnostic identifier)
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,6 +109,9 @@ pub struct SessionMetadata {
 pub struct AgentSession {
     /// Unique session identifier.
     pub session_id: Uuid,
+    /// Stream identifier for multi-stream sessions.
+    /// Indicates whether this is the main conversation, a sidechain, or a subagent.
+    pub stream_id: StreamId,
     /// When the session started (first event timestamp).
     pub start_time: DateTime<Utc>,
     /// When the session ended (last event timestamp), if completed.

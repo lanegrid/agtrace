@@ -14,7 +14,7 @@ pub use domain::{EventFilters, SessionState, TokenLimit, TokenLimits, filter_eve
 pub use session::{
     AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionAnalysisExt,
     SessionStats, SessionSummary, ToolCallBlock, ToolExecution, ToolResultBlock, TurnMetrics,
-    TurnStats, UserMessage, assemble_session,
+    TurnStats, UserMessage, assemble_session, assemble_sessions,
 };
 pub use state_updates::{StateUpdates, extract_state_updates};
 

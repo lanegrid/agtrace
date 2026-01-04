@@ -1,15 +1,47 @@
+use std::collections::HashMap;
+
 use super::stats::calculate_session_stats;
 use super::turn_builder::TurnBuilder;
 use super::types::*;
 use agtrace_types::{AgentEvent, EventPayload, StreamId};
 
+/// Assemble all streams from events into separate sessions.
+///
+/// Returns a Vec of AgentSession, one per distinct StreamId found in the events.
+/// Each session contains only events from its respective stream.
+pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
+    if events.is_empty() {
+        return Vec::new();
+    }
+
+    // Group events by stream_id
+    let mut streams: HashMap<StreamId, Vec<AgentEvent>> = HashMap::new();
+    for event in events {
+        streams
+            .entry(event.stream_id.clone())
+            .or_default()
+            .push(event.clone());
+    }
+
+    // Assemble each stream into a session
+    streams
+        .into_iter()
+        .filter_map(|(stream_id, stream_events)| {
+            assemble_session_for_stream(&stream_events, stream_id)
+        })
+        .collect()
+}
+
+/// Assemble the main stream from events into a session.
+///
+/// This is the backward-compatible function that filters to Main stream only.
+/// For multi-stream support, use `assemble_sessions()` instead.
 pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
     if events.is_empty() {
         return None;
     }
 
-    // Filter out sidechain/subagent events by default
-    // Only keep main stream events for primary session analysis
+    // Filter to main stream events only
     let main_events: Vec<_> = events
         .iter()
         .filter(|e| matches!(e.stream_id, StreamId::Main))
@@ -20,15 +52,25 @@ pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
         return None;
     }
 
-    let session_id = main_events.first()?.session_id;
-    let start_time = main_events.first()?.timestamp;
-    let end_time = main_events.last().map(|e| e.timestamp);
+    assemble_session_for_stream(&main_events, StreamId::Main)
+}
 
-    let turns = build_turns(&main_events);
+/// Internal: Assemble a session from events belonging to a single stream.
+fn assemble_session_for_stream(events: &[AgentEvent], stream_id: StreamId) -> Option<AgentSession> {
+    if events.is_empty() {
+        return None;
+    }
+
+    let session_id = events.first()?.session_id;
+    let start_time = events.first()?.timestamp;
+    let end_time = events.last().map(|e| e.timestamp);
+
+    let turns = build_turns(events);
     let stats = calculate_session_stats(&turns, start_time, end_time);
 
     Some(AgentSession {
         session_id,
+        stream_id,
         start_time,
         end_time,
         turns,

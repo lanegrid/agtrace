@@ -6,7 +6,7 @@ pub mod summary;
 mod turn_builder;
 pub mod types;
 
-pub use assembler::assemble_session;
+pub use assembler::{assemble_session, assemble_sessions};
 pub use extensions::SessionAnalysisExt;
 pub use summary::{SessionSummary, summarize};
 pub use types::{

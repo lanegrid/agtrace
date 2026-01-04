@@ -122,12 +122,13 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                     // Also check ToolResult with agentId field
                     if subagent_id.is_none() {
                         for content in &user.message.content {
-                            if let super::schema::UserContent::ToolResult { agent_id, .. } = content
+                            if let super::schema::UserContent::ToolResult {
+                                agent_id: Some(aid),
+                                ..
+                            } = content
                             {
-                                if let Some(aid) = agent_id {
-                                    subagent_id = Some(aid.clone());
-                                    break;
-                                }
+                                subagent_id = Some(aid.clone());
+                                break;
                             }
                         }
                     }

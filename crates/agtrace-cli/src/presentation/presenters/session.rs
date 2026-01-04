@@ -92,6 +92,7 @@ fn add_session_list_guidance(
 }
 
 /// Present session analysis with context-aware metrics
+#[allow(clippy::too_many_arguments)]
 pub fn present_session_analysis(
     session: &AgentSession,
     session_id: &str,
@@ -116,6 +117,7 @@ pub fn present_session_analysis(
     add_session_analysis_guidance(result)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_session_analysis_view(
     session: &AgentSession,
     session_id: &str,
