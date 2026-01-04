@@ -294,3 +294,110 @@ async fn test_codex_subagent_metadata_api() -> Result<()> {
 
     Ok(())
 }
+
+// =============================================================================
+// TOP-LEVEL FILTERING TESTS
+// =============================================================================
+
+#[tokio::test]
+async fn test_codex_top_level_only_filter_excludes_children() -> Result<()> {
+    let mut world = TestWorld::new().with_project("test-project");
+
+    world.enable_provider(TestProvider::Codex)?;
+    world.set_cwd("test-project");
+
+    // Add parent and matched subagent
+    world.add_session_from_sample(
+        TestProvider::Codex,
+        "codex_parent_with_spawns.jsonl",
+        "rollout-parent.jsonl",
+    )?;
+    world.add_session_from_sample(
+        TestProvider::Codex,
+        "codex_subagent_matched.jsonl",
+        "rollout-subagent.jsonl",
+    )?;
+
+    let client = initialize_workspace(&world).await?;
+
+    // Default filter (top_level_only = true) should exclude the child session
+    let top_level_sessions = client.sessions().list(SessionFilter::all())?;
+    assert_eq!(
+        top_level_sessions.len(),
+        1,
+        "Only parent should appear with top_level_only"
+    );
+    assert!(
+        top_level_sessions[0].id.contains("parent-spawn-001"),
+        "Should be the parent session"
+    );
+
+    // With include_children(), both sessions should appear
+    let all_sessions = client
+        .sessions()
+        .list(SessionFilter::all().include_children())?;
+    assert_eq!(all_sessions.len(), 2, "Both sessions should appear");
+
+    Ok(())
+}
+
+// =============================================================================
+// CHILD SESSIONS API TEST
+// =============================================================================
+
+#[tokio::test]
+async fn test_codex_child_sessions_api() -> Result<()> {
+    let mut world = TestWorld::new().with_project("test-project");
+
+    world.enable_provider(TestProvider::Codex)?;
+    world.set_cwd("test-project");
+
+    // Add parent and two matched subagents
+    world.add_session_from_sample(
+        TestProvider::Codex,
+        "codex_parent_with_spawns.jsonl",
+        "rollout-parent.jsonl",
+    )?;
+    world.add_session_from_sample(
+        TestProvider::Codex,
+        "codex_subagent_matched.jsonl",
+        "rollout-sub1.jsonl",
+    )?;
+    world.add_session_from_sample(
+        TestProvider::Codex,
+        "codex_subagent_matched_2.jsonl",
+        "rollout-sub2.jsonl",
+    )?;
+
+    let client = initialize_workspace(&world).await?;
+
+    // Find the parent session
+    let sessions = client.sessions().list(SessionFilter::all())?;
+    let parent = sessions
+        .iter()
+        .find(|s| s.id.contains("parent-spawn-001"))
+        .expect("Parent should exist");
+
+    // Get child sessions via the API
+    let parent_handle = client.sessions().get(&parent.id)?;
+    let children = parent_handle.child_sessions()?;
+
+    assert_eq!(children.len(), 2, "Parent should have 2 child sessions");
+
+    // Verify child session IDs
+    let child_ids: Vec<&str> = children.iter().map(|c| c.session_id.as_str()).collect();
+    assert!(
+        child_ids
+            .iter()
+            .any(|id| id.contains("subagent-matched-001")),
+        "First subagent should be in children"
+    );
+    assert!(
+        child_ids
+            .iter()
+            .any(|id| id.contains("subagent-matched-002")),
+        "Second subagent should be in children"
+    );
+
+    Ok(())
+}
