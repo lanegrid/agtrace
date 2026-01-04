@@ -493,13 +493,10 @@ fn handle_session_watch(
         // First, wait for at least one event (with timeout)
         match rx_stream.recv_timeout(poll_timeout) {
             Ok(event) => {
-                if let Some(disconnect) =
-                    process_workspace_event(event, &mut handler, &mut received_events)
+                if process_workspace_event(event, &mut handler, &mut received_events) == Some(true)
                 {
-                    if disconnect {
-                        // For session watch, disconnect means end
-                        should_break = true;
-                    }
+                    // For session watch, disconnect means end
+                    should_break = true;
                 }
             }
             Err(RecvTimeoutError::Timeout) => {
@@ -513,13 +510,10 @@ fn handle_session_watch(
         // Drain all remaining pending events (non-blocking)
         if !should_break {
             while let Ok(event) = rx_stream.try_recv() {
-                if let Some(disconnect) =
-                    process_workspace_event(event, &mut handler, &mut received_events)
+                if process_workspace_event(event, &mut handler, &mut received_events) == Some(true)
                 {
-                    if disconnect {
-                        should_break = true;
-                        break;
-                    }
+                    should_break = true;
+                    break;
                 }
             }
         }

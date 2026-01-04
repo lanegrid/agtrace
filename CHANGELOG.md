@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2] - 2026-01-04
+
+### Bug Fixes
+
+- *(providers)* Extract agentId from UserRecord for Claude subagents ([c092f2d](https://github.com/lanegrid/agtrace/commit/c092f2da5b2bca4a3ccf1237f163b5bd221ac5c1))
+
+- *(cli)* Display sidechain link in Task tool results instead of (empty) ([c8be7fd](https://github.com/lanegrid/agtrace/commit/c8be7fd530cc2ba75d703ff85e9b408092c8c8ad))
+
+- *(providers)* Handle array type in toolUseResult deserialization ([3134b8c](https://github.com/lanegrid/agtrace/commit/3134b8cca2c0867b023335d04582e292f95aed63))
+
+- *(tests)* Add include_children() to spawn_context tests for top_level_only filter ([8058c91](https://github.com/lanegrid/agtrace/commit/8058c911139bd3746c88c39316445fdcc3cadf25))
+
+- *(tests)* Add missing top_level_only argument to list_sessions calls ([5ac0e17](https://github.com/lanegrid/agtrace/commit/5ac0e1750eb568ab4429ebaa30a2682b429f3282))
+
+- *(index)* Show actionable error message for schema mismatch ([7b4a1b7](https://github.com/lanegrid/agtrace/commit/7b4a1b7b8879408f08917a265cdd012acd5a6b14))
+
+
+### Features
+
+- *(session)* Add log_files display to session show command ([ea42163](https://github.com/lanegrid/agtrace/commit/ea421635d4dcd452da742272719fe0b033f6b1ba))
+
+- *(subagent)* Add subagent tracking infrastructure across all providers ([f0de519](https://github.com/lanegrid/agtrace/commit/f0de519ff43a672db93dfc5ea76b6e4de81aeccd))
+
+- *(session)* Add stream_id field to AgentSession for multi-stream support(Closes #35) ([e19ea69](https://github.com/lanegrid/agtrace/commit/e19ea69ec90a073cbe19c4909e1fed7daa144634))
+
+- *(cli)* Display stream_id in session show command ([8b118e4](https://github.com/lanegrid/agtrace/commit/8b118e4537ec96fd50bed7fc06c06806aeca4cff))
+
+- *(session)* Link sidechains to parent turn/step via spawned_by context ([27db190](https://github.com/lanegrid/agtrace/commit/27db19069151d59231a98dfd0256111ab3e07d61))
+
+- *(codex)* Add subagent multi-stream support ([2f20f66](https://github.com/lanegrid/agtrace/commit/2f20f6622394bba6eed0c24a2255f4751c8255ad))
+
+- *(codex)* Add subagent parent linking via timestamp correlation ([0cca643](https://github.com/lanegrid/agtrace/commit/0cca6432fe6e9ebf00d84f92b732221539377cb6))
+
+- *(cli)* Filter child sessions from session list by default ([f2143aa](https://github.com/lanegrid/agtrace/commit/f2143aa6a191c7e3243788b082d310d829cf5a4e))
+
+
+### Performance
+
+- *(watch)* Reduce poll interval from 500ms to 100ms for faster event detection ([684d103](https://github.com/lanegrid/agtrace/commit/684d10369e2d82bceb8c0f49b6004bdc11af404c))
+
+
+### Refactor
+
+- *(schema)* Remove session-level subagent fields for event-level stream tracking (v4) ([ce2b262](https://github.com/lanegrid/agtrace/commit/ce2b2621c5b7490bfab251d4af44631238f44248))
+
+- *(cli)* Move session assembly to runtime and improve layer responsibilities ([424813f](https://github.com/lanegrid/agtrace/commit/424813f56b9e975055551ff4a8b8e18505abde95))
+
+- *(watch)* Batch event processing and extract common handlers ([14cc8b4](https://github.com/lanegrid/agtrace/commit/14cc8b4fccae57902ee884fa0ab85fcb998559e9))
+
+
+### Testing
+
+- *(subagent)* Add tests for SessionSource and header extraction ([75f9463](https://github.com/lanegrid/agtrace/commit/75f94638dc2daf5731bf6aa95bdae4b54ac05e58))
+
+- *(sdk)* Add edge case tests for codex subagent filtering and child_sessions API ([168fcab](https://github.com/lanegrid/agtrace/commit/168fcaba2743e122ade93463f71fe099dd1ff5d5))
+
+- *(index)* Add integration tests for schema migration ([ab8b7b2](https://github.com/lanegrid/agtrace/commit/ab8b7b28783b2fc6a2ceeddff9c9f619d2faf1e2))
+
+
 ## [0.5.1] - 2026-01-04
 
 ### Bug Fixes
