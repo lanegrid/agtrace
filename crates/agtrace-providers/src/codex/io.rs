@@ -188,3 +188,24 @@ pub fn is_empty_codex_session(path: &Path) -> bool {
 
     line_count <= 2 && !has_event
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_subagent_header() {
+        // Create a temporary file with subagent session_meta
+        let tmpfile = std::env::temp_dir().join("test_subagent.jsonl");
+        std::fs::write(&tmpfile, r#"{"timestamp":"2025-01-01T00:00:00Z","type":"session_meta","payload":{"id":"test-id","timestamp":"2025-01-01T00:00:00Z","cwd":"/test","originator":"test","cli_version":"1.0.0","source":{"subagent":"review"}}}
+"#).unwrap();
+
+        let header = extract_codex_header(&tmpfile).unwrap();
+        
+        assert_eq!(header.session_id, Some("test-id".to_string()));
+        assert_eq!(header.subagent_type, Some("review".to_string()));
+        assert!(header.parent_session_id.is_none());
+
+        std::fs::remove_file(&tmpfile).unwrap();
+    }
+}

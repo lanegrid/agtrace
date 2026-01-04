@@ -11,6 +11,41 @@ pub(crate) enum SessionSource {
     Cli(String),
 }
 
+#[cfg(test)]
+mod session_source_tests {
+    use super::*;
+
+    #[test]
+    fn test_session_source_subagent_parsing() {
+        let json = r#"{"subagent":"review"}"#;
+        let source: SessionSource = serde_json::from_str(json).unwrap();
+
+        match source {
+            SessionSource::Subagent { subagent } => {
+                assert_eq!(subagent, "review");
+            }
+            SessionSource::Cli(s) => {
+                panic!("Expected Subagent but got Cli: {}", s);
+            }
+        }
+    }
+
+    #[test]
+    fn test_session_source_cli_parsing() {
+        let json = r#""cli""#;
+        let source: SessionSource = serde_json::from_str(json).unwrap();
+
+        match source {
+            SessionSource::Cli(s) => {
+                assert_eq!(s, "cli");
+            }
+            SessionSource::Subagent { .. } => {
+                panic!("Expected Cli but got Subagent");
+            }
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
