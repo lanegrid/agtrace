@@ -1,6 +1,6 @@
 use crate::runtime::events::{StreamEvent, WorkspaceEvent};
 use crate::{Error, Result};
-use agtrace_engine::{AgentSession, assemble_session};
+use agtrace_engine::{AgentSession, assemble_sessions};
 use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
@@ -16,7 +16,8 @@ struct StreamContext {
     provider: Arc<ProviderAdapter>,
     file_states: HashMap<PathBuf, usize>,
     all_events: Vec<AgentEvent>,
-    session: Option<AgentSession>,
+    /// Assembled sessions (main + child streams)
+    sessions: Vec<AgentSession>,
 }
 
 impl StreamContext {
@@ -25,7 +26,7 @@ impl StreamContext {
             provider,
             file_states: HashMap::new(),
             all_events: Vec::new(),
-            session: None,
+            sessions: Vec::new(),
         }
     }
 
@@ -41,7 +42,7 @@ impl StreamContext {
         events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
         self.all_events = events.clone();
-        self.session = assemble_session(&self.all_events);
+        self.sessions = assemble_sessions(&self.all_events);
 
         Ok(events)
     }
@@ -54,7 +55,7 @@ impl StreamContext {
             self.file_states
                 .insert(path.to_path_buf(), all_file_events.len());
             self.all_events = all_file_events.clone();
-            self.session = assemble_session(&self.all_events);
+            self.sessions = assemble_sessions(&self.all_events);
             return Ok(all_file_events);
         }
 
@@ -66,7 +67,7 @@ impl StreamContext {
         self.all_events.extend(new_events.clone());
         self.all_events
             .sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-        self.session = assemble_session(&self.all_events);
+        self.sessions = assemble_sessions(&self.all_events);
 
         Ok(new_events)
     }
@@ -173,7 +174,7 @@ impl SessionStreamer {
         {
             let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
                 events: events.clone(),
-                session: context.session.clone(),
+                sessions: context.sessions.clone(),
             }));
         }
 
@@ -224,7 +225,7 @@ fn handle_fs_event(
             {
                 let _ = tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
                     events: new_events,
-                    session: context.session.clone(),
+                    sessions: context.sessions.clone(),
                 }));
             }
         }

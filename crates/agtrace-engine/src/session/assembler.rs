@@ -51,16 +51,16 @@ fn build_spawn_context_map(events: &[AgentEvent]) -> HashMap<String, SpawnContex
     for (turn_idx, turn) in turns.iter().enumerate() {
         for (step_idx, step) in turn.steps.iter().enumerate() {
             for tool in &step.tools {
-                if let Some(ref result) = tool.result {
-                    if let Some(ref agent_id) = result.content.agent_id {
-                        spawn_map.insert(
-                            agent_id.clone(),
-                            SpawnContext {
-                                turn_index: turn_idx,
-                                step_index: step_idx,
-                            },
-                        );
-                    }
+                if let Some(ref result) = tool.result
+                    && let Some(ref agent_id) = result.content.agent_id
+                {
+                    spawn_map.insert(
+                        agent_id.clone(),
+                        SpawnContext {
+                            turn_index: turn_idx,
+                            step_index: step_idx,
+                        },
+                    );
                 }
             }
         }

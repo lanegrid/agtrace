@@ -214,9 +214,16 @@ pub(crate) enum EventMsgPayload {
 }
 
 /// Payload for entered_review_mode event (subagent spawn signal)
+///
+/// Codex has two formats:
+/// - Old (cli_version < 0.77): { "prompt": "...", "user_facing_hint": "..." }
+/// - New (cli_version >= 0.77): { "target": {...}, "user_facing_hint": "..." }
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct EnteredReviewModePayload {
-    pub prompt: String,
+    #[serde(default)]
+    pub prompt: Option<String>,
+    #[serde(default)]
+    pub target: Option<serde_json::Value>,
     #[serde(default)]
     pub user_facing_hint: Option<String>,
 }

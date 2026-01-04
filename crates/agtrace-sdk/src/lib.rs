@@ -123,8 +123,8 @@ pub use agtrace_engine::AgentSession;
 // Public facade
 pub use analysis::{AnalysisReport, Insight, Lens, Severity};
 pub use client::{
-    Client, ClientBuilder, InsightClient, ProjectClient, SessionClient, SessionHandle,
-    SystemClient, WatchClient,
+    ChildSessionInfo, Client, ClientBuilder, InsightClient, ProjectClient, SessionClient,
+    SessionHandle, SystemClient, WatchClient,
 };
 pub use error::{Error, Result};
 pub use types::{

@@ -1,5 +1,6 @@
 use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
+use agtrace_sdk::SessionHandle;
 use agtrace_sdk::types::{
     AgentEvent, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs, MessagePayload,
     ReasoningPayload, SessionState, StreamId, TokenInput, TokenOutput, TokenUsagePayload,
@@ -144,14 +145,15 @@ fn run_simulation(
         let notification = current_notification.as_ref();
 
         let events_vec: Vec<_> = events_buffer.iter().cloned().collect();
-        // Using SessionHandle::from_events() for demo simulation (no Client)
-        let handle = agtrace_sdk::SessionHandle::from_events(events_vec);
-        let assembled_session = handle.assemble().ok();
+        // Assemble all sessions (main + child streams) for demo
+        let assembled_sessions = SessionHandle::from_events(events_vec)
+            .assemble_all()
+            .unwrap_or_default();
 
         let vm = build_screen_view_model(
             &state,
             &events_buffer,
-            assembled_session.as_ref(),
+            &assembled_sessions,
             max_context,
             notification.map(|s| s.as_str()),
         );

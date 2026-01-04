@@ -1,0 +1,2 @@
+{"timestamp":"2026-01-04T12:05:09.500Z","type":"session_meta","payload":{"id":"019b88e5-a2e4-7b90-8953-38fce393c653","timestamp":"2026-01-04T12:05:09.476Z","cwd":"/test/project","originator":"codex_cli_rs","cli_version":"0.77.0","instructions":"test","source":{"subagent":"review"},"model_provider":"openai"}}
+{"timestamp":"2026-01-04T12:05:09.500Z","type":"event_msg","payload":{"type":"user_message","message":"Review the code changes","images":[]}}

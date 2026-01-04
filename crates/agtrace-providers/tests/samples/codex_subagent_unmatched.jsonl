@@ -1,0 +1,4 @@
+{"timestamp":"2025-01-01T00:00:02.000Z","type":"session_meta","payload":{"id":"subagent-orphan-001","timestamp":"2025-01-01T00:00:02.000Z","cwd":"/Users/test_user/agent-sample","originator":"codex_cli_rs","cli_version":"0.66.0","instructions":null,"source":{"subagent":"review"},"model_provider":"openai"}}
+{"timestamp":"2025-01-01T00:00:02.050Z","type":"turn_context","payload":{"cwd":"/Users/test_user/agent-sample","approval_policy":"on-request","sandbox_policy":{"type":"workspace-write"},"model":"gpt-5.1-codex-max","effort":"medium","summary":"auto"}}
+{"timestamp":"2025-01-01T00:00:02.100Z","type":"event_msg","payload":{"type":"agent_reasoning","text":"Orphan review..."}}
+{"timestamp":"2025-01-01T00:00:02.200Z","type":"event_msg","payload":{"type":"agent_message","message":"Orphan review complete."}}

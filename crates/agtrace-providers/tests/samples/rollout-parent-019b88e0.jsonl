@@ -1,0 +1,4 @@
+{"timestamp":"2026-01-04T11:59:02.952Z","type":"session_meta","payload":{"id":"019b88e0-0b0f-7bb0-a9ba-5cc2d8dffde9","timestamp":"2026-01-04T11:59:02.927Z","cwd":"/test/project","originator":"codex_cli_rs","cli_version":"0.77.0","instructions":"test","source":"cli","model_provider":"openai"}}
+{"timestamp":"2026-01-04T12:01:36.936Z","type":"event_msg","payload":{"type":"user_message","message":"ls","images":[]}}
+{"timestamp":"2026-01-04T12:01:36.971Z","type":"turn_context","payload":{"cwd":"/test/project","approval_policy":"on-request","sandbox_policy":{"type":"workspace-write","network_access":false,"exclude_tmpdir_env_var":false,"exclude_slash_tmp":false},"model":"gpt-5.2-codex","effort":"medium","summary":"auto"}}
+{"timestamp":"2026-01-04T12:05:09.476Z","type":"event_msg","payload":{"type":"entered_review_mode","target":{"type":"baseBranch","branch":"main"},"user_facing_hint":"changes against 'main'"}}

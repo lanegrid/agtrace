@@ -134,6 +134,11 @@ impl<'a> IndexService<'a> {
                 all_projects: matches!(scope, agtrace_types::ProjectScope::All),
             });
 
+            // Sort sessions: parents (no parent_session_id) before children
+            // This ensures FK constraint on parent_session_id is satisfied
+            let mut filtered_sessions = filtered_sessions;
+            filtered_sessions.sort_by_key(|s| s.parent_session_id.is_some());
+
             for session in filtered_sessions {
                 // Collect all file paths for this session
                 let mut all_files = vec![session.main_file.display().to_string()];

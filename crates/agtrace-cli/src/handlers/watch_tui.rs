@@ -29,10 +29,10 @@ pub enum WatchTarget {
 struct WatchHandler {
     /// Session state
     state: SessionState,
-    /// Event buffer
+    /// Event buffer (all streams combined)
     events: VecDeque<agtrace_sdk::types::AgentEvent>,
-    /// Assembled session (for turn metrics)
-    assembled_session: Option<AgentSession>,
+    /// Assembled sessions (main + child streams)
+    assembled_sessions: Vec<AgentSession>,
     /// Max context window
     max_context: Option<u32>,
     /// Notification message (for session switching, etc.)
@@ -52,7 +52,7 @@ impl WatchHandler {
         Self {
             state,
             events: VecDeque::new(),
-            assembled_session: None,
+            assembled_sessions: Vec::new(),
             max_context: None,
             notification: None,
             project_root,
@@ -69,7 +69,7 @@ impl WatchHandler {
             chrono::Utc::now(),
         );
         self.events.clear();
-        self.assembled_session = None;
+        self.assembled_sessions.clear();
         self.send_update();
     }
 
@@ -96,7 +96,7 @@ impl WatchHandler {
         let screen_vm = build_screen_view_model(
             &self.state,
             &self.events,
-            self.assembled_session.as_ref(),
+            &self.assembled_sessions,
             max_context_for_metrics,
             self.notification.as_deref(),
         );
@@ -322,12 +322,20 @@ fn handle_provider_watch(
                 Ok(WorkspaceEvent::Stream(StreamEvent::Attached { session_id, path })) => {
                     handler.reset_session_state(session_id, Some(path));
                 }
-                Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, session })) => {
+                Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, sessions })) => {
                     // Batch process events
                     const MAX_EVENTS: usize = 100;
 
-                    let display_events = filter_display_events(&events);
+                    // Store events for timeline display (recent events only)
+                    for event in &events {
+                        handler.events.push_back(event.clone());
+                        if handler.events.len() > MAX_EVENTS {
+                            handler.events.pop_front();
+                        }
+                    }
 
+                    // Update state from display events (main stream only)
+                    let display_events = filter_display_events(&events);
                     for event in &display_events {
                         handler.state.last_activity = event.timestamp;
                         handler.state.event_count += 1;
@@ -347,16 +355,10 @@ fn handle_provider_watch(
                         if let Some(limit) = updates.context_window_limit {
                             handler.state.context_window_limit = Some(limit);
                         }
-
-                        handler.events.push_back(event.clone());
-                        if handler.events.len() > MAX_EVENTS {
-                            handler.events.pop_front();
-                        }
                     }
 
-                    if let Some(session) = session {
-                        handler.assembled_session = Some(session);
-                    }
+                    // Use sessions assembled by runtime (no local assembly needed)
+                    handler.assembled_sessions = sessions;
 
                     handler.send_update();
                 }
@@ -437,18 +439,24 @@ fn handle_session_watch(
                     // Session attached - reset all state and buffers
                     handler.reset_session_state(session_id, Some(path));
                 }
-                StreamEvent::Events { events, session } => {
+                StreamEvent::Events { events, sessions } => {
                     // Batch process events to avoid spamming TUI with updates
                     const MAX_EVENTS: usize = 100;
 
-                    let display_events = filter_display_events(&events);
+                    // Store events for timeline display (recent events only)
+                    for event in &events {
+                        handler.events.push_back(event.clone());
+                        if handler.events.len() > MAX_EVENTS {
+                            handler.events.pop_front();
+                        }
+                    }
 
+                    // Update state from display events (main stream only)
+                    let display_events = filter_display_events(&events);
                     for event in &display_events {
-                        // Update state with event data
                         handler.state.last_activity = event.timestamp;
                         handler.state.event_count += 1;
 
-                        // Extract state updates
                         let updates = extract_state_updates(event);
                         if updates.is_new_turn {
                             handler.state.turn_count += 1;
@@ -464,25 +472,10 @@ fn handle_session_watch(
                         if let Some(limit) = updates.context_window_limit {
                             handler.state.context_window_limit = Some(limit);
                         }
-
-                        // Add to event buffer (without triggering update)
-                        handler.events.push_back(event.clone());
-                        if handler.events.len() > MAX_EVENTS {
-                            handler.events.pop_front();
-                        }
                     }
 
-                    // Update assembled session if available
-                    if let Some(session) = session {
-                        // Extract context_window_limit from assembled session if available
-                        // The session's turns contain token usage that should reflect the actual limit
-                        // Use the limit from state updates, or infer from session data
-                        if handler.state.context_window_limit.is_none() {
-                            // Try to infer from first turn's usage or use default
-                            // For now, trust the state's context_window_limit from events
-                        }
-                        handler.assembled_session = Some(session);
-                    }
+                    // Use sessions assembled by runtime (no local assembly needed)
+                    handler.assembled_sessions = sessions;
 
                     // Send single update after processing all events (batch update)
                     handler.send_update();

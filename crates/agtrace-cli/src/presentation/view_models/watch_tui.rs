@@ -131,6 +131,22 @@ pub struct TurnItemViewModel {
     // Step preview (for active turn)
     pub recent_steps: Vec<StepPreviewViewModel>,
     pub start_time: Option<DateTime<Utc>>,
+
+    // Child streams spawned during this turn (displayed indented below)
+    pub child_streams: Vec<ChildStreamViewModel>,
+}
+
+/// Child stream (sidechain/subagent) spawned from a parent turn
+#[derive(Debug, Clone, Serialize)]
+pub struct ChildStreamViewModel {
+    /// Stream identifier (e.g., "sidechain:abc123", "subagent:review")
+    pub stream_label: String,
+    /// First user message (truncated)
+    pub first_message: String,
+    /// Last turn's context bar data (only last turn shown, others hidden)
+    pub last_turn: Option<Box<TurnItemViewModel>>,
+    /// Whether this child stream is currently active
+    pub is_active: bool,
 }
 
 /// Step preview for active turn

@@ -59,7 +59,7 @@ pub fn present_watch_error(message: String, fatal: bool) -> WatchEventViewModel 
 pub fn present_watch_stream_update(
     state: &agtrace_sdk::types::SessionState,
     events: &VecDeque<agtrace_sdk::types::AgentEvent>,
-    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
+    assembled_sessions: &[agtrace_sdk::types::AgentSession],
     max_context: Option<u32>,
     notification: Option<&str>,
 ) -> WatchEventViewModel {
@@ -67,7 +67,7 @@ pub fn present_watch_stream_update(
 
     // Use the same unified presenter as TUI
     let screen =
-        build_screen_view_model(state, events, assembled_session, max_context, notification);
+        build_screen_view_model(state, events, assembled_sessions, max_context, notification);
 
     WatchEventViewModel::StreamUpdate {
         screen: Box::new(screen),

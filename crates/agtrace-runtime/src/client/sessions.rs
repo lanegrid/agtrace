@@ -220,4 +220,11 @@ impl SessionHandle {
     pub fn id(&self) -> &str {
         &self.id
     }
+
+    /// Get child sessions (subagents) that were spawned from this session.
+    pub fn child_sessions(&self) -> Result<Vec<agtrace_index::SessionSummary>> {
+        let db = self.db.lock().unwrap();
+        db.get_child_sessions(&self.id)
+            .map_err(|e| Error::InvalidOperation(format!("Failed to get child sessions: {}", e)))
+    }
 }

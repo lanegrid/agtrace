@@ -72,6 +72,16 @@ pub struct TurnAnalysisViewModel {
     pub user_query: String,
     pub steps: Vec<AgentStepViewModel>,
     pub metrics: TurnMetrics,
+    /// Child sessions (subagents) spawned from this turn
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub spawned_children: Vec<SpawnedChildViewModel>,
+}
+
+/// Information about a child session spawned from a turn
+#[derive(Debug, Serialize)]
+pub struct SpawnedChildViewModel {
+    pub session_id: String,
+    pub session_id_short: String,
 }
 
 #[derive(Debug, Serialize)]

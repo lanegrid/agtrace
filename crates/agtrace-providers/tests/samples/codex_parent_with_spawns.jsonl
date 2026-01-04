@@ -1,0 +1,7 @@
+{"timestamp":"2025-01-01T00:00:00.000Z","type":"session_meta","payload":{"id":"parent-spawn-001","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/Users/test_user/agent-sample","originator":"codex_cli_rs","cli_version":"0.66.0","instructions":null,"source":"cli","model_provider":"openai"}}
+{"timestamp":"2025-01-01T00:00:00.100Z","type":"event_msg","payload":{"type":"user_message","message":"Review the code changes","images":[]}}
+{"timestamp":"2025-01-01T00:00:00.200Z","type":"event_msg","payload":{"type":"entered_review_mode","prompt":"Review the current code changes...","user_facing_hint":"current changes"}}
+{"timestamp":"2025-01-01T00:00:00.300Z","type":"event_msg","payload":{"type":"agent_message","message":"Entering review mode..."}}
+{"timestamp":"2025-01-01T00:00:05.000Z","type":"event_msg","payload":{"type":"user_message","message":"Review these other changes","images":[]}}
+{"timestamp":"2025-01-01T00:00:05.100Z","type":"event_msg","payload":{"type":"entered_review_mode","prompt":"Review the other changes...","user_facing_hint":"other changes"}}
+{"timestamp":"2025-01-01T00:00:05.200Z","type":"event_msg","payload":{"type":"agent_message","message":"Second review complete."}}

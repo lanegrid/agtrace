@@ -2,10 +2,11 @@ use crate::args::hints::{cmd, fmt};
 use crate::presentation::view_models::{
     AgentStepViewModel, CommandResultViewModel, ContextUsage, ContextWindowSummary,
     ContextWindowUsageViewModel, FilterSummary, Guidance, SessionAnalysisViewModel, SessionHeader,
-    SessionListEntry, SessionListViewModel, StatusBadge, StreamStateViewModel,
-    TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
+    SessionListEntry, SessionListViewModel, SpawnedChildViewModel, StatusBadge,
+    StreamStateViewModel, TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
 };
 use agtrace_sdk::types::{AgentSession, SessionAnalysisExt, SessionSummary};
+use agtrace_sdk::ChildSessionInfo;
 
 pub fn present_session_list(
     sessions: Vec<SessionSummary>,
@@ -102,6 +103,7 @@ pub fn present_session_analysis(
     model: &str,
     max_context: Option<u32>,
     log_files: Vec<String>,
+    children: &[ChildSessionInfo],
 ) -> CommandResultViewModel<SessionAnalysisViewModel> {
     let view = build_session_analysis_view(
         session,
@@ -112,6 +114,7 @@ pub fn present_session_analysis(
         model,
         max_context,
         log_files,
+        children,
     );
     let result = CommandResultViewModel::new(view);
     add_session_analysis_guidance(result)
@@ -127,10 +130,24 @@ fn build_session_analysis_view(
     model: &str,
     max_context: Option<u32>,
     log_files: Vec<String>,
+    children: &[ChildSessionInfo],
 ) -> SessionAnalysisViewModel {
     use crate::presentation::formatters::time;
+    use std::collections::HashMap;
 
     let metrics = session.compute_turn_metrics(max_context);
+
+    // Build children map: turn_index -> Vec<session_id>
+    // Conversion from ChildSessionInfo happens here (Presenter responsibility)
+    let mut children_by_turn: HashMap<usize, Vec<String>> = HashMap::new();
+    for child in children {
+        if let Some(ctx) = &child.spawned_by {
+            children_by_turn
+                .entry(ctx.turn_index)
+                .or_default()
+                .push(child.session_id.clone());
+        }
+    }
 
     // Compute duration
     let duration = if let (Some(first_turn), Some(last_turn)) =
@@ -181,12 +198,18 @@ fn build_session_analysis_view(
         max_tokens: max_context,
     };
 
-    // Build turns
+    // Build turns with children info
     let turns = session
         .turns
         .iter()
         .zip(metrics.iter())
-        .map(|(turn, metric)| build_turn_analysis(turn, metric, max_context))
+        .map(|(turn, metric)| {
+            let children_for_turn = children_by_turn
+                .get(&metric.turn_index)
+                .cloned()
+                .unwrap_or_default();
+            build_turn_analysis(turn, metric, max_context, children_for_turn)
+        })
         .collect();
 
     SessionAnalysisViewModel {
@@ -206,6 +229,7 @@ fn build_turn_analysis(
     turn: &agtrace_sdk::types::AgentTurn,
     metric: &agtrace_sdk::types::TurnMetrics,
     max_context: Option<u32>,
+    children: Vec<String>,
 ) -> TurnAnalysisViewModel {
     use crate::presentation::formatters::time;
 
@@ -278,6 +302,15 @@ fn build_turn_analysis(
         .map(|u| u.cache_read.0 as i64)
         .sum();
 
+    // Build spawned children info
+    let spawned_children = children
+        .into_iter()
+        .map(|id| SpawnedChildViewModel {
+            session_id_short: id.chars().take(8).collect(),
+            session_id: id,
+        })
+        .collect();
+
     TurnAnalysisViewModel {
         turn_number: metric.turn_index + 1,
         timestamp: turn.steps.first().map(|s| time::format_time(s.timestamp)),
@@ -297,6 +330,7 @@ fn build_turn_analysis(
                 None
             },
         },
+        spawned_children,
     }
 }
 

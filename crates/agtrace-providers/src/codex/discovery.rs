@@ -94,9 +94,10 @@ impl LogDiscovery for CodexDiscovery {
 
         for (session, path) in &cli_sessions {
             if let Ok(spawn_events) = extract_spawn_events(path)
-                && !spawn_events.is_empty() {
-                    spawn_map.insert(session.session_id.clone(), spawn_events);
-                }
+                && !spawn_events.is_empty()
+            {
+                spawn_map.insert(session.session_id.clone(), spawn_events);
+            }
         }
 
         // Phase 3: Correlate subagent sessions to parent spawn events

@@ -151,10 +151,108 @@ impl<'a> TurnHistoryView<'a> {
             }
 
             items.push(ListItem::new(Line::from(line_spans)));
+
+            // Render child streams (indented under parent turn)
+            for child in &turn.child_streams {
+                items.extend(self.render_child_stream(child));
+            }
         }
 
         let list = List::new(items);
         list.render(area, buf);
+    }
+
+    /// Render a child stream (sidechain/subagent) with indentation
+    fn render_child_stream(
+        &self,
+        child: &crate::presentation::view_models::ChildStreamViewModel,
+    ) -> Vec<ListItem<'a>> {
+        use ratatui::style::Color;
+
+        let mut items = Vec::new();
+
+        // First line: stream label with connector
+        let label_color = if child.is_active {
+            Color::Yellow
+        } else {
+            Color::Cyan
+        };
+
+        let label_line = Line::from(vec![
+            Span::raw("  "),
+            Span::styled("└ ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                child.stream_label.to_string(),
+                Style::default().fg(label_color),
+            ),
+            Span::raw(" "),
+            Span::styled(
+                format!("\"{}\"", child.first_message),
+                Style::default().fg(Color::DarkGray),
+            ),
+        ]);
+        items.push(ListItem::new(label_line));
+
+        // Second line: last turn's context bar (if available)
+        if let Some(ref last_turn) = child.last_turn {
+            const BAR_WIDTH: usize = 20;
+            let prev_chars = last_turn.prev_bar_width as usize;
+            let delta_chars = last_turn.bar_width.saturating_sub(last_turn.prev_bar_width) as usize;
+            let total_chars = last_turn.bar_width as usize;
+            let remaining_chars = BAR_WIDTH.saturating_sub(total_chars);
+
+            let mut bar_spans = vec![
+                Span::raw("    "), // Indentation
+                Span::raw("["),
+            ];
+
+            // Previous turns (dark gray █)
+            if prev_chars > 0 {
+                bar_spans.push(Span::styled(
+                    "█".repeat(prev_chars),
+                    Style::default().fg(Color::DarkGray),
+                ));
+            }
+
+            // Current turn delta (colored ▓)
+            if delta_chars > 0 {
+                let delta_color = status_level_to_color(last_turn.delta_color);
+                bar_spans.push(Span::styled(
+                    "▓".repeat(delta_chars),
+                    Style::default()
+                        .fg(delta_color)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+
+            // Void/unused portion (dim gray ░)
+            if remaining_chars > 0 {
+                bar_spans.push(Span::styled(
+                    "░".repeat(remaining_chars),
+                    Style::default().fg(Color::Rgb(60, 60, 60)),
+                ));
+            }
+
+            bar_spans.push(Span::raw("] "));
+
+            // Token info
+            let delta_pct = last_turn.delta_ratio * 100.0;
+            let pct_color = if last_turn.is_heavy {
+                Color::Red
+            } else {
+                Color::White
+            };
+            let pct_text = format!(
+                "+{:.1}% ({})",
+                delta_pct,
+                format_tokens(last_turn.delta_tokens)
+            );
+            bar_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
+
+            items.push(ListItem::new(Line::from(bar_spans)));
+        }
+
+        items
     }
 
     fn render_active_turn_detail(

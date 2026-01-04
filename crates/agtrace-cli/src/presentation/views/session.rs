@@ -688,6 +688,19 @@ impl<'a> fmt::Display for TurnView<'a> {
             "📊 Stats: {} (In: {}, Out: {}{})",
             delta_str, input_str, output_str, cache_str
         )?;
+
+        // Show spawned children (subagent sessions) if any
+        if !self.data.spawned_children.is_empty() {
+            write!(f, "🔀 Spawned: ")?;
+            for (i, child) in self.data.spawned_children.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", child.session_id_short)?;
+            }
+            writeln!(f)?;
+        }
+
         writeln!(f)?;
 
         Ok(())
@@ -827,6 +840,7 @@ mod tests {
             current_tokens: delta,
             context_usage: None,
             is_heavy_load: false,
+            spawned_children: vec![],
         };
 
         // Test below warning threshold
@@ -905,6 +919,7 @@ mod tests {
             current_tokens: 150,
             context_usage: None,
             is_heavy_load: false,
+            spawned_children: vec![],
         };
 
         let view = TurnView::new(&turn, ViewMode::Standard);

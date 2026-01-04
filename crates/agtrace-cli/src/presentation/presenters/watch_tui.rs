@@ -13,9 +13,9 @@ use chrono::Utc;
 use std::collections::VecDeque;
 
 use crate::presentation::view_models::{
-    ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel, StepPreviewViewModel,
-    TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel, TurnHistoryViewModel,
-    TurnItemViewModel, WaitingKind, WaitingState, common::StatusLevel,
+    ChildStreamViewModel, ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel,
+    StepPreviewViewModel, TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel,
+    TurnHistoryViewModel, TurnItemViewModel, WaitingKind, WaitingState, common::StatusLevel,
 };
 
 /// Build complete screen ViewModel from current domain state
@@ -25,13 +25,13 @@ use crate::presentation::view_models::{
 pub fn build_screen_view_model(
     state: &agtrace_sdk::types::SessionState,
     events: &VecDeque<agtrace_sdk::types::AgentEvent>,
-    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
+    assembled_sessions: &[agtrace_sdk::types::AgentSession],
     max_context: Option<u32>,
     notification: Option<&str>,
 ) -> TuiScreenViewModel {
     let dashboard = build_dashboard(state, notification);
     let timeline = build_timeline(events);
-    let turn_history = build_turn_history(state, assembled_session, max_context);
+    let turn_history = build_turn_history(state, assembled_sessions, max_context);
     let status_bar = build_status_bar(state);
 
     TuiScreenViewModel {
@@ -194,16 +194,23 @@ fn event_to_timeline_item(event: &agtrace_sdk::types::AgentEvent) -> TimelineEve
     }
 }
 
-/// Build turn history ViewModel from assembled session
+/// Build turn history ViewModel from assembled sessions (main + child streams)
 fn build_turn_history(
     state: &agtrace_sdk::types::SessionState,
-    assembled_session: Option<&agtrace_sdk::types::AgentSession>,
+    assembled_sessions: &[agtrace_sdk::types::AgentSession],
     max_context: Option<u32>,
 ) -> TurnHistoryViewModel {
-    // Detect waiting state and provide contextual information
-    let waiting_state = detect_waiting_state(state, assembled_session, max_context);
+    use agtrace_sdk::types::StreamId;
 
-    let Some(session) = assembled_session else {
+    // Find main session (stream_id == Main)
+    let main_session = assembled_sessions
+        .iter()
+        .find(|s| matches!(s.stream_id, StreamId::Main));
+
+    // Detect waiting state and provide contextual information
+    let waiting_state = detect_waiting_state(state, main_session, max_context);
+
+    let Some(session) = main_session else {
         return TurnHistoryViewModel {
             turns: Vec::new(),
             active_turn_index: None,
@@ -221,6 +228,12 @@ fn build_turn_history(
         };
     };
 
+    // Collect child sessions (stream_id != Main)
+    let child_sessions: Vec<_> = assembled_sessions
+        .iter()
+        .filter(|s| !matches!(s.stream_id, StreamId::Main))
+        .collect();
+
     let metrics = session.compute_turn_metrics(max_context);
     let active_turn_index = metrics
         .iter()
@@ -234,7 +247,21 @@ fn build_turn_history(
         .turns
         .iter()
         .zip(metrics.iter())
-        .map(|(turn, metric)| build_turn_item(turn, metric, max_context_u64))
+        .map(|(turn, metric)| {
+            // Find child sessions spawned at this turn
+            let children_for_turn: Vec<_> = child_sessions
+                .iter()
+                .filter(|child| {
+                    child
+                        .spawned_by
+                        .as_ref()
+                        .is_some_and(|ctx| ctx.turn_index == metric.turn_index)
+                })
+                .map(|child| build_child_stream_view_model(child, max_context))
+                .collect();
+
+            build_turn_item_with_children(turn, metric, max_context_u64, children_for_turn)
+        })
         .collect();
 
     TurnHistoryViewModel {
@@ -296,11 +323,12 @@ fn detect_waiting_state(
     }
 }
 
-/// Build a single turn item with computed metrics
-fn build_turn_item(
+/// Build a single turn item with computed metrics and child streams
+fn build_turn_item_with_children(
     turn: &agtrace_sdk::types::AgentTurn,
     metric: &agtrace_sdk::types::TurnMetrics,
     max_context: u64,
+    child_streams: Vec<ChildStreamViewModel>,
 ) -> TurnItemViewModel {
     let title = truncate_text(&turn.user.content.text, 120);
 
@@ -373,6 +401,61 @@ fn build_turn_item(
         delta_color,
         recent_steps,
         start_time,
+        child_streams,
+    }
+}
+
+/// Build ChildStreamViewModel from a child session
+fn build_child_stream_view_model(
+    child: &agtrace_sdk::types::AgentSession,
+    max_context: Option<u32>,
+) -> ChildStreamViewModel {
+    use agtrace_sdk::types::StreamId;
+
+    // Build stream label from stream_id
+    let stream_label = match &child.stream_id {
+        StreamId::Main => "main".to_string(),
+        StreamId::Sidechain { agent_id } => {
+            format!("sidechain:{}", &agent_id[..8.min(agent_id.len())])
+        }
+        StreamId::Subagent { name } => format!("subagent:{}", name),
+    };
+
+    // Get first user message
+    let first_message = child
+        .turns
+        .first()
+        .map(|t| truncate_text(&t.user.content.text, 60))
+        .unwrap_or_else(|| "(empty)".to_string());
+
+    // Build last turn's context bar (only last turn visible)
+    let last_turn = child.turns.last().and_then(|last_turn| {
+        max_context.and_then(|max_ctx| {
+            child
+                .compute_turn_metrics(Some(max_ctx))
+                .last()
+                .map(|last_metric| {
+                    Box::new(build_turn_item_with_children(
+                        last_turn,
+                        last_metric,
+                        max_ctx as u64,
+                        Vec::new(), // Child streams don't have nested children
+                    ))
+                })
+        })
+    });
+
+    // Check if child stream is active (last turn is active)
+    let is_active = child
+        .turns
+        .last()
+        .is_some_and(|t| t.steps.iter().any(|s| s.usage.is_none()));
+
+    ChildStreamViewModel {
+        stream_label,
+        first_message,
+        last_turn,
+        is_active,
     }
 }
 

@@ -128,7 +128,6 @@ fn process_provider_events_console(
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
     let mut event_buffer: VecDeque<agtrace_sdk::types::AgentEvent> = VecDeque::new();
-    let mut assembled_session: Option<agtrace_sdk::types::AgentSession> = None;
     let project_root_buf = project_root.map(|p| p.to_path_buf());
     let poll_timeout = Duration::from_millis(100);
 
@@ -168,7 +167,6 @@ fn process_provider_events_console(
                         current_session_id = Some(summary.id.clone());
                         session_state = None;
                         event_buffer.clear();
-                        assembled_session = None;
                     }
                     Err(e) => {
                         let error_event = present_watch::present_watch_error(
@@ -206,7 +204,6 @@ fn process_provider_events_console(
                             current_session_mod_time = mod_time.clone();
                             session_state = None;
                             event_buffer.clear();
-                            assembled_session = None;
                         }
                         Err(e) => {
                             let error_event = present_watch::present_watch_error(
@@ -238,9 +235,18 @@ fn process_provider_events_console(
                     let event = present_watch::present_watch_attached(session_id);
                     print_event(&event, ViewMode::Compact);
                 }
-                Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, session })) => {
+                Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, sessions })) => {
                     const MAX_EVENTS: usize = 100;
 
+                    // Store events for timeline display (recent events only)
+                    for event in &events {
+                        event_buffer.push_back(event.clone());
+                        if event_buffer.len() > MAX_EVENTS {
+                            event_buffer.pop_front();
+                        }
+                    }
+
+                    // Update state from display events (main stream only)
                     let display_events = filter_display_events(&events);
 
                     if session_state.is_none() && !display_events.is_empty() {
@@ -276,17 +282,6 @@ fn process_provider_events_console(
                             if let Some(limit) = updates.context_window_limit {
                                 state.context_window_limit = Some(limit);
                             }
-
-                            // Add to event buffer
-                            event_buffer.push_back(event.clone());
-                            if event_buffer.len() > MAX_EVENTS {
-                                event_buffer.pop_front();
-                            }
-                        }
-
-                        // Update assembled session
-                        if let Some(sess) = session {
-                            assembled_session = Some(sess);
                         }
 
                         // Build max_context from state
@@ -301,7 +296,7 @@ fn process_provider_events_console(
                         let update_event = present_watch::present_watch_stream_update(
                             state,
                             &event_buffer,
-                            assembled_session.as_ref(),
+                            &sessions,
                             max_context,
                             None, // no notification for console mode
                         );
@@ -349,7 +344,6 @@ fn process_stream_events_console(
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
     let mut event_buffer: VecDeque<agtrace_sdk::types::AgentEvent> = VecDeque::new();
-    let mut assembled_session: Option<agtrace_sdk::types::AgentSession> = None;
     let project_root_buf = project_root.map(|p| p.to_path_buf());
 
     while let Ok(event) = receiver.recv() {
@@ -359,9 +353,18 @@ fn process_stream_events_console(
                 let event = present_watch::present_watch_attached(session_id);
                 print_event(&event, ViewMode::Compact);
             }
-            WorkspaceEvent::Stream(StreamEvent::Events { events, session }) => {
+            WorkspaceEvent::Stream(StreamEvent::Events { events, sessions }) => {
                 const MAX_EVENTS: usize = 100;
 
+                // Store events for timeline display (recent events only)
+                for event in &events {
+                    event_buffer.push_back(event.clone());
+                    if event_buffer.len() > MAX_EVENTS {
+                        event_buffer.pop_front();
+                    }
+                }
+
+                // Update state from display events (main stream only)
                 let display_events = filter_display_events(&events);
 
                 // Initialize state on first events
@@ -395,17 +398,6 @@ fn process_stream_events_console(
                         if let Some(limit) = updates.context_window_limit {
                             state.context_window_limit = Some(limit);
                         }
-
-                        // Add to event buffer
-                        event_buffer.push_back(event.clone());
-                        if event_buffer.len() > MAX_EVENTS {
-                            event_buffer.pop_front();
-                        }
-                    }
-
-                    // Update assembled session
-                    if let Some(sess) = session {
-                        assembled_session = Some(sess);
                     }
 
                     // Build max_context from state
@@ -419,7 +411,7 @@ fn process_stream_events_console(
                     let update_event = present_watch::present_watch_stream_update(
                         state,
                         &event_buffer,
-                        assembled_session.as_ref(),
+                        &sessions,
                         max_context,
                         None, // no notification for console mode
                     );

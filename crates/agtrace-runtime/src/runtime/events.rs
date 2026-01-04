@@ -31,7 +31,9 @@ pub enum StreamEvent {
     },
     Events {
         events: Vec<AgentEvent>,
-        session: Option<AgentSession>,
+        /// Assembled sessions (main + child streams).
+        /// Runtime performs assembly; consumers should not call assemble_sessions directly.
+        sessions: Vec<AgentSession>,
     },
     Disconnected {
         reason: String,

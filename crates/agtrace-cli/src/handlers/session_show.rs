@@ -19,6 +19,9 @@ pub fn handle(
         .metadata()?
         .ok_or_else(|| anyhow::anyhow!("Session metadata not available"))?;
 
+    // Get child sessions (subagents spawned from this session)
+    let children = session_handle.child_sessions().unwrap_or_default();
+
     // Use assemble_all() to get all streams (Main + Sidechain + Subagent)
     let mut sessions = session_handle
         .assemble_all()
@@ -89,6 +92,9 @@ pub fn handle(
             println!();
         }
 
+        // Only pass children for main stream
+        let stream_children: &[_] = if idx == 0 { &children } else { &[] };
+
         let view_model = presenters::present_session_analysis(
             session,
             &metadata.session_id,
@@ -99,6 +105,7 @@ pub fn handle(
             max_context,
             // Only show log_files for the first (main) stream
             if idx == 0 { log_files.clone() } else { vec![] },
+            stream_children,
         );
 
         ctx.render(view_model)?;

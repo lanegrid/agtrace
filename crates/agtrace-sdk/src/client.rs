@@ -386,6 +386,42 @@ impl SessionHandle {
         let session = self.assemble()?;
         Ok(crate::analysis::SessionAnalyzer::new(session))
     }
+
+    /// Get child sessions (subagents) that were spawned from this session.
+    ///
+    /// Returns a list of child session summaries with their spawn context
+    /// (turn_index, step_index). Returns empty vector for standalone sessions.
+    pub fn child_sessions(&self) -> Result<Vec<ChildSessionInfo>> {
+        match &self.source {
+            SessionSource::Workspace { inner, id } => {
+                let runtime_handle = inner
+                    .sessions()
+                    .find(id)
+                    .map_err(|e| Error::NotFound(format!("Session {}: {}", id, e)))?;
+
+                let children = runtime_handle.child_sessions().map_err(Error::Runtime)?;
+                Ok(children
+                    .into_iter()
+                    .map(|c| ChildSessionInfo {
+                        session_id: c.id,
+                        provider: c.provider,
+                        spawned_by: c.spawned_by,
+                        snippet: c.snippet,
+                    })
+                    .collect())
+            }
+            SessionSource::Events { .. } => Ok(vec![]),
+        }
+    }
+}
+
+/// Information about a child session (subagent) spawned from a parent session.
+#[derive(Debug, Clone)]
+pub struct ChildSessionInfo {
+    pub session_id: String,
+    pub provider: String,
+    pub spawned_by: Option<agtrace_types::SpawnContext>,
+    pub snippet: Option<String>,
 }
 
 // ============================================================================

@@ -149,6 +149,45 @@ pub fn list(
     Ok(sessions)
 }
 
+/// Get child sessions (subagents) that were spawned from a parent session
+pub fn get_children(conn: &Connection, parent_session_id: &str) -> Result<Vec<SessionSummary>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+               s.parent_session_id, s.spawned_by_turn, s.spawned_by_step
+        FROM sessions s
+        LEFT JOIN projects p ON s.project_hash = p.hash
+        WHERE s.parent_session_id = ?1 AND s.is_valid = 1
+        ORDER BY s.spawned_by_turn ASC, s.spawned_by_step ASC
+        "#,
+    )?;
+
+    let sessions = stmt
+        .query_map([parent_session_id], |row| {
+            let spawned_by = match (row.get::<_, Option<i64>>(7)?, row.get::<_, Option<i64>>(8)?) {
+                (Some(turn), Some(step)) => Some(SpawnContext {
+                    turn_index: turn as usize,
+                    step_index: step as usize,
+                }),
+                _ => None,
+            };
+
+            Ok(SessionSummary {
+                id: row.get(0)?,
+                provider: row.get(1)?,
+                project_hash: ProjectHash::from(row.get::<_, String>(2)?),
+                project_root: row.get(3)?,
+                start_ts: row.get(4)?,
+                snippet: row.get(5)?,
+                parent_session_id: row.get(6)?,
+                spawned_by,
+            })
+        })?
+        .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
+
+    Ok(sessions)
+}
+
 pub fn find_by_prefix(conn: &Connection, prefix: &str) -> Result<Option<String>> {
     let mut stmt = conn.prepare(
         r#"

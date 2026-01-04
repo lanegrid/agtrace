@@ -1,0 +1,4 @@
+{"timestamp":"2025-01-01T00:00:00.225Z","type":"session_meta","payload":{"id":"subagent-matched-001","timestamp":"2025-01-01T00:00:00.225Z","cwd":"/Users/test_user/agent-sample","originator":"codex_cli_rs","cli_version":"0.66.0","instructions":null,"source":{"subagent":"review"},"model_provider":"openai"}}
+{"timestamp":"2025-01-01T00:00:00.250Z","type":"turn_context","payload":{"cwd":"/Users/test_user/agent-sample","approval_policy":"on-request","sandbox_policy":{"type":"workspace-write"},"model":"gpt-5.1-codex-max","effort":"medium","summary":"auto"}}
+{"timestamp":"2025-01-01T00:00:00.300Z","type":"event_msg","payload":{"type":"agent_reasoning","text":"Reviewing code..."}}
+{"timestamp":"2025-01-01T00:00:00.400Z","type":"event_msg","payload":{"type":"agent_message","message":"Code review complete."}}

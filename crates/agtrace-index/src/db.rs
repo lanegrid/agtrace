@@ -62,6 +62,10 @@ impl Database {
         queries::session::find_by_prefix(&self.conn, prefix)
     }
 
+    pub fn get_child_sessions(&self, parent_session_id: &str) -> Result<Vec<SessionSummary>> {
+        queries::session::get_children(&self.conn, parent_session_id)
+    }
+
     // Log file operations
     pub fn insert_or_update_log_file(&self, log_file: &LogFileRecord) -> Result<()> {
         queries::log_file::insert_or_update(&self.conn, log_file)

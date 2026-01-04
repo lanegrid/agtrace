@@ -573,6 +573,46 @@ impl TestWorld {
         )
     }
 
+    /// Add a session log from a specific sample file.
+    ///
+    /// This is similar to `add_session` but allows specifying a custom sample file
+    /// from the samples directory instead of using the provider's default.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use agtrace_testing::{TestWorld, providers::TestProvider};
+    /// let mut world = TestWorld::new()
+    ///     .with_project("my-project")
+    ///     .enter_dir("my-project");
+    ///
+    /// world.enable_provider(TestProvider::Codex).unwrap();
+    ///
+    /// // Add a specific Codex sample file
+    /// world.add_session_from_sample(
+    ///     TestProvider::Codex,
+    ///     "codex_parent_with_spawns.jsonl",
+    ///     "rollout-parent.jsonl"
+    /// ).unwrap();
+    /// ```
+    pub fn add_session_from_sample(
+        &self,
+        provider: TestProvider,
+        sample_filename: &str,
+        dest_filename: &str,
+    ) -> Result<()> {
+        let log_root = self.temp_dir.path().join(provider.default_log_dir_name());
+        let project_dir = self.cwd.to_string_lossy();
+        let adapter = provider.adapter();
+
+        self.samples.copy_to_project_with_cwd(
+            sample_filename,
+            dest_filename,
+            &project_dir,
+            &log_root,
+            &adapter,
+        )
+    }
+
     /// Set file modification time for testing time-based logic.
     ///
     /// This is useful for testing features that depend on file modification times,
