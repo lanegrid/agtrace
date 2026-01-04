@@ -19,7 +19,19 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Database(err) => write!(f, "Database error: {}", err),
+            Error::Database(err) => {
+                let msg = err.to_string();
+                // Detect schema mismatch errors and provide actionable hint
+                if msg.contains("no such column") || msg.contains("no such table") {
+                    write!(
+                        f,
+                        "Database schema mismatch: {}. Please restart the CLI to auto-migrate.",
+                        msg
+                    )
+                } else {
+                    write!(f, "Database error: {}", err)
+                }
+            }
             Error::Io(err) => write!(f, "IO error: {}", err),
             Error::Query(msg) => write!(f, "Query error: {}", msg),
         }
@@ -45,5 +57,37 @@ impl From<rusqlite::Error> for Error {
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         Error::Io(err)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_schema_mismatch_error_message() {
+        // Simulate a "no such column" error
+        let sqlite_err = rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(1),
+            Some("no such column: parent_session_id".to_string()),
+        );
+        let err = Error::Database(sqlite_err);
+        let msg = err.to_string();
+
+        assert!(msg.contains("Database schema mismatch"));
+        assert!(msg.contains("Please restart the CLI to auto-migrate"));
+    }
+
+    #[test]
+    fn test_regular_database_error_message() {
+        let sqlite_err = rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(1),
+            Some("UNIQUE constraint failed".to_string()),
+        );
+        let err = Error::Database(sqlite_err);
+        let msg = err.to_string();
+
+        assert!(msg.starts_with("Database error:"));
+        assert!(!msg.contains("restart"));
     }
 }
