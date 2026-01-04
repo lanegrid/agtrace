@@ -55,8 +55,10 @@ async fn test_codex_subagent_spawn_context_basic() -> Result<()> {
 
     let client = initialize_workspace(&world).await?;
 
-    // Find the subagent session
-    let sessions = client.sessions().list(SessionFilter::all())?;
+    // Find the subagent session (must include children since subagents are filtered by default)
+    let sessions = client
+        .sessions()
+        .list(SessionFilter::all().include_children())?;
     let subagent = sessions
         .iter()
         .find(|s| s.id.contains("subagent-matched-001"))
@@ -112,7 +114,10 @@ async fn test_codex_multiple_subagents_correct_correlation() -> Result<()> {
     )?;
 
     let client = initialize_workspace(&world).await?;
-    let sessions = client.sessions().list(SessionFilter::all())?;
+    // Must include children since subagents are filtered by default
+    let sessions = client
+        .sessions()
+        .list(SessionFilter::all().include_children())?;
 
     // Find subagents by ID pattern
     let subagent1 = sessions
@@ -259,7 +264,10 @@ async fn test_codex_subagent_metadata_api() -> Result<()> {
     let client = initialize_workspace(&world).await?;
 
     // Find the subagent via list first to get the session ID
-    let sessions = client.sessions().list(SessionFilter::all())?;
+    // Must include children since subagents are filtered by default
+    let sessions = client
+        .sessions()
+        .list(SessionFilter::all().include_children())?;
     let subagent_summary = sessions
         .iter()
         .find(|s| s.id.contains("subagent-matched-001"))
