@@ -144,7 +144,7 @@ impl SessionStreamer {
             .ok_or_else(|| Error::InvalidOperation("Cannot determine watch directory".to_string()))?
             .to_path_buf();
 
-        let config = notify::Config::default().with_poll_interval(Duration::from_millis(500));
+        let config = notify::Config::default().with_poll_interval(Duration::from_millis(100));
 
         let mut watcher = PollWatcher::new(
             move |res: std::result::Result<Event, notify::Error>| {
