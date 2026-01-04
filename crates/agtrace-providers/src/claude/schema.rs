@@ -129,6 +129,16 @@ impl<'de> serde::Deserialize<'de> for ToolUseResult {
             {
                 Ok(ToolUseResult::default())
             }
+
+            // Handle array values (e.g., [{"type": "text", "text": "..."}])
+            fn visit_seq<S>(self, mut seq: S) -> Result<Self::Value, S::Error>
+            where
+                S: serde::de::SeqAccess<'de>,
+            {
+                // Consume the sequence but ignore its contents
+                while seq.next_element::<serde::de::IgnoredAny>()?.is_some() {}
+                Ok(ToolUseResult::default())
+            }
         }
 
         deserializer.deserialize_any(ToolUseResultVisitor)
