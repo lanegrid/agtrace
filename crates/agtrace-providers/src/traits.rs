@@ -129,6 +129,10 @@ pub struct SessionIndex {
     pub sidechain_files: Vec<PathBuf>,
     pub project_root: Option<PathBuf>,
     pub snippet: Option<String>,
+    /// For subagent sessions: the parent session that spawned this
+    pub parent_session_id: Option<String>,
+    /// For subagent sessions: context about where in the parent this was spawned
+    pub spawned_by: Option<agtrace_types::SpawnContext>,
 }
 
 // --- Provider Adapter ---

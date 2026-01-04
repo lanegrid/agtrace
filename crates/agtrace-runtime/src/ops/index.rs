@@ -185,6 +185,8 @@ impl<'a> IndexService<'a> {
                     end_ts: None,
                     snippet: session.snippet.clone(),
                     is_valid: true,
+                    parent_session_id: session.parent_session_id.clone(),
+                    spawned_by: session.spawned_by.clone(),
                 };
                 self.db.insert_or_update_session(&session_record)?;
 

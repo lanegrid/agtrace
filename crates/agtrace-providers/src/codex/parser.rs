@@ -160,6 +160,11 @@ pub(crate) fn normalize_codex_session(
                         }
                     }
 
+                    schema::EventMsgPayload::EnteredReviewMode(_) => {
+                        // Skip: this is a spawn signal, not content
+                        // Used for parent-child correlation in discovery phase
+                    }
+
                     schema::EventMsgPayload::Unknown => {
                         // Skip unknown event types
                     }

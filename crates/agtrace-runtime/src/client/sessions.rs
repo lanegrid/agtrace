@@ -212,6 +212,8 @@ impl SessionHandle {
             project_hash: index_summary.project_hash,
             project_root,
             provider: index_summary.provider,
+            parent_session_id: index_summary.parent_session_id,
+            spawned_by: index_summary.spawned_by,
         })
     }
 

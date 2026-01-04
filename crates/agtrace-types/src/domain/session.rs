@@ -94,6 +94,12 @@ pub struct SessionMetadata {
     pub project_root: Option<String>,
     /// Provider name (claude_code, codex, gemini).
     pub provider: String,
+    /// Parent session ID for subagent sessions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_session_id: Option<String>,
+    /// Spawn context for subagent sessions (turn/step where spawned).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spawned_by: Option<SpawnContext>,
 }
 
 // ==========================================

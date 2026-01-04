@@ -69,6 +69,8 @@ impl LogDiscovery for ClaudeDiscovery {
                     sidechain_files: Vec::new(),
                     project_root: header.cwd.clone().map(PathBuf::from),
                     snippet: header.snippet.clone(),
+                    parent_session_id: None, // Claude uses in-file sidechain linking
+                    spawned_by: None,
                 });
 
             if header.is_sidechain {

@@ -76,6 +76,8 @@ impl<'a> SessionService<'a> {
                 project_root: None,
                 start_ts: None,
                 snippet: None,
+                parent_session_id: None,
+                spawned_by: None,
             }]
         } else {
             self.client

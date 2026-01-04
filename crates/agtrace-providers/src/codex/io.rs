@@ -1,9 +1,10 @@
 use crate::Result;
+use agtrace_types::SpawnContext;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use super::parser::normalize_codex_session;
-use super::schema::CodexRecord;
+use super::schema::{CodexRecord, EventMsgPayload};
 
 /// Parse Codex JSONL file and normalize to AgentEvent
 pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
@@ -59,6 +60,14 @@ pub fn extract_cwd_from_codex_file(path: &Path) -> Option<String> {
     None
 }
 
+/// Spawn event extracted from a CLI session (e.g., entered_review_mode)
+#[derive(Debug, Clone)]
+pub struct SpawnEvent {
+    pub timestamp: String,
+    pub subagent_type: String,
+    pub spawn_context: SpawnContext,
+}
+
 #[derive(Debug)]
 pub struct CodexHeader {
     pub session_id: Option<String>,
@@ -67,6 +76,8 @@ pub struct CodexHeader {
     pub snippet: Option<String>,
     pub subagent_type: Option<String>,
     pub parent_session_id: Option<String>,
+    /// Pre-computed spawn context for subagent sessions (set during discovery correlation)
+    pub spawned_by: Option<SpawnContext>,
 }
 
 /// Extract header information from Codex file (for scanning)
@@ -160,7 +171,83 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
         snippet,
         subagent_type,
         parent_session_id,
+        spawned_by: None, // Set during discovery correlation
     })
+}
+
+/// Extract spawn events from a CLI session file with turn/step context
+/// Used to correlate subagent sessions back to their parent turns
+pub fn extract_spawn_events(path: &Path) -> Result<Vec<SpawnEvent>> {
+    let text = std::fs::read_to_string(path)?;
+    let mut spawn_events = Vec::new();
+
+    // Track turn/step indices
+    // A new turn starts with TurnContext or UserMessage
+    let mut current_turn: usize = 0;
+    let mut current_step: usize = 0;
+    let mut in_turn = false;
+
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        let record: CodexRecord = match serde_json::from_str(line) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+
+        match &record {
+            CodexRecord::TurnContext(_) => {
+                // New turn starts
+                if in_turn {
+                    current_turn += 1;
+                }
+                current_step = 0;
+                in_turn = true;
+            }
+            CodexRecord::EventMsg(event) => {
+                match &event.payload {
+                    EventMsgPayload::UserMessage(_) => {
+                        // User message also starts a new turn (if no TurnContext)
+                        if in_turn {
+                            current_turn += 1;
+                            current_step = 0;
+                        }
+                        in_turn = true;
+                    }
+                    EventMsgPayload::EnteredReviewMode(_) => {
+                        // Found a spawn event!
+                        spawn_events.push(SpawnEvent {
+                            timestamp: event.timestamp.clone(),
+                            subagent_type: "review".to_string(),
+                            spawn_context: SpawnContext {
+                                turn_index: current_turn,
+                                step_index: current_step,
+                            },
+                        });
+                        current_step += 1;
+                    }
+                    _ => {
+                        // Other events increment step within current turn
+                        if in_turn {
+                            current_step += 1;
+                        }
+                    }
+                }
+            }
+            CodexRecord::ResponseItem(_) => {
+                // Response items are part of current step
+                if in_turn {
+                    current_step += 1;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(spawn_events)
 }
 
 /// Check if a Codex session file is empty or incomplete

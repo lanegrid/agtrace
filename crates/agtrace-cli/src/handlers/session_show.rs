@@ -47,10 +47,23 @@ pub fn handle(
         .get_limit(&model_name_key)
         .map(|spec| spec.effective_limit() as u32);
 
+    // Format spawn info from metadata (for Codex subagent sessions with separate files)
+    let metadata_spawn_info = metadata
+        .spawned_by
+        .as_ref()
+        .map(|ctx| {
+            format!(
+                " (spawned by Turn #{}, Step #{})",
+                ctx.turn_index + 1,
+                ctx.step_index + 1
+            )
+        })
+        .unwrap_or_default();
+
     // Present each stream
     for (idx, session) in sessions.iter().enumerate() {
         if idx > 0 {
-            // Add separator between streams with spawn context
+            // Add separator between streams with spawn context (for Claude Code sidechains)
             println!("\n{}", "─".repeat(80));
             let spawn_info = session
                 .spawned_by
@@ -68,6 +81,12 @@ pub fn handle(
                 session.stream_id.as_str(),
                 spawn_info
             );
+        }
+
+        // Print spawn context for the main stream if it comes from DB metadata (Codex subagents)
+        if idx == 0 && !metadata_spawn_info.is_empty() {
+            println!("Spawned:{}", metadata_spawn_info);
+            println!();
         }
 
         let view_model = presenters::present_session_analysis(

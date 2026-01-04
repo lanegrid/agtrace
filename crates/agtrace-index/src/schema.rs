@@ -3,7 +3,7 @@ use rusqlite::Connection;
 use crate::Result;
 
 // Schema version (increment when changing table definitions)
-pub const SCHEMA_VERSION: i32 = 4;
+pub const SCHEMA_VERSION: i32 = 5;
 
 // NOTE: Database Design Rationale (Pointer Edition)
 //
@@ -46,7 +46,11 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
             end_ts TEXT,
             snippet TEXT,
             is_valid BOOLEAN DEFAULT 1,
-            FOREIGN KEY (project_hash) REFERENCES projects(hash)
+            parent_session_id TEXT,
+            spawned_by_turn INTEGER,
+            spawned_by_step INTEGER,
+            FOREIGN KEY (project_hash) REFERENCES projects(hash),
+            FOREIGN KEY (parent_session_id) REFERENCES sessions(id)
         );
 
         CREATE TABLE IF NOT EXISTS log_files (

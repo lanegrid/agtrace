@@ -76,6 +76,8 @@ impl LogDiscovery for GeminiDiscovery {
                     sidechain_files: Vec::new(),
                     project_root: None,
                     snippet: header.snippet.clone(),
+                    parent_session_id: None, // Gemini doesn't have subagents
+                    spawned_by: None,
                 });
         }
 

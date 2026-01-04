@@ -207,8 +207,18 @@ pub(crate) enum EventMsgPayload {
     AgentMessage(AgentMessagePayload),
     AgentReasoning(AgentReasoningPayload),
     TokenCount(TokenCountPayload),
+    /// Event when entering review mode (spawns a subagent)
+    EnteredReviewMode(EnteredReviewModePayload),
     #[serde(other)]
     Unknown,
+}
+
+/// Payload for entered_review_mode event (subagent spawn signal)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub(crate) struct EnteredReviewModePayload {
+    pub prompt: String,
+    #[serde(default)]
+    pub user_facing_hint: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

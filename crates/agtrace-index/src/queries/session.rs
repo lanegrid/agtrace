@@ -1,4 +1,4 @@
-use agtrace_types::{ProjectHash, SessionOrder};
+use agtrace_types::{ProjectHash, SessionOrder, SpawnContext};
 use rusqlite::{Connection, params};
 
 use crate::{
@@ -7,17 +7,26 @@ use crate::{
 };
 
 pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()> {
+    let (spawned_by_turn, spawned_by_step) = match &session.spawned_by {
+        Some(ctx) => (Some(ctx.turn_index as i64), Some(ctx.step_index as i64)),
+        None => (None, None),
+    };
+
     conn.execute(
         r#"
-        INSERT INTO sessions (id, project_hash, provider, start_ts, end_ts, snippet, is_valid)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        INSERT INTO sessions (id, project_hash, provider, start_ts, end_ts, snippet, is_valid,
+                              parent_session_id, spawned_by_turn, spawned_by_step)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
         ON CONFLICT(id) DO UPDATE SET
             project_hash = ?2,
             provider = ?3,
             start_ts = COALESCE(?4, start_ts),
             end_ts = COALESCE(?5, end_ts),
             snippet = COALESCE(?6, snippet),
-            is_valid = ?7
+            is_valid = ?7,
+            parent_session_id = COALESCE(?8, parent_session_id),
+            spawned_by_turn = COALESCE(?9, spawned_by_turn),
+            spawned_by_step = COALESCE(?10, spawned_by_step)
         "#,
         params![
             &session.id,
@@ -26,7 +35,10 @@ pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()
             &session.start_ts,
             &session.end_ts,
             &session.snippet,
-            &session.is_valid
+            &session.is_valid,
+            &session.parent_session_id,
+            spawned_by_turn,
+            spawned_by_step
         ],
     )?;
 
@@ -36,7 +48,8 @@ pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()
 pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSummary>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet
+        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+               s.parent_session_id, s.spawned_by_turn, s.spawned_by_step
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
         WHERE s.id = ?1 AND s.is_valid = 1
@@ -45,6 +58,14 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
 
     let mut rows = stmt.query([session_id])?;
     if let Some(row) = rows.next()? {
+        let spawned_by = match (row.get::<_, Option<i64>>(7)?, row.get::<_, Option<i64>>(8)?) {
+            (Some(turn), Some(step)) => Some(SpawnContext {
+                turn_index: turn as usize,
+                step_index: step as usize,
+            }),
+            _ => None,
+        };
+
         Ok(Some(SessionSummary {
             id: row.get(0)?,
             provider: row.get(1)?,
@@ -52,6 +73,8 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
             project_root: row.get(3)?,
             start_ts: row.get(4)?,
             snippet: row.get(5)?,
+            parent_session_id: row.get(6)?,
+            spawned_by,
         }))
     } else {
         Ok(None)
@@ -87,7 +110,8 @@ pub fn list(
 
     let query = format!(
         r#"
-        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet
+        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+               s.parent_session_id, s.spawned_by_turn, s.spawned_by_step
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
         WHERE {}
@@ -101,6 +125,14 @@ pub fn list(
     let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
     let sessions = stmt
         .query_map(param_refs.as_slice(), |row| {
+            let spawned_by = match (row.get::<_, Option<i64>>(7)?, row.get::<_, Option<i64>>(8)?) {
+                (Some(turn), Some(step)) => Some(SpawnContext {
+                    turn_index: turn as usize,
+                    step_index: step as usize,
+                }),
+                _ => None,
+            };
+
             Ok(SessionSummary {
                 id: row.get(0)?,
                 provider: row.get(1)?,
@@ -108,6 +140,8 @@ pub fn list(
                 project_root: row.get(3)?,
                 start_ts: row.get(4)?,
                 snippet: row.get(5)?,
+                parent_session_id: row.get(6)?,
+                spawned_by,
             })
         })?
         .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
@@ -167,6 +201,8 @@ mod tests {
             end_ts: None,
             snippet: Some("test1".to_string()),
             is_valid: true,
+            parent_session_id: None,
+            spawned_by: None,
         };
 
         let session2 = SessionRecord {
@@ -177,6 +213,8 @@ mod tests {
             end_ts: None,
             snippet: Some("test2".to_string()),
             is_valid: true,
+            parent_session_id: None,
+            spawned_by: None,
         };
 
         let session3 = SessionRecord {
@@ -187,6 +225,8 @@ mod tests {
             end_ts: None,
             snippet: Some("test3".to_string()),
             is_valid: true,
+            parent_session_id: None,
+            spawned_by: None,
         };
 
         db.insert_or_update_session(&session1)?;
@@ -246,6 +286,8 @@ mod tests {
             end_ts: Some("2024-01-01T01:00:00Z".to_string()),
             snippet: Some("First session".to_string()),
             is_valid: true,
+            parent_session_id: None,
+            spawned_by: None,
         };
 
         let session2 = SessionRecord {
@@ -256,6 +298,8 @@ mod tests {
             end_ts: Some("2024-01-02T01:00:00Z".to_string()),
             snippet: Some("Second session".to_string()),
             is_valid: true,
+            parent_session_id: None,
+            spawned_by: None,
         };
 
         let session3 = SessionRecord {
@@ -266,6 +310,8 @@ mod tests {
             end_ts: Some("2024-01-03T01:00:00Z".to_string()),
             snippet: Some("Third session".to_string()),
             is_valid: true,
+            parent_session_id: None,
+            spawned_by: None,
         };
 
         db.insert_or_update_session(&session1)?;

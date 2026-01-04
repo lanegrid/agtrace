@@ -1,4 +1,4 @@
-use agtrace_types::ProjectHash;
+use agtrace_types::{ProjectHash, SpawnContext};
 
 /// Project metadata record from the index database.
 ///
@@ -33,6 +33,10 @@ pub struct SessionRecord {
     pub snippet: Option<String>,
     /// Whether the session was successfully parsed and validated.
     pub is_valid: bool,
+    /// Parent session ID for subagent sessions.
+    pub parent_session_id: Option<String>,
+    /// Spawn context for subagent sessions (turn/step where spawned).
+    pub spawned_by: Option<SpawnContext>,
 }
 
 /// Log file metadata record from the index database.
@@ -71,4 +75,10 @@ pub struct SessionSummary {
     pub start_ts: Option<String>,
     /// First user message snippet for display.
     pub snippet: Option<String>,
+    /// Parent session ID for subagent sessions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_session_id: Option<String>,
+    /// Spawn context for subagent sessions (turn/step where spawned).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spawned_by: Option<SpawnContext>,
 }
