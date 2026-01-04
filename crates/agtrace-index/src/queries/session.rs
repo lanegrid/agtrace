@@ -278,21 +278,28 @@ mod tests {
         db.insert_or_update_session(&session3)?;
 
         // Test filter by provider
-        let sessions = db.list_sessions(None, Some("codex"), SessionOrder::default(), None)?;
+        let sessions =
+            db.list_sessions(None, Some("codex"), SessionOrder::default(), None, false)?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "codex");
 
-        let sessions = db.list_sessions(None, Some("gemini"), SessionOrder::default(), None)?;
+        let sessions =
+            db.list_sessions(None, Some("gemini"), SessionOrder::default(), None, false)?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "gemini");
 
-        let sessions =
-            db.list_sessions(None, Some("claude_code"), SessionOrder::default(), None)?;
+        let sessions = db.list_sessions(
+            None,
+            Some("claude_code"),
+            SessionOrder::default(),
+            None,
+            false,
+        )?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "claude_code");
 
         // Test no filter returns all
-        let sessions = db.list_sessions(None, None, SessionOrder::default(), None)?;
+        let sessions = db.list_sessions(None, None, SessionOrder::default(), None, false)?;
         assert_eq!(sessions.len(), 3);
 
         // Test combined project_hash and provider filter
@@ -301,6 +308,7 @@ mod tests {
             Some("codex"),
             SessionOrder::default(),
             None,
+            false,
         )?;
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "codex");
@@ -363,16 +371,26 @@ mod tests {
         db.insert_or_update_session(&session3)?;
 
         // Test NewestFirst ordering (default)
-        let sessions =
-            db.list_sessions(Some(&project_hash), None, SessionOrder::NewestFirst, None)?;
+        let sessions = db.list_sessions(
+            Some(&project_hash),
+            None,
+            SessionOrder::NewestFirst,
+            None,
+            false,
+        )?;
         assert_eq!(sessions.len(), 3);
         assert_eq!(sessions[0].id, "session3");
         assert_eq!(sessions[1].id, "session2");
         assert_eq!(sessions[2].id, "session1");
 
         // Test OldestFirst ordering
-        let sessions =
-            db.list_sessions(Some(&project_hash), None, SessionOrder::OldestFirst, None)?;
+        let sessions = db.list_sessions(
+            Some(&project_hash),
+            None,
+            SessionOrder::OldestFirst,
+            None,
+            false,
+        )?;
         assert_eq!(sessions.len(), 3);
         assert_eq!(sessions[0].id, "session1");
         assert_eq!(sessions[1].id, "session2");

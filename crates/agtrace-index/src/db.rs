@@ -157,6 +157,7 @@ mod tests {
                 None,
                 agtrace_types::SessionOrder::default(),
                 Some(10),
+                false,
             )
             .unwrap();
         assert_eq!(sessions.len(), 1);
@@ -236,6 +237,7 @@ mod tests {
                 None,
                 agtrace_types::SessionOrder::default(),
                 Some(10),
+                false,
             )
             .unwrap();
         assert_eq!(sessions.len(), 5);
@@ -246,6 +248,7 @@ mod tests {
                 None,
                 agtrace_types::SessionOrder::default(),
                 Some(3),
+                false,
             )
             .unwrap();
         assert_eq!(sessions_limited.len(), 3);
