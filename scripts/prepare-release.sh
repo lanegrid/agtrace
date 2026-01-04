@@ -9,8 +9,8 @@
 #
 # This script does everything needed for a release:
 #   1. Validates working directory
-#   2. Runs all tests
-#   3. Runs fmt and clippy
+#   2. Runs fmt and clippy
+#   3. Runs all tests
 #   4. Validates and auto-fixes README version references
 #   5. Updates version numbers
 #   6. Generates CHANGELOG
@@ -134,19 +134,19 @@ fi
 echo -e "${GREEN}✓ Working directory checked${NC}"
 echo
 
-echo -e "${BLUE}Step 2/7: Running tests${NC}"
-if [ "$DRY_RUN" = false ]; then
-    cargo test --workspace --quiet
-fi
-echo -e "${GREEN}✓ Tests passed${NC}"
-echo
-
-echo -e "${BLUE}Step 3/7: Running checks${NC}"
+echo -e "${BLUE}Step 2/7: Running checks${NC}"
 if [ "$DRY_RUN" = false ]; then
     cargo fmt --all
     cargo clippy --all-targets -- -D warnings
 fi
 echo -e "${GREEN}✓ Formatting and linting passed${NC}"
+echo
+
+echo -e "${BLUE}Step 3/7: Running tests${NC}"
+if [ "$DRY_RUN" = false ]; then
+    cargo test --workspace --quiet
+fi
+echo -e "${GREEN}✓ Tests passed${NC}"
 echo
 
 echo -e "${BLUE}Step 4/7: Checking README sync${NC}"
