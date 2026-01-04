@@ -479,6 +479,7 @@ impl<'a> TurnView<'a> {
                 arguments,
                 result,
                 is_error,
+                agent_id,
                 ..
             } => {
                 writeln!(f, "{} 🔧 Tool: {}", prefix, name)?;
@@ -492,7 +493,7 @@ impl<'a> TurnView<'a> {
                 } else {
                     write!(f, "{}   ↳ 📝 Result: ", continuation)?;
                 }
-                self.write_truncated_result(f, result)?;
+                self.write_truncated_result(f, result, agent_id.as_deref())?;
             }
             AgentStepViewModel::ToolCallSequence {
                 name,
@@ -559,11 +560,24 @@ impl<'a> TurnView<'a> {
         Ok(())
     }
 
-    fn write_truncated_result(&self, f: &mut fmt::Formatter, result: &str) -> fmt::Result {
-        let display_text = if result.trim().is_empty() {
-            text::format_empty(result)
-        } else {
-            text::normalize_and_clean(result, TOOL_RESULT_LENGTH)
+    fn write_truncated_result(
+        &self,
+        f: &mut fmt::Formatter,
+        result: &str,
+        agent_id: Option<&str>,
+    ) -> fmt::Result {
+        let display_text = match (result.trim().is_empty(), agent_id) {
+            // Empty result with agent_id: show sidechain link
+            (true, Some(aid)) => format!("→ sidechain:{}", aid),
+            // Empty result without agent_id: show (empty)
+            (true, None) => text::format_empty(result),
+            // Non-empty result with agent_id: show both
+            (false, Some(aid)) => {
+                let truncated = text::normalize_and_clean(result, TOOL_RESULT_LENGTH);
+                format!("{} (→ sidechain:{})", truncated, aid)
+            }
+            // Non-empty result without agent_id: show truncated text
+            (false, None) => text::normalize_and_clean(result, TOOL_RESULT_LENGTH),
         };
         writeln!(f, "{}", display_text)?;
         Ok(())
@@ -879,6 +893,7 @@ mod tests {
                 args_formatted: None,
                 result: "".to_string(), // Empty result
                 is_error: false,
+                agent_id: None,
             }],
             metrics: TurnMetrics {
                 input_tokens: 100,

@@ -96,6 +96,9 @@ pub enum AgentStepViewModel {
         args_formatted: Option<String>, // For JSON serialization compatibility
         result: String,
         is_error: bool,
+        /// Agent ID if this tool spawned a subagent (e.g., Task tool)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        agent_id: Option<String>,
     },
     ToolCallSequence {
         name: String,

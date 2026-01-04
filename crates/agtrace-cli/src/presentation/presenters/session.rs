@@ -368,11 +368,11 @@ fn create_tool_view_models(
                     .as_ref()
                     .map(|r| r.content.is_error)
                     .unwrap_or(false);
-                let result_text = tool
+                let (result_text, agent_id) = tool
                     .result
                     .as_ref()
-                    .map(|r| r.content.output.clone())
-                    .unwrap_or_else(|| "(no result)".to_string());
+                    .map(|r| (r.content.output.clone(), r.content.agent_id.clone()))
+                    .unwrap_or_else(|| ("(no result)".to_string(), None));
 
                 AgentStepViewModel::ToolCall {
                     name,
@@ -380,6 +380,7 @@ fn create_tool_view_models(
                     args_formatted: None,
                     result: result_text,
                     is_error,
+                    agent_id,
                 }
             })
             .collect()
