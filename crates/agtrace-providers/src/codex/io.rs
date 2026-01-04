@@ -11,6 +11,7 @@ pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent
 
     let mut records: Vec<CodexRecord> = Vec::new();
     let mut session_id_from_meta: Option<String> = None;
+    let mut subagent_type: Option<String> = None;
 
     for line in text.lines() {
         let line = line.trim();
@@ -19,9 +20,13 @@ pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent
         }
         let record: CodexRecord = serde_json::from_str(line)?;
 
-        // Extract session_id from session_meta record
+        // Extract session_id and subagent_type from session_meta record
         if let CodexRecord::SessionMeta(ref meta) = record {
             session_id_from_meta = Some(meta.payload.id.clone());
+            // Extract subagent information from source field
+            if let super::schema::SessionSource::Subagent { subagent } = &meta.payload.source {
+                subagent_type = Some(subagent.clone());
+            }
         }
 
         records.push(record);
@@ -30,7 +35,7 @@ pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent
     // session_id should be extracted from file content, fallback to "unknown-session"
     let session_id = session_id_from_meta.unwrap_or_else(|| "unknown-session".to_string());
 
-    Ok(normalize_codex_session(records, &session_id))
+    Ok(normalize_codex_session(records, &session_id, subagent_type))
 }
 
 /// Extract cwd from a Codex session file by reading the first few records

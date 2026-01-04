@@ -15,6 +15,14 @@ use crate::codex::schema::CodexRecord;
 static EXIT_CODE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)Exit Code:\s*(\d+)").unwrap());
 
+/// Determine StreamId from Codex subagent_type
+fn determine_stream_id(subagent_type: &Option<String>) -> StreamId {
+    match subagent_type {
+        Some(name) => StreamId::Subagent { name: name.clone() },
+        None => StreamId::Main,
+    }
+}
+
 /// Attach model to event metadata when available
 fn attach_model_metadata(
     metadata: Option<serde_json::Value>,
@@ -50,12 +58,16 @@ fn attach_model_metadata(
 pub(crate) fn normalize_codex_session(
     records: Vec<CodexRecord>,
     session_id: &str,
+    subagent_type: Option<String>,
 ) -> Vec<AgentEvent> {
     // Create session_id UUID from session_id string (deterministic)
     let session_id_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
     let mut builder = EventBuilder::new(session_id_uuid);
     let mut events = Vec::new();
     let mut last_seen_model: Option<String> = None;
+
+    // Determine stream_id from subagent_type
+    let stream_id = determine_stream_id(&subagent_type);
 
     // Track last generation event for attaching TokenUsage (future use)
     let mut _last_generation_event_id: Option<Uuid> = None;
@@ -143,7 +155,7 @@ pub(crate) fn normalize_codex_session(
                                     ),
                                 )),
                                 raw_value.clone(),
-                                StreamId::Main,
+                                stream_id.clone(),
                             );
                         }
                     }
@@ -185,7 +197,7 @@ pub(crate) fn normalize_codex_session(
                             timestamp,
                             payload,
                             raw_value.clone(),
-                            StreamId::Main,
+                            stream_id.clone(),
                         );
 
                         if message.role == "assistant" {
@@ -204,7 +216,7 @@ pub(crate) fn normalize_codex_session(
                             timestamp,
                             EventPayload::Reasoning(ReasoningPayload { text }),
                             raw_value.clone(),
-                            StreamId::Main,
+                            stream_id.clone(),
                         );
                     }
 
@@ -223,7 +235,7 @@ pub(crate) fn normalize_codex_session(
                                 Some(func_call.call_id.clone()),
                             )),
                             raw_value.clone(),
-                            StreamId::Main,
+                            stream_id.clone(),
                         );
 
                         // Register tool call mapping
@@ -248,7 +260,7 @@ pub(crate) fn normalize_codex_session(
                                     agent_id: None,
                                 }),
                                 raw_value.clone(),
-                                StreamId::Main,
+                                stream_id.clone(),
                             );
                         }
                     }
@@ -268,7 +280,7 @@ pub(crate) fn normalize_codex_session(
                                 Some(tool_call.call_id.clone()),
                             )),
                             raw_value.clone(),
-                            StreamId::Main,
+                            stream_id.clone(),
                         );
 
                         builder.register_tool_call(tool_call.call_id.clone(), event_id);
@@ -291,7 +303,7 @@ pub(crate) fn normalize_codex_session(
                                     agent_id: None,
                                 }),
                                 raw_value.clone(),
-                                StreamId::Main,
+                                stream_id.clone(),
                             );
                         }
                     }

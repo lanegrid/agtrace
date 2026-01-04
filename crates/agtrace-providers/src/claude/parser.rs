@@ -315,6 +315,7 @@ mod tests {
             user_type: None,
             version: None,
             thinking_metadata: None,
+            tool_use_result: None,
         })];
 
         let events = normalize_claude_session(records);
