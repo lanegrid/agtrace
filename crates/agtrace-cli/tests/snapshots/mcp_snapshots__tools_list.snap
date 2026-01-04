@@ -43,6 +43,14 @@ expression: response
                 "null"
               ]
             },
+            "include_children": {
+              "default": null,
+              "description": "Include child sessions (subagents) in the list. By default, only top-level sessions are shown.",
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
             "limit": {
               "default": null,
               "description": "Maximum number of sessions to return (default: 10, max: 50)",

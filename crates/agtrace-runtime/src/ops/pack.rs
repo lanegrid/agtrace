@@ -30,6 +30,7 @@ impl<'a> PackService<'a> {
             None,
             agtrace_types::SessionOrder::default(),
             Some(1000),
+            true, // top-level sessions only
         )?;
         let balanced_sessions = balance_sessions_by_provider(&raw_sessions, 200);
 

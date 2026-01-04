@@ -25,7 +25,10 @@ fn test_extract_subagent_header() {
         Some("019b88e5-a2e4-7b90-8953-38fce393c653".to_string())
     );
     assert_eq!(header.subagent_type, Some("review".to_string()));
-    assert_eq!(header.timestamp, Some("2026-01-04T12:05:09.500Z".to_string()));
+    assert_eq!(
+        header.timestamp,
+        Some("2026-01-04T12:05:09.500Z".to_string())
+    );
 }
 
 #[test]

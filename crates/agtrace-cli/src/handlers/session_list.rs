@@ -16,6 +16,7 @@ pub fn handle(
     since: Option<String>,
     until: Option<String>,
     no_auto_refresh: bool,
+    include_children: bool,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
     use crate::presentation::presenters;
@@ -30,6 +31,10 @@ pub fn handle(
         SessionFilter::all()
     }
     .limit(limit);
+
+    if include_children {
+        filter = filter.include_children();
+    }
 
     let project_filter_summary = match &filter.scope {
         agtrace_sdk::types::ProjectScope::All => None,

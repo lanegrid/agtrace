@@ -19,10 +19,11 @@ pub struct SessionFilter {
     pub order: agtrace_types::SessionOrder,
     pub since: Option<String>,
     pub until: Option<String>,
+    pub top_level_only: bool,
 }
 
 impl SessionFilter {
-    /// Create a filter for all projects
+    /// Create a filter for all projects (top-level sessions only by default)
     pub fn all() -> Self {
         Self {
             scope: agtrace_types::ProjectScope::All,
@@ -31,10 +32,11 @@ impl SessionFilter {
             order: agtrace_types::SessionOrder::default(),
             since: None,
             until: None,
+            top_level_only: true,
         }
     }
 
-    /// Create a filter for a specific project
+    /// Create a filter for a specific project (top-level sessions only by default)
     pub fn project(project_hash: agtrace_types::ProjectHash) -> Self {
         Self {
             scope: agtrace_types::ProjectScope::Specific(project_hash),
@@ -43,6 +45,7 @@ impl SessionFilter {
             order: agtrace_types::SessionOrder::default(),
             since: None,
             until: None,
+            top_level_only: true,
         }
     }
 
@@ -68,6 +71,12 @@ impl SessionFilter {
 
     pub fn until(mut self, until: String) -> Self {
         self.until = Some(until);
+        self
+    }
+
+    /// Include child sessions (subagents) in the results
+    pub fn include_children(mut self) -> Self {
+        self.top_level_only = false;
         self
     }
 }
@@ -100,6 +109,7 @@ impl SessionOps {
             order: filter.order,
             since: filter.since,
             until: filter.until,
+            top_level_only: filter.top_level_only,
         };
         service.list_sessions(request)
     }

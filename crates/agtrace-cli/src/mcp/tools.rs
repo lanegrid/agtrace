@@ -80,6 +80,10 @@ pub async fn handle_list_sessions(
         filter = filter.until(until);
     }
 
+    if args.include_children.unwrap_or(false) {
+        filter = filter.include_children();
+    }
+
     let all_sessions = client
         .sessions()
         .list(filter)

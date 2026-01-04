@@ -24,6 +24,7 @@ pub fn get_corpus_overview(
         None,
         agtrace_types::SessionOrder::default(),
         Some(limit),
+        true, // top-level sessions only
     )?;
 
     let loader = SessionRepository::new(db);
@@ -92,6 +93,7 @@ pub fn collect_tool_stats(
         provider.as_deref(),
         agtrace_types::SessionOrder::default(),
         limit,
+        true, // top-level sessions only
     )?;
     let total_sessions = sessions.len();
 

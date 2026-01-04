@@ -32,6 +32,9 @@ Options:
       --no-auto-refresh
           Skip automatic index refresh before listing
 
+      --all
+          Include child sessions (subagents) in the list
+
       --format <FORMAT>
           Output format
           

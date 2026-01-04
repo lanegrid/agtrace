@@ -11,6 +11,7 @@ pub struct ListSessionsRequest {
     pub order: agtrace_types::SessionOrder,
     pub since: Option<String>,
     pub until: Option<String>,
+    pub top_level_only: bool,
 }
 
 pub struct SessionService<'a> {
@@ -33,6 +34,7 @@ impl<'a> SessionService<'a> {
             request.provider.as_deref(),
             request.order,
             request.limit,
+            request.top_level_only,
         )?;
 
         if let Some(since_str) = request.since

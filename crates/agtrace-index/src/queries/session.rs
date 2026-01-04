@@ -87,6 +87,7 @@ pub fn list(
     provider: Option<&str>,
     order: SessionOrder,
     limit: Option<usize>,
+    top_level_only: bool,
 ) -> Result<Vec<SessionSummary>> {
     let mut where_clauses = vec!["is_valid = 1"];
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -99,6 +100,10 @@ pub fn list(
     if let Some(prov) = provider {
         where_clauses.push("provider = ?");
         params.push(Box::new(prov.to_string()));
+    }
+
+    if top_level_only {
+        where_clauses.push("parent_session_id IS NULL");
     }
 
     let where_clause = where_clauses.join(" AND ");

@@ -25,6 +25,9 @@ pub struct ListSessionsArgs {
     pub since: Option<String>,
     /// Show sessions before this timestamp (ISO 8601)
     pub until: Option<String>,
+    /// Include child sessions (subagents) in the list. By default, only top-level sessions are shown.
+    #[serde(default)]
+    pub include_children: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]

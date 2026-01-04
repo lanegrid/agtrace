@@ -54,8 +54,16 @@ impl Database {
         provider: Option<&str>,
         order: agtrace_types::SessionOrder,
         limit: Option<usize>,
+        top_level_only: bool,
     ) -> Result<Vec<SessionSummary>> {
-        queries::session::list(&self.conn, project_hash, provider, order, limit)
+        queries::session::list(
+            &self.conn,
+            project_hash,
+            provider,
+            order,
+            limit,
+            top_level_only,
+        )
     }
 
     pub fn find_session_by_prefix(&self, prefix: &str) -> Result<Option<String>> {

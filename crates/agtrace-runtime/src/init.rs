@@ -235,6 +235,7 @@ impl InitService {
             None,
             agtrace_types::SessionOrder::default(),
             Some(10),
+            true, // top-level sessions only
         )?;
         Ok(sessions.len())
     }

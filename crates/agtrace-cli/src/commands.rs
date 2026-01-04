@@ -134,6 +134,7 @@ pub async fn run(cli: Cli) -> Result<()> {
                     since,
                     until,
                     no_auto_refresh,
+                    all,
                     format,
                     view_mode,
                 } => handlers::session_list::handle(
@@ -147,6 +148,7 @@ pub async fn run(cli: Cli) -> Result<()> {
                     since,
                     until,
                     no_auto_refresh,
+                    all,
                     &view_mode,
                 ),
                 SessionCommand::Show {
@@ -292,6 +294,7 @@ pub async fn run(cli: Cli) -> Result<()> {
             limit,
             since,
             until,
+            all,
         } => {
             let workspace = ctx.open_workspace().await?;
             handlers::session_list::handle(
@@ -305,6 +308,7 @@ pub async fn run(cli: Cli) -> Result<()> {
                 since,
                 until,
                 false, // no_auto_refresh - default to auto-refresh for Sessions command
+                all,
                 &default_view_mode(),
             )
         }

@@ -88,6 +88,9 @@ Use --refresh to force a re-scan of all logs."
 
         #[arg(long)]
         until: Option<String>,
+
+        #[arg(long, help = "Include child sessions (subagents) in the list")]
+        all: bool,
     },
 
     #[command(about = "Advanced analysis tools (grep, export, stats)")]
@@ -265,6 +268,9 @@ Use filters to narrow down by provider, time range, or project.",
 
         #[arg(long, help = "Skip automatic index refresh before listing")]
         no_auto_refresh: bool,
+
+        #[arg(long, help = "Include child sessions (subagents) in the list")]
+        all: bool,
 
         #[arg(long, default_value = "plain", help = "Output format")]
         format: OutputFormat,
