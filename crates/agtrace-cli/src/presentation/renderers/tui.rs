@@ -134,8 +134,8 @@ impl TuiRenderer {
                 self.handle_key_event(key);
             }
 
-            // Check for updates from handler (non-blocking)
-            if let Ok(tui_event) = rx.try_recv() {
+            // Drain all pending updates from handler (process all available events)
+            while let Ok(tui_event) = rx.try_recv() {
                 match tui_event {
                     TuiEvent::Update(screen_vm) => {
                         self.current_screen = Some(*screen_vm);

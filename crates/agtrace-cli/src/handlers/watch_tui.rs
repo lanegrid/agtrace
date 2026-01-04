@@ -109,6 +109,51 @@ impl WatchHandler {
     fn send_error(&self, msg: String) {
         let _ = self.tx.send(TuiEvent::Error(msg));
     }
+
+    /// Process stream events and update state
+    ///
+    /// Returns true if events were processed successfully, false for errors/disconnects
+    fn process_stream_events(
+        &mut self,
+        events: Vec<agtrace_sdk::types::AgentEvent>,
+        sessions: Vec<AgentSession>,
+    ) {
+        const MAX_EVENTS: usize = 100;
+
+        // Store events for timeline display (recent events only)
+        for event in &events {
+            self.events.push_back(event.clone());
+            if self.events.len() > MAX_EVENTS {
+                self.events.pop_front();
+            }
+        }
+
+        // Update state from display events (main stream only)
+        let display_events = filter_display_events(&events);
+        for event in &display_events {
+            self.state.last_activity = event.timestamp;
+            self.state.event_count += 1;
+
+            let updates = extract_state_updates(event);
+            if updates.is_new_turn {
+                self.state.turn_count += 1;
+            }
+            if let Some(usage) = updates.usage {
+                self.state.current_usage = usage;
+            }
+            if let Some(model) = updates.model
+                && self.state.model.is_none()
+            {
+                self.state.model = Some(model);
+            }
+            if let Some(limit) = updates.context_window_limit {
+                self.state.context_window_limit = Some(limit);
+            }
+        }
+
+        // Use sessions assembled by runtime (no local assembly needed)
+        self.assembled_sessions = sessions;
+    }
 }
 
 /// Main entry point for TUI watch
@@ -316,73 +361,48 @@ fn handle_provider_watch(
             _ => {}
         }
 
-        // Process stream events from current session
+        // Process stream events from current session (drain all pending events)
         if let Some(ref stream_handle) = current_stream_handle {
-            match stream_handle.receiver().recv_timeout(poll_timeout) {
-                Ok(WorkspaceEvent::Stream(StreamEvent::Attached { session_id, path })) => {
-                    handler.reset_session_state(session_id, Some(path));
-                }
-                Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, sessions })) => {
-                    // Batch process events
-                    const MAX_EVENTS: usize = 100;
+            let rx = stream_handle.receiver();
+            let mut received_events = false;
+            let mut should_disconnect = false;
 
-                    // Store events for timeline display (recent events only)
-                    for event in &events {
-                        handler.events.push_back(event.clone());
-                        if handler.events.len() > MAX_EVENTS {
-                            handler.events.pop_front();
-                        }
-                    }
-
-                    // Update state from display events (main stream only)
-                    let display_events = filter_display_events(&events);
-                    for event in &display_events {
-                        handler.state.last_activity = event.timestamp;
-                        handler.state.event_count += 1;
-
-                        let updates = extract_state_updates(event);
-                        if updates.is_new_turn {
-                            handler.state.turn_count += 1;
-                        }
-                        if let Some(usage) = updates.usage {
-                            handler.state.current_usage = usage;
-                        }
-                        if let Some(model) = updates.model
-                            && handler.state.model.is_none()
-                        {
-                            handler.state.model = Some(model);
-                        }
-                        if let Some(limit) = updates.context_window_limit {
-                            handler.state.context_window_limit = Some(limit);
-                        }
-                    }
-
-                    // Use sessions assembled by runtime (no local assembly needed)
-                    handler.assembled_sessions = sessions;
-
-                    handler.send_update();
-                }
-                Ok(WorkspaceEvent::Stream(StreamEvent::Disconnected { reason })) => {
-                    handler.notification = Some(format!(
-                        "Disconnected: {} - Waiting for new session...",
-                        reason
-                    ));
-                    handler.send_update();
-                    current_stream_handle = None;
-                }
-                Ok(WorkspaceEvent::Error(msg)) => {
-                    if msg.starts_with("FATAL:") {
-                        handler.send_error(msg);
-                        break;
+            // First, wait for at least one event (with timeout)
+            match rx.recv_timeout(poll_timeout) {
+                Ok(event) => {
+                    if let Some(disconnect) =
+                        process_workspace_event(event, &mut handler, &mut received_events)
+                    {
+                        should_disconnect = disconnect;
                     }
                 }
                 Err(RecvTimeoutError::Timeout) => {
-                    // Continue
+                    // No events, continue
                 }
                 Err(RecvTimeoutError::Disconnected) => {
-                    current_stream_handle = None;
+                    should_disconnect = true;
                 }
-                _ => {}
+            }
+
+            // Drain all remaining pending events (non-blocking)
+            if !should_disconnect {
+                while let Ok(event) = rx.try_recv() {
+                    if let Some(disconnect) =
+                        process_workspace_event(event, &mut handler, &mut received_events)
+                    {
+                        should_disconnect = disconnect;
+                        break;
+                    }
+                }
+            }
+
+            // Send single update after processing all events
+            if received_events {
+                handler.send_update();
+            }
+
+            if should_disconnect {
+                current_stream_handle = None;
             }
         } else {
             // No active session, just wait
@@ -393,6 +413,45 @@ fn handle_provider_watch(
     Ok(())
 }
 
+/// Process a single workspace event
+///
+/// Returns Some(true) if should disconnect, Some(false) if should break loop,
+/// None if should continue processing
+fn process_workspace_event(
+    event: WorkspaceEvent,
+    handler: &mut WatchHandler,
+    received_events: &mut bool,
+) -> Option<bool> {
+    match event {
+        WorkspaceEvent::Stream(StreamEvent::Attached { session_id, path }) => {
+            handler.reset_session_state(session_id, Some(path));
+            None
+        }
+        WorkspaceEvent::Stream(StreamEvent::Events { events, sessions }) => {
+            handler.process_stream_events(events, sessions);
+            *received_events = true;
+            None
+        }
+        WorkspaceEvent::Stream(StreamEvent::Disconnected { reason }) => {
+            handler.notification = Some(format!(
+                "Disconnected: {} - Waiting for new session...",
+                reason
+            ));
+            handler.send_update();
+            Some(true) // should disconnect
+        }
+        WorkspaceEvent::Error(msg) => {
+            if msg.starts_with("FATAL:") {
+                handler.send_error(msg);
+                Some(false) // should break main loop (handled externally)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
 /// Handle session watch mode
 fn handle_session_watch(
     client: &Client,
@@ -400,6 +459,7 @@ fn handle_session_watch(
     tx: Sender<TuiEvent>,
     signal_rx: Receiver<RendererSignal>,
 ) -> Result<()> {
+    use std::sync::mpsc::RecvTimeoutError;
     use std::time::Duration;
 
     let watch_service = client.watch_service();
@@ -416,99 +476,61 @@ fn handle_session_watch(
     // Set default fallback (will be updated from actual events)
     handler.max_context = Some(200_000); // Default to Claude Code's limit
 
+    let poll_timeout = Duration::from_millis(100);
+
     // Event loop
     loop {
         // Check for quit signal from renderer (non-blocking)
         match signal_rx.try_recv() {
-            Ok(RendererSignal::Quit) => {
-                // User requested quit
-                break;
+            Ok(RendererSignal::Quit) => break,
+            Err(std::sync::mpsc::TryRecvError::Empty) => {}
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+        }
+
+        let mut received_events = false;
+        let mut should_break = false;
+
+        // First, wait for at least one event (with timeout)
+        match rx_stream.recv_timeout(poll_timeout) {
+            Ok(event) => {
+                if let Some(disconnect) =
+                    process_workspace_event(event, &mut handler, &mut received_events)
+                {
+                    if disconnect {
+                        // For session watch, disconnect means end
+                        should_break = true;
+                    }
+                }
             }
-            Err(std::sync::mpsc::TryRecvError::Empty) => {
-                // No signal, continue
+            Err(RecvTimeoutError::Timeout) => {
+                // No events, continue
             }
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                // Renderer disconnected unexpectedly
-                break;
+            Err(RecvTimeoutError::Disconnected) => {
+                should_break = true;
             }
         }
 
-        match rx_stream.recv_timeout(Duration::from_millis(500)) {
-            Ok(WorkspaceEvent::Stream(stream_event)) => match stream_event {
-                StreamEvent::Attached { session_id, path } => {
-                    // Session attached - reset all state and buffers
-                    handler.reset_session_state(session_id, Some(path));
-                }
-                StreamEvent::Events { events, sessions } => {
-                    // Batch process events to avoid spamming TUI with updates
-                    const MAX_EVENTS: usize = 100;
-
-                    // Store events for timeline display (recent events only)
-                    for event in &events {
-                        handler.events.push_back(event.clone());
-                        if handler.events.len() > MAX_EVENTS {
-                            handler.events.pop_front();
-                        }
+        // Drain all remaining pending events (non-blocking)
+        if !should_break {
+            while let Ok(event) = rx_stream.try_recv() {
+                if let Some(disconnect) =
+                    process_workspace_event(event, &mut handler, &mut received_events)
+                {
+                    if disconnect {
+                        should_break = true;
+                        break;
                     }
-
-                    // Update state from display events (main stream only)
-                    let display_events = filter_display_events(&events);
-                    for event in &display_events {
-                        handler.state.last_activity = event.timestamp;
-                        handler.state.event_count += 1;
-
-                        let updates = extract_state_updates(event);
-                        if updates.is_new_turn {
-                            handler.state.turn_count += 1;
-                        }
-                        if let Some(usage) = updates.usage {
-                            handler.state.current_usage = usage;
-                        }
-                        if let Some(model) = updates.model
-                            && handler.state.model.is_none()
-                        {
-                            handler.state.model = Some(model);
-                        }
-                        if let Some(limit) = updates.context_window_limit {
-                            handler.state.context_window_limit = Some(limit);
-                        }
-                    }
-
-                    // Use sessions assembled by runtime (no local assembly needed)
-                    handler.assembled_sessions = sessions;
-
-                    // Send single update after processing all events (batch update)
-                    handler.send_update();
                 }
-                StreamEvent::Disconnected { reason } => {
-                    // Stream disconnected
-                    handler.send_error(reason);
-                    break;
-                }
-            },
-            Ok(WorkspaceEvent::Discovery(discovery_event)) => match discovery_event {
-                DiscoveryEvent::NewSession { .. } => {
-                    // Ignore new sessions - locked to specified session ID (no auto-attach)
-                }
-                DiscoveryEvent::SessionUpdated { .. } => {
-                    // Session updated
-                }
-                DiscoveryEvent::SessionRemoved { .. } => {
-                    // Session removed
-                }
-            },
-            Ok(WorkspaceEvent::Error(msg)) => {
-                handler.send_error(msg);
-                break;
             }
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                // Timeout, continue
-                continue;
-            }
-            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                // Stream closed
-                break;
-            }
+        }
+
+        // Send single update after processing all events
+        if received_events {
+            handler.send_update();
+        }
+
+        if should_break {
+            break;
         }
     }
 
