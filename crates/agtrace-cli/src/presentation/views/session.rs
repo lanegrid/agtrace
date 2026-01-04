@@ -377,6 +377,18 @@ impl<'a> SessionAnalysisView<'a> {
             writeln!(f, "Duration:      {}", dur)?;
         }
 
+        // Log files
+        if !self.data.header.log_files.is_empty() {
+            writeln!(f, "Log Files:")?;
+            for (i, log_file) in self.data.header.log_files.iter().enumerate() {
+                if i == 0 {
+                    writeln!(f, "               {}", log_file)?;
+                } else {
+                    writeln!(f, "               {}", log_file)?;
+                }
+            }
+        }
+
         writeln!(f, "{}", "=".repeat(80))?;
         writeln!(f)?;
 
@@ -829,6 +841,7 @@ mod tests {
                 status: "Complete".to_string(),
                 start_time: None,
                 duration: None,
+                log_files: vec![],
             },
             context_summary: ContextWindowSummary {
                 current_tokens: 1000,

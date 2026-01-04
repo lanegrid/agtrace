@@ -100,6 +100,7 @@ pub fn present_session_analysis(
     project_root: Option<&str>,
     model: &str,
     max_context: Option<u32>,
+    log_files: Vec<String>,
 ) -> CommandResultViewModel<SessionAnalysisViewModel> {
     let view = build_session_analysis_view(
         session,
@@ -109,6 +110,7 @@ pub fn present_session_analysis(
         project_root,
         model,
         max_context,
+        log_files,
     );
     let result = CommandResultViewModel::new(view);
     add_session_analysis_guidance(result)
@@ -122,6 +124,7 @@ fn build_session_analysis_view(
     project_root: Option<&str>,
     model: &str,
     max_context: Option<u32>,
+    log_files: Vec<String>,
 ) -> SessionAnalysisViewModel {
     use crate::presentation::formatters::time;
 
@@ -165,6 +168,7 @@ fn build_session_analysis_view(
         },
         duration,
         start_time,
+        log_files,
     };
 
     // Build context summary (raw data only)

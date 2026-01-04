@@ -51,6 +51,7 @@ pub struct SessionHeader {
     pub status: String,
     pub duration: Option<String>,
     pub start_time: Option<String>,
+    pub log_files: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]

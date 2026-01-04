@@ -22,6 +22,12 @@ pub fn handle(
         .assemble()
         .with_context(|| format!("Failed to assemble session: {}", session_id))?;
 
+    let log_files = session_handle
+        .raw_files()?
+        .into_iter()
+        .map(|f| f.path)
+        .collect();
+
     // TODO: Extract actual model from session metadata or provider-specific data
     let model_name_display = "Claude 3.5 Sonnet".to_string();
     let model_name_key = "claude-sonnet-4-5".to_string();
@@ -39,6 +45,7 @@ pub fn handle(
         metadata.project_root.as_deref(),
         &model_name_display,
         max_context,
+        log_files,
     );
 
     ctx.render(view_model)

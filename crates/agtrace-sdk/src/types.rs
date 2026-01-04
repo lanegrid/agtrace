@@ -104,6 +104,8 @@ pub use agtrace_runtime::{
     PackResult,
     ProjectInfo,
     ProviderConfig,
+    // Storage Types
+    RawFileContent,
     ScanOutcome,
     // Session Filter
     SessionFilter,

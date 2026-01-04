@@ -339,6 +339,24 @@ impl SessionHandle {
         }
     }
 
+    /// Get raw log files for this session.
+    ///
+    /// Returns the list of raw log file paths and their contents.
+    /// Returns empty vector for standalone sessions (created from events without workspace).
+    pub fn raw_files(&self) -> Result<Vec<crate::types::RawFileContent>> {
+        match &self.source {
+            SessionSource::Workspace { inner, id } => {
+                let runtime_handle = inner
+                    .sessions()
+                    .find(id)
+                    .map_err(|e| Error::NotFound(format!("Session {}: {}", id, e)))?;
+
+                runtime_handle.raw_files().map_err(Error::Runtime)
+            }
+            SessionSource::Events { .. } => Ok(vec![]),
+        }
+    }
+
     /// Summarize session statistics.
     pub fn summarize(&self) -> Result<agtrace_engine::SessionSummary> {
         let session = self.assemble()?;
