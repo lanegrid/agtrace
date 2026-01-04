@@ -159,6 +159,7 @@ fn build_session_analysis_view(
     // Build header
     let header = SessionHeader {
         session_id: session_id.to_string(),
+        stream_id: session.stream_id.as_str(),
         provider: provider.to_string(),
         project_hash: project_hash.to_string(),
         project_root: project_root.map(|s| s.to_string()),

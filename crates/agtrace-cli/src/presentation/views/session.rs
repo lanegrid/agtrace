@@ -259,7 +259,13 @@ impl<'a> SessionAnalysisView<'a> {
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Compact: Multi-line header with clear key-value pairs + one-line per turn
         let session_id = self.data.header.session_id.replace(['\n', '\r'], "");
-        writeln!(f, "Session:  {}", session_id)?;
+        let stream_id = &self.data.header.stream_id;
+        // Show stream_id only if not main (to reduce noise for common case)
+        if stream_id != "main" {
+            writeln!(f, "Session:  {} (stream: {})", session_id, stream_id)?;
+        } else {
+            writeln!(f, "Session:  {}", session_id)?;
+        }
 
         let provider = self.data.header.provider.replace(['\n', '\r'], "");
         write!(f, "Provider: {}", provider)?;
@@ -830,6 +836,7 @@ mod tests {
         let data = SessionAnalysisViewModel {
             header: SessionHeader {
                 session_id: "test-session-id".to_string(),
+                stream_id: "main".to_string(),
                 provider: "test_provider".to_string(),
                 project_hash: "test-project-hash-12345678".to_string(),
                 project_root: Some("/test/project/root".to_string()),

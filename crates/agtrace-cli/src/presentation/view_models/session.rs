@@ -44,6 +44,7 @@ pub struct SessionAnalysisViewModel {
 #[derive(Debug, Serialize)]
 pub struct SessionHeader {
     pub session_id: String,
+    pub stream_id: String,
     pub provider: String,
     pub project_hash: String,
     pub project_root: Option<String>,
