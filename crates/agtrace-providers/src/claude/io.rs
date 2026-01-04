@@ -115,10 +115,15 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                             _ => None,
                         });
                     }
-                    // Extract subagent_id from ToolResult with agentId field
+                    // Extract subagent_id from UserRecord.agent_id (sidechain files)
+                    if subagent_id.is_none() && user.agent_id.is_some() {
+                        subagent_id = user.agent_id.clone();
+                    }
+                    // Also check ToolResult with agentId field
                     if subagent_id.is_none() {
                         for content in &user.message.content {
-                            if let super::schema::UserContent::ToolResult { agent_id, .. } = content {
+                            if let super::schema::UserContent::ToolResult { agent_id, .. } = content
+                            {
                                 if let Some(aid) = agent_id {
                                     subagent_id = Some(aid.clone());
                                     break;

@@ -26,8 +26,8 @@ pub use ops::{
     CheckResult, CheckStatus, CorpusStats, IndexProgress, InspectContentType, InspectLine,
     InspectResult, PackResult, ProjectInfo, StatsResult,
 };
-pub use storage::RawFileContent;
 pub use runtime::{DiscoveryEvent, StreamEvent, WorkspaceEvent};
+pub use storage::RawFileContent;
 
 // Error types
 pub use error::{Error, Result};

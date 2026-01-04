@@ -91,7 +91,9 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                     }
                     // Extract subagent information from source field
                     if subagent_type.is_none() {
-                        if let super::schema::SessionSource::Subagent { subagent } = &meta.payload.source {
+                        if let super::schema::SessionSource::Subagent { subagent } =
+                            &meta.payload.source
+                        {
                             subagent_type = Some(subagent.clone());
                             // For Codex subagents, the parent session ID is typically in metadata
                             // For now, we don't have parent_session_id in the schema yet
@@ -201,7 +203,7 @@ mod tests {
 "#).unwrap();
 
         let header = extract_codex_header(&tmpfile).unwrap();
-        
+
         assert_eq!(header.session_id, Some("test-id".to_string()));
         assert_eq!(header.subagent_type, Some("review".to_string()));
         assert!(header.parent_session_id.is_none());
