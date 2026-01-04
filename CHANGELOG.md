@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2026-01-04
+
+### Bug Fixes
+
+- *(release)* Run clippy before version update to fail early ([70e96aa](https://github.com/lanegrid/agtrace/commit/70e96aa72ea90616b7401a4568e4ebe62fdf12d8))
+
+- *(release)* Run lightweight checks before tests for faster failure ([66ec9fc](https://github.com/lanegrid/agtrace/commit/66ec9fc297795f08c7cf449450eba5d0a5eb7389))
+
+
+### Documentation
+
+- Reposition agtrace as observability tool instead of memory system ([f2cb342](https://github.com/lanegrid/agtrace/commit/f2cb3429c51a48cee269bf965b93768aaff94fc6))
+
+- Remove agent antipatterns documentation ([8b48857](https://github.com/lanegrid/agtrace/commit/8b4885744d9b6b0190993a299dedab0c0bd76d79))
+
+
 ## [0.5.0] - 2026-01-03
 
 ### Bug Fixes
