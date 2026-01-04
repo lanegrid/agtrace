@@ -1,10 +1,10 @@
 # agtrace Documentation
 
-Welcome to the agtrace documentation. **agtrace** gives AI agents memory by providing access to their execution history via the Model Context Protocol (MCP).
+Welcome to the agtrace documentation. **agtrace** provides AI agents access to their execution history via the Model Context Protocol (MCP).
 
 ## Getting Started
 
-- [Why agtrace?](motivation.md) - How agtrace enables agent memory
+- [Why agtrace?](motivation.md) - Understanding the problem and solution
 - [Getting Started](getting-started.md) - Detailed installation and setup guide
 
 ## Reference

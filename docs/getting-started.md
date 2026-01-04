@@ -1,6 +1,6 @@
 # Getting Started with agtrace
 
-This guide walks you through installing and using agtrace to give your AI agents memory.
+This guide walks you through installing and using agtrace to monitor AI agent sessions and enable agents to query their execution history.
 
 ## Installation
 
@@ -36,7 +36,7 @@ cargo install agtrace
 
 ### Option A: MCP Setup (Recommended)
 
-Give your AI agent memory by connecting agtrace via MCP:
+Let your AI agent query its execution history by connecting agtrace via MCP:
 
 **1. Initialize agtrace:**
 ```bash

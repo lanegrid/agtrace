@@ -1,8 +1,8 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
   <h1>agtrace</h1>
-  <p><strong>Memory for AI Agents.</strong></p>
-  <p>Let your agents learn from their past sessions.</p>
+  <p><strong>Observability for AI Agents</strong></p>
+  <p>Local-first monitoring for Claude Code, Codex, and Gemini.</p>
 
   [![npm](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat&label=npm)](https://www.npmjs.com/package/@lanegrid/agtrace)
   [![crates.io](https://img.shields.io/crates/v/agtrace-sdk.svg?label=SDK)](https://crates.io/crates/agtrace-sdk)
@@ -10,34 +10,26 @@
 
 ---
 
-## The Problem
+![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
 
-AI coding agents start every session fresh. They can't remember:
-- Why a decision was made yesterday
-- What approaches already failed
-- The context behind existing code
+**agtrace** monitors AI agent sessions in real-time and lets agents query their own execution history via MCP.
 
-You end up re-explaining the same constraints, watching the same mistakes, and losing accumulated knowledge.
-
-## The Solution
-
-**agtrace** gives AI agents access to their own execution history via [Model Context Protocol (MCP)](https://modelcontextprotocol.io).
-
-Your agent can now:
-- Query past sessions: *"What did we decide about the database schema?"*
-- Learn from failures: *"Show me errors from previous attempts"*
-- Maintain context: *"Continue where we left off yesterday"*
-
-**Zero instrumentation.** agtrace auto-discovers logs from Claude Code, Codex, and Gemini. No code changes required
+- **Zero instrumentation** — Auto-discovers provider logs
+- **100% local** — Privacy by design, no cloud dependencies
+- **Universal timeline** — Unified view across all providers
 
 ## Quick Start
 
 ```bash
 npm install -g @lanegrid/agtrace
-agtrace init
+cd my-project
+agtrace init      # Initialize workspace (one-time setup)
+agtrace watch     # Launch live dashboard
 ```
 
-Then connect to your AI assistant:
+## MCP: Let Agents Query Their Own History
+
+Connect your AI assistant to search past sessions via [Model Context Protocol](https://modelcontextprotocol.io):
 
 **Claude Code:**
 ```bash
@@ -49,45 +41,32 @@ claude mcp add agtrace -- agtrace mcp serve
 codex mcp add agtrace -- agtrace mcp serve
 ```
 
-**Claude Desktop:** Add to `claude_desktop_config.json`:
+**Claude Desktop:**
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "agtrace": { "command": "agtrace", "args": ["mcp", "serve"] }
+    "agtrace": {
+      "command": "agtrace",
+      "args": ["mcp", "serve"]
+    }
   }
 }
 ```
 
-That's it. Your agent now has memory.
+Your agent can now:
+- Search past sessions for tool calls and errors
+- Retrieve tool calls and results from previous work
+- Analyze failure patterns
 
-## How Agents Use It
+**Example queries:**
+- *"Show me sessions with failures in the last hour"*
+- *"Search for tool calls that modified the database schema"*
+- *"Analyze the most recent session for performance issues"*
 
-Once connected, your agent can query its own history:
+For detailed setup and examples, see the [MCP Integration Guide](docs/mcp-integration.md).
 
-| You ask | Agent does |
-|---------|------------|
-| *"Why did we choose PostgreSQL?"* | Searches past sessions for database discussions |
-| *"Fix this bug, we tried before"* | Retrieves previous failed attempts and avoids them |
-| *"Continue the refactoring"* | Loads context from yesterday's session |
-
-**Real example:** An agent retrieved 34KB of historical context across 5 sessions, then generated a specification that respected all past design constraints—without you re-explaining anything.
-
-## MCP Tools
-
-agtrace exposes these tools to your agent:
-
-| Tool | Purpose |
-|------|---------|
-| `list_sessions` | Browse session history with filters |
-| `list_turns` | Get turn-by-turn overview of a session |
-| `get_turns` | Retrieve detailed content of specific turns |
-| `search_events` | Find specific tool calls or patterns |
-| `analyze_session` | Detect failures, loops, and issues |
-| `get_project_info` | List indexed projects |
-
-See [MCP Integration Guide](docs/mcp-integration.md) for details.
-
-## CLI Tools for Developers
+## CLI Commands
 
 Debug and inspect agent behavior manually:
 
@@ -97,11 +76,9 @@ agtrace session list       # Browse session history
 agtrace lab grep "error"   # Search across sessions
 ```
 
-![agtrace watch](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
+## Building with the SDK
 
-## SDK for Builders
-
-Build custom tools on top of agtrace:
+Embed agent observability into your own tools (vital-checkers, IDE plugins, dashboards).
 
 ```toml
 [dependencies]
@@ -113,11 +90,14 @@ use agtrace_sdk::{Client, Lens, types::SessionFilter};
 
 let client = Client::connect_default().await?;
 let sessions = client.sessions().list(SessionFilter::all())?;
-let report = client.sessions().get(&sessions[0].id)?
-    .analyze()?.through(Lens::Failures).report()?;
+if let Some(summary) = sessions.first() {
+    let handle = client.sessions().get(&summary.id)?;
+    let report = handle.analyze()?.through(Lens::Failures).report()?;
+    println!("Health: {}/100", report.score);
+}
 ```
 
-See [SDK Documentation](https://docs.rs/agtrace-sdk) and [examples](crates/agtrace-sdk/examples/).
+See [SDK Documentation](https://docs.rs/agtrace-sdk), [Examples](crates/agtrace-sdk/examples/), and [SDK README](crates/agtrace-sdk/README.md).
 
 ## Supported Providers
 
@@ -125,14 +105,13 @@ See [SDK Documentation](https://docs.rs/agtrace-sdk) and [examples](crates/agtra
 - **Codex** (OpenAI)
 - **Gemini** (Google)
 
-All providers auto-discovered. Logs stay local.
-
 ## Documentation
 
-- [MCP Integration Guide](docs/mcp-integration.md)
-- [Getting Started](docs/getting-started.md)
-- [Architecture](docs/architecture.md)
-- [Full Documentation](docs/README.md)
+- [Getting Started](docs/getting-started.md) - Detailed installation and usage guide
+- [MCP Integration](docs/mcp-integration.md) - Connect agents to their execution history
+- [Architecture](docs/architecture.md) - Platform design and principles
+- [Why agtrace?](docs/motivation.md) - Understanding the problem and solution
+- [Full Documentation](docs/README.md) - Commands, FAQs, and more
 
 ## License
 
