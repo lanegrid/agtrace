@@ -69,9 +69,6 @@ impl LogDiscovery for ClaudeDiscovery {
                     sidechain_files: Vec::new(),
                     project_root: header.cwd.clone().map(PathBuf::from),
                     snippet: header.snippet.clone(),
-                    subagent_id: header.subagent_id.clone(),
-                    subagent_type: None, // Claude uses agentId in ToolResult, not subagent_type
-                    parent_session_id: None, // Claude subagents are in sidechain files, not separate sessions
                 });
 
             if header.is_sidechain {
@@ -92,10 +89,6 @@ impl LogDiscovery for ClaudeDiscovery {
                 if session.snippet.is_none() {
                     session.snippet = header.snippet.clone();
                 }
-            }
-            // Update subagent_id if found in any file
-            if session.subagent_id.is_none() && header.subagent_id.is_some() {
-                session.subagent_id = header.subagent_id.clone();
             }
         }
 

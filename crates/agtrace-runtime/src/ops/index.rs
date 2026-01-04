@@ -185,9 +185,6 @@ impl<'a> IndexService<'a> {
                     end_ts: None,
                     snippet: session.snippet.clone(),
                     is_valid: true,
-                    subagent_id: session.subagent_id.clone(),
-                    subagent_type: session.subagent_type.clone(),
-                    parent_session_id: session.parent_session_id.clone(),
                 };
                 self.db.insert_or_update_session(&session_record)?;
 

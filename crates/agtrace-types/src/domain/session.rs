@@ -92,9 +92,6 @@ pub struct SessionMetadata {
     pub project_root: Option<String>,
     /// Provider name (claude_code, codex, gemini).
     pub provider: String,
-    /// Subagent execution metadata (if this is a subagent session).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subagent: Option<SubagentInfo>,
 }
 
 // ==========================================

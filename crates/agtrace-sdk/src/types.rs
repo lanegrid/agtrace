@@ -30,6 +30,7 @@ pub use agtrace_types::{
     SessionStats,
     StepStatus,
     StreamId,
+    SubagentInfo,
     // Token usage types
     TokenInput,
     TokenOutput,

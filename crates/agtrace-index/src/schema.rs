@@ -3,7 +3,7 @@ use rusqlite::Connection;
 use crate::Result;
 
 // Schema version (increment when changing table definitions)
-pub const SCHEMA_VERSION: i32 = 3;
+pub const SCHEMA_VERSION: i32 = 4;
 
 // NOTE: Database Design Rationale (Pointer Edition)
 //
@@ -46,9 +46,6 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
             end_ts TEXT,
             snippet TEXT,
             is_valid BOOLEAN DEFAULT 1,
-            subagent_id TEXT,
-            subagent_type TEXT,
-            parent_session_id TEXT,
             FOREIGN KEY (project_hash) REFERENCES projects(hash)
         );
 

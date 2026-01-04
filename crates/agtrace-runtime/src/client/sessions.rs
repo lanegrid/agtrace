@@ -212,7 +212,6 @@ impl SessionHandle {
             project_hash: index_summary.project_hash,
             project_root,
             provider: index_summary.provider,
-            subagent: index_summary.subagent,
         })
     }
 

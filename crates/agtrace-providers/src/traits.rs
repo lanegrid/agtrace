@@ -129,12 +129,6 @@ pub struct SessionIndex {
     pub sidechain_files: Vec<PathBuf>,
     pub project_root: Option<PathBuf>,
     pub snippet: Option<String>,
-    /// Subagent identifier (e.g., agentId for Claude, session_id for Codex parent)
-    pub subagent_id: Option<String>,
-    /// Subagent type/role (e.g., "Explore", "general-purpose")
-    pub subagent_type: Option<String>,
-    /// Parent session ID (for Codex subagents which are separate sessions)
-    pub parent_session_id: Option<String>,
 }
 
 // --- Provider Adapter ---
