@@ -72,6 +72,9 @@ impl LogDiscovery for CodexDiscovery {
                     sidechain_files: Vec::new(),
                     project_root: header.cwd.clone().map(PathBuf::from),
                     snippet: header.snippet.clone(),
+                    subagent_id: None, // Codex doesn't use subagent_id
+                    subagent_type: header.subagent_type.clone(),
+                    parent_session_id: header.parent_session_id.clone(),
                 });
         }
 

@@ -54,6 +54,7 @@ pub struct ClaudeHeader {
     pub timestamp: Option<String>,
     pub snippet: Option<String>,
     pub is_sidechain: bool,
+    pub subagent_id: Option<String>,
 }
 
 /// Extract header information from Claude file (for scanning)
@@ -66,6 +67,7 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
     let mut timestamp = None;
     let mut snippet = None;
     let mut is_sidechain = false;
+    let mut subagent_id = None;
     let mut meta_message_ids = std::collections::HashSet::new();
 
     for line in reader.lines().take(200).flatten() {
@@ -113,6 +115,17 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
                             _ => None,
                         });
                     }
+                    // Extract subagent_id from ToolResult with agentId field
+                    if subagent_id.is_none() {
+                        for content in &user.message.content {
+                            if let super::schema::UserContent::ToolResult { agent_id, .. } = content {
+                                if let Some(aid) = agent_id {
+                                    subagent_id = Some(aid.clone());
+                                    break;
+                                }
+                            }
+                        }
+                    }
                     is_sidechain = user.is_sidechain;
                 }
                 ClaudeRecord::Assistant(asst) => {
@@ -141,5 +154,6 @@ pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
         timestamp,
         snippet,
         is_sidechain,
+        subagent_id,
     })
 }

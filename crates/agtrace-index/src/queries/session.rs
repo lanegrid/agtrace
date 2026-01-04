@@ -1,4 +1,4 @@
-use agtrace_types::{ProjectHash, SessionOrder};
+use agtrace_types::{ProjectHash, SessionOrder, SubagentInfo};
 use rusqlite::{Connection, params};
 
 use crate::{
@@ -6,18 +6,38 @@ use crate::{
     records::{SessionRecord, SessionSummary},
 };
 
+/// Helper to construct SubagentInfo from database columns
+fn build_subagent_info(
+    agent_id: Option<String>,
+    agent_type: Option<String>,
+    parent_session_id: Option<String>,
+) -> Option<SubagentInfo> {
+    if agent_id.is_none() && agent_type.is_none() && parent_session_id.is_none() {
+        None
+    } else {
+        Some(SubagentInfo {
+            agent_id,
+            agent_type,
+            parent_session_id,
+        })
+    }
+}
+
 pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()> {
     conn.execute(
         r#"
-        INSERT INTO sessions (id, project_hash, provider, start_ts, end_ts, snippet, is_valid)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        INSERT INTO sessions (id, project_hash, provider, start_ts, end_ts, snippet, is_valid, subagent_id, subagent_type, parent_session_id)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
         ON CONFLICT(id) DO UPDATE SET
             project_hash = ?2,
             provider = ?3,
             start_ts = COALESCE(?4, start_ts),
             end_ts = COALESCE(?5, end_ts),
             snippet = COALESCE(?6, snippet),
-            is_valid = ?7
+            is_valid = ?7,
+            subagent_id = COALESCE(?8, subagent_id),
+            subagent_type = COALESCE(?9, subagent_type),
+            parent_session_id = COALESCE(?10, parent_session_id)
         "#,
         params![
             &session.id,
@@ -26,7 +46,10 @@ pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()
             &session.start_ts,
             &session.end_ts,
             &session.snippet,
-            &session.is_valid
+            &session.is_valid,
+            &session.subagent_id,
+            &session.subagent_type,
+            &session.parent_session_id
         ],
     )?;
 
@@ -36,7 +59,8 @@ pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()
 pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSummary>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet
+        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+               s.subagent_id, s.subagent_type, s.parent_session_id
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
         WHERE s.id = ?1 AND s.is_valid = 1
@@ -45,6 +69,12 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
 
     let mut rows = stmt.query([session_id])?;
     if let Some(row) = rows.next()? {
+        let subagent = build_subagent_info(
+            row.get::<_, Option<String>>(6)?,
+            row.get::<_, Option<String>>(7)?,
+            row.get::<_, Option<String>>(8)?,
+        );
+
         Ok(Some(SessionSummary {
             id: row.get(0)?,
             provider: row.get(1)?,
@@ -52,6 +82,7 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
             project_root: row.get(3)?,
             start_ts: row.get(4)?,
             snippet: row.get(5)?,
+            subagent,
         }))
     } else {
         Ok(None)
@@ -87,7 +118,8 @@ pub fn list(
 
     let query = format!(
         r#"
-        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet
+        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+               s.subagent_id, s.subagent_type, s.parent_session_id
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
         WHERE {}
@@ -101,6 +133,12 @@ pub fn list(
     let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
     let sessions = stmt
         .query_map(param_refs.as_slice(), |row| {
+            let subagent = build_subagent_info(
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, Option<String>>(7)?,
+                row.get::<_, Option<String>>(8)?,
+            );
+
             Ok(SessionSummary {
                 id: row.get(0)?,
                 provider: row.get(1)?,
@@ -108,6 +146,7 @@ pub fn list(
                 project_root: row.get(3)?,
                 start_ts: row.get(4)?,
                 snippet: row.get(5)?,
+                subagent,
             })
         })?
         .collect::<std::result::Result<Vec<_>, rusqlite::Error>>()?;
@@ -167,6 +206,9 @@ mod tests {
             end_ts: None,
             snippet: Some("test1".to_string()),
             is_valid: true,
+            subagent_id: None,
+            subagent_type: None,
+            parent_session_id: None,
         };
 
         let session2 = SessionRecord {
@@ -177,6 +219,9 @@ mod tests {
             end_ts: None,
             snippet: Some("test2".to_string()),
             is_valid: true,
+            subagent_id: None,
+            subagent_type: None,
+            parent_session_id: None,
         };
 
         let session3 = SessionRecord {
@@ -187,6 +232,9 @@ mod tests {
             end_ts: None,
             snippet: Some("test3".to_string()),
             is_valid: true,
+            subagent_id: None,
+            subagent_type: None,
+            parent_session_id: None,
         };
 
         db.insert_or_update_session(&session1)?;
@@ -246,6 +294,9 @@ mod tests {
             end_ts: Some("2024-01-01T01:00:00Z".to_string()),
             snippet: Some("First session".to_string()),
             is_valid: true,
+            subagent_id: None,
+            subagent_type: None,
+            parent_session_id: None,
         };
 
         let session2 = SessionRecord {
@@ -256,6 +307,9 @@ mod tests {
             end_ts: Some("2024-01-02T01:00:00Z".to_string()),
             snippet: Some("Second session".to_string()),
             is_valid: true,
+            subagent_id: None,
+            subagent_type: None,
+            parent_session_id: None,
         };
 
         let session3 = SessionRecord {
@@ -266,6 +320,9 @@ mod tests {
             end_ts: Some("2024-01-03T01:00:00Z".to_string()),
             snippet: Some("Third session".to_string()),
             is_valid: true,
+            subagent_id: None,
+            subagent_type: None,
+            parent_session_id: None,
         };
 
         db.insert_or_update_session(&session1)?;

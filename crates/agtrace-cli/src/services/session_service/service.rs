@@ -76,6 +76,7 @@ impl<'a> SessionService<'a> {
                 project_root: None,
                 start_ts: None,
                 snippet: None,
+                subagent: None,
             }]
         } else {
             self.client

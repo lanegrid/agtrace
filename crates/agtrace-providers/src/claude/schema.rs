@@ -95,6 +95,9 @@ pub(crate) enum UserContent {
         content: Option<Value>,
         #[serde(default)]
         is_error: bool,
+        /// Agent ID for subagent execution (e.g., "ba2ed465")
+        #[serde(default, rename = "agentId")]
+        agent_id: Option<String>,
     },
     #[serde(other)]
     Unknown,

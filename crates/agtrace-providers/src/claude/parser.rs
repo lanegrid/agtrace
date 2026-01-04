@@ -73,6 +73,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             tool_use_id,
                             content: result_content,
                             is_error,
+                            agent_id,
                         } => {
                             // ToolResult in user message - map to ToolResult event
                             // Need to look up the tool_call_id from provider ID
@@ -82,6 +83,12 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     .and_then(|v| v.as_str())
                                     .unwrap_or("")
                                     .to_string();
+
+                                // Subagent information (agent_id) is extracted during header scanning
+                                // (see io::extract_claude_header) and stored in the index database.
+                                // The agent_id field here contains the subagent identifier (e.g., "ba2ed465")
+                                // when this ToolResult is from a subagent execution.
+                                let _ = agent_id; // Acknowledge the field exists for documentation
 
                                 builder.build_and_push(
                                     &mut events,

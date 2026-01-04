@@ -60,6 +60,8 @@ pub struct CodexHeader {
     pub cwd: Option<String>,
     pub timestamp: Option<String>,
     pub snippet: Option<String>,
+    pub subagent_type: Option<String>,
+    pub parent_session_id: Option<String>,
 }
 
 /// Extract header information from Codex file (for scanning)
@@ -71,6 +73,8 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
     let mut cwd = None;
     let mut timestamp = None;
     let mut snippet = None;
+    let mut subagent_type = None;
+    let parent_session_id = None; // Not mutated (future use for Codex parent tracking)
 
     for line in reader.lines().take(20).flatten() {
         if let Ok(record) = serde_json::from_str::<CodexRecord>(&line) {
@@ -84,6 +88,14 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                     }
                     if timestamp.is_none() {
                         timestamp = Some(meta.timestamp.clone());
+                    }
+                    // Extract subagent information from source field
+                    if subagent_type.is_none() {
+                        if let super::schema::SessionSource::Subagent { subagent } = &meta.payload.source {
+                            subagent_type = Some(subagent.clone());
+                            // For Codex subagents, the parent session ID is typically in metadata
+                            // For now, we don't have parent_session_id in the schema yet
+                        }
                     }
                 }
                 CodexRecord::TurnContext(turn) => {
@@ -142,6 +154,8 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
         cwd,
         timestamp,
         snippet,
+        subagent_type,
+        parent_session_id,
     })
 }
 

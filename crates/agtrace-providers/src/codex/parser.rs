@@ -71,6 +71,7 @@ pub(crate) fn normalize_codex_session(
             CodexRecord::SessionMeta(_meta) => {
                 // SessionMeta doesn't generate events
                 // Metadata is preserved in raw field if needed
+                // Subagent information is extracted during header scanning (see io::extract_codex_header)
             }
 
             CodexRecord::EventMsg(event_msg) => {

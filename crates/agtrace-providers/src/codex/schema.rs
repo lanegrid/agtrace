@@ -1,6 +1,16 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Source of the session (CLI or subagent)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(untagged)]
+pub(crate) enum SessionSource {
+    /// Subagent session with type (e.g., {"subagent":"review"})
+    Subagent { subagent: String },
+    /// Regular CLI session (e.g., "cli")
+    Cli(String),
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -28,7 +38,7 @@ pub(crate) struct SessionMetaPayload {
     pub cli_version: String,
     #[serde(default)]
     pub instructions: Option<String>,
-    pub source: Value, // Can be string or object like {"subagent":"review"}
+    pub source: SessionSource,
     #[serde(default)]
     pub model_provider: Option<String>,
     #[serde(default)]

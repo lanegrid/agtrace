@@ -380,12 +380,8 @@ impl<'a> SessionAnalysisView<'a> {
         // Log files
         if !self.data.header.log_files.is_empty() {
             writeln!(f, "Log Files:")?;
-            for (i, log_file) in self.data.header.log_files.iter().enumerate() {
-                if i == 0 {
-                    writeln!(f, "               {}", log_file)?;
-                } else {
-                    writeln!(f, "               {}", log_file)?;
-                }
+            for log_file in &self.data.header.log_files {
+                writeln!(f, "               {}", log_file)?;
             }
         }
 

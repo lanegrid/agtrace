@@ -33,6 +33,12 @@ pub struct SessionRecord {
     pub snippet: Option<String>,
     /// Whether the session was successfully parsed and validated.
     pub is_valid: bool,
+    /// Subagent identifier (agentId for Claude, session_id for Codex).
+    pub subagent_id: Option<String>,
+    /// Subagent type/role (Explore, review, etc.).
+    pub subagent_type: Option<String>,
+    /// Parent session ID (for Codex subagents).
+    pub parent_session_id: Option<String>,
 }
 
 /// Log file metadata record from the index database.
@@ -71,4 +77,7 @@ pub struct SessionSummary {
     pub start_ts: Option<String>,
     /// First user message snippet for display.
     pub snippet: Option<String>,
+    /// Subagent execution metadata.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subagent: Option<agtrace_types::SubagentInfo>,
 }
