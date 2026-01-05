@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.4] - 2026-01-05
+
+### Bug Fixes
+
+- *(watch)* Improve sidechain handling and add interrupt display ([768ac8f](https://github.com/lanegrid/agtrace/commit/768ac8fe8da6be4ee4e9ce764f6e66e8c4d3469a))
+
+- *(sdk)* Resolve clippy warnings with let-chains and redundant closure ([2608d4d](https://github.com/lanegrid/agtrace/commit/2608d4d18fbe60b8d570c070448c0f8fe2009e24))
+
+
+### Features
+
+- *(cli)* Improve lab grep with glob support and concise help ([6fffdc8](https://github.com/lanegrid/agtrace/commit/6fffdc8b672ea518b7b437daa4c20db836d6b0a1))
+
+
+### Refactor
+
+- Move MCP server and session service from CLI to SDK ([dba914d](https://github.com/lanegrid/agtrace/commit/dba914d69b30e535c43570a0b6a6aeac65519345))
+
+- *(sdk)* Rename Lens to Diagnostic and improve documentation ([266220f](https://github.com/lanegrid/agtrace/commit/266220f684484a576d3e56c2546b2627e8b1a13a))
+
+
 ## [0.5.3] - 2026-01-05
 
 ### Features
