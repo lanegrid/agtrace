@@ -114,6 +114,8 @@
 pub mod analysis;
 pub mod client;
 pub mod error;
+pub mod mcp;
+pub mod query;
 pub mod types;
 pub mod watch;
 
@@ -131,6 +133,9 @@ pub use types::{
     AgentEvent, EventPayload, ExportStrategy, SessionFilter, SessionSummary, StreamId, ToolKind,
 };
 pub use watch::{LiveStream, WatchBuilder};
+
+// Query types for MCP and programmatic usage
+pub use query::{EventType, Provider};
 
 // ============================================================================
 // Low-level Utilities (Power User API)

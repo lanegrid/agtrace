@@ -2,6 +2,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::error::{Error, Result};
+use crate::query::{
+    Cursor, EventMatch, GetTurnsArgs, GetTurnsResponse, ListTurnsArgs, ListTurnsResponse,
+    SearchEventsArgs, SearchEventsResponse,
+};
 use crate::types::*;
 use crate::watch::WatchBuilder;
 
@@ -242,6 +246,202 @@ impl SessionClient {
                 id: id_or_prefix.to_string(),
             },
         })
+    }
+
+    // ========================================================================
+    // MCP Query Methods
+    // ========================================================================
+
+    /// Search events across sessions.
+    pub fn search_events(&self, args: SearchEventsArgs) -> Result<SearchEventsResponse> {
+        let limit = args.limit();
+        let offset = args
+            .cursor
+            .as_ref()
+            .and_then(|c| Cursor::decode(c))
+            .map(|c| c.offset)
+            .unwrap_or(0);
+
+        let project_hash_filter = if let Some(ref root) = args.project_root {
+            Some(crate::utils::project_hash_from_root(root))
+        } else {
+            args.project_hash.clone().map(|h| h.into())
+        };
+
+        let mut filter = if let Some(hash) = project_hash_filter {
+            SessionFilter::project(hash).limit(1000)
+        } else {
+            SessionFilter::all().limit(1000)
+        };
+
+        if let Some(ref provider) = args.provider {
+            filter = filter.provider(provider.as_str().to_string());
+        }
+
+        let sessions = if let Some(ref session_id) = args.session_id {
+            let _handle = self.get(session_id)?;
+
+            vec![SessionSummary {
+                id: session_id.clone(),
+                provider: String::new(),
+                project_hash: ProjectHash::from(String::new()),
+                project_root: None,
+                start_ts: None,
+                snippet: None,
+                parent_session_id: None,
+                spawned_by: None,
+            }]
+        } else {
+            self.list_without_refresh(filter)?
+        };
+
+        let mut all_matches = Vec::new();
+
+        for session_summary in sessions {
+            let handle = match self.get(&session_summary.id) {
+                Ok(h) => h,
+                Err(_) => continue,
+            };
+
+            let session = match handle.assemble() {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            let events = match handle.events() {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+
+            for (event_index, event) in events.iter().enumerate() {
+                if let Some(ref event_type_filter) = args.event_type {
+                    if !event_type_filter.matches_payload(&event.payload) {
+                        continue;
+                    }
+                }
+
+                let event_json = match serde_json::to_string(&event.payload) {
+                    Ok(j) => j,
+                    Err(_) => continue,
+                };
+
+                if event_json.contains(&args.query) {
+                    let (turn_index, step_index) = Self::find_event_location(&session, event_index);
+
+                    let event_match = EventMatch::new(
+                        session_summary.id.clone(),
+                        event_index,
+                        turn_index,
+                        step_index,
+                        event,
+                    );
+                    all_matches.push(event_match);
+                }
+            }
+        }
+
+        let fetch_limit = limit + 1;
+        let mut matches: Vec<_> = all_matches
+            .into_iter()
+            .skip(offset)
+            .take(fetch_limit)
+            .collect();
+
+        let has_more = matches.len() > limit;
+        if has_more {
+            matches.pop();
+        }
+
+        let next_cursor = if has_more {
+            Some(
+                Cursor {
+                    offset: offset + limit,
+                }
+                .encode(),
+            )
+        } else {
+            None
+        };
+
+        Ok(SearchEventsResponse {
+            matches,
+            next_cursor,
+        })
+    }
+
+    /// List turns with metadata (no payload).
+    pub fn list_turns(&self, args: ListTurnsArgs) -> Result<ListTurnsResponse> {
+        let handle = self.get(&args.session_id)?;
+
+        let session = handle.assemble()?;
+
+        let limit = args.limit();
+        let offset = args
+            .cursor
+            .as_ref()
+            .and_then(|c| Cursor::decode(c))
+            .map(|c| c.offset)
+            .unwrap_or(0);
+
+        let total_turns = session.turns.len();
+        let remaining = total_turns.saturating_sub(offset);
+        let has_more = remaining > limit;
+
+        let next_cursor = if has_more {
+            Some(
+                Cursor {
+                    offset: offset + limit,
+                }
+                .encode(),
+            )
+        } else {
+            None
+        };
+
+        Ok(ListTurnsResponse::new(session, offset, limit, next_cursor))
+    }
+
+    /// Get specific turns with safety valves.
+    pub fn get_turns(&self, args: GetTurnsArgs) -> Result<GetTurnsResponse> {
+        let handle = self.get(&args.session_id)?;
+
+        let session = handle.assemble()?;
+
+        GetTurnsResponse::new(session, &args).map_err(|e| Error::InvalidInput(e))
+    }
+
+    fn find_event_location(session: &AgentSession, event_index: usize) -> (usize, usize) {
+        let mut current_event_idx = 0;
+
+        for (turn_idx, turn) in session.turns.iter().enumerate() {
+            for (step_idx, step) in turn.steps.iter().enumerate() {
+                let step_event_count = Self::count_step_events(step);
+
+                if current_event_idx + step_event_count > event_index {
+                    return (turn_idx, step_idx);
+                }
+
+                current_event_idx += step_event_count;
+            }
+        }
+
+        (0, 0)
+    }
+
+    fn count_step_events(step: &AgentStep) -> usize {
+        let mut count = 0;
+
+        if step.reasoning.is_some() {
+            count += 1;
+        }
+
+        count += step.tools.len() * 2;
+
+        if step.message.is_some() {
+            count += 1;
+        }
+
+        count
     }
 }
 

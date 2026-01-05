@@ -1,10 +1,36 @@
-use agtrace_sdk::types::{truncate, AgentEvent};
+//! Session query types for search, list, and get operations.
+
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::mcp::models::common::{EventType, Provider};
+use super::Provider;
+use super::filters::EventType;
+use crate::types::{AgentEvent, AgentSession, EventPayload, truncate};
+
+// ============================================================================
+// Cursor Pagination
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Cursor {
+    pub offset: usize,
+}
+
+impl Cursor {
+    pub fn encode(&self) -> String {
+        let json = serde_json::to_string(self).unwrap_or_default();
+        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, json.as_bytes())
+    }
+
+    pub fn decode(cursor: &str) -> Option<Self> {
+        let bytes =
+            base64::Engine::decode(&base64::engine::general_purpose::STANDARD, cursor).ok()?;
+        let json = String::from_utf8(bytes).ok()?;
+        serde_json::from_str(&json).ok()
+    }
+}
 
 // ============================================================================
 // Search Events API
@@ -70,9 +96,7 @@ impl EventMatch {
         }
     }
 
-    fn extract_preview(payload: &agtrace_sdk::types::EventPayload) -> String {
-        use agtrace_sdk::types::EventPayload;
-
+    fn extract_preview(payload: &EventPayload) -> String {
         let text = match payload {
             EventPayload::ToolCall(tc) => {
                 serde_json::to_string(tc).unwrap_or_else(|_| String::new())
@@ -148,7 +172,7 @@ pub enum TurnStatus {
 
 impl ListTurnsResponse {
     pub fn new(
-        session: agtrace_sdk::types::AgentSession,
+        session: AgentSession,
         offset: usize,
         limit: usize,
         next_cursor: Option<String>,
@@ -283,10 +307,7 @@ pub struct ToolDetail {
 }
 
 impl GetTurnsResponse {
-    pub fn new(
-        session: agtrace_sdk::types::AgentSession,
-        args: &GetTurnsArgs,
-    ) -> Result<Self, String> {
+    pub fn new(session: AgentSession, args: &GetTurnsArgs) -> Result<Self, String> {
         let should_truncate = args.should_truncate();
         let max_chars = args.max_chars();
         let max_steps = args.max_steps();

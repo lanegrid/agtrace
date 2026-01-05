@@ -1,12 +1,15 @@
-use agtrace_sdk::Client;
+//! MCP JSON-RPC server.
+
 use schemars::schema_for;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 
-use crate::services::{GetTurnsArgs, ListTurnsArgs, SearchEventsArgs};
+use crate::Client;
+use crate::query::{
+    AnalyzeSessionArgs, GetTurnsArgs, ListSessionsArgs, ListTurnsArgs, SearchEventsArgs,
+};
 
-use super::models::{AnalyzeSessionArgs, ListSessionsArgs};
 use super::tools::{
     handle_analyze_session, handle_get_project_info, handle_get_turns, handle_list_sessions,
     handle_list_turns, handle_search_events,
@@ -49,28 +52,27 @@ impl AgTraceServer {
     }
 
     /// Convert serde deserialization error to MCP-compliant JSON-RPC error
-    /// According to MCP spec 2024-11-05, missing required parameters should return:
-    /// - code: -32602 (Invalid params)
-    /// - message: "Invalid params: ..." format
-    /// - data: structured information about missing fields
     fn parse_validation_error(tool_name: &str, error: serde_json::Error) -> JsonRpcError {
         let error_msg = error.to_string();
 
         // Check if it's a "missing field" error
-        // Format: "missing field `field_name`" or "missing field \"field_name\""
-        if error_msg.contains("missing field")
-            && let Some(field_start) = error_msg.find('`')
-            && let Some(field_end) = error_msg[field_start + 1..].find('`')
-        {
-            let field_name = &error_msg[field_start + 1..field_start + 1 + field_end];
-            return JsonRpcError {
-                code: -32602,
-                message: format!("Invalid params: missing required field \"{}\"", field_name),
-                data: Some(json!({
-                    "missing": [field_name],
-                    "tool": tool_name,
-                })),
-            };
+        if error_msg.contains("missing field") {
+            if let Some(field_start) = error_msg.find('`') {
+                if let Some(field_end) = error_msg[field_start + 1..].find('`') {
+                    let field_name = &error_msg[field_start + 1..field_start + 1 + field_end];
+                    return JsonRpcError {
+                        code: -32602,
+                        message: format!(
+                            "Invalid params: missing required field \"{}\"",
+                            field_name
+                        ),
+                        data: Some(json!({
+                            "missing": [field_name],
+                            "tool": tool_name,
+                        })),
+                    };
+                }
+            }
         }
 
         // Fallback for other validation errors
@@ -317,6 +319,7 @@ impl AgTraceServer {
     }
 }
 
+/// Run the MCP server over stdio.
 pub async fn run_server(client: Client) -> anyhow::Result<()> {
     let server = AgTraceServer::new(client);
     let stdin = std::io::stdin();

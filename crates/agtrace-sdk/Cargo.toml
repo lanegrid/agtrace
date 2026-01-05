@@ -23,6 +23,11 @@ chrono.workspace = true
 tokio.workspace = true
 futures.workspace = true
 
+# MCP/query support
+schemars = { version = "1.2.0", features = ["derive"] }
+base64 = "0.22"
+anyhow.workspace = true
+
 [dev-dependencies]
 tempfile.workspace = true
 agtrace-testing = { path = "../agtrace-testing" }

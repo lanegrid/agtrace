@@ -1,12 +1,11 @@
-// MCP Common Types
-//
-// Design Rationale:
-// - EventType/Provider enums: Type safety over string filters (prevents typos, enables validation)
+//! Filter types for session and event queries.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// Provider type for filtering sessions
+use crate::types::EventPayload;
+
+/// Provider type for filtering sessions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Provider {
@@ -28,7 +27,7 @@ impl Provider {
     }
 }
 
-/// Event type for filtering and classification
+/// Event type for filtering and classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "PascalCase")]
 pub enum EventType {
@@ -49,9 +48,8 @@ pub enum EventType {
 }
 
 impl EventType {
-    /// Match against agtrace_sdk::types::EventPayload variant name
-    pub fn matches_payload(self, payload: &agtrace_sdk::types::EventPayload) -> bool {
-        use agtrace_sdk::types::EventPayload;
+    /// Match against EventPayload variant.
+    pub fn matches_payload(self, payload: &EventPayload) -> bool {
         matches!(
             (self, payload),
             (EventType::ToolCall, EventPayload::ToolCall(_))
@@ -64,9 +62,8 @@ impl EventType {
         )
     }
 
-    /// Create EventType from EventPayload
-    pub fn from_payload(payload: &agtrace_sdk::types::EventPayload) -> Self {
-        use agtrace_sdk::types::EventPayload;
+    /// Create EventType from EventPayload.
+    pub fn from_payload(payload: &EventPayload) -> Self {
         match payload {
             EventPayload::ToolCall(_) => EventType::ToolCall,
             EventPayload::ToolResult(_) => EventType::ToolResult,
@@ -79,7 +76,7 @@ impl EventType {
     }
 }
 
-/// Truncate a string to a maximum length, adding ellipsis if truncated
+/// Truncate a string to a maximum length, adding ellipsis if truncated.
 pub fn truncate_string(s: &str, max_len: usize) -> String {
     if s.len() > max_len {
         format!("{}...", &s.chars().take(max_len - 3).collect::<String>())
@@ -88,7 +85,7 @@ pub fn truncate_string(s: &str, max_len: usize) -> String {
     }
 }
 
-/// Truncate a JSON value recursively
+/// Truncate a JSON value recursively.
 pub fn truncate_json_value(value: &serde_json::Value, max_string_len: usize) -> serde_json::Value {
     match value {
         serde_json::Value::String(s) => {

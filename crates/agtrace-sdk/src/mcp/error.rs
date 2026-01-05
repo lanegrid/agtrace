@@ -1,14 +1,9 @@
+//! MCP error types.
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-// Structured Error Handling
-//
-// Rationale: Rich error context instead of free-text strings
-// - ErrorCode: Machine-readable error classification
-// - details: Context-specific data (e.g., matched session IDs for ambiguous prefix)
-// - retryable: Helps LLMs decide whether to retry or ask user for clarification
-
-/// Structured error response for MCP tools
+/// Structured error response for MCP tools.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct McpError {
     /// Machine-readable error code
@@ -120,8 +115,8 @@ impl McpError {
     }
 }
 
-impl From<agtrace_sdk::Error> for McpError {
-    fn from(err: agtrace_sdk::Error) -> Self {
+impl From<crate::Error> for McpError {
+    fn from(err: crate::Error) -> Self {
         Self::internal_error(err.to_string())
     }
 }

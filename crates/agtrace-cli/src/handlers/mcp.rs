@@ -1,6 +1,6 @@
 use crate::McpCommand;
-use crate::mcp;
 use agtrace_sdk::Client;
+use agtrace_sdk::mcp;
 use anyhow::Result;
 use serde_json::json;
 use std::io::{BufRead, BufReader, Write};

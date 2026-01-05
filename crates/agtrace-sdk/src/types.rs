@@ -12,8 +12,6 @@
 pub use agtrace_types::{
     // Event types
     AgentEvent,
-    // Utility functions
-    truncate,
     // Session assembly types (moved from agtrace-engine)
     AgentSession,
     AgentStep,
@@ -45,6 +43,8 @@ pub use agtrace_types::{
     TurnStats,
     UserMessage,
     UserPayload,
+    // Utility functions
+    truncate,
 };
 
 // ============================================================================

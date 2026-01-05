@@ -1,7 +1,11 @@
+//! Session analysis query types.
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// Run diagnostic analysis on a session to identify failures, loops, and issues
+use crate::AnalysisReport;
+
+/// Run diagnostic analysis on a session to identify failures, loops, and issues.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct AnalyzeSessionArgs {
     /// Session ID obtained from list_sessions response (use the 'id' field).
@@ -18,10 +22,10 @@ pub struct AnalyzeSessionArgs {
 
 #[derive(Debug, Serialize)]
 #[serde(transparent)]
-pub struct AnalysisViewModel(pub agtrace_sdk::AnalysisReport);
+pub struct AnalysisViewModel(pub AnalysisReport);
 
 impl AnalysisViewModel {
-    pub fn new(report: agtrace_sdk::AnalysisReport) -> Self {
+    pub fn new(report: AnalysisReport) -> Self {
         Self(report)
     }
 }

@@ -1,42 +1,12 @@
-// MCP Tools Implementation
-//
-// Design Rationale:
-// - Progressive Disclosure: list_turns (breadth) → get_turns (depth)
-//   to avoid overwhelming LLM context with large payloads
-// - Response Size Targets: Follow MCP best practices (< 30 KB per response)
-// - Cursor-based Pagination: MCP 2024-11-05 spec compliance (stable, opaque tokens)
-// - Structured Errors: McpError with codes/details instead of free-text strings
-// - Type Safety: EventType/Provider enums prevent invalid filter values
+//! MCP tool handlers.
 
-use agtrace_sdk::{Client, Lens, SessionFilter};
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::services::{GetTurnsArgs, ListTurnsArgs, SearchEventsArgs, SessionService};
-
-use super::models::{
-    AnalysisViewModel, AnalyzeSessionArgs, ListSessionsArgs, ListSessionsViewModel,
-    ProjectInfoViewModel,
+use crate::query::{
+    AnalysisViewModel, AnalyzeSessionArgs, Cursor, GetTurnsArgs, ListSessionsArgs,
+    ListSessionsViewModel, ListTurnsArgs, ProjectInfoViewModel, SearchEventsArgs,
 };
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Cursor {
-    offset: usize,
-}
-
-impl Cursor {
-    fn encode(&self) -> String {
-        let json = serde_json::to_string(self).unwrap_or_default();
-        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, json.as_bytes())
-    }
-
-    fn decode(cursor: &str) -> Option<Self> {
-        let bytes =
-            base64::Engine::decode(&base64::engine::general_purpose::STANDARD, cursor).ok()?;
-        let json = String::from_utf8(bytes).ok()?;
-        serde_json::from_str(&json).ok()
-    }
-}
+use crate::{Client, Lens, SessionFilter};
 
 pub async fn handle_list_sessions(
     client: &Client,
@@ -54,12 +24,12 @@ pub async fn handle_list_sessions(
     let fetch_limit = limit + 1;
 
     // Resolve project filter: project_root takes priority over project_hash
-    let project_hash_filter = if let Some(root) = args.project_root {
+    let project_hash_filter = if let Some(ref root) = args.project_root {
         // Calculate hash from root path (server-side resolution)
-        Some(agtrace_sdk::utils::project_hash_from_root(&root))
+        Some(crate::utils::project_hash_from_root(root))
     } else {
         // Use explicit hash if provided
-        args.project_hash.map(|h| h.into())
+        args.project_hash.clone().map(|h| h.into())
     };
 
     let mut filter = if let Some(hash) = project_hash_filter {
@@ -68,16 +38,16 @@ pub async fn handle_list_sessions(
         SessionFilter::all().limit(fetch_limit + offset)
     };
 
-    if let Some(provider) = args.provider {
+    if let Some(ref provider) = args.provider {
         filter = filter.provider(provider.as_str().to_string());
     }
 
-    if let Some(since) = args.since {
-        filter = filter.since(since);
+    if let Some(ref since) = args.since {
+        filter = filter.since(since.clone());
     }
 
-    if let Some(until) = args.until {
-        filter = filter.until(until);
+    if let Some(ref until) = args.until {
+        filter = filter.until(until.clone());
     }
 
     if args.include_children.unwrap_or(false) {
@@ -159,30 +129,32 @@ pub async fn handle_get_project_info(client: &Client) -> Result<Value, String> {
     serde_json::to_value(&view_model).map_err(|e| format!("Serialization error: {}", e))
 }
 
-// ============================================================================
-// New Random Access APIs with Safety Valves
-// ============================================================================
-
 /// Search events and return navigation coordinates
 pub async fn handle_search_events(
     client: &Client,
     args: SearchEventsArgs,
 ) -> Result<Value, String> {
-    let service = SessionService::new(client);
-    let response = service.search_events(args).await?;
+    let response = client
+        .sessions()
+        .search_events(args)
+        .map_err(|e| e.to_string())?;
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }
 
 /// List turns with metadata only (no payload)
 pub async fn handle_list_turns(client: &Client, args: ListTurnsArgs) -> Result<Value, String> {
-    let service = SessionService::new(client);
-    let response = service.list_turns(args).await?;
+    let response = client
+        .sessions()
+        .list_turns(args)
+        .map_err(|e| e.to_string())?;
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }
 
 /// Get specific turns with safety valves
 pub async fn handle_get_turns(client: &Client, args: GetTurnsArgs) -> Result<Value, String> {
-    let service = SessionService::new(client);
-    let response = service.get_turns(args).await?;
+    let response = client
+        .sessions()
+        .get_turns(args)
+        .map_err(|e| e.to_string())?;
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
 }

@@ -9,7 +9,7 @@ expression: "snapshot_req_resp(args, response)"
   "response": {
     "error": {
       "code": -32603,
-      "message": "Session not found: Not found: Session nonexistent-id-12345678: Invalid operation: Session not found: nonexistent-id-12345678"
+      "message": "Not found: Session nonexistent-id-12345678: Invalid operation: Session not found: nonexistent-id-12345678"
     },
     "id": 1,
     "jsonrpc": "2.0"

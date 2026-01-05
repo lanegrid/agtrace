@@ -1,4 +1,3 @@
-pub mod session_service;
-pub mod writer;
+//! CLI services layer.
 
-pub use session_service::{GetTurnsArgs, ListTurnsArgs, SearchEventsArgs, SessionService};
+pub mod writer;

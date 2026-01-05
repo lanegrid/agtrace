@@ -12,7 +12,7 @@ expression: response
         "inputSchema": {
           "$defs": {
             "Provider": {
-              "description": "Provider type for filtering sessions",
+              "description": "Provider type for filtering sessions.",
               "oneOf": [
                 {
                   "const": "claude_code",
@@ -33,7 +33,7 @@ expression: response
             }
           },
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "description": "List recent AI agent sessions with cursor-based pagination",
+          "description": "List recent AI agent sessions with cursor-based pagination.",
           "properties": {
             "cursor": {
               "default": null,
@@ -118,7 +118,7 @@ expression: response
         "description": "Run diagnostic analysis on a session to identify failures, loops, and issues. WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs.",
         "inputSchema": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "description": "Run diagnostic analysis on a session to identify failures, loops, and issues",
+          "description": "Run diagnostic analysis on a session to identify failures, loops, and issues.",
           "properties": {
             "include_failures": {
               "default": null,
@@ -154,7 +154,7 @@ expression: response
         "inputSchema": {
           "$defs": {
             "EventType": {
-              "description": "Event type for filtering and classification",
+              "description": "Event type for filtering and classification.",
               "oneOf": [
                 {
                   "const": "ToolCall",
@@ -194,7 +194,7 @@ expression: response
               ]
             },
             "Provider": {
-              "description": "Provider type for filtering sessions",
+              "description": "Provider type for filtering sessions.",
               "oneOf": [
                 {
                   "const": "claude_code",
