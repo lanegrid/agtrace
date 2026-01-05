@@ -115,6 +115,10 @@ See [SDK Documentation](https://docs.rs/agtrace-sdk), [Examples](crates/agtrace-
 - [Why agtrace?](docs/motivation.md) - Understanding the problem and solution
 - [Full Documentation](docs/README.md) - Commands, FAQs, and more
 
+## Feedback
+
+Have ideas or suggestions? Join the [discussion on GitHub](https://github.com/lanegrid/agtrace/discussions/36).
+
 ## License
 
 Dual-licensed under the MIT and Apache 2.0 licenses.
