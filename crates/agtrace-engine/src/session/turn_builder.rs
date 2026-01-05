@@ -155,7 +155,10 @@ impl TurnBuilder {
             self.steps.push(self.current_step);
         }
 
-        if self.steps.is_empty() {
+        // Allow empty steps only for interrupted turns
+        // This ensures "[Request interrupted by user]" turns are displayed
+        let is_interrupted = self.user.content.text.starts_with("[Request interrupted");
+        if self.steps.is_empty() && !is_interrupted {
             return None;
         }
 
@@ -192,7 +195,28 @@ mod tests {
         let builder = TurnBuilder::new(user_id, timestamp, user.clone());
         let turn = builder.build();
 
+        // Normal turns with empty steps return None
         assert!(turn.is_none());
+    }
+
+    #[test]
+    fn test_turn_builder_interrupted() {
+        let timestamp = Utc::now();
+        let user_id = Uuid::new_v4();
+        let user = UserMessage {
+            event_id: user_id,
+            content: agtrace_types::UserPayload {
+                text: "[Request interrupted by user]".to_string(),
+            },
+        };
+
+        let builder = TurnBuilder::new(user_id, timestamp, user.clone());
+        let turn = builder.build();
+
+        // Interrupted turns are created even with empty steps
+        let turn = turn.unwrap();
+        assert!(turn.steps.is_empty());
+        assert!(turn.user.content.text.starts_with("[Request interrupted"));
     }
 
     #[test]

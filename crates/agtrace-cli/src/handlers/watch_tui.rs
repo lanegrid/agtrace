@@ -131,6 +131,12 @@ impl WatchHandler {
         // Update state from display events (main stream only)
         let display_events = filter_display_events(&events);
         for event in &display_events {
+            // Defensive check: only count main stream events
+            // (filter_display_events should already filter, but verify to be safe)
+            if !matches!(event.stream_id, agtrace_sdk::types::StreamId::Main) {
+                continue;
+            }
+
             self.state.last_activity = event.timestamp;
             self.state.event_count += 1;
 
@@ -141,9 +147,8 @@ impl WatchHandler {
             if let Some(usage) = updates.usage {
                 self.state.current_usage = usage;
             }
-            if let Some(model) = updates.model
-                && self.state.model.is_none()
-            {
+            // Always update to latest model (not first-wins)
+            if let Some(model) = updates.model {
                 self.state.model = Some(model);
             }
             if let Some(limit) = updates.context_window_limit {

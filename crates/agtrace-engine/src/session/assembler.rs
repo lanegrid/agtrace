@@ -29,7 +29,7 @@ pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
     let spawn_map = build_spawn_context_map(&main_events);
 
     // Assemble each stream into a session
-    streams
+    let mut sessions: Vec<AgentSession> = streams
         .into_iter()
         .filter_map(|(stream_id, stream_events)| {
             let spawned_by = match &stream_id {
@@ -38,7 +38,20 @@ pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
             };
             assemble_session_for_stream(&stream_events, stream_id, spawned_by)
         })
-        .collect()
+        .collect();
+
+    // Sort sessions: Main first, then sidechains/subagents by start_time
+    sessions.sort_by(|a, b| {
+        use std::cmp::Ordering;
+        match (&a.stream_id, &b.stream_id) {
+            (StreamId::Main, StreamId::Main) => Ordering::Equal,
+            (StreamId::Main, _) => Ordering::Less,
+            (_, StreamId::Main) => Ordering::Greater,
+            _ => a.start_time.cmp(&b.start_time),
+        }
+    });
+
+    sessions
 }
 
 /// Build a map from agent_id to SpawnContext by scanning ToolResult events with agent_id.

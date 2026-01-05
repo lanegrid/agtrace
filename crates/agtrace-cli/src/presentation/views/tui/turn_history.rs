@@ -140,8 +140,16 @@ impl<'a> TurnHistoryView<'a> {
             line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
             line_spans.push(Span::raw(" "));
 
-            // Title
-            if turn.is_active {
+            // Title - special handling for interrupted turns
+            let is_interrupted = turn.title.starts_with("[Request interrupted");
+            if is_interrupted {
+                line_spans.push(Span::styled(
+                    "⚠️ INTERRUPTED",
+                    Style::default()
+                        .fg(ratatui::style::Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            } else if turn.is_active {
                 line_spans.push(Span::styled(
                     format!("User: \"{}\"", turn.title),
                     Style::default().add_modifier(Modifier::BOLD),
@@ -194,15 +202,20 @@ impl<'a> TurnHistoryView<'a> {
         items.push(ListItem::new(label_line));
 
         // Second line: last turn's context bar (if available)
+        // Use smaller bar width for child streams to visually distinguish from main stream
         if let Some(ref last_turn) = child.last_turn {
-            const BAR_WIDTH: usize = 20;
-            let prev_chars = last_turn.prev_bar_width as usize;
-            let delta_chars = last_turn.bar_width.saturating_sub(last_turn.prev_bar_width) as usize;
-            let total_chars = last_turn.bar_width as usize;
-            let remaining_chars = BAR_WIDTH.saturating_sub(total_chars);
+            const CHILD_BAR_WIDTH: usize = 12;
+            const MAIN_BAR_WIDTH: usize = 20;
+
+            // Scale down from main bar width (20) to child bar width (12)
+            let scale = CHILD_BAR_WIDTH as f64 / MAIN_BAR_WIDTH as f64;
+            let prev_chars = ((last_turn.prev_bar_width as f64) * scale).round() as usize;
+            let total_scaled = ((last_turn.bar_width as f64) * scale).round() as usize;
+            let delta_chars = total_scaled.saturating_sub(prev_chars);
+            let remaining_chars = CHILD_BAR_WIDTH.saturating_sub(total_scaled);
 
             let mut bar_spans = vec![
-                Span::raw("    "), // Indentation
+                Span::raw("      "), // 6-space indentation (more than main's implicit 0)
                 Span::raw("["),
             ];
 

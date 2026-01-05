@@ -32,7 +32,7 @@ pub fn build_screen_view_model(
     let dashboard = build_dashboard(state, notification);
     let timeline = build_timeline(events);
     let turn_history = build_turn_history(state, assembled_sessions, max_context);
-    let status_bar = build_status_bar(state);
+    let status_bar = build_status_bar(state, assembled_sessions);
 
     TuiScreenViewModel {
         dashboard,
@@ -131,12 +131,21 @@ fn event_to_timeline_item(event: &agtrace_sdk::types::AgentEvent) -> TimelineEve
 
     let (icon, description, level) = match &event.payload {
         EventPayload::User(content) => {
-            let preview = truncate_text(&content.text, 150);
-            (
-                "👤".to_string(),
-                format!("User: {}", preview),
-                StatusLevel::Info,
-            )
+            // Check for interrupt marker
+            if content.text.starts_with("[Request interrupted") {
+                (
+                    "⚠️".to_string(),
+                    "Interrupted by user".to_string(),
+                    StatusLevel::Warning,
+                )
+            } else {
+                let preview = truncate_text(&content.text, 150);
+                (
+                    "👤".to_string(),
+                    format!("User: {}", preview),
+                    StatusLevel::Info,
+                )
+            }
         }
         EventPayload::Reasoning(content) => {
             let preview = truncate_text(&content.text, 150);
@@ -486,14 +495,27 @@ fn build_step_preview(step: &agtrace_sdk::types::AgentStep) -> StepPreviewViewMo
 }
 
 /// Build status bar ViewModel
-fn build_status_bar(state: &agtrace_sdk::types::SessionState) -> StatusBarViewModel {
+fn build_status_bar(
+    state: &agtrace_sdk::types::SessionState,
+    assembled_sessions: &[agtrace_sdk::types::AgentSession],
+) -> StatusBarViewModel {
+    use agtrace_sdk::types::StreamId;
+
     let session_preview: String = state.session_id.chars().take(8).collect();
     let status_message = format!("Watching session {}...", session_preview);
     let status_level = StatusLevel::Info;
 
+    // Get turn count from main session (consistent with SATURATION HISTORY)
+    // This ensures status bar shows the same turn count as the turn history panel
+    let main_session_turn_count = assembled_sessions
+        .iter()
+        .find(|s| matches!(s.stream_id, StreamId::Main))
+        .map(|s| s.turns.len())
+        .unwrap_or(0);
+
     StatusBarViewModel {
         event_count: state.event_count,
-        turn_count: state.turn_count,
+        turn_count: main_session_turn_count,
         status_message,
         status_level,
     }
