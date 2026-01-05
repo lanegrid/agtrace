@@ -1,4 +1,4 @@
-use agtrace_sdk::types::AgentEvent;
+use agtrace_sdk::types::{truncate, AgentEvent};
 use chrono::{DateTime, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -131,6 +131,7 @@ pub struct ListTurnsResponse {
 #[derive(Debug, Serialize)]
 pub struct TurnMetadata {
     pub turn_index: usize,
+    pub user_content: String,
     pub status: TurnStatus,
     pub step_count: usize,
     pub duration_ms: u64,
@@ -183,8 +184,11 @@ impl ListTurnsResponse {
                     TurnStatus::Completed
                 };
 
+                let user_content = truncate(&turn.user.content.text, 100);
+
                 TurnMetadata {
                     turn_index: idx,
+                    user_content,
                     status,
                     step_count,
                     duration_ms,
@@ -262,9 +266,19 @@ pub struct TurnDetail {
 
 #[derive(Debug, Serialize)]
 pub struct StepDetail {
-    pub tool_name: String,
-    pub tool_args: String,
-    pub tool_result: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    pub tools: Vec<ToolDetail>,
+    pub is_failed: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ToolDetail {
+    pub name: String,
+    pub args: String,
+    pub result: Option<String>,
     pub is_error: bool,
 }
 
@@ -290,47 +304,76 @@ impl GetTurnsResponse {
 
             let turn = &session.turns[turn_index];
             let user_content = if should_truncate {
-                truncate_string(&turn.user.content.text, max_chars)
+                truncate(&turn.user.content.text, max_chars)
             } else {
                 turn.user.content.text.clone()
             };
 
-            let all_steps: Vec<StepDetail> = turn
-                .steps
-                .iter()
-                .flat_map(|step| {
-                    step.tools.iter().map(|tool| {
-                        let args_json = serde_json::to_string(&tool.call.content)
-                            .unwrap_or_else(|_| String::from("{}"));
-                        let result_json = serde_json::to_string(&tool.result)
-                            .unwrap_or_else(|_| String::from("{}"));
+            let total_steps = turn.steps.len();
+            let steps_to_process = if should_truncate && total_steps > max_steps {
+                &turn.steps[..max_steps]
+            } else {
+                &turn.steps[..]
+            };
 
-                        StepDetail {
-                            tool_name: tool.call.content.name().to_string(),
-                            tool_args: if should_truncate {
-                                truncate_string(&args_json, max_chars)
-                            } else {
-                                args_json
-                            },
-                            tool_result: if should_truncate {
-                                truncate_string(&result_json, max_chars)
-                            } else {
-                                result_json
-                            },
-                            is_error: tool.is_error,
+            let steps: Vec<StepDetail> = steps_to_process
+                .iter()
+                .map(|step| {
+                    let reasoning = step.reasoning.as_ref().map(|r| {
+                        if should_truncate {
+                            truncate(&r.content.text, max_chars)
+                        } else {
+                            r.content.text.clone()
                         }
-                    })
+                    });
+
+                    let message = step.message.as_ref().map(|m| {
+                        if should_truncate {
+                            truncate(&m.content.text, max_chars)
+                        } else {
+                            m.content.text.clone()
+                        }
+                    });
+
+                    let tools: Vec<ToolDetail> = step
+                        .tools
+                        .iter()
+                        .map(|tool| {
+                            let args_json = serde_json::to_string(&tool.call.content)
+                                .unwrap_or_else(|_| String::from("{}"));
+                            let result_json = tool.result.as_ref().map(|r| {
+                                serde_json::to_string(r).unwrap_or_else(|_| String::from("{}"))
+                            });
+
+                            ToolDetail {
+                                name: tool.call.content.name().to_string(),
+                                args: if should_truncate {
+                                    truncate(&args_json, max_chars)
+                                } else {
+                                    args_json
+                                },
+                                result: result_json.map(|r| {
+                                    if should_truncate {
+                                        truncate(&r, max_chars)
+                                    } else {
+                                        r
+                                    }
+                                }),
+                                is_error: tool.is_error,
+                            }
+                        })
+                        .collect();
+
+                    StepDetail {
+                        reasoning,
+                        message,
+                        tools,
+                        is_failed: step.is_failed,
+                    }
                 })
                 .collect();
 
-            let total_tool_calls = all_steps.len();
-            let steps: Vec<StepDetail> = if should_truncate && total_tool_calls > max_steps {
-                all_steps.into_iter().take(max_steps).collect()
-            } else {
-                all_steps
-            };
-
-            let steps_truncated = if should_truncate && total_tool_calls > max_steps {
+            let steps_truncated = if should_truncate && total_steps > max_steps {
                 Some(true)
             } else {
                 None
@@ -345,13 +388,5 @@ impl GetTurnsResponse {
         }
 
         Ok(Self { turns })
-    }
-}
-
-fn truncate_string(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}... [TRUNCATED]", &s[..max_len])
     }
 }
