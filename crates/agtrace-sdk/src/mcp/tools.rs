@@ -6,7 +6,7 @@ use crate::query::{
     AnalysisViewModel, AnalyzeSessionArgs, Cursor, GetTurnsArgs, ListSessionsArgs,
     ListSessionsViewModel, ListTurnsArgs, ProjectInfoViewModel, SearchEventsArgs,
 };
-use crate::{Client, Lens, SessionFilter};
+use crate::{Client, Diagnostic, SessionFilter};
 
 pub async fn handle_list_sessions(
     client: &Client,
@@ -102,11 +102,11 @@ pub async fn handle_analyze_session(
         .map_err(|e| format!("Failed to create analyzer: {}", e))?;
 
     if args.include_failures.unwrap_or(true) {
-        analyzer = analyzer.through(Lens::Failures);
+        analyzer = analyzer.check(Diagnostic::Failures);
     }
 
     if args.include_loops.unwrap_or(false) {
-        analyzer = analyzer.through(Lens::Loops);
+        analyzer = analyzer.check(Diagnostic::Loops);
     }
 
     let report = analyzer

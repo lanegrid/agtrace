@@ -6,29 +6,40 @@
 //! # Overview
 //!
 //! `agtrace-sdk` provides a high-level, stable API for building tools on top of agtrace.
-//! It powers agtrace's MCP server (letting agents query their execution history) and CLI tools (for debugging),
-//! and can be embedded in your own applications. It abstracts away the internal complexity
-//! of providers, indexing, and runtime orchestration, exposing only the essential
-//! primitives for monitoring and analyzing AI agent behavior.
+//! It powers agtrace's MCP server (letting agents query their execution history) and CLI tools,
+//! and can be embedded in your own applications. The SDK normalizes logs from multiple providers
+//! (Claude Code, Codex, Gemini) into a unified data model, enabling cross-provider analysis.
 //!
 //! # Quickstart
 //!
 //! ```no_run
-//! use agtrace_sdk::{Client, Lens, types::SessionFilter};
+//! use agtrace_sdk::{Client, types::SessionFilter};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Connect to the local workspace (uses system data directory)
+//! // Connect to the local workspace
 //! let client = Client::connect_default().await?;
 //!
-//! // List sessions and analyze the most recent one
+//! // List sessions and browse the most recent one
 //! let sessions = client.sessions().list(SessionFilter::all())?;
 //! if let Some(summary) = sessions.first() {
 //!     let handle = client.sessions().get(&summary.id)?;
-//!     let report = handle.analyze()?
-//!         .through(Lens::Failures)
-//!         .report()?;
-//!     println!("Health: {}/100", report.score);
+//!     let session = handle.assemble()?;
+//!
+//!     println!("Session: {} turns, {} tokens",
+//!         session.turns.len(),
+//!         session.stats.total_tokens);
+//!
+//!     // Browse tool calls
+//!     for turn in &session.turns {
+//!         for step in &turn.steps {
+//!             for tool in &step.tools {
+//!                 println!("  {} ({})",
+//!                     tool.call.content.name(),
+//!                     if tool.is_error { "failed" } else { "ok" });
+//!             }
+//!         }
+//!     }
 //! }
 //! # Ok(())
 //! # }
@@ -41,13 +52,39 @@
 //! This SDK acts as a facade over:
 //! - `agtrace-types`: Core domain models (AgentEvent, etc.)
 //! - `agtrace-providers`: Multi-provider log normalization
-//! - `agtrace-engine`: Session analysis and diagnostics
+//! - `agtrace-engine`: Session assembly and analysis
 //! - `agtrace-index`: Metadata storage and querying
 //! - `agtrace-runtime`: Internal orchestration layer
 //!
 //! # Usage Patterns
 //!
+//! ## Session Browsing
+//!
+//! Access structured session data (Turn → Step → Tool hierarchy):
+//!
+//! ```no_run
+//! use agtrace_sdk::{Client, types::SessionFilter};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let client = Client::connect_default().await?;
+//! let sessions = client.sessions().list(SessionFilter::all())?;
+//!
+//! for summary in sessions.iter().take(5) {
+//!     let handle = client.sessions().get(&summary.id)?;
+//!     let session = handle.assemble()?;
+//!     println!("{}: {} turns, {} tokens",
+//!         summary.id,
+//!         session.turns.len(),
+//!         session.stats.total_tokens);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
 //! ## Real-time Monitoring
+//!
+//! Watch for events as they happen:
 //!
 //! ```no_run
 //! use agtrace_sdk::Client;
@@ -57,20 +94,19 @@
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = Client::connect_default().await?;
 //! let mut stream = client.watch().all_providers().start()?;
-//! let mut count = 0;
 //! while let Some(event) = stream.next().await {
-//!     println!("New event: {:?}", event);
-//!     count += 1;
-//!     if count >= 10 { break; }
+//!     println!("Event: {:?}", event);
 //! }
 //! # Ok(())
 //! # }
 //! ```
 //!
-//! ## Session Analysis
+//! ## Diagnostics
+//!
+//! Run diagnostic checks on sessions:
 //!
 //! ```no_run
-//! use agtrace_sdk::{Client, Lens, types::SessionFilter};
+//! use agtrace_sdk::{Client, Diagnostic, types::SessionFilter};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -79,16 +115,13 @@
 //! if let Some(summary) = sessions.first() {
 //!     let handle = client.sessions().get(&summary.id)?;
 //!     let report = handle.analyze()?
-//!         .through(Lens::Failures)
-//!         .through(Lens::Loops)
+//!         .check(Diagnostic::Failures)
+//!         .check(Diagnostic::Loops)
 //!         .report()?;
 //!
-//!     println!("Health score: {}", report.score);
+//!     println!("Health: {}/100", report.score);
 //!     for insight in &report.insights {
-//!         println!("Turn {}: {:?} - {}",
-//!             insight.turn_index + 1,
-//!             insight.severity,
-//!             insight.message);
+//!         println!("  Turn {}: {}", insight.turn_index + 1, insight.message);
 //!     }
 //! }
 //! # Ok(())
@@ -123,7 +156,7 @@ pub mod watch;
 pub use agtrace_engine::AgentSession;
 
 // Public facade
-pub use analysis::{AnalysisReport, Insight, Lens, Severity};
+pub use analysis::{AnalysisReport, Diagnostic, Insight, Severity};
 pub use client::{
     ChildSessionInfo, Client, ClientBuilder, InsightClient, ProjectClient, SessionClient,
     SessionHandle, SystemClient, WatchClient,

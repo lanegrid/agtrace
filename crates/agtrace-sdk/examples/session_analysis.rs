@@ -1,12 +1,12 @@
-//! Session analysis example: Analyze a specific agent session
+//! Session analysis example: Run diagnostics on an agent session
 //!
 //! This example demonstrates:
 //! - Getting events from a specific session
 //! - Assembling events into a structured session
-//! - Analyzing session with diagnostic lenses
-//! - Displaying analysis results
+//! - Running diagnostic checks (Failures, Loops, Bottlenecks)
+//! - Displaying diagnostic results
 
-use agtrace_sdk::{Client, Lens};
+use agtrace_sdk::{Client, Diagnostic};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -60,13 +60,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!();
 
-    // 6. Analyze with diagnostic lenses
-    println!("Running diagnostic analysis...");
+    // 6. Run diagnostic checks
+    println!("Running diagnostics...");
     let report = session_handle
         .analyze()?
-        .through(Lens::Failures)
-        .through(Lens::Loops)
-        .through(Lens::Bottlenecks)
+        .check(Diagnostic::Failures)
+        .check(Diagnostic::Loops)
+        .check(Diagnostic::Bottlenecks)
         .report()?;
 
     println!("\nDiagnostic Results:");
@@ -74,25 +74,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     if report.insights.is_empty() {
-        println!("  ✓ No issues detected");
+        println!("  No issues detected");
     } else {
         println!("  Issues found:");
         for insight in &report.insights {
             let severity_icon = match insight.severity {
-                agtrace_sdk::Severity::Info => "ℹ️",
-                agtrace_sdk::Severity::Warning => "⚠️",
-                agtrace_sdk::Severity::Critical => "🔴",
+                agtrace_sdk::Severity::Info => "i",
+                agtrace_sdk::Severity::Warning => "!",
+                agtrace_sdk::Severity::Critical => "X",
             };
-            let lens_label = match insight.lens {
-                agtrace_sdk::Lens::Failures => "Failure",
-                agtrace_sdk::Lens::Loops => "Loop",
-                agtrace_sdk::Lens::Bottlenecks => "Bottleneck",
+            let diagnostic_label = match insight.diagnostic {
+                agtrace_sdk::Diagnostic::Failures => "Failure",
+                agtrace_sdk::Diagnostic::Loops => "Loop",
+                agtrace_sdk::Diagnostic::Bottlenecks => "Bottleneck",
             };
             println!(
-                "    {} Turn {}: [{}] {}",
+                "    [{}] Turn {}: [{}] {}",
                 severity_icon,
                 insight.turn_index + 1,
-                lens_label,
+                diagnostic_label,
                 insight.message
             );
         }

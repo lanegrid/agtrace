@@ -78,7 +78,7 @@ agtrace lab grep "error"   # Search across sessions
 
 ## Building with the SDK
 
-Embed agent observability into your own tools (vital-checkers, IDE plugins, dashboards).
+Embed agent observability into your own tools (dashboards, IDE plugins, custom analytics).
 
 ```toml
 [dependencies]
@@ -86,14 +86,16 @@ agtrace-sdk = "0.5"
 ```
 
 ```rust
-use agtrace_sdk::{Client, Lens, types::SessionFilter};
+use agtrace_sdk::{Client, types::SessionFilter};
 
 let client = Client::connect_default().await?;
 let sessions = client.sessions().list(SessionFilter::all())?;
 if let Some(summary) = sessions.first() {
     let handle = client.sessions().get(&summary.id)?;
-    let report = handle.analyze()?.through(Lens::Failures).report()?;
-    println!("Health: {}/100", report.score);
+    let session = handle.assemble()?;
+    println!("{} turns, {} tokens",
+        session.turns.len(),
+        session.stats.total_tokens);
 }
 ```
 

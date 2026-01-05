@@ -1,12 +1,12 @@
 use crate::error::Result;
 use agtrace_engine::{AgentSession, SessionSummary};
 
-/// Diagnostic lens for session analysis.
+/// Diagnostic check for session analysis.
 ///
-/// Each lens applies a specific diagnostic perspective to identify
+/// Each diagnostic applies a specific perspective to identify
 /// potential issues or patterns in agent behavior.
 #[derive(Debug, Clone, Copy, serde::Serialize)]
-pub enum Lens {
+pub enum Diagnostic {
     /// Detects tool execution failures.
     Failures,
     /// Detects repeated tool sequences that may indicate stuck behavior.
@@ -28,40 +28,41 @@ pub enum Severity {
 
 /// Diagnostic insight about a specific turn in a session.
 ///
-/// Represents a finding from applying a diagnostic lens to a turn,
-/// including the turn location, the lens that detected it, and
+/// Represents a finding from applying a diagnostic check to a turn,
+/// including the turn location, the diagnostic that detected it, and
 /// a human-readable message describing the issue.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct Insight {
     /// Zero-based turn index where the insight was detected.
     pub turn_index: usize,
-    /// The diagnostic lens that produced this insight.
-    pub lens: Lens,
+    /// The diagnostic check that produced this insight.
+    pub diagnostic: Diagnostic,
     /// Human-readable description of the finding.
     pub message: String,
     /// Severity level of this insight.
     pub severity: Severity,
 }
 
-/// Builder for analyzing sessions through multiple diagnostic lenses.
+/// Builder for analyzing sessions with multiple diagnostic checks.
 ///
-/// Apply one or more lenses to a session to generate an analysis report
+/// Apply one or more diagnostics to a session to generate an analysis report
 /// with insights and a health score.
 pub struct SessionAnalyzer {
     session: AgentSession,
-    lenses: Vec<Lens>,
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl SessionAnalyzer {
     pub fn new(session: AgentSession) -> Self {
         Self {
             session,
-            lenses: vec![],
+            diagnostics: vec![],
         }
     }
 
-    pub fn through(mut self, lens: Lens) -> Self {
-        self.lenses.push(lens);
+    /// Add a diagnostic check to the analysis.
+    pub fn check(mut self, diagnostic: Diagnostic) -> Self {
+        self.diagnostics.push(diagnostic);
         self
     }
 
@@ -69,15 +70,15 @@ impl SessionAnalyzer {
         let summary = agtrace_engine::session::summarize(&self.session);
         let mut insights = Vec::new();
 
-        for lens in &self.lenses {
-            match lens {
-                Lens::Failures => {
+        for diagnostic in &self.diagnostics {
+            match diagnostic {
+                Diagnostic::Failures => {
                     insights.extend(self.analyze_failures());
                 }
-                Lens::Loops => {
+                Diagnostic::Loops => {
                     insights.extend(self.analyze_loops());
                 }
-                Lens::Bottlenecks => {
+                Diagnostic::Bottlenecks => {
                     insights.extend(self.analyze_bottlenecks());
                 }
             }
@@ -105,7 +106,7 @@ impl SessionAnalyzer {
             if !failed_tools.is_empty() {
                 insights.push(Insight {
                     turn_index: idx,
-                    lens: Lens::Failures,
+                    diagnostic: Diagnostic::Failures,
                     message: format!("{} tool execution(s) failed", failed_tools.len()),
                     severity: Severity::Critical,
                 });
@@ -133,7 +134,7 @@ impl SessionAnalyzer {
                     if repeat_count >= 2 {
                         insights.push(Insight {
                             turn_index: idx,
-                            lens: Lens::Loops,
+                            diagnostic: Diagnostic::Loops,
                             message: "Repeated tool sequence detected".to_string(),
                             severity: Severity::Warning,
                         });
@@ -156,7 +157,7 @@ impl SessionAnalyzer {
                     if let Some(duration_ms) = tool_exec.duration_ms.filter(|&d| d > 10_000) {
                         insights.push(Insight {
                             turn_index: idx,
-                            lens: Lens::Bottlenecks,
+                            diagnostic: Diagnostic::Bottlenecks,
                             message: format!(
                                 "Slow tool execution ({:?} took {}s)",
                                 tool_exec.call.content.kind(),
