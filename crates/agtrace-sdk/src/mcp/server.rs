@@ -56,23 +56,19 @@ impl AgTraceServer {
         let error_msg = error.to_string();
 
         // Check if it's a "missing field" error
-        if error_msg.contains("missing field") {
-            if let Some(field_start) = error_msg.find('`') {
-                if let Some(field_end) = error_msg[field_start + 1..].find('`') {
-                    let field_name = &error_msg[field_start + 1..field_start + 1 + field_end];
-                    return JsonRpcError {
-                        code: -32602,
-                        message: format!(
-                            "Invalid params: missing required field \"{}\"",
-                            field_name
-                        ),
-                        data: Some(json!({
-                            "missing": [field_name],
-                            "tool": tool_name,
-                        })),
-                    };
-                }
-            }
+        if error_msg.contains("missing field")
+            && let Some(field_start) = error_msg.find('`')
+            && let Some(field_end) = error_msg[field_start + 1..].find('`')
+        {
+            let field_name = &error_msg[field_start + 1..field_start + 1 + field_end];
+            return JsonRpcError {
+                code: -32602,
+                message: format!("Invalid params: missing required field \"{}\"", field_name),
+                data: Some(json!({
+                    "missing": [field_name],
+                    "tool": tool_name,
+                })),
+            };
         }
 
         // Fallback for other validation errors

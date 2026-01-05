@@ -314,10 +314,10 @@ impl SessionClient {
             };
 
             for (event_index, event) in events.iter().enumerate() {
-                if let Some(ref event_type_filter) = args.event_type {
-                    if !event_type_filter.matches_payload(&event.payload) {
-                        continue;
-                    }
+                if let Some(ref event_type_filter) = args.event_type
+                    && !event_type_filter.matches_payload(&event.payload)
+                {
+                    continue;
                 }
 
                 let event_json = match serde_json::to_string(&event.payload) {
@@ -407,7 +407,7 @@ impl SessionClient {
 
         let session = handle.assemble()?;
 
-        GetTurnsResponse::new(session, &args).map_err(|e| Error::InvalidInput(e))
+        GetTurnsResponse::new(session, &args).map_err(Error::InvalidInput)
     }
 
     fn find_event_location(session: &AgentSession, event_index: usize) -> (usize, usize) {
