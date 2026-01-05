@@ -117,7 +117,9 @@ See [SDK Documentation](https://docs.rs/agtrace-sdk), [Examples](crates/agtrace-
 
 ## Feedback
 
-Have ideas or suggestions? Join the [discussion on GitHub](https://github.com/lanegrid/agtrace/discussions/36).
+Have ideas? Join the discussion:
+- [RFC: Watch TUI Display](https://github.com/lanegrid/agtrace/discussions/36) — What should the live dashboard show?
+- [RFC: MCP Tools](https://github.com/lanegrid/agtrace/discussions/37) — What tools do agents need?
 
 ## License
 
