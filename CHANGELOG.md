@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.3] - 2026-01-05
+
+### Features
+
+- *(mcp)* Add user_content to TurnMetadata and restructure StepDetail to match AgentSession hierarchy ([71e2203](https://github.com/lanegrid/agtrace/commit/71e2203cf3d3d6e7127ec83d4e6e825f5e0dca19))
+
+
+### Testing
+
+- *(mcp)* Include both request and response in snapshots ([ed78ea1](https://github.com/lanegrid/agtrace/commit/ed78ea1575eb260a517bdf490543a955c91ca359))
+
+
 ## [0.5.2] - 2026-01-04
 
 ### Bug Fixes
