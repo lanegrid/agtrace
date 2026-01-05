@@ -111,6 +111,14 @@ fn extract_mcp_text_content(response: &Value) -> Result<Value> {
     Ok(content)
 }
 
+/// Create a snapshot value containing both request and response
+fn snapshot_req_resp(request_args: Value, response: Value) -> Value {
+    json!({
+        "request": request_args,
+        "response": response
+    })
+}
+
 /// Setup test world with sample session data
 fn setup_world() -> Result<TestWorld> {
     let mut world = TestWorld::new().with_project("my-project");
@@ -157,16 +165,17 @@ fn test_mcp_list_sessions() -> Result<()> {
     let world = setup_world()?;
     let mut mcp = McpHarness::new(world.data_dir().to_str().unwrap())?;
 
+    let args = json!({ "limit": 5 });
     let response = mcp.request(
         "tools/call",
         json!({
             "name": "list_sessions",
-            "arguments": { "limit": 5 }
+            "arguments": args.clone()
         }),
     )?;
 
     let content = extract_mcp_text_content(&response)?;
-    insta::assert_json_snapshot!("call_list_sessions", content);
+    insta::assert_json_snapshot!("call_list_sessions", snapshot_req_resp(args, content));
 
     Ok(())
 }
@@ -192,7 +201,8 @@ async fn test_mcp_list_turns() -> Result<()> {
     )?;
 
     let content = extract_mcp_text_content(&response)?;
-    insta::assert_json_snapshot!("call_list_turns", content);
+    let args = json!({ "session_id": "[ID]" });
+    insta::assert_json_snapshot!("call_list_turns", snapshot_req_resp(args, content));
 
     Ok(())
 }
@@ -217,7 +227,8 @@ async fn test_mcp_get_turns() -> Result<()> {
     )?;
 
     let content = extract_mcp_text_content(&response)?;
-    insta::assert_json_snapshot!("call_get_turns", content);
+    let args = json!({ "session_id": "[ID]", "turn_indices": [0] });
+    insta::assert_json_snapshot!("call_get_turns", snapshot_req_resp(args, content));
 
     Ok(())
 }
@@ -227,15 +238,16 @@ fn test_mcp_error_invalid_params() -> Result<()> {
     let world = setup_world()?;
     let mut mcp = McpHarness::new(world.data_dir().to_str().unwrap())?;
 
+    let args = json!({});
     let response = mcp.request(
         "tools/call",
         json!({
             "name": "get_turns",
-            "arguments": {}
+            "arguments": args.clone()
         }),
     )?;
 
-    insta::assert_json_snapshot!("error_invalid_params", response);
+    insta::assert_json_snapshot!("error_invalid_params", snapshot_req_resp(args, response));
 
     Ok(())
 }
@@ -245,15 +257,16 @@ fn test_mcp_error_session_not_found() -> Result<()> {
     let world = setup_world()?;
     let mut mcp = McpHarness::new(world.data_dir().to_str().unwrap())?;
 
+    let args = json!({ "session_id": "nonexistent-id-12345678" });
     let response = mcp.request(
         "tools/call",
         json!({
             "name": "list_turns",
-            "arguments": { "session_id": "nonexistent-id-12345678" }
+            "arguments": args.clone()
         }),
     )?;
 
-    insta::assert_json_snapshot!("error_session_not_found", response);
+    insta::assert_json_snapshot!("error_session_not_found", snapshot_req_resp(args, response));
 
     Ok(())
 }

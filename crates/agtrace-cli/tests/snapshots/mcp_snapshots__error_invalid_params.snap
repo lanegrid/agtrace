@@ -1,18 +1,21 @@
 ---
 source: crates/agtrace-cli/tests/mcp_snapshots.rs
-expression: response
+expression: "snapshot_req_resp(args, response)"
 ---
 {
-  "error": {
-    "code": -32602,
-    "data": {
-      "missing": [
-        "session_id"
-      ],
-      "tool": "get_turns"
+  "request": {},
+  "response": {
+    "error": {
+      "code": -32602,
+      "data": {
+        "missing": [
+          "session_id"
+        ],
+        "tool": "get_turns"
+      },
+      "message": "Invalid params: missing required field \"session_id\""
     },
-    "message": "Invalid params: missing required field \"session_id\""
-  },
-  "id": 1,
-  "jsonrpc": "2.0"
+    "id": 1,
+    "jsonrpc": "2.0"
+  }
 }

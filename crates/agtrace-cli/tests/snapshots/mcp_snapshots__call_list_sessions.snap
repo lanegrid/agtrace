@@ -1,18 +1,23 @@
 ---
 source: crates/agtrace-cli/tests/mcp_snapshots.rs
-expression: content
+expression: "snapshot_req_resp(args, content)"
 ---
 {
-  "next_cursor": null,
-  "sessions": [
-    {
-      "id": "[ID]",
-      "project_hash": "[PROJECT_HASH]",
-      "project_root": "[PATH]",
-      "provider": "claude_code",
-      "snippet": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
-      "start_ts": "2025-12-09T19:47:42.930Z"
-    }
-  ],
-  "total_in_page": 1
+  "request": {
+    "limit": 5
+  },
+  "response": {
+    "next_cursor": null,
+    "sessions": [
+      {
+        "id": "[ID]",
+        "project_hash": "[PROJECT_HASH]",
+        "project_root": "[PATH]",
+        "provider": "claude_code",
+        "snippet": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
+        "start_ts": "2025-12-09T19:47:42.930Z"
+      }
+    ],
+    "total_in_page": 1
+  }
 }
