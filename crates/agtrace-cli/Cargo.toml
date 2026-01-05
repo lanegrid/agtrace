@@ -40,6 +40,7 @@ regex.workspace = true
 uuid.workspace = true
 tokio.workspace = true
 base64 = "0.22.1"
+glob-match = "0.2"
 schemars = { version = "1.2.0", features = ["derive"] }
 
 [target.'cfg(unix)'.dependencies]

@@ -476,154 +476,40 @@ pub enum LabCommand {
         about = "Search for patterns in event payloads across sessions",
         long_about = "Search for patterns in event payloads across sessions.
 
-This command scans event payloads from recent sessions and finds matches
-containing the specified pattern. Useful for investigating tool call structures,
-discovering actual argument formats, and debugging event data.
-
-By default, shows a compact view with syntax highlighting. Use --json to see
-the full JSON structure of matching events. Use --raw to see complete AgentEvent
-including provider-specific metadata for normalization verification.",
+Supports substring, glob (* ?), and regex (--regex) patterns.
+Glob patterns are auto-detected when * or ? is present.",
         after_long_help = "EXAMPLES:
-  # Find all ToolCall events containing 'Read'
-  agtrace lab grep \"Read\" --limit 5
-
-  # Search for file operations with JSON output
-  agtrace lab grep \"file_path\" --json --limit 10
-
-  # Find MCP-related calls from specific provider
-  agtrace lab grep \"mcp\" --provider claude_code
-
-  # Investigate write operations structure
-  agtrace lab grep \"write_file\" --json
-
-  # Verify normalization: compare raw provider schema with normalized content
-  agtrace lab grep '\"name\":\"Read\"' --raw --limit 1
-
-  # Debug MCP tool parsing
-  agtrace lab grep '\"name\":\"mcp__o3__o3-search\"' --raw --limit 1
-
-OUTPUT FORMAT (compact mode):
-  ================================================================================
-  Match #1 | Session: abc123def456... | Stream: Main
-  Type: ToolCall
-  Tool: Read
-  Args: {\"file_path\":\"/path/to/project/src/main.rs\"}
-  ================================================================================
-  Match #2 | Session: abc123def456... | Stream: Main
-  Type: Reasoning
-  Text: Let me analyze the code structure...
-  ================================================================================
-
-OUTPUT FORMAT (JSON mode):
-  ================================================================================
-  Match #1 | Session: abc123def456... | Stream: Main
-  {
-    \"ToolCall\": {
-      \"name\": \"Read\",
-      \"arguments\": {
-        \"file_path\": \"/path/to/project/src/main.rs\"
-      }
-    }
-  }
-  ================================================================================
-
-OUTPUT FORMAT (raw mode):
-  ================================================================================
-  Match #1 | Session: d9967bbc | Stream: Main
-  {
-    \"id\": \"01a17cbe-fcc9-5670-9bb5-462918bbe3cb\",
-    \"session_id\": \"d9967bbc-70cc-5624-bcd6-7e70824b84cb\",
-    \"parent_id\": \"c4f8ccbf-f602-5d61-9c46-c594c6fb2aca\",
-    \"timestamp\": \"2025-12-21T22:56:17.441Z\",
-    \"stream_id\": { \"stream_type\": \"main\" },
-    \"type\": \"tool_call\",
-    \"content\": {
-      \"name\": \"Read\",
-      \"arguments\": { \"file_path\": \"/path/to/file.rs\" },
-      \"provider_call_id\": \"toolu_017YauBeoeW2xdwPiMAebtsD\"
-    },
-    \"metadata\": {
-      \"message\": {
-        \"content\": [{
-          \"id\": \"toolu_017YauBeoeW2xdwPiMAebtsD\",
-          \"input\": { \"file_path\": \"/path/to/file.rs\" },
-          \"name\": \"Read\",
-          \"type\": \"tool_use\"
-        }],
-        \"model\": \"claude-sonnet-4-5-20250929\",
-        ...
-      }
-    }
-  }
-  ================================================================================
-
-NOTES:
-  - Searches up to 1000 recent sessions by default
-  - Pattern matching is case-sensitive substring search
-  - Default limit is 50 matches
-  - Use --provider to filter by provider (claude_code, codex, gemini)
-
-RAW MODE RATIONALE:
-  The --raw flag outputs complete AgentEvent including metadata. This enables:
-
-  1. NORMALIZATION VERIFICATION
-     Compare provider-specific schemas with normalized content:
-     - Claude: metadata.message.content[].input vs content.arguments
-     - Codex: metadata.payload.arguments (stringified) vs content.arguments (parsed)
-     - Gemini: metadata.payload vs content
-
-  2. DEBUGGING TOOL PARSING
-     Inspect how normalize_tool_call() determines variants:
-     - FileRead, FileEdit, FileWrite (file operations)
-     - Execute (Bash, shell_command)
-     - Search (Grep, WebSearch)
-     - Mcp (mcp__server__tool format)
-     - Generic (fallback)
-
-  3. INVESTIGATION WITHOUT FILESYSTEM ACCESS
-     Without --raw, verifying normalization requires:
-     - Navigate ~/.claude/projects/*.jsonl or ~/.codex/sessions/*.jsonl
-     - Manually correlate timestamps and event IDs
-     - Parse provider-specific log formats
-
-     With --raw, verification is streamlined:
-     - Single command to inspect normalized + raw data
-     - Session/stream context preserved
-     - No filesystem traversal needed"
+  agtrace lab grep \"Read\"              # Substring search
+  agtrace lab grep \"*mcp__*\"           # Glob pattern
+  agtrace lab grep \"file.*\" --regex    # Regex pattern
+  agtrace lab grep \"Read\" --json       # JSON output"
     )]
     Grep {
-        #[arg(help = "String pattern to search for (e.g. 'write_file', 'mcp')")]
+        #[arg(help = "Pattern to search (glob * ? auto-detected)")]
         pattern: String,
 
-        #[arg(long, help = "Limit the number of matching events")]
+        #[arg(long, help = "Max matches [default: 10]")]
         limit: Option<usize>,
 
-        #[arg(long, help = "Filter by provider")]
+        #[arg(long, help = "Filter by provider (claude_code, codex, gemini)")]
         provider: Option<String>,
 
-        #[arg(long, help = "Show raw JSON of the matching event")]
+        #[arg(long, help = "Show JSON output")]
         json: bool,
 
-        #[arg(long, help = "Show complete AgentEvent including metadata")]
+        #[arg(long, help = "Show complete AgentEvent with metadata")]
         raw: bool,
 
-        #[arg(
-            long,
-            help = "Use regex pattern matching instead of simple string contains"
-        )]
+        #[arg(long, help = "Use regex instead of substring/glob")]
         regex: bool,
 
-        #[arg(
-            long,
-            value_name = "TYPE",
-            help = "Filter by event type (ToolCall, ToolResult, User, Message, Reasoning, TokenUsage, Notification)"
-        )]
+        #[arg(long, value_name = "TYPE", help = "Filter by event type")]
         r#type: Option<String>,
 
-        #[arg(long, help = "Filter by tool name (only for ToolCall events)")]
+        #[arg(long, help = "Filter by tool name (ToolCall only)")]
         tool: Option<String>,
 
-        #[arg(long, help = "Case-insensitive search")]
+        #[arg(long, short = 'i', help = "Case-insensitive search")]
         ignore_case: bool,
     },
 }

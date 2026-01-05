@@ -30,7 +30,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let session = handle.assemble()?;
 
         // Count tool calls
-        let tool_count: usize = session.turns.iter()
+        let tool_count: usize = session
+            .turns
+            .iter()
             .flat_map(|t| &t.steps)
             .flat_map(|s| &s.tools)
             .count();

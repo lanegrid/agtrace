@@ -54,10 +54,16 @@ pub struct GrepOptions {
 /// Matcher for searching events with various filters
 struct EventMatcher {
     pattern_regex: Option<Regex>,
+    pattern_glob: Option<String>,
     pattern_str: String,
     ignore_case: bool,
     event_type_filter: Option<String>,
     tool_name_filter: Option<String>,
+}
+
+/// Check if pattern contains glob wildcards (* or ?)
+fn is_glob_pattern(pattern: &str) -> bool {
+    pattern.contains('*') || pattern.contains('?')
 }
 
 impl EventMatcher {
@@ -68,18 +74,29 @@ impl EventMatcher {
         event_type: Option<String>,
         tool_name: Option<String>,
     ) -> Result<Self> {
-        let pattern_regex = if use_regex {
+        // Priority: --regex flag > auto-detected glob > substring
+        let (pattern_regex, pattern_glob) = if use_regex {
             let regex_str = if ignore_case {
                 format!("(?i){}", pattern)
             } else {
                 pattern.clone()
             };
-            Some(Regex::new(&regex_str).context("Invalid regex pattern")?)
+            (
+                Some(Regex::new(&regex_str).context("Invalid regex pattern")?),
+                None,
+            )
+        } else if is_glob_pattern(&pattern) {
+            let glob_pattern = if ignore_case {
+                pattern.to_lowercase()
+            } else {
+                pattern.clone()
+            };
+            (None, Some(glob_pattern))
         } else {
-            None
+            (None, None)
         };
 
-        let pattern_str = if ignore_case && !use_regex {
+        let pattern_str = if ignore_case && !use_regex && !is_glob_pattern(&pattern) {
             pattern.to_lowercase()
         } else {
             pattern
@@ -87,6 +104,7 @@ impl EventMatcher {
 
         Ok(Self {
             pattern_regex,
+            pattern_glob,
             pattern_str,
             ignore_case,
             event_type_filter: event_type,
@@ -111,10 +129,18 @@ impl EventMatcher {
         }
 
         // Pattern matching on payload
+        // Priority: regex > glob > substring
         let payload_str = serde_json::to_string(&event.payload)?;
 
         if let Some(ref regex) = self.pattern_regex {
             Ok(regex.is_match(&payload_str))
+        } else if let Some(ref glob_pattern) = self.pattern_glob {
+            let target = if self.ignore_case {
+                payload_str.to_lowercase()
+            } else {
+                payload_str
+            };
+            Ok(glob_match::glob_match(glob_pattern, &target))
         } else if self.ignore_case {
             Ok(payload_str.to_lowercase().contains(&self.pattern_str))
         } else {
@@ -171,7 +197,7 @@ pub fn handle(
     }
 
     let sessions = client.sessions().list(filter)?;
-    let max_matches = options.limit.unwrap_or(50);
+    let max_matches = options.limit.unwrap_or(10);
 
     if options.raw_output {
         // Raw mode: output complete AgentEvent with metadata
