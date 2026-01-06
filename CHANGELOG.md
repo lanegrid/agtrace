@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.5] - 2026-01-06
+
+### Documentation
+
+- Add feedback section with link to discussion ([403a011](https://github.com/lanegrid/agtrace/commit/403a0115332bebed2ddfcf197133e9907b3866cc))
+
+- Add RFC links for watch TUI and MCP tools ([ac601bb](https://github.com/lanegrid/agtrace/commit/ac601bb2cb36f904f8d687004581d070d16757bb))
+
+- Rewrite README with authentic dogfooding experience ([46e200b](https://github.com/lanegrid/agtrace/commit/46e200bed8eb4d7420c83f606d442525422778b2))
+
+
+### Features
+
+- *(sdk)* Add Providers type for lightweight operations without database ([f738160](https://github.com/lanegrid/agtrace/commit/f7381606d5115457b0f382a08dec2039ac8aa59a))
+
+
+### Miscellaneous Tasks
+
+- *(sdk)* Remove debug examples ([5671ffd](https://github.com/lanegrid/agtrace/commit/5671ffd280b34412b622a86e1b0542671e983a99))
+
+
 ## [0.5.4] - 2026-01-05
 
 ### Bug Fixes
