@@ -1,126 +1,99 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/agtrace-icon.png" width="96" alt="agtrace logo">
   <h1>agtrace</h1>
-  <p><strong>Observability for AI Agents</strong></p>
-  <p>Local-first monitoring for Claude Code, Codex, and Gemini.</p>
+  <p><strong>See What Your AI Agent Is Actually Doing</strong></p>
 
   [![npm](https://img.shields.io/npm/v/@lanegrid/agtrace.svg?style=flat&label=npm)](https://www.npmjs.com/package/@lanegrid/agtrace)
-  [![crates.io](https://img.shields.io/crates/v/agtrace-sdk.svg?label=SDK)](https://crates.io/crates/agtrace-sdk)
+  [![crates.io](https://img.shields.io/crates/v/agtrace.svg?label=crates.io)](https://crates.io/crates/agtrace)
 </div>
+
+---
+
+## The Problem I Had
+
+When I started using AI coding agents (Claude Code, Codex, Gemini), I realized I was working with a **black box**. I couldn't see:
+
+- How much of the context window was being consumed
+- What the agent was actually doing between my prompts
+- When the conversation was getting too long and performance would degrade
+
+I found myself *guessing* the agent's internal state. That felt wrong.
+
+## What Changed
+
+Now I always run **agtrace** alongside my coding agent. It's become essential.
+
+![agtrace with Claude Code](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/agtrace_live_use_screenshot.png)
+
+What I see:
+- **Context window usage** — A color-coded bar showing how full the conversation is
+- **Token consumption trends** — How much context each task uses over time
+- **Live activity** — Tool calls, file reads, reasoning traces as they happen
+
+For the first time, I can make informed decisions about when to start a new session, how to scope my requests, and whether the agent is stuck in a loop.
 
 ---
 
 ![agtrace watch demo](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/assets/demo.gif)
 
-**agtrace** monitors AI agent sessions in real-time and lets agents query their own execution history via MCP.
-
-- **Zero instrumentation** — Auto-discovers provider logs
-- **100% local** — Privacy by design, no cloud dependencies
-- **Universal timeline** — Unified view across all providers
-
-## Quick Start
+## Try It
 
 ```bash
 npm install -g @lanegrid/agtrace
 cd my-project
-agtrace init      # Initialize workspace (one-time setup)
-agtrace watch     # Launch live dashboard
+agtrace init      # One-time setup
+agtrace watch     # Launch dashboard in a separate terminal
 ```
 
-## MCP: Let Agents Query Their Own History
+Works with Claude Code, Codex (OpenAI), and Gemini. Zero config — just discovers existing logs.
 
-Connect your AI assistant to search past sessions via [Model Context Protocol](https://modelcontextprotocol.io):
+## Give Your Agent Memory of Past Sessions
 
-**Claude Code:**
+One thing I didn't expect: agents can also query their own execution history via [MCP](https://modelcontextprotocol.io):
+
 ```bash
+# Claude Code
 claude mcp add agtrace -- agtrace mcp serve
-```
 
-**Codex (OpenAI):**
-```bash
+# Codex
 codex mcp add agtrace -- agtrace mcp serve
 ```
 
-**Claude Desktop:**
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "agtrace": {
-      "command": "agtrace",
-      "args": ["mcp", "serve"]
-    }
-  }
-}
-```
+Now your agent can search what it did yesterday, find past errors, and learn from previous sessions.
 
-Your agent can now:
-- Search past sessions for tool calls and errors
-- Retrieve tool calls and results from previous work
-- Analyze failure patterns
+See the [MCP Integration Guide](docs/mcp-integration.md) for more.
 
-**Example queries:**
-- *"Show me sessions with failures in the last hour"*
-- *"Search for tool calls that modified the database schema"*
-- *"Analyze the most recent session for performance issues"*
-
-For detailed setup and examples, see the [MCP Integration Guide](docs/mcp-integration.md).
-
-## CLI Commands
-
-Debug and inspect agent behavior manually:
+## Other Commands
 
 ```bash
-agtrace watch              # Live TUI dashboard
-agtrace session list       # Browse session history
-agtrace lab grep "error"   # Search across sessions
+agtrace session list       # Browse past sessions
+agtrace lab grep "error"   # Search across all sessions
 ```
 
-## Building with the SDK
+## For Tool Builders
 
-Embed agent observability into your own tools (dashboards, IDE plugins, custom analytics).
+If you're building your own IDE plugin, dashboard, or observability tool:
 
 ```toml
 [dependencies]
 agtrace-sdk = "0.5"
 ```
 
-```rust
-use agtrace_sdk::{Client, types::SessionFilter};
-
-let client = Client::connect_default().await?;
-let sessions = client.sessions().list(SessionFilter::all())?;
-if let Some(summary) = sessions.first() {
-    let handle = client.sessions().get(&summary.id)?;
-    let session = handle.assemble()?;
-    println!("{} turns, {} tokens",
-        session.turns.len(),
-        session.stats.total_tokens);
-}
-```
-
-See [SDK Documentation](https://docs.rs/agtrace-sdk), [Examples](crates/agtrace-sdk/examples/), and [SDK README](crates/agtrace-sdk/README.md).
-
-## Supported Providers
-
-- **Claude Code** (Anthropic)
-- **Codex** (OpenAI)
-- **Gemini** (Google)
+See [SDK Documentation](https://docs.rs/agtrace-sdk) and [Examples](crates/agtrace-sdk/examples/).
 
 ## Documentation
 
-- [Getting Started](docs/getting-started.md) - Detailed installation and usage guide
-- [MCP Integration](docs/mcp-integration.md) - Connect agents to their execution history
-- [Architecture](docs/architecture.md) - Platform design and principles
-- [Why agtrace?](docs/motivation.md) - Understanding the problem and solution
-- [Full Documentation](docs/README.md) - Commands, FAQs, and more
+- [Getting Started](docs/getting-started.md)
+- [MCP Integration](docs/mcp-integration.md)
+- [Architecture](docs/architecture.md)
+- [Full Documentation](docs/README.md)
 
 ## Feedback
 
-Have ideas? Join the discussion:
-- [RFC: Watch TUI Display](https://github.com/lanegrid/agtrace/discussions/36) — What should the live dashboard show?
-- [RFC: MCP Tools](https://github.com/lanegrid/agtrace/discussions/37) — What tools do agents need?
+Have ideas?
+- [RFC: Watch TUI Display](https://github.com/lanegrid/agtrace/discussions/36)
+- [RFC: MCP Tools](https://github.com/lanegrid/agtrace/discussions/37)
 
 ## License
 
-Dual-licensed under the MIT and Apache 2.0 licenses.
+MIT / Apache 2.0
