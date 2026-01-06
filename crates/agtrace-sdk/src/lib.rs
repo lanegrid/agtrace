@@ -148,6 +148,7 @@ pub mod analysis;
 pub mod client;
 pub mod error;
 pub mod mcp;
+pub mod providers;
 pub mod query;
 pub mod types;
 pub mod watch;
@@ -162,6 +163,7 @@ pub use client::{
     SessionHandle, SystemClient, WatchClient,
 };
 pub use error::{Error, Result};
+pub use providers::{Providers, ProvidersBuilder};
 pub use types::{
     AgentEvent, EventPayload, ExportStrategy, SessionFilter, SessionSummary, StreamId, ToolKind,
 };

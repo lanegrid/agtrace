@@ -23,8 +23,8 @@ pub use agtrace_engine::{EventFilters, SessionState, TokenLimit, TokenLimits, fi
 pub use config::{Config, ProviderConfig, resolve_workspace_path};
 pub use init::{ConfigStatus, InitConfig, InitProgress, InitResult, ScanOutcome};
 pub use ops::{
-    CheckResult, CheckStatus, CorpusStats, IndexProgress, InspectContentType, InspectLine,
-    InspectResult, PackResult, ProjectInfo, StatsResult,
+    CheckResult, CheckStatus, CorpusStats, DoctorService, IndexProgress, InspectContentType,
+    InspectLine, InspectResult, PackResult, ProjectInfo, StatsResult,
 };
 pub use runtime::{DiscoveryEvent, StreamEvent, WorkspaceEvent};
 pub use storage::RawFileContent;

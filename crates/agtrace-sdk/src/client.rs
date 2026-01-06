@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::error::{Error, Result};
+use crate::providers::Providers;
 use crate::query::{
     Cursor, EventMatch, GetTurnsArgs, GetTurnsResponse, ListTurnsArgs, ListTurnsResponse,
     SearchEventsArgs, SearchEventsResponse,
@@ -194,6 +195,34 @@ impl Client {
     /// Prefer using `client.watch()` for most use cases.
     pub fn watch_service(&self) -> crate::types::WatchService {
         self.inner.watch_service()
+    }
+
+    /// Access lightweight provider operations.
+    ///
+    /// Returns a [`Providers`] instance configured with the workspace's providers.
+    /// Use this for operations that don't require database access:
+    /// - Parsing log files
+    /// - Running diagnostics
+    /// - Checking file parseability
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use agtrace_sdk::Client;
+    /// use std::path::Path;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::connect_default().await?;
+    ///
+    /// // Parse a file using the workspace's provider configuration
+    /// let events = client.providers().parse_auto(Path::new("/path/to/log.jsonl"))?;
+    /// println!("Parsed {} events", events.len());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn providers(&self) -> Providers {
+        Providers::with_config(self.inner.config().clone())
     }
 }
 
