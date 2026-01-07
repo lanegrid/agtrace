@@ -78,8 +78,8 @@ impl TurnHistoryComponent {
 
         let (list, block, list_area, item_count) = view.build_list_with_layout(area);
 
-        // Auto-follow: scroll to bottom when new items are added
-        if item_count > self.prev_item_count && self.prev_item_count > 0 {
+        // Auto-follow: scroll to bottom on initial render or when new items are added
+        if item_count > 0 && (self.prev_item_count == 0 || item_count > self.prev_item_count) {
             self.scroll_to_bottom(item_count);
         }
         self.prev_item_count = item_count;
