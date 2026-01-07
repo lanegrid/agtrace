@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.6] - 2026-01-07
+
+### Features
+
+- *(watch)* Add turn history scrolling and debug mode ([accf3a2](https://github.com/lanegrid/agtrace/commit/accf3a2a5dfab9facac56c10393ef335c71410a0))
+
+
 ## [0.5.5] - 2026-01-06
 
 ### Documentation
