@@ -326,7 +326,12 @@ pub async fn run(cli: Cli) -> Result<()> {
             )
         }
 
-        Commands::Watch { provider, id, mode } => {
+        Commands::Watch {
+            provider,
+            id,
+            mode,
+            debug,
+        } => {
             use crate::args::WatchFormat;
 
             if mode == WatchFormat::Tui && !std::io::stdout().is_terminal() {
@@ -369,9 +374,12 @@ pub async fn run(cli: Cli) -> Result<()> {
             };
 
             match mode {
-                WatchFormat::Tui => {
-                    handlers::watch_tui::handle(&workspace, ctx.project_root.as_deref(), target)
-                }
+                WatchFormat::Tui => handlers::watch_tui::handle(
+                    &workspace,
+                    ctx.project_root.as_deref(),
+                    target,
+                    debug,
+                ),
                 WatchFormat::Console => handlers::watch_console::handle_console(
                     &workspace,
                     ctx.project_root.as_deref(),

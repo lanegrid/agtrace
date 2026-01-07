@@ -10,7 +10,9 @@ use ratatui::{
 };
 
 use crate::presentation::view_models::TuiScreenViewModel;
-use crate::presentation::views::tui::{DashboardView, StatusBarView, TurnHistoryView};
+use crate::presentation::views::tui::{DashboardView, StatusBarView};
+
+use super::TurnHistoryComponent;
 
 /// Actions that Dashboard can emit to parent
 #[derive(Debug, Clone)]
@@ -25,20 +27,30 @@ pub enum DashboardAction {
 /// 1. Dashboard (metadata + LIFE gauge)
 /// 2. Turn History (SATURATION HISTORY with active turn details)
 /// 3. Status Bar (status + keyboard shortcuts)
-pub struct DashboardComponent;
+pub struct DashboardComponent {
+    /// Turn history component (scrollable)
+    turn_history: TurnHistoryComponent,
+}
 
 impl DashboardComponent {
     pub fn new() -> Self {
-        Self
+        Self {
+            turn_history: TurnHistoryComponent::new(),
+        }
     }
 
     /// Handle keyboard input for Dashboard page
     pub fn handle_input(
         &mut self,
-        _key: KeyEvent,
+        key: KeyEvent,
         _screen: &TuiScreenViewModel,
     ) -> Option<DashboardAction> {
-        // All keyboard handling is global (q/Esc for quit) or within components
+        // Delegate to turn history component
+        let item_count = self.turn_history.get_item_count();
+        if self.turn_history.handle_input(key, item_count) {
+            return None;
+        }
+
         None
     }
 
@@ -57,9 +69,9 @@ impl DashboardComponent {
         let dashboard_view = DashboardView::new(&screen.dashboard);
         f.render_widget(dashboard_view, main_chunks[0]);
 
-        // 2. Turn History (SATURATION HISTORY + active turn details)
-        let turn_history_view = TurnHistoryView::new(&screen.turn_history);
-        f.render_widget(turn_history_view, main_chunks[1]);
+        // 2. Turn History (SATURATION HISTORY + active turn details) - scrollable
+        self.turn_history
+            .render(f, main_chunks[1], &screen.turn_history);
 
         // 3. Status Bar (status + help)
         let status_bar_view = StatusBarView::new(&screen.status_bar);

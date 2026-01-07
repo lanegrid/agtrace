@@ -162,14 +162,21 @@ impl WatchHandler {
 }
 
 /// Main entry point for TUI watch
-pub fn handle(client: &Client, project_root: Option<&Path>, target: WatchTarget) -> Result<()> {
+pub fn handle(
+    client: &Client,
+    project_root: Option<&Path>,
+    target: WatchTarget,
+    debug: bool,
+) -> Result<()> {
     // Create channels for bidirectional communication
     let (event_tx, event_rx) = mpsc::channel(); // Handler -> Renderer (events)
     let (signal_tx, signal_rx) = mpsc::channel(); // Renderer -> Handler (signals)
 
     // Spawn TUI renderer thread
     let tui_handle = thread::spawn(move || {
-        let renderer = TuiRenderer::new().with_signal_sender(signal_tx);
+        let renderer = TuiRenderer::new()
+            .with_signal_sender(signal_tx)
+            .with_debug_mode(debug);
         renderer.run(event_rx)
     });
 

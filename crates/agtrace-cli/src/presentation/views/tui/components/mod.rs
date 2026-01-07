@@ -26,6 +26,8 @@
 
 pub mod dashboard;
 pub mod timeline;
+pub mod turn_history;
 
 pub use dashboard::DashboardComponent;
 pub use timeline::TimelineComponent;
+pub use turn_history::TurnHistoryComponent;

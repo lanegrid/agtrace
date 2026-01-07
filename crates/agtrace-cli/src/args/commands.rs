@@ -44,6 +44,12 @@ Use --refresh to force a re-scan of all logs."
             help = "Display mode: tui (interactive) or console (streaming text)"
         )]
         mode: WatchFormat,
+
+        #[arg(
+            long,
+            help = "Enable debug mode (Ctrl+T: add turn, Ctrl+D: add 25 turns)"
+        )]
+        debug: bool,
     },
 
     #[command(about = "Enable agent self-reflection via MCP (Model Context Protocol)")]

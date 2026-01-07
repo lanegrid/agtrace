@@ -23,6 +23,209 @@ impl<'a> TurnHistoryView<'a> {
     pub fn new(model: &'a TurnHistoryViewModel) -> Self {
         Self { model }
     }
+
+    /// Build list widget with layout information for stateful rendering.
+    ///
+    /// Returns (List, Block, inner_area, item_count).
+    /// The component uses this to render with ListState for scrolling.
+    pub fn build_list_with_layout(&self, area: Rect) -> (List<'a>, Block<'a>, Rect, usize) {
+        // Handle waiting state and empty state - return empty list
+        if self.model.waiting_state.is_some() || self.model.turns.is_empty() {
+            let block = Block::default()
+                .title("SATURATION HISTORY")
+                .borders(Borders::ALL);
+            let inner = block.inner(area);
+            return (List::new(Vec::<ListItem>::new()), block, inner, 0);
+        }
+
+        // v1-style title
+        let block = Block::default()
+            .title(format!(
+                "SATURATION HISTORY (Delta Highlight) - {} turns",
+                self.model.turns.len()
+            ))
+            .borders(Borders::ALL);
+
+        let inner = block.inner(area);
+
+        // Calculate turn list area (70% if active turn, 100% otherwise)
+        let list_area = if self.model.active_turn_index.is_some() {
+            let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
+                .split(inner);
+            chunks[0]
+        } else {
+            inner
+        };
+
+        let (items, item_count) = self.build_list_items();
+        let list = List::new(items).highlight_style(
+            Style::default()
+                .bg(ratatui::style::Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        );
+
+        (list, block, list_area, item_count)
+    }
+
+    /// Build list items for turn history.
+    /// Returns (items, total_item_count).
+    fn build_list_items(&self) -> (Vec<ListItem<'a>>, usize) {
+        let mut items: Vec<ListItem> = Vec::new();
+
+        for (idx, turn) in self.model.turns.iter().enumerate() {
+            // v1-style: Add "CURRENT TURN" marker before active turn
+            if turn.is_active && idx > 0 {
+                items.push(ListItem::new(Line::from(vec![Span::styled(
+                    "├─ CURRENT TURN (Active) ────────────────────────────────────",
+                    Style::default()
+                        .fg(ratatui::style::Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                )])));
+            }
+
+            let mut line_spans = vec![Span::raw(format!("#{:02} ", turn.turn_id))];
+
+            // Fixed-width stacked bar (v1-style): [history (█) + delta (▓) + void (░)]
+            const BAR_WIDTH: usize = 20;
+            let prev_chars = turn.prev_bar_width as usize;
+            let delta_chars = turn.bar_width.saturating_sub(turn.prev_bar_width) as usize;
+            let total_chars = turn.bar_width as usize;
+            let remaining_chars = BAR_WIDTH.saturating_sub(total_chars);
+
+            line_spans.push(Span::raw("["));
+
+            // Previous turns (dark gray █)
+            if prev_chars > 0 {
+                line_spans.push(Span::styled(
+                    "█".repeat(prev_chars),
+                    Style::default().fg(ratatui::style::Color::DarkGray),
+                ));
+            }
+
+            // Current turn delta (colored ▓)
+            if delta_chars > 0 {
+                let delta_color = status_level_to_color(turn.delta_color);
+                line_spans.push(Span::styled(
+                    "▓".repeat(delta_chars),
+                    Style::default()
+                        .fg(delta_color)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+
+            // Void/unused portion (dim gray ░)
+            if remaining_chars > 0 {
+                line_spans.push(Span::styled(
+                    "░".repeat(remaining_chars),
+                    Style::default().fg(ratatui::style::Color::Rgb(60, 60, 60)),
+                ));
+            }
+
+            line_spans.push(Span::raw("] "));
+
+            // Token info: delta percentage and delta tokens
+            let delta_pct = turn.delta_ratio * 100.0;
+            let pct_color = if turn.is_heavy {
+                ratatui::style::Color::Red
+            } else {
+                ratatui::style::Color::White
+            };
+            let pct_text = format!("+{:.1}% ({})", delta_pct, format_tokens(turn.delta_tokens));
+            line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
+            line_spans.push(Span::raw(" "));
+
+            // Title - special handling for interrupted turns
+            let is_interrupted = turn.title.starts_with("[Request interrupted");
+            if is_interrupted {
+                line_spans.push(Span::styled(
+                    "⚠️ INTERRUPTED",
+                    Style::default()
+                        .fg(ratatui::style::Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            } else if turn.is_active {
+                line_spans.push(Span::styled(
+                    format!("User: \"{}\"", turn.title),
+                    Style::default().add_modifier(Modifier::BOLD),
+                ));
+            } else {
+                line_spans.push(Span::raw(format!("User: \"{}\"", turn.title)));
+            }
+
+            items.push(ListItem::new(Line::from(line_spans)));
+
+            // Render child streams (indented under parent turn)
+            for child in &turn.child_streams {
+                items.extend(self.render_child_stream(child));
+            }
+        }
+
+        let count = items.len();
+        (items, count)
+    }
+
+    /// Check if there's a waiting state to render.
+    pub fn has_waiting_state(&self) -> bool {
+        self.model.waiting_state.is_some()
+    }
+
+    /// Check if turns are empty.
+    pub fn is_empty(&self) -> bool {
+        self.model.turns.is_empty()
+    }
+
+    /// Render active turn detail section (for component use).
+    pub fn render_active_turn_detail_to(&self, f: &mut ratatui::Frame, area: Rect) {
+        if let Some(idx) = self.model.active_turn_index
+            && let Some(turn) = self.model.turns.get(idx)
+        {
+            // v1-style: "Recent Steps"
+            let block = Block::default().title("Recent Steps").borders(Borders::TOP);
+
+            let inner = block.inner(area);
+            f.render_widget(block, area);
+
+            if turn.recent_steps.is_empty() {
+                let empty = Paragraph::new("Waiting for steps...");
+                f.render_widget(empty, inner);
+                return;
+            }
+
+            let lines: Vec<Line> = turn
+                .recent_steps
+                .iter()
+                .map(|step| {
+                    let mut spans = vec![
+                        Span::raw(format!("{} ", step.icon)),
+                        Span::raw(&step.description),
+                    ];
+
+                    if let Some(tokens) = step.token_usage {
+                        spans.push(Span::styled(
+                            format!(" (+{})", format_tokens(tokens)),
+                            Style::default().add_modifier(Modifier::DIM),
+                        ));
+                    }
+
+                    Line::from(spans)
+                })
+                .collect();
+
+            let paragraph = Paragraph::new(lines);
+            f.render_widget(paragraph, inner);
+        }
+    }
+
+    /// Get active turn detail area if applicable.
+    pub fn get_active_turn_detail_area(&self, inner: Rect) -> Option<Rect> {
+        if self.model.active_turn_index.is_some() {
+            let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
+                .split(inner);
+            Some(chunks[1])
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a> Widget for TurnHistoryView<'a> {
