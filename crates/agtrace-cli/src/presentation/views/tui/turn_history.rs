@@ -60,7 +60,8 @@ impl<'a> TurnHistoryView<'a> {
         let (items, item_count) = self.build_list_items();
         let list = List::new(items).highlight_style(
             Style::default()
-                .bg(ratatui::style::Color::DarkGray)
+                // Use a distinct blue-tinted background to avoid collision with history bar (DarkGray)
+                .bg(ratatui::style::Color::Rgb(30, 40, 60))
                 .add_modifier(Modifier::BOLD),
         );
 
