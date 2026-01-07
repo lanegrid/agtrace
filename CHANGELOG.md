@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.7] - 2026-01-07
+
+### Bug Fixes
+
+- *(watch)* Improve turn history visibility and context bar accuracy ([f02d323](https://github.com/lanegrid/agtrace/commit/f02d3231e31d602410a8e321c5213e0a0296f624))
+
+
 ## [0.5.6] - 2026-01-07
 
 ### Features
