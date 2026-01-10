@@ -90,6 +90,8 @@ pub struct TurnHistoryViewModel {
     pub turns: Vec<TurnItemViewModel>,
     pub active_turn_index: Option<usize>,
     pub waiting_state: Option<WaitingState>,
+    /// Global recent steps from all turns (always visible, latest N items)
+    pub global_recent_steps: Vec<StepPreviewViewModel>,
 }
 
 /// Waiting state information with contextual hints

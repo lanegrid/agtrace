@@ -363,6 +363,7 @@ impl TuiRenderer {
                 turns: vec![],
                 active_turn_index: None,
                 waiting_state: None,
+                global_recent_steps: vec![],
             },
             status_bar: StatusBarViewModel {
                 event_count: 0,

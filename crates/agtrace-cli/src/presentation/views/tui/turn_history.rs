@@ -48,13 +48,11 @@ impl<'a> TurnHistoryView<'a> {
 
         let inner = block.inner(area);
 
-        // Calculate turn list area (70% if active turn, 100% otherwise)
-        let list_area = if self.model.active_turn_index.is_some() {
+        // Always show Recent Steps section (70% turns, 30% steps)
+        let list_area = {
             let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
                 .split(inner);
             chunks[0]
-        } else {
-            inner
         };
 
         let (items, item_count) = self.build_list_items();
@@ -193,57 +191,52 @@ impl<'a> TurnHistoryView<'a> {
         self.model.turns.is_empty()
     }
 
-    /// Render active turn detail section (for component use).
+    /// Render recent steps section (for component use).
+    /// Now uses global_recent_steps which shows steps from all turns.
     pub fn render_active_turn_detail_to(&self, f: &mut ratatui::Frame, area: Rect) {
-        if let Some(idx) = self.model.active_turn_index
-            && let Some(turn) = self.model.turns.get(idx)
-        {
-            // v1-style: "Recent Steps"
-            let block = Block::default().title("Recent Steps").borders(Borders::TOP);
+        // v1-style: "Recent Steps" - always visible
+        let block = Block::default().title("Recent Steps").borders(Borders::TOP);
 
-            let inner = block.inner(area);
-            f.render_widget(block, area);
+        let inner = block.inner(area);
+        f.render_widget(block, area);
 
-            if turn.recent_steps.is_empty() {
-                let empty = Paragraph::new("Waiting for steps...");
-                f.render_widget(empty, inner);
-                return;
-            }
-
-            let lines: Vec<Line> = turn
-                .recent_steps
-                .iter()
-                .map(|step| {
-                    let mut spans = vec![
-                        Span::raw(format!("{} ", step.icon)),
-                        Span::raw(&step.description),
-                    ];
-
-                    if let Some(tokens) = step.token_usage {
-                        spans.push(Span::styled(
-                            format!(" (+{})", format_tokens(tokens)),
-                            Style::default().add_modifier(Modifier::DIM),
-                        ));
-                    }
-
-                    Line::from(spans)
-                })
-                .collect();
-
-            let paragraph = Paragraph::new(lines);
-            f.render_widget(paragraph, inner);
+        if self.model.global_recent_steps.is_empty() {
+            let empty = Paragraph::new("Waiting for steps...");
+            f.render_widget(empty, inner);
+            return;
         }
+
+        let lines: Vec<Line> = self
+            .model
+            .global_recent_steps
+            .iter()
+            .map(|step| {
+                let mut spans = vec![
+                    Span::raw(format!("{} ", step.icon)),
+                    Span::raw(&step.description),
+                ];
+
+                if let Some(tokens) = step.token_usage {
+                    spans.push(Span::styled(
+                        format!(" (+{})", format_tokens(tokens)),
+                        Style::default().add_modifier(Modifier::DIM),
+                    ));
+                }
+
+                Line::from(spans)
+            })
+            .collect();
+
+        let paragraph = Paragraph::new(lines);
+        f.render_widget(paragraph, inner);
     }
 
-    /// Get active turn detail area if applicable.
+    /// Get recent steps area (always visible now).
     pub fn get_active_turn_detail_area(&self, inner: Rect) -> Option<Rect> {
-        if self.model.active_turn_index.is_some() {
-            let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
-                .split(inner);
-            Some(chunks[1])
-        } else {
-            None
-        }
+        // Always return the area for Recent Steps section
+        let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
+            .split(inner);
+        Some(chunks[1])
     }
 }
 
@@ -275,24 +268,15 @@ impl<'a> Widget for TurnHistoryView<'a> {
         let inner = block.inner(area);
         block.render(area, buf);
 
-        // Split into turn list and active turn detail (v1 style)
-        if self.model.active_turn_index.is_some() {
-            let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
-                .split(inner);
+        // Always split into turn list and Recent Steps (70/30)
+        let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
+            .split(inner);
 
-            // Render turn list
-            self.render_turn_list(chunks[0], buf);
+        // Render turn list
+        self.render_turn_list(chunks[0], buf);
 
-            // Render active turn details if present
-            if let Some(idx) = self.model.active_turn_index
-                && let Some(turn) = self.model.turns.get(idx)
-            {
-                self.render_active_turn_detail(chunks[1], buf, turn);
-            }
-        } else {
-            // Just render turn list
-            self.render_turn_list(inner, buf);
-        }
+        // Always render Recent Steps (using global_recent_steps)
+        self.render_global_recent_steps(chunks[1], buf);
     }
 }
 
@@ -508,26 +492,22 @@ impl<'a> TurnHistoryView<'a> {
         items
     }
 
-    fn render_active_turn_detail(
-        &self,
-        area: Rect,
-        buf: &mut Buffer,
-        turn: &crate::presentation::view_models::TurnItemViewModel,
-    ) {
-        // v1-style: "Recent Steps" (instead of "Active Turn Steps")
+    /// Render global recent steps (from all turns, not just active turn)
+    fn render_global_recent_steps(&self, area: Rect, buf: &mut Buffer) {
         let block = Block::default().title("Recent Steps").borders(Borders::TOP);
 
         let inner = block.inner(area);
         block.render(area, buf);
 
-        if turn.recent_steps.is_empty() {
+        if self.model.global_recent_steps.is_empty() {
             let empty = Paragraph::new("Waiting for steps...");
             empty.render(inner, buf);
             return;
         }
 
-        let lines: Vec<Line> = turn
-            .recent_steps
+        let lines: Vec<Line> = self
+            .model
+            .global_recent_steps
             .iter()
             .map(|step| {
                 let mut spans = vec![

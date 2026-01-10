@@ -229,6 +229,7 @@ fn build_turn_history(
             turns: Vec::new(),
             active_turn_index: None,
             waiting_state,
+            global_recent_steps: Vec::new(),
         };
     };
 
@@ -239,6 +240,7 @@ fn build_turn_history(
             turns: Vec::new(),
             active_turn_index: None,
             waiting_state,
+            global_recent_steps: Vec::new(),
         };
     };
 
@@ -257,7 +259,7 @@ fn build_turn_history(
 
     let max_context_u64 = max_context_u32 as u64;
 
-    let turns = session
+    let turns: Vec<TurnItemViewModel> = session
         .turns
         .iter()
         .zip(metrics.iter())
@@ -278,10 +280,26 @@ fn build_turn_history(
         })
         .collect();
 
+    // Build global recent steps from ALL turns (latest N steps across all turns)
+    const MAX_GLOBAL_STEPS: usize = 15;
+    let global_recent_steps: Vec<StepPreviewViewModel> = session
+        .turns
+        .iter()
+        .flat_map(|turn| turn.steps.iter().map(build_step_preview))
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .take(MAX_GLOBAL_STEPS)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+
     TurnHistoryViewModel {
         turns,
         active_turn_index,
         waiting_state: None, // No waiting state when we have turns
+        global_recent_steps,
     }
 }
 
