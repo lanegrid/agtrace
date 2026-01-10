@@ -32,7 +32,7 @@ struct SlashCommandInfo {
 }
 
 /// Extract slash command from user message text containing XML tags
-/// Returns Some if <command-name> tag is found, None otherwise
+/// Returns Some if <command-name> tag is found with a valid command, None otherwise
 fn extract_slash_command(text: &str) -> Option<SlashCommandInfo> {
     // Look for <command-name>/foo</command-name> pattern
     let name_start = text.find("<command-name>")?;
@@ -44,6 +44,12 @@ fn extract_slash_command(text: &str) -> Option<SlashCommandInfo> {
 
     let name = text[name_start + 14..name_end].trim().to_string();
     if name.is_empty() {
+        return None;
+    }
+
+    // Valid slash commands always start with '/' (e.g., /commit, /exit, /skaffold-repo)
+    // This prevents matching documentation text that mentions <command-name> tags
+    if !name.starts_with('/') {
         return None;
     }
 
@@ -505,5 +511,49 @@ mod tests {
             EventPayload::TokenUsage(_) => {}
             _ => panic!("Expected TokenUsage payload"),
         }
+    }
+
+    #[test]
+    fn test_extract_slash_command_valid() {
+        // Valid slash commands start with /
+        let text = "<command-name>/commit</command-name>\n<command-message>commit</command-message>";
+        let result = extract_slash_command(text);
+        assert!(result.is_some());
+        let cmd = result.unwrap();
+        assert_eq!(cmd.name, "/commit");
+    }
+
+    #[test]
+    fn test_extract_slash_command_with_args() {
+        let text = "<command-name>/exit</command-name>\n<command-message>exit</command-message>\n<command-args>--force</command-args>";
+        let result = extract_slash_command(text);
+        assert!(result.is_some());
+        let cmd = result.unwrap();
+        assert_eq!(cmd.name, "/exit");
+        assert_eq!(cmd.args, Some("--force".to_string()));
+    }
+
+    #[test]
+    fn test_extract_slash_command_rejects_documentation_text() {
+        // Context compaction summary text that mentions <command-name> tags
+        // should NOT be parsed as a slash command
+        let text = "The parser's `extract_slash_command()` function finds `<command-name>` XML tags in user messages\n- Identified the root cause: agtrace treats these as plain text";
+        let result = extract_slash_command(text);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_extract_slash_command_rejects_invalid_format() {
+        // Missing closing tag
+        let text = "<command-name>/commit";
+        assert!(extract_slash_command(text).is_none());
+
+        // Empty name
+        let text = "<command-name></command-name>";
+        assert!(extract_slash_command(text).is_none());
+
+        // Name without leading slash
+        let text = "<command-name>commit</command-name>";
+        assert!(extract_slash_command(text).is_none());
     }
 }
