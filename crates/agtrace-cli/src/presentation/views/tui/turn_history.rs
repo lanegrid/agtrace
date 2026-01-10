@@ -124,6 +124,14 @@ impl<'a> TurnHistoryView<'a> {
 
             line_spans.push(Span::raw("] "));
 
+            // Context compaction indicator (if reset occurred)
+            if turn.context_compacted {
+                line_spans.push(Span::styled(
+                    "🔄 ",
+                    Style::default().fg(ratatui::style::Color::Magenta),
+                ));
+            }
+
             // Token info: delta percentage and delta tokens
             let delta_pct = turn.delta_ratio * 100.0;
             let pct_color = if turn.is_heavy {
@@ -342,6 +350,14 @@ impl<'a> TurnHistoryView<'a> {
             }
 
             line_spans.push(Span::raw("] "));
+
+            // Context compaction indicator (if reset occurred)
+            if turn.context_compacted {
+                line_spans.push(Span::styled(
+                    "🔄 ",
+                    Style::default().fg(ratatui::style::Color::Magenta),
+                ));
+            }
 
             // Token info: delta percentage and delta tokens
             let delta_pct = turn.delta_ratio * 100.0;

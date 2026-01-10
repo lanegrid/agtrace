@@ -154,11 +154,11 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
 
                 // If current turn was started by SlashCommand and has no steps yet,
                 // merge this User content into it (slash command expansion)
-                if let Some(ref mut builder) = current_turn {
-                    if builder.is_slash_command_pending() {
-                        builder.set_expanded_content(user.clone());
-                        continue;
-                    }
+                if let Some(ref mut builder) = current_turn
+                    && builder.is_slash_command_pending()
+                {
+                    builder.set_expanded_content(user.clone());
+                    continue;
                 }
 
                 if let Some(builder) = current_turn.take()

@@ -340,14 +340,18 @@ pub struct TurnStats {
 pub struct TurnMetrics {
     /// Zero-based turn index.
     pub turn_index: usize,
-    /// Cumulative tokens before this turn.
+    /// Cumulative tokens before this turn (0 if context was compacted).
     pub prev_total: u32,
-    /// Tokens added by this turn.
+    /// Tokens added by this turn (or new baseline if compacted).
     pub delta: u32,
     /// Whether this turn's delta exceeds the heavy threshold.
     pub is_heavy: bool,
     /// Whether this turn is currently active (in progress).
     pub is_active: bool,
+    /// True if context was compacted (reset) during this turn.
+    pub context_compacted: bool,
+    /// Actual cumulative tokens at end of this turn.
+    pub cumulative_total: u32,
 }
 
 impl TurnMetrics {

@@ -118,10 +118,11 @@ pub struct TurnItemViewModel {
     pub slash_command: Option<String>, // Slash command name (e.g., "/skaffold-repo")
     pub is_active: bool,
     pub is_heavy: bool, // Indicates if this turn consumed significant tokens
+    pub context_compacted: bool, // True if context was reset during this turn
 
     // Stacked bar visualization (pre-computed) - v1-style cumulative display
-    pub prev_total: u32,     // Total tokens before this turn
-    pub delta_tokens: u32,   // Tokens added by this turn
+    pub prev_total: u32,     // Total tokens before this turn (0 if compacted)
+    pub delta_tokens: u32,   // Tokens added by this turn (or new baseline if compacted)
     pub usage_ratio: f64,    // Total usage ratio after this turn (0.0 - 1.0)
     pub prev_ratio: f64,     // Usage ratio before this turn (0.0 - 1.0)
     pub delta_ratio: f64,    // Delta ratio for this turn (0.0 - 1.0)

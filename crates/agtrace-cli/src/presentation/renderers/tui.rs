@@ -305,6 +305,7 @@ impl TuiRenderer {
             slash_command: None,
             is_active: false, // Will be set by caller
             is_heavy: delta_ratio > 0.1,
+            context_compacted: false,
             prev_total,
             delta_tokens,
             usage_ratio,

@@ -516,7 +516,8 @@ mod tests {
     #[test]
     fn test_extract_slash_command_valid() {
         // Valid slash commands start with /
-        let text = "<command-name>/commit</command-name>\n<command-message>commit</command-message>";
+        let text =
+            "<command-name>/commit</command-name>\n<command-message>commit</command-message>";
         let result = extract_slash_command(text);
         assert!(result.is_some());
         let cmd = result.unwrap();

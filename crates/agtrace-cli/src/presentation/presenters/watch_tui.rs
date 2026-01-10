@@ -415,6 +415,7 @@ fn build_turn_item_with_children(
         slash_command,
         is_active: metric.is_active,
         is_heavy: metric.is_heavy,
+        context_compacted: metric.context_compacted,
         prev_total: metric.prev_total,
         delta_tokens: metric.delta,
         usage_ratio,
