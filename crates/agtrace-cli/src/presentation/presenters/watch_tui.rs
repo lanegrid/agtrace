@@ -344,8 +344,16 @@ fn build_turn_item_with_children(
     max_context: u64,
     child_streams: Vec<ChildStreamViewModel>,
 ) -> TurnItemViewModel {
-    let title = build_turn_title(&turn.user.content.text);
     let slash_command = turn.user.slash_command.as_ref().map(|cmd| cmd.name.clone());
+
+    // For SlashCommand turns, show command name if user content is empty or very long
+    let title = if slash_command.is_some()
+        && (turn.user.content.text.is_empty() || turn.user.content.text.len() > 200)
+    {
+        "(slash command)".to_string()
+    } else {
+        build_turn_title(&turn.user.content.text)
+    };
 
     // Logic: Calculate bar width based on v1's algorithm
     let max_bar_width = 20;
