@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-01-10
+
+### Bug Fixes
+
+- *(watch)* Scroll to latest turn on initial render ([f7c7ac5](https://github.com/lanegrid/agtrace/commit/f7c7ac52d39d15370934845dee8c4aed074f53cf))
+
+- *(watch)* Simplify turn metrics computation to avoid flicker ([7f5917b](https://github.com/lanegrid/agtrace/commit/7f5917bcdef300a6697830782fcff7c7de2ce0e6))
+
+- *(tui)* Use step-based is_active detection instead of position-based ([39a2f84](https://github.com/lanegrid/agtrace/commit/39a2f849352edbef638a4109d5c326b5585c2f25))
+
+- *(assembler)* Treat '[Request interrupted]' as turn terminator, not new turn ([3fbcd2a](https://github.com/lanegrid/agtrace/commit/3fbcd2ae22a5290dd661aae718da0cf2300d6a66))
+
+- *(watch)* Show '(slash command)' for SlashCommand turns with empty/long expanded content ([644f199](https://github.com/lanegrid/agtrace/commit/644f1995f412dab6bebbe021335b35460bc5e216))
+
+- *(parser)* Validate slash command names must start with '/' ([2b51cc7](https://github.com/lanegrid/agtrace/commit/2b51cc7b2a25ac9bb5a54bdb36f364a8ab012746))
+
+- *(claude)* Increase max_depth to discover sidechain files in subagents/ ([c62b3d7](https://github.com/lanegrid/agtrace/commit/c62b3d773e86f66de08ad1902aceaf6669024972))
+
+- *(watch)* Make Recent Steps always visible with global step stream ([cfefadc](https://github.com/lanegrid/agtrace/commit/cfefadc19776947d1ce5db026c7172aab25956be))
+
+- *(watch)* Simplify active turn detection to always mark last turn as active ([0ef08cd](https://github.com/lanegrid/agtrace/commit/0ef08cd19ff7c254154c5d4167e408affe48e923))
+
+
+### Documentation
+
+- *(skill)* Expand agtrace-provider-normalization skill with detailed architecture ([f328356](https://github.com/lanegrid/agtrace/commit/f32835694efe8e8edc0d86c12851cf3ef1490499))
+
+
+### Features
+
+- *(providers)* Add SlashCommand support for Claude Code slash commands ([a75111c](https://github.com/lanegrid/agtrace/commit/a75111c0e9e577b545975ae27b580066cf6ca863))
+
+- *(tui)* Display slash command badge in turn history ([78f5410](https://github.com/lanegrid/agtrace/commit/78f5410a3613a64532795e7aa6ece9c03327e072))
+
+- *(watch)* Add rich interaction history display for TodoWrite and AskUserQuestion in SATURATION HISTORY ([349c0b8](https://github.com/lanegrid/agtrace/commit/349c0b8c4b363347c31ec516ded7038727a4f2d4))
+
+- *(watch)* Display context compaction events with special indicator in SATURATION HISTORY ([3934a0a](https://github.com/lanegrid/agtrace/commit/3934a0a4b1d7247ce5af7b1a9f37d5b38487824d))
+
+- *(watch)* Add context compaction detection and display in TUI ([cbb0df3](https://github.com/lanegrid/agtrace/commit/cbb0df3b6ee2422703eb0c071a7e395fb55c8c8c))
+
+- *(cli)* Add 'index info' command to show database location ([aace58d](https://github.com/lanegrid/agtrace/commit/aace58d2ed7371da017aa77c4fb7ab0ac4bfa80a))
+
+- *(engine)* Add TurnOrigin framework to distinguish user vs system-generated turns ([ed39d12](https://github.com/lanegrid/agtrace/commit/ed39d124ab52739ded20219c682fc56ca4156876))
+
+
+### Miscellaneous Tasks
+
+- Fix clippy warnings and update snapshots for TurnOrigin ([5d2e093](https://github.com/lanegrid/agtrace/commit/5d2e0931ef81ba22922b78bfcc2666f47b79fcfd))
+
+
 ## [0.5.7] - 2026-01-07
 
 ### Bug Fixes
