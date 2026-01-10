@@ -344,7 +344,7 @@ fn build_turn_item_with_children(
     max_context: u64,
     child_streams: Vec<ChildStreamViewModel>,
 ) -> TurnItemViewModel {
-    let title = truncate_text(&turn.user.content.text, 120);
+    let title = build_turn_title(&turn.user.content.text);
     let slash_command = turn.user.slash_command.as_ref().map(|cmd| cmd.name.clone());
 
     // Logic: Calculate bar width based on v1's algorithm
@@ -638,6 +638,17 @@ fn build_status_bar(
 // --------------------------------------------------------
 // Utility Functions (Text Processing)
 // --------------------------------------------------------
+
+/// Build turn title with special handling for context compaction
+fn build_turn_title(user_text: &str) -> String {
+    // Detect context compaction (auto-summarization)
+    if user_text.starts_with("This session is being continued from a previous conversation") {
+        return "🔄 Context Compacted (Session Continued)".to_string();
+    }
+
+    // Regular turn - truncate the user message
+    truncate_text(user_text, 120)
+}
 
 /// Truncate text to max length with ellipsis
 fn truncate_text(text: &str, max_len: usize) -> String {
