@@ -35,6 +35,7 @@ impl SessionAnalysisExt for AgentSession {
     fn compute_turn_metrics(&self, max_context: Option<u32>) -> Vec<TurnMetrics> {
         let mut cumulative_total = 0u32;
         let mut metrics = Vec::new();
+        let total_turns = self.turns.len();
 
         for (idx, turn) in self.turns.iter().enumerate() {
             let turn_end_tokens = turn.cumulative_total_tokens(cumulative_total);
@@ -53,8 +54,9 @@ impl SessionAnalysisExt for AgentSession {
                 (cumulative_total, delta)
             };
 
-            // A turn is active if any of its recent steps are in progress
-            let is_active = turn.is_active();
+            // Simplified: Last turn is always considered active for live watching
+            // This avoids flickering caused by per-step status checks
+            let is_active = idx == total_turns - 1;
 
             metrics.push(TurnMetrics {
                 turn_index: idx,
