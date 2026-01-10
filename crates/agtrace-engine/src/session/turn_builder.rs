@@ -1,7 +1,7 @@
 use super::stats::{calculate_turn_stats, merge_usage};
 use super::step_builder::StepBuilder;
 use super::types::*;
-use agtrace_types::{AgentEvent, EventPayload};
+use agtrace_types::{AgentEvent, EventPayload, SlashCommandPayload, UserPayload};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -15,6 +15,9 @@ pub struct TurnBuilder {
     current_step: StepBuilder,
 
     pending_calls: HashMap<Uuid, (usize, usize)>,
+
+    /// True if this turn was started by SlashCommand and content not yet expanded
+    slash_command_pending: bool,
 }
 
 impl TurnBuilder {
@@ -26,7 +29,42 @@ impl TurnBuilder {
             steps: Vec::new(),
             current_step: StepBuilder::new(timestamp),
             pending_calls: HashMap::new(),
+            slash_command_pending: false,
         }
+    }
+
+    /// Create a new turn builder for a slash command invocation
+    pub fn new_slash_command(
+        id: Uuid,
+        timestamp: DateTime<Utc>,
+        cmd: SlashCommandPayload,
+    ) -> Self {
+        Self {
+            id,
+            timestamp,
+            user: UserMessage {
+                event_id: id,
+                content: UserPayload {
+                    text: String::new(),
+                },
+                slash_command: Some(cmd),
+            },
+            steps: Vec::new(),
+            current_step: StepBuilder::new(timestamp),
+            pending_calls: HashMap::new(),
+            slash_command_pending: true,
+        }
+    }
+
+    /// Check if this turn was started by SlashCommand and is awaiting content expansion
+    pub fn is_slash_command_pending(&self) -> bool {
+        self.slash_command_pending && self.steps.is_empty() && self.current_step.is_empty()
+    }
+
+    /// Set the expanded content from a User event following a SlashCommand
+    pub fn set_expanded_content(&mut self, content: UserPayload) {
+        self.user.content = content;
+        self.slash_command_pending = false;
     }
 
     pub fn add_event(&mut self, event: &AgentEvent) {
@@ -131,7 +169,8 @@ impl TurnBuilder {
 
             EventPayload::Notification(_) => {}
 
-            EventPayload::User(_) => unreachable!(),
+            // User and SlashCommand are turn triggers, handled in assembler
+            EventPayload::User(_) | EventPayload::SlashCommand(_) => unreachable!(),
         }
     }
 

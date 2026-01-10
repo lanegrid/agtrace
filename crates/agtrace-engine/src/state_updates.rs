@@ -17,7 +17,7 @@ pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
     let mut updates = StateUpdates::default();
 
     match &event.payload {
-        EventPayload::User(_) => {
+        EventPayload::User(_) | EventPayload::SlashCommand(_) => {
             updates.is_new_turn = true;
         }
         EventPayload::TokenUsage(usage) => {

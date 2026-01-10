@@ -140,6 +140,15 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
     for event in events {
         match &event.payload {
             EventPayload::User(user) => {
+                // If current turn was started by SlashCommand and has no steps yet,
+                // merge this User content into it (slash command expansion)
+                if let Some(ref mut builder) = current_turn {
+                    if builder.is_slash_command_pending() {
+                        builder.set_expanded_content(user.clone());
+                        continue;
+                    }
+                }
+
                 if let Some(builder) = current_turn.take()
                     && let Some(turn) = builder.build()
                 {
@@ -152,7 +161,21 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
                     UserMessage {
                         event_id: event.id,
                         content: user.clone(),
+                        slash_command: None,
                     },
+                ));
+            }
+            EventPayload::SlashCommand(cmd) => {
+                if let Some(builder) = current_turn.take()
+                    && let Some(turn) = builder.build()
+                {
+                    turns.push(turn);
+                }
+
+                current_turn = Some(TurnBuilder::new_slash_command(
+                    event.id,
+                    event.timestamp,
+                    cmd.clone(),
                 ));
             }
             _ => {

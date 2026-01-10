@@ -34,6 +34,9 @@ pub enum EventPayload {
 
     /// 7. User-facing system notification (updates, alerts, status changes)
     Notification(NotificationPayload),
+
+    /// 8. Slash command invocation (e.g., /commit, /review-pr)
+    SlashCommand(SlashCommandPayload),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -194,4 +197,14 @@ pub struct NotificationPayload {
     /// Optional severity level (e.g., "info", "warning", "error")
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub level: Option<String>,
+}
+
+/// Slash command invocation (e.g., /commit, /review-pr, /skaffold-repo)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SlashCommandPayload {
+    /// Command name with leading slash (e.g., "/commit", "/skaffold-repo")
+    pub name: String,
+    /// Optional command arguments
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub args: Option<String>,
 }

@@ -113,6 +113,13 @@ impl EventMatch {
             EventPayload::Notification(n) => {
                 serde_json::to_string(n).unwrap_or_else(|_| String::new())
             }
+            EventPayload::SlashCommand(sc) => {
+                if let Some(args) = &sc.args {
+                    format!("{} {}", sc.name, args)
+                } else {
+                    sc.name.clone()
+                }
+            }
         };
 
         if text.len() > 200 {
@@ -156,6 +163,8 @@ pub struct ListTurnsResponse {
 pub struct TurnMetadata {
     pub turn_index: usize,
     pub user_content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slash_command: Option<SlashCommandDetail>,
     pub status: TurnStatus,
     pub step_count: usize,
     pub duration_ms: u64,
@@ -210,9 +219,17 @@ impl ListTurnsResponse {
 
                 let user_content = truncate(&turn.user.content.text, 100);
 
+                let slash_command = turn.user.slash_command.as_ref().map(|cmd| {
+                    SlashCommandDetail {
+                        name: cmd.name.clone(),
+                        args: cmd.args.clone(),
+                    }
+                });
+
                 TurnMetadata {
                     turn_index: idx,
                     user_content,
+                    slash_command,
                     status,
                     step_count,
                     duration_ms,
@@ -283,9 +300,18 @@ pub struct GetTurnsResponse {
 pub struct TurnDetail {
     pub turn_index: usize,
     pub user_content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slash_command: Option<SlashCommandDetail>,
     pub steps: Vec<StepDetail>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub steps_truncated: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SlashCommandDetail {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -400,9 +426,17 @@ impl GetTurnsResponse {
                 None
             };
 
+            let slash_command = turn.user.slash_command.as_ref().map(|cmd| {
+                SlashCommandDetail {
+                    name: cmd.name.clone(),
+                    args: cmd.args.clone(),
+                }
+            });
+
             turns.push(TurnDetail {
                 turn_index,
                 user_content,
+                slash_command,
                 steps,
                 steps_truncated,
             });

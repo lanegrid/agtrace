@@ -25,6 +25,49 @@ fn parse_timestamp(ts: &str) -> DateTime<chrono::Utc> {
         .unwrap_or_else(|_| chrono::Utc::now())
 }
 
+/// Slash command info extracted from user message
+struct SlashCommandInfo {
+    name: String,
+    args: Option<String>,
+}
+
+/// Extract slash command from user message text containing XML tags
+/// Returns Some if <command-name> tag is found, None otherwise
+fn extract_slash_command(text: &str) -> Option<SlashCommandInfo> {
+    // Look for <command-name>/foo</command-name> pattern
+    let name_start = text.find("<command-name>")?;
+    let name_end = text.find("</command-name>")?;
+
+    if name_start >= name_end {
+        return None;
+    }
+
+    let name = text[name_start + 14..name_end].trim().to_string();
+    if name.is_empty() {
+        return None;
+    }
+
+    // Look for optional <command-args>...</command-args>
+    let args = if let (Some(args_start), Some(args_end)) =
+        (text.find("<command-args>"), text.find("</command-args>"))
+    {
+        if args_start < args_end {
+            let args_text = text[args_start + 14..args_end].trim();
+            if !args_text.is_empty() {
+                Some(args_text.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    Some(SlashCommandInfo { name, args })
+}
+
 /// Normalize Claude session records to events
 /// Handles message.content[] blocks, thinking -> Reasoning, and TokenUsage extraction
 pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
@@ -58,15 +101,31 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
 
                     match content {
                         UserContent::Text { text } => {
-                            builder.build_and_push(
-                                &mut events,
-                                &indexed_base_id,
-                                SemanticSuffix::User,
-                                timestamp,
-                                EventPayload::User(UserPayload { text: text.clone() }),
-                                raw_value.clone(),
-                                stream_id.clone(),
-                            );
+                            // Check for slash command pattern
+                            if let Some(cmd) = extract_slash_command(text) {
+                                builder.build_and_push(
+                                    &mut events,
+                                    &indexed_base_id,
+                                    SemanticSuffix::SlashCommand,
+                                    timestamp,
+                                    EventPayload::SlashCommand(SlashCommandPayload {
+                                        name: cmd.name,
+                                        args: cmd.args,
+                                    }),
+                                    raw_value.clone(),
+                                    stream_id.clone(),
+                                );
+                            } else {
+                                builder.build_and_push(
+                                    &mut events,
+                                    &indexed_base_id,
+                                    SemanticSuffix::User,
+                                    timestamp,
+                                    EventPayload::User(UserPayload { text: text.clone() }),
+                                    raw_value.clone(),
+                                    stream_id.clone(),
+                                );
+                            }
                         }
 
                         UserContent::ToolResult {

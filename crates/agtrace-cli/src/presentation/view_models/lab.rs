@@ -90,6 +90,11 @@ pub enum EventPayloadViewModel {
         #[serde(skip_serializing_if = "Option::is_none")]
         level: Option<String>,
     },
+    SlashCommand {
+        name: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        args: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]

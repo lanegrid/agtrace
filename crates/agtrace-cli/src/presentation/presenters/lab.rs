@@ -94,6 +94,10 @@ fn present_event_payload(payload: &EventPayload) -> EventPayloadViewModel {
             text: p.text.clone(),
             level: p.level.clone(),
         },
+        EventPayload::SlashCommand(p) => EventPayloadViewModel::SlashCommand {
+            name: p.name.clone(),
+            args: p.args.clone(),
+        },
     }
 }
 

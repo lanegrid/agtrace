@@ -45,6 +45,8 @@ pub enum EventType {
     TokenUsage,
     /// System notification
     Notification,
+    /// Slash command invocation
+    SlashCommand,
 }
 
 impl EventType {
@@ -59,6 +61,7 @@ impl EventType {
                 | (EventType::Reasoning, EventPayload::Reasoning(_))
                 | (EventType::TokenUsage, EventPayload::TokenUsage(_))
                 | (EventType::Notification, EventPayload::Notification(_))
+                | (EventType::SlashCommand, EventPayload::SlashCommand(_))
         )
     }
 
@@ -72,6 +75,7 @@ impl EventType {
             EventPayload::Reasoning(_) => EventType::Reasoning,
             EventPayload::TokenUsage(_) => EventType::TokenUsage,
             EventPayload::Notification(_) => EventType::Notification,
+            EventPayload::SlashCommand(_) => EventType::SlashCommand,
         }
     }
 }

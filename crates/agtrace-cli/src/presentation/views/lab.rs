@@ -154,6 +154,16 @@ impl<'a> fmt::Display for LabGrepView<'a> {
                     } => {
                         writeln!(f, "Notification [{:?}]: {}", level, text)?;
                     }
+                    crate::presentation::view_models::EventPayloadViewModel::SlashCommand {
+                        name,
+                        args,
+                    } => {
+                        if let Some(args) = args {
+                            writeln!(f, "SlashCommand: {} {}", name, args)?;
+                        } else {
+                            writeln!(f, "SlashCommand: {}", name)?;
+                        }
+                    }
                 }
             }
         }

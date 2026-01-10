@@ -5,7 +5,8 @@ use uuid::Uuid;
 use super::project::ProjectHash;
 use super::token_usage::ContextWindowUsage;
 use crate::{
-    MessagePayload, ReasoningPayload, StreamId, ToolCallPayload, ToolResultPayload, UserPayload,
+    MessagePayload, ReasoningPayload, SlashCommandPayload, StreamId, ToolCallPayload,
+    ToolResultPayload, UserPayload,
 };
 
 /// Source of the agent log (provider-agnostic identifier)
@@ -252,8 +253,11 @@ pub struct ToolExecution {
 pub struct UserMessage {
     /// ID of the source event.
     pub event_id: Uuid,
-    /// User input content.
+    /// User input content (empty if triggered by slash command).
     pub content: UserPayload,
+    /// Slash command that triggered this turn (e.g., /commit, /skaffold-repo).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slash_command: Option<SlashCommandPayload>,
 }
 
 /// Agent reasoning/thinking block.

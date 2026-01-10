@@ -190,6 +190,11 @@ expression: response
                   "const": "Notification",
                   "description": "System notification",
                   "type": "string"
+                },
+                {
+                  "const": "SlashCommand",
+                  "description": "Slash command invocation",
+                  "type": "string"
                 }
               ]
             },

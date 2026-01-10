@@ -38,6 +38,9 @@ pub fn filter_events(events: &[AgentEvent], filters: EventFilters) -> Vec<AgentE
                     EventPayload::Notification(_) => {
                         pattern_lower == "notification" || pattern_lower == "info"
                     }
+                    EventPayload::SlashCommand(_) => {
+                        pattern_lower == "slashcommand" || pattern_lower == "command"
+                    }
                 }
             })
         });
@@ -61,6 +64,9 @@ pub fn filter_events(events: &[AgentEvent], filters: EventFilters) -> Vec<AgentE
                     }
                     EventPayload::Notification(_) => {
                         pattern_lower == "notification" || pattern_lower == "info"
+                    }
+                    EventPayload::SlashCommand(_) => {
+                        pattern_lower == "slashcommand" || pattern_lower == "command"
                     }
                 }
             })

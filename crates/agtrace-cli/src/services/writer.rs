@@ -30,6 +30,7 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
             EventPayload::ToolResult(_) => "ToolResult",
             EventPayload::TokenUsage(_) => "TokenUsage",
             EventPayload::Notification(_) => "Notification",
+            EventPayload::SlashCommand(_) => "SlashCommand",
         };
 
         writeln!(file, "[{}] {}", ts_str, event_type)?;
@@ -70,6 +71,13 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
                     p.level.as_deref().unwrap_or("info"),
                     p.text
                 )?;
+            }
+            EventPayload::SlashCommand(p) => {
+                if let Some(args) = &p.args {
+                    writeln!(file, "{} {}", p.name, args)?;
+                } else {
+                    writeln!(file, "{}", p.name)?;
+                }
             }
         }
 

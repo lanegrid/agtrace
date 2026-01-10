@@ -192,6 +192,11 @@ fn event_to_timeline_item(event: &agtrace_sdk::types::AgentEvent) -> TimelineEve
                 StatusLevel::Info,
             )
         }
+        EventPayload::SlashCommand(cmd) => (
+            "⚡".to_string(),
+            format!("Command: {}", cmd.name),
+            StatusLevel::Info,
+        ),
     };
 
     TimelineEventViewModel {
