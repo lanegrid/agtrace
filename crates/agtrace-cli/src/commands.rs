@@ -89,13 +89,16 @@ pub async fn run(cli: Cli) -> Result<()> {
 
         Commands::Demo { speed } => handlers::demo::handle(speed),
 
-        Commands::Index { command } => {
-            let workspace = ctx.open_workspace().await?;
-            match command {
-                IndexCommand::Update {
-                    provider,
-                    view_mode,
-                } => handlers::index::handle(
+        Commands::Index { command } => match command {
+            IndexCommand::Info => {
+                handlers::index::handle_info(&ctx.data_dir, ctx.format, &default_view_mode())
+            }
+            IndexCommand::Update {
+                provider,
+                view_mode,
+            } => {
+                let workspace = ctx.open_workspace().await?;
+                handlers::index::handle(
                     &workspace,
                     ctx.project_root.as_deref(),
                     ctx.all_projects,
@@ -104,11 +107,14 @@ pub async fn run(cli: Cli) -> Result<()> {
                     view_mode.verbose,
                     ctx.format,
                     &view_mode,
-                ),
-                IndexCommand::Rebuild {
-                    provider,
-                    view_mode,
-                } => handlers::index::handle(
+                )
+            }
+            IndexCommand::Rebuild {
+                provider,
+                view_mode,
+            } => {
+                let workspace = ctx.open_workspace().await?;
+                handlers::index::handle(
                     &workspace,
                     ctx.project_root.as_deref(),
                     ctx.all_projects,
@@ -117,12 +123,13 @@ pub async fn run(cli: Cli) -> Result<()> {
                     view_mode.verbose,
                     ctx.format,
                     &view_mode,
-                ),
-                IndexCommand::Vacuum { view_mode } => {
-                    handlers::index::handle_vacuum(&workspace, ctx.format, &view_mode)
-                }
+                )
             }
-        }
+            IndexCommand::Vacuum { view_mode } => {
+                let workspace = ctx.open_workspace().await?;
+                handlers::index::handle_vacuum(&workspace, ctx.format, &view_mode)
+            }
+        },
 
         Commands::Session { command } => {
             let workspace = ctx.open_workspace().await?;

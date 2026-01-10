@@ -19,6 +19,7 @@ pub mod cmd {
     pub const DOCTOR_INSPECT: &str = "agtrace doctor inspect <file-path>";
 
     // Init commands
+    pub const INIT: &str = "agtrace init";
     pub const INIT_REFRESH: &str = "agtrace init --refresh";
     pub const INIT_ALL_PROJECTS: &str = "agtrace init --all-projects";
 

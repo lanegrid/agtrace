@@ -1,8 +1,9 @@
 use crate::args::hints::cmd;
 use crate::presentation::view_models::{
-    CommandResultViewModel, Guidance, IndexMode, IndexResultViewModel, StatusBadge,
-    VacuumResultViewModel,
+    CommandResultViewModel, Guidance, IndexInfoViewModel, IndexMode, IndexResultViewModel,
+    StatusBadge, VacuumResultViewModel,
 };
+use std::path::PathBuf;
 
 pub fn present_index_result(
     total_sessions: usize,
@@ -72,4 +73,34 @@ pub fn present_vacuum_result() -> CommandResultViewModel<VacuumResultViewModel> 
         .with_suggestion(Guidance::new(
             "Vacuum reclaims unused space and optimizes query performance",
         ))
+}
+
+pub fn present_index_info(
+    data_dir: PathBuf,
+    db_path: PathBuf,
+    config_path: PathBuf,
+    db_exists: bool,
+    db_size_bytes: u64,
+) -> CommandResultViewModel<IndexInfoViewModel> {
+    let content = IndexInfoViewModel {
+        data_dir,
+        db_path,
+        config_path,
+        db_exists,
+        db_size_bytes,
+    };
+
+    let mut result = CommandResultViewModel::new(content);
+
+    if !db_exists {
+        result = result
+            .with_badge(StatusBadge::warning("Database not found"))
+            .with_suggestion(
+                Guidance::new("Initialize the database first").with_command(cmd::INIT),
+            );
+    } else {
+        result = result.with_badge(StatusBadge::success("Database ready"));
+    }
+
+    result
 }

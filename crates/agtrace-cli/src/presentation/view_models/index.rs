@@ -27,6 +27,15 @@ pub struct VacuumResultViewModel {
     pub success: bool,
 }
 
+#[derive(Debug, Serialize)]
+pub struct IndexInfoViewModel {
+    pub data_dir: PathBuf,
+    pub db_path: PathBuf,
+    pub config_path: PathBuf,
+    pub db_exists: bool,
+    pub db_size_bytes: u64,
+}
+
 // --------------------------------------------------------
 // CreateView Trait Implementations (Bridge to Views)
 // --------------------------------------------------------
@@ -45,6 +54,13 @@ impl CreateView for VacuumResultViewModel {
     }
 }
 
+impl CreateView for IndexInfoViewModel {
+    fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
+        use crate::presentation::views::index::IndexInfoView;
+        Box::new(IndexInfoView::new(self, mode))
+    }
+}
+
 // --------------------------------------------------------
 // Display Trait (for backward compatibility and default rendering)
 // --------------------------------------------------------
@@ -56,6 +72,12 @@ impl fmt::Display for IndexResultViewModel {
 }
 
 impl fmt::Display for VacuumResultViewModel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.create_view(ViewMode::default()))
+    }
+}
+
+impl fmt::Display for IndexInfoViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.create_view(ViewMode::default()))
     }

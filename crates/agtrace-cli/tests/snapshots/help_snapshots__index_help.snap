@@ -7,6 +7,7 @@ Manage the session index (update, rebuild, vacuum)
 Usage: agtrace index [OPTIONS] <COMMAND>
 
 Commands:
+  info     Show database location and index statistics
   update   Scan for new sessions and add them to the index
   rebuild  Clear and rebuild the entire index from scratch
   vacuum   Optimize database performance and reclaim disk space

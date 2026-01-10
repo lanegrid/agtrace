@@ -188,6 +188,17 @@ It spawns an MCP server instance and tests each endpoint with various parameters
 #[derive(Subcommand)]
 pub enum IndexCommand {
     #[command(
+        about = "Show database location and index statistics",
+        long_about = "Display information about the agtrace database and index.
+
+Shows:
+  • Data directory path (where database is stored)
+  • Database file path
+  • Index statistics (sessions, files, etc.)"
+    )]
+    Info,
+
+    #[command(
         about = "Scan for new sessions and add them to the index",
         long_about = "Incrementally update the index by scanning for new session logs.
 

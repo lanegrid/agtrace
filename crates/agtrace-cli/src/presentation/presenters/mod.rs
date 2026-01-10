@@ -10,7 +10,7 @@ pub mod watch;
 pub mod watch_tui;
 
 pub use doctor::{present_check_result, present_diagnose_results, present_inspect_result};
-pub use index::{present_index_result, present_vacuum_result};
+pub use index::{present_index_info, present_index_result, present_vacuum_result};
 pub use init::present_init_result;
 pub use lab::{
     present_event, present_events, present_lab_export, present_lab_grep, present_lab_stats,
