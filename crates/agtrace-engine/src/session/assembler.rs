@@ -140,6 +140,18 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
     for event in events {
         match &event.payload {
             EventPayload::User(user) => {
+                // "[Request interrupted by user]" is a termination marker, not a new turn.
+                // It indicates the previous turn was interrupted - just finalize that turn.
+                if user.text.starts_with("[Request interrupted") {
+                    if let Some(builder) = current_turn.take()
+                        && let Some(turn) = builder.build()
+                    {
+                        turns.push(turn);
+                    }
+                    // Don't start a new turn - wait for actual user input
+                    continue;
+                }
+
                 // If current turn was started by SlashCommand and has no steps yet,
                 // merge this User content into it (slash command expansion)
                 if let Some(ref mut builder) = current_turn {

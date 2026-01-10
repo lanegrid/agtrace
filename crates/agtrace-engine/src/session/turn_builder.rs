@@ -190,10 +190,8 @@ impl TurnBuilder {
             self.steps.push(self.current_step);
         }
 
-        // Allow empty steps only for interrupted turns
-        // This ensures "[Request interrupted by user]" turns are displayed
-        let is_interrupted = self.user.content.text.starts_with("[Request interrupted");
-        if self.steps.is_empty() && !is_interrupted {
+        // Skip turns with no steps (empty content or interrupted before any response)
+        if self.steps.is_empty() {
             return None;
         }
 
@@ -225,6 +223,7 @@ mod tests {
             content: agtrace_types::UserPayload {
                 text: "Hello".to_string(),
             },
+            slash_command: None,
         };
 
         let builder = TurnBuilder::new(user_id, timestamp, user.clone());
@@ -235,7 +234,10 @@ mod tests {
     }
 
     #[test]
-    fn test_turn_builder_interrupted() {
+    fn test_turn_builder_empty_steps_returns_none() {
+        // Any turn with empty steps (including interrupted ones) returns None.
+        // "[Request interrupted by user]" is now handled by the assembler,
+        // not as a turn-creating event.
         let timestamp = Utc::now();
         let user_id = Uuid::new_v4();
         let user = UserMessage {
@@ -243,15 +245,14 @@ mod tests {
             content: agtrace_types::UserPayload {
                 text: "[Request interrupted by user]".to_string(),
             },
+            slash_command: None,
         };
 
         let builder = TurnBuilder::new(user_id, timestamp, user.clone());
         let turn = builder.build();
 
-        // Interrupted turns are created even with empty steps
-        let turn = turn.unwrap();
-        assert!(turn.steps.is_empty());
-        assert!(turn.user.content.text.starts_with("[Request interrupted"));
+        // Empty turns return None
+        assert!(turn.is_none());
     }
 
     #[test]
@@ -263,6 +264,7 @@ mod tests {
             content: agtrace_types::UserPayload {
                 text: "Hello".to_string(),
             },
+            slash_command: None,
         };
 
         let mut builder = TurnBuilder::new(user_id, timestamp, user.clone());
@@ -295,6 +297,7 @@ mod tests {
             content: agtrace_types::UserPayload {
                 text: "Hello".to_string(),
             },
+            slash_command: None,
         };
 
         let mut builder = TurnBuilder::new(user_id, timestamp, user.clone());
