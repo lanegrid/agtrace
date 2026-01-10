@@ -16,16 +16,14 @@ impl SessionAnalysisExt for AgentSession {
     fn compute_turn_metrics(&self, max_context: Option<u32>) -> Vec<TurnMetrics> {
         let mut cumulative_total = 0u32;
         let mut metrics = Vec::new();
-        let total_turns = self.turns.len();
 
         for (idx, turn) in self.turns.iter().enumerate() {
             let turn_end_cumulative = turn.cumulative_total_tokens(cumulative_total);
             let delta = turn_end_cumulative.saturating_sub(cumulative_total);
             let prev_total = cumulative_total;
 
-            // Last turn is always active during streaming to avoid flicker
-            // when steps transition between InProgress and Done
-            let is_active = idx == total_turns.saturating_sub(1);
+            // A turn is active if any of its recent steps are in progress
+            let is_active = turn.is_active();
 
             metrics.push(TurnMetrics {
                 turn_index: idx,
