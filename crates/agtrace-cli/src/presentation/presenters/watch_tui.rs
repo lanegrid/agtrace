@@ -345,6 +345,7 @@ fn build_turn_item_with_children(
     child_streams: Vec<ChildStreamViewModel>,
 ) -> TurnItemViewModel {
     let title = truncate_text(&turn.user.content.text, 120);
+    let slash_command = turn.user.slash_command.as_ref().map(|cmd| cmd.name.clone());
 
     // Logic: Calculate bar width based on v1's algorithm
     let max_bar_width = 20;
@@ -403,6 +404,7 @@ fn build_turn_item_with_children(
     TurnItemViewModel {
         turn_id: metric.turn_index + 1,
         title,
+        slash_command,
         is_active: metric.is_active,
         is_heavy: metric.is_heavy,
         prev_total: metric.prev_total,

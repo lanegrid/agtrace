@@ -114,7 +114,8 @@ pub enum WaitingKind {
 #[derive(Debug, Clone, Serialize)]
 pub struct TurnItemViewModel {
     pub turn_id: usize,
-    pub title: String, // Truncated user message
+    pub title: String,                   // Truncated user message
+    pub slash_command: Option<String>,   // Slash command name (e.g., "/skaffold-repo")
     pub is_active: bool,
     pub is_heavy: bool, // Indicates if this turn consumed significant tokens
 

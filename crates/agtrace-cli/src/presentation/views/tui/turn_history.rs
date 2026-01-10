@@ -135,6 +135,16 @@ impl<'a> TurnHistoryView<'a> {
             line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
             line_spans.push(Span::raw(" "));
 
+            // Slash command badge (if present)
+            if let Some(ref cmd) = turn.slash_command {
+                line_spans.push(Span::styled(
+                    format!("[{}] ", cmd),
+                    Style::default()
+                        .fg(ratatui::style::Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+
             // Title - special handling for interrupted turns
             let is_interrupted = turn.title.starts_with("[Request interrupted");
             if is_interrupted {
@@ -146,11 +156,11 @@ impl<'a> TurnHistoryView<'a> {
                 ));
             } else if turn.is_active {
                 line_spans.push(Span::styled(
-                    format!("User: \"{}\"", turn.title),
+                    format!("\"{}\"", turn.title),
                     Style::default().add_modifier(Modifier::BOLD),
                 ));
             } else {
-                line_spans.push(Span::raw(format!("User: \"{}\"", turn.title)));
+                line_spans.push(Span::raw(format!("\"{}\"", turn.title)));
             }
 
             items.push(ListItem::new(Line::from(line_spans)));
@@ -344,6 +354,16 @@ impl<'a> TurnHistoryView<'a> {
             line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
             line_spans.push(Span::raw(" "));
 
+            // Slash command badge (if present)
+            if let Some(ref cmd) = turn.slash_command {
+                line_spans.push(Span::styled(
+                    format!("[{}] ", cmd),
+                    Style::default()
+                        .fg(ratatui::style::Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ));
+            }
+
             // Title - special handling for interrupted turns
             let is_interrupted = turn.title.starts_with("[Request interrupted");
             if is_interrupted {
@@ -355,11 +375,11 @@ impl<'a> TurnHistoryView<'a> {
                 ));
             } else if turn.is_active {
                 line_spans.push(Span::styled(
-                    format!("User: \"{}\"", turn.title),
+                    format!("\"{}\"", turn.title),
                     Style::default().add_modifier(Modifier::BOLD),
                 ));
             } else {
-                line_spans.push(Span::raw(format!("User: \"{}\"", turn.title)));
+                line_spans.push(Span::raw(format!("\"{}\"", turn.title)));
             }
 
             items.push(ListItem::new(Line::from(line_spans)));

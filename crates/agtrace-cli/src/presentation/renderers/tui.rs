@@ -302,6 +302,7 @@ impl TuiRenderer {
         TurnItemViewModel {
             turn_id,
             title: messages[turn_id % messages.len()].to_string(),
+            slash_command: None,
             is_active: false, // Will be set by caller
             is_heavy: delta_ratio > 0.1,
             prev_total,
