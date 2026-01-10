@@ -219,12 +219,14 @@ impl ListTurnsResponse {
 
                 let user_content = truncate(&turn.user.content.text, 100);
 
-                let slash_command = turn.user.slash_command.as_ref().map(|cmd| {
-                    SlashCommandDetail {
-                        name: cmd.name.clone(),
-                        args: cmd.args.clone(),
-                    }
-                });
+                let slash_command =
+                    turn.user
+                        .slash_command
+                        .as_ref()
+                        .map(|cmd| SlashCommandDetail {
+                            name: cmd.name.clone(),
+                            args: cmd.args.clone(),
+                        });
 
                 TurnMetadata {
                     turn_index: idx,
@@ -426,12 +428,14 @@ impl GetTurnsResponse {
                 None
             };
 
-            let slash_command = turn.user.slash_command.as_ref().map(|cmd| {
-                SlashCommandDetail {
+            let slash_command = turn
+                .user
+                .slash_command
+                .as_ref()
+                .map(|cmd| SlashCommandDetail {
                     name: cmd.name.clone(),
                     args: cmd.args.clone(),
-                }
-            });
+                });
 
             turns.push(TurnDetail {
                 turn_index,

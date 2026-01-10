@@ -34,11 +34,7 @@ impl TurnBuilder {
     }
 
     /// Create a new turn builder for a slash command invocation
-    pub fn new_slash_command(
-        id: Uuid,
-        timestamp: DateTime<Utc>,
-        cmd: SlashCommandPayload,
-    ) -> Self {
+    pub fn new_slash_command(id: Uuid, timestamp: DateTime<Utc>, cmd: SlashCommandPayload) -> Self {
         Self {
             id,
             timestamp,

@@ -485,8 +485,7 @@ fn build_step_preview(step: &agtrace_sdk::types::AgentStep) -> StepPreviewViewMo
     } else if let Some(message) = &step.message {
         ("💬".to_string(), truncate_text(&message.content.text, 100))
     } else if !step.tools.is_empty() {
-        let tool_name = step.tools[0].call.content.name();
-        ("🔧".to_string(), format!("Tool: {}", tool_name))
+        build_tool_preview(&step.tools[0])
     } else {
         ("•".to_string(), "Event".to_string())
     };
@@ -499,6 +498,114 @@ fn build_step_preview(step: &agtrace_sdk::types::AgentStep) -> StepPreviewViewMo
         description,
         token_usage,
     }
+}
+
+/// Build preview for tool execution with special handling for interaction tools
+fn build_tool_preview(tool: &agtrace_sdk::types::ToolExecution) -> (String, String) {
+    let tool_name = tool.call.content.name();
+
+    match tool_name {
+        "TodoWrite" => {
+            let description = extract_todo_preview(&tool.call.content);
+            ("📋".to_string(), description)
+        }
+        "AskUserQuestion" => {
+            // Check if we have a user answer in the result
+            if let Some(ref result) = tool.result
+                && result.content.output.starts_with("User has answered")
+            {
+                let answer = extract_user_answer(&result.content.output);
+                return ("✅".to_string(), format!("Answered: {}", answer));
+            }
+            // No answer yet - show the question
+            let question = extract_question_preview(&tool.call.content);
+            ("❓".to_string(), question)
+        }
+        "Task" => {
+            let description = extract_task_preview(&tool.call.content);
+            ("🚀".to_string(), description)
+        }
+        _ => ("🔧".to_string(), format!("Tool: {}", tool_name)),
+    }
+}
+
+/// Extract todo summary from TodoWrite tool
+fn extract_todo_preview(payload: &agtrace_sdk::types::ToolCallPayload) -> String {
+    use agtrace_sdk::types::ToolCallPayload;
+
+    if let ToolCallPayload::Generic { arguments, .. } = payload
+        && let Some(todos) = arguments.get("todos").and_then(|v| v.as_array())
+    {
+        let total = todos.len();
+        let in_progress = todos
+            .iter()
+            .filter(|t| t.get("status").and_then(|s| s.as_str()) == Some("in_progress"))
+            .count();
+        let completed = todos
+            .iter()
+            .filter(|t| t.get("status").and_then(|s| s.as_str()) == Some("completed"))
+            .count();
+
+        if in_progress > 0
+            && let Some(active) = todos
+                .iter()
+                .find(|t| t.get("status").and_then(|s| s.as_str()) == Some("in_progress"))
+            && let Some(content) = active.get("content").and_then(|c| c.as_str())
+        {
+            return format!(
+                "{} ({}/{} done)",
+                truncate_text(content, 50),
+                completed,
+                total
+            );
+        }
+        return format!("Plan: {} tasks ({} done)", total, completed);
+    }
+    "Plan updated".to_string()
+}
+
+/// Extract question header from AskUserQuestion tool
+fn extract_question_preview(payload: &agtrace_sdk::types::ToolCallPayload) -> String {
+    use agtrace_sdk::types::ToolCallPayload;
+
+    if let ToolCallPayload::Generic { arguments, .. } = payload
+        && let Some(questions) = arguments.get("questions").and_then(|v| v.as_array())
+        && let Some(first) = questions.first()
+        && let Some(header) = first.get("header").and_then(|h| h.as_str())
+    {
+        if let Some(question) = first.get("question").and_then(|q| q.as_str()) {
+            return format!("[{}] {}", header, truncate_text(question, 60));
+        }
+        return format!("Asked: {}", header);
+    }
+    "Asked user".to_string()
+}
+
+/// Extract user answer from AskUserQuestion result
+fn extract_user_answer(output: &str) -> String {
+    // Format: "User has answered your questions: \"question\"=\"answer\", ..."
+    if let Some(start) = output.find("=\"") {
+        let rest = &output[start + 2..];
+        if let Some(end) = rest.find('"') {
+            return truncate_text(&rest[..end], 60);
+        }
+    }
+    truncate_text(output, 60)
+}
+
+/// Extract Task agent description
+fn extract_task_preview(payload: &agtrace_sdk::types::ToolCallPayload) -> String {
+    use agtrace_sdk::types::ToolCallPayload;
+
+    if let ToolCallPayload::Generic { arguments, .. } = payload {
+        if let Some(desc) = arguments.get("description").and_then(|d| d.as_str()) {
+            return format!("Agent: {}", truncate_text(desc, 50));
+        }
+        if let Some(prompt) = arguments.get("prompt").and_then(|p| p.as_str()) {
+            return format!("Agent: {}", truncate_text(prompt, 50));
+        }
+    }
+    "Spawned agent".to_string()
 }
 
 /// Build status bar ViewModel
