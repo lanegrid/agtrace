@@ -187,11 +187,7 @@ fn map_progress_to_view_model(progress: IndexProgress, verbose: bool) -> IndexEv
     }
 }
 
-pub fn handle_info(
-    data_dir: &Path,
-    format: OutputFormat,
-    view_mode: &ViewModeArgs,
-) -> Result<()> {
+pub fn handle_info(data_dir: &Path, format: OutputFormat, view_mode: &ViewModeArgs) -> Result<()> {
     let db_path = data_dir.join("agtrace.db");
     let config_path = data_dir.join("config.toml");
 
