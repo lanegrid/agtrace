@@ -234,7 +234,7 @@ mod tests {
         assert_eq!(domain_args.file_path, "src/lib.rs");
         assert_eq!(domain_args.old_string, "old code");
         assert_eq!(domain_args.new_string, "new code");
-        assert_eq!(domain_args.replace_all, false);
+        assert!(!domain_args.replace_all);
         // Note: instruction is lost due to lack of extra field in FileEditArgs
     }
 
@@ -251,7 +251,7 @@ mod tests {
         assert_eq!(domain_args.file_path, "src/lib.rs");
         assert_eq!(domain_args.old_string, "old");
         assert_eq!(domain_args.new_string, "new");
-        assert_eq!(domain_args.replace_all, false);
+        assert!(!domain_args.replace_all);
     }
 
     #[test]

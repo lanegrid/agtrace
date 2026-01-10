@@ -144,7 +144,7 @@ impl ExecuteIntent {
         cmd.split_whitespace().any(|word| {
             // Exact match or starts with the option (e.g., "-i" or "-i.bak")
             word == option
-                || word.starts_with(&format!("{}", option))
+                || word.starts_with(option)
                     && (word.len() == option.len()
                         || !word
                             .chars()
@@ -212,19 +212,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let call = &tool_exec.call.content;
 
                         // Only process Execute payloads
-                        if let ToolCallPayload::Execute { arguments, .. } = call {
-                            if let Some(command) = arguments.command() {
-                                total_execute += 1;
-                                stats.total_execute += 1;
+                        if let ToolCallPayload::Execute { arguments, .. } = call
+                            && let Some(command) = arguments.command()
+                        {
+                            total_execute += 1;
+                            stats.total_execute += 1;
 
-                                let intent = ExecuteIntent::classify(command);
-                                *stats.intent_counts.entry(intent).or_insert(0) += 1;
+                            let intent = ExecuteIntent::classify(command);
+                            *stats.intent_counts.entry(intent).or_insert(0) += 1;
 
-                                // Store examples (limit to 3 per intent)
-                                let examples = stats.intent_examples.entry(intent).or_default();
-                                if examples.len() < 3 {
-                                    examples.push(command.to_string());
-                                }
+                            // Store examples (limit to 3 per intent)
+                            let examples = stats.intent_examples.entry(intent).or_default();
+                            if examples.len() < 3 {
+                                examples.push(command.to_string());
                             }
                         }
                     }

@@ -1366,16 +1366,16 @@ expression: json_pretty
 }
 
 {
-  "id": "fc2e140f-2e4f-52ea-b29c-d72d23885e80",
+  "id": "d4bd4f1b-0ee7-55d7-b591-22f2be39405a",
   "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
   "parent_id": "03b9e4cd-b044-5a37-88ac-6e102614fa16",
   "timestamp": "2025-12-09T19:48:50.204Z",
   "stream_id": {
     "stream_type": "main"
   },
-  "type": "user",
+  "type": "slash_command",
   "content": {
-    "text": "<command-name>/exit</command-name>\n            <command-message>exit</command-message>\n            <command-args></command-args>"
+    "name": "/exit"
   },
   "metadata": {
     "agentId": null,
@@ -1405,7 +1405,7 @@ expression: json_pretty
 {
   "id": "58df7ea3-a3a9-54df-ad65-cdb235894ae8",
   "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "parent_id": "fc2e140f-2e4f-52ea-b29c-d72d23885e80",
+  "parent_id": "d4bd4f1b-0ee7-55d7-b591-22f2be39405a",
   "timestamp": "2025-12-09T19:48:50.204Z",
   "stream_id": {
     "stream_type": "main"

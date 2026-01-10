@@ -17,6 +17,9 @@ expression: session
         "event_id": "c1f00fe5-e2ab-5aab-8248-0091dcc000d2",
         "content": {
           "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
+        },
+        "origin": {
+          "type": "user"
         }
       },
       "steps": [
@@ -160,6 +163,9 @@ expression: session
         "event_id": "9c152208-b962-5d87-891e-d66b5807b623",
         "content": {
           "text": "cd to myapp and run python hoge.py"
+        },
+        "origin": {
+          "type": "user"
         }
       },
       "steps": [

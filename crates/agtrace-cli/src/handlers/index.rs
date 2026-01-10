@@ -4,7 +4,7 @@ use crate::presentation::view_models::IndexEvent;
 use agtrace_sdk::Client;
 use agtrace_sdk::types::{IndexProgress, ProjectScope};
 use anyhow::Result;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle(
@@ -188,7 +188,7 @@ fn map_progress_to_view_model(progress: IndexProgress, verbose: bool) -> IndexEv
 }
 
 pub fn handle_info(
-    data_dir: &PathBuf,
+    data_dir: &Path,
     format: OutputFormat,
     view_mode: &ViewModeArgs,
 ) -> Result<()> {
@@ -202,8 +202,13 @@ pub fn handle_info(
         0
     };
 
-    let view_model =
-        presenters::present_index_info(data_dir.clone(), db_path, config_path, db_exists, db_size);
+    let view_model = presenters::present_index_info(
+        data_dir.to_path_buf(),
+        db_path,
+        config_path,
+        db_exists,
+        db_size,
+    );
 
     let ctx = crate::handlers::HandlerContext::new(format, view_mode);
     ctx.render(view_model)

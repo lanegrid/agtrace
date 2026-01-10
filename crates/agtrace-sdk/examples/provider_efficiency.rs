@@ -156,52 +156,52 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         metrics.total_sessions += 1;
 
         // Analyze session structure
-        if let Ok(session_handle) = client.sessions().get(&session_summary.id) {
-            if let Ok(session) = session_handle.assemble() {
-                // Collect token stats from assembled session
-                metrics.total_tokens += session.stats.total_tokens as usize;
-                for turn in &session.turns {
-                    metrics.total_turns += 1;
+        if let Ok(session_handle) = client.sessions().get(&session_summary.id)
+            && let Ok(session) = session_handle.assemble()
+        {
+            // Collect token stats from assembled session
+            metrics.total_tokens += session.stats.total_tokens as usize;
+            for turn in &session.turns {
+                metrics.total_turns += 1;
 
-                    for step in &turn.steps {
-                        metrics.total_steps += 1;
+                for step in &turn.steps {
+                    metrics.total_steps += 1;
 
-                        let tools_in_step = step.tools.len();
+                    let tools_in_step = step.tools.len();
 
-                        // Track parallelization
-                        if tools_in_step > 1 {
-                            metrics.turns_with_multiple_tools += 1;
-                            metrics.parallel_tool_calls += tools_in_step;
+                    // Track parallelization
+                    if tools_in_step > 1 {
+                        metrics.turns_with_multiple_tools += 1;
+                        metrics.parallel_tool_calls += tools_in_step;
+                    }
+
+                    for tool_exec in &step.tools {
+                        metrics.total_tool_calls += 1;
+
+                        let call = &tool_exec.call.content;
+
+                        // Track tool kinds
+                        match call.kind() {
+                            ToolKind::Read => metrics.read_calls += 1,
+                            ToolKind::Write => metrics.write_calls += 1,
+                            ToolKind::Execute => metrics.execute_calls += 1,
+                            ToolKind::Search => metrics.search_calls += 1,
+                            ToolKind::Plan | ToolKind::Ask | ToolKind::Other => {
+                                metrics.other_calls += 1
+                            }
                         }
 
-                        for tool_exec in &step.tools {
-                            metrics.total_tool_calls += 1;
+                        // Track tool names for diversity
+                        *metrics
+                            .tool_name_counts
+                            .entry(call.name().to_string())
+                            .or_insert(0) += 1;
 
-                            let call = &tool_exec.call.content;
-
-                            // Track tool kinds
-                            match call.kind() {
-                                ToolKind::Read => metrics.read_calls += 1,
-                                ToolKind::Write => metrics.write_calls += 1,
-                                ToolKind::Execute => metrics.execute_calls += 1,
-                                ToolKind::Search => metrics.search_calls += 1,
-                                ToolKind::Plan | ToolKind::Ask | ToolKind::Other => {
-                                    metrics.other_calls += 1
-                                }
-                            }
-
-                            // Track tool names for diversity
-                            *metrics
-                                .tool_name_counts
-                                .entry(call.name().to_string())
-                                .or_insert(0) += 1;
-
-                            // Track errors
-                            if let Some(result) = &tool_exec.result {
-                                if result.content.is_error {
-                                    metrics.failed_tool_calls += 1;
-                                }
-                            }
+                        // Track errors
+                        if let Some(result) = &tool_exec.result
+                            && result.content.is_error
+                        {
+                            metrics.failed_tool_calls += 1;
                         }
                     }
                 }

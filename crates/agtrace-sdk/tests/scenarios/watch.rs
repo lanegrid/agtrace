@@ -119,16 +119,14 @@ async fn test_watch_detects_main_file_creation() -> Result<()> {
     // Poll for events with timeout
     let start = std::time::Instant::now();
     while start.elapsed() < Duration::from_secs(3) {
-        if let Ok(event) = monitor.receiver().try_recv() {
-            if let agtrace_runtime::WorkspaceEvent::Discovery(
-                agtrace_runtime::DiscoveryEvent::SessionUpdated { session_id, .. },
-            ) = event
-            {
-                // Verify it's a different session (session-b)
-                if !session_id.is_empty() {
-                    found_session_updated = true;
-                    break;
-                }
+        if let Ok(agtrace_runtime::WorkspaceEvent::Discovery(
+            agtrace_runtime::DiscoveryEvent::SessionUpdated { session_id, .. },
+        )) = monitor.receiver().try_recv()
+        {
+            // Verify it's a different session (session-b)
+            if !session_id.is_empty() {
+                found_session_updated = true;
+                break;
             }
         }
         std::thread::sleep(Duration::from_millis(100));

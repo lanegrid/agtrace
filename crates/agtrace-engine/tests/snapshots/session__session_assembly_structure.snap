@@ -17,6 +17,9 @@ expression: session
         "event_id": "00000000-0000-0000-0000-000000000002",
         "content": {
           "text": "Hello"
+        },
+        "origin": {
+          "type": "user"
         }
       },
       "steps": [

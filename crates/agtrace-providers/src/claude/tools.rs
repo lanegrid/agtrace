@@ -375,7 +375,7 @@ mod tests {
         assert_eq!(domain_args.file_path, "src/lib.rs");
         assert_eq!(domain_args.old_string, "old");
         assert_eq!(domain_args.new_string, "new");
-        assert_eq!(domain_args.replace_all, true);
+        assert!(domain_args.replace_all);
     }
 
     #[test]

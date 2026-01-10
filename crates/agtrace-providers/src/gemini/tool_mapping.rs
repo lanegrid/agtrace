@@ -127,11 +127,11 @@ mod tests {
 
     #[test]
     fn test_is_mcp_tool() {
-        assert_eq!(is_mcp_tool(Some("o3-search (o3 MCP Server)")), true);
-        assert_eq!(is_mcp_tool(Some("brave-search (brave MCP Server)")), true);
-        assert_eq!(is_mcp_tool(Some("Google Web Search")), false);
-        assert_eq!(is_mcp_tool(Some("read_file")), false);
-        assert_eq!(is_mcp_tool(None), false);
+        assert!(is_mcp_tool(Some("o3-search (o3 MCP Server)")));
+        assert!(is_mcp_tool(Some("brave-search (brave MCP Server)")));
+        assert!(!is_mcp_tool(Some("Google Web Search")));
+        assert!(!is_mcp_tool(Some("read_file")));
+        assert!(!is_mcp_tool(None));
     }
 
     #[test]
