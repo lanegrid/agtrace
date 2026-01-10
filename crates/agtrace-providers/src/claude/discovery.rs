@@ -38,8 +38,14 @@ impl LogDiscovery for ClaudeDiscovery {
     fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>> {
         let mut sessions: HashMap<String, SessionIndex> = HashMap::new();
 
+        // max_depth(4) to reach:
+        // - depth 0: log_root (e.g., ~/.claude/projects/-proj-hash/)
+        // - depth 1: session files (e.g., {session_id}.jsonl)
+        // - depth 2: session directories (e.g., {session_id}/)
+        // - depth 3: subagents directory (e.g., {session_id}/subagents/)
+        // - depth 4: sidechain files (e.g., {session_id}/subagents/agent-xxx.jsonl)
         for entry in WalkDir::new(log_root)
-            .max_depth(2)
+            .max_depth(4)
             .into_iter()
             .filter_map(|e| e.ok())
         {
