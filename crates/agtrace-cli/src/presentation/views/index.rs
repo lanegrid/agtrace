@@ -189,7 +189,11 @@ impl<'a> IndexInfoView<'a> {
         writeln!(f, "Config:         {}", self.data.config_path.display())?;
         writeln!(f)?;
         if self.data.db_exists {
-            writeln!(f, "Database size:  {}", self.format_size(self.data.db_size_bytes))?;
+            writeln!(
+                f,
+                "Database size:  {}",
+                self.format_size(self.data.db_size_bytes)
+            )?;
         } else {
             writeln!(f, "Database size:  (not created)")?;
         }

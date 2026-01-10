@@ -1,7 +1,7 @@
 use super::stats::{calculate_turn_stats, merge_usage};
 use super::step_builder::StepBuilder;
 use super::types::*;
-use agtrace_types::{AgentEvent, EventPayload, SlashCommandPayload, UserPayload};
+use agtrace_types::{AgentEvent, EventPayload, SlashCommandPayload, TurnOrigin, UserPayload};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -44,6 +44,7 @@ impl TurnBuilder {
                     text: String::new(),
                 },
                 slash_command: Some(cmd),
+                origin: TurnOrigin::User, // Slash commands are user-initiated
             },
             steps: Vec::new(),
             current_step: StepBuilder::new(timestamp),
@@ -224,6 +225,7 @@ mod tests {
                 text: "Hello".to_string(),
             },
             slash_command: None,
+            origin: TurnOrigin::User,
         };
 
         let builder = TurnBuilder::new(user_id, timestamp, user.clone());
@@ -246,6 +248,7 @@ mod tests {
                 text: "[Request interrupted by user]".to_string(),
             },
             slash_command: None,
+            origin: TurnOrigin::User,
         };
 
         let builder = TurnBuilder::new(user_id, timestamp, user.clone());
@@ -265,6 +268,7 @@ mod tests {
                 text: "Hello".to_string(),
             },
             slash_command: None,
+            origin: TurnOrigin::User,
         };
 
         let mut builder = TurnBuilder::new(user_id, timestamp, user.clone());
@@ -298,6 +302,7 @@ mod tests {
                 text: "Hello".to_string(),
             },
             slash_command: None,
+            origin: TurnOrigin::User,
         };
 
         let mut builder = TurnBuilder::new(user_id, timestamp, user.clone());

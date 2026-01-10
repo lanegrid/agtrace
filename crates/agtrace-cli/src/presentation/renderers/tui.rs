@@ -306,6 +306,8 @@ impl TuiRenderer {
             is_active: false, // Will be set by caller
             is_heavy: delta_ratio > 0.1,
             context_compacted: false,
+            compaction_from_tokens: None,
+            compaction_from_ratio: None,
             prev_total,
             delta_tokens,
             usage_ratio,
@@ -316,6 +318,7 @@ impl TuiRenderer {
             delta_color,
             recent_steps: vec![StepPreviewViewModel {
                 timestamp: chrono::Utc::now(),
+                relative_time: "0s ago".to_string(),
                 icon: "🔧".to_string(),
                 description: format!("Processing turn {}", turn_id),
                 token_usage: Some(delta_tokens),

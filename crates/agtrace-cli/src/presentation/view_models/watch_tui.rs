@@ -121,6 +121,8 @@ pub struct TurnItemViewModel {
     pub is_active: bool,
     pub is_heavy: bool, // Indicates if this turn consumed significant tokens
     pub context_compacted: bool, // True if context was reset during this turn
+    pub compaction_from_tokens: Option<u32>, // Tokens before compaction (for showing reduction)
+    pub compaction_from_ratio: Option<f64>, // Ratio before compaction (0.0 - 1.0)
 
     // Stacked bar visualization (pre-computed) - v1-style cumulative display
     pub prev_total: u32,     // Total tokens before this turn (0 if compacted)
@@ -157,8 +159,9 @@ pub struct ChildStreamViewModel {
 #[derive(Debug, Clone, Serialize)]
 pub struct StepPreviewViewModel {
     pub timestamp: DateTime<Utc>,
-    pub icon: String,        // Pre-determined emoji
-    pub description: String, // Pre-formatted, truncated
+    pub relative_time: String, // e.g., "2s ago" (pre-formatted)
+    pub icon: String,          // Pre-determined emoji
+    pub description: String,   // Pre-formatted, truncated
     pub token_usage: Option<u32>,
 }
 

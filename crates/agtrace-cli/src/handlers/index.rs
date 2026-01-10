@@ -197,20 +197,13 @@ pub fn handle_info(
 
     let db_exists = db_path.exists();
     let db_size = if db_exists {
-        std::fs::metadata(&db_path)
-            .map(|m| m.len())
-            .unwrap_or(0)
+        std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0)
     } else {
         0
     };
 
-    let view_model = presenters::present_index_info(
-        data_dir.clone(),
-        db_path,
-        config_path,
-        db_exists,
-        db_size,
-    );
+    let view_model =
+        presenters::present_index_info(data_dir.clone(), db_path, config_path, db_exists, db_size);
 
     let ctx = crate::handlers::HandlerContext::new(format, view_mode);
     ctx.render(view_model)

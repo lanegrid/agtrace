@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use super::stats::calculate_session_stats;
 use super::turn_builder::TurnBuilder;
 use super::types::*;
-use agtrace_types::{AgentEvent, EventPayload, SpawnContext, StreamId};
+use agtrace_types::{
+    AgentEvent, EventPayload, SpawnContext, StreamId, SystemGeneratedReason, TurnOrigin,
+    UserPayload,
+};
 
 /// Assemble all streams from events into separate sessions.
 ///
@@ -133,6 +136,21 @@ fn assemble_session_for_stream(
     })
 }
 
+/// Detect the origin of a user message.
+///
+/// Identifies system-generated messages (like context compaction continuation)
+/// vs user-typed messages.
+fn detect_turn_origin(content: &UserPayload) -> TurnOrigin {
+    // Context compaction pattern from Claude Code
+    if content.text.starts_with("This session is being continued") {
+        return TurnOrigin::SystemGenerated {
+            reason: SystemGeneratedReason::ContextCompaction,
+        };
+    }
+
+    TurnOrigin::User
+}
+
 fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
     let mut turns = Vec::new();
     let mut current_turn: Option<TurnBuilder> = None;
@@ -174,6 +192,7 @@ fn build_turns(events: &[AgentEvent]) -> Vec<AgentTurn> {
                         event_id: event.id,
                         content: user.clone(),
                         slash_command: None,
+                        origin: detect_turn_origin(user),
                     },
                 ));
             }

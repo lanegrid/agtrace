@@ -40,7 +40,9 @@ pub use doctor::{
     CheckStatus, DiagnoseResultViewModel, DiagnoseResultsViewModel, DoctorCheckResultViewModel,
     FailureExample, InspectLine, InspectResultViewModel,
 };
-pub use index::{IndexEvent, IndexInfoViewModel, IndexMode, IndexResultViewModel, VacuumResultViewModel};
+pub use index::{
+    IndexEvent, IndexInfoViewModel, IndexMode, IndexResultViewModel, VacuumResultViewModel,
+};
 pub use init::{ConfigStatus, InitProgress, InitResultViewModel, ProviderInfo, ScanOutcome};
 pub use lab::{
     EventPayloadViewModel, EventViewModel, LabExportViewModel, LabGrepViewModel, LabStatsViewModel,

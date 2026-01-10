@@ -122,23 +122,45 @@ impl<'a> TurnHistoryView<'a> {
 
             line_spans.push(Span::raw("] "));
 
-            // Context compaction indicator (if reset occurred)
+            // Token info: show reduction for compacted turns, addition for normal turns
             if turn.context_compacted {
-                line_spans.push(Span::styled(
-                    "🔄 ",
-                    Style::default().fg(ratatui::style::Color::Magenta),
-                ));
-            }
-
-            // Token info: delta percentage and delta tokens
-            let delta_pct = turn.delta_ratio * 100.0;
-            let pct_color = if turn.is_heavy {
-                ratatui::style::Color::Red
+                // Context was compacted - show reduction
+                if let Some(from_ratio) = turn.compaction_from_ratio {
+                    let from_pct = from_ratio * 100.0;
+                    let to_pct = turn.usage_ratio * 100.0;
+                    let pct_text = format!(
+                        "🔄 {:.0}%→{:.0}% ({})",
+                        from_pct,
+                        to_pct,
+                        format_tokens(turn.delta_tokens)
+                    );
+                    line_spans.push(Span::styled(
+                        pct_text,
+                        Style::default().fg(ratatui::style::Color::Cyan),
+                    ));
+                } else {
+                    // Fallback if no compaction_from data
+                    let pct_text = format!(
+                        "🔄 →{:.1}% ({})",
+                        turn.usage_ratio * 100.0,
+                        format_tokens(turn.delta_tokens)
+                    );
+                    line_spans.push(Span::styled(
+                        pct_text,
+                        Style::default().fg(ratatui::style::Color::Cyan),
+                    ));
+                }
             } else {
-                ratatui::style::Color::White
-            };
-            let pct_text = format!("+{:.1}% ({})", delta_pct, format_tokens(turn.delta_tokens));
-            line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
+                // Normal turn - show addition
+                let delta_pct = turn.delta_ratio * 100.0;
+                let pct_color = if turn.is_heavy {
+                    ratatui::style::Color::Red
+                } else {
+                    ratatui::style::Color::White
+                };
+                let pct_text = format!("+{:.1}% ({})", delta_pct, format_tokens(turn.delta_tokens));
+                line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
+            }
             line_spans.push(Span::raw(" "));
 
             // Slash command badge (if present)
@@ -212,6 +234,10 @@ impl<'a> TurnHistoryView<'a> {
             .iter()
             .map(|step| {
                 let mut spans = vec![
+                    Span::styled(
+                        format!("{:>7} ", step.relative_time),
+                        Style::default().fg(ratatui::style::Color::Rgb(100, 100, 100)),
+                    ),
                     Span::raw(format!("{} ", step.icon)),
                     Span::raw(&step.description),
                 ];
@@ -234,8 +260,8 @@ impl<'a> TurnHistoryView<'a> {
     /// Get recent steps area (always visible now).
     pub fn get_active_turn_detail_area(&self, inner: Rect) -> Option<Rect> {
         // Always return the area for Recent Steps section
-        let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
-            .split(inner);
+        let chunks =
+            Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)]).split(inner);
         Some(chunks[1])
     }
 }
@@ -269,8 +295,8 @@ impl<'a> Widget for TurnHistoryView<'a> {
         block.render(area, buf);
 
         // Always split into turn list and Recent Steps (70/30)
-        let chunks = Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)])
-            .split(inner);
+        let chunks =
+            Layout::vertical([Constraint::Percentage(70), Constraint::Percentage(30)]).split(inner);
 
         // Render turn list
         self.render_turn_list(chunks[0], buf);
@@ -335,23 +361,45 @@ impl<'a> TurnHistoryView<'a> {
 
             line_spans.push(Span::raw("] "));
 
-            // Context compaction indicator (if reset occurred)
+            // Token info: show reduction for compacted turns, addition for normal turns
             if turn.context_compacted {
-                line_spans.push(Span::styled(
-                    "🔄 ",
-                    Style::default().fg(ratatui::style::Color::Magenta),
-                ));
-            }
-
-            // Token info: delta percentage and delta tokens
-            let delta_pct = turn.delta_ratio * 100.0;
-            let pct_color = if turn.is_heavy {
-                ratatui::style::Color::Red
+                // Context was compacted - show reduction
+                if let Some(from_ratio) = turn.compaction_from_ratio {
+                    let from_pct = from_ratio * 100.0;
+                    let to_pct = turn.usage_ratio * 100.0;
+                    let pct_text = format!(
+                        "🔄 {:.0}%→{:.0}% ({})",
+                        from_pct,
+                        to_pct,
+                        format_tokens(turn.delta_tokens)
+                    );
+                    line_spans.push(Span::styled(
+                        pct_text,
+                        Style::default().fg(ratatui::style::Color::Cyan),
+                    ));
+                } else {
+                    // Fallback if no compaction_from data
+                    let pct_text = format!(
+                        "🔄 →{:.1}% ({})",
+                        turn.usage_ratio * 100.0,
+                        format_tokens(turn.delta_tokens)
+                    );
+                    line_spans.push(Span::styled(
+                        pct_text,
+                        Style::default().fg(ratatui::style::Color::Cyan),
+                    ));
+                }
             } else {
-                ratatui::style::Color::White
-            };
-            let pct_text = format!("+{:.1}% ({})", delta_pct, format_tokens(turn.delta_tokens));
-            line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
+                // Normal turn - show addition
+                let delta_pct = turn.delta_ratio * 100.0;
+                let pct_color = if turn.is_heavy {
+                    ratatui::style::Color::Red
+                } else {
+                    ratatui::style::Color::White
+                };
+                let pct_text = format!("+{:.1}% ({})", delta_pct, format_tokens(turn.delta_tokens));
+                line_spans.push(Span::styled(pct_text, Style::default().fg(pct_color)));
+            }
             line_spans.push(Span::raw(" "));
 
             // Slash command badge (if present)
@@ -511,6 +559,10 @@ impl<'a> TurnHistoryView<'a> {
             .iter()
             .map(|step| {
                 let mut spans = vec![
+                    Span::styled(
+                        format!("{:>7} ", step.relative_time),
+                        Style::default().fg(ratatui::style::Color::Rgb(100, 100, 100)),
+                    ),
                     Span::raw(format!("{} ", step.icon)),
                     Span::raw(&step.description),
                 ];

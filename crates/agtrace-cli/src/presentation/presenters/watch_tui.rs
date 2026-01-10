@@ -282,10 +282,11 @@ fn build_turn_history(
 
     // Build global recent steps from ALL turns (latest N steps across all turns)
     const MAX_GLOBAL_STEPS: usize = 15;
+    let now = chrono::Utc::now();
     let global_recent_steps: Vec<StepPreviewViewModel> = session
         .turns
         .iter()
-        .flat_map(|turn| turn.steps.iter().map(build_step_preview))
+        .flat_map(|turn| turn.steps.iter().map(|s| build_step_preview(s, now)))
         .collect::<Vec<_>>()
         .into_iter()
         .rev()
@@ -370,7 +371,7 @@ fn build_turn_item_with_children(
     {
         "(slash command)".to_string()
     } else {
-        build_turn_title(&turn.user.content.text)
+        build_turn_title(turn)
     };
 
     // Logic: Calculate bar width based on v1's algorithm
@@ -413,19 +414,28 @@ fn build_turn_item_with_children(
     };
 
     // Build step preview for active turn
+    let now = chrono::Utc::now();
     let recent_steps = if metric.is_active {
         turn.steps
             .iter()
             .rev()
             .take(5)
             .rev()
-            .map(build_step_preview)
+            .map(|s| build_step_preview(s, now))
             .collect()
     } else {
         Vec::new()
     };
 
     let start_time = turn.steps.first().map(|s| s.timestamp);
+
+    // Calculate compaction_from values if context was compacted
+    let (compaction_from_tokens, compaction_from_ratio) = if let Some(from) = metric.compaction_from
+    {
+        (Some(from), Some(from as f64 / max_context as f64))
+    } else {
+        (None, None)
+    };
 
     TurnItemViewModel {
         turn_id: metric.turn_index + 1,
@@ -434,6 +444,8 @@ fn build_turn_item_with_children(
         is_active: metric.is_active,
         is_heavy: metric.is_heavy,
         context_compacted: metric.context_compacted,
+        compaction_from_tokens,
+        compaction_from_ratio,
         prev_total: metric.prev_total,
         delta_tokens: metric.delta,
         usage_ratio,
@@ -503,7 +515,10 @@ fn build_child_stream_view_model(
 }
 
 /// Build step preview item
-fn build_step_preview(step: &agtrace_sdk::types::AgentStep) -> StepPreviewViewModel {
+fn build_step_preview(
+    step: &agtrace_sdk::types::AgentStep,
+    now: chrono::DateTime<chrono::Utc>,
+) -> StepPreviewViewModel {
     let (icon, description) = if let Some(reasoning) = &step.reasoning {
         (
             "🤔".to_string(),
@@ -518,9 +533,11 @@ fn build_step_preview(step: &agtrace_sdk::types::AgentStep) -> StepPreviewViewMo
     };
 
     let token_usage = step.usage.as_ref().map(|u| u.input_tokens() as u32);
+    let relative_time = format_relative_time(step.timestamp, now);
 
     StepPreviewViewModel {
         timestamp: step.timestamp,
+        relative_time,
         icon,
         description,
         token_usage,
@@ -666,15 +683,15 @@ fn build_status_bar(
 // Utility Functions (Text Processing)
 // --------------------------------------------------------
 
-/// Build turn title with special handling for context compaction
-fn build_turn_title(user_text: &str) -> String {
-    // Detect context compaction (auto-summarization)
-    if user_text.starts_with("This session is being continued from a previous conversation") {
-        return "🔄 Context Compacted (Session Continued)".to_string();
+/// Build turn title with special handling for system-generated turns
+fn build_turn_title(turn: &agtrace_sdk::types::AgentTurn) -> String {
+    // Check origin for system-generated turns
+    if turn.user.origin.is_context_compaction() {
+        return "Context Compacted (Session Continued)".to_string();
     }
 
     // Regular turn - truncate the user message
-    truncate_text(user_text, 120)
+    truncate_text(&turn.user.content.text, 120)
 }
 
 /// Truncate text to max length with ellipsis

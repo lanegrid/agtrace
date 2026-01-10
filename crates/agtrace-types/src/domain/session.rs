@@ -248,6 +248,50 @@ pub struct ToolExecution {
 
 // --- Event Wrappers ---
 
+/// Origin of a user message in a turn.
+///
+/// Distinguishes user-typed input from system-generated messages.
+/// Orthogonal to `slash_command` - a turn can have both origin and slash_command.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TurnOrigin {
+    /// User-typed input (default, human-initiated).
+    #[default]
+    User,
+    /// System-generated input (not typed by user).
+    SystemGenerated {
+        /// Reason for system generation.
+        reason: SystemGeneratedReason,
+    },
+}
+
+/// Reason for system-generated turns.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SystemGeneratedReason {
+    /// Context compaction/auto-summarization continuation.
+    ContextCompaction,
+    /// Other/unknown system-generated reason.
+    Other,
+}
+
+impl TurnOrigin {
+    /// Check if this is a system-generated turn.
+    pub fn is_system_generated(&self) -> bool {
+        matches!(self, TurnOrigin::SystemGenerated { .. })
+    }
+
+    /// Check if this is a context compaction turn.
+    pub fn is_context_compaction(&self) -> bool {
+        matches!(
+            self,
+            TurnOrigin::SystemGenerated {
+                reason: SystemGeneratedReason::ContextCompaction
+            }
+        )
+    }
+}
+
 /// User input message that initiates a turn.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserMessage {
@@ -258,6 +302,9 @@ pub struct UserMessage {
     /// Slash command that triggered this turn (e.g., /commit, /skaffold-repo).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slash_command: Option<SlashCommandPayload>,
+    /// Origin of this message (user-typed vs system-generated).
+    #[serde(default)]
+    pub origin: TurnOrigin,
 }
 
 /// Agent reasoning/thinking block.
@@ -352,6 +399,9 @@ pub struct TurnMetrics {
     pub context_compacted: bool,
     /// Actual cumulative tokens at end of this turn.
     pub cumulative_total: u32,
+    /// Previous cumulative tokens before compaction (only set when context_compacted is true).
+    /// Used to visualize the reduction (e.g., 150k → 30k).
+    pub compaction_from: Option<u32>,
 }
 
 impl TurnMetrics {

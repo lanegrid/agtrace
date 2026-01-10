@@ -6,23 +6,20 @@
 
 use super::types::{AgentSession, AgentTurn, TurnMetrics};
 
-/// Detect if context was compacted by analyzing token drop and message pattern.
+/// Detect if context was compacted by analyzing origin and token drop.
 ///
 /// Context compaction is detected when:
-/// 1. Tokens dropped by more than 50% (significant reduction), OR
-/// 2. User message starts with compaction pattern (backup detection)
+/// 1. Turn origin is ContextCompaction (authoritative), OR
+/// 2. Tokens dropped by more than 50% (fallback for backward compatibility)
 fn detect_context_compaction(turn: &AgentTurn, current_tokens: u32, prev_cumulative: u32) -> bool {
-    // Token-based: >50% drop indicates compaction
-    let significant_drop = prev_cumulative > 0 && current_tokens < prev_cumulative / 2;
+    // Primary: origin-based detection (authoritative)
+    if turn.user.origin.is_context_compaction() {
+        return true;
+    }
 
-    // Text-based: backup detection for edge cases
-    let text_pattern = turn
-        .user
-        .content
-        .text
-        .starts_with("This session is being continued");
-
-    significant_drop || text_pattern
+    // Fallback: token-based detection for backward compatibility
+    // (handles data assembled before origin was added)
+    prev_cumulative > 0 && current_tokens < prev_cumulative / 2
 }
 
 /// Extension trait for `AgentSession` providing analysis and metrics computation.
@@ -44,14 +41,15 @@ impl SessionAnalysisExt for AgentSession {
             let context_compacted =
                 detect_context_compaction(turn, turn_end_tokens, cumulative_total);
 
-            // Calculate prev_total and delta based on compaction state
-            let (prev_total, delta) = if context_compacted {
+            // Calculate prev_total, delta, and compaction_from based on compaction state
+            let (prev_total, delta, compaction_from) = if context_compacted {
                 // Context was reset: prev=0, delta=new baseline
-                (0, turn_end_tokens)
+                // Store the previous cumulative to show reduction (e.g., 150k → 30k)
+                (0, turn_end_tokens, Some(cumulative_total))
             } else {
                 // Normal case: additive
                 let delta = turn_end_tokens.saturating_sub(cumulative_total);
-                (cumulative_total, delta)
+                (cumulative_total, delta, None)
             };
 
             // Simplified: Last turn is always considered active for live watching
@@ -66,6 +64,7 @@ impl SessionAnalysisExt for AgentSession {
                 is_active,
                 context_compacted,
                 cumulative_total: turn_end_tokens,
+                compaction_from,
             });
 
             cumulative_total = turn_end_tokens;
