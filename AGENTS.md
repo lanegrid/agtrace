@@ -29,6 +29,7 @@ Based on the codebase analysis, here are the project goals and non-goals for agt
 - Design principle: Always choose the complete, unified solution over partial fixes. Never offer half-measures like "delete unused code" or "suppress warnings" without fixing the root cause. When facing implementation choices, default to the option that improves consistency and type safety across the codebase.
 - Leave a TODO when you are consciously deferring a specific, necessary action due to immediate constraints like scope or dependencies.
 - When investigating actual event/tool structures: Run `cargo build --release && ./target/release/agtrace lab grep "pattern" --json --limit 5` to see real data instead of reading raw files. `./target/release/agtrace lab grep -h` helps to learn how to use it.
+- Use `git-workflow` skill in dev.
 
 ### Test-Driven Bug Fixes
 
