@@ -89,6 +89,49 @@ impl AsRef<Path> for ProjectRoot {
     }
 }
 
+/// Repository identifier computed from git common directory path via SHA256
+///
+/// Used for git worktree support: multiple worktrees of the same repository
+/// share the same RepositoryHash while having different ProjectHash values.
+/// None for non-git directories.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct RepositoryHash(String);
+
+impl RepositoryHash {
+    pub fn new(hash: impl Into<String>) -> Self {
+        Self(hash.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for RepositoryHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<String> for RepositoryHash {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&str> for RepositoryHash {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
+impl AsRef<str> for RepositoryHash {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Project scope for indexing and filtering sessions
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectScope {
