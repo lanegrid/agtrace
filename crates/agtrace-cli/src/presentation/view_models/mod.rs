@@ -10,6 +10,7 @@ pub mod result;
 pub mod session;
 pub mod watch;
 pub mod watch_tui;
+pub mod worktree;
 
 use std::fmt::Display;
 
@@ -65,4 +66,8 @@ pub use watch_tui::{
     ChildStreamViewModel, ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel,
     StepPreviewViewModel, TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel,
     TurnHistoryViewModel, TurnItemViewModel, WaitingKind, WaitingState,
+};
+pub use worktree::{
+    WorktreeEntryViewModel, WorktreeGroupViewModel, WorktreeListViewModel,
+    WorktreeSessionViewModel, WorktreeSessionsViewModel,
 };

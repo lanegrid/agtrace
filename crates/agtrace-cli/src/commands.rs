@@ -1,6 +1,6 @@
 use super::args::{
     Cli, Commands, DoctorCommand, IndexCommand, LabCommand, ProjectCommand, ProviderCommand,
-    SessionCommand, ViewModeArgs,
+    SessionCommand, ViewModeArgs, WorktreeCommand,
 };
 use super::handlers;
 use agtrace_sdk::Client;
@@ -247,6 +247,31 @@ pub async fn run(cli: Cli) -> Result<()> {
                     project_root: proj_root,
                     view_mode,
                 } => handlers::project::handle(&workspace, proj_root, ctx.format, &view_mode),
+            }
+        }
+
+        Commands::Worktree { command } => {
+            let workspace = ctx.open_workspace().await?;
+            match command {
+                WorktreeCommand::List { format, view_mode } => handlers::worktree::handle_list(
+                    &workspace,
+                    ctx.repository_hash(),
+                    format,
+                    &view_mode,
+                ),
+                WorktreeCommand::Sessions {
+                    limit,
+                    provider,
+                    format,
+                    view_mode,
+                } => handlers::worktree::handle_sessions(
+                    &workspace,
+                    ctx.repository_hash(),
+                    limit,
+                    provider.map(|p| p.to_string()),
+                    format,
+                    &view_mode,
+                ),
             }
         }
 
