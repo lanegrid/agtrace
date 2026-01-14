@@ -73,6 +73,7 @@ impl LogDiscovery for CodexDiscovery {
                 main_file: path.to_path_buf(),
                 sidechain_files: Vec::new(),
                 project_root: header.cwd.clone().map(PathBuf::from),
+                repository_hash: None, // Computed at index time from project_root
                 snippet: header.snippet.clone(),
                 parent_session_id: None,
                 spawned_by: None,

@@ -314,6 +314,7 @@ impl SessionClient {
                 id: session_id.clone(),
                 provider: String::new(),
                 project_hash: ProjectHash::from(String::new()),
+                repository_hash: None,
                 project_root: None,
                 start_ts: None,
                 snippet: None,

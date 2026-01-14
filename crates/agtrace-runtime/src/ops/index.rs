@@ -172,6 +172,12 @@ impl<'a> IndexService<'a> {
                     agtrace_core::project_hash_from_log_path(&session.main_file)
                 };
 
+                // Calculate repository_hash for git worktree support
+                let repository_hash = session
+                    .project_root
+                    .as_ref()
+                    .and_then(|root| agtrace_core::repository_hash_from_path(root));
+
                 let project_record = ProjectRecord {
                     hash: session_project_hash.clone(),
                     root_path: session
@@ -185,6 +191,7 @@ impl<'a> IndexService<'a> {
                 let session_record = SessionRecord {
                     id: session.session_id.clone(),
                     project_hash: session_project_hash,
+                    repository_hash,
                     provider: provider_name.to_string(),
                     start_ts: session.timestamp.clone(),
                     end_ts: None,

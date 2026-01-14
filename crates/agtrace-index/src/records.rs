@@ -1,4 +1,4 @@
-use agtrace_types::{ProjectHash, SpawnContext};
+use agtrace_types::{ProjectHash, RepositoryHash, SpawnContext};
 
 /// Project metadata record from the index database.
 ///
@@ -23,6 +23,8 @@ pub struct SessionRecord {
     pub id: String,
     /// Project this session belongs to.
     pub project_hash: ProjectHash,
+    /// Git repository hash for worktree support (None for non-git directories).
+    pub repository_hash: Option<RepositoryHash>,
     /// Provider name (claude, codex, gemini).
     pub provider: String,
     /// Session start timestamp (ISO 8601).
@@ -69,6 +71,9 @@ pub struct SessionSummary {
     pub provider: String,
     /// Project this session belongs to.
     pub project_hash: ProjectHash,
+    /// Git repository hash for worktree support (None for non-git directories).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repository_hash: Option<RepositoryHash>,
     /// Absolute path to project root directory, if known.
     pub project_root: Option<String>,
     /// Session start timestamp (ISO 8601).

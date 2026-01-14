@@ -3,7 +3,7 @@ use rusqlite::Connection;
 use crate::Result;
 
 // Schema version (increment when changing table definitions)
-pub const SCHEMA_VERSION: i32 = 5;
+pub const SCHEMA_VERSION: i32 = 6;
 
 // NOTE: Database Design Rationale (Pointer Edition)
 //
@@ -41,6 +41,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
             project_hash TEXT NOT NULL,
+            repository_hash TEXT,
             provider TEXT NOT NULL,
             start_ts TEXT,
             end_ts TEXT,
@@ -63,6 +64,7 @@ pub fn init_schema(conn: &Connection) -> Result<()> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_hash);
+        CREATE INDEX IF NOT EXISTS idx_sessions_repository ON sessions(repository_hash);
         CREATE INDEX IF NOT EXISTS idx_sessions_ts ON sessions(start_ts DESC);
         CREATE INDEX IF NOT EXISTS idx_files_session ON log_files(session_id);
         "#,

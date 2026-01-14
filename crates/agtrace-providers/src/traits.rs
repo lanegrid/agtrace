@@ -128,6 +128,8 @@ pub struct SessionIndex {
     pub main_file: PathBuf,
     pub sidechain_files: Vec<PathBuf>,
     pub project_root: Option<PathBuf>,
+    /// Git repository identifier for worktree support (None for non-git directories)
+    pub repository_hash: Option<agtrace_types::RepositoryHash>,
     pub snippet: Option<String>,
     /// For subagent sessions: the parent session that spawned this
     pub parent_session_id: Option<String>,
