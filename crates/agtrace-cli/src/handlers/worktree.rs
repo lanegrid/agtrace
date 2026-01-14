@@ -190,9 +190,10 @@ fn extract_worktree_name(path: &str) -> String {
 
 fn truncate_snippet(s: &str, max_len: usize) -> String {
     let s = s.replace('\n', " ").replace('\r', "");
-    if s.len() <= max_len {
+    if s.chars().count() <= max_len {
         s
     } else {
-        format!("{}...", &s[..max_len.saturating_sub(3)])
+        let truncated: String = s.chars().take(max_len.saturating_sub(3)).collect();
+        format!("{}...", truncated)
     }
 }
