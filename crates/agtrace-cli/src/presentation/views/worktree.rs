@@ -191,18 +191,19 @@ impl<'a> fmt::Display for WorktreeSessionsView<'a> {
 // --------------------------------------------------------
 
 fn shorten_path(path: &str, max_len: usize) -> String {
-    if path.len() <= max_len {
-        return path.to_string();
-    }
-
-    // Try to shorten home directory
-    if let Some(home) = home_dir() {
+    // Always try to shorten home directory first for consistency
+    let path = if let Some(home) = home_dir() {
         if let Some(rest) = path.strip_prefix(&home) {
-            let shortened = format!("~{}", rest);
-            if shortened.len() <= max_len {
-                return shortened;
-            }
+            format!("~{}", rest)
+        } else {
+            path.to_string()
         }
+    } else {
+        path.to_string()
+    };
+
+    if path.len() <= max_len {
+        return path;
     }
 
     // Truncate from the beginning
