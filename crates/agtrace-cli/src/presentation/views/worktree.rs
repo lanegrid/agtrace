@@ -36,11 +36,13 @@ impl<'a> WorktreeListView<'a> {
 
         for wt in &self.data.worktrees {
             let last = wt.last_active.as_deref().unwrap_or("-");
+            let path_display = shorten_path(&wt.path, 50);
             writeln!(
                 f,
                 "  {:<16} {:>4} sessions  {}",
                 wt.name, wt.session_count, last
             )?;
+            writeln!(f, "    {}", path_display)?;
         }
         Ok(())
     }
