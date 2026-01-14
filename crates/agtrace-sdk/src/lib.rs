@@ -242,8 +242,8 @@ pub mod utils {
 
     // Project management utilities
     pub use agtrace_core::{
-        discover_project_root, project_hash_from_root, resolve_effective_project_hash,
-        resolve_workspace_path,
+        discover_project_root, project_hash_from_root, repository_hash_from_path,
+        resolve_effective_project_hash, resolve_workspace_path,
     };
 
     /// Create a TokenLimits instance with the default provider resolver.

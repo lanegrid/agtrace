@@ -13,6 +13,7 @@ struct CommandContext {
     data_dir: PathBuf,
     project_root: Option<PathBuf>,
     all_projects: bool,
+    all_worktrees: bool,
     format: crate::args::OutputFormat,
 }
 
@@ -33,6 +34,7 @@ impl CommandContext {
             data_dir,
             project_root,
             all_projects: cli.all_projects,
+            all_worktrees: cli.all_worktrees,
             format: cli.format,
         }
     }
@@ -51,11 +53,18 @@ impl CommandContext {
             .map(|p| agtrace_sdk::utils::project_hash_from_root(&p.display().to_string()))
     }
 
+    fn repository_hash(&self) -> Option<agtrace_sdk::types::RepositoryHash> {
+        self.project_root
+            .as_ref()
+            .and_then(|p| agtrace_sdk::utils::repository_hash_from_path(p))
+    }
+
     fn effective_project_hash(
         &self,
         explicit_hash: Option<String>,
     ) -> Option<agtrace_sdk::types::ProjectHash> {
-        if self.all_projects {
+        if self.all_projects || self.all_worktrees {
+            // When --all-worktrees is set, we fetch all sessions and filter by repository_hash later
             None
         } else {
             explicit_hash
@@ -148,6 +157,8 @@ pub async fn run(cli: Cli) -> Result<()> {
                     &workspace,
                     ctx.project_root.as_deref(),
                     ctx.all_projects,
+                    ctx.all_worktrees,
+                    ctx.repository_hash(),
                     ctx.effective_project_hash(project_hash),
                     limit,
                     format,
@@ -308,6 +319,8 @@ pub async fn run(cli: Cli) -> Result<()> {
                 &workspace,
                 ctx.project_root.as_deref(),
                 ctx.all_projects,
+                ctx.all_worktrees,
+                ctx.repository_hash(),
                 ctx.effective_project_hash(project_hash),
                 limit,
                 ctx.format,
