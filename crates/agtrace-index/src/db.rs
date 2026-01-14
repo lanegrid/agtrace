@@ -140,6 +140,7 @@ mod tests {
         let session = SessionRecord {
             id: "session-001".to_string(),
             project_hash: agtrace_types::ProjectHash::from("abc123"),
+            repository_hash: None,
             provider: "claude".to_string(),
             start_ts: Some("2025-12-10T10:05:00Z".to_string()),
             end_ts: Some("2025-12-10T10:15:00Z".to_string()),
@@ -179,6 +180,7 @@ mod tests {
         let session = SessionRecord {
             id: "session-001".to_string(),
             project_hash: agtrace_types::ProjectHash::from("abc123"),
+            repository_hash: None,
             provider: "claude".to_string(),
             start_ts: Some("2025-12-10T10:05:00Z".to_string()),
             end_ts: None,
@@ -220,6 +222,7 @@ mod tests {
             let session = SessionRecord {
                 id: format!("session-{:03}", i),
                 project_hash: agtrace_types::ProjectHash::from("abc123"),
+                repository_hash: None,
                 provider: "claude".to_string(),
                 start_ts: Some(format!("2025-12-10T10:{:02}:00Z", i)),
                 end_ts: None,
@@ -269,6 +272,7 @@ mod tests {
             let session = SessionRecord {
                 id: format!("session-{:03}", i),
                 project_hash: agtrace_types::ProjectHash::from("abc123"),
+                repository_hash: None,
                 provider: "claude".to_string(),
                 start_ts: Some(format!("2025-12-10T10:{:02}:00Z", i)),
                 end_ts: None,

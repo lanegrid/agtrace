@@ -1,4 +1,4 @@
-use agtrace_types::{ProjectHash, SessionOrder, SpawnContext};
+use agtrace_types::{ProjectHash, RepositoryHash, SessionOrder, SpawnContext};
 use rusqlite::{Connection, params};
 
 use crate::{
@@ -12,25 +12,29 @@ pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()
         None => (None, None),
     };
 
+    let repository_hash_str = session.repository_hash.as_ref().map(|h| h.as_str());
+
     conn.execute(
         r#"
-        INSERT INTO sessions (id, project_hash, provider, start_ts, end_ts, snippet, is_valid,
+        INSERT INTO sessions (id, project_hash, repository_hash, provider, start_ts, end_ts, snippet, is_valid,
                               parent_session_id, spawned_by_turn, spawned_by_step)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
         ON CONFLICT(id) DO UPDATE SET
             project_hash = ?2,
-            provider = ?3,
-            start_ts = COALESCE(?4, start_ts),
-            end_ts = COALESCE(?5, end_ts),
-            snippet = COALESCE(?6, snippet),
-            is_valid = ?7,
-            parent_session_id = COALESCE(?8, parent_session_id),
-            spawned_by_turn = COALESCE(?9, spawned_by_turn),
-            spawned_by_step = COALESCE(?10, spawned_by_step)
+            repository_hash = COALESCE(?3, repository_hash),
+            provider = ?4,
+            start_ts = COALESCE(?5, start_ts),
+            end_ts = COALESCE(?6, end_ts),
+            snippet = COALESCE(?7, snippet),
+            is_valid = ?8,
+            parent_session_id = COALESCE(?9, parent_session_id),
+            spawned_by_turn = COALESCE(?10, spawned_by_turn),
+            spawned_by_step = COALESCE(?11, spawned_by_step)
         "#,
         params![
             &session.id,
             session.project_hash.as_str(),
+            repository_hash_str,
             &session.provider,
             &session.start_ts,
             &session.end_ts,
@@ -48,7 +52,7 @@ pub fn insert_or_update(conn: &Connection, session: &SessionRecord) -> Result<()
 pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSummary>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+        SELECT s.id, s.provider, s.project_hash, s.repository_hash, p.root_path, s.start_ts, s.snippet,
                s.parent_session_id, s.spawned_by_turn, s.spawned_by_step
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
@@ -58,7 +62,7 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
 
     let mut rows = stmt.query([session_id])?;
     if let Some(row) = rows.next()? {
-        let spawned_by = match (row.get::<_, Option<i64>>(7)?, row.get::<_, Option<i64>>(8)?) {
+        let spawned_by = match (row.get::<_, Option<i64>>(8)?, row.get::<_, Option<i64>>(9)?) {
             (Some(turn), Some(step)) => Some(SpawnContext {
                 turn_index: turn as usize,
                 step_index: step as usize,
@@ -70,10 +74,11 @@ pub fn get_by_id(conn: &Connection, session_id: &str) -> Result<Option<SessionSu
             id: row.get(0)?,
             provider: row.get(1)?,
             project_hash: ProjectHash::from(row.get::<_, String>(2)?),
-            project_root: row.get(3)?,
-            start_ts: row.get(4)?,
-            snippet: row.get(5)?,
-            parent_session_id: row.get(6)?,
+            repository_hash: row.get::<_, Option<String>>(3)?.map(RepositoryHash::from),
+            project_root: row.get(4)?,
+            start_ts: row.get(5)?,
+            snippet: row.get(6)?,
+            parent_session_id: row.get(7)?,
             spawned_by,
         }))
     } else {
@@ -115,7 +120,7 @@ pub fn list(
 
     let query = format!(
         r#"
-        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+        SELECT s.id, s.provider, s.project_hash, s.repository_hash, p.root_path, s.start_ts, s.snippet,
                s.parent_session_id, s.spawned_by_turn, s.spawned_by_step
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
@@ -130,7 +135,7 @@ pub fn list(
     let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
     let sessions = stmt
         .query_map(param_refs.as_slice(), |row| {
-            let spawned_by = match (row.get::<_, Option<i64>>(7)?, row.get::<_, Option<i64>>(8)?) {
+            let spawned_by = match (row.get::<_, Option<i64>>(8)?, row.get::<_, Option<i64>>(9)?) {
                 (Some(turn), Some(step)) => Some(SpawnContext {
                     turn_index: turn as usize,
                     step_index: step as usize,
@@ -142,10 +147,11 @@ pub fn list(
                 id: row.get(0)?,
                 provider: row.get(1)?,
                 project_hash: ProjectHash::from(row.get::<_, String>(2)?),
-                project_root: row.get(3)?,
-                start_ts: row.get(4)?,
-                snippet: row.get(5)?,
-                parent_session_id: row.get(6)?,
+                repository_hash: row.get::<_, Option<String>>(3)?.map(RepositoryHash::from),
+                project_root: row.get(4)?,
+                start_ts: row.get(5)?,
+                snippet: row.get(6)?,
+                parent_session_id: row.get(7)?,
                 spawned_by,
             })
         })?
@@ -158,7 +164,7 @@ pub fn list(
 pub fn get_children(conn: &Connection, parent_session_id: &str) -> Result<Vec<SessionSummary>> {
     let mut stmt = conn.prepare(
         r#"
-        SELECT s.id, s.provider, s.project_hash, p.root_path, s.start_ts, s.snippet,
+        SELECT s.id, s.provider, s.project_hash, s.repository_hash, p.root_path, s.start_ts, s.snippet,
                s.parent_session_id, s.spawned_by_turn, s.spawned_by_step
         FROM sessions s
         LEFT JOIN projects p ON s.project_hash = p.hash
@@ -169,7 +175,7 @@ pub fn get_children(conn: &Connection, parent_session_id: &str) -> Result<Vec<Se
 
     let sessions = stmt
         .query_map([parent_session_id], |row| {
-            let spawned_by = match (row.get::<_, Option<i64>>(7)?, row.get::<_, Option<i64>>(8)?) {
+            let spawned_by = match (row.get::<_, Option<i64>>(8)?, row.get::<_, Option<i64>>(9)?) {
                 (Some(turn), Some(step)) => Some(SpawnContext {
                     turn_index: turn as usize,
                     step_index: step as usize,
@@ -181,10 +187,11 @@ pub fn get_children(conn: &Connection, parent_session_id: &str) -> Result<Vec<Se
                 id: row.get(0)?,
                 provider: row.get(1)?,
                 project_hash: ProjectHash::from(row.get::<_, String>(2)?),
-                project_root: row.get(3)?,
-                start_ts: row.get(4)?,
-                snippet: row.get(5)?,
-                parent_session_id: row.get(6)?,
+                repository_hash: row.get::<_, Option<String>>(3)?.map(RepositoryHash::from),
+                project_root: row.get(4)?,
+                start_ts: row.get(5)?,
+                snippet: row.get(6)?,
+                parent_session_id: row.get(7)?,
                 spawned_by,
             })
         })?
@@ -240,6 +247,7 @@ mod tests {
         let session1 = SessionRecord {
             id: "session1".to_string(),
             project_hash: project_hash.clone(),
+            repository_hash: None,
             provider: "claude_code".to_string(),
             start_ts: Some("2024-01-01T00:00:00Z".to_string()),
             end_ts: None,
@@ -252,6 +260,7 @@ mod tests {
         let session2 = SessionRecord {
             id: "session2".to_string(),
             project_hash: project_hash.clone(),
+            repository_hash: None,
             provider: "codex".to_string(),
             start_ts: Some("2024-01-02T00:00:00Z".to_string()),
             end_ts: None,
@@ -264,6 +273,7 @@ mod tests {
         let session3 = SessionRecord {
             id: "session3".to_string(),
             project_hash: project_hash.clone(),
+            repository_hash: None,
             provider: "gemini".to_string(),
             start_ts: Some("2024-01-03T00:00:00Z".to_string()),
             end_ts: None,
@@ -333,6 +343,7 @@ mod tests {
         let session1 = SessionRecord {
             id: "session1".to_string(),
             project_hash: project_hash.clone(),
+            repository_hash: None,
             provider: "claude_code".to_string(),
             start_ts: Some("2024-01-01T00:00:00Z".to_string()),
             end_ts: Some("2024-01-01T01:00:00Z".to_string()),
@@ -345,6 +356,7 @@ mod tests {
         let session2 = SessionRecord {
             id: "session2".to_string(),
             project_hash: project_hash.clone(),
+            repository_hash: None,
             provider: "claude_code".to_string(),
             start_ts: Some("2024-01-02T00:00:00Z".to_string()),
             end_ts: Some("2024-01-02T01:00:00Z".to_string()),
@@ -357,6 +369,7 @@ mod tests {
         let session3 = SessionRecord {
             id: "session3".to_string(),
             project_hash: project_hash.clone(),
+            repository_hash: None,
             provider: "claude_code".to_string(),
             start_ts: Some("2024-01-03T00:00:00Z".to_string()),
             end_ts: Some("2024-01-03T01:00:00Z".to_string()),

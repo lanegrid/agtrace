@@ -91,7 +91,7 @@ fn test_auto_migration_from_old_schema() {
         let version: i32 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 5, "Schema should be upgraded to version 5");
+        assert_eq!(version, 6, "Schema should be upgraded to version 6");
     }
 
     // Verify new columns work - insert session with parent_session_id
@@ -105,6 +105,7 @@ fn test_auto_migration_from_old_schema() {
     let parent_session = SessionRecord {
         id: "parent_session".to_string(),
         project_hash: ProjectHash::from("new_hash"),
+        repository_hash: None,
         provider: "claude_code".to_string(),
         start_ts: Some("2024-01-01T00:00:00Z".to_string()),
         end_ts: None,
@@ -118,6 +119,7 @@ fn test_auto_migration_from_old_schema() {
     let child_session = SessionRecord {
         id: "child_session".to_string(),
         project_hash: ProjectHash::from("new_hash"),
+        repository_hash: None,
         provider: "claude_code".to_string(),
         start_ts: Some("2024-01-01T01:00:00Z".to_string()),
         end_ts: None,
@@ -200,6 +202,7 @@ fn test_current_version_preserves_data() {
     let session = SessionRecord {
         id: "preserve_session".to_string(),
         project_hash: ProjectHash::from("preserve_hash"),
+        repository_hash: None,
         provider: "claude_code".to_string(),
         start_ts: Some("2024-01-01T00:00:00Z".to_string()),
         end_ts: None,
