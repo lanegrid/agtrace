@@ -1,7 +1,8 @@
 use crate::{Error, Result};
 use agtrace_index::{Database, LogFileRecord, ProjectRecord, SessionRecord};
 use agtrace_providers::ProviderAdapter;
-use std::collections::HashSet;
+use agtrace_types::RepositoryHash;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
@@ -76,6 +77,9 @@ impl<'a> IndexService<'a> {
         let mut total_sessions = 0;
         let mut scanned_files = 0;
         let mut skipped_files = 0;
+
+        // Cache repository_hash per project_root to avoid repeated git subprocess calls
+        let mut repository_hash_cache: HashMap<PathBuf, Option<RepositoryHash>> = HashMap::new();
 
         for (provider, log_root) in &self.providers {
             let provider_name = provider.id();
@@ -172,11 +176,13 @@ impl<'a> IndexService<'a> {
                     agtrace_core::project_hash_from_log_path(&session.main_file)
                 };
 
-                // Calculate repository_hash for git worktree support
-                let repository_hash = session
-                    .project_root
-                    .as_ref()
-                    .and_then(|root| agtrace_core::repository_hash_from_path(root));
+                // Calculate repository_hash for git worktree support (cached per project_root)
+                let repository_hash = session.project_root.as_ref().and_then(|root| {
+                    repository_hash_cache
+                        .entry(root.clone())
+                        .or_insert_with(|| agtrace_core::repository_hash_from_path(root))
+                        .clone()
+                });
 
                 let project_record = ProjectRecord {
                     hash: session_project_hash.clone(),
