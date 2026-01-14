@@ -117,6 +117,12 @@ Use --refresh to force a re-scan of all logs."
         command: ProjectCommand,
     },
 
+    #[command(about = "View sessions across git worktrees of the same repository")]
+    Worktree {
+        #[command(subcommand)]
+        command: WorktreeCommand,
+    },
+
     #[command(about = "Diagnose and troubleshoot log parsing issues")]
     Doctor {
         #[command(subcommand)]
@@ -443,6 +449,53 @@ pub enum ProjectCommand {
     List {
         #[arg(long)]
         project_root: Option<String>,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum WorktreeCommand {
+    #[command(
+        about = "List all worktrees of the current repository with session counts",
+        long_about = "List all git worktrees that share the same repository as the current directory.
+
+Shows each worktree with:
+  - Worktree name (directory name)
+  - Full path
+  - Number of indexed sessions
+  - Last activity timestamp
+
+This helps you see agent activity across parallel development contexts."
+    )]
+    List {
+        #[arg(long, default_value = "plain", help = "Output format")]
+        format: OutputFormat,
+
+        #[command(flatten)]
+        view_mode: ViewModeArgs,
+    },
+
+    #[command(
+        about = "Show sessions grouped by worktree",
+        long_about = "Display sessions from all worktrees of the current repository, grouped by worktree.
+
+Each worktree section shows:
+  - Worktree name and path
+  - Recent sessions with timestamps and snippets
+
+Use --limit to control how many sessions are shown per worktree."
+    )]
+    Sessions {
+        #[arg(long, default_value = "5", help = "Maximum sessions per worktree")]
+        limit: usize,
+
+        #[arg(long, help = "Filter by provider")]
+        provider: Option<ProviderName>,
+
+        #[arg(long, default_value = "plain", help = "Output format")]
+        format: OutputFormat,
 
         #[command(flatten)]
         view_mode: ViewModeArgs,

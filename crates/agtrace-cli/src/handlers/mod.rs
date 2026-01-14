@@ -17,5 +17,6 @@ pub mod session_list;
 pub mod session_show;
 pub mod watch_console;
 pub mod watch_tui;
+pub mod worktree;
 
 pub use context::HandlerContext;
