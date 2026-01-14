@@ -1,6 +1,6 @@
 use crate::args::{OutputFormat, ViewModeArgs};
 use agtrace_sdk::Client;
-use agtrace_sdk::types::SessionFilter;
+use agtrace_sdk::types::{RepositoryHash, SessionFilter};
 use anyhow::Result;
 use std::path::Path;
 
@@ -9,6 +9,8 @@ pub fn handle(
     client: &Client,
     _project_root: Option<&Path>,
     all_projects: bool,
+    all_worktrees: bool,
+    repository_hash: Option<RepositoryHash>,
     project_hash: Option<agtrace_sdk::types::ProjectHash>,
     limit: usize,
     format: OutputFormat,
@@ -23,22 +25,33 @@ pub fn handle(
     use crate::presentation::{ConsoleRenderer, Renderer};
 
     // Build filter
-    let mut filter = if all_projects {
+    // When all_worktrees is set, we fetch all sessions and filter by repository_hash later
+    let mut filter = if all_projects || all_worktrees {
         SessionFilter::all()
     } else if let Some(hash) = project_hash {
         SessionFilter::project(hash)
     } else {
         SessionFilter::all()
+    };
+
+    // Apply limit only when not filtering by repository_hash
+    // (when all_worktrees is set, we filter after fetching)
+    if !all_worktrees {
+        filter = filter.limit(limit);
     }
-    .limit(limit);
 
     if include_children {
         filter = filter.include_children();
     }
 
-    let project_filter_summary = match &filter.scope {
-        agtrace_sdk::types::ProjectScope::All => None,
-        agtrace_sdk::types::ProjectScope::Specific(hash) => Some(hash.to_string()),
+    let project_filter_summary = if all_worktrees {
+        // Show that we're filtering by repository (all worktrees)
+        Some("all worktrees".to_string())
+    } else {
+        match &filter.scope {
+            agtrace_sdk::types::ProjectScope::All => None,
+            agtrace_sdk::types::ProjectScope::Specific(hash) => Some(hash.to_string()),
+        }
     };
 
     if let Some(ref src) = provider {
@@ -54,11 +67,19 @@ pub fn handle(
     }
 
     // Get sessions (with optional auto-refresh)
-    let sessions = if no_auto_refresh {
+    let mut sessions = if no_auto_refresh {
         client.sessions().list_without_refresh(filter)?
     } else {
         client.sessions().list(filter)?
     };
+
+    // When all_worktrees is set, filter by repository_hash and apply limit
+    if all_worktrees {
+        if let Some(ref repo_hash) = repository_hash {
+            sessions.retain(|s| s.repository_hash.as_ref() == Some(repo_hash));
+        }
+        sessions.truncate(limit);
+    }
 
     // Build time range summary
     let time_range = match (since.as_ref(), until.as_ref()) {

@@ -74,6 +74,15 @@ pub struct Cli {
     )]
     pub all_projects: bool,
 
+    #[arg(
+        long,
+        global = true,
+        hide_short_help = true,
+        help_heading = "Global Options",
+        help = "Include sessions from all git worktrees of the current repository"
+    )]
+    pub all_worktrees: bool,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }

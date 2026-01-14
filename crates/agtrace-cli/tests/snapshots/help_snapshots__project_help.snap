@@ -35,3 +35,6 @@ Global Options:
 
       --all-projects
           Operate on all indexed projects instead of current project only
+
+      --all-worktrees
+          Include sessions from all git worktrees of the current repository
