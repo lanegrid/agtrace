@@ -1,4 +1,4 @@
-use agtrace_types::ProjectHash;
+use agtrace_types::{ProjectHash, RepositoryHash};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
@@ -150,4 +150,35 @@ pub fn project_hash_from_log_path(log_path: &Path) -> ProjectHash {
     let mut hasher = Sha256::new();
     hasher.update(log_path.to_string_lossy().as_bytes());
     ProjectHash::new(format!("{:x}", hasher.finalize()))
+}
+
+/// Calculate repository hash from a directory path for git worktree support.
+///
+/// Returns Some(RepositoryHash) if the path is inside a git repository.
+/// The hash is computed from the git common directory (shared .git),
+/// so all worktrees of the same repository return the same hash.
+/// Returns None for non-git directories.
+pub fn repository_hash_from_path(path: &Path) -> Option<RepositoryHash> {
+    use std::process::Command;
+
+    let git_common_dir = Command::new("git")
+        .args(["rev-parse", "--git-common-dir"])
+        .current_dir(path)
+        .output()
+        .ok()?;
+
+    if !git_common_dir.status.success() {
+        return None;
+    }
+
+    let common_dir_str = String::from_utf8_lossy(&git_common_dir.stdout);
+    let common_dir_path = Path::new(common_dir_str.trim());
+
+    // Normalize to absolute path
+    let normalized = normalize_path(common_dir_path);
+    let path_str = normalized.to_string_lossy();
+
+    let mut hasher = Sha256::new();
+    hasher.update(path_str.as_bytes());
+    Some(RepositoryHash::new(format!("{:x}", hasher.finalize())))
 }
