@@ -336,14 +336,17 @@ pub(crate) struct ProgressRecord {
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ProgressData {
     AgentProgress {
-        #[serde(default)]
+        #[serde(default, rename = "agentId")]
         agent_id: Option<String>,
         #[serde(default)]
         status: Option<String>,
+        #[serde(default)]
+        prompt: Option<String>,
     },
     HookProgress {
+        #[serde(rename = "hookEvent")]
         hook_event: String,
-        #[serde(default)]
+        #[serde(default, rename = "hookName")]
         hook_name: Option<String>,
         #[serde(default)]
         command: Option<String>,
