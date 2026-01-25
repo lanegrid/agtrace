@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-01-25
+
+### Bug Fixes
+
+- *(providers)* Use camelCase for ProgressData field names ([6ccff66](https://github.com/lanegrid/agtrace/commit/6ccff66df30a03277e54f350550800805a6da934))
+
+
+### Documentation
+
+- Add git-workflow skill rule to project rules ([c3ef2ec](https://github.com/lanegrid/agtrace/commit/c3ef2ec42eb5bf34e51ac790dc00acebe6c15ed9))
+
+
+### Features
+
+- *(types,core)* Add RepositoryHash type for git worktree support ([76c5d9c](https://github.com/lanegrid/agtrace/commit/76c5d9c086828e7ffe61a7a2a627704818fabb97))
+
+- *(index)* Add repository_hash to session data model for worktree support ([ebdc8e0](https://github.com/lanegrid/agtrace/commit/ebdc8e06d33c78cbaeb0864d275cdd83f3b071d4))
+
+- *(cli)* Add --all-worktrees flag for cross-worktree session listing ([f565b8c](https://github.com/lanegrid/agtrace/commit/f565b8c067eaae6f9afb7a30597b35b58499e933))
+
+- *(providers)* Add Claude Code new log format support (progress, queue-operation, system, summary) ([c3036a2](https://github.com/lanegrid/agtrace/commit/c3036a2156f60cae5d00e390e0c63d42ad482142))
+
+
+### Miscellaneous Tasks
+
+- Add git-workflow SKILL ([ac4de76](https://github.com/lanegrid/agtrace/commit/ac4de76090d03109be9c8a7eb493b47cdb6a3164))
+
+
+### Performance
+
+- *(index)* Cache repository_hash per project_root during indexing ([6d35d9f](https://github.com/lanegrid/agtrace/commit/6d35d9f602834c3e80698e736857d52494cbef7f))
+
+
+### Styling
+
+- Apply cargo fmt ([60d38de](https://github.com/lanegrid/agtrace/commit/60d38dec72b8df45d1395ecb473fc53cafef0ee3))
+
+
 ## [0.6.0] - 2026-01-10
 
 ### Bug Fixes

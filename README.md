@@ -76,7 +76,7 @@ If you're building your own IDE plugin, dashboard, or observability tool:
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.5"
+agtrace-sdk = "0.6"
 ```
 
 See [SDK Documentation](https://docs.rs/agtrace-sdk) and [Examples](crates/agtrace-sdk/examples/).
