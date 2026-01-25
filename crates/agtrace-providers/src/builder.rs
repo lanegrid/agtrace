@@ -15,6 +15,8 @@ pub enum SemanticSuffix {
     TokenUsage,
     Notification,
     SlashCommand,
+    QueueOperation,
+    Summary,
 }
 
 impl SemanticSuffix {
@@ -28,6 +30,8 @@ impl SemanticSuffix {
             Self::TokenUsage => "usage",
             Self::Notification => "notify",
             Self::SlashCommand => "slashcmd",
+            Self::QueueOperation => "queue",
+            Self::Summary => "summary",
         }
     }
 }

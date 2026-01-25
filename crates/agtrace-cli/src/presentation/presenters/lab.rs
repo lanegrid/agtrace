@@ -98,6 +98,15 @@ fn present_event_payload(payload: &EventPayload) -> EventPayloadViewModel {
             name: p.name.clone(),
             args: p.args.clone(),
         },
+        EventPayload::QueueOperation(p) => EventPayloadViewModel::QueueOperation {
+            operation: p.operation.clone(),
+            content: p.content.clone(),
+            task_id: p.task_id.clone(),
+        },
+        EventPayload::Summary(p) => EventPayloadViewModel::Summary {
+            summary: p.summary.clone(),
+            leaf_uuid: p.leaf_uuid.clone(),
+        },
     }
 }
 

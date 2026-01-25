@@ -47,6 +47,10 @@ pub enum EventType {
     Notification,
     /// Slash command invocation
     SlashCommand,
+    /// Background task queue operation
+    QueueOperation,
+    /// Session summary
+    Summary,
 }
 
 impl EventType {
@@ -62,6 +66,8 @@ impl EventType {
                 | (EventType::TokenUsage, EventPayload::TokenUsage(_))
                 | (EventType::Notification, EventPayload::Notification(_))
                 | (EventType::SlashCommand, EventPayload::SlashCommand(_))
+                | (EventType::QueueOperation, EventPayload::QueueOperation(_))
+                | (EventType::Summary, EventPayload::Summary(_))
         )
     }
 
@@ -76,6 +82,8 @@ impl EventType {
             EventPayload::TokenUsage(_) => EventType::TokenUsage,
             EventPayload::Notification(_) => EventType::Notification,
             EventPayload::SlashCommand(_) => EventType::SlashCommand,
+            EventPayload::QueueOperation(_) => EventType::QueueOperation,
+            EventPayload::Summary(_) => EventType::Summary,
         }
     }
 }

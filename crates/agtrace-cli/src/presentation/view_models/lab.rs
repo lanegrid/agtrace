@@ -95,6 +95,18 @@ pub enum EventPayloadViewModel {
         #[serde(skip_serializing_if = "Option::is_none")]
         args: Option<String>,
     },
+    QueueOperation {
+        operation: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        content: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        task_id: Option<String>,
+    },
+    Summary {
+        summary: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        leaf_uuid: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize)]

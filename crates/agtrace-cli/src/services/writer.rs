@@ -31,6 +31,8 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
             EventPayload::TokenUsage(_) => "TokenUsage",
             EventPayload::Notification(_) => "Notification",
             EventPayload::SlashCommand(_) => "SlashCommand",
+            EventPayload::QueueOperation(_) => "QueueOperation",
+            EventPayload::Summary(_) => "Summary",
         };
 
         writeln!(file, "[{}] {}", ts_str, event_type)?;
@@ -78,6 +80,17 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
                 } else {
                     writeln!(file, "{}", p.name)?;
                 }
+            }
+            EventPayload::QueueOperation(p) => {
+                writeln!(
+                    file,
+                    "Operation: {} {}",
+                    p.operation,
+                    p.content.as_deref().unwrap_or("")
+                )?;
+            }
+            EventPayload::Summary(p) => {
+                writeln!(file, "{}", p.summary)?;
             }
         }
 

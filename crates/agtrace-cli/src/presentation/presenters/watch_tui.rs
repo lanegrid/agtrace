@@ -197,6 +197,19 @@ fn event_to_timeline_item(event: &agtrace_sdk::types::AgentEvent) -> TimelineEve
             format!("Command: {}", cmd.name),
             StatusLevel::Info,
         ),
+        EventPayload::QueueOperation(qo) => (
+            "📋".to_string(),
+            format!("Queue: {}", qo.operation),
+            StatusLevel::Info,
+        ),
+        EventPayload::Summary(s) => {
+            let preview = truncate_text(&s.summary, 150);
+            (
+                "📝".to_string(),
+                format!("Summary: {}", preview),
+                StatusLevel::Info,
+            )
+        }
     };
 
     TimelineEventViewModel {

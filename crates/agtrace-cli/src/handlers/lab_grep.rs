@@ -158,6 +158,8 @@ impl EventMatcher {
             EventPayload::TokenUsage(_) => "TokenUsage",
             EventPayload::Notification(_) => "Notification",
             EventPayload::SlashCommand(_) => "SlashCommand",
+            EventPayload::QueueOperation(_) => "QueueOperation",
+            EventPayload::Summary(_) => "Summary",
         };
         actual_type.eq_ignore_ascii_case(event_type)
     }

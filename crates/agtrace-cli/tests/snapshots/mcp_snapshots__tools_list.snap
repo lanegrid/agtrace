@@ -195,6 +195,16 @@ expression: response
                   "const": "SlashCommand",
                   "description": "Slash command invocation",
                   "type": "string"
+                },
+                {
+                  "const": "QueueOperation",
+                  "description": "Background task queue operation",
+                  "type": "string"
+                },
+                {
+                  "const": "Summary",
+                  "description": "Session summary",
+                  "type": "string"
                 }
               ]
             },

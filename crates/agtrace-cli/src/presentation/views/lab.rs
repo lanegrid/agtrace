@@ -164,6 +164,23 @@ impl<'a> fmt::Display for LabGrepView<'a> {
                             writeln!(f, "SlashCommand: {}", name)?;
                         }
                     }
+                    crate::presentation::view_models::EventPayloadViewModel::QueueOperation {
+                        operation,
+                        content,
+                        task_id,
+                    } => {
+                        writeln!(
+                            f,
+                            "QueueOperation: {} (task_id={:?}, content={:?})",
+                            operation, task_id, content
+                        )?;
+                    }
+                    crate::presentation::view_models::EventPayloadViewModel::Summary {
+                        summary,
+                        leaf_uuid,
+                    } => {
+                        writeln!(f, "Summary (leaf_uuid={:?}): {}", leaf_uuid, summary)?;
+                    }
                 }
             }
         }

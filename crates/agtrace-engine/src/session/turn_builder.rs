@@ -166,6 +166,9 @@ impl TurnBuilder {
 
             EventPayload::Notification(_) => {}
 
+            // QueueOperation and Summary are metadata events, not turn content
+            EventPayload::QueueOperation(_) | EventPayload::Summary(_) => {}
+
             // User and SlashCommand are turn triggers, handled in assembler
             EventPayload::User(_) | EventPayload::SlashCommand(_) => unreachable!(),
         }

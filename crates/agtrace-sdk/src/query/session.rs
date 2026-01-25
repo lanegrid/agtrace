@@ -120,6 +120,17 @@ impl EventMatch {
                     sc.name.clone()
                 }
             }
+            EventPayload::QueueOperation(qo) => {
+                format!(
+                    "{}{}",
+                    qo.operation,
+                    qo.content
+                        .as_ref()
+                        .map(|c| format!(": {}", c))
+                        .unwrap_or_default()
+                )
+            }
+            EventPayload::Summary(s) => s.summary.clone(),
         };
 
         if text.len() > 200 {

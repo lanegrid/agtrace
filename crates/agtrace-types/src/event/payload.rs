@@ -37,6 +37,12 @@ pub enum EventPayload {
 
     /// 8. Slash command invocation (e.g., /commit, /review-pr)
     SlashCommand(SlashCommandPayload),
+
+    /// 9. Background task queue operation
+    QueueOperation(QueueOperationPayload),
+
+    /// 10. Session summary
+    Summary(SummaryPayload),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -207,4 +213,27 @@ pub struct SlashCommandPayload {
     /// Optional command arguments
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub args: Option<String>,
+}
+
+/// Background task queue operation (enqueue/dequeue)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueueOperationPayload {
+    /// Operation type (e.g., "enqueue", "dequeue")
+    pub operation: String,
+    /// Task content description
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    /// Task identifier
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
+}
+
+/// Session summary record
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SummaryPayload {
+    /// Summary text
+    pub summary: String,
+    /// Leaf UUID reference
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leaf_uuid: Option<String>,
 }

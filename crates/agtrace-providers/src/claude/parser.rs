@@ -7,6 +7,18 @@ use uuid::Uuid;
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
 
+/// Generate a deterministic UUID for records without explicit uuid field
+fn generate_record_uuid(session_id: &str, timestamp: &str, suffix: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    session_id.hash(&mut hasher);
+    timestamp.hash(&mut hasher);
+    suffix.hash(&mut hasher);
+    format!("gen-{:016x}", hasher.finish())
+}
+
 /// Determine StreamId from Claude record fields
 fn determine_stream_id(is_sidechain: bool, agent_id: &Option<String>) -> StreamId {
     if is_sidechain {
@@ -83,6 +95,10 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
         .find_map(|r| match r {
             ClaudeRecord::User(user) => Some(user.session_id.clone()),
             ClaudeRecord::Assistant(asst) => Some(asst.session_id.clone()),
+            ClaudeRecord::System(sys) => Some(sys.session_id.clone()),
+            ClaudeRecord::Progress(prog) => Some(prog.session_id.clone()),
+            ClaudeRecord::QueueOperation(queue) => Some(queue.session_id.clone()),
+            ClaudeRecord::Summary(summ) => summ.session_id.clone(),
             _ => None,
         })
         .unwrap_or_else(|| "unknown".to_string());
@@ -327,6 +343,129 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
 
             ClaudeRecord::FileHistorySnapshot(_snapshot) => {
                 // Skip file snapshots for now (file system events)
+            }
+
+            ClaudeRecord::System(sys_record) => {
+                let timestamp = parse_timestamp(&sys_record.timestamp);
+                let raw_value = serde_json::to_value(&sys_record).ok();
+                let base_id = &sys_record.uuid;
+                let stream_id = determine_stream_id(sys_record.is_sidechain, &None);
+
+                // System records with subtype "local_command" are slash commands
+                if sys_record.subtype == "local_command"
+                    && let Some(content) = &sys_record.content
+                {
+                    // Parse content as slash command (format: "/command args")
+                    let (name, args) = if let Some(space_idx) = content.find(' ') {
+                        (
+                            content[..space_idx].to_string(),
+                            Some(content[space_idx + 1..].to_string()),
+                        )
+                    } else {
+                        (content.clone(), None)
+                    };
+
+                    builder.build_and_push(
+                        &mut events,
+                        base_id,
+                        SemanticSuffix::SlashCommand,
+                        timestamp,
+                        EventPayload::SlashCommand(SlashCommandPayload { name, args }),
+                        raw_value,
+                        stream_id,
+                    );
+                }
+                // Other system subtypes are skipped for now
+            }
+
+            ClaudeRecord::Progress(prog_record) => {
+                let timestamp = parse_timestamp(&prog_record.timestamp);
+                let raw_value = serde_json::to_value(&prog_record).ok();
+                let base_id = &prog_record.uuid;
+                let stream_id =
+                    determine_stream_id(prog_record.is_sidechain, &prog_record.agent_id);
+
+                // Only emit Notification for hook_progress (for debugging)
+                // agent_progress is handled by separate subagent files
+                // bash_progress, mcp_progress are covered by ToolCall/ToolResult
+                if let ProgressData::HookProgress {
+                    hook_event,
+                    hook_name,
+                    command,
+                } = &prog_record.data
+                {
+                    let text = format!(
+                        "Hook: {} ({})",
+                        hook_name.as_deref().unwrap_or("unknown"),
+                        hook_event
+                    );
+                    let level = if command.is_some() {
+                        Some("info".to_string())
+                    } else {
+                        Some("debug".to_string())
+                    };
+
+                    builder.build_and_push(
+                        &mut events,
+                        base_id,
+                        SemanticSuffix::Notification,
+                        timestamp,
+                        EventPayload::Notification(NotificationPayload { text, level }),
+                        raw_value,
+                        stream_id,
+                    );
+                }
+                // Other progress types (agent_progress, bash_progress, mcp_progress) are skipped
+            }
+
+            ClaudeRecord::QueueOperation(queue_record) => {
+                let timestamp = parse_timestamp(&queue_record.timestamp);
+                let raw_value = serde_json::to_value(&queue_record).ok();
+                let base_id = generate_record_uuid(
+                    &queue_record.session_id,
+                    &queue_record.timestamp,
+                    "queue",
+                );
+                let stream_id = StreamId::Main;
+
+                builder.build_and_push(
+                    &mut events,
+                    &base_id,
+                    SemanticSuffix::QueueOperation,
+                    timestamp,
+                    EventPayload::QueueOperation(QueueOperationPayload {
+                        operation: queue_record.operation.clone(),
+                        content: queue_record.content.clone(),
+                        task_id: queue_record.task_id.clone(),
+                    }),
+                    raw_value,
+                    stream_id,
+                );
+            }
+
+            ClaudeRecord::Summary(summ_record) => {
+                // Summary records may not have timestamp, use current time as fallback
+                let timestamp = summ_record
+                    .timestamp
+                    .as_ref()
+                    .map(|ts| parse_timestamp(ts))
+                    .unwrap_or_else(chrono::Utc::now);
+                let raw_value = serde_json::to_value(&summ_record).ok();
+                let base_id = summ_record.leaf_uuid.as_deref().unwrap_or("summary");
+                let stream_id = StreamId::Main;
+
+                builder.build_and_push(
+                    &mut events,
+                    base_id,
+                    SemanticSuffix::Summary,
+                    timestamp,
+                    EventPayload::Summary(SummaryPayload {
+                        summary: summ_record.summary.clone(),
+                        leaf_uuid: summ_record.leaf_uuid.clone(),
+                    }),
+                    raw_value,
+                    stream_id,
+                );
             }
 
             ClaudeRecord::Unknown => {

@@ -41,6 +41,10 @@ pub fn filter_events(events: &[AgentEvent], filters: EventFilters) -> Vec<AgentE
                     EventPayload::SlashCommand(_) => {
                         pattern_lower == "slashcommand" || pattern_lower == "command"
                     }
+                    EventPayload::QueueOperation(_) => {
+                        pattern_lower == "queueoperation" || pattern_lower == "queue"
+                    }
+                    EventPayload::Summary(_) => pattern_lower == "summary",
                 }
             })
         });
@@ -68,6 +72,10 @@ pub fn filter_events(events: &[AgentEvent], filters: EventFilters) -> Vec<AgentE
                     EventPayload::SlashCommand(_) => {
                         pattern_lower == "slashcommand" || pattern_lower == "command"
                     }
+                    EventPayload::QueueOperation(_) => {
+                        pattern_lower == "queueoperation" || pattern_lower == "queue"
+                    }
+                    EventPayload::Summary(_) => pattern_lower == "summary",
                 }
             })
         });

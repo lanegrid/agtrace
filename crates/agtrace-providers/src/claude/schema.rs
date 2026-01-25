@@ -8,6 +8,10 @@ pub(crate) enum ClaudeRecord {
     FileHistorySnapshot(FileHistorySnapshotRecord),
     User(UserRecord),
     Assistant(AssistantRecord),
+    System(SystemRecord),
+    Progress(ProgressRecord),
+    QueueOperation(QueueOperationRecord),
+    Summary(SummaryRecord),
     #[serde(other)]
     Unknown,
 }
@@ -284,6 +288,94 @@ pub(crate) enum AssistantContent {
     },
     #[serde(other)]
     Unknown,
+}
+
+/// System record (e.g., slash command execution logs)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SystemRecord {
+    pub uuid: String,
+    #[serde(default)]
+    pub parent_uuid: Option<String>,
+    pub session_id: String,
+    pub timestamp: String,
+    pub subtype: String,
+    #[serde(default)]
+    pub content: Option<String>,
+    #[serde(default)]
+    pub level: Option<String>,
+    #[serde(default)]
+    pub is_sidechain: bool,
+    #[serde(default)]
+    pub is_meta: bool,
+}
+
+/// Progress record (subagent progress, hook progress, etc.)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProgressRecord {
+    pub uuid: String,
+    #[serde(default)]
+    pub parent_uuid: Option<String>,
+    pub session_id: String,
+    pub timestamp: String,
+    pub data: ProgressData,
+    #[serde(default)]
+    pub tool_use_id: Option<String>,
+    #[serde(default)]
+    pub parent_tool_use_id: Option<String>,
+    #[serde(default)]
+    pub is_sidechain: bool,
+    #[serde(default)]
+    pub agent_id: Option<String>,
+}
+
+/// Progress data variants
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ProgressData {
+    AgentProgress {
+        #[serde(default)]
+        agent_id: Option<String>,
+        #[serde(default)]
+        status: Option<String>,
+    },
+    HookProgress {
+        hook_event: String,
+        #[serde(default)]
+        hook_name: Option<String>,
+        #[serde(default)]
+        command: Option<String>,
+    },
+    #[serde(other)]
+    Other,
+}
+
+/// Queue operation record (background task queue)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct QueueOperationRecord {
+    pub operation: String,
+    pub timestamp: String,
+    pub session_id: String,
+    #[serde(default)]
+    pub content: Option<String>,
+    #[serde(default)]
+    pub task_id: Option<String>,
+}
+
+/// Summary record
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SummaryRecord {
+    pub summary: String,
+    #[serde(default)]
+    pub leaf_uuid: Option<String>,
+    #[serde(default)]
+    pub session_id: Option<String>,
+    #[serde(default)]
+    pub timestamp: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
