@@ -1,31 +1,21 @@
 use serde::Serialize;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ViewMode {
     Minimal,
+    #[default]
     Compact,
     Standard,
     Verbose,
 }
 
-impl Default for ViewMode {
-    fn default() -> Self {
-        Self::Compact
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OutputFormat {
+    #[default]
     Text,
     Json,
-}
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        Self::Text
-    }
 }
 
 impl From<crate::args::OutputFormat> for OutputFormat {
