@@ -14,8 +14,8 @@ use std::time::Duration;
 
 struct StreamContext {
     provider: Arc<ProviderAdapter>,
-    file_states: HashMap<PathBuf, usize>,
-    all_events: Vec<AgentEvent>,
+    /// Events per file, preserving file-internal order
+    file_events: HashMap<PathBuf, Vec<AgentEvent>>,
     /// Assembled sessions (main + child streams)
     sessions: Vec<AgentSession>,
 }
@@ -24,52 +24,55 @@ impl StreamContext {
     fn new(provider: Arc<ProviderAdapter>) -> Self {
         Self {
             provider,
-            file_states: HashMap::new(),
-            all_events: Vec::new(),
+            file_events: HashMap::new(),
             sessions: Vec::new(),
         }
     }
 
     fn load_all_events(&mut self, session_files: &[PathBuf]) -> Result<Vec<AgentEvent>> {
-        let mut events = Vec::new();
-
         for path in session_files {
-            let file_events = Self::load_file(path, &self.provider)?;
-            self.file_states.insert(path.clone(), file_events.len());
-            events.extend(file_events);
+            let events = Self::load_file(path, &self.provider)?;
+            self.file_events.insert(path.clone(), events);
         }
 
-        events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        let all_events = self.merge_all_events();
+        self.sessions = assemble_sessions(&all_events);
 
-        self.all_events = events.clone();
-        self.sessions = assemble_sessions(&self.all_events);
-
-        Ok(events)
+        Ok(all_events)
     }
 
     fn handle_change(&mut self, path: &Path) -> Result<Vec<AgentEvent>> {
         let all_file_events = Self::load_file(path, &self.provider)?;
-        let last_count = *self.file_states.get(path).unwrap_or(&0);
+        let last_count = self.file_events.get(path).map(|e| e.len()).unwrap_or(0);
 
-        if all_file_events.len() < last_count {
-            self.file_states
-                .insert(path.to_path_buf(), all_file_events.len());
-            self.all_events = all_file_events.clone();
-            self.sessions = assemble_sessions(&self.all_events);
-            return Ok(all_file_events);
-        }
+        // Determine new events for the return value
+        let new_events: Vec<AgentEvent> = if all_file_events.len() >= last_count {
+            all_file_events.iter().skip(last_count).cloned().collect()
+        } else {
+            // File shrunk (e.g., log rotation) - treat all events as new
+            all_file_events.clone()
+        };
 
-        let new_events: Vec<AgentEvent> = all_file_events.into_iter().skip(last_count).collect();
+        // Replace the entire file's events to preserve correct ordering
+        // This fixes the bug where extend + sort would break event ordering
+        // for events with identical timestamps (e.g., ToolCall before ToolResult)
+        self.file_events.insert(path.to_path_buf(), all_file_events);
 
-        self.file_states
-            .insert(path.to_path_buf(), last_count + new_events.len());
-
-        self.all_events.extend(new_events.clone());
-        self.all_events
-            .sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-        self.sessions = assemble_sessions(&self.all_events);
+        // Rebuild all_events from all files and reassemble sessions
+        let all_events = self.merge_all_events();
+        self.sessions = assemble_sessions(&all_events);
 
         Ok(new_events)
+    }
+
+    /// Merge events from all files, sorting by timestamp while preserving
+    /// file-internal order for events with identical timestamps
+    fn merge_all_events(&self) -> Vec<AgentEvent> {
+        let mut all_events: Vec<AgentEvent> =
+            self.file_events.values().flatten().cloned().collect();
+        // Stable sort preserves file-internal order for same-timestamp events
+        all_events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        all_events
     }
 
     fn load_file(path: &Path, provider: &Arc<ProviderAdapter>) -> Result<Vec<AgentEvent>> {
