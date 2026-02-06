@@ -427,10 +427,21 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                     }
 
                     "stop_hook_summary" => {
-                        let text = sys_record
-                            .content
-                            .clone()
-                            .unwrap_or_else(|| "Hook stopped execution".to_string());
+                        let hook_count = sys_record.hook_count.unwrap_or(0);
+                        let commands: Vec<String> = sys_record
+                            .hook_infos
+                            .as_ref()
+                            .map(|infos| infos.iter().filter_map(|h| h.command.clone()).collect())
+                            .unwrap_or_default();
+                        let text = if commands.is_empty() {
+                            format!("Stop hooks executed (count: {})", hook_count)
+                        } else {
+                            format!(
+                                "Stop hooks executed (count: {}): {}",
+                                hook_count,
+                                commands.join(", ")
+                            )
+                        };
                         builder.build_and_push(
                             &mut events,
                             base_id,

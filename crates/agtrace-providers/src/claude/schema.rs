@@ -327,6 +327,22 @@ pub(crate) struct SystemRecord {
     /// Compaction metadata (subtype: "compact_boundary")
     #[serde(default)]
     pub compact_metadata: Option<CompactMetadata>,
+    /// Number of hooks executed (subtype: "stop_hook_summary")
+    #[serde(default)]
+    pub hook_count: Option<u32>,
+    /// Hook execution details (subtype: "stop_hook_summary")
+    #[serde(default)]
+    pub hook_infos: Option<Vec<HookInfo>>,
+    /// Whether hooks prevented continuation (subtype: "stop_hook_summary")
+    #[serde(default)]
+    pub prevented_continuation: bool,
+}
+
+/// Hook execution info for stop_hook_summary
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub(crate) struct HookInfo {
+    #[serde(default)]
+    pub command: Option<String>,
 }
 
 /// Progress record (subagent progress, hook progress, etc.)
