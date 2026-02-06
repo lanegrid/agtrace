@@ -12,6 +12,7 @@ pub(crate) enum ClaudeRecord {
     Progress(ProgressRecord),
     QueueOperation(QueueOperationRecord),
     Summary(SummaryRecord),
+    PrLink(PrLinkRecord),
     #[serde(other)]
     Unknown,
 }
@@ -58,6 +59,15 @@ pub(crate) struct UserRecord {
     /// Subagent execution result (contains agentId for sidechain linking)
     #[serde(default, skip_serializing_if = "skip_empty_tool_use_result")]
     pub tool_use_result: Option<ToolUseResult>,
+    /// Session slug (human-readable session name)
+    #[serde(default)]
+    pub slug: Option<String>,
+    /// Whether this is a compaction summary message
+    #[serde(default)]
+    pub is_compact_summary: bool,
+    /// Plan content text (from plan mode)
+    #[serde(default)]
+    pub plan_content: Option<String>,
 }
 
 /// Subagent execution result metadata
@@ -241,6 +251,9 @@ pub(crate) struct AssistantRecord {
     pub version: Option<String>,
     #[serde(default)]
     pub request_id: Option<String>,
+    /// Session slug (human-readable session name)
+    #[serde(default)]
+    pub slug: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -290,7 +303,7 @@ pub(crate) enum AssistantContent {
     Unknown,
 }
 
-/// System record (e.g., slash command execution logs)
+/// System record (e.g., slash command execution logs, turn duration, compaction)
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SystemRecord {
@@ -308,6 +321,12 @@ pub(crate) struct SystemRecord {
     pub is_sidechain: bool,
     #[serde(default)]
     pub is_meta: bool,
+    /// Turn duration in milliseconds (subtype: "turn_duration")
+    #[serde(default)]
+    pub duration_ms: Option<u64>,
+    /// Compaction metadata (subtype: "compact_boundary")
+    #[serde(default)]
+    pub compact_metadata: Option<CompactMetadata>,
 }
 
 /// Progress record (subagent progress, hook progress, etc.)
@@ -381,6 +400,27 @@ pub(crate) struct SummaryRecord {
     pub timestamp: Option<String>,
 }
 
+/// Compaction metadata for compact_boundary system events
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CompactMetadata {
+    #[serde(default)]
+    pub trigger: Option<String>,
+    #[serde(default)]
+    pub pre_tokens: Option<u64>,
+}
+
+/// PR link record (associates a pull request with a session)
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PrLinkRecord {
+    pub session_id: String,
+    pub timestamp: String,
+    pub pr_number: u64,
+    pub pr_url: String,
+    pub pr_repository: String,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct TokenUsage {
     pub input_tokens: u32,
@@ -389,4 +429,16 @@ pub(crate) struct TokenUsage {
     pub cache_creation_input_tokens: Option<u32>,
     #[serde(default)]
     pub cache_read_input_tokens: Option<u32>,
+    /// Detailed cache creation breakdown by TTL tier
+    #[serde(default)]
+    pub cache_creation: Option<CacheCreationDetail>,
+}
+
+/// Detailed cache creation token breakdown by TTL tier
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub(crate) struct CacheCreationDetail {
+    #[serde(default)]
+    pub ephemeral_5m_input_tokens: Option<u32>,
+    #[serde(default)]
+    pub ephemeral_1h_input_tokens: Option<u32>,
 }
