@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2026-02-07
+
+### Bug Fixes
+
+- *(runtime)* Preserve event ordering in watch mode to fix stale recent steps ([1631049](https://github.com/lanegrid/agtrace/commit/1631049))
+
+
+### Features
+
+- *(providers)* Update Claude Code log format for v2.1.33+ compatibility ([6d51035](https://github.com/lanegrid/agtrace/commit/6d51035))
+  - Add `pr-link` record type for PR metadata linking
+  - Add system subtypes: `turn_duration`, `compact_boundary`, `stop_hook_summary`
+  - Register new tools: `TaskCreate`, `TaskUpdate`, `TaskGet`, `TaskList`, `TaskStop`, `TaskOutput`, `EnterPlanMode`
+  - Add `cache_creation` detail (ephemeral TTL breakdown) to token usage schema
+  - Add `slug`, `isCompactSummary`, `planContent` fields to user/assistant records
+
+
+### Refactor
+
+- Use derive(Default) for enum default implementations ([a56afa2](https://github.com/lanegrid/agtrace/commit/a56afa2))
+
+
 ## [0.7.0] - 2026-01-25
 
 ### Bug Fixes
