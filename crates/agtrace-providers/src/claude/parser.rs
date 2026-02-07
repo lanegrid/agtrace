@@ -99,6 +99,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             ClaudeRecord::Progress(prog) => Some(prog.session_id.clone()),
             ClaudeRecord::QueueOperation(queue) => Some(queue.session_id.clone()),
             ClaudeRecord::Summary(summ) => summ.session_id.clone(),
+            ClaudeRecord::PrLink(pr) => Some(pr.session_id.clone()),
             _ => None,
         })
         .unwrap_or_else(|| "unknown".to_string());
@@ -351,31 +352,114 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 let base_id = &sys_record.uuid;
                 let stream_id = determine_stream_id(sys_record.is_sidechain, &None);
 
-                // System records with subtype "local_command" are slash commands
-                if sys_record.subtype == "local_command"
-                    && let Some(content) = &sys_record.content
-                {
-                    // Parse content as slash command (format: "/command args")
-                    let (name, args) = if let Some(space_idx) = content.find(' ') {
-                        (
-                            content[..space_idx].to_string(),
-                            Some(content[space_idx + 1..].to_string()),
-                        )
-                    } else {
-                        (content.clone(), None)
-                    };
+                match sys_record.subtype.as_str() {
+                    "local_command" => {
+                        if let Some(content) = &sys_record.content {
+                            // Parse content as slash command (format: "/command args")
+                            let (name, args) = if let Some(space_idx) = content.find(' ') {
+                                (
+                                    content[..space_idx].to_string(),
+                                    Some(content[space_idx + 1..].to_string()),
+                                )
+                            } else {
+                                (content.clone(), None)
+                            };
 
-                    builder.build_and_push(
-                        &mut events,
-                        base_id,
-                        SemanticSuffix::SlashCommand,
-                        timestamp,
-                        EventPayload::SlashCommand(SlashCommandPayload { name, args }),
-                        raw_value,
-                        stream_id,
-                    );
+                            builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::SlashCommand,
+                                timestamp,
+                                EventPayload::SlashCommand(SlashCommandPayload { name, args }),
+                                raw_value,
+                                stream_id,
+                            );
+                        }
+                    }
+
+                    "turn_duration" => {
+                        if let Some(duration_ms) = sys_record.duration_ms {
+                            builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::Notification,
+                                timestamp,
+                                EventPayload::Notification(NotificationPayload {
+                                    text: format!("Turn duration: {}ms", duration_ms),
+                                    level: Some("debug".to_string()),
+                                }),
+                                raw_value,
+                                stream_id,
+                            );
+                        }
+                    }
+
+                    "compact_boundary" => {
+                        let pre_tokens = sys_record
+                            .compact_metadata
+                            .as_ref()
+                            .and_then(|m| m.pre_tokens);
+                        let trigger = sys_record
+                            .compact_metadata
+                            .as_ref()
+                            .and_then(|m| m.trigger.clone())
+                            .unwrap_or_else(|| "unknown".to_string());
+                        let text = match pre_tokens {
+                            Some(tokens) => format!(
+                                "Context compaction (trigger: {}, pre_tokens: {})",
+                                trigger, tokens
+                            ),
+                            None => format!("Context compaction (trigger: {})", trigger),
+                        };
+
+                        builder.build_and_push(
+                            &mut events,
+                            base_id,
+                            SemanticSuffix::Notification,
+                            timestamp,
+                            EventPayload::Notification(NotificationPayload {
+                                text,
+                                level: Some("info".to_string()),
+                            }),
+                            raw_value,
+                            stream_id,
+                        );
+                    }
+
+                    "stop_hook_summary" => {
+                        let hook_count = sys_record.hook_count.unwrap_or(0);
+                        let commands: Vec<String> = sys_record
+                            .hook_infos
+                            .as_ref()
+                            .map(|infos| infos.iter().filter_map(|h| h.command.clone()).collect())
+                            .unwrap_or_default();
+                        let text = if commands.is_empty() {
+                            format!("Stop hooks executed (count: {})", hook_count)
+                        } else {
+                            format!(
+                                "Stop hooks executed (count: {}): {}",
+                                hook_count,
+                                commands.join(", ")
+                            )
+                        };
+                        builder.build_and_push(
+                            &mut events,
+                            base_id,
+                            SemanticSuffix::Notification,
+                            timestamp,
+                            EventPayload::Notification(NotificationPayload {
+                                text,
+                                level: Some("info".to_string()),
+                            }),
+                            raw_value,
+                            stream_id,
+                        );
+                    }
+
+                    _ => {
+                        // Skip other system subtypes
+                    }
                 }
-                // Other system subtypes are skipped for now
             }
 
             ClaudeRecord::Progress(prog_record) => {
@@ -468,6 +552,26 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 );
             }
 
+            ClaudeRecord::PrLink(pr_record) => {
+                let timestamp = parse_timestamp(&pr_record.timestamp);
+                let raw_value = serde_json::to_value(&pr_record).ok();
+                let base_id =
+                    generate_record_uuid(&pr_record.session_id, &pr_record.timestamp, "pr-link");
+
+                builder.build_and_push(
+                    &mut events,
+                    &base_id,
+                    SemanticSuffix::Notification,
+                    timestamp,
+                    EventPayload::Notification(NotificationPayload {
+                        text: format!("PR #{} linked: {}", pr_record.pr_number, pr_record.pr_url),
+                        level: Some("info".to_string()),
+                    }),
+                    raw_value,
+                    StreamId::Main,
+                );
+            }
+
             ClaudeRecord::Unknown => {
                 // Skip unknown record types
             }
@@ -520,6 +624,9 @@ mod tests {
             version: None,
             thinking_metadata: None,
             tool_use_result: None,
+            slug: None,
+            is_compact_summary: false,
+            plan_content: None,
         })];
 
         let events = normalize_claude_session(records);
@@ -569,6 +676,7 @@ mod tests {
             user_type: None,
             version: None,
             request_id: None,
+            slug: None,
         })];
 
         let events = normalize_claude_session(records);
@@ -632,6 +740,7 @@ mod tests {
             user_type: None,
             version: None,
             request_id: None,
+            slug: None,
         })];
 
         let events = normalize_claude_session(records);

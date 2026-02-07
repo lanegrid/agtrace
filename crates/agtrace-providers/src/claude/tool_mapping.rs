@@ -25,7 +25,14 @@ const CLAUDE_TOOLS: &[ToolSpec] = &[
     ToolSpec::new("WebSearch", ToolOrigin::System, ToolKind::Search),
     // Plan tools
     ToolSpec::new("Task", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("TaskCreate", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("TaskUpdate", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("TaskGet", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("TaskList", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("TaskStop", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("TaskOutput", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("TodoWrite", ToolOrigin::System, ToolKind::Plan),
+    ToolSpec::new("EnterPlanMode", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("ExitPlanMode", ToolOrigin::System, ToolKind::Plan),
 ];
 
