@@ -7,6 +7,15 @@ description: Investigate AI agent provider tool schemas (Claude Code, Codex, Gem
 
 This skill provides deep knowledge of how agtrace normalizes diverse AI agent log formats into unified domain types. Use this when working with provider implementations, tool normalization, or understanding the schema-on-read architecture.
 
+## Quick Reference
+
+```bash
+mise run test:providers          # Run provider tests
+mise run test:types              # Run types tests
+mise run lab:grep -- "pattern" --json --limit 5  # Search real event data
+mise run verify                  # Full check (fmt + clippy + test + build)
+```
+
 ## Three-Tier Provider Architecture
 
 ### Tier 1: Trait-Based Adapter Pattern
@@ -14,9 +23,9 @@ This skill provides deep knowledge of how agtrace normalizes diverse AI agent lo
 Every provider implements three core traits bundled in a `ProviderAdapter`:
 
 ```rust
-LogDiscovery  → File discovery and session location
-SessionParser → Raw log parsing to AgentEvent timeline
-ToolMapper    → Tool call normalization and classification
+LogDiscovery  -> File discovery and session location
+SessionParser -> Raw log parsing to AgentEvent timeline
+ToolMapper    -> Tool call normalization and classification
 ```
 
 **Key Files:**
@@ -56,11 +65,9 @@ All providers normalize to common types in `agtrace-types`:
 
 ## Schema-on-Read Architecture
 
-The architecture enforces Schema-on-Read where:
-
 1. **Raw logs are source of truth** - Original files never modified
 2. **Lazy parsing** - Files parsed on demand
-3. **Type-safe conversion** - Raw JSON → Provider Args → Domain ToolCallPayload
+3. **Type-safe conversion** - Raw JSON -> Provider Args -> Domain ToolCallPayload
 
 ### Provider-Specific Args Pattern
 
@@ -90,14 +97,14 @@ impl ClaudeReadArgs {
 
 ```
 Raw JSON Arguments
-    ↓
+    |
 Provider-specific Args deserialization (strict)
-    ↓
-Optional: Semantic reclassification (e.g., shell → Read/Write/Search)
-    ↓
+    |
+Optional: Semantic reclassification (e.g., shell -> Read/Write/Search)
+    |
 Convert to typed ToolCallPayload variant
-    ↓
-If parse fails → Generic variant (safe fallback)
+    |
+If parse fails -> Generic variant (safe fallback)
 ```
 
 ### Semantic Reclassification Example
@@ -146,7 +153,7 @@ The `EventBuilder` in `builder.rs` provides deterministic event construction:
 pub struct EventBuilder {
     session_id: Uuid,
     stream_tips: HashMap<StreamId, Uuid>,  // Per-stream parent tracking
-    tool_map: HashMap<String, Uuid>,        // Provider ID → UUID mapping
+    tool_map: HashMap<String, Uuid>,        // Provider ID -> UUID mapping
 }
 ```
 
@@ -157,76 +164,12 @@ Key features:
 
 ## Adding a New Provider
 
-1. **Create provider module**: `crates/agtrace-providers/src/<provider_name>/`
-
-2. **Implement Discovery**:
-```rust
-pub struct NewProviderDiscovery;
-
-impl LogDiscovery for NewProviderDiscovery {
-    fn id(&self) -> &'static str { "new_provider" }
-    fn probe(&self, path: &Path) -> ProbeResult { ... }
-    fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>> { ... }
-}
-```
-
-3. **Implement Parser**:
-```rust
-pub struct NewProviderParser;
-
-impl SessionParser for NewProviderParser {
-    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> { ... }
-    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> { ... }
-}
-```
-
-4. **Implement ToolMapper**:
-```rust
-pub struct NewProviderToolMapper;
-
-impl ToolMapper for NewProviderToolMapper {
-    fn classify(&self, tool_name: &str) -> (ToolOrigin, ToolKind) { ... }
-    fn normalize_call(&self, name: &str, args: Value, call_id: Option<String>)
-        -> ToolCallPayload { ... }
-    fn summarize(&self, kind: ToolKind, args: &Value) -> String { ... }
-}
-```
-
-5. **Register in registry.rs**:
-```rust
-pub fn create_adapter(name: &str) -> Result<ProviderAdapter> {
-    match name {
-        "new_provider" => Ok(ProviderAdapter::new(
-            Box::new(crate::new_provider::NewProviderDiscovery),
-            Box::new(crate::new_provider::NewProviderParser),
-            Box::new(crate::new_provider::NewProviderToolMapper),
-        )),
-        // ...
-    }
-}
-```
-
-## Tool Classification Pattern
-
-### Provider-Specific Classification
-
-Each provider defines in `tool_mapping.rs`:
-```rust
-fn classify_tool(tool_name: &str) -> Option<(ToolOrigin, ToolKind)>
-```
-
-Returns `Some` if recognized, `None` for fallback.
-
-### Common Heuristic Fallback
-
-When provider doesn't recognize a tool (`tool_analyzer.rs`):
-```rust
-pub fn classify_common(tool_name: &str) -> (ToolOrigin, ToolKind) {
-    // name.contains("search") → ToolKind::Search
-    // name.contains("read") → ToolKind::Read
-    // name.starts_with("mcp__") → ToolOrigin::Mcp
-}
-```
+1. Create provider module: `crates/agtrace-providers/src/<provider_name>/`
+2. Implement `LogDiscovery`, `SessionParser`, `ToolMapper` traits
+3. Register in `registry.rs`
+4. Run `mise run test:providers` to validate
+5. Run `mise run lab:grep -- "tool_name" --json --limit 5` to verify against real data
+6. Run `mise run verify` before submitting PR
 
 ## Key Architectural Decisions
 
@@ -238,31 +181,19 @@ pub fn classify_common(tool_name: &str) -> (ToolOrigin, ToolKind) {
 | Event IDs | Deterministic v5 UUIDs | Reproducible sessions |
 | Multi-Stream | Separate parent chains per StreamId | Independent flows |
 
-## Testing Patterns
+## Testing
+
+```bash
+mise run test:providers    # Run all provider tests
+mise run test:types        # Run domain type tests
+mise run test              # Run full test suite
+```
 
 Each provider has tests for:
 - Discovery: probe, scan, session extraction
 - Parser: record parsing, content blocks
 - Mapper: tool normalization per tool type
 - Edge cases: malformed data, unknown tools
-
-```rust
-#[test]
-fn test_normalize_read() {
-    let payload = normalize_claude_tool_call(
-        "Read".to_string(),
-        serde_json::json!({"file_path": "src/main.rs"}),
-        Some("call_123".to_string()),
-    );
-
-    match payload {
-        ToolCallPayload::FileRead { arguments, .. } => {
-            assert_eq!(arguments.file_path, Some("src/main.rs".to_string()));
-        }
-        _ => panic!("Expected FileRead"),
-    }
-}
-```
 
 ## When to Use This Skill
 
@@ -273,7 +204,6 @@ This skill should be activated when:
 - Debugging provider-specific parsing issues
 - Designing new tool classification strategies
 - Working with MCP tool handling
-- Understanding the schema-on-read architecture
 
 ## Key Files Reference
 

@@ -35,6 +35,16 @@ run = "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo tes
 description = "Accept snapshot changes and show diff"
 run = "cargo insta accept && git diff"
 
+# --- Provider ---
+
+["test:providers"]
+description = "Run provider tests only"
+run = "cargo test -p agtrace-providers"
+
+["test:types"]
+description = "Run types tests only"
+run = "cargo test -p agtrace-types"
+
 # --- Lab ---
 
 ["lab:grep"]
