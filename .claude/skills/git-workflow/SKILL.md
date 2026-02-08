@@ -46,6 +46,7 @@ mise run git:sync              # Sync current branch after base PR merge
 4. Push     -> git push -u origin feature/your-feature
 5. PR       -> gh pr create -a "@me" -t "feat: ..."
 6. Open     -> mise run git:open-pr <pr#>  (CI wait -> browser -> merge watch -> cleanup)
+               ⚠ Run ONCE after final push. If CI fails, stop watcher -> fix -> push -> relaunch.
 7. Cleanup  -> (auto: merge detected -> git:cleanup runs)
 ```
 
@@ -59,10 +60,16 @@ Claude: [Bash(run_in_background=true)] mise run git:open-pr -- <pr#>
 
 3 phases run automatically:
 1. **CI wait** — `gh pr checks --watch` waits for CI to pass
-2. **Open in browser** — Opens PR page in default browser
+2. **Open in browser** — Uses `scripts/open-url.local.sh` if present (gitignored), else default browser
 3. **Merge watch** — Polls PR state every 30s
    - MERGED -> macOS notification + `mise run git:cleanup` -> exit
    - CLOSED -> message -> exit
+
+**Singleton rule — only ONE watcher per PR:**
+- `git:open-pr` must run **only once** per PR — after the final push, when no more changes are expected.
+- If CI fails and you need to push a fix: **stop the existing watcher** with `TaskStop` first, fix and push, then launch a new `git:open-pr`.
+- Never have multiple `git:open-pr` background tasks running for the same PR.
+- Use `--no-wait` to skip CI wait phase when you just want the merge watcher.
 
 **Claude behavior**: When background task output arrives via `<system-reminder>`, Claude MUST:
 1. Read the output file with `TaskOutput` or `Read`

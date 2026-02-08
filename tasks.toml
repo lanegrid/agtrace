@@ -155,8 +155,14 @@ if [[ "$WAIT_CI" == true && -n "$PR_NUMBER" ]]; then
 fi
 
 # Phase 2: Open in browser
+# Use local hook if available (gitignored), otherwise default browser
 echo "[git:open-pr] Phase 2/3: Opening PR in browser..."
-gh pr view "$PR_NUMBER" --web
+OPEN_HOOK="./scripts/open-url.local.sh"
+if [[ -x "$OPEN_HOOK" ]]; then
+  "$OPEN_HOOK" "$URL"
+else
+  gh pr view "$PR_NUMBER" --web
+fi
 
 # Phase 3: Watch for merge
 if [[ -n "$PR_NUMBER" ]]; then
