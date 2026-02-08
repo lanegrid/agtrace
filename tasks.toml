@@ -45,11 +45,174 @@ run = "cargo test -p agtrace-providers"
 description = "Run types tests only"
 run = "cargo test -p agtrace-types"
 
+# --- Database ---
+
+["db:init"]
+description = "Initialize workspace: detect providers, create DB, scan logs"
+run = "cargo run --release -- init"
+
+["db:update"]
+description = "Scan for new sessions and add to the index"
+run = "cargo run --release -- --all-worktrees index update"
+
+["db:rebuild"]
+description = "Clear and rebuild the entire index from scratch"
+run = "cargo run --release -- --all-worktrees index rebuild"
+
+["db:info"]
+description = "Show database location, size, and index statistics"
+run = "cargo run --release -- index info"
+
+["db:doctor"]
+description = "Scan all log files and report parsing errors"
+run = "cargo run --release -- doctor run"
+
+# --- Sessions ---
+
+[sessions]
+description = "List recent sessions across worktrees (mise run sessions -- --limit 20)"
+run = "cargo run --release -- --all-worktrees sessions"
+
+[session]
+description = "Show detailed session analysis (mise run session -- <session-id>)"
+run = "cargo run --release -- session show"
+
 # --- Lab ---
 
 ["lab:grep"]
-description = "Search real event data (mise run lab:grep -- 'pattern' --json --limit 5)"
+description = "Search event payloads (mise run lab:grep -- 'pattern' [--json] [--limit N] [--type ToolCall] [--tool Read])"
 run = "cargo run --release -- lab grep"
+
+["lab:stats"]
+description = "Show tool usage statistics (mise run lab:stats -- [--limit N] [--provider claude_code])"
+run = "cargo run --release -- lab stats"
+
+["lab:export"]
+description = "Export session to file (mise run lab:export -- <session-id> [--export-format text] [--strategy clean])"
+run = "cargo run --release -- lab export"
+
+# --- Lab: Raw Data Exploration ---
+
+["lab:raw:ls"]
+description = "List Claude Code raw log files for current project"
+run = """
+#!/bin/bash
+set -euo pipefail
+CWD=$(pwd)
+DIR_NAME=$(echo "$CWD" | sed 's|/|-|g; s|\\.|-|g')
+LOG_DIR="$HOME/.claude/projects/$DIR_NAME"
+if [[ ! -d "$LOG_DIR" ]]; then
+  echo "No Claude Code logs found for: $CWD"
+  echo "Expected: $LOG_DIR"
+  exit 1
+fi
+echo "📁 $LOG_DIR"
+echo ""
+ls -lhtr "$LOG_DIR"/*.jsonl 2>/dev/null | awk '{print $6, $7, $8, $5, $9}' || echo "No .jsonl files found"
+"""
+
+["lab:raw:cat"]
+description = "View raw JSONL records (mise run lab:raw:cat -- <session-id-prefix|file-path> [lines=50])"
+run = """
+#!/bin/bash
+set -euo pipefail
+TARGET="${1:?Usage: mise run lab:raw:cat -- <session-id-prefix|file-path> [lines=50]}"
+LINES="${2:-50}"
+if [[ -f "$TARGET" ]]; then
+  FILE="$TARGET"
+else
+  CWD=$(pwd)
+  DIR_NAME=$(echo "$CWD" | sed 's|/|-|g; s|\\.|-|g')
+  LOG_DIR="$HOME/.claude/projects/$DIR_NAME"
+  FILE=$(ls "$LOG_DIR"/${TARGET}*.jsonl 2>/dev/null | head -1)
+  if [[ -z "$FILE" ]]; then
+    echo "No log file found matching: $TARGET"
+    echo "Searched in: $LOG_DIR"
+    exit 1
+  fi
+fi
+echo "📄 $(basename "$FILE")"
+echo ""
+head -n "$LINES" "$FILE" | jq .
+"""
+
+["lab:raw:latest"]
+description = "Show raw records from the most recent session (mise run lab:raw:latest -- [lines=30])"
+run = """
+#!/bin/bash
+set -euo pipefail
+LINES="${1:-30}"
+CWD=$(pwd)
+DIR_NAME=$(echo "$CWD" | sed 's|/|-|g; s|\\.|-|g')
+LOG_DIR="$HOME/.claude/projects/$DIR_NAME"
+FILE=$(ls -t "$LOG_DIR"/*.jsonl 2>/dev/null | head -1)
+if [[ -z "$FILE" ]]; then
+  echo "No Claude Code logs found in: $LOG_DIR"
+  exit 1
+fi
+echo "📄 Latest: $(basename "$FILE")"
+echo ""
+head -n "$LINES" "$FILE" | jq .
+"""
+
+["lab:raw:fields"]
+description = "Extract unique JSON field names by record type (schema investigation)"
+run = """
+#!/bin/bash
+set -euo pipefail
+TARGET="${1:-}"
+CWD=$(pwd)
+DIR_NAME=$(echo "$CWD" | sed 's|/|-|g; s|\\.|-|g')
+LOG_DIR="$HOME/.claude/projects/$DIR_NAME"
+if [[ -n "$TARGET" && -f "$TARGET" ]]; then
+  FILE="$TARGET"
+elif [[ -n "$TARGET" ]]; then
+  FILE=$(ls "$LOG_DIR"/${TARGET}*.jsonl 2>/dev/null | head -1)
+else
+  FILE=$(ls -t "$LOG_DIR"/*.jsonl 2>/dev/null | head -1)
+fi
+if [[ -z "$FILE" || ! -f "$FILE" ]]; then
+  echo "No log file found. Usage: mise run lab:raw:fields -- [session-id|file-path]"
+  exit 1
+fi
+echo "📄 Analyzing: $(basename "$FILE")"
+echo ""
+cat "$FILE" | jq -r '
+  (.type // "unknown") as $type |
+  keys | map(select(. != "type")) | sort | join(", ") |
+  "\\($type)\\t\\(.)"
+' 2>/dev/null | sort -u | awk -F'\\t' '
+  BEGIN { prev="" }
+  {
+    if ($1 != prev) {
+      if (prev != "") print ""
+      printf "=== %s ===\\n", $1
+      prev = $1
+    }
+    print "  " $2
+  }
+'
+"""
+
+["lab:raw:diff"]
+description = "Compare normalized AgentEvent vs raw data for a pattern (mise run lab:raw:diff -- <pattern> [limit=1])"
+run = """
+#!/bin/bash
+set -euo pipefail
+PATTERN="${1:?Usage: mise run lab:raw:diff -- <pattern> [limit=1]}"
+LIMIT="${2:-1}"
+cargo run --release -- lab grep "$PATTERN" --raw --limit "$LIMIT"
+"""
+
+# --- Convenience ---
+
+[watch]
+description = "Monitor live agent sessions in real-time TUI"
+run = "cargo run --release -- watch"
+
+[projects]
+description = "List all indexed projects"
+run = "cargo run --release -- project list"
 
 # --- Release ---
 #
