@@ -184,8 +184,13 @@ fn test_init_detects_providers_automatically() -> Result<()> {
     // Given: Fresh install with provider log directories present
     let world = TestWorld::builder().without_data_dir().build();
 
+    // Set HOME to temp_dir so auto-detect resolves ~/.claude/projects correctly
+    let home = world.temp_dir().to_string_lossy().to_string();
+    let world = world.with_env("HOME", home);
+
     // Create provider directories (simulating external provider installation)
-    let claude_logs = world.temp_dir().join(".claude");
+    // Auto-detect checks for ~/.claude/projects (the default log_root)
+    let claude_logs = world.temp_dir().join(".claude").join("projects");
     std::fs::create_dir_all(&claude_logs)?;
 
     // When: Run init (should auto-detect)
