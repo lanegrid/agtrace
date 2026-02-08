@@ -1,0 +1,184 @@
+# tasks.toml
+# Core project tasks - run with `mise run <task>`
+
+# --- Cargo ---
+
+[build]
+description = "Build the project (debug)"
+run = "cargo build"
+
+["build:release"]
+description = "Build the project (release)"
+run = "cargo build --release"
+
+[test]
+description = "Run all tests"
+run = "cargo test --workspace"
+
+[fmt]
+description = "Format code"
+run = "cargo fmt"
+
+["fmt:check"]
+description = "Check formatting"
+run = "cargo fmt --check"
+
+[clippy]
+description = "Run clippy linter"
+run = "cargo clippy --workspace -- -D warnings"
+
+[verify]
+description = "Run all checks (fmt + clippy + test + build)"
+run = "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && cargo build --release"
+
+["snapshot:accept"]
+description = "Accept snapshot changes and show diff"
+run = "cargo insta accept && git diff"
+
+# --- Lab ---
+
+["lab:grep"]
+description = "Search real event data (mise run lab:grep -- 'pattern' --json --limit 5)"
+run = "cargo run --release -- lab grep"
+
+# --- Release ---
+#
+# See `.claude/commands/release.md` for full release procedure.
+
+["release:dry-run"]
+description = "Dry-run release (mise run release:dry-run -- patch|minor|major)"
+run = "cargo release --workspace --no-verify"
+
+["release:execute"]
+description = "Execute release (mise run release:execute -- patch|minor|major)"
+run = "cargo release --workspace --execute"
+
+["release:changelog"]
+description = "Generate CHANGELOG for next release (mise run release:changelog -- patch|minor|major)"
+run = """
+#!/bin/bash
+set -euo pipefail
+RELEASE_LEVEL="${1:?Usage: mise run release:changelog -- patch|minor|major}"
+LAST_TAG=$(git describe --tags --abbrev=0)
+CURRENT_VERSION=${LAST_TAG#v}
+IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+case "$RELEASE_LEVEL" in
+  major) NEXT_VERSION="$((major + 1)).0.0" ;;
+  minor) NEXT_VERSION="${major}.$((minor + 1)).0" ;;
+  patch) NEXT_VERSION="${major}.${minor}.$((patch + 1))" ;;
+  *) echo "Invalid release level: $RELEASE_LEVEL" >&2; exit 1 ;;
+esac
+echo "Current: $CURRENT_VERSION -> Next: $NEXT_VERSION"
+git cliff ${LAST_TAG}..HEAD --unreleased --tag v${NEXT_VERSION} --prepend CHANGELOG.md
+echo "CHANGELOG.md updated. Review and commit."
+"""
+
+# --- Git Workflow (using gw CLI) ---
+#
+# Worktree-aware git workflow.
+# Do not use `git checkout main` — use `mise run git:home` instead.
+#
+# gw: cargo install git-workflow
+# https://crates.io/crates/git-workflow
+
+["git:home"]
+description = "Switch to home branch and sync with origin/main"
+run = "gw home"
+
+["git:new"]
+description = "Create new branch from origin/main (mise run git:new -- feature/name)"
+run = "gw new"
+
+["git:cleanup"]
+description = "Delete merged branch and return to home (mise run git:cleanup -- [branch])"
+run = "gw cleanup"
+
+["git:status"]
+description = "Show current git workflow state"
+run = "gw status"
+
+["git:pause"]
+description = "Pause work: WIP commit + return to home (mise run git:pause -- [message])"
+run = "gw pause"
+
+["git:abandon"]
+description = "Abandon changes and return to home"
+run = "gw abandon"
+
+["git:undo"]
+description = "Undo last commit (soft reset HEAD~1)"
+run = "gw undo"
+
+["git:sync"]
+description = "Sync current branch after base PR merge (update base to main, rebase, push)"
+run = "gw sync"
+
+["git:open-pr"]
+description = "CI wait -> open in browser -> watch merge -> cleanup (mise run git:open-pr -- <pr#> [--no-wait])"
+run = """
+#!/bin/bash
+set -euo pipefail
+WAIT_CI=true
+ARG=""
+for arg in "$@"; do
+  case "$arg" in
+    --no-wait) WAIT_CI=false ;;
+    *) ARG="$arg" ;;
+  esac
+done
+if [[ -z "$ARG" ]]; then
+  echo "Usage: mise run git:open-pr -- <pr-number-or-url> [--no-wait]" >&2
+  exit 1
+fi
+if [[ "$ARG" =~ ^[0-9]+$ ]]; then
+  PR_NUMBER="$ARG"
+  URL=$(gh pr view "$PR_NUMBER" --json url --jq '.url')
+else
+  URL="$ARG"
+  PR_NUMBER=$(echo "$URL" | grep -oE '[0-9]+$' || "")
+fi
+
+# Phase 1: Wait for CI
+if [[ "$WAIT_CI" == true && -n "$PR_NUMBER" ]]; then
+  echo "[git:open-pr] Phase 1/3: Waiting for CI checks on PR #${PR_NUMBER}..."
+  gh pr checks "$PR_NUMBER" --watch || echo "[git:open-pr] CI checks failed or timed out, opening anyway"
+fi
+
+# Phase 2: Open in browser
+echo "[git:open-pr] Phase 2/3: Opening PR in browser..."
+gh pr view "$PR_NUMBER" --web
+
+# Phase 3: Watch for merge
+if [[ -n "$PR_NUMBER" ]]; then
+  INTERVAL=30
+  echo "[git:open-pr] Phase 3/3: Watching PR #${PR_NUMBER} for merge (interval: ${INTERVAL}s)..."
+  while true; do
+    STATE=$(gh pr view "$PR_NUMBER" --json state --jq '.state' 2>/dev/null || echo "ERROR")
+    case "$STATE" in
+      MERGED)
+        echo ""
+        echo "========================================"
+        echo "[git:open-pr] PR #${PR_NUMBER} MERGED!"
+        echo "========================================"
+        if command -v osascript &>/dev/null; then
+          osascript -e 'display notification "PR #'"${PR_NUMBER}"' merged. Running cleanup..." with title "Git Workflow" sound name "Glass"'
+        fi
+        echo "[git:open-pr] Running: mise run git:cleanup"
+        mise run git:cleanup
+        exit 0
+        ;;
+      CLOSED)
+        echo "[git:open-pr] PR #${PR_NUMBER} was closed without merging"
+        exit 0
+        ;;
+      OPEN)
+        sleep "$INTERVAL"
+        ;;
+      ERROR)
+        echo "[git:open-pr] Failed to fetch PR status, retrying..."
+        sleep "$INTERVAL"
+        ;;
+    esac
+  done
+fi
+"""
