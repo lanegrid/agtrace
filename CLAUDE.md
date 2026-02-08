@@ -51,7 +51,6 @@ Detailed knowledge is separated into `.claude/skills/`. Loaded automatically or 
 |-------|---------|
 | `/git-workflow` | Git workflow, branch management, PR creation |
 | `/agtrace-provider-normalization` | Provider schema investigation and domain abstraction |
-| `/execplan` | Execution plan creation for complex features |
 | `/skill-creator` | Meta-skill for creating new skills |
 
 **Usage**: Type `/skill-name` in conversation, or auto-loaded when relevant.
@@ -123,7 +122,6 @@ Detailed knowledge is separated into `.claude/skills/`. Loaded automatically or 
 |-------|---------|
 | `/git-workflow` | Git workflow, branch management, PR creation |
 | `/agtrace-provider-normalization` | Provider schema investigation and domain abstraction |
-| `/execplan` | Execution plan creation for complex features |
 | `/skill-creator` | Meta-skill for creating new skills |
 
 **Usage**: Type `/skill-name` in conversation, or auto-loaded when relevant.
