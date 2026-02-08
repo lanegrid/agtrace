@@ -12,18 +12,9 @@ You are an expert at creating domain-specific skills for Claude Code. This meta-
 Every skill follows this structure:
 
 ```
-.agent/skills/<skill-name>/
+.claude/skills/<skill-name>/
 └── SKILL.md
 ```
-
-The `.claude/skills` directory is a symlink to `.agent/skills`:
-
-```
-.agent/skills/           ← source of truth (actual files)
-.claude/skills -> ../.agent/skills  ← symlink for Claude Code access
-```
-
-This means you only need to create files in `.agent/skills/` - they are automatically accessible via `.claude/skills/`.
 
 ## Skill File Format
 
@@ -124,7 +115,7 @@ Organize information into logical sections:
 
 ```bash
 # Create directory
-mkdir -p .agent/skills/<skill-name>
+mkdir -p .claude/skills/<skill-name>
 
 # Write SKILL.md with frontmatter and content
 # (Use Write tool)
@@ -134,13 +125,8 @@ mkdir -p .agent/skills/<skill-name>
 
 ```bash
 # Verify the skill file is readable
-cat .agent/skills/<skill-name>/SKILL.md
-
-# Verify it's accessible via .claude/skills (through symlink)
-ls -la .claude/skills/<skill-name>/
+cat .claude/skills/<skill-name>/SKILL.md
 ```
-
-Note: No need to create individual symlinks! The `.claude/skills` directory is already a symlink to `.agent/skills`.
 
 ## Types of Skills to Create
 
@@ -195,10 +181,10 @@ Here's a complete example of creating a database expert skill:
 # Explore database-related files, schemas, queries
 
 # 2. Create directory
-mkdir -p .agent/skills/database-expert
+mkdir -p .claude/skills/database-expert
 
 # 3. Write SKILL.md (use Write tool)
-cat > .agent/skills/database-expert/SKILL.md << 'EOF'
+cat > .claude/skills/database-expert/SKILL.md << 'EOF'
 ---
 name: database-expert
 description: Database Expert - Deep knowledge of agtrace database schema, queries, and indexing strategy. Activates for database-related tasks.
@@ -209,12 +195,10 @@ description: Database Expert - Deep knowledge of agtrace database schema, querie
 [Content about database structure, schema, common queries, etc.]
 EOF
 
-# 4. Verify - it's automatically available via .claude/skills
+# 4. Verify
 ls -la .claude/skills/database-expert
-cat .agent/skills/database-expert/SKILL.md
+cat .claude/skills/database-expert/SKILL.md
 ```
-
-That's it! No symlink creation needed - the skill is automatically accessible.
 
 ## Best Practices
 
@@ -290,9 +274,8 @@ Gather facts → Organize by category → Add usage guidance → Write → Verif
 
 Check:
 1. Frontmatter is properly formatted
-2. File exists in `.agent/skills/<skill-name>/SKILL.md`
+2. File exists in `.claude/skills/<skill-name>/SKILL.md`
 3. File is named `SKILL.md` (case-sensitive)
-4. `.claude/skills` symlink points to `.agent/skills` correctly
 
 ### Skill Not Activating
 
@@ -308,10 +291,9 @@ This meta-skill enables creation of domain-specific expertise that Claude Code c
 Key steps:
 1. Research thoroughly
 2. Structure logically
-3. Write with frontmatter to `.agent/skills/<skill-name>/SKILL.md`
+3. Write with frontmatter to `.claude/skills/<skill-name>/SKILL.md`
 4. Verify and test
 
 Remember:
 - Skills are living documents. Keep them updated and focused on their specific domain.
-- No symlinks needed! `.claude/skills` is already a symlink to `.agent/skills`.
-- Just create files in `.agent/skills/` and they're automatically accessible.
+- Create files directly in `.claude/skills/`.
