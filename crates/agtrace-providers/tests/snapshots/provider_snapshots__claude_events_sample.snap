@@ -18,6 +18,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -30,7 +31,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": null,
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": {
       "disabled": false,
       "level": "high",
@@ -75,6 +78,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 3893
+        },
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
@@ -84,6 +91,7 @@ expression: json_pretty
     "parentUuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
     "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:47:54.563Z",
     "userType": "external",
     "uuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
@@ -123,6 +131,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 3893
+        },
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
@@ -132,6 +144,7 @@ expression: json_pretty
     "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
     "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:47:55.174Z",
     "userType": "external",
     "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
@@ -179,6 +192,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 3893
+        },
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
@@ -188,6 +205,7 @@ expression: json_pretty
     "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
     "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:47:55.174Z",
     "userType": "external",
     "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
@@ -237,6 +255,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 3893
+        },
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
@@ -246,6 +268,7 @@ expression: json_pretty
     "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
     "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:47:55.793Z",
     "userType": "external",
     "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
@@ -298,6 +321,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 3893
+        },
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
@@ -307,6 +334,7 @@ expression: json_pretty
     "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
     "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:47:55.793Z",
     "userType": "external",
     "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
@@ -332,6 +360,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -347,7 +376,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": null,
     "timestamp": "2025-12-09T19:47:59.985Z",
     "userType": "external",
@@ -388,6 +419,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 458
+        },
         "cache_creation_input_tokens": 458,
         "cache_read_input_tokens": 16028,
         "input_tokens": 14,
@@ -397,6 +432,7 @@ expression: json_pretty
     "parentUuid": "81638428-86d5-4919-9d6e-010d42f97439",
     "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:04.245Z",
     "userType": "external",
     "uuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
@@ -446,6 +482,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 458
+        },
         "cache_creation_input_tokens": 458,
         "cache_read_input_tokens": 16028,
         "input_tokens": 14,
@@ -455,6 +495,7 @@ expression: json_pretty
     "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
     "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:05.038Z",
     "userType": "external",
     "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
@@ -507,6 +548,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 458
+        },
         "cache_creation_input_tokens": 458,
         "cache_read_input_tokens": 16028,
         "input_tokens": 14,
@@ -516,6 +561,7 @@ expression: json_pretty
     "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
     "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:05.038Z",
     "userType": "external",
     "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
@@ -541,6 +587,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -556,7 +603,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": null,
     "timestamp": "2025-12-09T19:48:08.021Z",
     "userType": "external",
@@ -597,6 +646,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 169
+        },
         "cache_creation_input_tokens": 169,
         "cache_read_input_tokens": 16486,
         "input_tokens": 13,
@@ -606,6 +659,7 @@ expression: json_pretty
     "parentUuid": "e9885817-b4bc-434b-8d1b-0895282020d4",
     "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:13.213Z",
     "userType": "external",
     "uuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
@@ -645,6 +699,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 169
+        },
         "cache_creation_input_tokens": 169,
         "cache_read_input_tokens": 16486,
         "input_tokens": 13,
@@ -654,6 +712,7 @@ expression: json_pretty
     "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
     "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:14.040Z",
     "userType": "external",
     "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
@@ -701,6 +760,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 169
+        },
         "cache_creation_input_tokens": 169,
         "cache_read_input_tokens": 16486,
         "input_tokens": 13,
@@ -710,6 +773,7 @@ expression: json_pretty
     "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
     "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:14.040Z",
     "userType": "external",
     "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
@@ -733,6 +797,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -745,7 +810,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "e012ed58-5560-47d5-ae47-74d96256a778",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": {
       "disabled": false,
       "level": "high",
@@ -790,6 +857,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 333
+        },
         "cache_creation_input_tokens": 333,
         "cache_read_input_tokens": 16028,
         "input_tokens": 10,
@@ -799,6 +870,7 @@ expression: json_pretty
     "parentUuid": "d3f9b714-c2bc-4201-b076-8b634759c25f",
     "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:22.893Z",
     "userType": "external",
     "uuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
@@ -848,6 +920,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 333
+        },
         "cache_creation_input_tokens": 333,
         "cache_read_input_tokens": 16028,
         "input_tokens": 10,
@@ -857,6 +933,7 @@ expression: json_pretty
     "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
     "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:23.391Z",
     "userType": "external",
     "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
@@ -909,6 +986,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 333
+        },
         "cache_creation_input_tokens": 333,
         "cache_read_input_tokens": 16028,
         "input_tokens": 10,
@@ -918,6 +999,7 @@ expression: json_pretty
     "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
     "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:23.391Z",
     "userType": "external",
     "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
@@ -943,6 +1025,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -958,7 +1041,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "5c11c8fa-acec-495c-8aee-e95578810365",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": null,
     "timestamp": "2025-12-09T19:48:27.975Z",
     "userType": "external",
@@ -999,6 +1084,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 154
+        },
         "cache_creation_input_tokens": 154,
         "cache_read_input_tokens": 16361,
         "input_tokens": 14,
@@ -1008,6 +1097,7 @@ expression: json_pretty
     "parentUuid": "0d657137-983b-4fb0-b834-38ae6a0f0627",
     "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:30.651Z",
     "userType": "external",
     "uuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
@@ -1057,6 +1147,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 154
+        },
         "cache_creation_input_tokens": 154,
         "cache_read_input_tokens": 16361,
         "input_tokens": 14,
@@ -1066,6 +1160,7 @@ expression: json_pretty
     "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
     "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:31.225Z",
     "userType": "external",
     "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
@@ -1118,6 +1213,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 154
+        },
         "cache_creation_input_tokens": 154,
         "cache_read_input_tokens": 16361,
         "input_tokens": 14,
@@ -1127,6 +1226,7 @@ expression: json_pretty
     "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
     "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:31.225Z",
     "userType": "external",
     "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
@@ -1152,6 +1252,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample/myapp",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -1167,7 +1268,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": null,
     "timestamp": "2025-12-09T19:48:33.883Z",
     "userType": "external",
@@ -1208,6 +1311,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 151
+        },
         "cache_creation_input_tokens": 151,
         "cache_read_input_tokens": 16515,
         "input_tokens": 13,
@@ -1217,6 +1324,7 @@ expression: json_pretty
     "parentUuid": "d3e622f7-4801-4915-9888-75b2acd7b721",
     "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:38.078Z",
     "userType": "external",
     "uuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
@@ -1256,6 +1364,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 151
+        },
         "cache_creation_input_tokens": 151,
         "cache_read_input_tokens": 16515,
         "input_tokens": 13,
@@ -1265,6 +1377,7 @@ expression: json_pretty
     "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
     "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:38.356Z",
     "userType": "external",
     "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
@@ -1312,6 +1425,10 @@ expression: json_pretty
       "stop_sequence": null,
       "type": "message",
       "usage": {
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 151
+        },
         "cache_creation_input_tokens": 151,
         "cache_read_input_tokens": 16515,
         "input_tokens": 13,
@@ -1321,6 +1438,7 @@ expression: json_pretty
     "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
     "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "timestamp": "2025-12-09T19:48:38.356Z",
     "userType": "external",
     "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
@@ -1344,6 +1462,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample/myapp",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": true,
     "isSidechain": false,
     "message": {
@@ -1356,7 +1475,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": null,
     "timestamp": "2025-12-09T19:48:50.228Z",
     "userType": "external",
@@ -1381,6 +1502,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample/myapp",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -1393,7 +1515,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "12baa1f9-9626-4645-9333-8fa74bfd679e",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": null,
     "timestamp": "2025-12-09T19:48:50.204Z",
     "userType": "external",
@@ -1418,6 +1542,7 @@ expression: json_pretty
     "agentId": null,
     "cwd": "/Users/test_user/agent-sample/myapp",
     "gitBranch": "claude",
+    "isCompactSummary": false,
     "isMeta": false,
     "isSidechain": false,
     "message": {
@@ -1430,7 +1555,9 @@ expression: json_pretty
       "role": "user"
     },
     "parentUuid": "23a65594-5137-4355-a7a4-16857a3d7f4e",
+    "planContent": null,
     "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "slug": null,
     "thinkingMetadata": null,
     "timestamp": "2025-12-09T19:48:50.204Z",
     "userType": "external",
