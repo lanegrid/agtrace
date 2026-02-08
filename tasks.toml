@@ -155,11 +155,10 @@ if [[ "$WAIT_CI" == true && -n "$PR_NUMBER" ]]; then
 fi
 
 # Phase 2: Open in browser
-# Use local hook if available (gitignored), otherwise default browser
+# Use OPEN_URL_CMD if set (e.g. in dotfiles), otherwise default browser
 echo "[git:open-pr] Phase 2/3: Opening PR in browser..."
-OPEN_HOOK="./scripts/open-url.local.sh"
-if [[ -x "$OPEN_HOOK" ]]; then
-  "$OPEN_HOOK" "$URL"
+if [[ -n "${OPEN_URL_CMD:-}" ]]; then
+  $OPEN_URL_CMD "$URL"
 else
   gh pr view "$PR_NUMBER" --web
 fi

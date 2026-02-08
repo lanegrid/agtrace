@@ -60,7 +60,7 @@ Claude: [Bash(run_in_background=true)] mise run git:open-pr -- <pr#>
 
 3 phases run automatically:
 1. **CI wait** — `gh pr checks --watch` waits for CI to pass
-2. **Open in browser** — Uses `scripts/open-url.local.sh` if present (gitignored), else default browser
+2. **Open in browser** — Uses `$OPEN_URL_CMD` if set, else default browser
 3. **Merge watch** — Polls PR state every 30s
    - MERGED -> macOS notification + `mise run git:cleanup` -> exit
    - CLOSED -> message -> exit
