@@ -1,6 +1,29 @@
 # tasks.toml
 # Core project tasks - run with `mise run <task>`
 
+# --- Setup ---
+
+[setup]
+description = "Set up local files for this worktree (run once after git worktree add)"
+run = """
+#!/bin/bash
+set -euo pipefail
+CHANGED=false
+for example in scripts/*.local.sh.example; do
+  [ -f "$example" ] || continue
+  target="${example%.example}"
+  if [ ! -f "$target" ]; then
+    cp "$example" "$target"
+    chmod +x "$target"
+    echo "Created: $target"
+    CHANGED=true
+  fi
+done
+if [ "$CHANGED" = false ]; then
+  echo "Nothing to do — all local files already exist."
+fi
+"""
+
 # --- Cargo ---
 
 [build]

@@ -1,0 +1,34 @@
+#!/bin/bash
+# Local hook: open URL in Chrome "PR" profile
+# Copy this file to open-url.local.sh (gitignored) and customize.
+#
+# Usage: ./scripts/open-url.local.sh <url>
+# Called by: mise run git:open-pr (Phase 2)
+set -euo pipefail
+
+URL="${1:?Usage: $0 <url>}"
+
+LOCAL_STATE="$HOME/Library/Application Support/Google/Chrome/Local State"
+if [[ ! -f "$LOCAL_STATE" ]]; then
+  echo "Chrome Local State not found, falling back to default browser" >&2
+  open "$URL"
+  exit 0
+fi
+
+PROFILE_DIR=$(python3 -c "
+import json, sys, pathlib
+data = json.loads((pathlib.Path.home() / 'Library/Application Support/Google/Chrome/Local State').read_text())
+profiles = data.get('profile', {}).get('info_cache', {})
+for key, val in profiles.items():
+    if val.get('name') == 'PR':
+        print(key)
+        sys.exit(0)
+sys.exit(1)
+" 2>/dev/null) || {
+  echo "Chrome \"PR\" profile not found, falling back to default browser" >&2
+  open "$URL"
+  exit 0
+}
+
+open -na "Google Chrome" --args --profile-directory="$PROFILE_DIR" "$URL"
+echo "Opened in Chrome profile \"PR\" ($PROFILE_DIR): $URL"
