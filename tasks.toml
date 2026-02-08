@@ -154,29 +154,13 @@ if [[ "$WAIT_CI" == true && -n "$PR_NUMBER" ]]; then
   gh pr checks "$PR_NUMBER" --watch || echo "[git:open-pr] CI checks failed or timed out, opening anyway"
 fi
 
-# Phase 2: Open in browser (Chrome "PR" profile if available, else default)
+# Phase 2: Open in browser
+# Use local hook if available (gitignored), otherwise default browser
 echo "[git:open-pr] Phase 2/3: Opening PR in browser..."
-OPENED=false
-if [[ "$(uname)" == "Darwin" ]]; then
-  LOCAL_STATE="$HOME/Library/Application Support/Google/Chrome/Local State"
-  if [[ -f "$LOCAL_STATE" ]]; then
-    PROFILE_DIR=$(python3 -c "
-import json, sys, pathlib
-data = json.loads((pathlib.Path.home() / 'Library/Application Support/Google/Chrome/Local State').read_text())
-profiles = data.get('profile', {}).get('info_cache', {})
-for key, val in profiles.items():
-    if val.get('name') == 'PR':
-        print(key)
-        sys.exit(0)
-sys.exit(1)
-" 2>/dev/null) && {
-      open -na "Google Chrome" --args --profile-directory="$PROFILE_DIR" "$URL"
-      echo "Opened in Chrome profile \"PR\" ($PROFILE_DIR)"
-      OPENED=true
-    }
-  fi
-fi
-if [[ "$OPENED" == false ]]; then
+OPEN_HOOK="./scripts/open-url.local.sh"
+if [[ -x "$OPEN_HOOK" ]]; then
+  "$OPEN_HOOK" "$URL"
+else
   gh pr view "$PR_NUMBER" --web
 fi
 

@@ -18,6 +18,9 @@ Cargo.lock
 .gemini/
 .codex/
 
+# Local hooks (user-specific, not committed)
+scripts/*.local.sh
+
 /tmp/
 OUTPUT.md
 crates/agtrace-sdk/examples/debug/
