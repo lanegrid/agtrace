@@ -13,6 +13,7 @@ pub mod mcp;
 pub mod pack;
 pub mod project;
 pub mod provider;
+pub mod session_dump;
 pub mod session_list;
 pub mod session_show;
 pub mod watch_console;

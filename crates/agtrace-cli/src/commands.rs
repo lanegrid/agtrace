@@ -174,6 +174,14 @@ pub async fn run(cli: Cli) -> Result<()> {
                     format,
                     view_mode,
                 } => handlers::session_show::handle(&workspace, session_id, format, &view_mode),
+                SessionCommand::Dump {
+                    session_id,
+                    raw,
+                    output,
+                    view_mode,
+                } => {
+                    handlers::session_dump::handle(&workspace, session_id, raw, output, &view_mode)
+                }
             }
         }
 
