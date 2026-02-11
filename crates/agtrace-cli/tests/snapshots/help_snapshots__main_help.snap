@@ -17,6 +17,7 @@ Commands:
   lab       Advanced analysis tools (grep, export, stats)
   index     Manage the session index (update, rebuild, vacuum)
   project   List all indexed projects
+  worktree  View sessions across git worktrees of the same repository
   doctor    Diagnose and troubleshoot log parsing issues
   pack      Package sessions for sharing or analysis
   demo      Run a simulated live demo of the TUI dashboard

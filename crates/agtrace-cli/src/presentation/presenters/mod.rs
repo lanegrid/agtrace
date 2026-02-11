@@ -8,6 +8,7 @@ pub mod provider;
 pub mod session;
 pub mod watch;
 pub mod watch_tui;
+pub mod worktree;
 
 pub use doctor::{present_check_result, present_diagnose_results, present_inspect_result};
 pub use index::{present_index_info, present_index_result, present_vacuum_result};
@@ -25,3 +26,4 @@ pub use watch::{
     present_watch_waiting,
 };
 pub use watch_tui::build_screen_view_model;
+pub use worktree::{present_worktree_list, present_worktree_sessions};

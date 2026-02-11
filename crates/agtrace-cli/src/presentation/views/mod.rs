@@ -8,3 +8,4 @@ pub mod provider;
 pub mod session;
 pub mod tui;
 pub mod watch;
+pub mod worktree;

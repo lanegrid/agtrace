@@ -174,11 +174,110 @@ pub fn repository_hash_from_path(path: &Path) -> Option<RepositoryHash> {
     let common_dir_str = String::from_utf8_lossy(&git_common_dir.stdout);
     let common_dir_path = Path::new(common_dir_str.trim());
 
-    // Normalize to absolute path
-    let normalized = normalize_path(common_dir_path);
+    // Normalize to absolute path (relative paths must be resolved from the input path, not cwd)
+    let absolute_path = if common_dir_path.is_absolute() {
+        common_dir_path.to_path_buf()
+    } else {
+        path.join(common_dir_path)
+    };
+    let normalized = normalize_path(&absolute_path);
     let path_str = normalized.to_string_lossy();
 
     let mut hasher = Sha256::new();
     hasher.update(path_str.as_bytes());
     Some(RepositoryHash::new(format!("{:x}", hasher.finalize())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    /// Create a git repository in the given directory
+    fn init_git_repo(dir: &Path) {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(dir)
+            .output()
+            .expect("failed to init git repo");
+    }
+
+    #[test]
+    fn test_repository_hash_different_repos_have_different_hashes() {
+        let temp1 = TempDir::new().unwrap();
+        let temp2 = TempDir::new().unwrap();
+
+        init_git_repo(temp1.path());
+        init_git_repo(temp2.path());
+
+        let hash1 = repository_hash_from_path(temp1.path());
+        let hash2 = repository_hash_from_path(temp2.path());
+
+        assert!(hash1.is_some(), "hash1 should be Some");
+        assert!(hash2.is_some(), "hash2 should be Some");
+        assert_ne!(
+            hash1.unwrap().as_str(),
+            hash2.unwrap().as_str(),
+            "Different repos should have different hashes"
+        );
+    }
+
+    #[test]
+    fn test_repository_hash_same_repo_same_hash() {
+        let temp = TempDir::new().unwrap();
+        init_git_repo(temp.path());
+
+        // Create a subdirectory
+        let subdir = temp.path().join("subdir");
+        fs::create_dir(&subdir).unwrap();
+
+        let hash_root = repository_hash_from_path(temp.path());
+        let hash_subdir = repository_hash_from_path(&subdir);
+
+        assert!(hash_root.is_some(), "hash_root should be Some");
+        assert!(hash_subdir.is_some(), "hash_subdir should be Some");
+        assert_eq!(
+            hash_root.unwrap().as_str(),
+            hash_subdir.unwrap().as_str(),
+            "Same repo (root vs subdir) should have same hash"
+        );
+    }
+
+    #[test]
+    fn test_repository_hash_non_git_dir_returns_none() {
+        let temp = TempDir::new().unwrap();
+        // Don't init git
+
+        let hash = repository_hash_from_path(temp.path());
+        assert!(hash.is_none(), "Non-git directory should return None");
+    }
+
+    /// This test reproduces the bug where calling repository_hash_from_path
+    /// from a different working directory would return the same hash for all repos
+    /// because the relative path ".git" was resolved against cwd instead of input path.
+    #[test]
+    fn test_repository_hash_independent_of_cwd() {
+        let repo1 = TempDir::new().unwrap();
+        let repo2 = TempDir::new().unwrap();
+
+        init_git_repo(repo1.path());
+        init_git_repo(repo2.path());
+
+        // Get hashes - these calls happen from our current working directory
+        // which is neither repo1 nor repo2
+        let hash1 = repository_hash_from_path(repo1.path());
+        let hash2 = repository_hash_from_path(repo2.path());
+
+        assert!(hash1.is_some(), "hash1 should be Some");
+        assert!(hash2.is_some(), "hash2 should be Some");
+
+        // The key assertion: different repos MUST have different hashes
+        // even when called from a third directory
+        assert_ne!(
+            hash1.as_ref().unwrap().as_str(),
+            hash2.as_ref().unwrap().as_str(),
+            "BUG: Different repos returned same hash! This means relative path resolution is broken."
+        );
+    }
 }
