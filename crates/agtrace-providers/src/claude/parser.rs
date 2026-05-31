@@ -7,6 +7,13 @@ use uuid::Uuid;
 use crate::builder::{EventBuilder, SemanticSuffix};
 use crate::claude::schema::*;
 
+/// Placeholder shown for adaptive-thinking blocks that carry no plaintext.
+///
+/// Opus 4.7+ persists thinking as an empty string plus an encrypted
+/// `signature`; the original reasoning text is unrecoverable. We still emit a
+/// Reasoning event so the step is visible rather than rendering as a blank line.
+const REDACTED_THINKING_MARKER: &str = "[thinking redacted]";
+
 /// Generate a deterministic UUID for records without explicit uuid field
 fn generate_record_uuid(session_id: &str, timestamp: &str, suffix: &str) -> String {
     use std::collections::hash_map::DefaultHasher;
@@ -218,19 +225,35 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                     let indexed_base_id = format!("{}-content-{}", base_id, idx);
 
                     match content {
-                        AssistantContent::Thinking { thinking, .. } => {
-                            // Thinking block -> Reasoning event
-                            builder.build_and_push(
-                                &mut events,
-                                &indexed_base_id,
-                                SemanticSuffix::Reasoning,
-                                timestamp,
-                                EventPayload::Reasoning(ReasoningPayload {
-                                    text: thinking.clone(),
-                                }),
-                                raw_value.clone(),
-                                stream_id.clone(),
-                            );
+                        AssistantContent::Thinking {
+                            thinking,
+                            signature,
+                        } => {
+                            // Thinking block -> Reasoning event.
+                            //
+                            // Adaptive thinking (Opus 4.7+) no longer persists
+                            // plaintext: `thinking` is empty and only the
+                            // encrypted `signature` remains. Surface a redacted
+                            // marker so the reasoning step stays visible. Drop
+                            // blocks with neither text nor signature.
+                            let text = if !thinking.is_empty() {
+                                Some(thinking.clone())
+                            } else if signature.is_some() {
+                                Some(REDACTED_THINKING_MARKER.to_string())
+                            } else {
+                                None
+                            };
+                            if let Some(text) = text {
+                                builder.build_and_push(
+                                    &mut events,
+                                    &indexed_base_id,
+                                    SemanticSuffix::Reasoning,
+                                    timestamp,
+                                    EventPayload::Reasoning(ReasoningPayload { text }),
+                                    raw_value.clone(),
+                                    stream_id.clone(),
+                                );
+                            }
                         }
 
                         AssistantContent::ToolUse {
@@ -310,22 +333,28 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         //   cached   = cache_read_input_tokens (tokens from cache, still consume context)
                         //   uncached = input_tokens (fresh tokens, not from cache)
                         //
-                        // Output mapping (current limitation):
-                        //   generated = output_tokens (all output tokens)
-                        //   reasoning = 0 (not yet separated)
+                        // Output mapping:
+                        //   reasoning = output_tokens_details.thinking_tokens (v2.1+)
+                        //   generated = output_tokens - reasoning
                         //   tool      = 0 (not yet separated)
                         //
-                        // Future improvement:
-                        //   Claude's message.content[] has type field ("text", "thinking", "tool_use")
-                        //   which allows separating output_tokens by parsing each content block.
-                        //   This would enable proper reasoning/tool token accounting.
+                        // `output_tokens` already includes thinking tokens, so the
+                        // reasoning count is carved out of `generated` to keep
+                        // total() == output_tokens. Pre-v2.1 logs lack the detail
+                        // field, so reasoning is 0 and generated == output_tokens.
                         let cached = usage.cache_read_input_tokens.unwrap_or(0) as u64;
                         let uncached = usage.input_tokens as u64;
                         let input = TokenInput::new(cached, uncached);
 
+                        let reasoning = usage
+                            .output_tokens_details
+                            .as_ref()
+                            .and_then(|d| d.thinking_tokens)
+                            .unwrap_or(0) as u64;
+                        let generated = (usage.output_tokens as u64).saturating_sub(reasoning);
+
                         let output = TokenOutput::new(
-                            usage.output_tokens as u64, // all output as generated (for now)
-                            0, // reasoning (TODO: parse content[type="thinking"])
+                            generated, reasoning,
                             0, // tool (TODO: parse content[type="tool_use"])
                         );
 
@@ -668,6 +697,7 @@ mod tests {
                     cache_creation_input_tokens: None,
                     cache_read_input_tokens: Some(10),
                     cache_creation: None,
+                    output_tokens_details: None,
                 }),
             },
             is_sidechain: false,
@@ -707,6 +737,132 @@ mod tests {
         }
     }
 
+    /// Build a minimal assistant record carrying a single thinking block.
+    fn assistant_with_thinking(
+        thinking: &str,
+        signature: Option<serde_json::Value>,
+        usage: Option<TokenUsage>,
+    ) -> ClaudeRecord {
+        ClaudeRecord::Assistant(AssistantRecord {
+            uuid: "uuid-thinking".to_string(),
+            parent_uuid: None,
+            session_id: "session-1".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            message: AssistantMessage {
+                message_type: "message".to_string(),
+                id: "msg-1".to_string(),
+                role: "assistant".to_string(),
+                model: "claude-opus-4-8".to_string(),
+                content: vec![AssistantContent::Thinking {
+                    thinking: thinking.to_string(),
+                    signature,
+                }],
+                stop_reason: Some("end_turn".to_string()),
+                stop_sequence: None,
+                usage,
+            },
+            is_sidechain: false,
+            agent_id: None,
+            cwd: None,
+            git_branch: None,
+            user_type: None,
+            version: None,
+            request_id: None,
+            slug: None,
+        })
+    }
+
+    #[test]
+    fn test_redacted_thinking_emits_marker() {
+        // Adaptive thinking (Opus 4.7+): empty text + signature only.
+        let events = normalize_claude_session(vec![assistant_with_thinking(
+            "",
+            Some(serde_json::json!("ErEC-encrypted-signature")),
+            None,
+        )]);
+
+        let reasoning: Vec<_> = events
+            .iter()
+            .filter_map(|e| match &e.payload {
+                EventPayload::Reasoning(p) => Some(p.text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(reasoning, vec![REDACTED_THINKING_MARKER]);
+    }
+
+    #[test]
+    fn test_empty_thinking_without_signature_is_dropped() {
+        let events = normalize_claude_session(vec![assistant_with_thinking("", None, None)]);
+        assert!(
+            !events
+                .iter()
+                .any(|e| matches!(e.payload, EventPayload::Reasoning(_))),
+            "empty thinking with no signature should not produce a Reasoning event"
+        );
+    }
+
+    #[test]
+    fn test_reasoning_tokens_from_output_details() {
+        // output_tokens (200) already includes thinking_tokens (150);
+        // reasoning is carved out so total() stays 200. A text block is included
+        // so the TokenUsage sidecar has a generation event to attach to.
+        let record = ClaudeRecord::Assistant(AssistantRecord {
+            uuid: "uuid-1".to_string(),
+            parent_uuid: None,
+            session_id: "session-1".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            message: AssistantMessage {
+                message_type: "message".to_string(),
+                id: "msg-1".to_string(),
+                role: "assistant".to_string(),
+                model: "claude-opus-4-8".to_string(),
+                content: vec![
+                    AssistantContent::Thinking {
+                        thinking: "".to_string(),
+                        signature: Some(serde_json::json!("sig")),
+                    },
+                    AssistantContent::Text {
+                        text: "answer".to_string(),
+                        signature: None,
+                    },
+                ],
+                stop_reason: Some("end_turn".to_string()),
+                stop_sequence: None,
+                usage: Some(TokenUsage {
+                    input_tokens: 10,
+                    output_tokens: 200,
+                    cache_creation_input_tokens: None,
+                    cache_read_input_tokens: None,
+                    cache_creation: None,
+                    output_tokens_details: Some(OutputTokensDetail {
+                        thinking_tokens: Some(150),
+                    }),
+                }),
+            },
+            is_sidechain: false,
+            agent_id: None,
+            cwd: None,
+            git_branch: None,
+            user_type: None,
+            version: None,
+            request_id: None,
+            slug: None,
+        });
+        let events = normalize_claude_session(vec![record]);
+
+        let usage = events
+            .iter()
+            .find_map(|e| match &e.payload {
+                EventPayload::TokenUsage(p) => Some(p),
+                _ => None,
+            })
+            .expect("expected a TokenUsage event");
+        assert_eq!(usage.output.reasoning, 150);
+        assert_eq!(usage.output.generated, 50);
+        assert_eq!(usage.output.total(), 200);
+    }
+
     #[test]
     fn test_normalize_tool_use() {
         let records = vec![ClaudeRecord::Assistant(AssistantRecord {
@@ -733,6 +889,7 @@ mod tests {
                     cache_creation_input_tokens: None,
                     cache_read_input_tokens: None,
                     cache_creation: None,
+                    output_tokens_details: None,
                 }),
             },
             is_sidechain: false,

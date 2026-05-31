@@ -85,7 +85,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
-        "output_tokens": 8
+        "output_tokens": 8,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
@@ -138,7 +139,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
-        "output_tokens": 8
+        "output_tokens": 8,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
@@ -199,7 +201,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
-        "output_tokens": 8
+        "output_tokens": 8,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
@@ -262,7 +265,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
-        "output_tokens": 436
+        "output_tokens": 436,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
@@ -328,7 +332,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 3893,
         "cache_read_input_tokens": 12135,
         "input_tokens": 10,
-        "output_tokens": 436
+        "output_tokens": 436,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
@@ -426,7 +431,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 458,
         "cache_read_input_tokens": 16028,
         "input_tokens": 14,
-        "output_tokens": 1
+        "output_tokens": 1,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "81638428-86d5-4919-9d6e-010d42f97439",
@@ -489,7 +495,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 458,
         "cache_read_input_tokens": 16028,
         "input_tokens": 14,
-        "output_tokens": 126
+        "output_tokens": 126,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
@@ -555,7 +562,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 458,
         "cache_read_input_tokens": 16028,
         "input_tokens": 14,
-        "output_tokens": 126
+        "output_tokens": 126,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
@@ -653,7 +661,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 169,
         "cache_read_input_tokens": 16486,
         "input_tokens": 13,
-        "output_tokens": 1
+        "output_tokens": 1,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "e9885817-b4bc-434b-8d1b-0895282020d4",
@@ -706,7 +715,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 169,
         "cache_read_input_tokens": 16486,
         "input_tokens": 13,
-        "output_tokens": 112
+        "output_tokens": 112,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
@@ -767,7 +777,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 169,
         "cache_read_input_tokens": 16486,
         "input_tokens": 13,
-        "output_tokens": 112
+        "output_tokens": 112,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
@@ -864,7 +875,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 333,
         "cache_read_input_tokens": 16028,
         "input_tokens": 10,
-        "output_tokens": 4
+        "output_tokens": 4,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "d3f9b714-c2bc-4201-b076-8b634759c25f",
@@ -927,7 +939,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 333,
         "cache_read_input_tokens": 16028,
         "input_tokens": 10,
-        "output_tokens": 123
+        "output_tokens": 123,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
@@ -993,7 +1006,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 333,
         "cache_read_input_tokens": 16028,
         "input_tokens": 10,
-        "output_tokens": 123
+        "output_tokens": 123,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
@@ -1091,7 +1105,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 154,
         "cache_read_input_tokens": 16361,
         "input_tokens": 14,
-        "output_tokens": 1
+        "output_tokens": 1,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "0d657137-983b-4fb0-b834-38ae6a0f0627",
@@ -1154,7 +1169,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 154,
         "cache_read_input_tokens": 16361,
         "input_tokens": 14,
-        "output_tokens": 1
+        "output_tokens": 1,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
@@ -1220,7 +1236,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 154,
         "cache_read_input_tokens": 16361,
         "input_tokens": 14,
-        "output_tokens": 1
+        "output_tokens": 1,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
@@ -1318,7 +1335,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 151,
         "cache_read_input_tokens": 16515,
         "input_tokens": 13,
-        "output_tokens": 1
+        "output_tokens": 1,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "d3e622f7-4801-4915-9888-75b2acd7b721",
@@ -1371,7 +1389,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 151,
         "cache_read_input_tokens": 16515,
         "input_tokens": 13,
-        "output_tokens": 46
+        "output_tokens": 46,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
@@ -1432,7 +1451,8 @@ expression: json_pretty
         "cache_creation_input_tokens": 151,
         "cache_read_input_tokens": 16515,
         "input_tokens": 13,
-        "output_tokens": 46
+        "output_tokens": 46,
+        "output_tokens_details": null
       }
     },
     "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
