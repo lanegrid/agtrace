@@ -485,6 +485,67 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         );
                     }
 
+                    "away_summary" => {
+                        // Summary shown when returning to a session that ran in
+                        // the background / as a remote agent (v2.1+).
+                        if let Some(content) = &sys_record.content {
+                            builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::Notification,
+                                timestamp,
+                                EventPayload::Notification(NotificationPayload {
+                                    text: format!("Away summary: {}", content),
+                                    level: Some("info".to_string()),
+                                }),
+                                raw_value,
+                                stream_id,
+                            );
+                        }
+                    }
+
+                    "api_error" => {
+                        // API error with retry/backoff metadata (v2.1+).
+                        let text = match (sys_record.retry_attempt, sys_record.max_retries) {
+                            (Some(attempt), Some(max)) => {
+                                format!("API error (retry {}/{})", attempt, max)
+                            }
+                            _ => sys_record
+                                .content
+                                .clone()
+                                .unwrap_or_else(|| "API error".to_string()),
+                        };
+                        builder.build_and_push(
+                            &mut events,
+                            base_id,
+                            SemanticSuffix::Notification,
+                            timestamp,
+                            EventPayload::Notification(NotificationPayload {
+                                text,
+                                level: Some("warn".to_string()),
+                            }),
+                            raw_value,
+                            stream_id,
+                        );
+                    }
+
+                    "informational" => {
+                        if let Some(content) = &sys_record.content {
+                            builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::Notification,
+                                timestamp,
+                                EventPayload::Notification(NotificationPayload {
+                                    text: content.clone(),
+                                    level: Some("info".to_string()),
+                                }),
+                                raw_value,
+                                stream_id,
+                            );
+                        }
+                    }
+
                     _ => {
                         // Skip other system subtypes
                     }
@@ -918,6 +979,71 @@ mod tests {
             EventPayload::TokenUsage(_) => {}
             _ => panic!("Expected TokenUsage payload"),
         }
+    }
+
+    /// Build a minimal system record for a given subtype.
+    fn system_record(subtype: &str) -> SystemRecord {
+        SystemRecord {
+            uuid: format!("sys-{subtype}"),
+            parent_uuid: None,
+            session_id: "session-1".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            subtype: subtype.to_string(),
+            content: None,
+            level: None,
+            is_sidechain: false,
+            is_meta: false,
+            duration_ms: None,
+            compact_metadata: None,
+            hook_count: None,
+            hook_infos: None,
+            prevented_continuation: false,
+            retry_in_ms: None,
+            retry_attempt: None,
+            max_retries: None,
+        }
+    }
+
+    fn only_notification(events: &[AgentEvent]) -> (&str, Option<&str>) {
+        let n = events
+            .iter()
+            .find_map(|e| match &e.payload {
+                EventPayload::Notification(p) => Some(p),
+                _ => None,
+            })
+            .expect("expected a Notification event");
+        (n.text.as_str(), n.level.as_deref())
+    }
+
+    #[test]
+    fn test_system_away_summary() {
+        let mut rec = system_record("away_summary");
+        rec.content = Some("shipped phase 1".to_string());
+        let events = normalize_claude_session(vec![ClaudeRecord::System(rec)]);
+        let (text, level) = only_notification(&events);
+        assert_eq!(text, "Away summary: shipped phase 1");
+        assert_eq!(level, Some("info"));
+    }
+
+    #[test]
+    fn test_system_api_error_with_retry() {
+        let mut rec = system_record("api_error");
+        rec.retry_attempt = Some(2);
+        rec.max_retries = Some(10);
+        let events = normalize_claude_session(vec![ClaudeRecord::System(rec)]);
+        let (text, level) = only_notification(&events);
+        assert_eq!(text, "API error (retry 2/10)");
+        assert_eq!(level, Some("warn"));
+    }
+
+    #[test]
+    fn test_system_informational() {
+        let mut rec = system_record("informational");
+        rec.content = Some("heads up".to_string());
+        let events = normalize_claude_session(vec![ClaudeRecord::System(rec)]);
+        let (text, level) = only_notification(&events);
+        assert_eq!(text, "heads up");
+        assert_eq!(level, Some("info"));
     }
 
     #[test]
