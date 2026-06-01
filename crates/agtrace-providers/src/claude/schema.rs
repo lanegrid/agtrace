@@ -448,6 +448,19 @@ pub(crate) struct TokenUsage {
     /// Detailed cache creation breakdown by TTL tier
     #[serde(default)]
     pub cache_creation: Option<CacheCreationDetail>,
+    /// Output token breakdown (v2.1+; carries reasoning/thinking token count)
+    #[serde(default)]
+    pub output_tokens_details: Option<OutputTokensDetail>,
+}
+
+/// Output token breakdown introduced with adaptive thinking (Opus 4.7+)
+///
+/// `thinking_tokens` is already included in `output_tokens`; the parser carves
+/// it out into the reasoning bucket to avoid double counting.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub(crate) struct OutputTokensDetail {
+    #[serde(default)]
+    pub thinking_tokens: Option<u32>,
 }
 
 /// Detailed cache creation token breakdown by TTL tier
