@@ -336,6 +336,15 @@ pub(crate) struct SystemRecord {
     /// Whether hooks prevented continuation (subtype: "stop_hook_summary")
     #[serde(default)]
     pub prevented_continuation: bool,
+    /// Backoff before the next retry in milliseconds (subtype: "api_error")
+    #[serde(default)]
+    pub retry_in_ms: Option<f64>,
+    /// Current retry attempt number (subtype: "api_error")
+    #[serde(default)]
+    pub retry_attempt: Option<u32>,
+    /// Maximum number of retries (subtype: "api_error")
+    #[serde(default)]
+    pub max_retries: Option<u32>,
 }
 
 /// Hook execution info for stop_hook_summary
