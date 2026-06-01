@@ -13,8 +13,48 @@ pub(crate) enum ClaudeRecord {
     QueueOperation(QueueOperationRecord),
     Summary(SummaryRecord),
     PrLink(PrLinkRecord),
+    Attachment(AttachmentRecord),
     #[serde(other)]
     Unknown,
+}
+
+/// Attachment record (v2.1+): rich inline context injected into the transcript.
+///
+/// Many subtypes exist (task_reminder, skill_listing, deferred_tools_delta, …);
+/// only the timeline-relevant ones are modeled in `AttachmentData`, the rest
+/// fall into `Other` and are skipped.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AttachmentRecord {
+    pub uuid: String,
+    #[serde(default)]
+    pub parent_uuid: Option<String>,
+    pub session_id: String,
+    pub timestamp: String,
+    pub attachment: AttachmentData,
+    #[serde(default)]
+    pub is_sidechain: bool,
+}
+
+/// Inner attachment payload, discriminated by its `type` field.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub(crate) enum AttachmentData {
+    /// A command queued while the agent was busy.
+    QueuedCommand {
+        #[serde(default)]
+        prompt: Option<String>,
+        /// e.g. "prompt" (user input) vs "task-notification" (background event)
+        #[serde(default, rename = "commandMode")]
+        command_mode: Option<String>,
+    },
+    /// User exited plan mode (the plan was finalized).
+    PlanModeExit {
+        #[serde(default, rename = "planFilePath")]
+        plan_file_path: Option<String>,
+    },
+    #[serde(other)]
+    Other,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
