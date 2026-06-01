@@ -107,6 +107,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             ClaudeRecord::QueueOperation(queue) => Some(queue.session_id.clone()),
             ClaudeRecord::Summary(summ) => summ.session_id.clone(),
             ClaudeRecord::PrLink(pr) => Some(pr.session_id.clone()),
+            ClaudeRecord::Attachment(att) => Some(att.session_id.clone()),
             _ => None,
         })
         .unwrap_or_else(|| "unknown".to_string());
@@ -662,6 +663,63 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                 );
             }
 
+            ClaudeRecord::Attachment(att_record) => {
+                let timestamp = parse_timestamp(&att_record.timestamp);
+                let raw_value = serde_json::to_value(&att_record).ok();
+                let base_id = &att_record.uuid;
+                let stream_id = determine_stream_id(att_record.is_sidechain, &None);
+
+                match &att_record.attachment {
+                    AttachmentData::QueuedCommand {
+                        prompt,
+                        command_mode,
+                    } => {
+                        // Only surface user-queued prompts; skip background
+                        // task-notification queue entries (noise).
+                        if command_mode.as_deref() != Some("task-notification")
+                            && let Some(prompt) = prompt
+                        {
+                            builder.build_and_push(
+                                &mut events,
+                                base_id,
+                                SemanticSuffix::Notification,
+                                timestamp,
+                                EventPayload::Notification(NotificationPayload {
+                                    text: format!("Queued prompt: {}", prompt),
+                                    level: Some("info".to_string()),
+                                }),
+                                raw_value,
+                                stream_id,
+                            );
+                        }
+                    }
+
+                    AttachmentData::PlanModeExit { plan_file_path } => {
+                        let text = match plan_file_path {
+                            Some(path) => format!("Exited plan mode (plan: {})", path),
+                            None => "Exited plan mode".to_string(),
+                        };
+                        builder.build_and_push(
+                            &mut events,
+                            base_id,
+                            SemanticSuffix::Notification,
+                            timestamp,
+                            EventPayload::Notification(NotificationPayload {
+                                text,
+                                level: Some("info".to_string()),
+                            }),
+                            raw_value,
+                            stream_id,
+                        );
+                    }
+
+                    AttachmentData::Other => {
+                        // Other attachment subtypes (task_reminder, skill_listing,
+                        // deferred_tools_delta, …) are not timeline events.
+                    }
+                }
+            }
+
             ClaudeRecord::Unknown => {
                 // Skip unknown record types
             }
@@ -1044,6 +1102,61 @@ mod tests {
         let (text, level) = only_notification(&events);
         assert_eq!(text, "heads up");
         assert_eq!(level, Some("info"));
+    }
+
+    fn attachment_record(attachment: AttachmentData) -> ClaudeRecord {
+        ClaudeRecord::Attachment(AttachmentRecord {
+            uuid: "att-1".to_string(),
+            parent_uuid: None,
+            session_id: "session-1".to_string(),
+            timestamp: "2024-01-01T00:00:00Z".to_string(),
+            attachment,
+            is_sidechain: false,
+        })
+    }
+
+    #[test]
+    fn test_attachment_queued_prompt_emits() {
+        let events =
+            normalize_claude_session(vec![attachment_record(AttachmentData::QueuedCommand {
+                prompt: Some("do the thing".to_string()),
+                command_mode: Some("prompt".to_string()),
+            })]);
+        let (text, level) = only_notification(&events);
+        assert_eq!(text, "Queued prompt: do the thing");
+        assert_eq!(level, Some("info"));
+    }
+
+    #[test]
+    fn test_attachment_task_notification_skipped() {
+        let events =
+            normalize_claude_session(vec![attachment_record(AttachmentData::QueuedCommand {
+                prompt: Some("<task-notification>…".to_string()),
+                command_mode: Some("task-notification".to_string()),
+            })]);
+        assert!(
+            events.is_empty(),
+            "background task-notification queue entries should be skipped"
+        );
+    }
+
+    #[test]
+    fn test_attachment_plan_mode_exit() {
+        let events =
+            normalize_claude_session(vec![attachment_record(AttachmentData::PlanModeExit {
+                plan_file_path: Some("/plans/foo.md".to_string()),
+            })]);
+        let (text, _) = only_notification(&events);
+        assert_eq!(text, "Exited plan mode (plan: /plans/foo.md)");
+    }
+
+    #[test]
+    fn test_attachment_other_skipped() {
+        let events = normalize_claude_session(vec![attachment_record(AttachmentData::Other)]);
+        assert!(
+            events.is_empty(),
+            "unmodeled attachment subtypes are skipped"
+        );
     }
 
     #[test]
