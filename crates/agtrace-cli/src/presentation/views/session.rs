@@ -2,7 +2,8 @@ use std::fmt;
 
 use crate::presentation::formatters::{display, json, number, text, time};
 use crate::presentation::view_models::{
-    AgentStepViewModel, SessionAnalysisViewModel, SessionListViewModel, ViewMode,
+    AgentStepViewModel, SessionDetailViewModel, SessionListViewModel, SpawnContextViewModel,
+    StreamAnalysisViewModel, ViewMode,
 };
 
 // Display constants
@@ -230,58 +231,113 @@ impl<'a> fmt::Display for SessionListView<'a> {
 }
 
 // --------------------------------------------------------
-// Session Analysis View
+// Session Detail View
 // --------------------------------------------------------
 
-pub struct SessionAnalysisView<'a> {
-    data: &'a SessionAnalysisViewModel,
+pub struct SessionDetailView<'a> {
+    data: &'a SessionDetailViewModel,
     mode: ViewMode,
 }
 
-impl<'a> SessionAnalysisView<'a> {
-    /// Create a new SessionAnalysisView (called from CreateView trait)
-    pub fn new(data: &'a SessionAnalysisViewModel, mode: ViewMode) -> Self {
+/// Format a spawn context for display (1-based indices).
+fn format_spawn_context(ctx: &SpawnContextViewModel) -> String {
+    format!(
+        "spawned by Turn #{}, Step #{}",
+        ctx.turn_index + 1,
+        ctx.step_index + 1
+    )
+}
+
+impl<'a> SessionDetailView<'a> {
+    /// Create a new SessionDetailView (called from CreateView trait)
+    pub fn new(data: &'a SessionDetailViewModel, mode: ViewMode) -> Self {
         Self { data, mode }
     }
 
-    fn render_minimal(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Minimal: Just session ID and turn count
-        writeln!(f, "{}", self.data.header.session_id)?;
+    fn main_stream(&self) -> Option<&StreamAnalysisViewModel> {
+        self.data.streams.first()
+    }
+
+    fn extra_streams(&self) -> &[StreamAnalysisViewModel] {
+        self.data.streams.get(1..).unwrap_or(&[])
+    }
+
+    /// Separator + heading for streams after the first (sidechains).
+    fn write_stream_heading(
+        &self,
+        f: &mut fmt::Formatter,
+        stream: &StreamAnalysisViewModel,
+    ) -> fmt::Result {
+        writeln!(f, "\n{}", "─".repeat(80))?;
+        let spawn_info = stream
+            .spawned_by
+            .as_ref()
+            .map(|ctx| format!(" ({})", format_spawn_context(ctx)))
+            .unwrap_or_default();
+        writeln!(f, "Stream: {}{}", stream.stream_id, spawn_info)?;
         writeln!(
             f,
-            "Turns: {} | Tokens: {}",
-            self.data.turns.len(),
-            number::format_compact(self.data.context_summary.current_tokens as i64)
+            "Turns: {} | Tokens: {}\n",
+            stream.turns.len(),
+            number::format_compact(stream.context_summary.current_tokens as i64)
         )?;
+        Ok(())
+    }
+
+    fn write_stream_turns(
+        &self,
+        f: &mut fmt::Formatter,
+        stream: &StreamAnalysisViewModel,
+    ) -> fmt::Result {
+        for turn in &stream.turns {
+            write!(f, "{}", TurnView::new(turn, self.mode))?;
+        }
+        Ok(())
+    }
+
+    fn render_minimal(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Minimal: Session ID, then one line per stream
+        writeln!(f, "{}", self.data.session.session_id)?;
+        for stream in &self.data.streams {
+            let prefix = if stream.stream_id == "main" {
+                String::new()
+            } else {
+                format!("[{}] ", stream.stream_id)
+            };
+            writeln!(
+                f,
+                "{}Turns: {} | Tokens: {}",
+                prefix,
+                stream.turns.len(),
+                number::format_compact(stream.context_summary.current_tokens as i64)
+            )?;
+        }
         Ok(())
     }
 
     fn render_compact(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Compact: Multi-line header with clear key-value pairs + one-line per turn
-        let session_id = self.data.header.session_id.replace(['\n', '\r'], "");
-        let stream_id = &self.data.header.stream_id;
-        // Show stream_id only if not main (to reduce noise for common case)
-        if stream_id != "main" {
-            writeln!(f, "Session:  {} (stream: {})", session_id, stream_id)?;
-        } else {
-            writeln!(f, "Session:  {}", session_id)?;
-        }
+        let session_id = self.data.session.session_id.replace(['\n', '\r'], "");
+        writeln!(f, "Session:  {}", session_id)?;
 
-        let provider = self.data.header.provider.replace(['\n', '\r'], "");
+        let provider = self.data.session.provider.replace(['\n', '\r'], "");
         write!(f, "Provider: {}", provider)?;
-        write!(f, " | Turns: {}", self.data.turns.len())?;
-        writeln!(
-            f,
-            " | Tokens: {}",
-            number::format_compact(self.data.context_summary.current_tokens as i64)
-        )?;
+        if let Some(main) = self.main_stream() {
+            write!(f, " | Turns: {}", main.turns.len())?;
+            write!(
+                f,
+                " | Tokens: {}",
+                number::format_compact(main.context_summary.current_tokens as i64)
+            )?;
+        }
+        writeln!(f)?;
 
-        if let Some(ref root) = self.data.header.project_root {
+        if let Some(ref root) = self.data.session.project_root {
             // Normalize first (handle newlines), then truncate path
             let normalized = root.replace(['\n', '\r'], "");
             writeln!(f, "Project:  {}", text::truncate_path(&normalized, 60))?;
         } else {
-            let hash_normalized = self.data.header.project_hash.replace(['\n', '\r'], "");
+            let hash_normalized = self.data.session.project_hash.replace(['\n', '\r'], "");
             let hash_prefix = if hash_normalized.len() >= 8 {
                 &hash_normalized[..8]
             } else {
@@ -290,29 +346,37 @@ impl<'a> SessionAnalysisView<'a> {
             writeln!(f, "Project:  {}... (hash only)", hash_prefix)?;
         }
 
+        if let Some(ref ctx) = self.data.session.spawned_by {
+            writeln!(f, "Spawned:  {}", format_spawn_context(ctx))?;
+        }
+
         writeln!(f, "{}", "=".repeat(80))?;
         writeln!(f)?;
 
-        // Show turns with metadata like verbose, but more compact
-        for turn in &self.data.turns {
-            write!(f, "{}", TurnView::new(turn, self.mode))?;
+        if let Some(main) = self.main_stream() {
+            self.write_stream_turns(f, main)?;
+
+            // Show final context summary
+            let tokens_display = if let Some(max) = main.context_summary.max_tokens {
+                format!(
+                    "Context: {} / {} ({:.1}%)",
+                    number::format_compact(main.context_summary.current_tokens as i64),
+                    number::format_compact(max as i64),
+                    (main.context_summary.current_tokens as f64 / max as f64) * 100.0
+                )
+            } else {
+                format!(
+                    "Context: {}",
+                    number::format_compact(main.context_summary.current_tokens as i64)
+                )
+            };
+            writeln!(f, "{}", tokens_display)?;
         }
 
-        // Show final context summary
-        let tokens_display = if let Some(max) = self.data.context_summary.max_tokens {
-            format!(
-                "Context: {} / {} ({:.1}%)",
-                number::format_compact(self.data.context_summary.current_tokens as i64),
-                number::format_compact(max as i64),
-                (self.data.context_summary.current_tokens as f64 / max as f64) * 100.0
-            )
-        } else {
-            format!(
-                "Context: {}",
-                number::format_compact(self.data.context_summary.current_tokens as i64)
-            )
-        };
-        writeln!(f, "{}", tokens_display)?;
+        for stream in self.extra_streams() {
+            self.write_stream_heading(f, stream)?;
+            self.write_stream_turns(f, stream)?;
+        }
 
         Ok(())
     }
@@ -327,66 +391,78 @@ impl<'a> SessionAnalysisView<'a> {
         writeln!(f, "{}", "=".repeat(80))?;
 
         // Session ID
-        writeln!(f, "Session ID:    {}", self.data.header.session_id)?;
+        writeln!(f, "Session ID:    {}", self.data.session.session_id)?;
 
         // Provider
-        writeln!(f, "Provider:      {}", self.data.header.provider)?;
+        writeln!(f, "Provider:      {}", self.data.session.provider)?;
 
         // Project with full information
-        if let Some(ref project_root) = self.data.header.project_root {
+        if let Some(ref project_root) = self.data.session.project_root {
             let smart_path = text::shorten_home_path(project_root);
             writeln!(f, "Project:       {}", smart_path)?;
             writeln!(f, "               (full: {})", project_root)?;
-            writeln!(f, "Project Hash:  {}", self.data.header.project_hash)?;
+            writeln!(f, "Project Hash:  {}", self.data.session.project_hash)?;
         } else {
-            writeln!(f, "Project Hash:  {}", self.data.header.project_hash)?;
+            writeln!(f, "Project Hash:  {}", self.data.session.project_hash)?;
             writeln!(f, "               (no root path available)")?;
         }
 
         // Model
-        if let Some(ref model) = self.data.header.model {
+        if let Some(ref model) = self.data.session.model {
             writeln!(f, "Model:         {}", model)?;
         }
 
-        // Status
-        writeln!(f, "Status:        {}", self.data.header.status)?;
-
-        // Turns
-        writeln!(f, "Turns:         {}", self.data.turns.len())?;
-
-        // Tokens with context bar
-        let tokens_display = if let Some(max) = self.data.context_summary.max_tokens {
-            format!(
-                "{} / {} ({:.1}%)",
-                number::format_compact(self.data.context_summary.current_tokens as i64),
-                number::format_compact(max as i64),
-                (self.data.context_summary.current_tokens as f64 / max as f64) * 100.0
-            )
-        } else {
-            number::format_compact(self.data.context_summary.current_tokens as i64)
-        };
-        writeln!(f, "Tokens:        {}", tokens_display)?;
-        if let Some(max) = self.data.context_summary.max_tokens {
-            let bar = display::build_progress_bar(
-                self.data.context_summary.current_tokens,
-                max,
-                CONTEXT_BAR_WIDTH_STANDARD,
-            );
-            writeln!(f, "               {}", bar)?;
+        // Spawn context (for subagent sessions stored in separate files)
+        if let Some(ref ctx) = self.data.session.spawned_by {
+            writeln!(f, "Spawned:       {}", format_spawn_context(ctx))?;
         }
 
-        // Start time and duration
-        if let Some(ref start) = self.data.header.start_time {
-            writeln!(f, "Started:       {}", start)?;
+        if let Some(main) = self.main_stream() {
+            // Status
+            writeln!(f, "Status:        {}", main.status)?;
+
+            // Turns
+            writeln!(f, "Turns:         {}", main.turns.len())?;
+
+            // Tokens with context bar
+            let tokens_display = if let Some(max) = main.context_summary.max_tokens {
+                format!(
+                    "{} / {} ({:.1}%)",
+                    number::format_compact(main.context_summary.current_tokens as i64),
+                    number::format_compact(max as i64),
+                    (main.context_summary.current_tokens as f64 / max as f64) * 100.0
+                )
+            } else {
+                number::format_compact(main.context_summary.current_tokens as i64)
+            };
+            writeln!(f, "Tokens:        {}", tokens_display)?;
+            if let Some(max) = main.context_summary.max_tokens {
+                let bar = display::build_progress_bar(
+                    main.context_summary.current_tokens,
+                    max,
+                    CONTEXT_BAR_WIDTH_STANDARD,
+                );
+                writeln!(f, "               {}", bar)?;
+            }
+
+            // Start time and duration
+            if let Some(ref start) = main.start_time {
+                writeln!(f, "Started:       {}", start)?;
+            }
+            if let Some(ref dur) = main.duration {
+                writeln!(f, "Duration:      {}", dur)?;
+            }
         }
-        if let Some(ref dur) = self.data.header.duration {
-            writeln!(f, "Duration:      {}", dur)?;
+
+        // Streams (only when there is more than just the main conversation)
+        if !self.extra_streams().is_empty() {
+            writeln!(f, "Streams:       {}", self.data.streams.len())?;
         }
 
         // Log files
-        if !self.data.header.log_files.is_empty() {
+        if !self.data.session.log_files.is_empty() {
             writeln!(f, "Log Files:")?;
-            for log_file in &self.data.header.log_files {
+            for log_file in &self.data.session.log_files {
                 writeln!(f, "               {}", log_file)?;
             }
         }
@@ -394,16 +470,22 @@ impl<'a> SessionAnalysisView<'a> {
         writeln!(f, "{}", "=".repeat(80))?;
         writeln!(f)?;
 
-        // Turns
-        for turn in &self.data.turns {
-            write!(f, "{}", TurnView::new(turn, self.mode))?;
+        // Main stream turns
+        if let Some(main) = self.main_stream() {
+            self.write_stream_turns(f, main)?;
+        }
+
+        // Additional streams (sidechains/subagents)
+        for stream in self.extra_streams() {
+            self.write_stream_heading(f, stream)?;
+            self.write_stream_turns(f, stream)?;
         }
 
         Ok(())
     }
 }
 
-impl<'a> fmt::Display for SessionAnalysisView<'a> {
+impl<'a> fmt::Display for SessionDetailView<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.mode {
             ViewMode::Minimal => self.render_minimal(f),
@@ -744,9 +826,43 @@ fn format_tool_args(tool_call: &agtrace_sdk::types::ToolCallPayload) -> String {
 mod tests {
     use super::*;
     use crate::presentation::view_models::session::{
-        ContextWindowSummary, FilterSummary, SessionAnalysisViewModel, SessionHeader,
-        SessionListEntry, SessionListViewModel, TurnAnalysisViewModel, TurnMetrics,
+        ContextWindowSummary, FilterSummary, SessionDetailViewModel, SessionInfoViewModel,
+        SessionListEntry, SessionListViewModel, SpawnContextViewModel, StreamAnalysisViewModel,
+        TurnAnalysisViewModel, TurnMetrics,
     };
+
+    fn make_stream(
+        stream_id: &str,
+        spawned_by: Option<SpawnContextViewModel>,
+    ) -> StreamAnalysisViewModel {
+        StreamAnalysisViewModel {
+            stream_id: stream_id.to_string(),
+            spawned_by,
+            status: "Complete".to_string(),
+            duration: None,
+            start_time: None,
+            context_summary: ContextWindowSummary {
+                current_tokens: 1000,
+                max_tokens: Some(10000),
+            },
+            turns: vec![],
+        }
+    }
+
+    fn make_session_detail(streams: Vec<StreamAnalysisViewModel>) -> SessionDetailViewModel {
+        SessionDetailViewModel {
+            session: SessionInfoViewModel {
+                session_id: "test-session-id".to_string(),
+                provider: "test_provider".to_string(),
+                project_hash: "test-project-hash-12345678".to_string(),
+                project_root: Some("/test/project/root".to_string()),
+                model: Some("test-model".to_string()),
+                log_files: vec![],
+                spawned_by: None,
+            },
+            streams,
+        }
+    }
 
     #[test]
     fn test_session_list_compact_empty() {
@@ -860,32 +976,68 @@ mod tests {
     }
 
     #[test]
-    fn test_session_analysis_compact() {
-        let data = SessionAnalysisViewModel {
-            header: SessionHeader {
-                session_id: "test-session-id".to_string(),
-                stream_id: "main".to_string(),
-                provider: "test_provider".to_string(),
-                project_hash: "test-project-hash-12345678".to_string(),
-                project_root: Some("/test/project/root".to_string()),
-                model: Some("test-model".to_string()),
-                status: "Complete".to_string(),
-                start_time: None,
-                duration: None,
-                log_files: vec![],
-            },
-            context_summary: ContextWindowSummary {
-                current_tokens: 1000,
-                max_tokens: Some(10000),
-            },
-            turns: vec![],
-        };
-        let view = SessionAnalysisView::new(&data, ViewMode::Compact);
+    fn test_session_detail_compact() {
+        let data = make_session_detail(vec![make_stream("main", None)]);
+        let view = SessionDetailView::new(&data, ViewMode::Compact);
         let output = format!("{}", view);
 
         assert!(output.contains("test-session-id"));
         assert!(output.contains("test_provider"));
         assert!(output.contains("Turns: 0"));
+    }
+
+    #[test]
+    fn test_session_detail_with_sidechains_renders_stream_sections() {
+        let data = make_session_detail(vec![
+            make_stream("main", None),
+            make_stream(
+                "sidechain:abc12345",
+                Some(SpawnContextViewModel {
+                    turn_index: 1,
+                    step_index: 1,
+                }),
+            ),
+        ]);
+        let view = SessionDetailView::new(&data, ViewMode::Verbose);
+        let output = format!("{}", view);
+
+        assert!(output.contains("Streams:       2"));
+        assert!(output.contains("Stream: sidechain:abc12345 (spawned by Turn #2, Step #2)"));
+    }
+
+    /// Regression test: a session with sidechains must serialize to a single
+    /// valid JSON document (previously each stream was emitted as a separate
+    /// document with text separators in between, producing invalid JSON).
+    #[test]
+    fn test_session_detail_with_sidechains_is_single_json_document() {
+        use crate::presentation::view_models::CommandResultViewModel;
+
+        let data = make_session_detail(vec![
+            make_stream("main", None),
+            make_stream(
+                "sidechain:abc12345",
+                Some(SpawnContextViewModel {
+                    turn_index: 1,
+                    step_index: 1,
+                }),
+            ),
+            make_stream(
+                "sidechain:def67890",
+                Some(SpawnContextViewModel {
+                    turn_index: 2,
+                    step_index: 0,
+                }),
+            ),
+        ]);
+        let result = CommandResultViewModel::new(data);
+        let output = serde_json::to_string_pretty(&result).unwrap();
+
+        // The whole output must parse as ONE JSON document
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let streams = parsed["content"]["streams"].as_array().unwrap();
+        assert_eq!(streams.len(), 3);
+        assert_eq!(streams[0]["stream_id"], "main");
+        assert_eq!(streams[1]["spawned_by"]["turn_index"], 1);
     }
 
     #[test]

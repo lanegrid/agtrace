@@ -33,26 +33,53 @@ pub struct FilterSummary {
     pub limit: usize,
 }
 
-/// Session analysis view - TUI-centric performance report
+/// Session detail view - a single document covering the whole session.
+///
+/// A session may contain multiple event streams (the main conversation plus
+/// sidechains/subagents). They are all embedded in `streams` so that one
+/// `session show` invocation always produces exactly one document, regardless
+/// of output format.
 #[derive(Debug, Serialize)]
-pub struct SessionAnalysisViewModel {
-    pub header: SessionHeader,
-    pub context_summary: ContextWindowSummary,
-    pub turns: Vec<TurnAnalysisViewModel>,
+pub struct SessionDetailViewModel {
+    pub session: SessionInfoViewModel,
+    /// All streams in this session. The main stream comes first.
+    pub streams: Vec<StreamAnalysisViewModel>,
 }
 
+/// Session-scoped metadata (shared by all streams).
 #[derive(Debug, Serialize)]
-pub struct SessionHeader {
+pub struct SessionInfoViewModel {
     pub session_id: String,
-    pub stream_id: String,
     pub provider: String,
     pub project_hash: String,
     pub project_root: Option<String>,
     pub model: Option<String>,
+    pub log_files: Vec<String>,
+    /// Spawn context when this entire session is a subagent session
+    /// (e.g. Codex subagents stored in separate files).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spawned_by: Option<SpawnContextViewModel>,
+}
+
+/// Analysis of a single event stream (main conversation or a sidechain).
+#[derive(Debug, Serialize)]
+pub struct StreamAnalysisViewModel {
+    pub stream_id: String,
+    /// Where this stream was spawned from in the parent stream (sidechains only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spawned_by: Option<SpawnContextViewModel>,
     pub status: String,
     pub duration: Option<String>,
     pub start_time: Option<String>,
-    pub log_files: Vec<String>,
+    pub context_summary: ContextWindowSummary,
+    pub turns: Vec<TurnAnalysisViewModel>,
+}
+
+/// Spawn location (0-based indices) within the parent stream.
+#[derive(Debug, Serialize)]
+pub struct SpawnContextViewModel {
+    pub turn_index: usize,
+    pub step_index: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -194,10 +221,10 @@ impl CreateView for SessionListViewModel {
     }
 }
 
-impl CreateView for SessionAnalysisViewModel {
+impl CreateView for SessionDetailViewModel {
     fn create_view<'a>(&'a self, mode: ViewMode) -> Box<dyn fmt::Display + 'a> {
-        use crate::presentation::views::session::SessionAnalysisView;
-        Box::new(SessionAnalysisView::new(self, mode))
+        use crate::presentation::views::session::SessionDetailView;
+        Box::new(SessionDetailView::new(self, mode))
     }
 }
 
@@ -211,7 +238,7 @@ impl fmt::Display for SessionListViewModel {
     }
 }
 
-impl fmt::Display for SessionAnalysisViewModel {
+impl fmt::Display for SessionDetailViewModel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.create_view(ViewMode::default()))
     }
