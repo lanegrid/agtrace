@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-07-10
+
+### Bug Fixes
+
+- *(claude)* Surface redacted thinking and reasoning tokens (#58) ([199d679](https://github.com/lanegrid/agtrace/commit/199d6790e80a54038a9cf5cd7de57ceeff4820f9))
+
+- *(cli)* Emit single JSON document from session show with sidechains (#61) ([9c2094f](https://github.com/lanegrid/agtrace/commit/9c2094f6253878ecb71291981cc7743df9c3d98a))
+
+
+### Documentation
+
+- Audit Claude Code v2.1 log format changes (#57) ([a0cdee0](https://github.com/lanegrid/agtrace/commit/a0cdee045abff0e46cb1cffa94a78588a83ed8e5))
+
+
+### Features
+
+- *(claude)* Parse v2.1 system subtypes (away_summary, api_error, informational) (#59) ([0f35392](https://github.com/lanegrid/agtrace/commit/0f353926c35a1e11a08866acc3f7c00ef39e4651))
+
+- *(claude)* Surface queued prompts and plan-mode-exit from attachments (#60) ([2edf6e4](https://github.com/lanegrid/agtrace/commit/2edf6e4067b4a85c0e0d99c065c18a0d1d62edd6))
+
+
+### Miscellaneous Tasks
+
+- Consolidate .agent/ into .claude/ and remove symlink (#48) ([3619338](https://github.com/lanegrid/agtrace/commit/3619338c0ec7850afdc7e782ee5a018638da3cf5))
+
+- Add mise tasks, update git-workflow skill, and rewrite CLAUDE.md (#49) ([124ce1e](https://github.com/lanegrid/agtrace/commit/124ce1e669eed100abde391a70f1d0f944c7e25e))
+
+- Add .claude/settings.json with broad permission allowlist (#50) ([62a0ef4](https://github.com/lanegrid/agtrace/commit/62a0ef40d79002947982cce6c505c40ea30ebba3))
+
+- Add PR CI workflow (#51) ([ad9e0b0](https://github.com/lanegrid/agtrace/commit/ad9e0b0fe95d6f5b6c904aca809c4902fa6e238f))
+
+- *(skills)* Add singleton rule for git:open-pr (#52) ([7e13893](https://github.com/lanegrid/agtrace/commit/7e13893fd57dd66ed9bf73be48784ef8613d6947))
+
+- Use OPEN_URL_CMD env var for PR browser open (#54) ([1616f05](https://github.com/lanegrid/agtrace/commit/1616f05856b0ff4d782c531087fb1b93940f7b5c))
+
+- Add mise tasks for data exploration and database management (#55) ([b1ab738](https://github.com/lanegrid/agtrace/commit/b1ab738757dc82c7b625067318c82fb65b2d247f))
+
+- Fix clippy lints from newer toolchains (#62) ([f0bf5cf](https://github.com/lanegrid/agtrace/commit/f0bf5cfbedad340fb474969f6729d41fddd27ae3))
+
+
 ## [0.7.1] - 2026-02-07
 
 ### Bug Fixes
