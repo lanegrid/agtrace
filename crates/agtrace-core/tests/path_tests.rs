@@ -55,7 +55,7 @@ fn test_discover_project_root_falls_back_to_cwd() {
     let result = discover_project_root(None).unwrap();
 
     // Result should be a valid path
-    assert!(result.is_absolute() || result == *".");
+    assert!(result.is_absolute() || result.as_os_str() == ".");
 }
 
 #[test]
