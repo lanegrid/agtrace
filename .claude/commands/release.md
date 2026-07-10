@@ -2,11 +2,29 @@
 
 This document describes the standard release process for agtrace.
 
+## How releasing works
+
+The release is split between local steps and CI:
+
+- **Local** (`cargo release`): bump versions, update CHANGELOG, commit, tag, push.
+  `release.toml` sets `publish = false`, so nothing is published from your machine.
+- **CI** (`.github/workflows/release.yml`, triggered by the `v*` tag push):
+  - `publish-crates`: publishes all crates to crates.io in dependency order
+    using the `CARGO_REGISTRY_TOKEN` repository secret
+  - `build-local/global-artifacts` + `host`: cargo-dist builds binaries for all
+    platforms and creates the GitHub Release
+  - `publish-npm`: publishes the npm package
+
+**Do NOT publish to crates.io locally.** No `cargo login` is needed. If a crate
+version is already on crates.io when CI runs, `cargo publish` fails with
+"already uploaded" and the whole release workflow (including the GitHub
+Release) is blocked.
+
 ## Prerequisites
 
-- Ensure `cargo login` is configured with crates.io token
 - On `main` branch with clean working directory
-- Tools installed: `cargo install git-cliff cargo-release`
+- Tools installed: `git-cliff` and `cargo-release`
+  (`brew install git-cliff cargo-release` or `cargo install git-cliff cargo-release`)
 
 ## Release Steps
 
@@ -24,12 +42,10 @@ RELEASE_LEVEL=patch  # or: minor, major
 Check what will happen without making changes (dry-run is the default):
 
 ```bash
-cargo release --workspace ${RELEASE_LEVEL} --no-verify
+cargo release --workspace ${RELEASE_LEVEL}
 ```
 
-**Flags explained**:
-- `--workspace`: Required to publish all 6 crates in dependency order
-- `--no-verify`: Skips local verification to avoid a known Cargo bug ([#14396](https://github.com/rust-lang/cargo/issues/14396)) that causes "no hash listed" errors during dry-run. The actual release with `--execute` verifies against crates.io and works correctly.
+Confirm the version bump and the "Pushing main, vX.Y.Z to origin" plan.
 
 ### 2. Update CHANGELOG
 
@@ -68,33 +84,39 @@ git add CHANGELOG.md
 git commit -m "docs: update CHANGELOG for v${NEXT_VERSION}"
 ```
 
-### 4. Execute Release
+### 4. Execute Release (local part)
 
 This command will:
 - Update version in all `Cargo.toml` files
-- Create git commit
-- Publish to crates.io (in dependency order: types → providers → index → engine → runtime → cli)
-- Create and push git tag
+- Create the release commit
+- Create the `vX.Y.Z` git tag
+- Push `main` and the tag to origin (this triggers the CI release workflow)
 
 ```bash
 cargo release --workspace ${RELEASE_LEVEL} --execute
 ```
 
-### 5. Verify GitHub Actions
+### 5. Watch GitHub Actions (publishing part)
 
-After tag push (e.g., `v0.1.2`), the workflow `.github/workflows/release.yml` automatically triggers:
+The tag push triggers `.github/workflows/release.yml`, which does all
+publishing:
 
-- **crates.io**: Already published in step 4
-- **GitHub Release**: CI builds binaries for all platforms and uploads artifacts
+- **crates.io**: `publish-crates` job publishes every crate in dependency order
+- **GitHub Release**: cargo-dist builds binaries for all platforms and uploads artifacts
+- **npm**: `publish-npm` job
 
-Check the Actions tab to ensure successful completion.
+Watch it to completion:
+
+```bash
+gh run watch $(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') --exit-status
+```
 
 ## Notes
 
 - First release reserves package names on crates.io
 - If a name is already taken, update `name` in `Cargo.toml`
 - Binary distribution uses `cargo-dist` (handled by CI)
-- crates.io publishing uses `cargo-release` (handled locally)
+- crates.io publishing uses plain `cargo publish` (handled by CI, NOT locally)
 
 ### CHANGELOG Best Practices
 
@@ -108,18 +130,20 @@ Check the Actions tab to ensure successful completion.
 
 ## Troubleshooting
 
-### "no hash listed" error during dry-run
+### Release stopped halfway (e.g. before tag/push)
 
-If you see this error during `cargo release --workspace`:
+`cargo release` runs discrete steps; if it aborts partway you can resume with
+the step subcommands instead of re-running the whole release (which would bump
+versions again):
 
-```
-error: failed to verify package tarball
-Caused by: no hash listed for agtrace-xxx v0.x.x
-```
-
-This is a known Cargo bug ([#14396](https://github.com/rust-lang/cargo/issues/14396)) that only affects dry-run verification of interdependent workspace crates. The actual release (`--execute`) succeeds because crates are published to crates.io sequentially, and each published crate gets a proper checksum in the registry.
-
-**Solution**: Use `--no-verify` flag for dry-run:
 ```bash
-cargo release --workspace patch --no-verify
+cargo release tag --workspace --execute   # create vX.Y.Z from the release commit
+cargo release push --workspace --execute  # push main + tag (triggers CI)
 ```
+
+### publish-crates fails with "already uploaded"
+
+A crate version was published outside CI (or the job re-ran after a partial
+publish). `cargo publish` treats an existing version as a hard error. Re-run
+the job after yanking is NOT possible for the same version — bump a new patch
+release instead, and never publish locally.
