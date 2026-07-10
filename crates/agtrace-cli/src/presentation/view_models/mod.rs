@@ -56,9 +56,10 @@ pub use provider::{
 pub use result::CommandResultViewModel;
 pub use session::{
     AgentStepViewModel, ContextUsage, ContextWindowSummary, ContextWindowUsageViewModel,
-    FilterSummary, SessionAnalysisViewModel, SessionHeader, SessionListEntry, SessionListViewModel,
-    SpawnedChildViewModel, StepItemViewModel, StreamStateViewModel, TurnAnalysisViewModel,
-    TurnMetrics, TurnUsageViewModel,
+    FilterSummary, SessionDetailViewModel, SessionInfoViewModel, SessionListEntry,
+    SessionListViewModel, SpawnContextViewModel, SpawnedChildViewModel, StepItemViewModel,
+    StreamAnalysisViewModel, StreamStateViewModel, TurnAnalysisViewModel, TurnMetrics,
+    TurnUsageViewModel,
 };
 pub use watch::{WatchEventViewModel, WatchStreamStateViewModel, WatchTargetViewModel};
 pub use watch_tui::{

@@ -29,6 +29,7 @@ pub use agtrace_types::{
     RepositoryHash,
     SessionMetadata,
     SessionStats,
+    SpawnContext,
     StepStatus,
     StreamId,
     SubagentInfo,

@@ -1,12 +1,13 @@
 use crate::args::hints::{cmd, fmt};
 use crate::presentation::view_models::{
     AgentStepViewModel, CommandResultViewModel, ContextUsage, ContextWindowSummary,
-    ContextWindowUsageViewModel, FilterSummary, Guidance, SessionAnalysisViewModel, SessionHeader,
-    SessionListEntry, SessionListViewModel, SpawnedChildViewModel, StatusBadge,
-    StreamStateViewModel, TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
+    ContextWindowUsageViewModel, FilterSummary, Guidance, SessionDetailViewModel,
+    SessionInfoViewModel, SessionListEntry, SessionListViewModel, SpawnContextViewModel,
+    SpawnedChildViewModel, StatusBadge, StreamAnalysisViewModel, StreamStateViewModel,
+    TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
 };
 use agtrace_sdk::ChildSessionInfo;
-use agtrace_sdk::types::{AgentSession, SessionAnalysisExt, SessionSummary};
+use agtrace_sdk::types::{AgentSession, SessionAnalysisExt, SessionSummary, StreamId};
 
 pub fn present_session_list(
     sessions: Vec<SessionSummary>,
@@ -92,46 +93,75 @@ fn add_session_list_guidance(
     result
 }
 
-/// Present session analysis with context-aware metrics
+/// Present a full session (all streams) as a single view model.
+///
+/// Streams are ordered Main-first, then by stream_id. Producing one view model
+/// for the whole session guarantees `--format json` emits exactly one document.
 #[allow(clippy::too_many_arguments)]
-pub fn present_session_analysis(
-    session: &AgentSession,
+pub fn present_session_detail(
+    streams: &[AgentSession],
     session_id: &str,
     provider: &str,
     project_hash: &str,
     project_root: Option<&str>,
+    session_spawned_by: Option<&agtrace_sdk::types::SpawnContext>,
     model: &str,
     max_context: Option<u32>,
     log_files: Vec<String>,
     children: &[ChildSessionInfo],
-) -> CommandResultViewModel<SessionAnalysisViewModel> {
-    let view = build_session_analysis_view(
-        session,
-        session_id,
-        provider,
-        project_hash,
-        project_root,
-        model,
-        max_context,
-        log_files,
-        children,
-    );
+) -> CommandResultViewModel<SessionDetailViewModel> {
+    // Order: Main first, then others by stream_id string
+    let mut ordered: Vec<&AgentSession> = streams.iter().collect();
+    ordered.sort_by(|a, b| match (&a.stream_id, &b.stream_id) {
+        (StreamId::Main, StreamId::Main) => std::cmp::Ordering::Equal,
+        (StreamId::Main, _) => std::cmp::Ordering::Less,
+        (_, StreamId::Main) => std::cmp::Ordering::Greater,
+        (a_id, b_id) => a_id.as_str().cmp(&b_id.as_str()),
+    });
+
+    let stream_views = ordered
+        .iter()
+        .map(|session| {
+            // Children (subagent sessions in separate files) attach to the main stream only
+            let stream_children: &[ChildSessionInfo] =
+                if matches!(session.stream_id, StreamId::Main) {
+                    children
+                } else {
+                    &[]
+                };
+            build_stream_analysis(session, max_context, stream_children)
+        })
+        .collect();
+
+    let view = SessionDetailViewModel {
+        session: SessionInfoViewModel {
+            session_id: session_id.to_string(),
+            provider: provider.to_string(),
+            project_hash: project_hash.to_string(),
+            project_root: project_root.map(|s| s.to_string()),
+            model: Some(model.to_string()),
+            log_files,
+            spawned_by: session_spawned_by.map(present_spawn_context),
+        },
+        streams: stream_views,
+    };
+
     let result = CommandResultViewModel::new(view);
-    add_session_analysis_guidance(result)
+    result.with_badge(StatusBadge::success("Session Analysis"))
 }
 
-#[allow(clippy::too_many_arguments)]
-fn build_session_analysis_view(
+fn present_spawn_context(ctx: &agtrace_sdk::types::SpawnContext) -> SpawnContextViewModel {
+    SpawnContextViewModel {
+        turn_index: ctx.turn_index,
+        step_index: ctx.step_index,
+    }
+}
+
+fn build_stream_analysis(
     session: &AgentSession,
-    session_id: &str,
-    provider: &str,
-    project_hash: &str,
-    project_root: Option<&str>,
-    model: &str,
     max_context: Option<u32>,
-    log_files: Vec<String>,
     children: &[ChildSessionInfo],
-) -> SessionAnalysisViewModel {
+) -> StreamAnalysisViewModel {
     use crate::presentation::formatters::time;
     use std::collections::HashMap;
 
@@ -173,24 +203,6 @@ fn build_session_analysis_view(
         .first()
         .and_then(|t| t.steps.first().map(|s| time::format_time(s.timestamp)));
 
-    // Build header
-    let header = SessionHeader {
-        session_id: session_id.to_string(),
-        stream_id: session.stream_id.as_str(),
-        provider: provider.to_string(),
-        project_hash: project_hash.to_string(),
-        project_root: project_root.map(|s| s.to_string()),
-        model: Some(model.to_string()),
-        status: if session.turns.is_empty() {
-            "Empty".to_string()
-        } else {
-            "Complete".to_string()
-        },
-        duration,
-        start_time,
-        log_files,
-    };
-
     // Build context summary (raw data only)
     let total_tokens = metrics.last().map(|m| m.prev_total + m.delta).unwrap_or(0);
     let context_summary = ContextWindowSummary {
@@ -212,17 +224,19 @@ fn build_session_analysis_view(
         })
         .collect();
 
-    SessionAnalysisViewModel {
-        header,
+    StreamAnalysisViewModel {
+        stream_id: session.stream_id.as_str(),
+        spawned_by: session.spawned_by.as_ref().map(present_spawn_context),
+        status: if session.turns.is_empty() {
+            "Empty".to_string()
+        } else {
+            "Complete".to_string()
+        },
+        duration,
+        start_time,
         context_summary,
         turns,
     }
-}
-
-fn add_session_analysis_guidance(
-    result: CommandResultViewModel<SessionAnalysisViewModel>,
-) -> CommandResultViewModel<SessionAnalysisViewModel> {
-    result.with_badge(StatusBadge::success("Session Analysis"))
 }
 
 fn build_turn_analysis(
