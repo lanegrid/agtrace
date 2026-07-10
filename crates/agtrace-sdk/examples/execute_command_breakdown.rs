@@ -238,7 +238,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Sort providers by execute count
     let mut providers: Vec<_> = provider_stats.iter().collect();
-    providers.sort_by(|a, b| b.1.total_execute.cmp(&a.1.total_execute));
+    providers.sort_by_key(|p| std::cmp::Reverse(p.1.total_execute));
 
     // Display statistics for each provider
     for (provider_name, stats) in providers {

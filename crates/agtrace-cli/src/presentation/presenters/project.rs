@@ -14,7 +14,7 @@ pub fn present_project_list(
     let total_count = projects.len();
 
     // Sort by session count (descending)
-    projects.sort_by(|a, b| b.session_count.cmp(&a.session_count));
+    projects.sort_by_key(|p| std::cmp::Reverse(p.session_count));
 
     // Separate current project and others
     let current_project_idx = projects.iter().position(|p| p.hash == current_hash);

@@ -364,11 +364,9 @@ fn handle_provider_watch(
                     }
                 }
             }
-            Ok(WorkspaceEvent::Error(msg)) => {
-                if msg.starts_with("FATAL:") {
-                    handler.send_error(msg);
-                    break;
-                }
+            Ok(WorkspaceEvent::Error(msg)) if msg.starts_with("FATAL:") => {
+                handler.send_error(msg);
+                break;
             }
             _ => {}
         }
