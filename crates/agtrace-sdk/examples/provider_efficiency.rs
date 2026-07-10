@@ -216,7 +216,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Sort providers by session count
     let mut providers: Vec<_> = provider_metrics.iter().collect();
-    providers.sort_by(|a, b| b.1.total_sessions.cmp(&a.1.total_sessions));
+    providers.sort_by_key(|p| std::cmp::Reverse(p.1.total_sessions));
 
     // Display summary table
     println!(

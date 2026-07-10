@@ -237,11 +237,9 @@ pub fn extract_spawn_events(path: &Path) -> Result<Vec<SpawnEvent>> {
                     }
                 }
             }
-            CodexRecord::ResponseItem(_) => {
-                // Response items are part of current step
-                if in_turn {
-                    current_step += 1;
-                }
+            // Response items are part of current step
+            CodexRecord::ResponseItem(_) if in_turn => {
+                current_step += 1;
             }
             _ => {}
         }

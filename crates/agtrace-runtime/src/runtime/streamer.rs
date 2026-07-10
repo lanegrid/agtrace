@@ -71,7 +71,7 @@ impl StreamContext {
         let mut all_events: Vec<AgentEvent> =
             self.file_events.values().flatten().cloned().collect();
         // Stable sort preserves file-internal order for same-timestamp events
-        all_events.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        all_events.sort_by_key(|a| a.timestamp);
         all_events
     }
 

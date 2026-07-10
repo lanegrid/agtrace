@@ -76,13 +76,11 @@ fn apply_clean_strategy(events: &[AgentEvent]) -> Vec<AgentEvent> {
                         );
                     }
                 }
-                EventPayload::Reasoning(reasoning) => {
-                    if reasoning.text.len() > 5000 {
-                        reasoning.text = format!(
-                            "{}...<truncated_output_for_training>",
-                            reasoning.text.chars().take(1000).collect::<String>()
-                        );
-                    }
+                EventPayload::Reasoning(reasoning) if reasoning.text.len() > 5000 => {
+                    reasoning.text = format!(
+                        "{}...<truncated_output_for_training>",
+                        reasoning.text.chars().take(1000).collect::<String>()
+                    );
                 }
                 _ => {}
             }
