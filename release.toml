@@ -1,9 +1,13 @@
-# release.toml - cargo-release configuration for version management and crates.io publishing
+# release.toml - cargo-release configuration for version management
+# Publishing to crates.io is handled by CI (publish-crates job in
+# .github/workflows/release.yml, triggered by the tag push), so cargo-release
+# only bumps versions, commits, tags, and pushes. A local publish would make
+# the CI `cargo publish` fail with "already uploaded" and block the release.
 allow-branch = ["main", "master"]
 sign-commit = false
 sign-tag = false
 push = true
-publish = true
+publish = false
 
 # Version tag format (e.g., v0.1.0)
 tag-name = "v{{version}}"
