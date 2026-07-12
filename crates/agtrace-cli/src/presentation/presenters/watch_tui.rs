@@ -296,11 +296,9 @@ fn build_turn_history(
     // Build global recent steps from ALL turns (latest N steps across all turns)
     const MAX_GLOBAL_STEPS: usize = 15;
     let now = chrono::Utc::now();
-    let global_recent_steps: Vec<StepPreviewViewModel> = session
-        .turns
-        .iter()
-        .flat_map(|turn| turn.steps.iter().map(|s| build_step_preview(s, now)))
-        .collect::<Vec<_>>()
+    let all_steps: Vec<&agtrace_sdk::types::AgentStep> =
+        session.turns.iter().flat_map(|turn| &turn.steps).collect();
+    let global_recent_steps: Vec<StepPreviewViewModel> = build_step_previews(&all_steps, 0, now)
         .into_iter()
         .rev()
         .take(MAX_GLOBAL_STEPS)
@@ -429,13 +427,10 @@ fn build_turn_item_with_children(
     // Build step preview for active turn
     let now = chrono::Utc::now();
     let recent_steps = if metric.is_active {
-        turn.steps
-            .iter()
-            .rev()
-            .take(5)
-            .rev()
-            .map(|s| build_step_preview(s, now))
-            .collect()
+        let steps: Vec<&agtrace_sdk::types::AgentStep> = turn.steps.iter().collect();
+        let mut previews = build_step_previews(&steps, metric.prev_total as i64, now);
+        previews.drain(..previews.len().saturating_sub(5));
+        previews
     } else {
         Vec::new()
     };
@@ -527,25 +522,59 @@ fn build_child_stream_view_model(
     }
 }
 
+/// Build step previews for a chronological slice of steps.
+///
+/// `prev_input_tokens` seeds the context-delta chain: each step's delta is the
+/// difference between its input tokens and the previous step with usage data.
+fn build_step_previews(
+    steps: &[&agtrace_sdk::types::AgentStep],
+    prev_input_tokens: i64,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Vec<StepPreviewViewModel> {
+    let mut prev_input = prev_input_tokens;
+    steps
+        .iter()
+        .map(|step| {
+            let preview = build_step_preview(step, prev_input, now);
+            if let Some(usage) = &step.usage {
+                prev_input = usage.input_tokens() as i64;
+            }
+            preview
+        })
+        .collect()
+}
+
 /// Build step preview item
+///
+/// Tool executions take priority over reasoning/message: with adaptive thinking
+/// the reasoning text is often absent, and the tool summary (what ran, how long,
+/// how many tokens it fed back) is the more useful signal.
 fn build_step_preview(
     step: &agtrace_sdk::types::AgentStep,
+    prev_input_tokens: i64,
     now: chrono::DateTime<chrono::Utc>,
 ) -> StepPreviewViewModel {
-    let (icon, description) = if let Some(reasoning) = &step.reasoning {
-        (
-            "🤔".to_string(),
-            truncate_text(&reasoning.content.text, 100),
-        )
+    let (icon, description) = if !step.tools.is_empty() {
+        let (icon, mut description) = build_tool_preview(&step.tools[0]);
+        if step.tools.len() > 1 {
+            description.push_str(&format!(" (+{} more)", step.tools.len() - 1));
+        }
+        (icon, description)
     } else if let Some(message) = &step.message {
         ("💬".to_string(), truncate_text(&message.content.text, 100))
-    } else if !step.tools.is_empty() {
-        build_tool_preview(&step.tools[0])
+    } else if step.reasoning.is_some() {
+        // Do not surface reasoning text: adaptive thinking makes it unreliable
+        ("🤔".to_string(), "Thinking...".to_string())
     } else {
         ("•".to_string(), "Event".to_string())
     };
 
-    let token_usage = step.usage.as_ref().map(|u| u.input_tokens() as u32);
+    let tool_result_tokens = estimate_tool_result_tokens(&step.tools);
+    let context_delta_tokens = step
+        .usage
+        .as_ref()
+        .map(|u| u.input_tokens() as i64 - prev_input_tokens);
+    let is_error = step.tools.iter().any(|t| t.is_error);
     let relative_time = format_relative_time(step.timestamp, now);
 
     StepPreviewViewModel {
@@ -553,15 +582,33 @@ fn build_step_preview(
         relative_time,
         icon,
         description,
-        token_usage,
+        tool_result_tokens,
+        context_delta_tokens,
+        is_error,
     }
+}
+
+/// Estimate tokens injected into context by tool results (~4 chars per token).
+///
+/// Tool results have no exact token accounting in agent logs, so this gives an
+/// intuitive order-of-magnitude view of how much each call costs the context.
+fn estimate_tool_result_tokens(tools: &[agtrace_sdk::types::ToolExecution]) -> Option<u32> {
+    let chars: usize = tools
+        .iter()
+        .filter_map(|t| t.result.as_ref())
+        .map(|r| r.content.output.chars().count())
+        .sum();
+    if chars == 0 {
+        return None;
+    }
+    Some((chars / 4).max(1) as u32)
 }
 
 /// Build preview for tool execution with special handling for interaction tools
 fn build_tool_preview(tool: &agtrace_sdk::types::ToolExecution) -> (String, String) {
     let tool_name = tool.call.content.name();
 
-    match tool_name {
+    let (icon, mut description) = match tool_name {
         "TodoWrite" => {
             let description = extract_todo_preview(&tool.call.content);
             ("📋".to_string(), description)
@@ -582,7 +629,94 @@ fn build_tool_preview(tool: &agtrace_sdk::types::ToolExecution) -> (String, Stri
             let description = extract_task_preview(&tool.call.content);
             ("🚀".to_string(), description)
         }
-        _ => ("🔧".to_string(), format!("Tool: {}", tool_name)),
+        _ => build_generic_tool_preview(&tool.call.content),
+    };
+
+    if let Some(duration_ms) = tool.duration_ms
+        && duration_ms >= 100
+    {
+        description.push_str(&format!(" [{}]", format_duration_ms(duration_ms)));
+    }
+
+    (icon, description)
+}
+
+/// Build "Name: salient-arg" preview from the typed tool call payload
+fn build_generic_tool_preview(payload: &agtrace_sdk::types::ToolCallPayload) -> (String, String) {
+    use agtrace_sdk::types::ToolCallPayload;
+
+    match payload {
+        ToolCallPayload::FileRead {
+            name, arguments, ..
+        } => {
+            let target = arguments
+                .path()
+                .map(short_path)
+                .or_else(|| arguments.pattern.clone());
+            ("📖".to_string(), format_tool_target(name, target))
+        }
+        ToolCallPayload::FileEdit {
+            name, arguments, ..
+        } => (
+            "✏️".to_string(),
+            format_tool_target(name, Some(short_path(&arguments.file_path))),
+        ),
+        ToolCallPayload::FileWrite {
+            name, arguments, ..
+        } => (
+            "📝".to_string(),
+            format_tool_target(name, Some(short_path(&arguments.file_path))),
+        ),
+        ToolCallPayload::Execute {
+            name, arguments, ..
+        } => (
+            "🔧".to_string(),
+            format_tool_target(name, arguments.command().map(|c| c.to_string())),
+        ),
+        ToolCallPayload::Search {
+            name, arguments, ..
+        } => (
+            "🔍".to_string(),
+            format_tool_target(name, arguments.pattern().map(|p| p.to_string())),
+        ),
+        ToolCallPayload::Mcp {
+            name, arguments, ..
+        } => {
+            let target = match (&arguments.server, &arguments.tool) {
+                (Some(server), Some(tool)) => Some(format!("{}.{}", server, tool)),
+                _ => None,
+            };
+            match target {
+                Some(t) => ("🔌".to_string(), format!("mcp: {}", t)),
+                None => ("🔌".to_string(), format!("mcp: {}", name)),
+            }
+        }
+        ToolCallPayload::Generic { name, .. } => ("🔧".to_string(), format!("Tool: {}", name)),
+    }
+}
+
+/// Format "Name: target" with truncation, falling back to bare name
+fn format_tool_target(name: &str, target: Option<String>) -> String {
+    match target {
+        Some(t) if !t.is_empty() => format!("{}: {}", name, truncate_text(&t, 60)),
+        _ => format!("Tool: {}", name),
+    }
+}
+
+/// Shorten a file path to its last two components (e.g. "tui/turn_history.rs")
+fn short_path(path: &str) -> String {
+    let components: Vec<&str> = path.rsplit('/').take(2).collect();
+    components.into_iter().rev().collect::<Vec<_>>().join("/")
+}
+
+/// Format a duration in milliseconds (e.g. "450ms", "1.2s", "2m05s")
+fn format_duration_ms(ms: i64) -> String {
+    if ms < 1_000 {
+        format!("{}ms", ms)
+    } else if ms < 60_000 {
+        format!("{:.1}s", ms as f64 / 1_000.0)
+    } else {
+        format!("{}m{:02}s", ms / 60_000, (ms % 60_000) / 1_000)
     }
 }
 
@@ -730,5 +864,192 @@ fn format_relative_time(timestamp: chrono::DateTime<Utc>, now: chrono::DateTime<
         format!("{}h ago", seconds / 3600)
     } else {
         format!("{}d ago", seconds / 86400)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use agtrace_sdk::types::{
+        AgentStep, ContextWindowUsage, ExecuteArgs, MessageBlock, MessagePayload, ReasoningBlock,
+        ReasoningPayload, StepStatus, ToolCallBlock, ToolCallPayload, ToolExecution,
+        ToolResultBlock, ToolResultPayload,
+    };
+    use uuid::Uuid;
+
+    fn empty_step() -> AgentStep {
+        AgentStep {
+            id: Uuid::new_v4(),
+            timestamp: Utc::now(),
+            reasoning: None,
+            message: None,
+            tools: Vec::new(),
+            usage: None,
+            is_failed: false,
+            status: StepStatus::Done,
+        }
+    }
+
+    fn reasoning_block(text: &str) -> ReasoningBlock {
+        ReasoningBlock {
+            event_id: Uuid::new_v4(),
+            content: ReasoningPayload {
+                text: text.to_string(),
+            },
+        }
+    }
+
+    fn bash_execution(command: &str, output: &str, duration_ms: Option<i64>) -> ToolExecution {
+        let call_id = Uuid::new_v4();
+        ToolExecution {
+            call: ToolCallBlock {
+                event_id: call_id,
+                timestamp: Utc::now(),
+                provider_call_id: None,
+                content: ToolCallPayload::Execute {
+                    name: "Bash".to_string(),
+                    arguments: ExecuteArgs {
+                        command: Some(command.to_string()),
+                        description: None,
+                        timeout: None,
+                        extra: serde_json::json!({}),
+                    },
+                    provider_call_id: None,
+                },
+            },
+            result: Some(ToolResultBlock {
+                event_id: Uuid::new_v4(),
+                timestamp: Utc::now(),
+                tool_call_id: call_id,
+                content: ToolResultPayload {
+                    output: output.to_string(),
+                    tool_call_id: call_id,
+                    is_error: false,
+                    agent_id: None,
+                },
+            }),
+            duration_ms,
+            is_error: false,
+        }
+    }
+
+    #[test]
+    fn tool_summary_takes_priority_over_reasoning() {
+        let mut step = empty_step();
+        step.reasoning = Some(reasoning_block("secret chain of thought"));
+        step.tools = vec![bash_execution("cargo test", "ok", None)];
+
+        let preview = build_step_preview(&step, 0, Utc::now());
+
+        assert!(preview.description.contains("Bash: cargo test"));
+        assert!(!preview.description.contains("secret chain of thought"));
+    }
+
+    #[test]
+    fn reasoning_only_step_hides_thinking_text() {
+        let mut step = empty_step();
+        step.reasoning = Some(reasoning_block("secret chain of thought"));
+
+        let preview = build_step_preview(&step, 0, Utc::now());
+
+        assert_eq!(preview.description, "Thinking...");
+    }
+
+    #[test]
+    fn message_step_shows_text() {
+        let mut step = empty_step();
+        step.message = Some(MessageBlock {
+            event_id: Uuid::new_v4(),
+            content: MessagePayload {
+                text: "All done".to_string(),
+            },
+        });
+
+        let preview = build_step_preview(&step, 0, Utc::now());
+
+        assert_eq!(preview.description, "All done");
+        assert!(preview.tool_result_tokens.is_none());
+    }
+
+    #[test]
+    fn tool_result_tokens_are_estimated_from_output_chars() {
+        let mut step = empty_step();
+        step.tools = vec![bash_execution("ls", &"x".repeat(4000), None)];
+
+        let preview = build_step_preview(&step, 0, Utc::now());
+
+        assert_eq!(preview.tool_result_tokens, Some(1000));
+    }
+
+    #[test]
+    fn tool_duration_is_appended() {
+        let mut step = empty_step();
+        step.tools = vec![bash_execution("cargo build", "ok", Some(1500))];
+
+        let preview = build_step_preview(&step, 0, Utc::now());
+
+        assert!(preview.description.contains("[1.5s]"));
+    }
+
+    #[test]
+    fn multiple_tools_show_count() {
+        let mut step = empty_step();
+        step.tools = vec![
+            bash_execution("ls", "a", None),
+            bash_execution("pwd", "b", None),
+            bash_execution("date", "c", None),
+        ];
+
+        let preview = build_step_preview(&step, 0, Utc::now());
+
+        assert!(preview.description.contains("(+2 more)"));
+    }
+
+    #[test]
+    fn context_delta_chains_across_steps() {
+        let mut step1 = empty_step();
+        step1.usage = Some(ContextWindowUsage::from_raw(10_000, 0, 0, 100));
+        let step2 = empty_step(); // in-progress: no usage yet
+        let mut step3 = empty_step();
+        step3.usage = Some(ContextWindowUsage::from_raw(0, 2_000, 11_000, 200));
+
+        let steps = vec![&step1, &step2, &step3];
+        let previews = build_step_previews(&steps, 4_000, Utc::now());
+
+        assert_eq!(previews[0].context_delta_tokens, Some(6_000));
+        assert_eq!(previews[1].context_delta_tokens, None);
+        // 13_000 total input - 10_000 from step1
+        assert_eq!(previews[2].context_delta_tokens, Some(3_000));
+    }
+
+    #[test]
+    fn context_delta_is_negative_after_compaction() {
+        let mut step1 = empty_step();
+        step1.usage = Some(ContextWindowUsage::from_raw(150_000, 0, 0, 100));
+        let mut step2 = empty_step();
+        step2.usage = Some(ContextWindowUsage::from_raw(30_000, 0, 0, 100));
+
+        let steps = vec![&step1, &step2];
+        let previews = build_step_previews(&steps, 0, Utc::now());
+
+        assert_eq!(previews[1].context_delta_tokens, Some(-120_000));
+    }
+
+    #[test]
+    fn failed_tool_marks_step_as_error() {
+        let mut step = empty_step();
+        let mut tool = bash_execution("cargo test", "error: failed", None);
+        tool.is_error = true;
+        step.tools = vec![tool];
+
+        let preview = build_step_preview(&step, 0, Utc::now());
+
+        assert!(preview.is_error);
+    }
+
+    #[test]
+    fn short_path_keeps_last_two_components() {
+        assert_eq!(short_path("/a/b/c/file.rs"), "c/file.rs");
+        assert_eq!(short_path("file.rs"), "file.rs");
     }
 }

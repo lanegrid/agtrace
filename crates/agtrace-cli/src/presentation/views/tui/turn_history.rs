@@ -232,25 +232,7 @@ impl<'a> TurnHistoryView<'a> {
             .model
             .global_recent_steps
             .iter()
-            .map(|step| {
-                let mut spans = vec![
-                    Span::styled(
-                        format!("{:>7} ", step.relative_time),
-                        Style::default().fg(ratatui::style::Color::Rgb(100, 100, 100)),
-                    ),
-                    Span::raw(format!("{} ", step.icon)),
-                    Span::raw(&step.description),
-                ];
-
-                if let Some(tokens) = step.token_usage {
-                    spans.push(Span::styled(
-                        format!(" (+{})", format_tokens(tokens)),
-                        Style::default().add_modifier(Modifier::DIM),
-                    ));
-                }
-
-                Line::from(spans)
-            })
+            .map(step_preview_line)
             .collect();
 
         let paragraph = Paragraph::new(lines);
@@ -557,25 +539,7 @@ impl<'a> TurnHistoryView<'a> {
             .model
             .global_recent_steps
             .iter()
-            .map(|step| {
-                let mut spans = vec![
-                    Span::styled(
-                        format!("{:>7} ", step.relative_time),
-                        Style::default().fg(ratatui::style::Color::Rgb(100, 100, 100)),
-                    ),
-                    Span::raw(format!("{} ", step.icon)),
-                    Span::raw(&step.description),
-                ];
-
-                if let Some(tokens) = step.token_usage {
-                    spans.push(Span::styled(
-                        format!(" (+{})", format_tokens(tokens)),
-                        Style::default().add_modifier(Modifier::DIM),
-                    ));
-                }
-
-                Line::from(spans)
-            })
+            .map(step_preview_line)
             .collect();
 
         let paragraph = Paragraph::new(lines);
@@ -740,6 +704,54 @@ impl<'a> TurnHistoryView<'a> {
 }
 
 /// Format token count in compact form (k, M)
+/// Build a single display line for a step preview.
+///
+/// Layout: `  12s ago 🔧 Bash: cargo test [1.2s] →~3.4k Δ+5.2k`
+/// - `→~N` estimated tokens fed back by tool results (cyan)
+/// - `Δ+N` context growth for this step, colored by magnitude
+fn step_preview_line(step: &crate::presentation::view_models::StepPreviewViewModel) -> Line<'_> {
+    use ratatui::style::Color;
+
+    let description_style = if step.is_error {
+        Style::default().fg(Color::Red)
+    } else {
+        Style::default()
+    };
+
+    let mut spans = vec![
+        Span::styled(
+            format!("{:>7} ", step.relative_time),
+            Style::default().fg(Color::Rgb(100, 100, 100)),
+        ),
+        Span::raw(format!("{} ", step.icon)),
+        Span::styled(&step.description, description_style),
+    ];
+
+    if let Some(tokens) = step.tool_result_tokens {
+        spans.push(Span::styled(
+            format!(" →~{}", format_tokens(tokens)),
+            Style::default().fg(Color::Cyan).add_modifier(Modifier::DIM),
+        ));
+    }
+
+    if let Some(delta) = step.context_delta_tokens {
+        let magnitude = format_tokens(delta.unsigned_abs().min(u32::MAX as u64) as u32);
+        let (text, color) = if delta < 0 {
+            // Context shrank (compaction)
+            (format!(" Δ-{}", magnitude), Color::Cyan)
+        } else if delta >= 10_000 {
+            (format!(" Δ+{}", magnitude), Color::Red)
+        } else if delta >= 2_000 {
+            (format!(" Δ+{}", magnitude), Color::Yellow)
+        } else {
+            (format!(" Δ+{}", magnitude), Color::DarkGray)
+        };
+        spans.push(Span::styled(text, Style::default().fg(color)));
+    }
+
+    Line::from(spans)
+}
+
 fn format_tokens(count: u32) -> String {
     if count >= 1_000_000 {
         format!("{:.1}M", count as f64 / 1_000_000.0)

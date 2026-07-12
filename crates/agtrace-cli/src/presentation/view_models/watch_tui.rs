@@ -162,7 +162,12 @@ pub struct StepPreviewViewModel {
     pub relative_time: String, // e.g., "2s ago" (pre-formatted)
     pub icon: String,          // Pre-determined emoji
     pub description: String,   // Pre-formatted, truncated
-    pub token_usage: Option<u32>,
+    /// Estimated tokens fed back into context by this step's tool results (~chars/4)
+    pub tool_result_tokens: Option<u32>,
+    /// Context window growth vs the previous step (input token delta, negative on compaction)
+    pub context_delta_tokens: Option<i64>,
+    /// Whether any tool execution in this step failed
+    pub is_error: bool,
 }
 
 /// Status bar component (bottom bar)
