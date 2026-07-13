@@ -5,7 +5,7 @@ use agtrace_index::Database;
 use agtrace_providers::ProviderAdapter;
 use agtrace_types::AgentEvent;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
@@ -14,6 +14,13 @@ use std::time::Duration;
 
 struct StreamContext {
     provider: Arc<ProviderAdapter>,
+    session_id: String,
+    /// Files known to belong to this session. Grows dynamically as new
+    /// files appear (e.g., subagent transcripts created mid-session).
+    session_files: Vec<PathBuf>,
+    /// Files confirmed to belong to a different session (negative cache,
+    /// avoids re-reading headers on every fs poll tick).
+    foreign_files: HashSet<PathBuf>,
     /// Events per file, preserving file-internal order
     file_events: HashMap<PathBuf, Vec<AgentEvent>>,
     /// Assembled sessions (main + child streams)
@@ -21,24 +28,61 @@ struct StreamContext {
 }
 
 impl StreamContext {
-    fn new(provider: Arc<ProviderAdapter>) -> Self {
+    fn new(
+        provider: Arc<ProviderAdapter>,
+        session_id: String,
+        session_files: Vec<PathBuf>,
+    ) -> Self {
         Self {
             provider,
+            session_id,
+            session_files,
+            foreign_files: HashSet::new(),
             file_events: HashMap::new(),
             sessions: Vec::new(),
         }
     }
 
-    fn load_all_events(&mut self, session_files: &[PathBuf]) -> Result<Vec<AgentEvent>> {
-        for path in session_files {
-            let events = Self::load_file(path, &self.provider)?;
-            self.file_events.insert(path.clone(), events);
+    fn load_all_events(&mut self) -> Result<Vec<AgentEvent>> {
+        for path in self.session_files.clone() {
+            let events = Self::load_file(&path, &self.provider)?;
+            self.file_events.insert(path, events);
         }
 
         let all_events = self.merge_all_events();
         self.sessions = assemble_sessions(&all_events);
 
         Ok(all_events)
+    }
+
+    /// Check whether `path` belongs to this session, adopting it into
+    /// `session_files` if it is a newly appeared session file (e.g., a
+    /// subagent transcript created after attach).
+    fn is_session_file(&mut self, path: &Path) -> bool {
+        if self.session_files.iter().any(|p| p == path) {
+            return true;
+        }
+        if self.foreign_files.contains(path) {
+            return false;
+        }
+        if !self.provider.discovery.probe(path).is_match() {
+            // Not cached: an empty or partially written file may become
+            // a valid session file on a later poll tick.
+            return false;
+        }
+        match self.provider.discovery.extract_session_id(path) {
+            Ok(id) if id == self.session_id => {
+                self.session_files.push(path.to_path_buf());
+                true
+            }
+            Ok(_) => {
+                self.foreign_files.insert(path.to_path_buf());
+                false
+            }
+            // Header not readable yet (e.g., first line still being
+            // written) - retry on the next event.
+            Err(_) => false,
+        }
     }
 
     fn handle_change(&mut self, path: &Path) -> Result<Vec<AgentEvent>> {
@@ -170,9 +214,9 @@ impl SessionStreamer {
             path: first_file.clone(),
         }));
 
-        let mut context = StreamContext::new(provider);
+        let mut context = StreamContext::new(provider, session_id, session_files);
 
-        if let Ok(events) = context.load_all_events(&session_files)
+        if let Ok(events) = context.load_all_events()
             && !events.is_empty()
         {
             let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
@@ -188,9 +232,7 @@ impl SessionStreamer {
                 loop {
                     match rx_fs.recv() {
                         Ok(event) => {
-                            if let Err(e) =
-                                handle_fs_event(&event, &session_files, &mut context, &tx_worker)
-                            {
+                            if let Err(e) = handle_fs_event(&event, &mut context, &tx_worker) {
                                 let _ = tx_worker
                                     .send(WorkspaceEvent::Error(format!("Stream error: {}", e)));
                             }
@@ -216,13 +258,14 @@ impl SessionStreamer {
 
 fn handle_fs_event(
     event: &Event,
-    session_files: &[PathBuf],
     context: &mut StreamContext,
     tx: &Sender<WorkspaceEvent>,
 ) -> Result<()> {
-    if let EventKind::Modify(_) = event.kind {
+    // Create matters too: subagent transcripts (e.g., Claude's
+    // {session_id}/subagents/agent-*.jsonl) are created after attach.
+    if let EventKind::Create(_) | EventKind::Modify(_) = event.kind {
         for path in &event.paths {
-            if session_files.contains(path)
+            if context.is_session_file(path)
                 && let Ok(new_events) = context.handle_change(path)
                 && !new_events.is_empty()
             {
