@@ -176,3 +176,19 @@ impl fmt::Display for InspectFormat {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[value(rename_all = "lowercase")]
+pub enum DumpFormat {
+    Jsonl,
+    Json,
+}
+
+impl fmt::Display for DumpFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DumpFormat::Jsonl => write!(f, "jsonl"),
+            DumpFormat::Json => write!(f, "json"),
+        }
+    }
+}
