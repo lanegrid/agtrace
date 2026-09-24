@@ -5,6 +5,7 @@
 // *after* a Task tool invocation, i.e. typically after `agtrace watch` has
 // already attached to the session. The streamer must pick them up dynamically
 // instead of only tracking the files that existed at attach time.
+use std::io::Write;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -78,4 +79,58 @@ fn subagent_file_created_after_attach_appears_in_stream() {
         "subagent (sidechain) events did not appear in the stream after the \
          subagent file was created post-attach"
     );
+}
+
+#[test]
+fn appended_lines_are_streamed_once_in_order() {
+    let dir = tempfile::tempdir().unwrap();
+    let log_root = dir.path().to_path_buf();
+    let main_file = log_root.join(format!("{SESSION_ID}.jsonl"));
+    std::fs::write(&main_file, main_file_content()).unwrap();
+
+    let adapter = agtrace_providers::create_adapter("claude_code").unwrap();
+    let streamer = SessionStreamer::attach_from_filesystem(
+        SESSION_ID.to_string(),
+        log_root,
+        Arc::new(adapter),
+    )
+    .unwrap();
+
+    let next_events = |streamer: &SessionStreamer| -> Vec<agtrace_types::AgentEvent> {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while Instant::now() < deadline {
+            if let Ok(WorkspaceEvent::Stream(StreamEvent::Events { events, .. })) =
+                streamer.receiver().recv_timeout(Duration::from_millis(200))
+            {
+                return events;
+            }
+        }
+        panic!("no events streamed");
+    };
+
+    // Initial attach delivers the existing line.
+    assert_eq!(next_events(&streamer).len(), 1);
+
+    // Append a line in two writes: only the completed line is delivered, once.
+    let line = format!(
+        r#"{{"parentUuid":"u1","isSidechain":false,"type":"user","message":{{"role":"user","content":"second"}},"uuid":"u2","timestamp":"2026-07-13T04:00:05.000Z","sessionId":"{SESSION_ID}","cwd":"/tmp/proj","version":"2.1.207"}}"#
+    );
+    let (a, b) = line.split_at(40);
+    let mut f = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&main_file)
+        .unwrap();
+    f.write_all(a.as_bytes()).unwrap();
+    f.flush().unwrap();
+    std::thread::sleep(Duration::from_millis(300));
+    f.write_all(format!("{b}\n").as_bytes()).unwrap();
+    f.flush().unwrap();
+
+    let events = next_events(&streamer);
+    assert_eq!(events.len(), 1, "only the appended line: {events:?}");
+    assert_eq!(events[0].origin.line, 1);
+    match &events[0].payload {
+        agtrace_types::EventPayload::User(u) => assert_eq!(u.text, "second"),
+        other => panic!("unexpected payload {other:?}"),
+    }
 }
