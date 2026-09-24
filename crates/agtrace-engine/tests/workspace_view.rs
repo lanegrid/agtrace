@@ -1,14 +1,14 @@
 //! Agent graph / live state fold (design §4.3) on synthetic events.
 
 use agtrace_engine::workspace::{
-    AgentStatus, ContextEvidence, ContextWindow, FeedKind, FeedParty, NoWindow, ProcessStatus,
-    SideStateUpdate, StatusSource, TeamMember, TimelineItem, WindowResolver, WorkspaceEvent,
-    WorkspaceView,
+    AgentStatus, CatalogResolver, ContextEvidence, FeedKind, FeedParty, NoWindow, ProcessStatus,
+    SideStateUpdate, StatusSource, TeamMember, TimelineItem, WorkspaceEvent, WorkspaceView,
 };
 use agtrace_testing::synth::{AgentBuilder, EventLog, handle, ts};
 use agtrace_types::{
     AgentAttributeKey, AgentEvent, AgentHandle, AgentId, AgentKind, AgentMessageKind, AgentRef,
-    AgentSpawnPayload, LifecycleTransition, MessageDirection, TurnOutcome,
+    AgentSpawnPayload, ContextSource, LifecycleTransition, MessageDirection, ModelCatalog,
+    Provider, TurnOutcome,
 };
 use chrono::{DateTime, Utc};
 
@@ -860,19 +860,29 @@ fn running_tool_timeline_and_reset() {
     assert!(v.model.is_none());
 }
 
+/// Catalog with only a built-in table entry for `claude-opus-5-5` (200k, to make the
+/// `[1m]` marker observable) and nothing else.
+struct TestCatalog;
+
+impl ModelCatalog for TestCatalog {
+    fn user_override(&self, _: Provider, _: Option<&str>) -> Option<u64> {
+        None
+    }
+    fn provider_cache(&self, _: Provider, _: &str) -> Option<u64> {
+        None
+    }
+    fn table(&self, _: Provider, model: &str) -> Option<u64> {
+        model.starts_with("claude-opus-5-5").then_some(200_000)
+    }
+}
+
 #[test]
-fn window_is_recomputed_through_the_resolver_seam() {
-    let resolver = |_: &AgentRef, ev: &ContextEvidence| -> Option<ContextWindow> {
-        ev.explicit.map(|tokens| ContextWindow {
-            tokens,
-            model: ev.model.clone(),
-        })
-    };
-    let resolver: &dyn WindowResolver = &resolver;
+fn window_is_resolved_through_the_catalog_on_evidence_change() {
+    let resolver = CatalogResolver(&TestCatalog);
     let mut view = WorkspaceView::new();
     let root = AgentBuilder::codex_root("t-root").build();
     let id = root.id.clone();
-    view.apply(WorkspaceEvent::AgentDiscovered(root), resolver, ts(0));
+    view.apply(WorkspaceEvent::AgentDiscovered(root), &resolver, ts(0));
     assert!(view.agents[&id].window.is_none());
     let mut log = EventLog::new(&id);
     view.apply(
@@ -885,19 +895,73 @@ fn window_is_recomputed_through_the_resolver_seam() {
             ],
             reset: false,
         },
-        resolver,
+        &resolver,
         ts(0),
     );
     let v = &view.agents[&id];
-    assert_eq!(
-        v.window,
-        Some(ContextWindow {
-            tokens: 258_400,
-            model: Some("gpt-6-astra".into())
-        })
-    );
+    let w = v.window.as_ref().unwrap();
+    assert_eq!(w.tokens, 258_400);
+    assert_eq!(w.source, ContextSource::Log);
+    assert_eq!(w.model.as_deref(), Some("gpt-6-astra"));
     assert_eq!(v.context.last_context_tokens, 1234);
     assert_eq!(v.model.as_deref(), Some("gpt-6-astra"));
+
+    // Usage beyond the window: the resolver's observed floor applies on the next change.
+    view.apply(
+        WorkspaceEvent::Events {
+            agent: id.clone(),
+            events: vec![log.usage(300_000, None)],
+            reset: false,
+        },
+        &resolver,
+        ts(0),
+    );
+    let w = view.agents[&id].window.as_ref().unwrap();
+    assert_eq!(w.source, ContextSource::Observed);
+    assert_eq!(w.overruled, Some(ContextSource::Log));
+}
+
+#[test]
+fn team_config_1m_model_is_an_external_marker_for_the_resolver() {
+    let resolver = CatalogResolver(&TestCatalog);
+    let mut view = WorkspaceView::new();
+    let mate = AgentBuilder::claude_teammate("s-mate", "audit-A", "team-1").build();
+    let id = mate.id.clone();
+    view.apply(WorkspaceEvent::AgentDiscovered(mate), &resolver, ts(0));
+    let mut log = EventLog::new(&id);
+    view.apply(
+        WorkspaceEvent::Events {
+            agent: id.clone(),
+            events: vec![log.usage(1000, Some("claude-opus-5-5"))],
+            reset: false,
+        },
+        &resolver,
+        ts(0),
+    );
+    let w = view.agents[&id].window.clone().unwrap();
+    assert_eq!((w.tokens, w.source), (200_000, ContextSource::ModelTable));
+
+    view.apply(
+        WorkspaceEvent::SideState(SideStateUpdate::ClaudeTeam {
+            team: "team-1".into(),
+            lead_session_id: "s-lead".into(),
+            members: vec![TeamMember {
+                name: "audit-A".into(),
+                agent_type: None,
+                model: Some("claude-opus-5-5[1m]".into()),
+                is_active: Some(true),
+            }],
+        }),
+        &resolver,
+        ts(0),
+    );
+    let v = &view.agents[&id];
+    assert_eq!(v.context.external_marker, Some(1_000_000));
+    let w = v.window.clone().unwrap();
+    assert_eq!(
+        (w.tokens, w.source),
+        (1_000_000, ContextSource::ModelMarker)
+    );
 }
 
 #[test]

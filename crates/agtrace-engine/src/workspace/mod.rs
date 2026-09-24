@@ -24,7 +24,7 @@ pub mod status;
 mod timeline;
 mod view;
 
-pub use context_seam::{ContextEvidence, ContextWindow, NoWindow, WindowResolver};
+pub use context_seam::{CatalogResolver, ContextEvidence, ContextWindow, NoWindow, WindowResolver};
 pub use feed::{FEED_DEDUPE_WINDOW, FeedEntry, FeedKind, FeedParty};
 pub use input::{ProcessStatus, SideStateUpdate, TeamMember, WorkspaceEvent};
 pub use ring::RingBuffer;
