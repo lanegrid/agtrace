@@ -51,6 +51,7 @@ pub struct DashboardViewModel {
     // Context window usage (raw data for JSON API)
     pub context_total: u64,             // Total tokens used
     pub context_limit: Option<u64>,     // Context window limit (None if unknown)
+    pub context_source: Option<String>, // Provenance of the limit (cfg/log/1m/cache/table/obs)
     pub context_usage_pct: Option<f64>, // 0.0 - 1.0 (None if limit unknown)
     pub context_color: StatusLevel,     // Color decision already made
     pub context_breakdown: ContextBreakdownViewModel,

@@ -1,8 +1,6 @@
-use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::path::PathBuf;
 
-use super::session::ContextWindowUsageViewModel;
 use super::watch_tui::TuiScreenViewModel;
 
 // --------------------------------------------------------
@@ -35,20 +33,4 @@ pub enum WatchEventViewModel {
 pub enum WatchTargetViewModel {
     Provider { name: String, log_root: PathBuf },
     Session { id: String, log_root: PathBuf },
-}
-
-/// Session state snapshot for watch stream
-#[derive(Debug, Clone, Serialize)]
-pub struct WatchStreamStateViewModel {
-    pub session_id: String,
-    pub project_root: Option<String>,
-    pub log_path: Option<String>,
-    pub start_time: DateTime<Utc>,
-    pub last_activity: DateTime<Utc>,
-    pub model: Option<String>,
-    pub event_count: usize,
-    pub turn_count: usize,
-    pub current_usage: ContextWindowUsageViewModel,
-    pub token_limit: Option<u64>,
-    pub compaction_buffer_pct: Option<f64>,
 }

@@ -2,7 +2,9 @@ use crate::args::{OutputFormat, ViewModeArgs};
 use crate::handlers::HandlerContext;
 use crate::presentation::presenters;
 use agtrace_sdk::Client;
+use agtrace_sdk::types::{AgentId, ContextEvidence, ContextWindow};
 use anyhow::{Context, Result};
+use std::collections::BTreeMap;
 
 pub fn handle(
     client: &Client,
@@ -32,14 +34,30 @@ pub fn handle(
         .map(|f| f.path)
         .collect();
 
-    // TODO: Extract actual model from session metadata or provider-specific data
-    let model_name_display = "Claude 3.5 Sonnet".to_string();
-    let model_name_key = "claude-sonnet-4-5".to_string();
-
-    let token_limits = agtrace_sdk::utils::default_token_limits();
-    let max_context = token_limits
-        .get_limit(&model_name_key)
-        .map(|spec| spec.effective_limit() as u32);
+    // Model and context window come from the events (per agent), resolved by the
+    // context resolver against the workspace model catalog.
+    let events = session_handle.events()?;
+    let catalog = client.model_catalog();
+    let mut evidence: BTreeMap<AgentId, ContextEvidence> = BTreeMap::new();
+    for event in &events {
+        evidence
+            .entry(event.agent.clone())
+            .or_default()
+            .apply(event);
+    }
+    let windows: BTreeMap<AgentId, ContextWindow> = evidence
+        .iter()
+        .filter_map(|(agent, ev)| {
+            let window =
+                agtrace_sdk::utils::resolve_context_window(agent.provider(), ev, catalog.as_ref())?;
+            Some((agent.clone(), window))
+        })
+        .collect();
+    // Session-level model = model of the file-owner (non-subagent) agent.
+    let model = evidence
+        .iter()
+        .find(|(agent, _)| !agent.is_claude_subagent())
+        .and_then(|(_, ev)| ev.model.clone());
 
     // Present the whole session (all streams) as a single view model so that
     // every output format emits exactly one document.
@@ -50,8 +68,8 @@ pub fn handle(
         metadata.project_hash.as_ref(),
         metadata.project_root.as_deref(),
         metadata.spawned_by.as_ref(),
-        &model_name_display,
-        max_context,
+        model.as_deref(),
+        &windows,
         log_files,
         &children,
     );

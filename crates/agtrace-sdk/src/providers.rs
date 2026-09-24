@@ -467,7 +467,6 @@ impl ProvidersBuilder {
                 ProviderConfig {
                     enabled: true,
                     log_root,
-                    context_window_override: None,
                 },
             );
         }
@@ -507,7 +506,6 @@ mod tests {
             ProviderConfig {
                 enabled: true,
                 log_root: PathBuf::from("/test/path"),
-                context_window_override: None,
             },
         );
 

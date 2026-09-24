@@ -131,7 +131,10 @@ impl<'a> DashboardView<'a> {
         let gauge = if let (Some(limit), Some(usage_pct)) =
             (self.model.context_limit, self.model.context_usage_pct)
         {
-            let limit_formatted = format_tokens(limit);
+            let limit_formatted = match &self.model.context_source {
+                Some(source) => format!("{} [{}]", format_tokens(limit), source),
+                None => format_tokens(limit),
+            };
             let remaining = limit.saturating_sub(self.model.context_total);
             let remaining_formatted = format_tokens(remaining);
 
@@ -153,7 +156,7 @@ impl<'a> DashboardView<'a> {
                 .gauge_style(Style::default().fg(color).add_modifier(Modifier::BOLD))
                 .ratio(0.0)
                 .label(format!(
-                    "LIFE: {} / ??? (limit unknown - check model config)",
+                    "LIFE: {} / ??? (context window unknown - set [context_window] in config.toml)",
                     total_formatted
                 ))
         };

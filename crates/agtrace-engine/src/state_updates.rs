@@ -4,7 +4,6 @@ use agtrace_types::{AgentEvent, ContextWindowHintPayload, ContextWindowUsage, Ev
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StateUpdates {
     pub model: Option<String>,
-    pub context_window_limit: Option<u64>,
     pub usage: Option<ContextWindowUsage>,
     pub reasoning_tokens: Option<i32>,
     pub is_error: bool,
@@ -13,8 +12,9 @@ pub struct StateUpdates {
 
 /// Extract state updates from a single event without performing I/O or side effects.
 ///
-/// Model and context-window evidence come from typed payloads
-/// (`TokenUsage.model`, `ModelChange`, `ContextWindowHint::Explicit`).
+/// The model comes from typed payloads (`TokenUsage.model`, `ModelChange`,
+/// `ContextWindowHint::Explicit.model`). Context-window evidence is folded separately by
+/// [`crate::ContextEvidence`].
 pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
     let mut updates = StateUpdates::default();
 
@@ -31,8 +31,7 @@ pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
         EventPayload::ModelChange(change) => {
             updates.model = Some(change.to.clone());
         }
-        EventPayload::ContextWindowHint(ContextWindowHintPayload::Explicit { tokens, model }) => {
-            updates.context_window_limit = Some(*tokens);
+        EventPayload::ContextWindowHint(ContextWindowHintPayload::Explicit { model, .. }) => {
             updates.model = model.clone();
         }
         EventPayload::ToolResult(result) => {
@@ -102,7 +101,6 @@ mod tests {
             updates.model,
             Some("claude-3-5-sonnet-20241022".to_string())
         );
-        assert_eq!(updates.context_window_limit, None);
     }
 
     #[test]
@@ -117,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn extracts_context_window_limit_from_hint() {
+    fn extracts_model_from_explicit_hint() {
         let event = base_event(EventPayload::ContextWindowHint(
             ContextWindowHintPayload::Explicit {
                 tokens: 123_000,
@@ -126,7 +124,6 @@ mod tests {
         ));
 
         let updates = extract_state_updates(&event);
-        assert_eq!(updates.context_window_limit, Some(123_000));
         assert_eq!(updates.model.as_deref(), Some("gpt-5.6-sol"));
     }
 
@@ -231,7 +228,6 @@ mod tests {
         #[derive(Default)]
         struct SessionState {
             model: Option<String>,
-            context_window_limit: Option<u64>,
             usage: ContextWindowUsage,
             reasoning_tokens: i32,
             turn_count: usize,
@@ -249,9 +245,6 @@ mod tests {
                 }
                 if let Some(m) = updates.model {
                     self.model.get_or_insert(m);
-                }
-                if let Some(limit) = updates.context_window_limit {
-                    self.context_window_limit.get_or_insert(limit);
                 }
                 if let Some(u) = updates.usage {
                     self.usage = u;
@@ -294,7 +287,6 @@ mod tests {
         assert_eq!(state.turn_count, 1);
         assert_eq!(state.error_count, 1);
         assert_eq!(state.model.as_deref(), Some("claude-3"));
-        assert_eq!(state.context_window_limit, Some(100_000));
         assert_eq!(state.usage.fresh_input.0, 120); // uncached only (not total)
         assert_eq!(state.usage.cache_read.0, 5);
         assert_eq!(state.usage.output.0, 30); // generated + reasoning + tool = 27 + 3 + 0

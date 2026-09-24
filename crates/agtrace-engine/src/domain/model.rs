@@ -1,4 +1,6 @@
 use crate::ContextWindowUsage;
+use crate::context::{ContextEvidence, resolve};
+use agtrace_types::{AgentEvent, ContextWindow, ModelCatalog, Provider};
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
 
@@ -20,8 +22,10 @@ pub struct SessionState {
     pub last_activity: DateTime<Utc>,
     /// Model name/ID being used in this session.
     pub model: Option<String>,
-    /// Maximum context window size for the model.
-    pub context_window_limit: Option<u64>,
+    /// Provider of the watched agent (from the events' agent id).
+    pub provider: Option<Provider>,
+    /// Context-window evidence folded from the watched agent's events.
+    pub context: ContextEvidence,
     /// Current cumulative token usage.
     pub current_usage: ContextWindowUsage,
     /// Current cumulative reasoning tokens (o1-style extended thinking).
@@ -48,7 +52,8 @@ impl SessionState {
             start_time,
             last_activity: start_time,
             model: None,
-            context_window_limit: None,
+            provider: None,
+            context: ContextEvidence::default(),
             current_usage: ContextWindowUsage::default(),
             current_reasoning_tokens: 0,
             error_count: 0,
@@ -70,9 +75,34 @@ impl SessionState {
         self.current_usage.total_tokens()
     }
 
-    /// Get context limit as type-safe ContextLimit
-    pub fn context_limit(&self) -> Option<crate::ContextLimit> {
-        self.context_window_limit.map(crate::ContextLimit::new)
+    /// Fold one event of the watched agent into the state.
+    ///
+    /// The single state-update path shared by `watch` (TUI / console) and `demo`.
+    pub fn apply_event(&mut self, event: &AgentEvent) {
+        self.last_activity = event.timestamp;
+        self.event_count += 1;
+        self.provider = Some(event.agent.provider());
+        self.context.apply(event);
+
+        let updates = crate::extract_state_updates(event);
+        if updates.is_new_turn {
+            self.turn_count += 1;
+        }
+        if let Some(usage) = updates.usage {
+            self.current_usage = usage;
+        }
+        if let Some(reasoning) = updates.reasoning_tokens {
+            self.current_reasoning_tokens = reasoning;
+        }
+        // Latest model wins (not first-wins).
+        if let Some(model) = updates.model {
+            self.model = Some(model);
+        }
+    }
+
+    /// Resolve the context window of the watched agent (design §3).
+    pub fn context_window(&self, catalog: &dyn ModelCatalog) -> Option<ContextWindow> {
+        resolve(self.provider?, &self.context, catalog)
     }
 }
 
