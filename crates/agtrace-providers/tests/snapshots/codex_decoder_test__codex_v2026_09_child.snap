@@ -1,0 +1,411 @@
+---
+source: crates/agtrace-providers/tests/codex_decoder_test.rs
+expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
+---
+{
+  "diagnostics": {
+    "decoded": 22,
+    "ignored_kinds": {
+      "event_msg/item_completed/Reasoning": 1,
+      "response_item/message/developer": 1,
+      "world_state": 1
+    },
+    "invalid_json": 0,
+    "lines": 22,
+    "samples": [],
+    "schema_mismatch": {},
+    "unknown_kinds": {}
+  },
+  "events": [
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "kind": "explicit",
+        "model": null,
+        "tokens": 258400
+      },
+      "id": "f896437b-6d11-53bb-9139-6d81faca6916",
+      "origin": {
+        "byte_offset": 986,
+        "line": 1,
+        "sub": 0
+      },
+      "parent_id": null,
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:10.500Z",
+      "type": "context_window_hint"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "target": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000002"
+        },
+        "transition": "running"
+      },
+      "id": "8cc2cbcb-384e-5c35-bea5-8f8a9d46ada0",
+      "origin": {
+        "byte_offset": 986,
+        "line": 1,
+        "sub": 1
+      },
+      "parent_id": "f896437b-6d11-53bb-9139-6d81faca6916",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:10.500Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "source": "turn_context",
+        "to": "gpt-5.6-sol"
+      },
+      "id": "0cb30b9c-3bb7-5023-80b4-6217c764e52d",
+      "origin": {
+        "byte_offset": 1668,
+        "line": 4,
+        "sub": 0
+      },
+      "parent_id": "8cc2cbcb-384e-5c35-bea5-8f8a9d46ada0",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:12Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "direction": "incoming",
+        "encrypted": true,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "new_task",
+        "provider_message_id": "amsg_synthetic_1",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/judge"
+          }
+        ],
+        "triggers_turn": true
+      },
+      "id": "c6274ef3-cf03-5bcc-aee8-7bf4e7394692",
+      "origin": {
+        "byte_offset": 2209,
+        "line": 6,
+        "sub": 0
+      },
+      "parent_id": "0cb30b9c-3bb7-5023-80b4-6217c764e52d",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:13Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "text": "[reasoning encrypted]"
+      },
+      "id": "89dfa005-b790-5d73-8b4a-075742473b90",
+      "origin": {
+        "byte_offset": 3004,
+        "line": 8,
+        "sub": 0
+      },
+      "parent_id": "c6274ef3-cf03-5bcc-aee8-7bf4e7394692",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:14Z",
+      "type": "reasoning"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "arguments": {
+          "command": "cat src/parser.rs",
+          "script": "const r = await tools.exec_command({\"cmd\":\"cat src/parser.rs\"}); text(r.output);\nawait tools.view_image({\"path\":\"/work/demo-project/docs/diagram.png\"});\nawait tools.web__run({\"search_query\":[{\"q\":\"rust parser combinators\"}]});\nawait tools.mcp__node_repl__js({\"code\":\"1+1\"});"
+        },
+        "name": "exec",
+        "provider_call_id": "call_exec_c1"
+      },
+      "id": "0e4bd37e-2826-56ab-a92d-43394b379b46",
+      "origin": {
+        "byte_offset": 3257,
+        "line": 9,
+        "sub": 0
+      },
+      "parent_id": "89dfa005-b790-5d73-8b4a-075742473b90",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:14.500Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "dedupe_key": "resp_synthetic_c1",
+        "input": {
+          "cache_read": 0,
+          "cache_write": 0,
+          "uncached": 9000
+        },
+        "model": "gpt-5.6-sol",
+        "output": {
+          "generated": 150,
+          "reasoning": 50,
+          "tool": 0
+        }
+      },
+      "id": "8bd40948-7ef1-58a6-87e2-cf4215a789c2",
+      "origin": {
+        "byte_offset": 3838,
+        "line": 10,
+        "sub": 0
+      },
+      "parent_id": "0e4bd37e-2826-56ab-a92d-43394b379b46",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:15Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "call": {
+          "arguments": {
+            "command": "cat src/parser.rs"
+          },
+          "name": "exec_command"
+        },
+        "duration_ms": 120,
+        "exit_code": 0,
+        "output_preview": "fn parse() {}\n",
+        "parent_tool_call_id": "0e4bd37e-2826-56ab-a92d-43394b379b46",
+        "status": "completed"
+      },
+      "id": "60ba25ec-5928-5e19-ac20-7f665e3a7b1a",
+      "origin": {
+        "byte_offset": 4594,
+        "line": 11,
+        "sub": 0
+      },
+      "parent_id": "8bd40948-7ef1-58a6-87e2-cf4215a789c2",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:15.500Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "call": {
+          "arguments": {
+            "file_path": "/work/demo-project/docs/diagram.png"
+          },
+          "name": "view_image"
+        },
+        "parent_tool_call_id": "0e4bd37e-2826-56ab-a92d-43394b379b46",
+        "status": "completed"
+      },
+      "id": "8ee8b32d-0a83-588b-90c2-dd549596f953",
+      "origin": {
+        "byte_offset": 5267,
+        "line": 12,
+        "sub": 0
+      },
+      "parent_id": "60ba25ec-5928-5e19-ac20-7f665e3a7b1a",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:16Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "call": {
+          "arguments": {
+            "query": "rust parser combinators"
+          },
+          "name": "web.search"
+        },
+        "parent_tool_call_id": "0e4bd37e-2826-56ab-a92d-43394b379b46",
+        "status": "completed"
+      },
+      "id": "a5d28e85-9294-5282-93b1-3b1d8c4b7d80",
+      "origin": {
+        "byte_offset": 5597,
+        "line": 13,
+        "sub": 0
+      },
+      "parent_id": "8ee8b32d-0a83-588b-90c2-dd549596f953",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:16.500Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "call": {
+          "arguments": {
+            "code": "1+1",
+            "server": "node_repl",
+            "title": "calc",
+            "tool": "js"
+          },
+          "name": "mcp__node_repl__js"
+        },
+        "duration_ms": 1000,
+        "output_preview": "ReferenceError: synthetic",
+        "parent_tool_call_id": "0e4bd37e-2826-56ab-a92d-43394b379b46",
+        "status": "failed"
+      },
+      "id": "b3c0011e-b396-5ebe-949b-2d30d5b86072",
+      "origin": {
+        "byte_offset": 6145,
+        "line": 14,
+        "sub": 0
+      },
+      "parent_id": "a5d28e85-9294-5282-93b1-3b1d8c4b7d80",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:17Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "is_error": false,
+        "output": "Script completed\nWall time 1.5 seconds\nOutput:\n\nfn parse() {}\n\n[image]",
+        "tool_call_id": "0e4bd37e-2826-56ab-a92d-43394b379b46"
+      },
+      "id": "020c5e83-490e-5a54-9c90-399aa1780b6a",
+      "origin": {
+        "byte_offset": 6678,
+        "line": 15,
+        "sub": 0
+      },
+      "parent_id": "b3c0011e-b396-5ebe-949b-2d30d5b86072",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:17.500Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "direction": "incoming",
+        "encrypted": true,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "message",
+        "provider_message_id": "amsg_synthetic_2",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/judge"
+          }
+        ],
+        "triggers_turn": false
+      },
+      "id": "004eb08a-786f-577d-9306-25c449ad0f3c",
+      "origin": {
+        "byte_offset": 7877,
+        "line": 18,
+        "sub": 0
+      },
+      "parent_id": "020c5e83-490e-5a54-9c90-399aa1780b6a",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:19Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "phase": "final_answer",
+        "text": "The parser looks correct."
+      },
+      "id": "66fb0c68-d5bc-5f25-a87d-348544727a91",
+      "origin": {
+        "byte_offset": 8345,
+        "line": 19,
+        "sub": 0
+      },
+      "parent_id": "004eb08a-786f-577d-9306-25c449ad0f3c",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:19.500Z",
+      "type": "message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "dedupe_key": "resp_synthetic_c2",
+        "input": {
+          "cache_read": 9000,
+          "cache_write": 0,
+          "uncached": 500
+        },
+        "model": "gpt-5.6-sol",
+        "output": {
+          "generated": 40,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "c6c27679-0c4e-53f0-854f-eb036566574c",
+      "origin": {
+        "byte_offset": 8654,
+        "line": 20,
+        "sub": 0
+      },
+      "parent_id": "66fb0c68-d5bc-5f25-a87d-348544727a91",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:20Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "duration_ms": 20000,
+        "outcome": {
+          "outcome": "completed"
+        },
+        "turn_id": "turn-c1"
+      },
+      "id": "e55581fa-ce08-5523-b8c0-bab39c55880d",
+      "origin": {
+        "byte_offset": 9413,
+        "line": 21,
+        "sub": 0
+      },
+      "parent_id": "c6c27679-0c4e-53f0-854f-eb036566574c",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:20.500Z",
+      "type": "turn_end"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "body": "The parser looks correct.",
+        "direction": "outgoing",
+        "encrypted": false,
+        "from": {
+          "by": "path",
+          "value": "/root/judge"
+        },
+        "kind": "final_answer",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root"
+          }
+        ]
+      },
+      "id": "b9f48269-3a05-5b1f-9b8c-fef580849dfa",
+      "origin": {
+        "byte_offset": 9413,
+        "line": 21,
+        "sub": 1
+      },
+      "parent_id": "e55581fa-ce08-5523-b8c0-bab39c55880d",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:20.500Z",
+      "type": "agent_message"
+    }
+  ]
+}

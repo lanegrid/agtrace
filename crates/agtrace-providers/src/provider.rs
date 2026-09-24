@@ -71,35 +71,45 @@ pub trait Provider: Send + Sync {
     /// Agent files in scope. Pure fs listing + headers.
     fn discover(&self, scope: &DiscoveryScope) -> Result<Vec<FileHeader>> {
         let roots = scope.roots.clone().unwrap_or_else(|| self.default_roots());
-        let mut headers = Vec::new();
-        for root in roots {
-            if !root.exists() {
-                continue;
-            }
-            for entry in WalkDir::new(&root).into_iter().filter_map(|e| e.ok()) {
-                let path = entry.path();
-                if !entry.file_type().is_file() || !self.probe(path) {
-                    continue;
-                }
-                let Ok(Some(header)) = self.read_header(path) else {
-                    continue;
-                };
-                if let Some(project_root) = &scope.project_root {
-                    let in_project = header
-                        .project_cwd
-                        .as_deref()
-                        .is_some_and(|cwd| cwd.starts_with(project_root));
-                    if !in_project {
-                        continue;
-                    }
-                }
-                headers.push(header);
-            }
-        }
-        Ok(headers)
+        discover_files(self, &roots, scope.project_root.as_deref())
     }
 
     fn tool_mapper(&self) -> &dyn ToolMapper;
+}
+
+/// Walk `roots`, keep probed files with a header, optionally filtered to agents whose
+/// project cwd is under `project_root`. Shared by the default [`Provider::discover`].
+pub fn discover_files<P: Provider + ?Sized>(
+    provider: &P,
+    roots: &[PathBuf],
+    project_root: Option<&Path>,
+) -> Result<Vec<FileHeader>> {
+    let mut headers = Vec::new();
+    for root in roots {
+        if !root.exists() {
+            continue;
+        }
+        for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if !entry.file_type().is_file() || !provider.probe(path) {
+                continue;
+            }
+            let Ok(Some(header)) = provider.read_header(path) else {
+                continue;
+            };
+            if let Some(project_root) = project_root {
+                let in_project = header
+                    .project_cwd
+                    .as_deref()
+                    .is_some_and(|cwd| cwd.starts_with(project_root));
+                if !in_project {
+                    continue;
+                }
+            }
+            headers.push(header);
+        }
+    }
+    Ok(headers)
 }
 
 /// File modification time as UTC.

@@ -123,17 +123,13 @@ fn codex_thread_spawn_file_decodes_with_serde_fixes() {
         .expect("array output decoded");
     assert_eq!(output, "file-a\nfile-b");
 
-    let usages: Vec<_> = events
-        .iter()
-        .filter_map(|e| match &e.payload {
-            EventPayload::TokenUsage(u) => Some(u.clone()),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(usages.len(), 2);
-    assert_eq!(usages[0].input.uncached, 20);
-    assert_eq!(usages[0].input.cache_read, 100);
-    assert_eq!(usages[0].model.as_deref(), Some("gpt-5.6-sol"));
+    // token_count is not a usage source (usage comes from token_usage_record); it only
+    // contributes the context window.
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e.payload, EventPayload::TokenUsage(_)))
+    );
 
     let hints: Vec<_> = events
         .iter()

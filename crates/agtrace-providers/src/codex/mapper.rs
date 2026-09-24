@@ -12,8 +12,35 @@ pub(crate) fn normalize_codex_tool_call(
     arguments: serde_json::Value,
     provider_call_id: Option<String>,
 ) -> ToolCallPayload {
+    // Collaboration (multi-agent) tools
+    if let Some(agent_args) = super::collab::agent_tool_args(&tool_name, &arguments) {
+        return ToolCallPayload::Agent {
+            name: tool_name,
+            arguments: agent_args,
+            provider_call_id,
+        };
+    }
+
     // Handle Codex-specific tools
     match tool_name.as_str() {
+        "exec" => {
+            // exec custom tool: the JS program arrives either raw or wrapped as {"raw": ..}
+            let script = arguments
+                .as_str()
+                .or_else(|| arguments.get("raw").and_then(|v| v.as_str()))
+                .unwrap_or_default()
+                .to_string();
+            return ToolCallPayload::Execute {
+                name: tool_name,
+                arguments: ExecuteArgs {
+                    command: super::exec::extract_exec_command(&script),
+                    description: None,
+                    timeout: None,
+                    extra: serde_json::json!({ "script": script }),
+                },
+                provider_call_id,
+            };
+        }
         "apply_patch" => {
             // Try to parse as ApplyPatchArgs
             if let Ok(patch_args) = serde_json::from_value::<ApplyPatchArgs>(arguments.clone()) {
@@ -220,6 +247,39 @@ impl crate::traits::ToolMapper for CodexToolMapper {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_normalize_collab_tool_is_agent() {
+        let payload = normalize_codex_tool_call(
+            "spawn_agent".to_string(),
+            serde_json::json!({"task_name": "judge", "message": "gAAAA_SYNTHETIC", "fork_turns": "none"}),
+            Some("call_spawn".to_string()),
+        );
+        assert_eq!(payload.kind(), ToolKind::Agent);
+        match payload {
+            ToolCallPayload::Agent { arguments, .. } => {
+                assert_eq!(arguments.op, agtrace_types::AgentOp::Spawn);
+                assert_eq!(arguments.name.as_deref(), Some("judge"));
+                assert_eq!(arguments.fork, Some(false));
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_normalize_exec_extracts_command() {
+        let payload = normalize_codex_tool_call(
+            "exec".to_string(),
+            serde_json::json!({"raw": "await tools.exec_command({\"cmd\":\"ls\"})"}),
+            None,
+        );
+        match payload {
+            ToolCallPayload::Execute { arguments, .. } => {
+                assert_eq!(arguments.command.as_deref(), Some("ls"));
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
 
     #[test]
     fn test_normalize_apply_patch_update_file() {

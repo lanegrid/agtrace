@@ -5,16 +5,17 @@ pub mod io;
 pub mod mapper;
 pub mod models;
 pub mod models_cache;
-pub mod parser;
 pub mod provider;
-pub mod schema;
 pub mod tool_mapping;
 pub mod tools;
 
+pub(crate) mod collab;
+pub(crate) mod exec;
 pub(crate) mod execute_intent;
+pub(crate) mod records;
 
 pub use self::decoder::CodexDecoder;
-pub use self::discovery::CodexDiscovery;
+pub use self::discovery::{CodexDiscovery, read_session_index};
 pub use self::header::read_codex_header;
 pub use self::io::{
     extract_codex_header, extract_cwd_from_codex_file, extract_spawn_events,

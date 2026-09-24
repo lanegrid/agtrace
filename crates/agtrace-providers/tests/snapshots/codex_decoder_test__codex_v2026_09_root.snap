@@ -1,0 +1,1164 @@
+---
+source: crates/agtrace-providers/tests/codex_decoder_test.rs
+expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
+---
+{
+  "diagnostics": {
+    "decoded": 61,
+    "ignored_kinds": {
+      "event_msg/item_completed/AgentMessage": 1,
+      "event_msg/item_completed/CollabAgentToolCall": 1,
+      "event_msg/item_completed/ContextCompaction": 1,
+      "event_msg/item_completed/Reasoning": 1,
+      "event_msg/item_completed/UserMessage": 1,
+      "event_msg/thread_goal_updated": 1,
+      "response_item/message/developer": 3,
+      "response_item/message/user(injected)": 1,
+      "world_state": 2
+    },
+    "invalid_json": 0,
+    "lines": 61,
+    "samples": [],
+    "schema_mismatch": {},
+    "unknown_kinds": {}
+  },
+  "events": [
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "kind": "explicit",
+        "model": null,
+        "tokens": 258400
+      },
+      "id": "ef554ba3-f36f-54ab-88c9-a72923963648",
+      "origin": {
+        "byte_offset": 681,
+        "line": 1,
+        "sub": 0
+      },
+      "parent_id": null,
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:00.500Z",
+      "type": "context_window_hint"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000001"
+        },
+        "transition": "running"
+      },
+      "id": "057efab2-2b64-51f7-a349-07c8c08273c7",
+      "origin": {
+        "byte_offset": 681,
+        "line": 1,
+        "sub": 1
+      },
+      "parent_id": "ef554ba3-f36f-54ab-88c9-a72923963648",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:00.500Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "source": "turn_context",
+        "to": "gpt-6-astra"
+      },
+      "id": "c0f3966f-89ca-5ef6-9152-f783d458437e",
+      "origin": {
+        "byte_offset": 1796,
+        "line": 5,
+        "sub": 0
+      },
+      "parent_id": "057efab2-2b64-51f7-a349-07c8c08273c7",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:02.500Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "text": "Review the parser and fix bugs."
+      },
+      "id": "9e8240c8-abb7-5702-a122-566e08a8e74d",
+      "origin": {
+        "byte_offset": 2208,
+        "line": 6,
+        "sub": 0
+      },
+      "parent_id": "c0f3966f-89ca-5ef6-9152-f783d458437e",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:03Z",
+      "type": "user"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "text": "Plan the review."
+      },
+      "id": "efca2aa7-f438-552a-bd8c-b954ba418990",
+      "origin": {
+        "byte_offset": 3251,
+        "line": 9,
+        "sub": 0
+      },
+      "parent_id": "9e8240c8-abb7-5702-a122-566e08a8e74d",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:04.500Z",
+      "type": "reasoning"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "phase": "commentary",
+        "text": "I'll inspect the files."
+      },
+      "id": "1d763fe7-7a5d-5d7e-aab1-c717a18fe20c",
+      "origin": {
+        "byte_offset": 3929,
+        "line": 11,
+        "sub": 0
+      },
+      "parent_id": "efca2aa7-f438-552a-bd8c-b954ba418990",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:05.500Z",
+      "type": "message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "command": "ls src",
+          "script": "const r = await tools.exec_command({\"cmd\":\"ls src\",\"workdir\":\"/work/demo-project\",\"yield_time_ms\":10000}); text(r.output);\nawait tools.exec_command({\"cmd\":\"git status --short\"});\nawait tools.apply_patch(\"*** Begin Patch\\n*** Update File: src/parser.rs\\n@@\\n-old\\n+new\\n*** Add File: src/new.rs\\n+pub fn f() {}\\n*** End Patch\");"
+        },
+        "name": "exec",
+        "provider_call_id": "call_exec_1"
+      },
+      "id": "8ee051d0-63a9-5792-8b30-f2505d15214b",
+      "origin": {
+        "byte_offset": 4233,
+        "line": 12,
+        "sub": 0
+      },
+      "parent_id": "1d763fe7-7a5d-5d7e-aab1-c717a18fe20c",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "dedupe_key": "resp_synthetic_1",
+        "input": {
+          "cache_read": 8000,
+          "cache_write": 0,
+          "uncached": 4000
+        },
+        "model": "gpt-6-astra",
+        "output": {
+          "generated": 200,
+          "reasoning": 100,
+          "tool": 0
+        }
+      },
+      "id": "8e46926d-6568-5ee4-8076-bdfaf227bae2",
+      "origin": {
+        "byte_offset": 4870,
+        "line": 13,
+        "sub": 0
+      },
+      "parent_id": "8ee051d0-63a9-5792-8b30-f2505d15214b",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:06.500Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "call": {
+          "arguments": {
+            "command": "ls src"
+          },
+          "name": "exec_command"
+        },
+        "duration_ms": 120,
+        "exit_code": 0,
+        "output_preview": "lib.rs\nparser.rs\n",
+        "parent_tool_call_id": "8ee051d0-63a9-5792-8b30-f2505d15214b",
+        "status": "completed"
+      },
+      "id": "604c7d11-42bc-5210-b792-3120fa8e9807",
+      "origin": {
+        "byte_offset": 5643,
+        "line": 14,
+        "sub": 0
+      },
+      "parent_id": "8e46926d-6568-5ee4-8076-bdfaf227bae2",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:07Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "call": {
+          "arguments": {
+            "content": "pub fn f() {}\n",
+            "file_path": "/work/demo-project/src/new.rs"
+          },
+          "name": "apply_patch"
+        },
+        "output_preview": "Success. Updated the following files:\nM src/parser.rs\nA src/new.rs\n",
+        "parent_tool_call_id": "8ee051d0-63a9-5792-8b30-f2505d15214b",
+        "status": "completed"
+      },
+      "id": "d280d00a-220a-5782-b9a8-0fbe505a7b6a",
+      "origin": {
+        "byte_offset": 6306,
+        "line": 15,
+        "sub": 0
+      },
+      "parent_id": "604c7d11-42bc-5210-b792-3120fa8e9807",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:07.500Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "call": {
+          "arguments": {
+            "file_path": "/work/demo-project/src/parser.rs",
+            "new_string": "@@ -1 +1 @@\n-old\n+new\n",
+            "old_string": "",
+            "replace_all": false
+          },
+          "name": "apply_patch"
+        },
+        "output_preview": "Success. Updated the following files:\nM src/parser.rs\nA src/new.rs\n",
+        "parent_tool_call_id": "8ee051d0-63a9-5792-8b30-f2505d15214b",
+        "status": "completed"
+      },
+      "id": "063537c4-927d-5962-8c34-359e7e775b69",
+      "origin": {
+        "byte_offset": 6306,
+        "line": 15,
+        "sub": 1
+      },
+      "parent_id": "d280d00a-220a-5782-b9a8-0fbe505a7b6a",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:07.500Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Script completed\nWall time 0.2 seconds\nOutput:\n\nlib.rs\nparser.rs\n",
+        "tool_call_id": "8ee051d0-63a9-5792-8b30-f2505d15214b"
+      },
+      "id": "5041b9aa-ecea-5b12-85da-5503cf8a5da2",
+      "origin": {
+        "byte_offset": 6907,
+        "line": 16,
+        "sub": 0
+      },
+      "parent_id": "063537c4-927d-5962-8c34-359e7e775b69",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "call": {
+          "arguments": {
+            "command": "git status --short"
+          },
+          "name": "exec_command"
+        },
+        "duration_ms": 120,
+        "exit_code": 0,
+        "output_preview": " M src/parser.rs\n",
+        "parent_tool_call_id": "8ee051d0-63a9-5792-8b30-f2505d15214b",
+        "status": "completed"
+      },
+      "id": "3ff460b4-133a-5513-85f5-6b574aeb406e",
+      "origin": {
+        "byte_offset": 7925,
+        "line": 18,
+        "sub": 0
+      },
+      "parent_id": "5041b9aa-ecea-5b12-85da-5503cf8a5da2",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:09Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "command": "cargo test",
+          "script": "const r = await tools.exec_command({\"cmd\":\"cargo test\",\"workdir\":\"/work/demo-project\",\"yield_time_ms\":10000}); text(r.output);"
+        },
+        "name": "exec",
+        "provider_call_id": "call_exec_2"
+      },
+      "id": "0f78c875-b683-5e1b-9224-035f2975a6a6",
+      "origin": {
+        "byte_offset": 8610,
+        "line": 19,
+        "sub": 0
+      },
+      "parent_id": "3ff460b4-133a-5513-85f5-6b574aeb406e",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:09.500Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "dedupe_key": "resp_synthetic_2",
+        "input": {
+          "cache_read": 12000,
+          "cache_write": 0,
+          "uncached": 500
+        },
+        "model": "gpt-6-astra",
+        "output": {
+          "generated": 60,
+          "reasoning": 20,
+          "tool": 0
+        }
+      },
+      "id": "216d4bdd-7e01-52fe-878b-ca7c816f8b93",
+      "origin": {
+        "byte_offset": 9031,
+        "line": 20,
+        "sub": 0
+      },
+      "parent_id": "0f78c875-b683-5e1b-9224-035f2975a6a6",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:10Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Script running with cell ID 3\nWall time 10.0 seconds\nOutput:\n",
+        "tool_call_id": "0f78c875-b683-5e1b-9224-035f2975a6a6"
+      },
+      "id": "45f574d7-a0ac-5582-bd78-fb80448530e2",
+      "origin": {
+        "byte_offset": 9801,
+        "line": 21,
+        "sub": 0
+      },
+      "parent_id": "216d4bdd-7e01-52fe-878b-ca7c816f8b93",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:10.500Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "cell_id": 3,
+          "max_tokens": 10000,
+          "yield_time_ms": 30000
+        },
+        "name": "wait",
+        "provider_call_id": "call_wait_1"
+      },
+      "id": "93574ecf-b491-5d90-bdff-576bebd130c0",
+      "origin": {
+        "byte_offset": 10057,
+        "line": 22,
+        "sub": 0
+      },
+      "parent_id": "45f574d7-a0ac-5582-bd78-fb80448530e2",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:11Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "call": {
+          "arguments": {
+            "command": "cargo test"
+          },
+          "name": "exec_command"
+        },
+        "duration_ms": 24120,
+        "exit_code": 101,
+        "output_preview": "test parser ... FAILED\n",
+        "parent_tool_call_id": "0f78c875-b683-5e1b-9224-035f2975a6a6",
+        "status": "failed"
+      },
+      "id": "9cdf4a9b-2dea-5051-bf7d-d6ed00ef3f36",
+      "origin": {
+        "byte_offset": 10386,
+        "line": 23,
+        "sub": 0
+      },
+      "parent_id": "93574ecf-b491-5d90-bdff-576bebd130c0",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:11.500Z",
+      "type": "tool_sub_action"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Script completed\nWall time 25.0 seconds\nOutput:\ntest result: FAILED",
+        "tool_call_id": "93574ecf-b491-5d90-bdff-576bebd130c0"
+      },
+      "id": "e0f4c208-7f98-55d3-96c5-edcf34e43f79",
+      "origin": {
+        "byte_offset": 11072,
+        "line": 24,
+        "sub": 0
+      },
+      "parent_id": "9cdf4a9b-2dea-5051-bf7d-d6ed00ef3f36",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:12Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "dedupe_key": "resp_synthetic_3",
+        "input": {
+          "cache_read": 12400,
+          "cache_write": 0,
+          "uncached": 600
+        },
+        "model": "gpt-6-astra",
+        "output": {
+          "generated": 100,
+          "reasoning": 50,
+          "tool": 0
+        }
+      },
+      "id": "3ea233e7-f507-5762-a342-62213a7acdc3",
+      "origin": {
+        "byte_offset": 11361,
+        "line": 25,
+        "sub": 0
+      },
+      "parent_id": "e0f4c208-7f98-55d3-96c5-edcf34e43f79",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:12.500Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": true,
+          "fork": false,
+          "model": "gpt-5.6-sol",
+          "name": "judge",
+          "op": "spawn"
+        },
+        "name": "spawn_agent",
+        "provider_call_id": "call_spawn_1"
+      },
+      "id": "7b468691-159a-50b2-a9dc-fff5e34109c8",
+      "origin": {
+        "byte_offset": 12134,
+        "line": 26,
+        "sub": 0
+      },
+      "parent_id": "3ea233e7-f507-5762-a342-62213a7acdc3",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:13Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "direction": "outgoing",
+        "encrypted": true,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "new_task",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/judge"
+          }
+        ]
+      },
+      "id": "becd9e54-853f-5dc7-b2e6-fdf94b719e4a",
+      "origin": {
+        "byte_offset": 12134,
+        "line": 26,
+        "sub": 1
+      },
+      "parent_id": "7b468691-159a-50b2-a9dc-fff5e34109c8",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:13Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "child": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000002"
+        },
+        "kind": "codex_thread",
+        "name": "judge",
+        "requested_model": "gpt-5.6-sol",
+        "spawn_call_id": "call_spawn_1",
+        "tool_call_id": "7b468691-159a-50b2-a9dc-fff5e34109c8"
+      },
+      "id": "db0a0980-0fac-5e1f-8778-696e1e471ebe",
+      "origin": {
+        "byte_offset": 12590,
+        "line": 27,
+        "sub": 0
+      },
+      "parent_id": "becd9e54-853f-5dc7-b2e6-fdf94b719e4a",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:13.500Z",
+      "type": "agent_spawn"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "{\"task_name\":\"/root/judge\"}",
+        "tool_call_id": "7b468691-159a-50b2-a9dc-fff5e34109c8"
+      },
+      "id": "17aff95d-cab8-5b19-8bf0-de8026963da1",
+      "origin": {
+        "byte_offset": 12988,
+        "line": 28,
+        "sub": 0
+      },
+      "parent_id": "db0a0980-0fac-5e1f-8778-696e1e471ebe",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:14Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": true,
+          "fork": true,
+          "name": "forker",
+          "op": "spawn"
+        },
+        "name": "spawn_agent",
+        "provider_call_id": "call_spawn_2"
+      },
+      "id": "a1048d29-4ff2-59e4-a152-a6f219c0d224",
+      "origin": {
+        "byte_offset": 13209,
+        "line": 29,
+        "sub": 0
+      },
+      "parent_id": "17aff95d-cab8-5b19-8bf0-de8026963da1",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:14.500Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "direction": "outgoing",
+        "encrypted": true,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "new_task",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/forker"
+          }
+        ]
+      },
+      "id": "c0723abb-35e2-56a1-b712-dad353c6ba79",
+      "origin": {
+        "byte_offset": 13209,
+        "line": 29,
+        "sub": 1
+      },
+      "parent_id": "a1048d29-4ff2-59e4-a152-a6f219c0d224",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:14.500Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "child": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000003"
+        },
+        "kind": "fork",
+        "name": "forker",
+        "spawn_call_id": "call_spawn_2",
+        "tool_call_id": "a1048d29-4ff2-59e4-a152-a6f219c0d224"
+      },
+      "id": "0fb08680-73fa-5a51-bbe0-a6832db89239",
+      "origin": {
+        "byte_offset": 13603,
+        "line": 30,
+        "sub": 0
+      },
+      "parent_id": "c0723abb-35e2-56a1-b712-dad353c6ba79",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:15Z",
+      "type": "agent_spawn"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "{\"task_name\":\"/root/forker\"}",
+        "tool_call_id": "a1048d29-4ff2-59e4-a152-a6f219c0d224"
+      },
+      "id": "999f726b-b63d-58e6-80a9-e361d79d3643",
+      "origin": {
+        "byte_offset": 14002,
+        "line": 31,
+        "sub": 0
+      },
+      "parent_id": "0fb08680-73fa-5a51-bbe0-a6832db89239",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:15.500Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": true,
+          "fork": false,
+          "name": "extra",
+          "op": "spawn"
+        },
+        "name": "spawn_agent",
+        "provider_call_id": "call_spawn_3"
+      },
+      "id": "501a2f8e-c105-533c-8b02-8d9fa6716aa7",
+      "origin": {
+        "byte_offset": 14224,
+        "line": 32,
+        "sub": 0
+      },
+      "parent_id": "999f726b-b63d-58e6-80a9-e361d79d3643",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:16Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "direction": "outgoing",
+        "encrypted": true,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "new_task",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/extra"
+          }
+        ]
+      },
+      "id": "d5010fef-20ba-549e-8a6e-182b52c9a78b",
+      "origin": {
+        "byte_offset": 14224,
+        "line": 32,
+        "sub": 1
+      },
+      "parent_id": "501a2f8e-c105-533c-8b02-8d9fa6716aa7",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:16Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": true,
+        "output": "collab spawn failed: agent thread limit reached",
+        "tool_call_id": "501a2f8e-c105-533c-8b02-8d9fa6716aa7"
+      },
+      "id": "5c42842d-21eb-53a0-bab5-ab7f9f995465",
+      "origin": {
+        "byte_offset": 14618,
+        "line": 33,
+        "sub": 0
+      },
+      "parent_id": "d5010fef-20ba-549e-8a6e-182b52c9a78b",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:16.500Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": true,
+          "op": "send",
+          "target": "judge"
+        },
+        "name": "send_message",
+        "provider_call_id": "call_send_1"
+      },
+      "id": "3f4f48fe-714a-56d7-9d8d-f03203fdb7a7",
+      "origin": {
+        "byte_offset": 14855,
+        "line": 34,
+        "sub": 0
+      },
+      "parent_id": "5c42842d-21eb-53a0-bab5-ab7f9f995465",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:17Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "direction": "outgoing",
+        "encrypted": true,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "message",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/judge"
+          }
+        ]
+      },
+      "id": "8550de3f-b779-5df1-8255-70ec43b5c8a8",
+      "origin": {
+        "byte_offset": 14855,
+        "line": 34,
+        "sub": 1
+      },
+      "parent_id": "3f4f48fe-714a-56d7-9d8d-f03203fdb7a7",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:17Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000002"
+        },
+        "transition": "running"
+      },
+      "id": "3cd96fa1-f2d3-549f-b967-43c620767a4a",
+      "origin": {
+        "byte_offset": 15218,
+        "line": 35,
+        "sub": 0
+      },
+      "parent_id": "8550de3f-b779-5df1-8255-70ec43b5c8a8",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:17.500Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "",
+        "tool_call_id": "3f4f48fe-714a-56d7-9d8d-f03203fdb7a7"
+      },
+      "id": "ee1c45a0-d913-5f2a-93e9-0761b5e9152f",
+      "origin": {
+        "byte_offset": 15618,
+        "line": 36,
+        "sub": 0
+      },
+      "parent_id": "3cd96fa1-f2d3-549f-b967-43c620767a4a",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:18Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": false,
+          "op": "interrupt",
+          "target": "/root/forker"
+        },
+        "name": "interrupt_agent",
+        "provider_call_id": "call_interrupt_1"
+      },
+      "id": "96e0a302-55a4-5997-b49b-98a9ad0e5b0c",
+      "origin": {
+        "byte_offset": 15806,
+        "line": 37,
+        "sub": 0
+      },
+      "parent_id": "ee1c45a0-d913-5f2a-93e9-0761b5e9152f",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:18.500Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "direction": "outgoing",
+        "encrypted": false,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "interrupt",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/forker"
+          }
+        ]
+      },
+      "id": "83b8162e-148d-5bc1-8efb-6ced981f1136",
+      "origin": {
+        "byte_offset": 15806,
+        "line": 37,
+        "sub": 1
+      },
+      "parent_id": "96e0a302-55a4-5997-b49b-98a9ad0e5b0c",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:18.500Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000003"
+        },
+        "transition": "interrupted"
+      },
+      "id": "249a52d8-a381-5805-8b35-b81f38a969b7",
+      "origin": {
+        "byte_offset": 16149,
+        "line": 38,
+        "sub": 0
+      },
+      "parent_id": "83b8162e-148d-5bc1-8efb-6ced981f1136",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:19Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "{\"previous_status\":\"running\"}",
+        "tool_call_id": "96e0a302-55a4-5997-b49b-98a9ad0e5b0c"
+      },
+      "id": "23285a54-9849-51af-81bc-0ba0ff883c3b",
+      "origin": {
+        "byte_offset": 16556,
+        "line": 39,
+        "sub": 0
+      },
+      "parent_id": "249a52d8-a381-5805-8b35-b81f38a969b7",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:19.500Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": false,
+          "op": "wait"
+        },
+        "name": "wait_agent",
+        "provider_call_id": "call_wait_agent_1"
+      },
+      "id": "836fa5dd-8440-5dc2-aef2-9bf44218a160",
+      "origin": {
+        "byte_offset": 16787,
+        "line": 40,
+        "sub": 0
+      },
+      "parent_id": "23285a54-9849-51af-81bc-0ba0ff883c3b",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:20Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "{\"message\":\"Wait completed.\",\"timed_out\":false}",
+        "tool_call_id": "836fa5dd-8440-5dc2-aef2-9bf44218a160"
+      },
+      "id": "c13032ce-19f7-5176-9410-7ab955698e94",
+      "origin": {
+        "byte_offset": 17583,
+        "line": 42,
+        "sub": 0
+      },
+      "parent_id": "836fa5dd-8440-5dc2-aef2-9bf44218a160",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:21Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "body": "The parser looks correct.",
+        "direction": "incoming",
+        "encrypted": false,
+        "from": {
+          "by": "path",
+          "value": "/root/judge"
+        },
+        "kind": "final_answer",
+        "provider_message_id": "amsg_synthetic_3",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root"
+          }
+        ],
+        "triggers_turn": false
+      },
+      "id": "335beebf-1146-5e58-9299-5d9d642b0c27",
+      "origin": {
+        "byte_offset": 17967,
+        "line": 44,
+        "sub": 0
+      },
+      "parent_id": "c13032ce-19f7-5176-9410-7ab955698e94",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:22Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000002"
+        },
+        "transition": "completed"
+      },
+      "id": "863e5ec9-f193-53b4-abf3-b4fb1082f191",
+      "origin": {
+        "byte_offset": 18387,
+        "line": 45,
+        "sub": 0
+      },
+      "parent_id": "335beebf-1146-5e58-9299-5d9d642b0c27",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:22.500Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "dedupe_key": "resp_synthetic_4",
+        "input": {
+          "cache_read": 230000,
+          "cache_write": 0,
+          "uncached": 10000
+        },
+        "model": "gpt-6-astra",
+        "output": {
+          "generated": 300,
+          "reasoning": 100,
+          "tool": 0
+        }
+      },
+      "id": "ffa3d256-26ae-5a44-b3d2-2d31eedfaf53",
+      "origin": {
+        "byte_offset": 18830,
+        "line": 46,
+        "sub": 0
+      },
+      "parent_id": "863e5ec9-f193-53b4-abf3-b4fb1082f191",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:23Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "pre_tokens": 240000,
+        "trigger": "auto",
+        "window_number": 1
+      },
+      "id": "6b79744e-70e8-5419-aed5-6d322f2e5195",
+      "origin": {
+        "byte_offset": 19937,
+        "line": 48,
+        "sub": 0
+      },
+      "parent_id": "ffa3d256-26ae-5a44-b3d2-2d31eedfaf53",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:24Z",
+      "type": "compaction"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "phase": "final_answer",
+        "text": "Done: parser fixed; judge agrees."
+      },
+      "id": "37e75346-bda3-583a-8663-b8c77a4b6883",
+      "origin": {
+        "byte_offset": 21024,
+        "line": 50,
+        "sub": 0
+      },
+      "parent_id": "6b79744e-70e8-5419-aed5-6d322f2e5195",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:25Z",
+      "type": "message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "dedupe_key": "resp_synthetic_5",
+        "input": {
+          "cache_read": 15000,
+          "cache_write": 0,
+          "uncached": 5000
+        },
+        "model": "gpt-6-astra",
+        "output": {
+          "generated": 50,
+          "reasoning": 10,
+          "tool": 0
+        }
+      },
+      "id": "3766f546-9e2b-5a97-86bd-5022a60598e7",
+      "origin": {
+        "byte_offset": 21340,
+        "line": 51,
+        "sub": 0
+      },
+      "parent_id": "37e75346-bda3-583a-8663-b8c77a4b6883",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:25.500Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "duration_ms": 60000,
+        "outcome": {
+          "outcome": "completed"
+        },
+        "turn_id": "turn-r1"
+      },
+      "id": "f80c9765-3cdb-5712-8415-2c95f35516b9",
+      "origin": {
+        "byte_offset": 22110,
+        "line": 52,
+        "sub": 0
+      },
+      "parent_id": "3766f546-9e2b-5a97-86bd-5022a60598e7",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:26Z",
+      "type": "turn_end"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "from": "gpt-6-astra",
+        "source": "thread_settings",
+        "to": "gpt-5.6-sol"
+      },
+      "id": "43cbd623-fb3e-5564-916f-65746cfbbf68",
+      "origin": {
+        "byte_offset": 22394,
+        "line": 53,
+        "sub": 0
+      },
+      "parent_id": "f80c9765-3cdb-5712-8415-2c95f35516b9",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:26.500Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000001"
+        },
+        "transition": "running"
+      },
+      "id": "72322bbb-edda-5b78-b2cb-ba3dbefb8e4e",
+      "origin": {
+        "byte_offset": 22902,
+        "line": 54,
+        "sub": 0
+      },
+      "parent_id": "43cbd623-fb3e-5564-916f-65746cfbbf68",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:27Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "text": "Stop, that's enough."
+      },
+      "id": "8f1f7c1c-d3b8-5006-9d1a-78fb24f3423d",
+      "origin": {
+        "byte_offset": 23859,
+        "line": 57,
+        "sub": 0
+      },
+      "parent_id": "72322bbb-edda-5b78-b2cb-ba3dbefb8e4e",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:28.500Z",
+      "type": "user"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
+        "duration_ms": 1500,
+        "outcome": {
+          "outcome": "interrupted"
+        },
+        "turn_id": "turn-r2"
+      },
+      "id": "5bd70095-1455-5fc9-8603-4f76714bcd19",
+      "origin": {
+        "byte_offset": 24473,
+        "line": 59,
+        "sub": 0
+      },
+      "parent_id": "8f1f7c1c-d3b8-5006-9d1a-78fb24f3423d",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:29.500Z",
+      "type": "turn_end"
+    }
+  ]
+}

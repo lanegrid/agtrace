@@ -56,7 +56,10 @@ pub(crate) fn header_from_session_meta(
         agent.parent = parent_thread_id.map(AgentId::codex_thread);
         agent.depth = depth.max(1);
     }
-    agent.path = agent_path.map(str::to_string);
+    // multi_agent v2 paths: children carry `agent_path`; a root is implicitly `/root`.
+    agent.path = agent_path
+        .map(str::to_string)
+        .or_else(|| (!is_child).then(|| super::collab::ROOT_PATH.to_string()));
     agent.name = agent_path
         .and_then(|p| p.rsplit('/').next())
         .filter(|leaf| !leaf.is_empty())
@@ -117,6 +120,8 @@ mod tests {
         assert_eq!(h.agent.kind, AgentKind::Main);
         assert_eq!(h.agent.id, h.agent.root);
         assert_eq!(h.agent.parent, None);
+        assert_eq!(h.agent.path.as_deref(), Some("/root"));
+        assert_eq!(h.agent.name, None);
         assert_eq!(h.project_cwd, Some(PathBuf::from("/work/demo-project")));
     }
 
