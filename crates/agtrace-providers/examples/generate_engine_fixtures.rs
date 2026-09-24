@@ -42,9 +42,9 @@ fn main() -> anyhow::Result<()> {
         }
 
         let adapter = ProviderAdapter::from_name(config.name)?;
-        // Use parser directly instead of process_file to skip probe checks
+        // Decode directly instead of process_file to skip probe checks
         // (sample files may not match production naming conventions)
-        let events = adapter.parser.parse_file(sample_path)?;
+        let events = adapter.parse_file(sample_path)?;
         let json = serde_json::to_string_pretty(&events)?;
         fs::write(output_dir.join(config.output_file), json)?;
         println!(

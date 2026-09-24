@@ -108,9 +108,7 @@ mod tests {
         let mut builder = StepBuilder::new(timestamp);
         builder.message = Some(MessageBlock {
             event_id: Uuid::new_v4(),
-            content: agtrace_types::MessagePayload {
-                text: "test".to_string(),
-            },
+            content: agtrace_types::MessagePayload::new("test".to_string()),
         });
         assert!(!builder.is_empty());
     }
@@ -123,9 +121,7 @@ mod tests {
         builder.id = Some(event_id);
         builder.message = Some(MessageBlock {
             event_id,
-            content: agtrace_types::MessagePayload {
-                text: "test".to_string(),
-            },
+            content: agtrace_types::MessagePayload::new("test".to_string()),
         });
 
         let step = builder.build();
@@ -175,9 +171,7 @@ mod tests {
         let mut builder = StepBuilder::new(timestamp);
         builder.message = Some(MessageBlock {
             event_id: Uuid::new_v4(),
-            content: agtrace_types::MessagePayload {
-                text: "Response".to_string(),
-            },
+            content: agtrace_types::MessagePayload::new("Response".to_string()),
         });
 
         let step = builder.build();
@@ -196,9 +190,7 @@ mod tests {
         });
         builder.message = Some(MessageBlock {
             event_id: Uuid::new_v4(),
-            content: agtrace_types::MessagePayload {
-                text: "Response".to_string(),
-            },
+            content: agtrace_types::MessagePayload::new("Response".to_string()),
         });
 
         let step = builder.build();
@@ -420,9 +412,7 @@ mod tests {
 
         builder.message = Some(MessageBlock {
             event_id: Uuid::new_v4(),
-            content: agtrace_types::MessagePayload {
-                text: "Let me check that".to_string(),
-            },
+            content: agtrace_types::MessagePayload::new("Let me check that".to_string()),
         });
 
         let tool_id = Uuid::new_v4();
@@ -471,9 +461,7 @@ mod tests {
 
         builder.message = Some(MessageBlock {
             event_id: Uuid::new_v4(),
-            content: agtrace_types::MessagePayload {
-                text: "Let me check that".to_string(),
-            },
+            content: agtrace_types::MessagePayload::new("Let me check that".to_string()),
         });
 
         let tool_id = Uuid::new_v4();

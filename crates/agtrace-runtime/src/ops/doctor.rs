@@ -1,6 +1,6 @@
 use crate::{Error, Result};
 use agtrace_engine::{DiagnoseResult, FailureExample, FailureType, categorize_parse_error};
-use agtrace_providers::ProviderAdapter;
+use agtrace_providers::{ParseDiagnostics, ProviderAdapter};
 use agtrace_types::AgentEvent;
 use std::collections::HashMap;
 use std::fs::File;
@@ -44,6 +44,36 @@ pub struct InspectResult {
 }
 
 pub struct DoctorService;
+
+/// Summarize line-level decode problems as a doctor failure (None = healthy).
+fn diagnostics_failure(diagnostics: &ParseDiagnostics) -> Option<(FailureType, String)> {
+    if !diagnostics.has_errors() {
+        return None;
+    }
+    let mut parts = Vec::new();
+    if diagnostics.invalid_json > 0 {
+        parts.push(format!("{} invalid JSON line(s)", diagnostics.invalid_json));
+    }
+    for (kind, count) in &diagnostics.schema_mismatch {
+        parts.push(format!("{count} '{kind}' line(s) with unexpected schema"));
+    }
+    let summary = parts.join(", ");
+    let Some(first) = diagnostics.samples.first() else {
+        return Some((FailureType::ParseError, summary));
+    };
+    let (failure_type, _) = categorize_parse_error(&first.message);
+    let reason = format!(
+        "{summary}; first at line {}{}: {}",
+        first.line + 1,
+        first
+            .kind
+            .as_deref()
+            .map(|k| format!(" ({k})"))
+            .unwrap_or_default(),
+        first.message
+    );
+    Some((failure_type, reason))
+}
 
 impl DoctorService {
     pub fn diagnose_all(providers: &[(ProviderAdapter, PathBuf)]) -> Result<Vec<DiagnoseResult>> {
@@ -101,12 +131,17 @@ impl DoctorService {
         Ok(result)
     }
 
+    /// A file is healthy when it decodes (no I/O error) and no line was invalid JSON
+    /// or failed its typed deserialize. Unknown / ignored record kinds are fine.
     fn test_parse_file(
         provider: &ProviderAdapter,
         path: &Path,
     ) -> std::result::Result<(), (FailureType, String)> {
-        match provider.parser.parse_file(path) {
-            Ok(_events) => Ok(()),
+        match provider.decode_file(path) {
+            Ok((_, _, diagnostics)) => match diagnostics_failure(&diagnostics) {
+                None => Ok(()),
+                Some(failure) => Err(failure),
+            },
             Err(e) => {
                 let error_msg = format!("{:?}", e);
                 Err(categorize_parse_error(&error_msg))
@@ -128,14 +163,21 @@ impl DoctorService {
             )));
         }
 
-        match provider.parser.parse_file(path) {
-            Ok(events) => Ok(CheckResult {
-                file_path: file_path.to_string(),
-                provider_name: provider_name.to_string(),
-                status: CheckStatus::Success,
-                events,
-                error_message: None,
-            }),
+        match provider.decode_file(path) {
+            Ok((_, events, diagnostics)) => {
+                let failure = diagnostics_failure(&diagnostics);
+                Ok(CheckResult {
+                    file_path: file_path.to_string(),
+                    provider_name: provider_name.to_string(),
+                    status: if failure.is_some() {
+                        CheckStatus::Failure
+                    } else {
+                        CheckStatus::Success
+                    },
+                    events,
+                    error_message: failure.map(|(_, reason)| reason),
+                })
+            }
             Err(e) => Ok(CheckResult {
                 file_path: file_path.to_string(),
                 provider_name: provider_name.to_string(),

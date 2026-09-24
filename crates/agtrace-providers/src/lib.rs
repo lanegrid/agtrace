@@ -4,6 +4,10 @@ pub mod error;
 // Trait-based architecture (public API)
 pub mod traits;
 
+// Provider contract (header + per-file lenient decoder)
+pub mod lenient;
+pub mod provider;
+
 // Provider implementations
 pub mod claude;
 pub mod codex;
@@ -26,13 +30,20 @@ pub(crate) mod tool_spec;
 
 // Traits
 pub use traits::{
-    LogDiscovery, ProbeResult, ProviderAdapter, SessionIndex, SessionParser, ToolMapper,
+    LogDiscovery, ProbeResult, ProviderAdapter, SessionIndex, ToolMapper,
     get_latest_mod_time_rfc3339,
 };
 
+// Provider contract
+pub use agtrace_types::{LineError, ParseDiagnostics};
+pub use lenient::{LineReader, OwnedLine, RawLine};
+pub use provider::{
+    DecodeOptions, DiscoveryScope, FileHeader, LogDecoder, Provider, ProviderId, decode_file,
+};
+
 // Provider normalize functions
-pub use claude::normalize_claude_file;
-pub use codex::normalize_codex_file;
+pub use claude::{ClaudeProvider, normalize_claude_file};
+pub use codex::{CodexProvider, normalize_codex_file};
 
 // MCP utilities (provider-specific namespaces)
 pub mod mcp {

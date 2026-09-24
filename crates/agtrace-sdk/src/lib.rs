@@ -165,7 +165,7 @@ pub use client::{
 pub use error::{Error, Result};
 pub use providers::{Providers, ProvidersBuilder};
 pub use types::{
-    AgentEvent, EventPayload, ExportStrategy, SessionFilter, SessionSummary, StreamId, ToolKind,
+    AgentEvent, EventPayload, ExportStrategy, SessionFilter, SessionSummary, ToolKind,
 };
 pub use watch::{LiveStream, WatchBuilder};
 
@@ -302,14 +302,14 @@ pub mod utils {
     ) -> Vec<crate::types::AgentEvent> {
         events
             .iter()
-            .filter(|e| matches!(e.stream_id, crate::types::StreamId::Main))
+            .filter(|e| is_display_event(e))
             .cloned()
             .collect()
     }
 
     /// Check if an event should be displayed (non-sidechain).
     ///
-    /// Returns `true` for main stream events, `false` for sidechain/subagent events.
+    /// Returns `true` for main agent events, `false` for Claude subagent events.
     ///
     /// # Example
     ///
@@ -339,6 +339,6 @@ pub mod utils {
     /// # }
     /// ```
     pub fn is_display_event(event: &crate::types::AgentEvent) -> bool {
-        matches!(event.stream_id, crate::types::StreamId::Main)
+        !event.agent.is_claude_subagent()
     }
 }

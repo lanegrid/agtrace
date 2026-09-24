@@ -10,19 +10,43 @@
 
 // Note: agtrace-types re-exports everything at the top level from domain, event, and tool modules
 pub use agtrace_types::{
+    // Agent identity & multi-agent payloads
+    AgentAttributeKey,
+    AgentAttributePayload,
     // Event types
     AgentEvent,
+    AgentHandle,
+    AgentId,
+    AgentKind,
+    AgentLifecyclePayload,
+    AgentMessageKind,
+    AgentMessagePayload,
+    AgentOp,
+    AgentRef,
+    AgentRunUsage,
     // Session assembly types (moved from agtrace-engine)
     AgentSession,
+    AgentSpawnPayload,
     AgentStep,
+    AgentToolArgs,
     AgentTurn,
+    CompactionPayload,
+    CompactionTrigger,
+    ContextWindowHintPayload,
+    EventOrigin,
     EventPayload,
     // Payload types
     ExecuteArgs,
     FileEditArgs,
     FileReadArgs,
+    LifecycleTransition,
+    LineError,
     MessageBlock,
+    MessageDirection,
     MessagePayload,
+    ModelChangePayload,
+    ModelChangeSource,
+    ParseDiagnostics,
     // Domain types
     ProjectHash,
     ProjectScope,
@@ -33,7 +57,7 @@ pub use agtrace_types::{
     SessionStats,
     SpawnContext,
     StepStatus,
-    StreamId,
+    SubActionStatus,
     // Token usage types
     TokenInput,
     TokenOutput,
@@ -44,8 +68,12 @@ pub use agtrace_types::{
     ToolKind,
     ToolResultBlock,
     ToolResultPayload,
+    ToolSubActionPayload,
+    TurnEndPayload,
     TurnMetrics,
+    TurnOutcome,
     TurnStats,
+    UsageCompleteness,
     UserMessage,
     UserPayload,
     // Utility functions

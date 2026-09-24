@@ -28,8 +28,12 @@ description = "Run clippy linter"
 run = "cargo clippy --workspace -- -D warnings"
 
 [verify]
-description = "Run all checks (fmt + clippy + test + build)"
-run = "cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && cargo build --release"
+description = "Run all checks (fixtures + fmt + clippy + test + build)"
+run = "bash scripts/check-fixtures.sh && cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace && cargo build --release"
+
+["fixtures:check"]
+description = "Check synthetic test fixtures for real paths, e-mails, tokens and size"
+run = "bash scripts/check-fixtures.sh"
 
 ["snapshot:accept"]
 description = "Accept snapshot changes and show diff"

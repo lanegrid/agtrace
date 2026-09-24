@@ -191,7 +191,6 @@ impl Providers {
             .map_err(|_| Error::NotFound("No suitable provider detected for file".to_string()))?;
 
         adapter
-            .parser
             .parse_file(path)
             .map_err(|e| Error::InvalidInput(format!("Parse error: {}", e)))
     }
@@ -215,7 +214,6 @@ impl Providers {
             .map_err(|_| Error::NotFound(format!("Unknown provider: {}", provider_name)))?;
 
         adapter
-            .parser
             .parse_file(path)
             .map_err(|e| Error::InvalidInput(format!("Parse error: {}", e)))
     }

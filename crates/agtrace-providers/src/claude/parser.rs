@@ -1,7 +1,5 @@
-use crate::Result;
 use agtrace_types::*;
-use chrono::DateTime;
-use std::path::Path;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::builder::{EventBuilder, SemanticSuffix};
@@ -24,24 +22,6 @@ fn generate_record_uuid(session_id: &str, timestamp: &str, suffix: &str) -> Stri
     timestamp.hash(&mut hasher);
     suffix.hash(&mut hasher);
     format!("gen-{:016x}", hasher.finish())
-}
-
-/// Determine StreamId from Claude record fields
-fn determine_stream_id(is_sidechain: bool, agent_id: &Option<String>) -> StreamId {
-    if is_sidechain {
-        StreamId::Sidechain {
-            agent_id: agent_id.clone().unwrap_or_else(|| "unknown".to_string()),
-        }
-    } else {
-        StreamId::Main
-    }
-}
-
-/// Parse Claude timestamp to DateTime<Utc>
-fn parse_timestamp(ts: &str) -> DateTime<chrono::Utc> {
-    DateTime::parse_from_rfc3339(ts)
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-        .unwrap_or_else(|_| chrono::Utc::now())
 }
 
 /// Slash command info extracted from user message
@@ -93,38 +73,69 @@ fn extract_slash_command(text: &str) -> Option<SlashCommandInfo> {
     Some(SlashCommandInfo { name, args })
 }
 
-/// Normalize Claude session records to events
-/// Handles message.content[] blocks, thinking -> Reasoning, and TokenUsage extraction
-pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
-    // Extract session_id from first record
-    let session_id = records
-        .iter()
-        .find_map(|r| match r {
-            ClaudeRecord::User(user) => Some(user.session_id.clone()),
-            ClaudeRecord::Assistant(asst) => Some(asst.session_id.clone()),
-            ClaudeRecord::System(sys) => Some(sys.session_id.clone()),
-            ClaudeRecord::Progress(prog) => Some(prog.session_id.clone()),
-            ClaudeRecord::QueueOperation(queue) => Some(queue.session_id.clone()),
-            ClaudeRecord::Summary(summ) => summ.session_id.clone(),
-            ClaudeRecord::PrLink(pr) => Some(pr.session_id.clone()),
-            ClaudeRecord::Attachment(att) => Some(att.session_id.clone()),
-            _ => None,
-        })
-        .unwrap_or_else(|| "unknown".to_string());
+/// Stateful Claude record -> event mapper (one per agent file).
+///
+/// Holds the event builder (per-agent parent chains, tool call map) and the
+/// last seen timestamp across records.
+pub(crate) struct ClaudeRecordMapper {
+    builder: EventBuilder,
+    session_id: String,
+    /// Agent owning the file (from the file header).
+    main_agent: AgentId,
+    last_timestamp: Option<DateTime<Utc>>,
+}
 
-    // Create session_id UUID from session_id string (deterministic)
-    let session_id_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
-    let mut builder = EventBuilder::new(session_id_uuid);
-    let mut events = Vec::new();
+impl ClaudeRecordMapper {
+    pub(crate) fn new(
+        session_id: &str,
+        main_agent: AgentId,
+        fallback_timestamp: Option<DateTime<Utc>>,
+    ) -> Self {
+        // Create session_id UUID from session_id string (deterministic)
+        let session_id_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
+        Self {
+            builder: EventBuilder::new(session_id_uuid),
+            session_id: session_id.to_string(),
+            main_agent,
+            last_timestamp: fallback_timestamp,
+        }
+    }
 
-    for record in records {
+    pub(crate) fn begin_line(&mut self, line: u64, byte_offset: u64) {
+        self.builder.begin_line(line, byte_offset);
+    }
+
+    /// Agent of a record: sidechain records carrying an agentId belong to that
+    /// subagent; everything else belongs to the file's agent.
+    fn agent_for(&self, is_sidechain: bool, agent_id: &Option<String>) -> AgentId {
+        match (is_sidechain, agent_id) {
+            (true, Some(aid)) if self.main_agent.native_agent_id() != Some(aid.as_str()) => {
+                AgentId::claude_subagent(&self.session_id, aid)
+            }
+            _ => self.main_agent.clone(),
+        }
+    }
+
+    /// Parse a record timestamp; unparsable timestamps inherit the last seen one.
+    fn timestamp(&mut self, ts: &str) -> DateTime<Utc> {
+        match DateTime::parse_from_rfc3339(ts) {
+            Ok(dt) => {
+                let dt = dt.with_timezone(&Utc);
+                self.last_timestamp = Some(dt);
+                dt
+            }
+            Err(_) => self.last_timestamp.unwrap_or(DateTime::<Utc>::UNIX_EPOCH),
+        }
+    }
+
+    /// Map one record to events.
+    /// Handles message.content[] blocks, thinking -> Reasoning, and TokenUsage extraction
+    pub(crate) fn map_record(&mut self, record: ClaudeRecord, events: &mut Vec<AgentEvent>) {
         match record {
             ClaudeRecord::User(user_record) => {
-                let timestamp = parse_timestamp(&user_record.timestamp);
-                let raw_value = serde_json::to_value(&user_record).ok();
+                let timestamp = self.timestamp(&user_record.timestamp);
                 let base_id = &user_record.uuid;
-                let stream_id =
-                    determine_stream_id(user_record.is_sidechain, &user_record.agent_id);
+                let agent = self.agent_for(user_record.is_sidechain, &user_record.agent_id);
 
                 // Process user content blocks
                 for (idx, content) in user_record.message.content.iter().enumerate() {
@@ -134,8 +145,8 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         UserContent::Text { text } => {
                             // Check for slash command pattern
                             if let Some(cmd) = extract_slash_command(text) {
-                                builder.build_and_push(
-                                    &mut events,
+                                self.builder.build_and_push(
+                                    events,
                                     &indexed_base_id,
                                     SemanticSuffix::SlashCommand,
                                     timestamp,
@@ -143,18 +154,16 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         name: cmd.name,
                                         args: cmd.args,
                                     }),
-                                    raw_value.clone(),
-                                    stream_id.clone(),
+                                    &agent,
                                 );
                             } else {
-                                builder.build_and_push(
-                                    &mut events,
+                                self.builder.build_and_push(
+                                    events,
                                     &indexed_base_id,
                                     SemanticSuffix::User,
                                     timestamp,
                                     EventPayload::User(UserPayload { text: text.clone() }),
-                                    raw_value.clone(),
-                                    stream_id.clone(),
+                                    &agent,
                                 );
                             }
                         }
@@ -167,7 +176,8 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         } => {
                             // ToolResult in user message - map to ToolResult event
                             // Need to look up the tool_call_id from provider ID
-                            if let Some(tool_call_id) = builder.get_tool_call_uuid(tool_use_id) {
+                            if let Some(tool_call_id) = self.builder.get_tool_call_uuid(tool_use_id)
+                            {
                                 let output = result_content
                                     .as_ref()
                                     .and_then(|v| v.as_str())
@@ -182,8 +192,8 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         .and_then(|r| r.agent_id.clone())
                                 });
 
-                                builder.build_and_push(
-                                    &mut events,
+                                self.builder.build_and_push(
+                                    events,
                                     &indexed_base_id,
                                     SemanticSuffix::ToolResult,
                                     timestamp,
@@ -193,8 +203,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         is_error: *is_error,
                                         agent_id: effective_agent_id,
                                     }),
-                                    raw_value.clone(),
-                                    stream_id.clone(),
+                                    &agent,
                                 );
                             }
                         }
@@ -212,11 +221,9 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             }
 
             ClaudeRecord::Assistant(asst_record) => {
-                let timestamp = parse_timestamp(&asst_record.timestamp);
-                let raw_value = serde_json::to_value(&asst_record).ok();
+                let timestamp = self.timestamp(&asst_record.timestamp);
                 let base_id = &asst_record.uuid;
-                let stream_id =
-                    determine_stream_id(asst_record.is_sidechain, &asst_record.agent_id);
+                let agent = self.agent_for(asst_record.is_sidechain, &asst_record.agent_id);
 
                 // Track the last generation event for TokenUsage sidecar
                 let mut last_generation_event_id: Option<Uuid> = None;
@@ -245,14 +252,13 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 None
                             };
                             if let Some(text) = text {
-                                builder.build_and_push(
-                                    &mut events,
+                                self.builder.build_and_push(
+                                    events,
                                     &indexed_base_id,
                                     SemanticSuffix::Reasoning,
                                     timestamp,
                                     EventPayload::Reasoning(ReasoningPayload { text }),
-                                    raw_value.clone(),
-                                    stream_id.clone(),
+                                    &agent,
                                 );
                             }
                         }
@@ -261,8 +267,8 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             id, name, input, ..
                         } => {
                             // ToolUse -> ToolCall event
-                            let event_id = builder.build_and_push(
-                                &mut events,
+                            let event_id = self.builder.build_and_push(
+                                events,
                                 &indexed_base_id,
                                 SemanticSuffix::ToolCall,
                                 timestamp,
@@ -271,25 +277,23 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                     input.clone(),
                                     Some(id.clone()),
                                 )),
-                                raw_value.clone(),
-                                stream_id.clone(),
+                                &agent,
                             );
 
                             // Register tool call mapping
-                            builder.register_tool_call(id.clone(), event_id);
+                            self.builder.register_tool_call(id.clone(), event_id);
                             last_generation_event_id = Some(event_id);
                         }
 
                         AssistantContent::Text { text, .. } => {
                             // Text block -> Message event
-                            let event_id = builder.build_and_push(
-                                &mut events,
+                            let event_id = self.builder.build_and_push(
+                                events,
                                 &indexed_base_id,
                                 SemanticSuffix::Message,
                                 timestamp,
-                                EventPayload::Message(MessagePayload { text: text.clone() }),
-                                raw_value.clone(),
-                                stream_id.clone(),
+                                EventPayload::Message(MessagePayload::new(text.clone())),
+                                &agent,
                             );
                             last_generation_event_id = Some(event_id);
                         }
@@ -300,9 +304,10 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             is_error,
                         } => {
                             // ToolResult in assistant content (rare, but handle it)
-                            if let Some(tool_call_id) = builder.get_tool_call_uuid(tool_use_id) {
-                                builder.build_and_push(
-                                    &mut events,
+                            if let Some(tool_call_id) = self.builder.get_tool_call_uuid(tool_use_id)
+                            {
+                                self.builder.build_and_push(
+                                    events,
                                     &indexed_base_id,
                                     SemanticSuffix::ToolResult,
                                     timestamp,
@@ -312,8 +317,7 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                         is_error: *is_error,
                                         agent_id: None,
                                     }),
-                                    raw_value.clone(),
-                                    stream_id.clone(),
+                                    &agent,
                                 );
                             }
                         }
@@ -331,8 +335,9 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         // Claude Token Conversion Rationale:
                         //
                         // Input mapping (verified from API spec):
-                        //   cached   = cache_read_input_tokens (tokens from cache, still consume context)
-                        //   uncached = input_tokens (fresh tokens, not from cache)
+                        //   uncached    = input_tokens (fresh tokens, not from cache)
+                        //   cache_read  = cache_read_input_tokens
+                        //   cache_write = cache_creation_input_tokens
                         //
                         // Output mapping:
                         //   reasoning = output_tokens_details.thinking_tokens (v2.1+)
@@ -343,9 +348,11 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         // reasoning count is carved out of `generated` to keep
                         // total() == output_tokens. Pre-v2.1 logs lack the detail
                         // field, so reasoning is 0 and generated == output_tokens.
-                        let cached = usage.cache_read_input_tokens.unwrap_or(0) as u64;
-                        let uncached = usage.input_tokens as u64;
-                        let input = TokenInput::new(cached, uncached);
+                        let input = TokenInput::new(
+                            usage.input_tokens as u64,
+                            usage.cache_read_input_tokens.unwrap_or(0) as u64,
+                            usage.cache_creation_input_tokens.unwrap_or(0) as u64,
+                        );
 
                         let reasoning = usage
                             .output_tokens_details
@@ -359,14 +366,20 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             0, // tool (TODO: parse content[type="tool_use"])
                         );
 
-                        builder.build_and_push(
-                            &mut events,
+                        let model = Some(asst_record.message.model.clone())
+                            .filter(|m| !m.is_empty() && m != "<synthetic>");
+
+                        self.builder.build_and_push(
+                            events,
                             base_id,
                             SemanticSuffix::TokenUsage,
                             timestamp,
-                            EventPayload::TokenUsage(TokenUsagePayload::new(input, output)),
-                            raw_value.clone(),
-                            stream_id.clone(),
+                            EventPayload::TokenUsage(
+                                TokenUsagePayload::new(input, output)
+                                    .with_model(model)
+                                    .with_dedupe_key(Some(asst_record.message.id.clone())),
+                            ),
+                            &agent,
                         );
                     }
                 }
@@ -377,10 +390,9 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             }
 
             ClaudeRecord::System(sys_record) => {
-                let timestamp = parse_timestamp(&sys_record.timestamp);
-                let raw_value = serde_json::to_value(&sys_record).ok();
+                let timestamp = self.timestamp(&sys_record.timestamp);
                 let base_id = &sys_record.uuid;
-                let stream_id = determine_stream_id(sys_record.is_sidechain, &None);
+                let agent = self.agent_for(sys_record.is_sidechain, &None);
 
                 match sys_record.subtype.as_str() {
                     "local_command" => {
@@ -395,31 +407,30 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 (content.clone(), None)
                             };
 
-                            builder.build_and_push(
-                                &mut events,
+                            self.builder.build_and_push(
+                                events,
                                 base_id,
                                 SemanticSuffix::SlashCommand,
                                 timestamp,
                                 EventPayload::SlashCommand(SlashCommandPayload { name, args }),
-                                raw_value,
-                                stream_id,
+                                &agent,
                             );
                         }
                     }
 
                     "turn_duration" => {
                         if let Some(duration_ms) = sys_record.duration_ms {
-                            builder.build_and_push(
-                                &mut events,
+                            self.builder.build_and_push(
+                                events,
                                 base_id,
                                 SemanticSuffix::Notification,
                                 timestamp,
                                 EventPayload::Notification(NotificationPayload {
                                     text: format!("Turn duration: {}ms", duration_ms),
                                     level: Some("debug".to_string()),
+                                    kind: Some("turn_duration".to_string()),
                                 }),
-                                raw_value,
-                                stream_id,
+                                &agent,
                             );
                         }
                     }
@@ -442,17 +453,17 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             None => format!("Context compaction (trigger: {})", trigger),
                         };
 
-                        builder.build_and_push(
-                            &mut events,
+                        self.builder.build_and_push(
+                            events,
                             base_id,
                             SemanticSuffix::Notification,
                             timestamp,
                             EventPayload::Notification(NotificationPayload {
                                 text,
                                 level: Some("info".to_string()),
+                                kind: Some("compact_boundary".to_string()),
                             }),
-                            raw_value,
-                            stream_id,
+                            &agent,
                         );
                     }
 
@@ -472,17 +483,17 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 commands.join(", ")
                             )
                         };
-                        builder.build_and_push(
-                            &mut events,
+                        self.builder.build_and_push(
+                            events,
                             base_id,
                             SemanticSuffix::Notification,
                             timestamp,
                             EventPayload::Notification(NotificationPayload {
                                 text,
                                 level: Some("info".to_string()),
+                                kind: Some("stop_hook_summary".to_string()),
                             }),
-                            raw_value,
-                            stream_id,
+                            &agent,
                         );
                     }
 
@@ -490,17 +501,17 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         // Summary shown when returning to a session that ran in
                         // the background / as a remote agent (v2.1+).
                         if let Some(content) = &sys_record.content {
-                            builder.build_and_push(
-                                &mut events,
+                            self.builder.build_and_push(
+                                events,
                                 base_id,
                                 SemanticSuffix::Notification,
                                 timestamp,
                                 EventPayload::Notification(NotificationPayload {
                                     text: format!("Away summary: {}", content),
                                     level: Some("info".to_string()),
+                                    kind: Some("away_summary".to_string()),
                                 }),
-                                raw_value,
-                                stream_id,
+                                &agent,
                             );
                         }
                     }
@@ -516,33 +527,33 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                                 .clone()
                                 .unwrap_or_else(|| "API error".to_string()),
                         };
-                        builder.build_and_push(
-                            &mut events,
+                        self.builder.build_and_push(
+                            events,
                             base_id,
                             SemanticSuffix::Notification,
                             timestamp,
                             EventPayload::Notification(NotificationPayload {
                                 text,
                                 level: Some("warn".to_string()),
+                                kind: Some("api_error".to_string()),
                             }),
-                            raw_value,
-                            stream_id,
+                            &agent,
                         );
                     }
 
                     "informational" => {
                         if let Some(content) = &sys_record.content {
-                            builder.build_and_push(
-                                &mut events,
+                            self.builder.build_and_push(
+                                events,
                                 base_id,
                                 SemanticSuffix::Notification,
                                 timestamp,
                                 EventPayload::Notification(NotificationPayload {
                                     text: content.clone(),
                                     level: Some("info".to_string()),
+                                    kind: Some("informational".to_string()),
                                 }),
-                                raw_value,
-                                stream_id,
+                                &agent,
                             );
                         }
                     }
@@ -554,11 +565,9 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             }
 
             ClaudeRecord::Progress(prog_record) => {
-                let timestamp = parse_timestamp(&prog_record.timestamp);
-                let raw_value = serde_json::to_value(&prog_record).ok();
+                let timestamp = self.timestamp(&prog_record.timestamp);
                 let base_id = &prog_record.uuid;
-                let stream_id =
-                    determine_stream_id(prog_record.is_sidechain, &prog_record.agent_id);
+                let agent = self.agent_for(prog_record.is_sidechain, &prog_record.agent_id);
 
                 // Only emit Notification for hook_progress (for debugging)
                 // agent_progress is handled by separate subagent files
@@ -580,31 +589,33 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         Some("debug".to_string())
                     };
 
-                    builder.build_and_push(
-                        &mut events,
+                    self.builder.build_and_push(
+                        events,
                         base_id,
                         SemanticSuffix::Notification,
                         timestamp,
-                        EventPayload::Notification(NotificationPayload { text, level }),
-                        raw_value,
-                        stream_id,
+                        EventPayload::Notification(NotificationPayload {
+                            text,
+                            level,
+                            kind: Some("hook_progress".to_string()),
+                        }),
+                        &agent,
                     );
                 }
                 // Other progress types (agent_progress, bash_progress, mcp_progress) are skipped
             }
 
             ClaudeRecord::QueueOperation(queue_record) => {
-                let timestamp = parse_timestamp(&queue_record.timestamp);
-                let raw_value = serde_json::to_value(&queue_record).ok();
+                let timestamp = self.timestamp(&queue_record.timestamp);
                 let base_id = generate_record_uuid(
                     &queue_record.session_id,
                     &queue_record.timestamp,
                     "queue",
                 );
-                let stream_id = StreamId::Main;
+                let agent = self.main_agent.clone();
 
-                builder.build_and_push(
-                    &mut events,
+                self.builder.build_and_push(
+                    events,
                     &base_id,
                     SemanticSuffix::QueueOperation,
                     timestamp,
@@ -612,62 +623,35 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         operation: queue_record.operation.clone(),
                         content: queue_record.content.clone(),
                         task_id: queue_record.task_id.clone(),
+                        reason: None,
                     }),
-                    raw_value,
-                    stream_id,
-                );
-            }
-
-            ClaudeRecord::Summary(summ_record) => {
-                // Summary records may not have timestamp, use current time as fallback
-                let timestamp = summ_record
-                    .timestamp
-                    .as_ref()
-                    .map(|ts| parse_timestamp(ts))
-                    .unwrap_or_else(chrono::Utc::now);
-                let raw_value = serde_json::to_value(&summ_record).ok();
-                let base_id = summ_record.leaf_uuid.as_deref().unwrap_or("summary");
-                let stream_id = StreamId::Main;
-
-                builder.build_and_push(
-                    &mut events,
-                    base_id,
-                    SemanticSuffix::Summary,
-                    timestamp,
-                    EventPayload::Summary(SummaryPayload {
-                        summary: summ_record.summary.clone(),
-                        leaf_uuid: summ_record.leaf_uuid.clone(),
-                    }),
-                    raw_value,
-                    stream_id,
+                    &agent,
                 );
             }
 
             ClaudeRecord::PrLink(pr_record) => {
-                let timestamp = parse_timestamp(&pr_record.timestamp);
-                let raw_value = serde_json::to_value(&pr_record).ok();
+                let timestamp = self.timestamp(&pr_record.timestamp);
                 let base_id =
                     generate_record_uuid(&pr_record.session_id, &pr_record.timestamp, "pr-link");
 
-                builder.build_and_push(
-                    &mut events,
+                self.builder.build_and_push(
+                    events,
                     &base_id,
                     SemanticSuffix::Notification,
                     timestamp,
                     EventPayload::Notification(NotificationPayload {
                         text: format!("PR #{} linked: {}", pr_record.pr_number, pr_record.pr_url),
                         level: Some("info".to_string()),
+                        kind: Some("pr_link".to_string()),
                     }),
-                    raw_value,
-                    StreamId::Main,
+                    &self.main_agent,
                 );
             }
 
             ClaudeRecord::Attachment(att_record) => {
-                let timestamp = parse_timestamp(&att_record.timestamp);
-                let raw_value = serde_json::to_value(&att_record).ok();
+                let timestamp = self.timestamp(&att_record.timestamp);
                 let base_id = &att_record.uuid;
-                let stream_id = determine_stream_id(att_record.is_sidechain, &None);
+                let agent = self.agent_for(att_record.is_sidechain, &None);
 
                 match &att_record.attachment {
                     AttachmentData::QueuedCommand {
@@ -679,17 +663,17 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                         if command_mode.as_deref() != Some("task-notification")
                             && let Some(prompt) = prompt
                         {
-                            builder.build_and_push(
-                                &mut events,
+                            self.builder.build_and_push(
+                                events,
                                 base_id,
                                 SemanticSuffix::Notification,
                                 timestamp,
                                 EventPayload::Notification(NotificationPayload {
                                     text: format!("Queued prompt: {}", prompt),
                                     level: Some("info".to_string()),
+                                    kind: Some("queued_command".to_string()),
                                 }),
-                                raw_value,
-                                stream_id,
+                                &agent,
                             );
                         }
                     }
@@ -699,17 +683,17 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
                             Some(path) => format!("Exited plan mode (plan: {})", path),
                             None => "Exited plan mode".to_string(),
                         };
-                        builder.build_and_push(
-                            &mut events,
+                        self.builder.build_and_push(
+                            events,
                             base_id,
                             SemanticSuffix::Notification,
                             timestamp,
                             EventPayload::Notification(NotificationPayload {
                                 text,
                                 level: Some("info".to_string()),
+                                kind: Some("plan_mode_exit".to_string()),
                             }),
-                            raw_value,
-                            stream_id,
+                            &agent,
                         );
                     }
 
@@ -721,21 +705,28 @@ pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentE
             }
 
             ClaudeRecord::Unknown => {
-                // Skip unknown record types
+                // Counted by the decoder; no events.
             }
         }
     }
-
-    events
 }
 
-/// Claude session parser implementation
-pub struct ClaudeParser;
-
-impl crate::traits::SessionParser for ClaudeParser {
-    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
-        super::io::normalize_claude_file(path)
+/// Test helper: map records with a fresh mapper (session id from the first record).
+#[cfg(test)]
+pub(crate) fn normalize_claude_session(records: Vec<ClaudeRecord>) -> Vec<AgentEvent> {
+    let session_id = records
+        .iter()
+        .find_map(|r| r.session_id())
+        .unwrap_or("unknown")
+        .to_string();
+    let mut mapper =
+        ClaudeRecordMapper::new(&session_id, AgentId::claude_session(&session_id), None);
+    let mut events = Vec::new();
+    for (i, record) in records.into_iter().enumerate() {
+        mapper.begin_line(i as u64, 0);
+        mapper.map_record(record, &mut events);
     }
+    events
 }
 
 #[cfg(test)]
@@ -838,8 +829,8 @@ mod tests {
         match &events[2].payload {
             EventPayload::TokenUsage(payload) => {
                 // input_tokens=100, cache_read_input_tokens=10
-                // => cached=10, uncached=100, total=110
-                assert_eq!(payload.input.cached, 10);
+                // => cache_read=10, uncached=100, total=110
+                assert_eq!(payload.input.cache_read, 10);
                 assert_eq!(payload.input.uncached, 100);
                 assert_eq!(payload.input.total(), 110);
                 assert_eq!(payload.output.total(), 50);

@@ -2,199 +2,88 @@
   {
     "id": "c1f00fe5-e2ab-5aab-8248-0091dcc000d2",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": null,
     "timestamp": "2025-12-09T19:47:42.930Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 1,
+      "byte_offset": 236,
+      "sub": 0
     },
     "type": "user",
     "content": {
       "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "text": "add myapp directory and create myapp/hoge.py which shows result of print(1+1).",
-            "type": "text"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": null,
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": {
-        "disabled": false,
-        "level": "high",
-        "triggers": []
-      },
-      "timestamp": "2025-12-09T19:47:42.930Z",
-      "userType": "external",
-      "uuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
-      "version": "2.0.28"
     }
   },
   {
     "id": "d7c997b4-c775-5e55-a3cf-da2e9e182051",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "c1f00fe5-e2ab-5aab-8248-0091dcc000d2",
     "timestamp": "2025-12-09T19:47:54.563Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 2,
+      "byte_offset": 710,
+      "sub": 0
     },
     "type": "reasoning",
     "content": {
       "text": "The user wants me to:\n1. Add a myapp directory\n2. Create myapp/hoge.py which shows the result of print(1+1)\n\nThis is a straightforward task with two steps:\n1. Create the directory\n2. Create the file with the code\n\nThis is simple enough that I don't need a todo list - it's just 2 quick steps. Let me first check if the myapp directory exists, then create it and the file.\n\nActually, I should use the Write tool to create the file. The Write tool will create the directory if it doesn't exist. Let me just create the file directly.\n\nWait, I should verify first if the directory exists. Actually, looking at the instructions, I should prefer using the dedicated tools. I can just use Write to create the file, and it should handle creating the directory if needed. But let me check first with ls to see if myapp exists.\n\nActually, let me just create the directory first with bash, then write the file. That's clearer.\n\nActually, looking at the instructions more carefully: \"Before executing the command, please follow these steps: Directory Verification: If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\"\n\nSo I should first verify the parent directory (which is the working directory /Users/test_user/agent-sample). I can see from the env that this is the working directory, so I know the parent exists. Let me create the directory and then the file."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": "ErUMCkYIChgCKkCIRynryYQ3osH4UUG03Meg7INHoc6Hky0B4HVlkBEXal5OgZWs3s+0cZE5Qn1EQmzfP4mVHcTbZnxLBBmZpmH2EgwYmJJzaaHjc2PGBkkaDIpQK0OKUQoWq1RZwiIwfT7Gm+Uk0EVMCGfx3wXn1Jw418YtlpE6/w7xp1RCGBMSdvDOaXBgVQC4uAryf6SLKpwLfUFcuTOV4Ww4CIkWTYZZXXxiHX3LAX8FjpBL/MFIX3VyynaZ8mry5DizVEg/Dzumvgc2OZ4g2sSvPAAQxw/0pBmjopWqYFx9VQusUdW5mw1DfRqw1CZm7eRb3koSMlXrmSiHOQU/Hy7nsWnMPfZAR9Z4hRfVkM9WkPLPZrIm/I1w/OvXQYhrm49v7Il4iUhBhYE2DATU/fM9xThprk9KthLdrsQVdoO2egHs+TgkXs9JLQ7fHlazVBmXMQP1pquhwu6m8Jhn3oFoBdC09GpqT+P3pUWxCtfUlDwwWV6gBL9C0dYpbYMi+h3OriyfjkcdfvlvLWZPEotF88XUf0HMfH0/FPlOJ7zY+woLXeMpVIiX6H0Rl+nql4fdgkFkff2tL8VxjixRxZ47ycUu4irwSTPZM4MXeaeNaKU9P7yUvuLzj8tHVdQNtd0kgxo2L1t1J5wbq47eFQ9M+UFE4+k4t/WO466yfc7j7cfikYNr59SLB0iUkCUZonV+Tu7gkY/19OYRGUOQ8hcHEqlyFWFpcQOSnDx7r256adBSb2oC4HvICwXJ3JiPtAq7FJSC6hN1lmiX454+f3UX+MXrahvwmZut1PippWmgh1U0zZWhmKA/dRzrYZ8gnoMlRwHERu83f7sK4ODb07SDIXmdyRkPi0KWyjRcJbUvMNmCorwrBDh/V1494+WNIn7UTSs2z1OiZF+vHNpr8y3ySV63YdvN/OwiRfujWQJ+Ig1fwGTzfmaxijqAGF72lYdEVcTcRSmQKFy10WuN5Rc6cdPTufEE0DVRqjF5EZewyUVjSS02Ejd9S6Z329JfGesQDwisH8MGmHyntCnudx4kv7WDruhF8sRAiM376NZtGuNkNeQsoi8kSmaifd5+nQqCeocRJWA9/ysymCuL0Ol41QDsWMD8Yt5nMVq+WT5CKSiFnBcwZ7wVow8rHiyAoOH/A5KkvZP71JEOGbjL3MqGUN00ZQ3am53Nq3m5URA25XJuXBwFJUIlajaGe+sRJT64AIqVoLQBWbh5HeeAVzox1Tk4zO1op8RCYV/54z99bslAIoetS5oDBa9rTDUNNyElTOg7pjsA4foKohoOyorUkN56I1p5d5gc2a0kCndU5MU6JOkM35n/HRyO0Yo51dZX1htXPIGFX505pk+KWip2tnE9oRIj8Q0qZO962FpWNxSoInkZ93Lu/SjD526HmgATwHioMdwLlO792VQftCb4yl0r5B2ONhbXf4Xzx7Tiyo9ycdxIxPBXmvN5NE0ohuhDQbq/c4RTf1xqZJr4PCf8UYJojBHDA1/8rriR6OKdIyLrUclEiubVTGB/k0TUgG5mFKHIhnV82F0DpjqmbP+O84SbPpJ9DsDSQuLi57tleMmNYyE/awqL7yLapOcDTbCR0SPnzXup09FCXCq0WT3rwKANQKHwmQ9YEQDK5t+fexEvmUz0rRAAISr1O52v1pIVFDFfoGn7zjisZ5fOwQ3sNibAresTns/ysVHBYmMvHgIZ3PtGRn7ZciEqF88joufuITyGolXTwfWqzX0BRtulYSTwGgcmIrzK3bz3mJQ9l+2a5a3UknlMAy4D0RjN6QmY10ozTl8LF9zJ4SEsh4ULru3OalaSnUpsgkz2amdtPn3gvdDj+2S15pjk5w30F0uUDbUfNNlR58AjEIxl8tx52CKz212pB6q0KozxxsEukdlSKBiaPKjQ0pMm6iiN8ylK0ooYbT3l7/Sc4zEHkUSYYEz35sjZbLAGbkBiq81C6/4av0vUgY+txAaz4moAjYZgp5PLdMv59Tq9dk7TCDp98MAlHvDVdmdZ4w/ZCV0J8tUE5qoRtdFHZzvCd/oou2tstXBtsJugAPkb+8lAEnDD35gyw0pPWDrxjdzUSMSgxjNAggGM/Wy3EgFC20jLad8sLJ4YAQ==",
-            "thinking": "The user wants me to:\n1. Add a myapp directory\n2. Create myapp/hoge.py which shows the result of print(1+1)\n\nThis is a straightforward task with two steps:\n1. Create the directory\n2. Create the file with the code\n\nThis is simple enough that I don't need a todo list - it's just 2 quick steps. Let me first check if the myapp directory exists, then create it and the file.\n\nActually, I should use the Write tool to create the file. The Write tool will create the directory if it doesn't exist. Let me just create the file directly.\n\nWait, I should verify first if the directory exists. Actually, looking at the instructions, I should prefer using the dedicated tools. I can just use Write to create the file, and it should handle creating the directory if needed. But let me check first with ls to see if myapp exists.\n\nActually, let me just create the directory first with bash, then write the file. That's clearer.\n\nActually, looking at the instructions more carefully: \"Before executing the command, please follow these steps: Directory Verification: If the command will create new directories or files, first use `ls` to verify the parent directory exists and is the correct location\"\n\nSo I should first verify the parent directory (which is the working directory /Users/test_user/agent-sample). I can see from the env that this is the working directory, so I know the parent exists. Let me create the directory and then the file.",
-            "type": "thinking"
-          }
-        ],
-        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 3893,
-          "cache_read_input_tokens": 12135,
-          "input_tokens": 10,
-          "output_tokens": 8
-        }
-      },
-      "parentUuid": "f370ce0f-84e8-42ab-a6c9-c5d925abd271",
-      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:47:54.563Z",
-      "userType": "external",
-      "uuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
-      "version": "2.0.28"
     }
   },
   {
     "id": "56a05cb9-335b-5dbc-aca1-ef39fd79c544",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "d7c997b4-c775-5e55-a3cf-da2e9e182051",
     "timestamp": "2025-12-09T19:47:55.174Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 3,
+      "byte_offset": 5106,
+      "sub": 0
     },
     "type": "message",
     "content": {
       "text": "I'll create the myapp directory and then create the hoge.py file with the print statement."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": null,
-            "text": "I'll create the myapp directory and then create the hoge.py file with the print statement.",
-            "type": "text"
-          }
-        ],
-        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 3893,
-          "cache_read_input_tokens": 12135,
-          "input_tokens": 10,
-          "output_tokens": 8
-        }
-      },
-      "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
-      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:47:55.174Z",
-      "userType": "external",
-      "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
-      "version": "2.0.28"
     }
   },
   {
     "id": "8a4443da-a9aa-5397-901b-ff4c05b2db23",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "56a05cb9-335b-5dbc-aca1-ef39fd79c544",
     "timestamp": "2025-12-09T19:47:55.174Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 3,
+      "byte_offset": 5106,
+      "sub": 1
     },
     "type": "token_usage",
     "content": {
       "input": {
-        "cached": 12135,
-        "uncached": 10
+        "uncached": 10,
+        "cache_read": 12135,
+        "cache_write": 3893
       },
       "output": {
         "generated": 8,
         "reasoning": 0,
         "tool": 0
-      }
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": null,
-            "text": "I'll create the myapp directory and then create the hoge.py file with the print statement.",
-            "type": "text"
-          }
-        ],
-        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 3893,
-          "cache_read_input_tokens": 12135,
-          "input_tokens": 10,
-          "output_tokens": 8
-        }
       },
-      "parentUuid": "da358adf-7f1e-414d-af20-cd140f2b93a1",
-      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:47:55.174Z",
-      "userType": "external",
-      "uuid": "b817d4b2-f3c1-4323-a10d-721642560349",
-      "version": "2.0.28"
+      "model": "claude-sonnet-4-5-20250929",
+      "dedupe_key": "msg_01RcDNkcZxwfy4UY9xdcSoX3"
     }
   },
   {
     "id": "c2b08670-fd6b-5477-bf45-625605862090",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "8a4443da-a9aa-5397-901b-ff4c05b2db23",
     "timestamp": "2025-12-09T19:47:55.793Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 4,
+      "byte_offset": 5988,
+      "sub": 0
     },
     "type": "tool_call",
     "content": {
@@ -204,201 +93,79 @@
         "description": "Create myapp directory"
       },
       "provider_call_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
-            "input": {
-              "command": "mkdir -p myapp",
-              "description": "Create myapp directory"
-            },
-            "name": "Bash",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 3893,
-          "cache_read_input_tokens": 12135,
-          "input_tokens": 10,
-          "output_tokens": 436
-        }
-      },
-      "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
-      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:47:55.793Z",
-      "userType": "external",
-      "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
-      "version": "2.0.28"
     }
   },
   {
     "id": "83a04a45-9a60-56d9-bfb3-d32ccfb67818",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "c2b08670-fd6b-5477-bf45-625605862090",
     "timestamp": "2025-12-09T19:47:55.793Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 4,
+      "byte_offset": 5988,
+      "sub": 1
     },
     "type": "token_usage",
     "content": {
       "input": {
-        "cached": 12135,
-        "uncached": 10
+        "uncached": 10,
+        "cache_read": 12135,
+        "cache_write": 3893
       },
       "output": {
         "generated": 436,
         "reasoning": 0,
         "tool": 0
-      }
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
-            "input": {
-              "command": "mkdir -p myapp",
-              "description": "Create myapp directory"
-            },
-            "name": "Bash",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01RcDNkcZxwfy4UY9xdcSoX3",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 3893,
-          "cache_read_input_tokens": 12135,
-          "input_tokens": 10,
-          "output_tokens": 436
-        }
       },
-      "parentUuid": "b817d4b2-f3c1-4323-a10d-721642560349",
-      "requestId": "req_011CVwh2DE1xa9DhWJk67F7N",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:47:55.793Z",
-      "userType": "external",
-      "uuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
-      "version": "2.0.28"
+      "model": "claude-sonnet-4-5-20250929",
+      "dedupe_key": "msg_01RcDNkcZxwfy4UY9xdcSoX3"
     }
   },
   {
     "id": "075b48f1-2346-51ff-b551-322efcb92a30",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "83a04a45-9a60-56d9-bfb3-d32ccfb67818",
     "timestamp": "2025-12-09T19:47:59.985Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 5,
+      "byte_offset": 6904,
+      "sub": 0
     },
     "type": "tool_result",
     "content": {
       "output": "",
       "tool_call_id": "c2b08670-fd6b-5477-bf45-625605862090",
       "is_error": false
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "content": "",
-            "is_error": false,
-            "tool_use_id": "toolu_01AwnkWRXpcpsXYF2KnbdPDv",
-            "type": "tool_result"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "9d52156c-aebe-4972-861b-5a8d19857ee6",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": null,
-      "timestamp": "2025-12-09T19:47:59.985Z",
-      "userType": "external",
-      "uuid": "81638428-86d5-4919-9d6e-010d42f97439",
-      "version": "2.0.28"
     }
   },
   {
     "id": "5d46eb9d-7898-594c-b150-63051a5cb460",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "075b48f1-2346-51ff-b551-322efcb92a30",
     "timestamp": "2025-12-09T19:48:04.245Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 6,
+      "byte_offset": 7444,
+      "sub": 0
     },
     "type": "reasoning",
     "content": {
       "text": "Good, the directory has been created. Now let me create the hoge.py file with print(1+1)."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": "EoECCkYIChgCKkAH/dgu/KKw52+2Elq9t+athb7B3gQtJwquXdj6imtJt6Ems77ZImthVBNLGYamhcJsgnDD/lnmoUWsjp2kouSMEgyhFuZm5xA+mUC3UPAaDJqBh+LQou8IbELHByIwkEA20A4DkKA8oKq8JLWfxQ8lUxe+D5XbBSDqT2k43zdy7rA0N7OYZUSq+/g7ChUYKmnkkumqdcGg2gApvlWLsKj2Haj12XGo2SGnd4/e7udqUOrT9sn1IoEIpfx1gc09l3X7fowdlorTAiLcl/K72XDRvzipXr4Gl5RXil9nGgs+X+1jMCrP/4Q2q8+2qmCOC0/m5uDw4CDkJNAYAQ==",
-            "thinking": "Good, the directory has been created. Now let me create the hoge.py file with print(1+1).",
-            "type": "thinking"
-          }
-        ],
-        "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 458,
-          "cache_read_input_tokens": 16028,
-          "input_tokens": 14,
-          "output_tokens": 1
-        }
-      },
-      "parentUuid": "81638428-86d5-4919-9d6e-010d42f97439",
-      "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:04.245Z",
-      "userType": "external",
-      "uuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
-      "version": "2.0.28"
     }
   },
   {
     "id": "0c2f6c9a-db5d-524b-a374-310b37c527ab",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "5d46eb9d-7898-594c-b150-63051a5cb460",
     "timestamp": "2025-12-09T19:48:05.038Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 7,
+      "byte_offset": 8698,
+      "sub": 0
     },
     "type": "tool_call",
     "content": {
@@ -408,390 +175,154 @@
         "content": "print(1+1)\n"
       },
       "provider_call_id": "toolu_0154S2y9CNPch89dTHGJpmnx"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_0154S2y9CNPch89dTHGJpmnx",
-            "input": {
-              "content": "print(1+1)\n",
-              "file_path": "/Users/test_user/agent-sample/myapp/hoge.py"
-            },
-            "name": "Write",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 458,
-          "cache_read_input_tokens": 16028,
-          "input_tokens": 14,
-          "output_tokens": 126
-        }
-      },
-      "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
-      "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:05.038Z",
-      "userType": "external",
-      "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
-      "version": "2.0.28"
     }
   },
   {
     "id": "84005dce-6d3f-527b-9671-4ebfe285fc8b",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "0c2f6c9a-db5d-524b-a374-310b37c527ab",
     "timestamp": "2025-12-09T19:48:05.038Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 7,
+      "byte_offset": 8698,
+      "sub": 1
     },
     "type": "token_usage",
     "content": {
       "input": {
-        "cached": 16028,
-        "uncached": 14
+        "uncached": 14,
+        "cache_read": 16028,
+        "cache_write": 458
       },
       "output": {
         "generated": 126,
         "reasoning": 0,
         "tool": 0
-      }
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_0154S2y9CNPch89dTHGJpmnx",
-            "input": {
-              "content": "print(1+1)\n",
-              "file_path": "/Users/test_user/agent-sample/myapp/hoge.py"
-            },
-            "name": "Write",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01WvKL5aDkdHDNFViwDDFStH",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 458,
-          "cache_read_input_tokens": 16028,
-          "input_tokens": 14,
-          "output_tokens": 126
-        }
       },
-      "parentUuid": "42626670-e10c-43d4-87c4-ef0ab0cc37b1",
-      "requestId": "req_011CVwh3TvqCYYP4uhJx66JN",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:05.038Z",
-      "userType": "external",
-      "uuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
-      "version": "2.0.28"
+      "model": "claude-sonnet-4-5-20250929",
+      "dedupe_key": "msg_01WvKL5aDkdHDNFViwDDFStH"
     }
   },
   {
     "id": "4cb860da-faa4-5477-a9c6-dfe2beec404a",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "84005dce-6d3f-527b-9671-4ebfe285fc8b",
     "timestamp": "2025-12-09T19:48:08.021Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 9,
+      "byte_offset": 9956,
+      "sub": 0
     },
     "type": "tool_result",
     "content": {
       "output": "File created successfully at: /Users/test_user/agent-sample/myapp/hoge.py",
       "tool_call_id": "0c2f6c9a-db5d-524b-a374-310b37c527ab",
       "is_error": false
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "content": "File created successfully at: /Users/test_user/agent-sample/myapp/hoge.py",
-            "is_error": false,
-            "tool_use_id": "toolu_0154S2y9CNPch89dTHGJpmnx",
-            "type": "tool_result"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "ca28075b-8b76-4a12-8adc-1fc3305e9044",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": null,
-      "timestamp": "2025-12-09T19:48:08.021Z",
-      "userType": "external",
-      "uuid": "e9885817-b4bc-434b-8d1b-0895282020d4",
-      "version": "2.0.28"
     }
   },
   {
     "id": "b87bf734-6477-5004-9847-6eaccbd28cb2",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "4cb860da-faa4-5477-a9c6-dfe2beec404a",
     "timestamp": "2025-12-09T19:48:13.213Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 10,
+      "byte_offset": 10611,
+      "sub": 0
     },
     "type": "reasoning",
     "content": {
       "text": "Perfect! I've created the directory and the file. The file contains print(1+1) which will output 2 when run. Let me confirm this was done successfully."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": "EsACCkYIChgCKkDLJhNfk53iOEo7zJVQGHEqwJP7sSf4phN9vkve0zBc+/aFLQxwxjq9oEfIeFbSLCCoqjtHrdeyg8LdYlodErnDEgzorhSqRUSYwVrouGYaDLG0yvQke0bgGqqiciIwiAPcoDZDJu1p9zcbxOmMyWGlC+6kDMr+sNBFDGSVhxZ4+ktnKEGCVQDgwOEvaq2KKqcBYZl97ZBXfWURUiBrTl7y1RQCU+DwbV4nsOTvhaFz1vCwxc3kBcvkLUkRSyIgUkWKx6IIzCDBygOdaqM3w9/IyUOpgBA9rq+8FsHa/Q2+aygKlbdSfGHInapRCf25z/UgmioUEnqAzLlQ/RbMexjf90O3M4RyJs1cjgKxsdORjLjR8tfY0Iqk/cv65JNbfZJj0nXxH6/TeXwIDTKWRm2M7+Ipj1Mp+zwYAQ==",
-            "thinking": "Perfect! I've created the directory and the file. The file contains print(1+1) which will output 2 when run. Let me confirm this was done successfully.",
-            "type": "thinking"
-          }
-        ],
-        "id": "msg_014f65R9TyHUNFrErYRPauLc",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 169,
-          "cache_read_input_tokens": 16486,
-          "input_tokens": 13,
-          "output_tokens": 1
-        }
-      },
-      "parentUuid": "e9885817-b4bc-434b-8d1b-0895282020d4",
-      "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:13.213Z",
-      "userType": "external",
-      "uuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
-      "version": "2.0.28"
     }
   },
   {
     "id": "eda47c4e-685a-59b0-ba22-1febb603db77",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "b87bf734-6477-5004-9847-6eaccbd28cb2",
     "timestamp": "2025-12-09T19:48:14.040Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 11,
+      "byte_offset": 12011,
+      "sub": 0
     },
     "type": "message",
     "content": {
       "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": null,
-            "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```",
-            "type": "text"
-          }
-        ],
-        "id": "msg_014f65R9TyHUNFrErYRPauLc",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 169,
-          "cache_read_input_tokens": 16486,
-          "input_tokens": 13,
-          "output_tokens": 112
-        }
-      },
-      "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
-      "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:14.040Z",
-      "userType": "external",
-      "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
-      "version": "2.0.28"
     }
   },
   {
     "id": "b30f5077-1a23-5367-a5d8-5d4397429280",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "eda47c4e-685a-59b0-ba22-1febb603db77",
     "timestamp": "2025-12-09T19:48:14.040Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 11,
+      "byte_offset": 12011,
+      "sub": 1
     },
     "type": "token_usage",
     "content": {
       "input": {
-        "cached": 16486,
-        "uncached": 13
+        "uncached": 13,
+        "cache_read": 16486,
+        "cache_write": 169
       },
       "output": {
         "generated": 112,
         "reasoning": 0,
         "tool": 0
-      }
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": null,
-            "text": "Done! I've created the `myapp` directory and the `hoge.py` file inside it. The file contains `print(1+1)` which will output `2` when executed.\n\nYou can run it with:\n```bash\npython myapp/hoge.py\n```",
-            "type": "text"
-          }
-        ],
-        "id": "msg_014f65R9TyHUNFrErYRPauLc",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 169,
-          "cache_read_input_tokens": 16486,
-          "input_tokens": 13,
-          "output_tokens": 112
-        }
       },
-      "parentUuid": "0ba6a9d7-da3e-4c37-9d3a-2aa82a53fbf7",
-      "requestId": "req_011CVwh43rWnf7XEC5jGDbkD",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:14.040Z",
-      "userType": "external",
-      "uuid": "e012ed58-5560-47d5-ae47-74d96256a778",
-      "version": "2.0.28"
+      "model": "claude-sonnet-4-5-20250929",
+      "dedupe_key": "msg_014f65R9TyHUNFrErYRPauLc"
     }
   },
   {
     "id": "9c152208-b962-5d87-891e-d66b5807b623",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "b30f5077-1a23-5367-a5d8-5d4397429280",
     "timestamp": "2025-12-09T19:48:17.460Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 13,
+      "byte_offset": 13349,
+      "sub": 0
     },
     "type": "user",
     "content": {
       "text": "cd to myapp and run python hoge.py"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "text": "cd to myapp and run python hoge.py",
-            "type": "text"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "e012ed58-5560-47d5-ae47-74d96256a778",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": {
-        "disabled": false,
-        "level": "high",
-        "triggers": []
-      },
-      "timestamp": "2025-12-09T19:48:17.460Z",
-      "userType": "external",
-      "uuid": "d3f9b714-c2bc-4201-b076-8b634759c25f",
-      "version": "2.0.28"
     }
   },
   {
     "id": "f3c66961-fbf5-57e8-8992-d6a43d870323",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "9c152208-b962-5d87-891e-d66b5807b623",
     "timestamp": "2025-12-09T19:48:22.893Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 14,
+      "byte_offset": 13813,
+      "sub": 0
     },
     "type": "reasoning",
     "content": {
       "text": "The user wants me to change directory to myapp and run the python script. I should use the Bash tool to execute this command."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": "EqYCCkYIChgCKkB7J8Pii6Bul3e+6aQSJMgjnxth+MZVbaoSmoG+EHMyankqnygHs7092nkNyO7h3uncOz/7Bkb+ohb5iw4EWmNjEgwhDxKWhgc05w0JZq0aDFOvb5jcaLza0BUskSIwBgjrGApNo0ipXgrP3KZEMVHG0ExpZTVj/KlLmkNYnKIiSpMQRW8XxGuS2zzt1jL4Ko0BWWEGFXh8+Ed8JT43gP8kIpCAMLnujJv7Ti7gBE5QnJMuRRXaTie+l7T1jh40WuLJK8lH9zwBaoezkYHU1QUfDeZ+PgzNERmECRyAtGIPwwDrVWGZ1/gJPTEcM0Vz4TOJxvAnBPH1jF5d2m6frx5UumV+WjLdbos0rfj8QWO/TZxAhE2fPG3V+I8889iWGAE=",
-            "thinking": "The user wants me to change directory to myapp and run the python script. I should use the Bash tool to execute this command.",
-            "type": "thinking"
-          }
-        ],
-        "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 333,
-          "cache_read_input_tokens": 16028,
-          "input_tokens": 10,
-          "output_tokens": 4
-        }
-      },
-      "parentUuid": "d3f9b714-c2bc-4201-b076-8b634759c25f",
-      "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:22.893Z",
-      "userType": "external",
-      "uuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
-      "version": "2.0.28"
     }
   },
   {
     "id": "1166eb3e-3449-5741-9784-8c85db9c59a2",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "f3c66961-fbf5-57e8-8992-d6a43d870323",
     "timestamp": "2025-12-09T19:48:23.391Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 15,
+      "byte_offset": 15151,
+      "sub": 0
     },
     "type": "tool_call",
     "content": {
@@ -801,201 +332,79 @@
         "description": "Change to myapp directory and run hoge.py"
       },
       "provider_call_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
-            "input": {
-              "command": "cd myapp && python hoge.py",
-              "description": "Change to myapp directory and run hoge.py"
-            },
-            "name": "Bash",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 333,
-          "cache_read_input_tokens": 16028,
-          "input_tokens": 10,
-          "output_tokens": 123
-        }
-      },
-      "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
-      "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:23.391Z",
-      "userType": "external",
-      "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
-      "version": "2.0.28"
     }
   },
   {
     "id": "9ad4fb49-3261-5539-987c-6c8710e554af",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "1166eb3e-3449-5741-9784-8c85db9c59a2",
     "timestamp": "2025-12-09T19:48:23.391Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 15,
+      "byte_offset": 15151,
+      "sub": 1
     },
     "type": "token_usage",
     "content": {
       "input": {
-        "cached": 16028,
-        "uncached": 10
+        "uncached": 10,
+        "cache_read": 16028,
+        "cache_write": 333
       },
       "output": {
         "generated": 123,
         "reasoning": 0,
         "tool": 0
-      }
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
-            "input": {
-              "command": "cd myapp && python hoge.py",
-              "description": "Change to myapp directory and run hoge.py"
-            },
-            "name": "Bash",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01MdTyRm2tgEVQ8VJWChZ5pC",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 333,
-          "cache_read_input_tokens": 16028,
-          "input_tokens": 10,
-          "output_tokens": 123
-        }
       },
-      "parentUuid": "b71bb9fa-a646-4705-be3b-0a6c1085ee58",
-      "requestId": "req_011CVwh4kn8YyFJEG48zFcpM",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:23.391Z",
-      "userType": "external",
-      "uuid": "5c11c8fa-acec-495c-8aee-e95578810365",
-      "version": "2.0.28"
+      "model": "claude-sonnet-4-5-20250929",
+      "dedupe_key": "msg_01MdTyRm2tgEVQ8VJWChZ5pC"
     }
   },
   {
     "id": "556d5423-8799-5b23-8643-eef0c9224d1a",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "9ad4fb49-3261-5539-987c-6c8710e554af",
     "timestamp": "2025-12-09T19:48:27.975Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 16,
+      "byte_offset": 16096,
+      "sub": 0
     },
     "type": "tool_result",
     "content": {
       "output": "error: target shim binary not found",
       "tool_call_id": "1166eb3e-3449-5741-9784-8c85db9c59a2",
       "is_error": true
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "content": "error: target shim binary not found",
-            "is_error": true,
-            "tool_use_id": "toolu_01GLEN5BsyXUTQaQV2fdQ9ea",
-            "type": "tool_result"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "5c11c8fa-acec-495c-8aee-e95578810365",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": null,
-      "timestamp": "2025-12-09T19:48:27.975Z",
-      "userType": "external",
-      "uuid": "0d657137-983b-4fb0-b834-38ae6a0f0627",
-      "version": "2.0.28"
     }
   },
   {
     "id": "bb201340-e5d4-57c8-820f-7b7d8b199d60",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "556d5423-8799-5b23-8643-eef0c9224d1a",
     "timestamp": "2025-12-09T19:48:30.651Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 17,
+      "byte_offset": 16653,
+      "sub": 0
     },
     "type": "reasoning",
     "content": {
       "text": "It seems there's an issue with the python command. Let me try using python3 instead, which is more commonly available on macOS systems."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": "ErACCkYIChgCKkC13ghh0NKB9lvuxm3Ll7o8z11r5KVjPLvFcXOndcW0pYNDuS7DHrHAsgNsGYKcEQsEQGJiCXm53ZKJvQMvZGVxEgxtrayu9x1L9CuZpq8aDJHanH6F6t6Am8zLdCIwwFU43ML3Lcx/xD4t267UyND+4+a+h1jfu6NjHZAmbtttZkSv/7WJP3uiPhDeqt0UKpcBfARwypaSliwhZbJARXR9+VwU3+Ej4OjNM4ymx/Gw2lHxzef2ZcPBJ8sPx0BjhdOY5+WazNlWmM87GfP9hp1ar6QRoS6NNYRQ7w4oI2aZbPGmKfvfmzC4RRTyABSVWB6a1BidB/6VPeIlhHzGJ1PBRBuZvggCPxJpRfDCVod4fvv7AaBeUQIY7LDayMiAQmovzvkA1GJcEhgB",
-            "thinking": "It seems there's an issue with the python command. Let me try using python3 instead, which is more commonly available on macOS systems.",
-            "type": "thinking"
-          }
-        ],
-        "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 154,
-          "cache_read_input_tokens": 16361,
-          "input_tokens": 14,
-          "output_tokens": 1
-        }
-      },
-      "parentUuid": "0d657137-983b-4fb0-b834-38ae6a0f0627",
-      "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:30.651Z",
-      "userType": "external",
-      "uuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
-      "version": "2.0.28"
     }
   },
   {
     "id": "59db6f3f-1452-5b33-b038-5b3cb9953355",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "bb201340-e5d4-57c8-820f-7b7d8b199d60",
     "timestamp": "2025-12-09T19:48:31.225Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 18,
+      "byte_offset": 18013,
+      "sub": 0
     },
     "type": "tool_call",
     "content": {
@@ -1005,402 +414,158 @@
         "description": "Change to myapp directory and run hoge.py with python3"
       },
       "provider_call_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
-            "input": {
-              "command": "cd myapp && python3 hoge.py",
-              "description": "Change to myapp directory and run hoge.py with python3"
-            },
-            "name": "Bash",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 154,
-          "cache_read_input_tokens": 16361,
-          "input_tokens": 14,
-          "output_tokens": 1
-        }
-      },
-      "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
-      "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:31.225Z",
-      "userType": "external",
-      "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
-      "version": "2.0.28"
     }
   },
   {
     "id": "7c24fe41-b620-5275-bfa4-6144bfc9a885",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "59db6f3f-1452-5b33-b038-5b3cb9953355",
     "timestamp": "2025-12-09T19:48:31.225Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 18,
+      "byte_offset": 18013,
+      "sub": 1
     },
     "type": "token_usage",
     "content": {
       "input": {
-        "cached": 16361,
-        "uncached": 14
+        "uncached": 14,
+        "cache_read": 16361,
+        "cache_write": 154
       },
       "output": {
         "generated": 1,
         "reasoning": 0,
         "tool": 0
-      }
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
-            "input": {
-              "command": "cd myapp && python3 hoge.py",
-              "description": "Change to myapp directory and run hoge.py with python3"
-            },
-            "name": "Bash",
-            "signature": null,
-            "type": "tool_use"
-          }
-        ],
-        "id": "msg_01JUSscMJAEUfCjoF1DZAPZ5",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 154,
-          "cache_read_input_tokens": 16361,
-          "input_tokens": 14,
-          "output_tokens": 1
-        }
       },
-      "parentUuid": "71ad3150-bbcb-479e-94cc-bdfa4b458e93",
-      "requestId": "req_011CVwh5X4uB5M4seKiyAjvE",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:31.225Z",
-      "userType": "external",
-      "uuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
-      "version": "2.0.28"
+      "model": "claude-sonnet-4-5-20250929",
+      "dedupe_key": "msg_01JUSscMJAEUfCjoF1DZAPZ5"
     }
   },
   {
     "id": "d77e761e-5be1-57f5-a9ac-d3d1936b64f7",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "7c24fe41-b620-5275-bfa4-6144bfc9a885",
     "timestamp": "2025-12-09T19:48:33.883Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 19,
+      "byte_offset": 18970,
+      "sub": 0
     },
     "type": "tool_result",
     "content": {
       "output": "2",
       "tool_call_id": "59db6f3f-1452-5b33-b038-5b3cb9953355",
       "is_error": false
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample/myapp",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "content": "2",
-            "is_error": false,
-            "tool_use_id": "toolu_018wyD7tsdUTdHqZ9jm8QUmz",
-            "type": "tool_result"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "869856a8-9fda-4064-8758-1db4b2f3724c",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": null,
-      "timestamp": "2025-12-09T19:48:33.883Z",
-      "userType": "external",
-      "uuid": "d3e622f7-4801-4915-9888-75b2acd7b721",
-      "version": "2.0.28"
     }
   },
   {
     "id": "e6d2c10f-4df0-5290-9c2d-91c93652d9f4",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "d77e761e-5be1-57f5-a9ac-d3d1936b64f7",
     "timestamp": "2025-12-09T19:48:38.078Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 20,
+      "byte_offset": 19518,
+      "sub": 0
     },
     "type": "reasoning",
     "content": {
       "text": "Great! The script ran successfully and output \"2\" as expected."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample/myapp",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": "EuYBCkYIChgCKkCnLcRC4aBekRN74E6Mp6WYCPAlcqHm1E1R/HJyoE9u7XRcMgJR7aupoMMwuXCAA93zG+JqeEYiPU7xKEstpkoVEgzU/Hdz9wns3deWpqQaDLFBlP9l2Ge/ADnf4iIwNMqquoLtw/RsaI7APP3NxQHxKInZOUqbtx1ijLfMe7whERPPWetwSbQhoEAExIUgKk5d8A85qd3Sdi4GL/U0OeLCx8AwKUOssZ+1ilsnvVWXdZRJxEdix2mvG04sIkULO6veIfLPVF65fJrQukZ9RmtRhC9YucgxExkUQLTuetMYAQ==",
-            "thinking": "Great! The script ran successfully and output \"2\" as expected.",
-            "type": "thinking"
-          }
-        ],
-        "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 151,
-          "cache_read_input_tokens": 16515,
-          "input_tokens": 13,
-          "output_tokens": 1
-        }
-      },
-      "parentUuid": "d3e622f7-4801-4915-9888-75b2acd7b721",
-      "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:38.078Z",
-      "userType": "external",
-      "uuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
-      "version": "2.0.28"
     }
   },
   {
     "id": "54a05448-bc6e-5bc3-8b53-f48f36c0da2b",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "e6d2c10f-4df0-5290-9c2d-91c93652d9f4",
     "timestamp": "2025-12-09T19:48:38.356Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 21,
+      "byte_offset": 20717,
+      "sub": 0
     },
     "type": "message",
     "content": {
       "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample/myapp",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": null,
-            "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`.",
-            "type": "text"
-          }
-        ],
-        "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 151,
-          "cache_read_input_tokens": 16515,
-          "input_tokens": 13,
-          "output_tokens": 46
-        }
-      },
-      "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
-      "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:38.356Z",
-      "userType": "external",
-      "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
-      "version": "2.0.28"
     }
   },
   {
     "id": "cfb2637d-f4f3-57bc-8830-bcc3c4c23882",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "54a05448-bc6e-5bc3-8b53-f48f36c0da2b",
     "timestamp": "2025-12-09T19:48:38.356Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 21,
+      "byte_offset": 20717,
+      "sub": 1
     },
     "type": "token_usage",
     "content": {
       "input": {
-        "cached": 16515,
-        "uncached": 13
+        "uncached": 13,
+        "cache_read": 16515,
+        "cache_write": 151
       },
       "output": {
         "generated": 46,
         "reasoning": 0,
         "tool": 0
-      }
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample/myapp",
-      "gitBranch": "claude",
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "signature": null,
-            "text": "Perfect! The script executed successfully and output `2`, which is the result of `1+1`.",
-            "type": "text"
-          }
-        ],
-        "id": "msg_01GfvDdyiti9i5p7VLtUfRqL",
-        "model": "claude-sonnet-4-5-20250929",
-        "role": "assistant",
-        "stop_reason": null,
-        "stop_sequence": null,
-        "type": "message",
-        "usage": {
-          "cache_creation_input_tokens": 151,
-          "cache_read_input_tokens": 16515,
-          "input_tokens": 13,
-          "output_tokens": 46
-        }
       },
-      "parentUuid": "014893c7-8841-412c-b037-6a73fe2ecb7a",
-      "requestId": "req_011CVwh5xCzVKGkj2Db5Bhrs",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "timestamp": "2025-12-09T19:48:38.356Z",
-      "userType": "external",
-      "uuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
-      "version": "2.0.28"
+      "model": "claude-sonnet-4-5-20250929",
+      "dedupe_key": "msg_01GfvDdyiti9i5p7VLtUfRqL"
     }
   },
   {
     "id": "03b9e4cd-b044-5a37-88ac-6e102614fa16",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "cfb2637d-f4f3-57bc-8830-bcc3c4c23882",
     "timestamp": "2025-12-09T19:48:50.228Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 23,
+      "byte_offset": 21945,
+      "sub": 0
     },
     "type": "user",
     "content": {
       "text": "Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to."
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample/myapp",
-      "gitBranch": "claude",
-      "isMeta": true,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "text": "Caveat: The messages below were generated by the user while running local commands. DO NOT respond to these messages or otherwise consider them in your response unless the user explicitly asks you to.",
-            "type": "text"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "6fcf43b2-6883-47fb-bbf0-6070ab7a9c34",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": null,
-      "timestamp": "2025-12-09T19:48:50.228Z",
-      "userType": "external",
-      "uuid": "12baa1f9-9626-4645-9333-8fa74bfd679e",
-      "version": "2.0.28"
     }
   },
   {
-    "id": "fc2e140f-2e4f-52ea-b29c-d72d23885e80",
+    "id": "d4bd4f1b-0ee7-55d7-b591-22f2be39405a",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
     "parent_id": "03b9e4cd-b044-5a37-88ac-6e102614fa16",
     "timestamp": "2025-12-09T19:48:50.204Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 24,
+      "byte_offset": 22528,
+      "sub": 0
     },
-    "type": "user",
+    "type": "slash_command",
     "content": {
-      "text": "<command-name>/exit</command-name>\n            <command-message>exit</command-message>\n            <command-args></command-args>"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample/myapp",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "text": "<command-name>/exit</command-name>\n            <command-message>exit</command-message>\n            <command-args></command-args>",
-            "type": "text"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "12baa1f9-9626-4645-9333-8fa74bfd679e",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": null,
-      "timestamp": "2025-12-09T19:48:50.204Z",
-      "userType": "external",
-      "uuid": "23a65594-5137-4355-a7a4-16857a3d7f4e",
-      "version": "2.0.28"
+      "name": "/exit"
     }
   },
   {
     "id": "58df7ea3-a3a9-54df-ad65-cdb235894ae8",
     "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-    "parent_id": "fc2e140f-2e4f-52ea-b29c-d72d23885e80",
+    "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
+    "parent_id": "d4bd4f1b-0ee7-55d7-b591-22f2be39405a",
     "timestamp": "2025-12-09T19:48:50.204Z",
-    "stream_id": {
-      "stream_type": "main"
+    "origin": {
+      "line": 25,
+      "byte_offset": 23027,
+      "sub": 0
     },
     "type": "user",
     "content": {
       "text": "<local-command-stdout>Goodbye!</local-command-stdout>"
-    },
-    "metadata": {
-      "agentId": null,
-      "cwd": "/Users/test_user/agent-sample/myapp",
-      "gitBranch": "claude",
-      "isMeta": false,
-      "isSidechain": false,
-      "message": {
-        "content": [
-          {
-            "text": "<local-command-stdout>Goodbye!</local-command-stdout>",
-            "type": "text"
-          }
-        ],
-        "role": "user"
-      },
-      "parentUuid": "23a65594-5137-4355-a7a4-16857a3d7f4e",
-      "sessionId": "7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
-      "thinkingMetadata": null,
-      "timestamp": "2025-12-09T19:48:50.204Z",
-      "userType": "external",
-      "uuid": "61f4ec02-d975-4eb6-89be-fbb302f1167b",
-      "version": "2.0.28"
     }
   }
 ]

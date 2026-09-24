@@ -87,8 +87,8 @@ fn present_event_payload(payload: &EventPayload) -> EventPayloadViewModel {
             input: p.input.total() as i32,
             output: p.output.total() as i32,
             total: p.total_tokens() as i32,
-            cache_creation: None, // not tracked separately in new schema
-            cache_read: Some(p.input.cached as i32),
+            cache_creation: Some(p.input.cache_write as i32),
+            cache_read: Some(p.input.cache_read as i32),
         },
         EventPayload::Notification(p) => EventPayloadViewModel::Notification {
             text: p.text.clone(),
@@ -103,9 +103,12 @@ fn present_event_payload(payload: &EventPayload) -> EventPayloadViewModel {
             content: p.content.clone(),
             task_id: p.task_id.clone(),
         },
-        EventPayload::Summary(p) => EventPayloadViewModel::Summary {
-            summary: p.summary.clone(),
-            leaf_uuid: p.leaf_uuid.clone(),
+        other => EventPayloadViewModel::Other {
+            kind: other.kind_name().to_string(),
+            content: serde_json::to_value(other)
+                .ok()
+                .and_then(|v| v.get("content").cloned())
+                .unwrap_or(serde_json::Value::Null),
         },
     }
 }
@@ -116,9 +119,9 @@ pub fn present_event(event: &AgentEvent) -> EventViewModel {
         session_id: event.session_id.to_string(),
         parent_id: event.parent_id.map(|id| id.to_string()),
         timestamp: event.timestamp,
-        stream_id: event.stream_id.clone(),
+        agent: event.agent.to_string(),
+        origin: event.origin,
         payload: present_event_payload(&event.payload),
-        metadata: event.metadata.clone(),
     }
 }
 

@@ -34,7 +34,7 @@ Rust-based local-first observability platform for AI agents. Normalizes diverse 
 ## Quick Reference
 
 ```bash
-mise run verify              # fmt + clippy + test + build (full check)
+mise run verify              # fixtures:check + fmt + clippy + test + build (full check)
 mise run test                # run all tests
 mise run clippy              # lint
 mise run fmt                 # format code
@@ -104,7 +104,7 @@ Rust-based local-first observability platform for AI agents. Normalizes diverse 
 ## Quick Reference
 
 ```bash
-mise run verify              # fmt + clippy + test + build (full check)
+mise run verify              # fixtures:check + fmt + clippy + test + build (full check)
 mise run test                # run all tests
 mise run clippy              # lint
 mise run fmt                 # format code

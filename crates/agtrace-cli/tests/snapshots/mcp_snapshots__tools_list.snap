@@ -197,8 +197,48 @@ expression: response
                   "type": "string"
                 },
                 {
-                  "const": "Summary",
-                  "description": "Session summary",
+                  "const": "AgentSpawn",
+                  "description": "Child agent spawned",
+                  "type": "string"
+                },
+                {
+                  "const": "AgentLifecycle",
+                  "description": "Agent lifecycle transition",
+                  "type": "string"
+                },
+                {
+                  "const": "AgentMessage",
+                  "description": "Inter-agent message",
+                  "type": "string"
+                },
+                {
+                  "const": "Compaction",
+                  "description": "Context compaction",
+                  "type": "string"
+                },
+                {
+                  "const": "TurnEnd",
+                  "description": "End of an agent turn",
+                  "type": "string"
+                },
+                {
+                  "const": "ModelChange",
+                  "description": "Model switch",
+                  "type": "string"
+                },
+                {
+                  "const": "ContextWindowHint",
+                  "description": "Context window evidence",
+                  "type": "string"
+                },
+                {
+                  "const": "AgentAttribute",
+                  "description": "Agent attribute (title, name, ...)",
+                  "type": "string"
+                },
+                {
+                  "const": "ToolSubAction",
+                  "description": "Sub-action inside a tool call",
                   "type": "string"
                 }
               ]

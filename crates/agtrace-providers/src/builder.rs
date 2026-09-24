@@ -16,7 +16,15 @@ pub enum SemanticSuffix {
     Notification,
     SlashCommand,
     QueueOperation,
-    Summary,
+    AgentSpawn,
+    AgentLifecycle,
+    AgentMessage,
+    Compaction,
+    TurnEnd,
+    ModelChange,
+    ContextWindowHint,
+    AgentAttribute,
+    ToolSubAction,
 }
 
 impl SemanticSuffix {
@@ -31,40 +39,56 @@ impl SemanticSuffix {
             Self::Notification => "notify",
             Self::SlashCommand => "slashcmd",
             Self::QueueOperation => "queue",
-            Self::Summary => "summary",
+            Self::AgentSpawn => "spawn",
+            Self::AgentLifecycle => "lifecycle",
+            Self::AgentMessage => "agentmsg",
+            Self::Compaction => "compaction",
+            Self::TurnEnd => "turnend",
+            Self::ModelChange => "model",
+            Self::ContextWindowHint => "ctxhint",
+            Self::AgentAttribute => "attr",
+            Self::ToolSubAction => "subaction",
         }
     }
 }
 
-/// EventBuilder helps convert provider raw data to events
-/// Maintains state for proper parent_id chain and tool_call_id mapping
+/// EventBuilder helps convert provider raw data to events.
+///
+/// Maintains per-agent parent chains (tip per [`AgentId`]), the provider tool call
+/// id -> event UUID map (persists across lines), and the [`EventOrigin`] of the
+/// line currently being decoded.
 pub struct EventBuilder {
     /// Current session ID
     pub session_id: Uuid,
 
-    /// Most recent event ID per stream in time-series chain
-    /// Maps stream_id -> latest event UUID for that stream
-    /// Enables independent parent chains for main/sidechain/subagent streams
-    stream_tips: HashMap<StreamId, Uuid>,
+    /// Most recent event ID per agent (independent parent chains per agent).
+    agent_tips: HashMap<AgentId, Uuid>,
 
     /// Provider tool call ID -> UUID mapping
-    /// Allows O(1) lookup when creating ToolResult events
     tool_map: HashMap<String, Uuid>,
+
+    /// Origin of the line currently being decoded; `sub` counts events of that line.
+    origin: EventOrigin,
 }
 
 impl EventBuilder {
     pub fn new(session_id: Uuid) -> Self {
         Self {
             session_id,
-            stream_tips: HashMap::new(),
+            agent_tips: HashMap::new(),
             tool_map: HashMap::new(),
+            origin: EventOrigin::default(),
         }
+    }
+
+    /// Start a new source line: subsequent events get this line's origin.
+    pub fn begin_line(&mut self, line: u64, byte_offset: u64) {
+        self.origin = EventOrigin::new(line, byte_offset, 0);
     }
 
     /// Create and push event with deterministic UUID generation
     /// Uses UUID v5 with session_id as namespace and "base_id:suffix" as name
     /// Returns the generated event ID
-    #[allow(clippy::too_many_arguments)]
     pub fn build_and_push(
         &mut self,
         events: &mut Vec<AgentEvent>,
@@ -72,32 +96,34 @@ impl EventBuilder {
         suffix: SemanticSuffix,
         timestamp: DateTime<Utc>,
         payload: EventPayload,
-        metadata: Option<serde_json::Value>,
-        stream_id: StreamId,
+        agent: &AgentId,
     ) -> Uuid {
         // Generate deterministic UUID: session_id namespace + "base_id:suffix" name
         let name = format!("{}:{}", base_id, suffix.as_str());
         let id = Uuid::new_v5(&self.session_id, name.as_bytes());
 
-        // Get parent_id from stream-specific tip
-        let parent_id = self.stream_tips.get(&stream_id).copied();
+        // Get parent_id from agent-specific tip
+        let parent_id = self.agent_tips.get(agent).copied();
 
-        let event = AgentEvent {
+        events.push(AgentEvent {
             id,
             session_id: self.session_id,
+            agent: agent.clone(),
             parent_id,
             timestamp,
-            stream_id: stream_id.clone(),
+            origin: self.origin,
             payload,
-            metadata,
-        };
+        });
+        self.origin.sub = self.origin.sub.saturating_add(1);
 
-        let event_id = event.id;
-        events.push(event);
-
-        // Update stream tip
-        self.stream_tips.insert(stream_id, event_id);
-        event_id
+        // Update agent tip
+        match self.agent_tips.get_mut(agent) {
+            Some(tip) => *tip = id,
+            None => {
+                self.agent_tips.insert(agent.clone(), id);
+            }
+        }
+        id
     }
 
     /// Register a tool call in the map (provider ID -> UUID)
@@ -117,13 +143,19 @@ mod tests {
     use crate::claude::ClaudeToolMapper;
     use crate::traits::ToolMapper;
 
+    fn main_agent() -> AgentId {
+        AgentId::claude_session("s1")
+    }
+
     #[test]
     fn test_event_builder_chain() {
         let session_id = Uuid::new_v4();
         let mut builder = EventBuilder::new(session_id);
         let mut events = Vec::new();
+        let agent = main_agent();
 
         // First event has no parent
+        builder.begin_line(0, 0);
         let event1_id = builder.build_and_push(
             &mut events,
             "test-id-1",
@@ -132,28 +164,25 @@ mod tests {
             EventPayload::User(UserPayload {
                 text: "Hello".to_string(),
             }),
-            None,
-            StreamId::Main,
+            &agent,
         );
         assert_eq!(events[0].parent_id, None);
         assert_eq!(events[0].session_id, session_id);
-        assert_eq!(events[0].stream_id, StreamId::Main);
+        assert_eq!(events[0].agent, agent);
 
         // Second event has first as parent
+        builder.begin_line(1, 10);
         let event2_id = builder.build_and_push(
             &mut events,
             "test-id-2",
             SemanticSuffix::Message,
             Utc::now(),
-            EventPayload::Message(MessagePayload {
-                text: "Hi".to_string(),
-            }),
-            None,
-            StreamId::Main,
+            EventPayload::Message(MessagePayload::new("Hi")),
+            &agent,
         );
         assert_eq!(events[1].parent_id, Some(event1_id));
 
-        // Third event has second as parent
+        // Third event has second as parent (same line => sub increments)
         let mapper = ClaudeToolMapper;
         builder.build_and_push(
             &mut events,
@@ -165,19 +194,21 @@ mod tests {
                 serde_json::json!({"command": "ls"}),
                 Some("call_123".to_string()),
             )),
-            None,
-            StreamId::Main,
+            &agent,
         );
         assert_eq!(events[2].parent_id, Some(event2_id));
+        assert_eq!(events[1].origin, EventOrigin::new(1, 10, 0));
+        assert_eq!(events[2].origin, EventOrigin::new(1, 10, 1));
     }
 
     #[test]
-    fn test_multi_stream_chains() {
+    fn test_multi_agent_chains() {
         let session_id = Uuid::new_v4();
         let mut builder = EventBuilder::new(session_id);
         let mut events = Vec::new();
+        let main = main_agent();
+        let sub = AgentId::claude_subagent("s1", "test123");
 
-        // Main stream events
         let main1_id = builder.build_and_push(
             &mut events,
             "main-1",
@@ -186,11 +217,9 @@ mod tests {
             EventPayload::User(UserPayload {
                 text: "Main".to_string(),
             }),
-            None,
-            StreamId::Main,
+            &main,
         );
 
-        // Sidechain stream events
         let _side1_id = builder.build_and_push(
             &mut events,
             "side-1",
@@ -199,31 +228,21 @@ mod tests {
             EventPayload::User(UserPayload {
                 text: "Sidechain".to_string(),
             }),
-            None,
-            StreamId::Sidechain {
-                agent_id: "test123".to_string(),
-            },
+            &sub,
         );
 
-        // Another main stream event (should chain from main1)
         let _main2_id = builder.build_and_push(
             &mut events,
             "main-2",
             SemanticSuffix::Message,
             Utc::now(),
-            EventPayload::Message(MessagePayload {
-                text: "Main 2".to_string(),
-            }),
-            None,
-            StreamId::Main,
+            EventPayload::Message(MessagePayload::new("Main 2")),
+            &main,
         );
 
-        // Verify main stream chain
         assert_eq!(events[0].parent_id, None); // main1
         assert_eq!(events[2].parent_id, Some(main1_id)); // main2
-
-        // Verify sidechain has independent chain
-        assert_eq!(events[1].parent_id, None); // side1 (no parent in sidechain)
+        assert_eq!(events[1].parent_id, None); // subagent has an independent chain
     }
 
     #[test]

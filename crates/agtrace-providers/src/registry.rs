@@ -43,11 +43,17 @@ pub fn expand_home_path(path: &str) -> Option<PathBuf> {
     None
 }
 
+/// Default log roots per provider, honoring `AGTRACE_CLAUDE_HOME` / `AGTRACE_CODEX_HOME`.
 pub fn get_default_log_paths() -> Vec<(String, PathBuf)> {
     let mut paths = Vec::new();
     for provider in PROVIDERS {
-        if let Some(expanded) = expand_home_path(provider.default_log_path) {
-            paths.push((provider.name.to_string(), expanded));
+        let resolved = match provider.name {
+            "claude_code" => agtrace_core::claude_projects_root(),
+            "codex" => agtrace_core::codex_sessions_root(),
+            _ => expand_home_path(provider.default_log_path),
+        };
+        if let Some(path) = resolved {
+            paths.push((provider.name.to_string(), path));
         }
     }
     paths

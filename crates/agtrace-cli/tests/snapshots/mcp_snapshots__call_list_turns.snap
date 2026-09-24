@@ -18,7 +18,7 @@ expression: "snapshot_req_resp(args, content)"
           "Bash": 1,
           "Write": 1
         },
-        "total_tokens": 45360,
+        "total_tokens": 49880,
         "turn_index": 0,
         "user_content": "add myapp directory and create myapp/hoge.py which shows result of print(1+1)."
       },
@@ -29,7 +29,7 @@ expression: "snapshot_req_resp(args, content)"
         "tools_used": {
           "Bash": 2
         },
-        "total_tokens": 49111,
+        "total_tokens": 49749,
         "turn_index": 1,
         "user_content": "cd to myapp and run python hoge.py"
       }

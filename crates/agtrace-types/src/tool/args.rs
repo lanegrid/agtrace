@@ -99,6 +99,63 @@ pub struct McpArgs {
     pub inner: Value,
 }
 
+/// Operation performed by an agent-management tool.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentOp {
+    Spawn,
+    Send,
+    Followup,
+    Stop,
+    Interrupt,
+    Wait,
+    List,
+    Handback,
+    Output,
+}
+
+/// Normalized arguments of an agent-management tool call
+/// (Claude `Agent`/`SendMessage`/`TaskStop`/...; Codex `spawn_agent`/`send_message`/...).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentToolArgs {
+    pub op: AgentOp,
+    /// Target agent (name, path, id) for send/stop/wait/followup.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    /// Name given to a spawned agent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    /// Truncated message / prompt body (None when encrypted).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message_preview: Option<String>,
+    #[serde(default)]
+    pub encrypted: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fork: Option<bool>,
+}
+
+impl AgentToolArgs {
+    pub fn new(op: AgentOp) -> Self {
+        Self {
+            op,
+            target: None,
+            name: None,
+            agent_type: None,
+            model: None,
+            summary: None,
+            message_preview: None,
+            encrypted: false,
+            fork: None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -40,7 +40,7 @@ pub struct LabStatsViewModel {
 }
 
 // Lab grep ViewModels
-use agtrace_sdk::types::StreamId;
+use agtrace_sdk::types::EventOrigin;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
@@ -50,10 +50,11 @@ pub struct EventViewModel {
     pub session_id: String,
     pub parent_id: Option<String>,
     pub timestamp: DateTime<Utc>,
-    pub stream_id: StreamId,
+    /// Agent (log file owner) id
+    pub agent: String,
+    /// Position of the source record in the agent's log file
+    pub origin: EventOrigin,
     pub payload: EventPayloadViewModel,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -102,10 +103,10 @@ pub enum EventPayloadViewModel {
         #[serde(skip_serializing_if = "Option::is_none")]
         task_id: Option<String>,
     },
-    Summary {
-        summary: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        leaf_uuid: Option<String>,
+    /// Payloads without a dedicated view (agent / context / turn events)
+    Other {
+        kind: String,
+        content: Value,
     },
 }
 

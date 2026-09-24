@@ -1,8 +1,6 @@
-use crate::Result;
 use agtrace_types::*;
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 use regex::Regex;
-use std::path::Path;
 use std::sync::LazyLock;
 use uuid::Uuid;
 
@@ -15,172 +13,149 @@ use crate::codex::schema::CodexRecord;
 static EXIT_CODE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?i)Exit Code:\s*(\d+)").unwrap());
 
-/// Determine StreamId from Codex subagent_type
-fn determine_stream_id(subagent_type: &Option<String>) -> StreamId {
-    match subagent_type {
-        Some(name) => StreamId::Subagent { name: name.clone() },
-        None => StreamId::Main,
-    }
+/// Stateful Codex record -> event mapper (one per rollout file).
+///
+/// Handles async token notifications, JSON string parsing, and exit code extraction.
+pub(crate) struct CodexRecordMapper {
+    builder: EventBuilder,
+    session_id: String,
+    agent: AgentId,
+    last_seen_model: Option<String>,
+    /// Last explicit context window seen (token_count.info.model_context_window)
+    last_context_window: Option<u64>,
+    /// Codex often sends duplicate token_count with the same last_token_usage values
+    last_seen_token_usage: Option<(u64, u64, u64)>,
+    last_timestamp: Option<DateTime<Utc>>,
 }
 
-/// Attach model to event metadata when available
-fn attach_model_metadata(
-    metadata: Option<serde_json::Value>,
-    model: Option<&String>,
-) -> Option<serde_json::Value> {
-    let model = match model {
-        Some(m) => m.clone(),
-        None => return metadata,
-    };
-
-    match metadata {
-        Some(serde_json::Value::Object(mut map)) => {
-            map.entry("model")
-                .or_insert_with(|| serde_json::Value::String(model));
-            Some(serde_json::Value::Object(map))
-        }
-        Some(other) => {
-            let mut map = serde_json::Map::new();
-            map.insert("raw".to_string(), other);
-            map.insert("model".to_string(), serde_json::Value::String(model));
-            Some(serde_json::Value::Object(map))
-        }
-        None => {
-            let mut map = serde_json::Map::new();
-            map.insert("model".to_string(), serde_json::Value::String(model));
-            Some(serde_json::Value::Object(map))
+impl CodexRecordMapper {
+    pub(crate) fn new(
+        session_id: &str,
+        agent: AgentId,
+        fallback_timestamp: Option<DateTime<Utc>>,
+    ) -> Self {
+        // Create session_id UUID from session_id string (deterministic)
+        let session_id_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
+        Self {
+            builder: EventBuilder::new(session_id_uuid),
+            session_id: session_id.to_string(),
+            agent,
+            last_seen_model: None,
+            last_context_window: None,
+            last_seen_token_usage: None,
+            last_timestamp: fallback_timestamp,
         }
     }
-}
 
-/// Normalize Codex session records to events
-/// Handles async token notifications, JSON string parsing, and exit code extraction
-pub(crate) fn normalize_codex_session(
-    records: Vec<CodexRecord>,
-    session_id: &str,
-    subagent_type: Option<String>,
-) -> Vec<AgentEvent> {
-    // Create session_id UUID from session_id string (deterministic)
-    let session_id_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
-    let mut builder = EventBuilder::new(session_id_uuid);
-    let mut events = Vec::new();
-    let mut last_seen_model: Option<String> = None;
+    /// Parse a record timestamp; unparsable timestamps inherit the last seen one.
+    fn timestamp(&mut self, ts: &str) -> DateTime<Utc> {
+        match DateTime::parse_from_rfc3339(ts) {
+            Ok(dt) => {
+                let dt = dt.with_timezone(&Utc);
+                self.last_timestamp = Some(dt);
+                dt
+            }
+            Err(_) => self.last_timestamp.unwrap_or(DateTime::<Utc>::UNIX_EPOCH),
+        }
+    }
 
-    // Determine stream_id from subagent_type
-    let stream_id = determine_stream_id(&subagent_type);
+    /// Map the record on `line` to events.
+    pub(crate) fn map_record(
+        &mut self,
+        record: &CodexRecord,
+        line: u64,
+        byte_offset: u64,
+        events: &mut Vec<AgentEvent>,
+    ) {
+        self.builder.begin_line(line, byte_offset);
+        // Deterministic base id: session + line number (== record row for well-formed files)
+        let base_id = format!("{}:row_{}", self.session_id, line);
+        let agent = &self.agent.clone();
 
-    // Track last generation event for attaching TokenUsage (future use)
-    let mut _last_generation_event_id: Option<Uuid> = None;
-
-    // Track last seen token usage to deduplicate
-    // Codex sends duplicate token_count events with same last_token_usage values
-    let mut last_seen_token_usage: Option<(i32, i32, i32)> = None;
-
-    for (row_index, record) in records.iter().enumerate() {
-        // Generate base_id from session_id + row_index (deterministic)
-        let base_id = format!("{}:row_{}", session_id, row_index);
         match record {
-            CodexRecord::SessionMeta(_meta) => {
-                // SessionMeta doesn't generate events
-                // Metadata is preserved in raw field if needed
-                // Subagent information is extracted during header scanning (see io::extract_codex_header)
+            CodexRecord::SessionMeta(_) => {
+                // Identity comes from the file header; no events.
             }
 
             CodexRecord::EventMsg(event_msg) => {
-                let timestamp = parse_timestamp(&event_msg.timestamp);
-                let raw_value = attach_model_metadata(
-                    serde_json::to_value(event_msg).ok(),
-                    last_seen_model.as_ref(),
-                );
+                let timestamp = self.timestamp(&event_msg.timestamp);
 
                 match &event_msg.payload {
-                    // Skip user_message, agent_message, agent_reasoning
-                    // These are duplicated in ResponseItem with richer data (encrypted_content, etc.)
-                    schema::EventMsgPayload::UserMessage(_) => {
-                        // Skip: duplicated in ResponseItem::Message(user)
-                    }
-
-                    schema::EventMsgPayload::AgentMessage(_) => {
-                        // Skip: duplicated in ResponseItem::Message(assistant)
-                    }
-
-                    schema::EventMsgPayload::AgentReasoning(_) => {
-                        // Skip: duplicated in ResponseItem::Reasoning
-                    }
+                    // user_message / agent_message / agent_reasoning are duplicated in
+                    // ResponseItem with richer data.
+                    schema::EventMsgPayload::UserMessage(_)
+                    | schema::EventMsgPayload::AgentMessage(_)
+                    | schema::EventMsgPayload::AgentReasoning(_)
+                    | schema::EventMsgPayload::EnteredReviewMode(_)
+                    | schema::EventMsgPayload::Unknown => {}
 
                     schema::EventMsgPayload::TokenCount(token_count) => {
-                        // TokenUsage sidecar event
-                        // IMPORTANT: Keep this - token_count only exists in event_msg, not in response_item
-                        if let Some(info) = &token_count.info {
-                            let usage = &info.last_token_usage;
-                            let usage_triple = (
-                                usage.input_tokens as i32,
-                                usage.output_tokens as i32,
-                                usage.total_tokens as i32,
-                            );
+                        // token_count only exists in event_msg, not in response_item
+                        let Some(info) = &token_count.info else {
+                            return;
+                        };
 
-                            // Deduplicate: Codex often sends duplicate token_count with same last_token_usage
-                            if last_seen_token_usage == Some(usage_triple) {
-                                // Skip duplicate
-                                continue;
-                            }
-                            last_seen_token_usage = Some(usage_triple);
-
-                            // Codex Token Conversion Rationale:
-                            //
-                            // Input mapping (verified from codex-rs implementation):
-                            //   cached   = cached_input_tokens (explicit field)
-                            //   uncached = input_tokens - cached_input_tokens
-                            //              (codex-rs provides non_cached_input() helper for this)
-                            //
-                            // Output mapping (verified from codex-rs schema):
-                            //   generated = output_tokens (normal generation)
-                            //   reasoning = reasoning_output_tokens (explicit field for o1-style reasoning)
-                            //   tool      = 0 (Codex does not separate tool call tokens)
-                            builder.build_and_push(
-                                &mut events,
+                        if let Some(window) = info.model_context_window
+                            && self.last_context_window != Some(window)
+                        {
+                            self.last_context_window = Some(window);
+                            self.builder.build_and_push(
+                                events,
                                 &base_id,
-                                SemanticSuffix::TokenUsage,
+                                SemanticSuffix::ContextWindowHint,
                                 timestamp,
-                                EventPayload::TokenUsage(TokenUsagePayload::new(
-                                    TokenInput::new(
-                                        usage.cached_input_tokens as u64,
-                                        usage.input_tokens.saturating_sub(usage.cached_input_tokens)
-                                            as u64,
-                                    ),
-                                    TokenOutput::new(
-                                        usage.output_tokens as u64,
-                                        usage.reasoning_output_tokens as u64,
-                                        0, // Codex doesn't separate tool tokens
-                                    ),
-                                )),
-                                raw_value.clone(),
-                                stream_id.clone(),
+                                EventPayload::ContextWindowHint(
+                                    ContextWindowHintPayload::Explicit {
+                                        tokens: window,
+                                        model: self.last_seen_model.clone(),
+                                    },
+                                ),
+                                agent,
                             );
                         }
-                    }
 
-                    schema::EventMsgPayload::EnteredReviewMode(_) => {
-                        // Skip: this is a spawn signal, not content
-                        // Used for parent-child correlation in discovery phase
-                    }
+                        let usage = &info.last_token_usage;
+                        let usage_triple =
+                            (usage.input_tokens, usage.output_tokens, usage.total_tokens);
+                        // Deduplicate repeated token_count with the same last_token_usage
+                        if self.last_seen_token_usage == Some(usage_triple) {
+                            return;
+                        }
+                        self.last_seen_token_usage = Some(usage_triple);
 
-                    schema::EventMsgPayload::Unknown => {
-                        // Skip unknown event types
+                        // Codex Token Conversion Rationale (codex-rs):
+                        //   uncached    = input_tokens - cached_input_tokens (non_cached_input())
+                        //   cache_read  = cached_input_tokens
+                        //   cache_write = cache_write_input_tokens
+                        //   generated   = output_tokens, reasoning = reasoning_output_tokens
+                        //   tool        = 0 (Codex does not separate tool call tokens)
+                        let payload = TokenUsagePayload::new(
+                            TokenInput::new(
+                                usage.input_tokens.saturating_sub(usage.cached_input_tokens),
+                                usage.cached_input_tokens,
+                                usage.cache_write_input_tokens,
+                            ),
+                            TokenOutput::new(usage.output_tokens, usage.reasoning_output_tokens, 0),
+                        )
+                        .with_model(self.last_seen_model.clone());
+
+                        self.builder.build_and_push(
+                            events,
+                            &base_id,
+                            SemanticSuffix::TokenUsage,
+                            timestamp,
+                            EventPayload::TokenUsage(payload),
+                            agent,
+                        );
                     }
                 }
             }
 
             CodexRecord::ResponseItem(response_item) => {
-                let timestamp = parse_timestamp(&response_item.timestamp);
-                let raw_value = attach_model_metadata(
-                    serde_json::to_value(response_item).ok(),
-                    last_seen_model.as_ref(),
-                );
+                let timestamp = self.timestamp(&response_item.timestamp);
 
                 match &response_item.payload {
                     schema::ResponseItemPayload::Message(message) => {
-                        // Extract text from content blocks
                         let text = extract_message_text(&message.content);
 
                         let (payload, suffix) = if message.role == "user" {
@@ -190,47 +165,36 @@ pub(crate) fn normalize_codex_session(
                             )
                         } else {
                             (
-                                EventPayload::Message(MessagePayload { text }),
+                                EventPayload::Message(MessagePayload {
+                                    text,
+                                    phase: message.phase.clone(),
+                                }),
                                 SemanticSuffix::Message,
                             )
                         };
 
-                        let event_id = builder.build_and_push(
-                            &mut events,
-                            &base_id,
-                            suffix,
-                            timestamp,
-                            payload,
-                            raw_value.clone(),
-                            stream_id.clone(),
-                        );
-
-                        if message.role == "assistant" {
-                            _last_generation_event_id = Some(event_id);
-                        }
+                        self.builder
+                            .build_and_push(events, &base_id, suffix, timestamp, payload, agent);
                     }
 
                     schema::ResponseItemPayload::Reasoning(reasoning) => {
-                        // Extract text from summary blocks
                         let text = extract_reasoning_text(reasoning);
 
-                        builder.build_and_push(
-                            &mut events,
+                        self.builder.build_and_push(
+                            events,
                             &base_id,
                             SemanticSuffix::Reasoning,
                             timestamp,
                             EventPayload::Reasoning(ReasoningPayload { text }),
-                            raw_value.clone(),
-                            stream_id.clone(),
+                            agent,
                         );
                     }
 
                     schema::ResponseItemPayload::FunctionCall(func_call) => {
-                        // Parse JSON string arguments to Value
                         let arguments = parse_json_arguments(&func_call.arguments);
 
-                        let event_id = builder.build_and_push(
-                            &mut events,
+                        let event_id = self.builder.build_and_push(
+                            events,
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
@@ -239,43 +203,27 @@ pub(crate) fn normalize_codex_session(
                                 arguments,
                                 Some(func_call.call_id.clone()),
                             )),
-                            raw_value.clone(),
-                            stream_id.clone(),
+                            agent,
                         );
-
-                        // Register tool call mapping
-                        builder.register_tool_call(func_call.call_id.clone(), event_id);
-                        _last_generation_event_id = Some(event_id);
+                        self.builder
+                            .register_tool_call(func_call.call_id.clone(), event_id);
                     }
 
                     schema::ResponseItemPayload::FunctionCallOutput(output) => {
-                        // Extract exit code from output text
-                        let exit_code = extract_exit_code(&output.output);
-
-                        if let Some(tool_call_id) = builder.get_tool_call_uuid(&output.call_id) {
-                            builder.build_and_push(
-                                &mut events,
-                                &base_id,
-                                SemanticSuffix::ToolResult,
-                                timestamp,
-                                EventPayload::ToolResult(ToolResultPayload {
-                                    output: output.output.clone(),
-                                    tool_call_id,
-                                    is_error: exit_code.map(|code| code != 0).unwrap_or(false),
-                                    agent_id: None,
-                                }),
-                                raw_value.clone(),
-                                stream_id.clone(),
-                            );
-                        }
+                        self.push_tool_result(
+                            events,
+                            &base_id,
+                            timestamp,
+                            &output.call_id,
+                            &output.output,
+                        );
                     }
 
                     schema::ResponseItemPayload::CustomToolCall(tool_call) => {
-                        // Parse JSON string input to Value
                         let arguments = parse_json_arguments(&tool_call.input);
 
-                        let event_id = builder.build_and_push(
-                            &mut events,
+                        let event_id = self.builder.build_and_push(
+                            events,
                             &base_id,
                             SemanticSuffix::ToolCall,
                             timestamp,
@@ -284,57 +232,63 @@ pub(crate) fn normalize_codex_session(
                                 arguments,
                                 Some(tool_call.call_id.clone()),
                             )),
-                            raw_value.clone(),
-                            stream_id.clone(),
+                            agent,
                         );
-
-                        builder.register_tool_call(tool_call.call_id.clone(), event_id);
-                        _last_generation_event_id = Some(event_id);
+                        self.builder
+                            .register_tool_call(tool_call.call_id.clone(), event_id);
                     }
 
                     schema::ResponseItemPayload::CustomToolCallOutput(output) => {
-                        let exit_code = extract_exit_code(&output.output);
-
-                        if let Some(tool_call_id) = builder.get_tool_call_uuid(&output.call_id) {
-                            builder.build_and_push(
-                                &mut events,
-                                &base_id,
-                                SemanticSuffix::ToolResult,
-                                timestamp,
-                                EventPayload::ToolResult(ToolResultPayload {
-                                    output: output.output.clone(),
-                                    tool_call_id,
-                                    is_error: exit_code.map(|code| code != 0).unwrap_or(false),
-                                    agent_id: None,
-                                }),
-                                raw_value.clone(),
-                                stream_id.clone(),
-                            );
-                        }
+                        self.push_tool_result(
+                            events,
+                            &base_id,
+                            timestamp,
+                            &output.call_id,
+                            &output.output,
+                        );
                     }
 
-                    schema::ResponseItemPayload::GhostSnapshot(_snapshot) => {
-                        // Skip ghost snapshots for now (file system events)
-                    }
-
-                    schema::ResponseItemPayload::Unknown => {
-                        // Skip unknown payload types
-                    }
+                    schema::ResponseItemPayload::Unknown => {}
                 }
             }
 
             CodexRecord::TurnContext(turn_context) => {
-                // Track model for downstream token usage + message events
-                last_seen_model = Some(turn_context.payload.model.clone());
+                // Track model for downstream token usage events
+                if let Some(model) = &turn_context.payload.model {
+                    self.last_seen_model = Some(model.clone());
+                }
             }
 
-            CodexRecord::Unknown => {
-                // Skip unknown record types
-            }
+            CodexRecord::Unknown => {}
         }
     }
 
-    events
+    fn push_tool_result(
+        &mut self,
+        events: &mut Vec<AgentEvent>,
+        base_id: &str,
+        timestamp: DateTime<Utc>,
+        call_id: &str,
+        output: &str,
+    ) {
+        let Some(tool_call_id) = self.builder.get_tool_call_uuid(call_id) else {
+            return;
+        };
+        let exit_code = extract_exit_code(output);
+        self.builder.build_and_push(
+            events,
+            base_id,
+            SemanticSuffix::ToolResult,
+            timestamp,
+            EventPayload::ToolResult(ToolResultPayload {
+                output: output.to_string(),
+                tool_call_id,
+                is_error: exit_code.map(|code| code != 0).unwrap_or(false),
+                agent_id: None,
+            }),
+            &self.agent,
+        );
+    }
 }
 
 /// Extract text from message content blocks
@@ -385,22 +339,6 @@ fn extract_exit_code(output: &str) -> Option<i32> {
         .captures(output)
         .and_then(|cap| cap.get(1))
         .and_then(|m| m.as_str().parse().ok())
-}
-
-/// Parse Codex timestamp to DateTime<Utc>
-fn parse_timestamp(ts: &str) -> DateTime<chrono::Utc> {
-    DateTime::parse_from_rfc3339(ts)
-        .map(|dt| dt.with_timezone(&chrono::Utc))
-        .unwrap_or_else(|_| chrono::Utc::now())
-}
-
-/// Codex session parser implementation
-pub struct CodexParser;
-
-impl crate::traits::SessionParser for CodexParser {
-    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
-        super::io::normalize_codex_file(path)
-    }
 }
 
 #[cfg(test)]

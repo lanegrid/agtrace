@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::args::{ExecuteArgs, FileEditArgs, FileReadArgs, FileWriteArgs, McpArgs, SearchArgs};
+use super::args::{
+    AgentToolArgs, ExecuteArgs, FileEditArgs, FileReadArgs, FileWriteArgs, McpArgs, SearchArgs,
+};
 use super::kind::ToolKind;
 
 /// Normalized tool call with structured arguments
@@ -11,6 +13,17 @@ use super::kind::ToolKind;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ToolCallPayload {
+    /// Agent management operation (spawn, message, stop, wait, ...).
+    ///
+    /// Listed first: `AgentToolArgs.op` is required, so this variant only matches
+    /// serialized agent calls when deserializing the untagged enum.
+    Agent {
+        name: String,
+        arguments: AgentToolArgs,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        provider_call_id: Option<String>,
+    },
+
     /// File read operation (Read, Glob, etc.)
     FileRead {
         name: String,
@@ -72,6 +85,7 @@ impl ToolCallPayload {
     /// Get tool name regardless of variant
     pub fn name(&self) -> &str {
         match self {
+            ToolCallPayload::Agent { name, .. } => name,
             ToolCallPayload::FileRead { name, .. } => name,
             ToolCallPayload::FileEdit { name, .. } => name,
             ToolCallPayload::FileWrite { name, .. } => name,
@@ -85,6 +99,9 @@ impl ToolCallPayload {
     /// Get provider call ID regardless of variant
     pub fn provider_call_id(&self) -> Option<&str> {
         match self {
+            ToolCallPayload::Agent {
+                provider_call_id, ..
+            } => provider_call_id.as_deref(),
             ToolCallPayload::FileRead {
                 provider_call_id, ..
             } => provider_call_id.as_deref(),
@@ -112,6 +129,7 @@ impl ToolCallPayload {
     /// Derive semantic ToolKind from ToolCallPayload variant
     pub fn kind(&self) -> ToolKind {
         match self {
+            ToolCallPayload::Agent { .. } => ToolKind::Agent,
             ToolCallPayload::FileRead { .. } => ToolKind::Read,
             ToolCallPayload::FileEdit { .. } => ToolKind::Write,
             ToolCallPayload::FileWrite { .. } => ToolKind::Write,
@@ -235,5 +253,28 @@ mod tests {
             provider_call_id: None,
         };
         assert_eq!(generic_payload.kind(), ToolKind::Other);
+
+        let agent_payload = ToolCallPayload::Agent {
+            name: "spawn_agent".to_string(),
+            arguments: AgentToolArgs::new(super::super::args::AgentOp::Spawn),
+            provider_call_id: None,
+        };
+        assert_eq!(agent_payload.kind(), ToolKind::Agent);
+    }
+
+    #[test]
+    fn test_agent_tool_call_roundtrip() {
+        let mut args = AgentToolArgs::new(super::super::args::AgentOp::Send);
+        args.target = Some("audit-A".to_string());
+        let original = ToolCallPayload::Agent {
+            name: "SendMessage".to_string(),
+            arguments: args.clone(),
+            provider_call_id: Some("call-1".to_string()),
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        match serde_json::from_str::<ToolCallPayload>(&json).unwrap() {
+            ToolCallPayload::Agent { arguments, .. } => assert_eq!(arguments, args),
+            other => panic!("expected Agent, got {other:?}"),
+        }
     }
 }

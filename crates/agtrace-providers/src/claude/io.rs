@@ -2,24 +2,16 @@ use crate::Result;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::parser::normalize_claude_session;
 use super::schema::ClaudeRecord;
 
-/// Parse Claude Code JSONL file and normalize to AgentEvent
+/// Parse a Claude Code JSONL file and normalize to AgentEvent (lenient per line).
 pub fn normalize_claude_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
-    let text = std::fs::read_to_string(path)?;
-
-    let mut records: Vec<ClaudeRecord> = Vec::new();
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let record: ClaudeRecord = serde_json::from_str(line)?;
-        records.push(record);
-    }
-
-    Ok(normalize_claude_session(records))
+    let (_, events, _) = crate::provider::decode_file(
+        &super::ClaudeProvider,
+        path,
+        crate::provider::DecodeOptions::default(),
+    )?;
+    Ok(events)
 }
 
 /// Extract cwd from a Claude session file by reading the first few lines

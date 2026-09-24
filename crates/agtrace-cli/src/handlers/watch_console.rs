@@ -266,7 +266,7 @@ fn process_provider_events_console(
                         for event in &display_events {
                             // Defensive check: only count main stream events
                             // (filter_display_events should already filter, but verify to be safe)
-                            if !matches!(event.stream_id, agtrace_sdk::types::StreamId::Main) {
+                            if !agtrace_sdk::utils::is_display_event(event) {
                                 continue;
                             }
 
@@ -387,7 +387,7 @@ fn process_stream_events_console(
                     for event in &display_events {
                         // Defensive check: only count main stream events
                         // (filter_display_events should already filter, but verify to be safe)
-                        if !matches!(event.stream_id, agtrace_sdk::types::StreamId::Main) {
+                        if !agtrace_sdk::utils::is_display_event(event) {
                             continue;
                         }
 

@@ -1,7 +1,8 @@
-use agtrace_types::{AgentEvent, ToolCallPayload, ToolKind, ToolOrigin};
+use agtrace_types::{AgentEvent, ParseDiagnostics, ToolCallPayload, ToolKind, ToolOrigin};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
+use crate::provider::{DecodeOptions, FileHeader, Provider};
 use crate::{Error, Result};
 
 /// Provider discovery and lifecycle management
@@ -37,17 +38,6 @@ pub trait LogDiscovery: Send + Sync {
     /// Check if a file is a sidechain file (lightweight, no full parse)
     /// Returns false for providers that don't support sidechains (Codex)
     fn is_sidechain_file(&self, path: &Path) -> Result<bool>;
-}
-
-/// Session data normalization
-///
-/// Responsibilities:
-/// - Parse raw log files into structured events
-/// - Handle format differences (JSONL, JSON array, custom)
-/// - Support streaming/incremental parsing
-pub trait SessionParser: Send + Sync {
-    /// Parse entire file into event stream
-    fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>>;
 }
 
 /// Tool call semantic interpretation
@@ -135,25 +125,25 @@ pub struct SessionIndex {
 
 // --- Provider Adapter ---
 
-/// Adapter that bundles the three trait implementations
+/// Adapter that bundles the provider contract with legacy discovery
 ///
-/// This provides a unified interface for working with provider functionality
-/// while maintaining clean separation of concerns internally.
+/// `provider` is the header/decoder contract ([`Provider`]); `discovery` is the
+/// legacy session scanner used by the index (replaced by `Provider::discover`).
 pub struct ProviderAdapter {
     pub discovery: Box<dyn LogDiscovery>,
-    pub parser: Box<dyn SessionParser>,
+    pub provider: Box<dyn Provider>,
     pub mapper: Box<dyn ToolMapper>,
 }
 
 impl ProviderAdapter {
     pub fn new(
         discovery: Box<dyn LogDiscovery>,
-        parser: Box<dyn SessionParser>,
+        provider: Box<dyn Provider>,
         mapper: Box<dyn ToolMapper>,
     ) -> Self {
         Self {
             discovery,
-            parser,
+            provider,
             mapper,
         }
     }
@@ -174,7 +164,7 @@ impl ProviderAdapter {
     pub fn claude() -> Self {
         Self::new(
             Box::new(crate::claude::ClaudeDiscovery),
-            Box::new(crate::claude::ClaudeParser),
+            Box::new(crate::claude::ClaudeProvider),
             Box::new(crate::claude::ClaudeToolMapper),
         )
     }
@@ -183,7 +173,7 @@ impl ProviderAdapter {
     pub fn codex() -> Self {
         Self::new(
             Box::new(crate::codex::CodexDiscovery),
-            Box::new(crate::codex::CodexParser),
+            Box::new(crate::codex::CodexProvider),
             Box::new(crate::codex::CodexToolMapper),
         )
     }
@@ -191,6 +181,19 @@ impl ProviderAdapter {
     /// Get provider ID
     pub fn id(&self) -> &'static str {
         self.discovery.id()
+    }
+
+    /// Decode a whole file (lenient per line), returning header, events and diagnostics.
+    pub fn decode_file(
+        &self,
+        path: &Path,
+    ) -> Result<(FileHeader, Vec<AgentEvent>, ParseDiagnostics)> {
+        crate::provider::decode_file(self.provider.as_ref(), path, DecodeOptions::default())
+    }
+
+    /// Parse a whole file into events (lenient per line; only I/O errors fail).
+    pub fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
+        self.decode_file(path).map(|(_, events, _)| events)
     }
 
     /// Process a file through the adapter (convenience method)
@@ -202,7 +205,7 @@ impl ProviderAdapter {
                 path.display()
             )));
         }
-        self.parser.parse_file(path)
+        self.parse_file(path)
     }
 }
 

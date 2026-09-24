@@ -4,9 +4,7 @@ expression: session
 ---
 {
   "session_id": "82dbb0e7-a88d-5cd2-b611-e73c375d0173",
-  "stream_id": {
-    "stream_type": "main"
-  },
+  "agent": "claude:7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9",
   "start_time": "2025-12-09T19:47:42.930Z",
   "end_time": "2025-12-09T19:48:50.204Z",
   "turns": [
@@ -69,7 +67,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 10,
-            "cache_creation": 0,
+            "cache_creation": 3893,
             "cache_read": 12135,
             "output": 436
           },
@@ -117,7 +115,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 14,
-            "cache_creation": 0,
+            "cache_creation": 458,
             "cache_read": 16028,
             "output": 126
           },
@@ -142,7 +140,7 @@ expression: session
           "tools": [],
           "usage": {
             "fresh_input": 13,
-            "cache_creation": 0,
+            "cache_creation": 169,
             "cache_read": 16486,
             "output": 112
           },
@@ -153,7 +151,7 @@ expression: session
       "stats": {
         "duration_ms": 30283,
         "step_count": 3,
-        "total_tokens": 45360
+        "total_tokens": 49880
       }
     },
     {
@@ -210,7 +208,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 10,
-            "cache_creation": 0,
+            "cache_creation": 333,
             "cache_read": 16028,
             "output": 123
           },
@@ -258,7 +256,7 @@ expression: session
           ],
           "usage": {
             "fresh_input": 14,
-            "cache_creation": 0,
+            "cache_creation": 154,
             "cache_read": 16361,
             "output": 1
           },
@@ -283,7 +281,7 @@ expression: session
           "tools": [],
           "usage": {
             "fresh_input": 13,
-            "cache_creation": 0,
+            "cache_creation": 151,
             "cache_read": 16515,
             "output": 46
           },
@@ -294,13 +292,13 @@ expression: session
       "stats": {
         "duration_ms": 20618,
         "step_count": 3,
-        "total_tokens": 49111
+        "total_tokens": 49749
       }
     }
   ],
   "stats": {
     "total_turns": 2,
     "duration_seconds": 67,
-    "total_tokens": 94471
+    "total_tokens": 99629
   }
 }

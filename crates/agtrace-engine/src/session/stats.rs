@@ -45,12 +45,7 @@ pub fn merge_usage(
     source: &agtrace_types::TokenUsagePayload,
 ) {
     // Convert normalized TokenUsagePayload to ContextWindowUsage
-    let source_usage = ContextWindowUsage::from_raw(
-        source.input.uncached as i32,
-        0, // cache_creation - not tracked separately in new schema
-        source.input.cached as i32,
-        source.output.total() as i32,
-    );
+    let source_usage = ContextWindowUsage::from_token_usage(source);
 
     if let Some(current) = target {
         // Use max-based semantics to handle streaming updates
@@ -72,7 +67,7 @@ mod tests {
     fn test_merge_usage_with_none() {
         let mut target = None;
         let source = TokenUsagePayload::new(
-            TokenInput::new(0, 100),    // 0 cached, 100 uncached
+            TokenInput::new(100, 0, 0), // 100 uncached, 0 cache_read, 0 cache_write
             TokenOutput::new(50, 0, 0), // 50 generated, 0 reasoning, 0 tool
         );
 
@@ -89,7 +84,7 @@ mod tests {
     fn test_merge_usage_with_existing() {
         let mut target = Some(ContextWindowUsage::from_raw(100, 0, 0, 50));
         let source = TokenUsagePayload::new(
-            TokenInput::new(0, 200),     // 0 cached, 200 uncached
+            TokenInput::new(200, 0, 0),  // 200 uncached, 0 cache_read, 0 cache_write
             TokenOutput::new(100, 0, 0), // 100 generated, 0 reasoning, 0 tool
         );
 
@@ -106,7 +101,7 @@ mod tests {
     fn test_merge_usage_with_cache() {
         let mut target = Some(ContextWindowUsage::from_raw(100, 10, 20, 50));
         let source = TokenUsagePayload::new(
-            TokenInput::new(40, 200),    // 40 cached, 200 uncached
+            TokenInput::new(200, 40, 0), // 200 uncached, 40 cache_read, 0 cache_write
             TokenOutput::new(70, 30, 0), // 70 generated, 30 reasoning, 0 tool
         );
 

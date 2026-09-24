@@ -186,7 +186,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             ToolKind::Write => metrics.write_calls += 1,
                             ToolKind::Execute => metrics.execute_calls += 1,
                             ToolKind::Search => metrics.search_calls += 1,
-                            ToolKind::Plan | ToolKind::Ask | ToolKind::Other => {
+                            ToolKind::Plan | ToolKind::Ask | ToolKind::Agent | ToolKind::Other => {
                                 metrics.other_calls += 1
                             }
                         }
