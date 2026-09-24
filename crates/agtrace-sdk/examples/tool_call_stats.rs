@@ -5,7 +5,7 @@
 //! - Extracting tool calls from session events
 //! - Computing statistics for different tool types (files, MCP, etc.)
 //! - Displaying top 5 patterns for each category
-//! - Breaking down detailed statistics by provider (claude, codex, gemini)
+//! - Breaking down detailed statistics by provider (claude, codex)
 //!
 //! Run with: cargo run -p agtrace-sdk --example tool_call_stats
 

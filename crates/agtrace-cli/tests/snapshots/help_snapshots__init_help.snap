@@ -5,7 +5,7 @@ expression: help
 Initialize agtrace — run this once to get started.
 
 This command will:
-  • Auto-detect installed providers (Claude Code, Codex, Gemini)
+  • Auto-detect installed providers (Claude Code, Codex)
   • Create the local database (system data directory, e.g., ~/Library/Application Support/agtrace on macOS)
   • Scan and index existing session logs
 

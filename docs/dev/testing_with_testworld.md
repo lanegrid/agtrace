@@ -432,7 +432,7 @@ fn test_directory_navigation() {
 
 ## Multi-Provider Testing
 
-`TestWorld` provides first-class support for testing multiple providers (Claude, Gemini, Codex, etc.).
+`TestWorld` provides first-class support for testing multiple providers (Claude Code, Codex).
 
 ### Provider Testing Goals
 
@@ -454,11 +454,11 @@ fn test_multi_provider_setup() -> anyhow::Result<()> {
 
     // Enable multiple providers
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     // Add sessions from different providers
     world.add_session(TestProvider::Claude, "claude_work.jsonl")?;
-    world.add_session(TestProvider::Gemini, "gemini_review.jsonl")?;
+    world.add_session(TestProvider::Codex, "rollout-codex-review.jsonl")?;
 
     // Index all providers
     world.run(&["index", "update", "--all-projects"])?;
@@ -481,8 +481,8 @@ use agtrace_testing::assertions;
 // Assert a specific session is from Claude
 assertions::assert_session_provider(&json, 0, "claude_code")?;
 
-// Assert all sessions are from Gemini
-assertions::assert_all_sessions_from_provider(&json, "gemini")?;
+// Assert all sessions are from Codex
+assertions::assert_all_sessions_from_provider(&json, "codex")?;
 ```
 
 ### What These Tests Guarantee

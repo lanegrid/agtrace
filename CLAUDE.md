@@ -14,14 +14,14 @@ This file provides guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-Rust-based local-first observability platform for AI agents. Normalizes diverse agent log formats (Claude Code, Codex, Gemini) into a unified `AgentEvent` timeline.
+Rust-based local-first observability platform for AI agents. Normalizes diverse agent log formats (Claude Code, Codex) into a unified `AgentEvent` timeline.
 
 ```
 ./
 ├── crates/
 │   ├── agtrace-types/       # Type definitions (no deps)
 │   ├── agtrace-core/        # File paths, env, workspace utils
-│   ├── agtrace-providers/   # Log parsers (claude/, codex/, gemini/)
+│   ├── agtrace-providers/   # Log parsers (claude/, codex/)
 │   ├── agtrace-index/       # SQLite pointer index
 │   ├── agtrace-engine/      # Session assembly, token calc
 │   ├── agtrace-runtime/     # Orchestration layer
@@ -84,14 +84,14 @@ This file provides guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-Rust-based local-first observability platform for AI agents. Normalizes diverse agent log formats (Claude Code, Codex, Gemini) into a unified `AgentEvent` timeline.
+Rust-based local-first observability platform for AI agents. Normalizes diverse agent log formats (Claude Code, Codex) into a unified `AgentEvent` timeline.
 
 ```
 ./
 ├── crates/
 │   ├── agtrace-types/       # Type definitions (no deps)
 │   ├── agtrace-core/        # File paths, env, workspace utils
-│   ├── agtrace-providers/   # Log parsers (claude/, codex/, gemini/)
+│   ├── agtrace-providers/   # Log parsers (claude/, codex/)
 │   ├── agtrace-index/       # SQLite pointer index
 │   ├── agtrace-engine/      # Session assembly, token calc
 │   ├── agtrace-runtime/     # Orchestration layer

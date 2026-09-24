@@ -8,7 +8,7 @@
 //! `agtrace-sdk` provides a high-level, stable API for building tools on top of agtrace.
 //! It powers agtrace's MCP server (letting agents query their execution history) and CLI tools,
 //! and can be embedded in your own applications. The SDK normalizes logs from multiple providers
-//! (Claude Code, Codex, Gemini) into a unified data model, enabling cross-provider analysis.
+//! (Claude Code, Codex) into a unified data model, enabling cross-provider analysis.
 //!
 //! # Quickstart
 //!

@@ -112,7 +112,6 @@ impl fmt::Display for ExportStrategy {
 pub enum ProviderName {
     ClaudeCode,
     Codex,
-    Gemini,
 }
 
 impl fmt::Display for ProviderName {
@@ -120,7 +119,6 @@ impl fmt::Display for ProviderName {
         match self {
             ProviderName::ClaudeCode => write!(f, "claude_code"),
             ProviderName::Codex => write!(f, "codex"),
-            ProviderName::Gemini => write!(f, "gemini"),
         }
     }
 }
@@ -130,7 +128,6 @@ impl fmt::Display for ProviderName {
 pub enum ProviderFilter {
     ClaudeCode,
     Codex,
-    Gemini,
     All,
 }
 
@@ -139,7 +136,6 @@ impl fmt::Display for ProviderFilter {
         match self {
             ProviderFilter::ClaudeCode => write!(f, "claude_code"),
             ProviderFilter::Codex => write!(f, "codex"),
-            ProviderFilter::Gemini => write!(f, "gemini"),
             ProviderFilter::All => write!(f, "all"),
         }
     }

@@ -66,28 +66,6 @@ fn test_codex_derives_project_hash_from_session_data() {
     );
 }
 
-#[test]
-fn test_gemini_derives_project_hash_from_file() {
-    let path = PathBuf::from("tests/samples/gemini_session.json");
-
-    if !path.exists() {
-        eprintln!("Warning: Test file not found, skipping: {}", path.display());
-        return;
-    }
-
-    // Extract project_hash directly from file
-    use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
-
-    let project_hash = extract_project_hash_from_gemini_file(&path)
-        .expect("Failed to extract project_hash from Gemini file");
-
-    assert_ne!(
-        project_hash,
-        agtrace_types::ProjectHash::from("unknown"),
-        "Gemini project_hash extracted from file should not be 'unknown'"
-    );
-}
-
 /// Regression test: Verify that the fix prevents "unknown" from being used as project_hash
 ///
 /// This is a meta-test that verifies the fix works by checking that
@@ -111,13 +89,5 @@ fn test_regression_session_data_contains_project_info() {
         use agtrace_providers::codex::io::extract_cwd_from_codex_file;
         let cwd = extract_cwd_from_codex_file(&codex_path);
         assert!(cwd.is_some(), "Codex file should contain cwd field");
-    }
-
-    // Test Gemini
-    let gemini_path = PathBuf::from("tests/samples/gemini_session.json");
-    if gemini_path.exists() {
-        use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
-        let hash = extract_project_hash_from_gemini_file(&gemini_path);
-        assert!(hash.is_some(), "Gemini file should contain projectHash");
     }
 }

@@ -7,7 +7,6 @@ agtrace exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io
 - **Claude Code** (Anthropic) ✅
 - **Codex** (OpenAI) ✅
 - **Claude Desktop** (Anthropic) ✅
-- **Gemini CLI** (Google) ⚠️ Not yet supported (see Known Issues below)
 
 ## Quick Setup
 
@@ -180,25 +179,12 @@ Once MCP is configured, you can ask your AI assistant:
 
 ## How It Works
 
-1. **agtrace indexes logs** from `~/.claude/projects`, `~/.codex/sessions`, `~/.gemini/tmp`
+1. **agtrace indexes logs** from `~/.claude/projects` and `~/.codex/sessions`
 2. **MCP server exposes tools** via `agtrace mcp serve`
 3. **AI assistant calls tools** to query the index
 4. **Results are returned** as structured JSON for analysis
 
 The MCP server provides a lightweight, paginated API to prevent overwhelming the AI assistant with large payloads. Use `list_sessions` to discover sessions, `list_turns` for turn-level overviews, and `get_turns` when you need detailed turn data. Use `search_events` to find specific events across sessions.
-
-## Known Issues
-
-### Gemini CLI Not Supported
-
-Gemini CLI currently does not connect to agtrace MCP server. This is because:
-
-1. **Transport framing mismatch**: agtrace uses newline-delimited JSON-RPC (`{json}\n`), while Gemini CLI strictly requires Content-Length framing (`Content-Length: XXX\r\n\r\n{json}`)
-2. **MCP_STDIO_MODE not supported**: Gemini CLI does not respect the `MCP_STDIO_MODE=nl` environment variable to enable newline-delimited mode
-
-**Workaround**: None currently available.
-
-**Fix plan**: Implement Content-Length framing support in agtrace MCP server (tracked in issue #TBD).
 
 ## Learn More
 

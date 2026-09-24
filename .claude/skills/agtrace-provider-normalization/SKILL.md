@@ -1,6 +1,6 @@
 ---
 name: agtrace-provider-normalization
-description: Investigate AI agent provider tool schemas (Claude Code, Codex, Gemini) and design unified domain abstractions in agtrace architecture.
+description: Investigate AI agent provider tool schemas (Claude Code, Codex) and design unified domain abstractions in agtrace architecture.
 ---
 
 # Agtrace Provider Normalization Expert
@@ -50,7 +50,6 @@ provider/
 **Provider directories:**
 - `crates/agtrace-providers/src/claude/`
 - `crates/agtrace-providers/src/codex/`
-- `crates/agtrace-providers/src/gemini/`
 
 ### Tier 3: Unified Domain Types
 
@@ -80,10 +79,6 @@ ClaudeBashArgs, ClaudeGrepArgs, ClaudeTodoWriteArgs
 
 // Codex: crates/agtrace-providers/src/codex/tools.rs
 ShellArgs, ApplyPatchArgs, ReadMcpResourceArgs
-
-// Gemini: crates/agtrace-providers/src/gemini/tools.rs
-GeminiReadFileArgs, GeminiWriteFileArgs, GeminiReplaceArgs,
-GeminiRunShellCommandArgs, GeminiGoogleWebSearchArgs
 ```
 
 Each has conversion methods:
@@ -134,7 +129,6 @@ Different providers use different MCP naming conventions:
 |----------|--------|---------|
 | Claude | `mcp__server__tool` | `mcp__filesystem__read_file` |
 | Codex | `mcp__server__tool` | `mcp__memory__store` |
-| Gemini | `tool-name` + display_name | Display: "(ServerName MCP Server)" |
 
 All normalize to `ToolCallPayload::Mcp` with `McpArgs`:
 ```rust
@@ -215,7 +209,6 @@ This skill should be activated when:
 | Claude parser | `crates/agtrace-providers/src/claude/parser.rs` |
 | Claude tools | `crates/agtrace-providers/src/claude/tools.rs` |
 | Codex parser | `crates/agtrace-providers/src/codex/parser.rs` |
-| Gemini parser | `crates/agtrace-providers/src/gemini/parser.rs` |
 | Domain events | `crates/agtrace-types/src/event/payload.rs` |
 | Tool payload | `crates/agtrace-types/src/tool/payload.rs` |
 | Tool types | `crates/agtrace-types/src/tool/types.rs` |

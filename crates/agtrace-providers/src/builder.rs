@@ -231,12 +231,9 @@ mod tests {
         let mut builder = EventBuilder::new(Uuid::new_v4());
         let tool_uuid = Uuid::new_v4();
 
-        builder.register_tool_call("gemini-tool-123".to_string(), tool_uuid);
+        builder.register_tool_call("tool-123".to_string(), tool_uuid);
 
-        assert_eq!(
-            builder.get_tool_call_uuid("gemini-tool-123"),
-            Some(tool_uuid)
-        );
+        assert_eq!(builder.get_tool_call_uuid("tool-123"), Some(tool_uuid));
         assert_eq!(builder.get_tool_call_uuid("nonexistent"), None);
     }
 }

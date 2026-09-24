@@ -9,14 +9,13 @@ pub const SCHEMA_VERSION: i32 = 6;
 //
 // Why Schema-on-Read (not Schema-on-Write)?
 // - Provider logs change format frequently; parsing logic needs flexibility
-// - Event normalization is complex (Gemini unfold, Codex dedup, etc.)
+// - Event normalization is complex (Codex dedup, Claude usage extraction, etc.)
 // - Raw logs are source of truth; DB is just an index for fast lookup
 // - Keeps DB lightweight and migration-free when schema evolves
 //
 // Why hash-based project identification?
-// - Gemini logs contain projectHash but not projectRoot path
 // - Hash allows cross-provider session grouping before path resolution
-// - Enables "same project" detection across Claude/Codex/Gemini
+// - Enables "same project" detection across Claude/Codex
 //
 // Why soft delete (is_valid flag)?
 // - Avoid orphaned log_files entries when session is deleted

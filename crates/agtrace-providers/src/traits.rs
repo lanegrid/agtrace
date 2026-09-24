@@ -11,7 +11,7 @@ use crate::{Error, Result};
 /// - Locate session files on filesystem
 /// - Extract session metadata
 pub trait LogDiscovery: Send + Sync {
-    /// Unique provider ID (e.g., "claude", "codex", "gemini")
+    /// Unique provider ID (e.g., "claude", "codex")
     fn id(&self) -> &'static str;
 
     /// Check if a file belongs to this provider
@@ -35,7 +35,7 @@ pub trait LogDiscovery: Send + Sync {
     fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>>;
 
     /// Check if a file is a sidechain file (lightweight, no full parse)
-    /// Returns false for providers that don't support sidechains (Codex, Gemini)
+    /// Returns false for providers that don't support sidechains (Codex)
     fn is_sidechain_file(&self, path: &Path) -> Result<bool>;
 }
 
@@ -48,10 +48,6 @@ pub trait LogDiscovery: Send + Sync {
 pub trait SessionParser: Send + Sync {
     /// Parse entire file into event stream
     fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>>;
-
-    /// Parse single record for streaming (e.g., tail -f mode)
-    /// Returns None for malformed/incomplete lines (non-fatal)
-    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>>;
 }
 
 /// Tool call semantic interpretation
@@ -167,7 +163,6 @@ impl ProviderAdapter {
         match provider_name {
             "claude_code" | "claude" => Ok(Self::claude()),
             "codex" => Ok(Self::codex()),
-            "gemini" => Ok(Self::gemini()),
             _ => Err(Error::Provider(format!(
                 "Unknown provider: {}",
                 provider_name
@@ -190,15 +185,6 @@ impl ProviderAdapter {
             Box::new(crate::codex::CodexDiscovery),
             Box::new(crate::codex::CodexParser),
             Box::new(crate::codex::CodexToolMapper),
-        )
-    }
-
-    /// Create Gemini provider adapter
-    pub fn gemini() -> Self {
-        Self::new(
-            Box::new(crate::gemini::GeminiDiscovery),
-            Box::new(crate::gemini::GeminiParser),
-            Box::new(crate::gemini::GeminiToolMapper),
         )
     }
 

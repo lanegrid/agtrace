@@ -460,7 +460,7 @@ impl TestWorld {
     /// # use agtrace_testing::{TestWorld, providers::TestProvider};
     /// let world = TestWorld::new();
     /// world.enable_provider(TestProvider::Claude).unwrap();
-    /// world.enable_provider(TestProvider::Gemini).unwrap();
+    /// world.enable_provider(TestProvider::Codex).unwrap();
     /// ```
     ///
     /// This tests the CLI's configuration routing logic.
@@ -501,11 +501,11 @@ impl TestWorld {
     /// Current issue:
     /// - Testing layer depends on provider-specific directory encoding logic
     /// - Same if/else branching duplicated in fixtures.rs
-    /// - Hardcoded knowledge of Claude's "-" encoding vs Gemini's hash-based subdirs
+    /// - Hardcoded knowledge of Claude's "-" encoding
     ///
     /// Required fix:
     /// - Add `encode_project_path(project_root: &Path) -> PathBuf` to LogDiscovery trait
-    /// - Each provider implements its own encoding (Claude: "-Users-foo-bar", Gemini: hash, Codex: flat)
+    /// - Each provider implements its own encoding (Claude: "-Users-foo-bar", Codex: flat)
     /// - Remove this if/else branching and call `adapter.discovery.encode_project_path()`
     /// - Consolidate with fixtures.rs logic
     ///
@@ -522,7 +522,7 @@ impl TestWorld {
         let project_log_dir = if let Some(provider_subdir) =
             adapter.discovery.resolve_log_root(&canonical_project_dir)
         {
-            // Provider uses project-specific subdirectory (e.g., Gemini uses hash)
+            // Provider uses project-specific subdirectory
             log_root.join(provider_subdir)
         } else {
             // Provider uses flat structure with encoded project names (e.g., Claude)

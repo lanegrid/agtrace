@@ -12,7 +12,6 @@ use super::payload::UserPayload;
 // NOTE: Schema Design Goals
 //
 // 1. Normalization: Abstract provider-specific quirks into unified time-series events
-//    - Gemini: Unfold nested batch records into sequential events
 //    - Codex: Align async token notifications and eliminate echo duplicates
 //    - Claude: Extract embedded usage into independent events
 //
@@ -31,7 +30,6 @@ use super::payload::UserPayload;
 // - OS-level execution timestamps: Unavailable in logs; command issue time ≒ execution start
 // - Tree/branch structure: Parallel tool calls are linearized in chronological/array order
 // - Real-time token sync: Codex-style delayed tokens handled via eventual consistency (sidecar)
-// - Gemini token breakdown: Total usage attached to final generation event (no speculation)
 
 /// Agent event
 /// Maps 1:1 to database table row
@@ -60,7 +58,7 @@ pub struct AgentEvent {
     pub payload: EventPayload,
 
     /// Provider-specific raw data and debug information
-    /// Examples: Codex "call_id", Gemini "finish_reason", etc.
+    /// Examples: Codex "call_id", Claude "cwd", etc.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
 }

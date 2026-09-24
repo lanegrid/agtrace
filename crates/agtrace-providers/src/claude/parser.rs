@@ -736,14 +736,6 @@ impl crate::traits::SessionParser for ClaudeParser {
     fn parse_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
         super::io::normalize_claude_file(path)
     }
-
-    fn parse_record(&self, content: &str) -> Result<Option<AgentEvent>> {
-        // Claude uses JSONL format, parse as AgentEvent
-        match serde_json::from_str::<AgentEvent>(content) {
-            Ok(event) => Ok(Some(event)),
-            Err(_) => Ok(None), // Skip malformed lines
-        }
-    }
 }
 
 #[cfg(test)]

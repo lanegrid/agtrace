@@ -107,20 +107,12 @@ impl<'a> IndexService<'a> {
                 .filter(|session| {
                     if let Some(expected_hash) = scope.hash() {
                         if let Some(session_root) = &session.project_root {
-                            let session_hash = agtrace_core::project_hash_from_root(&session_root.to_string_lossy());
+                            let session_hash = agtrace_core::project_hash_from_root(
+                                &session_root.to_string_lossy(),
+                            );
                             &session_hash == expected_hash
                         } else {
-                            // Gemini sessions might not have project_root, compute hash from file
-                            if provider_name == "gemini" {
-                                use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
-                                if let Some(session_hash) = extract_project_hash_from_gemini_file(&session.main_file) {
-                                    &session_hash == expected_hash
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
+                            false
                         }
                     } else {
                         true
@@ -165,12 +157,6 @@ impl<'a> IndexService<'a> {
                 // Calculate project_hash from session data
                 let session_project_hash = if let Some(ref root) = session.project_root {
                     agtrace_core::project_hash_from_root(&root.to_string_lossy())
-                } else if provider_name == "gemini" {
-                    // For Gemini, extract project_hash directly from the file
-                    use agtrace_providers::gemini::io::extract_project_hash_from_gemini_file;
-                    extract_project_hash_from_gemini_file(&session.main_file).unwrap_or_else(|| {
-                        agtrace_core::project_hash_from_log_path(&session.main_file)
-                    })
                 } else {
                     // Generate unique hash from log path for orphaned sessions
                     agtrace_core::project_hash_from_log_path(&session.main_file)

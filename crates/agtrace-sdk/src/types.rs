@@ -34,7 +34,6 @@ pub use agtrace_types::{
     SpawnContext,
     StepStatus,
     StreamId,
-    SubagentInfo,
     // Token usage types
     TokenInput,
     TokenOutput,

@@ -95,7 +95,7 @@ impl SampleFiles {
         // Current issue:
         // - Hardcoded if/else branching based on provider implementation details
         // - Duplicated logic in world.rs::get_session_file_path()
-        // - Testing layer depends on Claude's "-" encoding vs Gemini's hash subdirs
+        // - Testing layer depends on Claude's "-" encoding
         //
         // Required fix:
         // - Add `encode_project_path(project_root: &Path) -> PathBuf` to LogDiscovery trait
@@ -107,7 +107,7 @@ impl SampleFiles {
             .discovery
             .resolve_log_root(&canonical_project_dir)
         {
-            // Provider uses project-specific subdirectory (e.g., Gemini uses hash)
+            // Provider uses project-specific subdirectory
             log_root.join(provider_subdir)
         } else {
             // Provider uses flat structure with encoded project names (e.g., Claude)
@@ -127,29 +127,17 @@ impl SampleFiles {
         let content = fs::read_to_string(&source)?;
 
         // Replace cwd field with canonicalized path (Claude format)
-        let mut modified_content = content.replace(
+        let modified_content = content.replace(
             r#""cwd":"/Users/test_user/agent-sample""#,
             &format!(r#""cwd":"{}""#, canonical_str),
-        );
-
-        // Replace projectHash field (Gemini format)
-        // Calculate the correct project hash from the canonicalized path
-        let project_hash = agtrace_core::project_hash_from_root(&canonical_str);
-        modified_content = modified_content.replace(
-            r#""projectHash": "9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde""#,
-            &format!(r#""projectHash": "{}""#, project_hash),
         );
 
         // Generate unique sessionId
         let new_session_id = generate_session_id(target_project_dir, dest_name);
 
         // Replace sessionId (Claude: 7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9)
-        modified_content =
+        let modified_content =
             modified_content.replace("7f2abd2d-7cfc-4447-9ddd-3ca8d14e02e9", &new_session_id);
-
-        // Replace sessionId (Gemini: f0a689a6-b0ac-407f-afcc-4fafa9e14e8a)
-        modified_content =
-            modified_content.replace("f0a689a6-b0ac-407f-afcc-4fafa9e14e8a", &new_session_id);
 
         fs::write(dest, modified_content)?;
         Ok(())

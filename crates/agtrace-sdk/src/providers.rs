@@ -96,7 +96,7 @@ impl Providers {
     /// Create with auto-detected providers from system paths.
     ///
     /// Scans default log directories for each supported provider
-    /// (Claude Code, Codex, Gemini) and enables those that exist.
+    /// (Claude Code, Codex) and enables those that exist.
     ///
     /// # Examples
     ///

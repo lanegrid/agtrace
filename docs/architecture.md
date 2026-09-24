@@ -37,7 +37,7 @@ agtrace is architected as a platform with clear separation of concerns:
 │        Adapter Layer                     │
 │  ┌────────────────────────────────────┐  │
 │  │      agtrace-providers             │  │
-│  │  (Normalize Claude, Codex, Gemini) │  │
+│  │  (Normalize Claude Code, Codex)    │  │
 │  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
 ```
@@ -94,10 +94,9 @@ Sessions are scoped by cwd/project boundaries and grouped by a project root hash
 
 ```
 ┌─────────────────┐
-│  Provider Logs  │ (Claude Code, Codex, Gemini)
+│  Provider Logs  │ (Claude Code, Codex)
 │  ~/.claude/     │
 │  ~/.codex/      │
-│  ~/.gemini/     │
 └────────┬────────┘
          │
          │ Discovery

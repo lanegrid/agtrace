@@ -41,8 +41,38 @@ impl Config {
         }
 
         let content = std::fs::read_to_string(path)?;
-        let config: Config = toml::from_str(&content)?;
+        let (config, ignored) = Self::parse(&content)?;
+        for name in ignored {
+            eprintln!(
+                "Warning: ignoring unsupported provider '{}' in {}",
+                name,
+                path.display()
+            );
+        }
         Ok(config)
+    }
+
+    /// Parse config TOML, skipping `[providers.<name>]` sections for providers
+    /// that are not supported (e.g. `gemini`, which was removed).
+    ///
+    /// Returns the config and the names of the ignored provider sections.
+    fn parse(content: &str) -> Result<(Self, Vec<String>)> {
+        let mut table: toml::Table = toml::from_str(content)?;
+        let mut ignored = Vec::new();
+
+        if let Some(toml::Value::Table(providers)) = table.get_mut("providers") {
+            providers.retain(|name, _| {
+                let keep = agtrace_providers::create_adapter(name).is_ok();
+                if !keep {
+                    ignored.push(name.to_string());
+                }
+                keep
+            });
+        }
+        ignored.sort();
+
+        let config: Config = table.try_into()?;
+        Ok((config, ignored))
     }
 
     pub fn save(&self) -> Result<()> {
@@ -155,6 +185,34 @@ mod tests {
         let enabled = config.enabled_providers();
         assert_eq!(enabled.len(), 1);
         assert_eq!(enabled[0].0, "claude");
+    }
+
+    #[test]
+    fn test_load_ignores_unknown_provider_sections() -> Result<()> {
+        let temp_dir = TempDir::new()?;
+        let config_path = temp_dir.path().join("config.toml");
+        std::fs::write(
+            &config_path,
+            r#"
+[providers.claude_code]
+enabled = true
+log_root = "/home/user/.claude/projects"
+
+[providers.gemini]
+enabled = true
+log_root = "/home/user/.gemini/tmp"
+"#,
+        )?;
+
+        let config = Config::load_from(&config_path)?;
+        assert_eq!(config.providers.len(), 1);
+        assert!(config.providers.contains_key("claude_code"));
+        assert!(!config.providers.contains_key("gemini"));
+
+        let (_, ignored) = Config::parse(&std::fs::read_to_string(&config_path)?)?;
+        assert_eq!(ignored, vec!["gemini".to_string()]);
+
+        Ok(())
     }
 
     #[test]

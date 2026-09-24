@@ -20,27 +20,6 @@ impl Source {
     }
 }
 
-/// Subagent execution information
-///
-/// Represents metadata about subagent (agent-within-agent) execution.
-/// Different providers implement subagents differently:
-/// - Claude Code: Uses Task tool with `subagent_type` and returns `agentId`
-/// - Codex: Creates separate session files with `source.subagent` metadata
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SubagentInfo {
-    /// Subagent identifier (e.g., "ba2ed465" for Claude Code, session ID for Codex)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub agent_id: Option<String>,
-
-    /// Subagent type/role (e.g., "Explore", "general-purpose", "review")
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub agent_type: Option<String>,
-
-    /// Parent session ID (for Codex where subagent is a separate session)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_session_id: Option<String>,
-}
-
 /// Tool execution status (used in Span API)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -88,7 +67,7 @@ pub struct SessionMetadata {
     pub project_hash: ProjectHash,
     /// Project root path (resolved from project_hash).
     pub project_root: Option<String>,
-    /// Provider name (claude_code, codex, gemini).
+    /// Provider name (claude_code, codex).
     pub provider: String,
     /// Parent session ID for subagent sessions.
     #[serde(skip_serializing_if = "Option::is_none")]

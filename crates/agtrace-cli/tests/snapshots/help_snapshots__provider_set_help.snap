@@ -13,7 +13,7 @@ Usage: agtrace provider set [OPTIONS] --log-root <LOG_ROOT> <PROVIDER>
 
 Arguments:
   <PROVIDER>
-          Provider name (claude_code, codex, gemini)
+          Provider name (claude_code, codex)
 
 Options:
       --log-root <LOG_ROOT>

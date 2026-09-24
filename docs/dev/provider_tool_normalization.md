@@ -26,7 +26,7 @@ This document describes the pattern for defining provider-specific tool structur
                           │
 ┌─────────────────────────────────────────────────────────────┐
 │ Provider Raw Data (JSON/JSONL logs)                         │
-│ - Exact format from provider (Claude Code, Codex, Gemini)   │
+│ - Exact format from provider (Claude Code, Codex)           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -270,8 +270,7 @@ fn test_normalize_apply_patch_add_file() {
 ### Immediate Next Steps
 
 1. Claude Code `Edit` tool
-2. Gemini `replace` tool
-3. Other file operation tools (Read, Glob, etc.)
+2. Other file operation tools (Read, Glob, etc.)
 
 ### Long-term Goals
 

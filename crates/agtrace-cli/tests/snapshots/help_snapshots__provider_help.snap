@@ -2,7 +2,7 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Configure log sources (Claude Code, Codex, Gemini)
+Configure log sources (Claude Code, Codex)
 
 Usage: agtrace provider [OPTIONS] <COMMAND>
 

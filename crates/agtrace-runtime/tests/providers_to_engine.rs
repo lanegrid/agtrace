@@ -41,23 +41,3 @@ fn test_codex_end_to_end() {
     let session = assemble_session(&events).expect("Failed to assemble session");
     assert!(!session.turns.is_empty(), "Expected at least one turn");
 }
-
-#[test]
-fn test_gemini_end_to_end() {
-    let path = Path::new("../../agtrace-providers/tests/samples/gemini_session.json");
-
-    if !path.exists() {
-        eprintln!("Warning: Test file not found, skipping: {}", path.display());
-        return;
-    }
-
-    // providers: normalize raw data → AgentEvent[]
-    let events =
-        agtrace_providers::normalize_gemini_file(path).expect("Failed to normalize Gemini file");
-
-    assert!(!events.is_empty(), "Expected at least one event");
-
-    // engine: assemble session
-    let session = assemble_session(&events).expect("Failed to assemble session");
-    assert!(!session.turns.is_empty(), "Expected at least one turn");
-}

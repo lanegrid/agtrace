@@ -23,11 +23,6 @@ expression: response
                   "const": "codex",
                   "description": "GitHub Copilot Codex",
                   "type": "string"
-                },
-                {
-                  "const": "gemini",
-                  "description": "Google Gemini",
-                  "type": "string"
                 }
               ]
             }
@@ -219,11 +214,6 @@ expression: response
                 {
                   "const": "codex",
                   "description": "GitHub Copilot Codex",
-                  "type": "string"
-                },
-                {
-                  "const": "gemini",
-                  "description": "Google Gemini",
                   "type": "string"
                 }
               ]

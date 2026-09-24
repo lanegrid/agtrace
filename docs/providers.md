@@ -8,7 +8,6 @@ agtrace supports multiple AI coding agent providers through a unified normalizat
 |----------|-------------|------------------|
 | **Claude Code** | Claude Code IDE (Anthropic) | `~/.claude/projects` |
 | **Codex** | Codex CLI (OpenAI) | `~/.codex/sessions` |
-| **Gemini** | Gemini CLI (Google) | `~/.gemini/tmp` |
 
 ## How It Works
 

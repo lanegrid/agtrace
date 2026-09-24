@@ -6,7 +6,7 @@ use std::collections::HashMap;
 /// for identifying systematic parsing issues.
 #[derive(Debug)]
 pub struct DiagnoseResult {
-    /// Provider being diagnosed (claude, codex, gemini).
+    /// Provider being diagnosed (claude, codex).
     pub provider_name: String,
     /// Total number of log files checked.
     pub total_files: usize,

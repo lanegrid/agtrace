@@ -30,11 +30,11 @@ async fn test_list_filter_by_source_provider() -> Result<()> {
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     let client = initialize_workspace(&world).await?;
 
@@ -48,11 +48,11 @@ async fn test_list_filter_by_source_provider() -> Result<()> {
     assert_eq!(sessions.len(), 1, "Should show only Claude sessions");
     assert_eq!(sessions[0].provider, "claude_code");
 
-    let filter = SessionFilter::project(project_hash).provider("gemini".to_string());
+    let filter = SessionFilter::project(project_hash).provider("codex".to_string());
     let sessions = client.sessions().list(filter)?;
 
-    assert_eq!(sessions.len(), 1, "Should show only Gemini sessions");
-    assert_eq!(sessions[0].provider, "gemini");
+    assert_eq!(sessions.len(), 1, "Should show only Codex sessions");
+    assert_eq!(sessions[0].provider, "codex");
 
     Ok(())
 }
@@ -62,11 +62,11 @@ async fn test_session_list_without_provider_shows_all_providers() -> Result<()> 
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     let client = initialize_workspace(&world).await?;
 
@@ -96,7 +96,7 @@ async fn test_provider_filter_with_disabled_provider_shows_no_sessions() -> Resu
     let project_path = world.temp_dir().join("my-project");
     let project_hash = agtrace_sdk::utils::project_hash_from_root(&project_path.to_string_lossy());
 
-    let filter = SessionFilter::project(project_hash).provider("gemini".to_string());
+    let filter = SessionFilter::project(project_hash).provider("codex".to_string());
     let sessions = client.sessions().list(filter)?;
 
     assert_eq!(
@@ -216,7 +216,7 @@ async fn test_list_combined_filters() -> Result<()> {
         .with_project("project-b");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("project-a");
     world.add_session(TestProvider::Claude, "claude-a1.jsonl")?;
@@ -224,7 +224,7 @@ async fn test_list_combined_filters() -> Result<()> {
 
     world.set_cwd("project-b");
     world.add_session(TestProvider::Claude, "claude-b1.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-b1.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex-b1.jsonl")?;
 
     let client = initialize_workspace(&world).await?;
 
@@ -255,11 +255,11 @@ async fn test_combined_filters_provider_and_project() -> Result<()> {
         .with_project("project-b");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("project-a");
     world.add_session(TestProvider::Claude, "claude-a.jsonl")?;
-    world.add_session(TestProvider::Gemini, "gemini-a.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex-a.jsonl")?;
 
     world.set_cwd("project-b");
     world.add_session(TestProvider::Claude, "claude-b.jsonl")?;

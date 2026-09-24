@@ -46,15 +46,6 @@ Provider: Codex
 
     ... and 18 more files
 
-Provider: Gemini
-  Total files scanned: 12
-  Successfully parsed: 11 (91.7%)
-  Parse failures: 1 (8.3%)
-
-  Failure breakdown:
-  ✗ empty_file: 1 files
-    Example: /Users/.../a7e6a102cb8d98a9665a366914d81fc84cb6e3264be0970c66e14288b15761d7/logs.json
-    Reason: No events extracted from file
 ```
 
 **Key Information:**
@@ -67,200 +58,39 @@ Provider: Gemini
 
 ### Step 2: Inspect Actual Data
 
-Use `agtrace doctor inspect` to view the raw content of problematic files:
+Use `agtrace doctor inspect` to view the raw content of a problematic file:
 
 ```bash
-$ agtrace doctor inspect /Users/.../logs.json --lines 20
-
-File: /Users/.../logs.json
-Lines: 1-20 (total: 23 lines)
-────────────────────────────────────────
-     1  [
-     2    {
-     3      "sessionId": "f0a689a6-b0ac-407f-afcc-4fafa9e14e8a",
-     4      "messageId": 0,
-     5      "type": "user",
-     6      "message": "add myapp directory...",
-     7      "timestamp": "2025-12-09T19:51:09.325Z"
-     8    },
-     9    {
-    10      "sessionId": "f0a689a6-b0ac-407f-afcc-4fafa9e14e8a",
-     ...
-────────────────────────────────────────
+$ agtrace doctor inspect /Users/.../rollout-2025-12-04...jsonl --lines 20
 ```
 
-**Observations:**
-- File contains an **array** of messages
-- Each message has `sessionId`, `messageId`, `type`, `message`, `timestamp`
-- No root-level `session_id`, `project_hash`, or `messages` field
+Compare the raw records with the schema structs in
+`crates/agtrace-providers/src/<provider>/schema.rs` to identify the gap
+(missing field, changed type, new record kind, etc.).
 
-### Step 3: Compare with Expected Schema
-
-Use `agtrace provider schema` to see what structure agtrace expects:
-
-```bash
-$ agtrace provider schema gemini
-
-Provider: Gemini
-Schema version: unknown
-
-Root structure (JSON - single session object):
-  GeminiSession:
-    sessionId: String
-    projectHash: String
-    startTime: String
-    lastUpdated: String
-    messages: [GeminiMessage]
-
-GeminiMessage (enum):
-  - User:
-      id: String
-      timestamp: String
-      content: String
-  ...
-```
-
-**Gap Identified:**
-- **Expected:** Root object with metadata + messages array
-- **Actual:** Direct array of messages without session metadata
-
-### Step 4: Validate Specific Files
+### Step 3: Validate Specific Files
 
 Use `agtrace doctor check` to get detailed error information and suggestions:
 
 ```bash
-$ agtrace doctor check /Users/.../logs.json
-
-File: /Users/.../logs.json
-Provider: gemini (auto-detected)
-Status: ✗ Invalid
-
-Parse error:
-  Failed to parse Gemini JSON: invalid type: map, expected a string at line 2 column 2
-
-Suggestion:
-  The field type in the schema may not match the actual data format.
-  Use 'agtrace doctor inspect /Users/.../logs.json' to examine the actual structure.
-  Use 'agtrace provider schema gemini' to see the expected format.
-
-Next steps:
-  1. Examine the actual data:
-       agtrace doctor inspect /Users/.../logs.json --lines 20
-  2. Compare with expected schema:
-       agtrace provider schema gemini
-  3. Update schema definition if needed
+$ agtrace doctor check /Users/.../rollout-2025-12-04...jsonl
 ```
 
-### Step 5: Fix the Schema
+### Step 4: Fix the Schema
 
-Based on the investigation, update the schema definition in `src/providers/gemini/schema.rs` and `src/providers/gemini/io.rs`:
+Update the provider's schema definitions (`schema.rs`) and, if needed, the
+normalization logic (`parser.rs` / `io.rs`). See [Common Patterns](#common-patterns)
+below and the [Codex SandboxPolicy example](#example-fixing-codex-sandboxpolicy)
+for a complete walkthrough.
 
-**Step 5.1: Add legacy format schema**
+### Step 5: Verify the Fix
 
-In `src/providers/gemini/schema.rs`, add a struct for the legacy format:
-
-```rust
-// Legacy format: array of simple messages
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct LegacyGeminiMessage {
-    pub session_id: String,
-    pub message_id: u32,
-    #[serde(rename = "type")]
-    pub message_type: String,
-    pub message: String,
-    pub timestamp: String,
-}
-```
-
-**Step 5.2: Update parser to handle both formats**
-
-In `src/providers/gemini/io.rs`, update `normalize_gemini_file`:
-
-```rust
-pub fn normalize_gemini_file(path: &Path) -> Result<Vec<AgentEventV1>> {
-    let text = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to read Gemini file: {}", path.display()))?;
-
-    // Try new format (session object) first
-    if let Ok(session) = serde_json::from_str::<GeminiSession>(&text) {
-        return Ok(normalize_gemini_session(&session));
-    }
-
-    // Fallback: Try legacy format (array of messages)
-    if let Ok(legacy_messages) = serde_json::from_str::<Vec<LegacyGeminiMessage>>(&text) {
-        return normalize_legacy_format(path, legacy_messages);
-    }
-
-    anyhow::bail!("Failed to parse Gemini file in any known format: {}", path.display())
-}
-
-fn normalize_legacy_format(path: &Path, messages: Vec<LegacyGeminiMessage>) -> Result<Vec<AgentEventV1>> {
-    // Extract session_id from first message
-    let session_id = messages.first()
-        .map(|m| m.session_id.clone())
-        .unwrap_or_else(|| "unknown".to_string());
-
-    // Extract project_hash from file path
-    let project_hash = extract_project_hash_from_path(path)?;
-
-    // Convert legacy messages to new format
-    let converted_messages: Vec<GeminiMessage> = messages.iter().map(|msg| {
-        GeminiMessage::User(UserMessage {
-            id: msg.message_id.to_string(),
-            timestamp: msg.timestamp.clone(),
-            content: msg.message.clone(),
-        })
-    }).collect();
-
-    // Create synthetic session
-    let session = GeminiSession {
-        session_id,
-        project_hash,
-        start_time: messages.first().map(|m| m.timestamp.clone()).unwrap_or_default(),
-        last_updated: messages.last().map(|m| m.timestamp.clone()).unwrap_or_default(),
-        messages: converted_messages,
-    };
-
-    Ok(normalize_gemini_session(&session))
-}
-```
-
-### Step 6: Verify the Fix
-
-After updating the schema, rebuild and test:
+After updating the schema, rebuild and re-run the diagnosis:
 
 ```bash
-# Rebuild
 $ cargo build --release
-
-# Test the specific file
-$ agtrace doctor check /Users/.../9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde/logs.json
-
-File: /Users/.../9126eddec7f67e038794657b4d517dd9cb5226468f30b5ee7296c27d65e84fde/logs.json
-Provider: gemini (auto-detected)
-Status: ✓ Valid
-
-Parsed successfully:
-  - Session ID: f0a689a6-b0ac-407f-afcc-4fafa9e14e8a
-  - Events extracted: 3
-  - Event breakdown:
-      UserMessage: 3
-
-# Re-run full diagnosis
-$ agtrace doctor run --provider gemini
-
-Provider: Gemini
-  Total files scanned: 12
-  Successfully parsed: 11 (91.7%)
-  Parse failures: 1 (8.3%)
-
-  Failure breakdown:
-  ✗ empty_file: 1 files
-    Example: /Users/.../a7e6a102cb8d98a9665a366914d81fc84cb6e3264be0970c66e14288b15761d7/logs.json
-    Reason: No events extracted from file
-
-# The remaining failure is a legitimately empty file, not a schema issue
+$ agtrace doctor check /Users/.../rollout-2025-12-04...jsonl
+$ agtrace doctor run --provider codex
 ```
 
 ## Common Patterns
