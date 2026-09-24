@@ -17,7 +17,7 @@ Options:
       --provider <PROVIDER>
           Explicitly specify provider (auto-detects if omitted)
           
-          [possible values: claude_code, codex, gemini]
+          [possible values: claude_code, codex]
 
   -h, --help
           Print help (see a summary with '-h')

@@ -329,7 +329,7 @@ fn print_result(_test_name: &str, size: usize, threshold: usize, verbose: bool, 
 
     if verbose {
         println!("\nResponse preview (first 500 chars):");
-        println!("{}", &response.chars().take(500).collect::<String>());
+        println!("{}", response.chars().take(500).collect::<String>());
         if response.len() > 500 {
             println!("... (truncated)");
         }

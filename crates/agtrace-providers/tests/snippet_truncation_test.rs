@@ -72,42 +72,6 @@ fn test_codex_snippet_truncation() {
     }
 }
 
-/// Test that Gemini snippet extraction truncates long messages to 200 chars
-#[test]
-fn test_gemini_snippet_truncation() {
-    use agtrace_providers::gemini::io::extract_gemini_header;
-
-    let path = PathBuf::from("tests/samples/gemini_session.json");
-
-    if !path.exists() {
-        eprintln!("Warning: Test file not found, skipping: {}", path.display());
-        return;
-    }
-
-    let header = extract_gemini_header(&path).expect("Failed to extract Gemini header");
-
-    if let Some(snippet) = header.snippet {
-        // Verify snippet is truncated (200 chars + "...(truncated)" = max 214 chars)
-        assert!(
-            snippet.chars().count() <= 214,
-            "Snippet should be truncated to max 214 chars, got {} chars",
-            snippet.chars().count()
-        );
-
-        // If original message was longer than 200 chars, it should be truncated
-        if snippet.contains("...(truncated)") {
-            assert!(
-                snippet.chars().count() > 200,
-                "Truncated snippets should have more than 200 chars (including suffix)"
-            );
-            assert!(
-                snippet.ends_with("...(truncated)"),
-                "Truncated snippets should end with '...(truncated)'"
-            );
-        }
-    }
-}
-
 /// Test UTF-8 safety: truncation should not break multi-byte characters
 #[test]
 fn test_utf8_safety_in_truncation() {

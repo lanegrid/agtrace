@@ -11,7 +11,7 @@ pub enum EventPayload {
     /// 1. User input (Trigger)
     User(UserPayload),
 
-    /// 2. Assistant reasoning/thinking process (Gemini thoughts, etc.)
+    /// 2. Assistant reasoning/thinking process (Claude thinking, Codex reasoning)
     Reasoning(ReasoningPayload),
 
     /// 3. Tool execution request (Action Request)
@@ -93,20 +93,18 @@ pub struct MessagePayload {
 //
 // ## Input Token Normalization
 //
-// All three providers (Claude, Codex, Gemini) support the decomposition:
+// All providers (Claude, Codex) support the decomposition:
 //
 //   total_input = cached + uncached
 //
 // **Provider Mappings:**
 // - Claude:  cached = cache_read_input_tokens, uncached = input_tokens
 // - Codex:   cached = cached_input_tokens, uncached = input_tokens - cached_input_tokens
-// - Gemini:  cached = cached, uncached = input
 //
 // **Specification Guarantee:**
 // This relationship is explicitly defined in each provider's API/implementation:
 // - Claude: API documentation and usage fields
 // - Codex: codex-rs `non_cached_input()` implementation
-// - Gemini: gemini-cli telemetry calculation
 //
 // ## Output Token Normalization
 //
@@ -117,13 +115,11 @@ pub struct MessagePayload {
 // **Provider Mappings:**
 // - Claude:  generated = output_tokens, reasoning = 0*, tool = 0*
 // - Codex:   generated = output_tokens, reasoning = reasoning_output_tokens, tool = 0
-// - Gemini:  generated = output, reasoning = thoughts, tool = tool
 //
 // *Note: Claude's content[].type allows parsing reasoning/tool separately (not yet implemented)
 //
 // **Specification Guarantee:**
 // - Codex: Explicit reasoning_output_tokens field in TokenUsage
-// - Gemini: Separate thoughts and tool fields in TokenUsage
 // - Claude: message.content[].type distinguishes "thinking" and "tool_use"
 //
 // ## What This Schema Does NOT Track

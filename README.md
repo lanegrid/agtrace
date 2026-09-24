@@ -11,7 +11,7 @@
 
 ## The Problem I Had
 
-When I started using AI coding agents (Claude Code, Codex, Gemini), I realized I was working with a **black box**. I couldn't see:
+When I started using AI coding agents (Claude Code, Codex), I realized I was working with a **black box**. I couldn't see:
 
 - How much of the context window was being consumed
 - What the agent was actually doing between my prompts
@@ -45,7 +45,7 @@ agtrace init      # One-time setup
 agtrace watch     # Launch dashboard in a separate terminal
 ```
 
-Works with Claude Code, Codex (OpenAI), and Gemini. Zero config — just discovers existing logs.
+Works with Claude Code and Codex (OpenAI). Zero config — just discovers existing logs.
 
 ## Give Your Agent Memory of Past Sessions
 

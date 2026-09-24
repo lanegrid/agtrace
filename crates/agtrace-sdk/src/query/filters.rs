@@ -13,8 +13,6 @@ pub enum Provider {
     ClaudeCode,
     /// GitHub Copilot Codex
     Codex,
-    /// Google Gemini
-    Gemini,
 }
 
 impl Provider {
@@ -22,7 +20,6 @@ impl Provider {
         match self {
             Provider::ClaudeCode => "claude_code",
             Provider::Codex => "codex",
-            Provider::Gemini => "gemini",
         }
     }
 }
@@ -91,7 +88,7 @@ impl EventType {
 /// Truncate a string to a maximum length, adding ellipsis if truncated.
 pub fn truncate_string(s: &str, max_len: usize) -> String {
     if s.len() > max_len {
-        format!("{}...", &s.chars().take(max_len - 3).collect::<String>())
+        format!("{}...", s.chars().take(max_len - 3).collect::<String>())
     } else {
         s.to_string()
     }

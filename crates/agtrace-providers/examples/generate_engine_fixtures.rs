@@ -33,11 +33,6 @@ fn main() -> anyhow::Result<()> {
             sample_path: "crates/agtrace-providers/tests/samples/codex_session.jsonl",
             output_file: "codex_events.json",
         },
-        ProviderConfig {
-            name: "gemini",
-            sample_path: "crates/agtrace-providers/tests/samples/gemini_session.json",
-            output_file: "gemini_events.json",
-        },
     ];
 
     for config in &configs {

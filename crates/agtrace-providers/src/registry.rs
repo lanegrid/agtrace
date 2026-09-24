@@ -20,11 +20,6 @@ const PROVIDERS: &[ProviderMetadata] = &[
         description: "Codex CLI",
         default_log_path: "~/.codex/sessions",
     },
-    ProviderMetadata {
-        name: "gemini",
-        description: "Gemini CLI",
-        default_log_path: "~/.gemini/tmp",
-    },
 ];
 
 pub fn get_all_providers() -> &'static [ProviderMetadata] {
@@ -67,11 +62,7 @@ pub fn create_adapter(name: &str) -> Result<ProviderAdapter> {
 
 /// Create all provider adapters (new trait-based architecture)
 pub fn create_all_adapters() -> Vec<ProviderAdapter> {
-    vec![
-        ProviderAdapter::claude(),
-        ProviderAdapter::codex(),
-        ProviderAdapter::gemini(),
-    ]
+    vec![ProviderAdapter::claude(), ProviderAdapter::codex()]
 }
 
 /// Detect provider adapter from path (new trait-based architecture)
@@ -80,8 +71,6 @@ pub fn detect_adapter_from_path(path: &str) -> Result<ProviderAdapter> {
         Ok(ProviderAdapter::claude())
     } else if path.contains(".codex/") {
         Ok(ProviderAdapter::codex())
-    } else if path.contains(".gemini/") {
-        Ok(ProviderAdapter::gemini())
     } else {
         Err(Error::Provider(format!(
             "Cannot detect provider from path: {}",

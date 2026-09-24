@@ -92,13 +92,13 @@ pub fn assert_projects_contain(json: &Value, expected_hashes: &[&str]) -> Result
 ///     "content": {
 ///         "sessions": [
 ///             {"source": "claude_code"},
-///             {"source": "gemini"}
+///             {"source": "codex"}
 ///         ]
 ///     }
 /// });
 ///
 /// assertions::assert_session_provider(&json, 0, "claude_code").unwrap();
-/// assertions::assert_session_provider(&json, 1, "gemini").unwrap();
+/// assertions::assert_session_provider(&json, 1, "codex").unwrap();
 /// ```
 pub fn assert_session_provider(
     json: &Value,

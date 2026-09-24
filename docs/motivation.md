@@ -2,7 +2,7 @@
 
 ## The Frustration
 
-I use AI coding agents daily. Claude Code, Codex, Gemini — they're powerful, but they're also **black boxes**.
+I use AI coding agents daily. Claude Code, Codex — they're powerful, but they're also **black boxes**.
 
 When I'm in a session, I can't see:
 - How much of the context window I've used
@@ -42,7 +42,7 @@ This isn't "memory" in the AI sense — it's **searchable execution history**. T
 
 ## How It Works
 
-1. **Auto-discovers** logs from Claude Code, Codex, Gemini
+1. **Auto-discovers** logs from Claude Code and Codex
 2. **Normalizes** different formats into unified events
 3. **Indexes** via SQLite pointers (zero-copy, minimal overhead)
 4. **Exposes** through CLI, MCP, and SDK

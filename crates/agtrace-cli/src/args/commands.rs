@@ -14,7 +14,7 @@ pub enum Commands {
         long_about = "Initialize agtrace — run this once to get started.
 
 This command will:
-  • Auto-detect installed providers (Claude Code, Codex, Gemini)
+  • Auto-detect installed providers (Claude Code, Codex)
   • Create the local database (system data directory, e.g., ~/Library/Application Support/agtrace on macOS)
   • Scan and index existing session logs
 
@@ -68,7 +68,7 @@ Use --refresh to force a re-scan of all logs."
         command: SessionCommand,
     },
 
-    #[command(about = "Configure log sources (Claude Code, Codex, Gemini)")]
+    #[command(about = "Configure log sources (Claude Code, Codex)")]
     Provider {
         #[command(subcommand)]
         command: ProviderCommand,
@@ -157,7 +157,7 @@ pub enum McpCommand {
         about = "Start MCP server for agent self-reflection",
         long_about = "Start the Model Context Protocol (MCP) server over stdio.
 
-This enables AI coding assistants (Claude Code, Codex, Gemini CLI, Claude Desktop) to query
+This enables AI coding assistants (Claude Code, Codex, Claude Desktop) to query
 their own execution history, analyze failures, search event payloads, and debug behavior.
 
 The server exposes these tools:
@@ -332,7 +332,6 @@ pub enum ProviderCommand {
 Supported providers:
   - Claude Code (~/.claude/projects)
   - Codex (~/.codex/sessions)
-  - Gemini (~/.gemini/tmp)
 
 Detected providers are saved to the configuration file."
     )]
@@ -350,7 +349,7 @@ Use this when:
   - You want to enable/disable a specific provider"
     )]
     Set {
-        #[arg(help = "Provider name (claude_code, codex, gemini)")]
+        #[arg(help = "Provider name (claude_code, codex)")]
         provider: String,
 
         #[arg(long, help = "Path to the provider's log directory")]
@@ -508,7 +507,7 @@ Glob patterns are auto-detected when * or ? is present.",
         #[arg(long, help = "Max matches [default: 10]")]
         limit: Option<usize>,
 
-        #[arg(long, help = "Filter by provider (claude_code, codex, gemini)")]
+        #[arg(long, help = "Filter by provider (claude_code, codex)")]
         provider: Option<String>,
 
         #[arg(long, help = "Show JSON output")]

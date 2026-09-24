@@ -2,7 +2,7 @@
 source: crates/agtrace-cli/tests/help_snapshots.rs
 expression: help
 ---
-Monitor and analyze sessions from Claude Code, Codex, and Gemini.
+Monitor and analyze sessions from Claude Code and Codex.
 Works like 'top' + 'tail -f' for AI agents — 100% local, no cloud.
 
 Usage: agtrace [OPTIONS] [COMMAND]
@@ -12,7 +12,7 @@ Commands:
   watch     Monitor live agent sessions in real-time (TUI dashboard)
   mcp       Enable agent self-reflection via MCP (Model Context Protocol)
   session   View and analyze past sessions
-  provider  Configure log sources (Claude Code, Codex, Gemini)
+  provider  Configure log sources (Claude Code, Codex)
   sessions  List recent sessions (shorthand for 'session list')
   lab       Advanced analysis tools (grep, export, stats)
   index     Manage the session index (update, rebuild, vacuum)

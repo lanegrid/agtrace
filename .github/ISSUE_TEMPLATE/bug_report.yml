@@ -54,7 +54,6 @@ body:
       options:
         - Claude Code
         - Codex
-        - Gemini
         - Other
         - Not applicable
     validations:

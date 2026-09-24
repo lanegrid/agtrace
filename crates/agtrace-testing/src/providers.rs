@@ -11,8 +11,6 @@
 pub enum TestProvider {
     /// Claude Code provider
     Claude,
-    /// Gemini provider
-    Gemini,
     /// Codex provider
     Codex,
 }
@@ -24,12 +22,11 @@ impl TestProvider {
     /// ```
     /// # use agtrace_testing::providers::TestProvider;
     /// assert_eq!(TestProvider::Claude.name(), "claude_code");
-    /// assert_eq!(TestProvider::Gemini.name(), "gemini");
+    /// assert_eq!(TestProvider::Codex.name(), "codex");
     /// ```
     pub fn name(&self) -> &'static str {
         match self {
             TestProvider::Claude => "claude_code",
-            TestProvider::Gemini => "gemini",
             TestProvider::Codex => "codex",
         }
     }
@@ -40,7 +37,6 @@ impl TestProvider {
     pub fn adapter(&self) -> agtrace_providers::ProviderAdapter {
         match self {
             TestProvider::Claude => agtrace_providers::ProviderAdapter::claude(),
-            TestProvider::Gemini => agtrace_providers::ProviderAdapter::gemini(),
             TestProvider::Codex => agtrace_providers::ProviderAdapter::codex(),
         }
     }
@@ -48,11 +44,10 @@ impl TestProvider {
     /// Get the default log directory name for this provider.
     ///
     /// This is the directory name relative to the temp root where
-    /// the provider's logs are stored (e.g., `.claude`, `.gemini`).
+    /// the provider's logs are stored (e.g., `.claude`, `.codex`).
     pub fn default_log_dir_name(&self) -> &'static str {
         match self {
             TestProvider::Claude => ".claude",
-            TestProvider::Gemini => ".gemini",
             TestProvider::Codex => ".codex",
         }
     }
@@ -64,18 +59,13 @@ impl TestProvider {
     pub fn sample_filename(&self) -> &'static str {
         match self {
             TestProvider::Claude => "claude_session.jsonl",
-            TestProvider::Gemini => "gemini_session.json",
             TestProvider::Codex => "codex_session.jsonl",
         }
     }
 
     /// Get all supported providers.
     pub fn all() -> &'static [TestProvider] {
-        &[
-            TestProvider::Claude,
-            TestProvider::Gemini,
-            TestProvider::Codex,
-        ]
+        &[TestProvider::Claude, TestProvider::Codex]
     }
 }
 

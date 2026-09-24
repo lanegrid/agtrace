@@ -1,7 +1,7 @@
 //! Provider efficiency comparison example
 //!
 //! This example demonstrates:
-//! - Computing efficiency metrics for each provider (Claude Code, Codex, Gemini)
+//! - Computing efficiency metrics for each provider (Claude Code, Codex)
 //! - Measuring tool call parallelization, diversity, and success rates
 //! - Analyzing implementation styles (Read/Write/Execute ratios)
 //! - Comparing token efficiency and session productivity

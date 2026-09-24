@@ -90,7 +90,7 @@ Check these common issues:
 
 2. **Session not started yet** - If the agent hasn't created any log files yet, `watch` will wait in "waiting mode" until it detects a session.
 
-3. **Provider not supported** - Ensure you're using a supported provider (Claude Code, Codex, or Gemini).
+3. **Provider not supported** - Ensure you're using a supported provider (Claude Code or Codex).
 
 ### How do I find a session ID?
 

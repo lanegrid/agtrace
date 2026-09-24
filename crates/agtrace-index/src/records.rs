@@ -25,7 +25,7 @@ pub struct SessionRecord {
     pub project_hash: ProjectHash,
     /// Git repository hash for worktree support (None for non-git directories).
     pub repository_hash: Option<RepositoryHash>,
-    /// Provider name (claude, codex, gemini).
+    /// Provider name (claude, codex).
     pub provider: String,
     /// Session start timestamp (ISO 8601).
     pub start_ts: Option<String>,
@@ -67,7 +67,7 @@ pub struct LogFileRecord {
 pub struct SessionSummary {
     /// Session UUID.
     pub id: String,
-    /// Provider name (claude, codex, gemini).
+    /// Provider name (claude, codex).
     pub provider: String,
     /// Project this session belongs to.
     pub project_hash: ProjectHash,

@@ -94,7 +94,7 @@ agtrace watch
 
 **4. Start your AI agent (same directory):**
 ```bash
-claude  # or codex, gemini, etc.
+claude  # or codex
 ```
 
 **5. Explore session history:**

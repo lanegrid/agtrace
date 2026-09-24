@@ -1,6 +1,6 @@
 // NOTE: Architecture decision - Provider-specific model definitions
 // Model specifications are distributed across provider modules (claude/models.rs,
-// codex/models.rs, gemini/models.rs) rather than centralized here because:
+// codex/models.rs) rather than centralized here because:
 // 1. Maintainability: Each provider can be updated independently without touching other providers
 // 2. Extensibility: Adding a new provider only requires creating a new module and adding one line here
 // 3. Separation of concerns: Provider-specific knowledge stays with the provider
@@ -8,7 +8,6 @@
 
 use crate::claude::models as claude_models;
 use crate::codex::models as codex_models;
-use crate::gemini::models as gemini_models;
 use agtrace_types::{ModelLimitResolver, ModelSpec};
 use std::collections::HashMap;
 
@@ -42,7 +41,6 @@ impl ModelLimitResolver for ProviderModelLimitResolver {
 /// Example:
 /// - "claude-sonnet-4-5-20250929" matches "claude-sonnet-4-5" (200K)
 /// - "gpt-5.1-codex-max-2025" matches "gpt-5.1-codex-max" (400K)
-/// - "gemini-2.5-flash-exp" matches "gemini-2.5-flash" (1M)
 fn resolve_model_limit(model_name: &str) -> Option<ModelSpec> {
     // NOTE: Why aggregate on every call instead of using lazy_static?
     // The aggregation overhead is negligible (< 100 entries, ~microseconds) compared to
@@ -51,7 +49,6 @@ fn resolve_model_limit(model_name: &str) -> Option<ModelSpec> {
     let all_limits: HashMap<&str, (u64, f64)> = [
         claude_models::get_model_limits(),
         codex_models::get_model_limits(),
-        gemini_models::get_model_limits(),
     ]
     .into_iter()
     .flat_map(|map| map.into_iter())
@@ -165,34 +162,6 @@ mod tests {
             resolve_model_limit("gpt-5"),
             Some(ModelSpec {
                 max_tokens: 400_000,
-                compaction_buffer_pct: 0.0
-            })
-        );
-    }
-
-    #[test]
-    fn test_gemini_models() {
-        // Gemini 2.5 series
-        assert_eq!(
-            resolve_model_limit("gemini-2.5-pro"),
-            Some(ModelSpec {
-                max_tokens: 1_048_576,
-                compaction_buffer_pct: 0.0
-            })
-        );
-        assert_eq!(
-            resolve_model_limit("gemini-2.5-flash"),
-            Some(ModelSpec {
-                max_tokens: 1_048_576,
-                compaction_buffer_pct: 0.0
-            })
-        );
-
-        // Gemini 2.0 series
-        assert_eq!(
-            resolve_model_limit("gemini-2.0-flash"),
-            Some(ModelSpec {
-                max_tokens: 1_048_576,
                 compaction_buffer_pct: 0.0
             })
         );

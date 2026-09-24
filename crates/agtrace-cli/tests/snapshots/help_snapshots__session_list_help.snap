@@ -16,7 +16,7 @@ Options:
       --provider <PROVIDER>
           Filter by provider
           
-          [possible values: claude_code, codex, gemini]
+          [possible values: claude_code, codex]
 
       --limit <LIMIT>
           Maximum number of sessions to show

@@ -274,7 +274,7 @@ mod tests {
             id: "session3".to_string(),
             project_hash: project_hash.clone(),
             repository_hash: None,
-            provider: "gemini".to_string(),
+            provider: "other_provider".to_string(),
             start_ts: Some("2024-01-03T00:00:00Z".to_string()),
             end_ts: None,
             snippet: Some("test3".to_string()),
@@ -293,10 +293,15 @@ mod tests {
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].provider, "codex");
 
-        let sessions =
-            db.list_sessions(None, Some("gemini"), SessionOrder::default(), None, false)?;
+        let sessions = db.list_sessions(
+            None,
+            Some("other_provider"),
+            SessionOrder::default(),
+            None,
+            false,
+        )?;
         assert_eq!(sessions.len(), 1);
-        assert_eq!(sessions[0].provider, "gemini");
+        assert_eq!(sessions[0].provider, "other_provider");
 
         let sessions = db.list_sessions(
             None,

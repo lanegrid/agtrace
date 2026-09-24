@@ -19,7 +19,7 @@ Options:
           Filter by provider
           
           [default: all]
-          [possible values: claude_code, codex, gemini, all]
+          [possible values: claude_code, codex, all]
 
   -h, --help
           Print help (see a summary with '-h')

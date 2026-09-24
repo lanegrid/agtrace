@@ -20,7 +20,7 @@
 // - Never lose track of sessions due to temporary schema incompatibility
 //
 // Why Exact-Match Project Isolation (not hierarchical)?
-// - Gemini uses sha256(project_root), different hash per directory level
+// - Project hash is sha256(project_root), different hash per directory level
 // - Path-based hierarchy (/project/subdir as child of /project) would be inconsistent across providers
 // - Simpler mental model: one directory = one project
 // - Trade-off: Can't view parent + child sessions together (use --all-projects if needed)

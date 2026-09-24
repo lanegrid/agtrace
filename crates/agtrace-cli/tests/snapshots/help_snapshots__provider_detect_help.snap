@@ -7,7 +7,6 @@ Scan the system for installed AI agent tools and automatically configure their l
 Supported providers:
   - Claude Code (~/.claude/projects)
   - Codex (~/.codex/sessions)
-  - Gemini (~/.gemini/tmp)
 
 Detected providers are saved to the configuration file.
 

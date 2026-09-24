@@ -1,6 +1,6 @@
 use crate::{Error, Result};
 use agtrace_index::Database;
-use agtrace_providers::{normalize_claude_file, normalize_codex_file, normalize_gemini_file};
+use agtrace_providers::{normalize_claude_file, normalize_codex_file};
 use agtrace_types::AgentEvent;
 use std::path::Path;
 
@@ -36,8 +36,6 @@ impl<'a> SessionRepository<'a> {
                 normalize_claude_file(path)
             } else if log_file.path.contains(".codex/") {
                 normalize_codex_file(path)
-            } else if log_file.path.contains(".gemini/") {
-                normalize_gemini_file(path)
             } else {
                 return Err(Error::InvalidOperation(format!(
                     "Cannot detect provider from path: {}",

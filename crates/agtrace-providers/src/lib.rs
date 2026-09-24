@@ -7,13 +7,9 @@ pub mod traits;
 // Provider implementations
 pub mod claude;
 pub mod codex;
-pub mod gemini;
 
 // Event builder
 pub mod builder;
-
-// Tool call normalization
-pub mod normalization;
 
 // Provider registry
 pub mod registry;
@@ -37,7 +33,6 @@ pub use traits::{
 // Provider normalize functions
 pub use claude::normalize_claude_file;
 pub use codex::normalize_codex_file;
-pub use gemini::normalize_gemini_file;
 
 // MCP utilities (provider-specific namespaces)
 pub mod mcp {
@@ -59,10 +54,6 @@ pub use registry::{
 
 // Tool analyzer
 pub use tool_analyzer::{classify_common, extract_common_summary, truncate};
-
-// Normalization
-#[allow(deprecated)]
-pub use normalization::normalize_tool_call;
 
 // Error types
 pub use error::{Error, Result};

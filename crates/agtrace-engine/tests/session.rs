@@ -21,17 +21,6 @@ fn load_events_from_fixture(fixture_name: &str) -> Vec<AgentEvent> {
 }
 
 #[test]
-fn test_gemini_session_assembly() {
-    let events = load_events_from_fixture("gemini_events.json");
-
-    let session = assemble_session(&events).expect("Failed to assemble session");
-
-    assert!(!session.turns.is_empty(), "Expected at least one turn");
-
-    insta::assert_json_snapshot!("gemini_session_assembly", session);
-}
-
-#[test]
 fn test_codex_session_assembly() {
     let events = load_events_from_fixture("codex_events.json");
 

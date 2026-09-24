@@ -20,7 +20,7 @@ use clap::Parser;
 #[derive(Parser)]
 #[command(name = "agtrace")]
 #[command(
-    about = "Monitor and analyze sessions from Claude Code, Codex, and Gemini.\nWorks like 'top' + 'tail -f' for AI agents — 100% local, no cloud."
+    about = "Monitor and analyze sessions from Claude Code and Codex.\nWorks like 'top' + 'tail -f' for AI agents — 100% local, no cloud."
 )]
 #[command(after_help = "Quick Start:\n  \
                         agtrace init      # Run once to set up\n  \

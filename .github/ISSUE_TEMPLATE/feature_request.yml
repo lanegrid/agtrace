@@ -42,7 +42,7 @@ body:
       options:
         - CLI (agtrace watch, list, etc.)
         - SDK (Rust library)
-        - Provider support (Claude/Codex/Gemini)
+        - Provider support (Claude/Codex)
         - Documentation
         - Other
     validations:

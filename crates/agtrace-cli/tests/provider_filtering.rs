@@ -22,18 +22,18 @@ fn test_index_update_without_provider_flag_indexes_all_providers() -> Result<()>
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     // When: Run index update without --provider flag
     let result = world.run(&["index", "update", "--format", "json"])?;
 
     // Then: Both providers are indexed
     // TODO: Currently the --provider parameter is ignored in the implementation
-    // Expected behavior: Should index sessions from both Claude and Gemini
+    // Expected behavior: Should index sessions from both Claude and Codex
     assert!(result.success(), "Command should succeed");
 
     // Verify sessions are indexed
@@ -53,18 +53,18 @@ fn test_index_update_with_provider_all_indexes_all_providers() -> Result<()> {
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     // When: Run index update with --provider all
     let result = world.run(&["index", "update", "--provider", "all", "--format", "json"])?;
 
     // Then: Both providers are indexed
     // TODO: Currently the --provider parameter is ignored in the implementation
-    // Expected behavior: Should index sessions from both Claude and Gemini
+    // Expected behavior: Should index sessions from both Claude and Codex
     assert!(result.success(), "Command should succeed");
 
     // Verify sessions are indexed
@@ -83,11 +83,11 @@ fn test_index_update_with_provider_claude_code_indexes_only_claude() -> Result<(
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     // When: Run index update with --provider claude_code
     let result = world.run(&[
@@ -114,37 +114,30 @@ fn test_index_update_with_provider_claude_code_indexes_only_claude() -> Result<(
 }
 
 #[test]
-fn test_index_update_with_provider_gemini_indexes_only_gemini() -> Result<()> {
+fn test_index_update_with_provider_codex_indexes_only_codex() -> Result<()> {
     // Given: Multiple providers with sessions
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
-    // When: Run index update with --provider gemini
-    let result = world.run(&[
-        "index",
-        "update",
-        "--provider",
-        "gemini",
-        "--format",
-        "json",
-    ])?;
+    // When: Run index update with --provider codex
+    let result = world.run(&["index", "update", "--provider", "codex", "--format", "json"])?;
 
-    // Then: Only Gemini provider is indexed
+    // Then: Only Codex provider is indexed
     assert!(result.success(), "Command should succeed");
 
-    // Verify only Gemini sessions are indexed (use --no-auto-refresh to avoid re-indexing)
+    // Verify only Codex sessions are indexed (use --no-auto-refresh to avoid re-indexing)
     let list_result = world.run(&["session", "list", "--no-auto-refresh", "--format", "json"])?;
     assert!(list_result.success());
     let json = list_result.json()?;
 
     assertions::assert_session_count(&json, 1)?;
-    assertions::assert_all_sessions_from_provider(&json, "gemini")?;
+    assertions::assert_all_sessions_from_provider(&json, "codex")?;
 
     Ok(())
 }
@@ -155,11 +148,11 @@ fn test_index_rebuild_with_provider_filter_rebuilds_only_specified_provider() ->
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     // First index all
     world.run(&["init"])?;
@@ -183,7 +176,7 @@ fn test_index_rebuild_with_provider_filter_rebuilds_only_specified_provider() ->
     assert!(list_result.success());
     let json = list_result.json()?;
 
-    // Both sessions should still be present (Gemini was not removed)
+    // Both sessions should still be present (Codex was not removed)
     assertions::assert_session_count(&json, 2)?;
 
     Ok(())
@@ -199,11 +192,11 @@ fn test_session_list_without_source_shows_all_providers() -> Result<()> {
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
@@ -224,11 +217,11 @@ fn test_session_list_with_source_claude_code_shows_only_claude() -> Result<()> {
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
@@ -252,34 +245,27 @@ fn test_session_list_with_source_claude_code_shows_only_claude() -> Result<()> {
 }
 
 #[test]
-fn test_session_list_with_source_gemini_shows_only_gemini() -> Result<()> {
+fn test_session_list_with_source_codex_shows_only_codex() -> Result<()> {
     // Given: Multiple providers with sessions
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
-    // When: List with --provider gemini
-    let result = world.run(&[
-        "session",
-        "list",
-        "--provider",
-        "gemini",
-        "--format",
-        "json",
-    ])?;
+    // When: List with --provider codex
+    let result = world.run(&["session", "list", "--provider", "codex", "--format", "json"])?;
 
-    // Then: Only Gemini sessions are shown
+    // Then: Only Codex sessions are shown
     assert!(result.success(), "Command should succeed");
     let json = result.json()?;
     assertions::assert_session_count(&json, 1)?;
-    assertions::assert_all_sessions_from_provider(&json, "gemini")?;
+    assertions::assert_all_sessions_from_provider(&json, "codex")?;
 
     Ok(())
 }
@@ -295,15 +281,15 @@ fn test_watch_without_provider_watches_latest_from_any_provider() -> Result<()> 
 
     // Given: Multiple providers with sessions at different times
     // Claude session: 2025-12-09T19:47:42.987Z (older)
-    // Gemini session: 2025-12-09T19:51:29.418Z (newer, ~4 min later)
+    // Codex session: 2025-12-09T19:55:16.336Z (newer, ~8 min later)
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
@@ -314,12 +300,12 @@ fn test_watch_without_provider_watches_latest_from_any_provider() -> Result<()> 
         .as_array()
         .expect("Should have sessions array");
 
-    // Find the Gemini session (should be the most recent based on timestamp)
-    let gemini_session = sessions
+    // Find the Codex session (should be the most recent based on timestamp)
+    let codex_session = sessions
         .iter()
-        .find(|s| s["provider"].as_str() == Some("gemini"))
-        .expect("Should have Gemini session");
-    let gemini_id = gemini_session["id"].as_str().expect("Should have ID");
+        .find(|s| s["provider"].as_str() == Some("codex"))
+        .expect("Should have Codex session");
+    let codex_id = codex_session["id"].as_str().expect("Should have ID");
 
     // When: Run watch without --provider in console mode
     world.set_cwd("my-project");
@@ -331,15 +317,15 @@ fn test_watch_without_provider_watches_latest_from_any_provider() -> Result<()> 
 
     let mut proc = BackgroundProcess::spawn_piped(cmd)?;
 
-    // Then: Should attach to the most recent session (Gemini)
+    // Then: Should attach to the most recent session (Codex)
     let stdout = proc.stdout().expect("Should have stdout");
     let reader = BufReader::new(stdout);
 
-    let mut found_gemini_attachment = false;
+    let mut found_codex_attachment = false;
     for line in reader.lines().take(10) {
         let line = line?;
-        if line.contains("Attached") && line.contains(&gemini_id[..8]) {
-            found_gemini_attachment = true;
+        if line.contains("Attached") && line.contains(&codex_id[..8]) {
+            found_codex_attachment = true;
             break;
         }
     }
@@ -348,8 +334,8 @@ fn test_watch_without_provider_watches_latest_from_any_provider() -> Result<()> 
     proc.kill()?;
 
     assert!(
-        found_gemini_attachment,
-        "Should attach to most recent session (Gemini), not first provider (Claude)"
+        found_codex_attachment,
+        "Should attach to most recent session (Codex), not first provider (Claude)"
     );
 
     Ok(())
@@ -361,11 +347,11 @@ fn test_watch_with_provider_claude_code_watches_only_claude_sessions() -> Result
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
@@ -392,11 +378,11 @@ fn test_lab_grep_without_source_searches_all_providers() -> Result<()> {
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
@@ -405,7 +391,7 @@ fn test_lab_grep_without_source_searches_all_providers() -> Result<()> {
 
     // Then: Searches across all providers
     // TODO: Verify results include sessions from multiple providers
-    // Expected behavior: Should search in both Claude and Gemini sessions
+    // Expected behavior: Should search in both Claude and Codex sessions
     assert!(result.success(), "Command should succeed");
 
     Ok(())
@@ -417,11 +403,11 @@ fn test_lab_grep_with_source_claude_code_searches_only_claude() -> Result<()> {
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
@@ -445,33 +431,33 @@ fn test_lab_grep_with_source_claude_code_searches_only_claude() -> Result<()> {
 }
 
 #[test]
-fn test_lab_grep_with_source_gemini_searches_only_gemini() -> Result<()> {
+fn test_lab_grep_with_source_codex_searches_only_codex() -> Result<()> {
     // Given: Multiple providers with sessions
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     world.run(&["init"])?;
 
-    // When: Grep with --provider gemini
+    // When: Grep with --provider codex
     let result = world.run(&[
         "lab",
         "grep",
         "Read",
         "--provider",
-        "gemini",
+        "codex",
         "--limit",
         "10",
     ])?;
 
-    // Then: Searches only Gemini sessions
-    // TODO: Verify results only include Gemini sessions
-    // Expected behavior: Should search only in Gemini sessions
+    // Then: Searches only Codex sessions
+    // TODO: Verify results only include Codex sessions
+    // Expected behavior: Should search only in Codex sessions
     assert!(result.success(), "Command should succeed");
 
     Ok(())
@@ -483,26 +469,19 @@ fn test_lab_grep_with_source_gemini_searches_only_gemini() -> Result<()> {
 
 #[test]
 fn test_provider_filter_with_disabled_provider_shows_no_sessions() -> Result<()> {
-    // Given: Claude provider enabled but Gemini disabled
+    // Given: Claude provider enabled but Codex disabled
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    // Gemini is NOT enabled
+    // Codex is NOT enabled
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
 
     world.run(&["init"])?;
 
-    // When: List with --provider gemini (disabled provider)
-    let result = world.run(&[
-        "session",
-        "list",
-        "--provider",
-        "gemini",
-        "--format",
-        "json",
-    ])?;
+    // When: List with --provider codex (disabled provider)
+    let result = world.run(&["session", "list", "--provider", "codex", "--format", "json"])?;
 
     // Then: No sessions are shown
     assert!(result.success(), "Command should succeed");
@@ -518,11 +497,11 @@ fn test_index_with_provider_filter_skips_other_providers() -> Result<()> {
     let mut world = TestWorld::new().with_project("my-project");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
     world.set_cwd("my-project");
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
-    world.add_session(TestProvider::Gemini, "session-gemini.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
     // When: Index with --provider claude_code
     let result = world.run(&[
@@ -556,12 +535,12 @@ fn test_combined_filters_provider_and_project() -> Result<()> {
         .with_project("project-b");
 
     world.enable_provider(TestProvider::Claude)?;
-    world.enable_provider(TestProvider::Gemini)?;
+    world.enable_provider(TestProvider::Codex)?;
 
-    // Project A: Claude and Gemini sessions
+    // Project A: Claude and Codex sessions
     world.set_cwd("project-a");
     world.add_session(TestProvider::Claude, "claude-a.jsonl")?;
-    world.add_session(TestProvider::Gemini, "gemini-a.json")?;
+    world.add_session(TestProvider::Codex, "rollout-codex-a.jsonl")?;
 
     // Project B: Claude session only
     world.set_cwd("project-b");
