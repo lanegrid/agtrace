@@ -1,0 +1,1 @@
+{"agentType": "general-purpose", "description": "Count source files", "toolUseId": "toolu_synthetic_spawn_async", "spawnDepth": 1, "model": "opus", "requestShape": "background", "requestNonInteractive": true}

@@ -1,0 +1,95 @@
+---
+source: crates/agtrace-providers/tests/claude_fixture_snapshots.rs
+expression: "json!({\n    \"header\": header_json(h), \"diagnostics\": diagnostics, \"events\": events\n})"
+---
+{
+  "diagnostics": {
+    "decoded": 3,
+    "ignored_kinds": {
+      "fork-context-ref": 1
+    },
+    "invalid_json": 0,
+    "lines": 3,
+    "samples": [],
+    "schema_mismatch": {},
+    "unknown_kinds": {}
+  },
+  "events": [
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000002",
+      "content": {
+        "source": "assistant_message",
+        "to": "claude-opus-5"
+      },
+      "id": "14d25ff5-2564-5066-9820-b4e49d79b09f",
+      "origin": {
+        "byte_offset": 725,
+        "line": 2,
+        "sub": 0
+      },
+      "parent_id": null,
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:15Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000002",
+      "content": {
+        "text": "Docs look fine."
+      },
+      "id": "0d3a0386-d2eb-56ad-a8db-85a219b73bb8",
+      "origin": {
+        "byte_offset": 725,
+        "line": 2,
+        "sub": 1
+      },
+      "parent_id": "14d25ff5-2564-5066-9820-b4e49d79b09f",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:15Z",
+      "type": "message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000002",
+      "content": {
+        "dedupe_key": "msg_synthetic_f1",
+        "input": {
+          "cache_read": 9900,
+          "cache_write": 20,
+          "uncached": 3
+        },
+        "model": "claude-opus-5",
+        "output": {
+          "generated": 6,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "d15dc8d6-0290-5878-bb8a-b28dc32687c7",
+      "origin": {
+        "byte_offset": 725,
+        "line": 2,
+        "sub": 2
+      },
+      "parent_id": "0d3a0386-d2eb-56ad-a8db-85a219b73bb8",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:15Z",
+      "type": "token_usage"
+    }
+  ],
+  "header": {
+    "agent_type": "fork",
+    "cwd": "/work/demo-project",
+    "depth": 1,
+    "id": "claude:00000000-0000-4000-8000-000000000001/a0000000000000002",
+    "kind": "fork",
+    "name": "docs-fork",
+    "native_agent_id": "a0000000000000002",
+    "native_session_id": "00000000-0000-4000-8000-000000000001",
+    "parent": "claude:00000000-0000-4000-8000-000000000001",
+    "root": "claude:00000000-0000-4000-8000-000000000001",
+    "spawn_call_id": "toolu_synthetic_spawn_fork",
+    "started_at": "2026-09-20T10:00:09Z",
+    "team": null,
+    "title": null
+  }
+}

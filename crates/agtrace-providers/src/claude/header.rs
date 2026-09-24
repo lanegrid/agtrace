@@ -1,10 +1,11 @@
-//! Lenient Claude Code file header: agent identity from path + first records.
+//! Lenient Claude Code file header: agent identity from path + first records (+ sidecars).
 
 use agtrace_types::{AgentId, AgentKind, AgentRef};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
+use super::sidecar::read_subagent_meta;
 use crate::Result;
 use crate::provider::{FileHeader, read_head_lines};
 
@@ -35,6 +36,12 @@ struct HeadScan {
     team_name: Option<String>,
     agent_name: Option<String>,
     first_type: Option<String>,
+    /// `agent-setting.agentSetting` (teammate agent type; first line of teammate files).
+    agent_setting: Option<String>,
+    /// Latest `agent-name.agentName` within the header window.
+    display_name: Option<String>,
+    /// Latest `ai-title.aiTitle` within the header window.
+    ai_title: Option<String>,
     lines: usize,
 }
 
@@ -82,6 +89,22 @@ fn scan_head(lines: &[String]) -> HeadScan {
             scan.agent_name = str_field(&v, "agentName");
         }
         let kind = v.get("type").and_then(Value::as_str).unwrap_or("");
+        match kind {
+            "agent-setting" if scan.agent_setting.is_none() => {
+                scan.agent_setting = str_field(&v, "agentSetting");
+            }
+            "agent-name" => {
+                if let Some(name) = str_field(&v, "agentName") {
+                    scan.display_name = Some(name);
+                }
+            }
+            "ai-title" => {
+                if let Some(title) = str_field(&v, "aiTitle") {
+                    scan.ai_title = Some(title);
+                }
+            }
+            _ => {}
+        }
         let is_conversation = kind == "user" || kind == "assistant";
         if is_conversation && scan.session_id.is_some() && scan.cwd.is_some() {
             break;
@@ -126,7 +149,9 @@ pub fn read_claude_header(path: &Path) -> Result<Option<FileHeader>> {
                 session_id.clone(),
                 path.to_path_buf(),
             );
-            r.kind = if scan.first_type.as_deref() == Some("fork-context-ref") {
+            // Sidecar is optional (may not be written yet); the graph retries it.
+            let meta = read_subagent_meta(path).unwrap_or_default();
+            r.kind = if scan.first_type.as_deref() == Some("fork-context-ref") || meta.is_fork {
                 AgentKind::Fork
             } else {
                 AgentKind::Subagent
@@ -134,7 +159,10 @@ pub fn read_claude_header(path: &Path) -> Result<Option<FileHeader>> {
             r.root = parent.clone();
             r.parent = Some(parent);
             r.native_agent_id = Some(aid.clone());
-            r.depth = 1;
+            r.agent_type = meta.agent_type;
+            r.name = meta.name.or(meta.description);
+            r.spawn_call_id = meta.tool_use_id;
+            r.depth = meta.spawn_depth.unwrap_or(1);
             r
         }
         None => {
@@ -148,6 +176,9 @@ pub fn read_claude_header(path: &Path) -> Result<Option<FileHeader>> {
                 r.native_agent_id = Some(format!("{name}@{team}"));
                 r.team = Some(team.clone());
                 r.name = Some(name.clone());
+                r.agent_type = scan.agent_setting.clone();
+            } else {
+                r.name = scan.display_name.clone().or_else(|| scan.ai_title.clone());
             }
             r
         }
@@ -158,7 +189,7 @@ pub fn read_claude_header(path: &Path) -> Result<Option<FileHeader>> {
     Ok(Some(FileHeader {
         project_cwd: agent.cwd.clone(),
         agent,
-        title: None,
+        title: scan.ai_title,
     }))
 }
 
@@ -231,6 +262,46 @@ mod tests {
             h.agent.parent.as_ref().map(|p| p.as_str()),
             Some("claude:00000000-0000-4000-8000-000000000001")
         );
+    }
+
+    #[test]
+    fn subagent_identity_from_meta_sidecar() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write(
+            dir.path(),
+            "proj/00000000-0000-4000-8000-000000000001/subagents/agent-a0000000000000002.jsonl",
+            &format!("{USER}\n"),
+        );
+        // Without meta: still an agent (meta may be written later).
+        let h = read_claude_header(&path).unwrap().unwrap();
+        assert_eq!(h.agent.kind, AgentKind::Subagent);
+        assert_eq!(h.agent.spawn_call_id, None);
+        std::fs::write(
+            path.with_extension("meta.json"),
+            r#"{"agentType":"fork","description":"d","toolUseId":"toolu_synthetic_9","spawnDepth":2,"isFork":true,"name":"docs-fork"}"#,
+        )
+        .unwrap();
+        let h = read_claude_header(&path).unwrap().unwrap();
+        assert_eq!(h.agent.kind, AgentKind::Fork);
+        assert_eq!(h.agent.spawn_call_id.as_deref(), Some("toolu_synthetic_9"));
+        assert_eq!(h.agent.agent_type.as_deref(), Some("fork"));
+        assert_eq!(h.agent.name.as_deref(), Some("docs-fork"));
+        assert_eq!(h.agent.depth, 2);
+    }
+
+    #[test]
+    fn main_name_and_title_from_state_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = write(
+            dir.path(),
+            "proj/m.jsonl",
+            &format!(
+                "{{\"type\":\"ai-title\",\"aiTitle\":\"Old\"}}\n{{\"type\":\"ai-title\",\"aiTitle\":\"New\"}}\n{USER}\n"
+            ),
+        );
+        let h = read_claude_header(&path).unwrap().unwrap();
+        assert_eq!(h.title.as_deref(), Some("New"));
+        assert_eq!(h.agent.name.as_deref(), Some("New"));
     }
 
     #[test]

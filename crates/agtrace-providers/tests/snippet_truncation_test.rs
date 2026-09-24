@@ -3,7 +3,7 @@ use std::path::PathBuf;
 /// Test that Claude snippet extraction truncates long messages to 200 chars
 #[test]
 fn test_claude_snippet_truncation() {
-    use agtrace_providers::claude::io::extract_claude_header;
+    use agtrace_providers::claude::extract_claude_header;
 
     let path = PathBuf::from("tests/samples/claude_session.jsonl");
 

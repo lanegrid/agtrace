@@ -1,0 +1,19 @@
+{
+  "pid": 4242,
+  "sessionId": "00000000-0000-4000-8000-000000000001",
+  "cwd": "/work/demo-project",
+  "startedAt": 1789898400000,
+  "procStart": "synthetic",
+  "version": "2.1.281",
+  "peerProtocol": 1,
+  "peerFeatures": [
+    "notify_idle"
+  ],
+  "kind": "interactive",
+  "entrypoint": "cli",
+  "name": "demo-lead",
+  "nameSource": "auto",
+  "status": "busy",
+  "updatedAt": 1789898460000,
+  "statusUpdatedAt": 1789898460000
+}

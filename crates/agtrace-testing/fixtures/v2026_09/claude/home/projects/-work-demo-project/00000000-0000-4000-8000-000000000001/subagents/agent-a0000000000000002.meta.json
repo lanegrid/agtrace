@@ -1,0 +1,1 @@
+{"agentType": "fork", "description": "Fork: check docs", "toolUseId": "toolu_synthetic_spawn_fork", "spawnDepth": 1, "model": "opus", "isFork": true, "name": "docs-fork"}
