@@ -1,10 +1,252 @@
+//! Claude Code file discovery.
+//!
+//! - Project dir = `<projects root>/<cwd with every non-alphanumeric char replaced by '-'>`
+//!   plus the directories listed in its `.session-aliases` file.
+//! - Agent files: `<project>/<sessionId>.jsonl` (main / teammate transcripts) and
+//!   `<project>/<sessionId>/subagents/agent-<agentId>.jsonl`. `tool-results/` is not.
+//! - [`ClaudeDiscovery`] is the legacy index scanner (`LogDiscovery`), kept until the
+//!   index is rebuilt on `Provider::discover`.
+
 use crate::traits::{LogDiscovery, ProbeResult, SessionIndex};
 use crate::{Error, Result};
-use std::collections::HashMap;
+use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
-use super::io::extract_claude_header;
+/// Claude's project directory name for a working directory
+/// (`/work/demo-project` -> `-work-demo-project`).
+pub fn encode_project_dir(cwd: &Path) -> String {
+    cwd.to_string_lossy()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect()
+}
+
+/// Location rule for agent files (no content read): `*.jsonl` directly in a project
+/// dir, or `agent-*.jsonl` in a `subagents/` dir. Anything under `tool-results/` is not.
+pub fn is_agent_file_path(path: &Path) -> bool {
+    if path.extension().is_none_or(|e| e != "jsonl") {
+        return false;
+    }
+    let parent = path
+        .parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
+    match parent {
+        "tool-results" => false,
+        "subagents" => path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.starts_with("agent-")),
+        _ => true,
+    }
+}
+
+/// Project directories under `projects_root` that may hold agents of `project_root`:
+/// dirs whose name starts with the encoded project path (the project itself and
+/// directories below it, e.g. worktrees), plus their `.session-aliases` entries.
+/// Candidates are over-approximated; callers filter by header cwd.
+pub fn project_dirs(projects_root: &Path, project_root: &Path) -> Vec<PathBuf> {
+    let prefix = encode_project_dir(project_root);
+    let mut dirs = Vec::new();
+    let mut seen = HashSet::new();
+    let Ok(entries) = std::fs::read_dir(projects_root) else {
+        return dirs;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let matches = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|n| n.starts_with(&prefix));
+        if !matches || !path.is_dir() {
+            continue;
+        }
+        for alias in read_session_aliases(&path) {
+            if alias.is_dir() && seen.insert(alias.clone()) {
+                dirs.push(alias);
+            }
+        }
+        if seen.insert(path.clone()) {
+            dirs.push(path);
+        }
+    }
+    dirs.sort();
+    dirs
+}
+
+/// `.session-aliases`: one absolute path of another project dir per line.
+fn read_session_aliases(project_dir: &Path) -> Vec<PathBuf> {
+    std::fs::read_to_string(project_dir.join(".session-aliases"))
+        .map(|text| {
+            text.lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty() && Path::new(l).is_absolute())
+                .map(PathBuf::from)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Agent files of one project dir (main/teammate transcripts + subagent transcripts).
+pub fn agent_files_in(project_dir: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let Ok(entries) = std::fs::read_dir(project_dir) else {
+        return files;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if is_agent_file_path(&path) {
+                files.push(path);
+            }
+        } else if path.is_dir()
+            && let Ok(subs) = std::fs::read_dir(path.join("subagents"))
+        {
+            files.extend(
+                subs.flatten()
+                    .map(|e| e.path())
+                    .filter(|p| p.is_file() && is_agent_file_path(p)),
+            );
+        }
+    }
+    files.sort();
+    files
+}
+
+/// Parse a Claude Code JSONL file and normalize to AgentEvent (lenient per line).
+pub fn normalize_claude_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
+    let (_, events, _) = crate::provider::decode_file(
+        &super::ClaudeProvider,
+        path,
+        crate::provider::DecodeOptions::default(),
+    )?;
+    Ok(events)
+}
+
+fn head_records(path: &Path, max: usize) -> Result<Vec<Value>> {
+    let file = std::fs::File::open(path)?;
+    Ok(BufReader::new(file)
+        .lines()
+        .take(max)
+        .map_while(|l| l.ok())
+        .filter_map(|l| serde_json::from_str::<Value>(&l).ok())
+        .collect())
+}
+
+fn vstr(v: &Value, key: &str) -> Option<String> {
+    v.get(key)
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+/// Extract cwd from a Claude session file by reading the first few lines
+pub fn extract_cwd_from_claude_file(path: &Path) -> Option<String> {
+    head_records(path, 10).ok()?.iter().find_map(|v| {
+        matches!(
+            v.get("type").and_then(Value::as_str),
+            Some("user" | "assistant")
+        )
+        .then(|| vstr(v, "cwd"))
+        .flatten()
+    })
+}
+
+#[derive(Debug)]
+pub struct ClaudeHeader {
+    pub session_id: Option<String>,
+    pub cwd: Option<String>,
+    pub timestamp: Option<String>,
+    pub snippet: Option<String>,
+    pub is_sidechain: bool,
+    pub subagent_id: Option<String>,
+}
+
+/// First text of a user message (string content or first text block).
+fn user_text(v: &Value) -> Option<&str> {
+    let content = v.get("message")?.get("content")?;
+    match content {
+        Value::String(s) => Some(s),
+        Value::Array(items) => items.iter().find_map(|i| {
+            (i.get("type").and_then(Value::as_str) == Some("text"))
+                .then(|| i.get("text").and_then(Value::as_str))
+                .flatten()
+        }),
+        _ => None,
+    }
+}
+
+/// Extract header information from Claude file (legacy index scanning).
+pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
+    let mut session_id = None;
+    let mut cwd = None;
+    let mut timestamp = None;
+    let mut snippet = None;
+    let mut is_sidechain = false;
+    let mut subagent_id = None;
+    let mut meta_message_ids = HashSet::new();
+
+    for v in head_records(path, 200)? {
+        let kind = v.get("type").and_then(Value::as_str).unwrap_or("");
+        match kind {
+            "file-history-snapshot" => meta_message_ids.clear(),
+            "user" | "assistant" => {
+                if session_id.is_none() {
+                    session_id = vstr(&v, "sessionId");
+                }
+                if cwd.is_none() {
+                    cwd = vstr(&v, "cwd");
+                }
+                if timestamp.is_none() {
+                    timestamp = vstr(&v, "timestamp");
+                }
+            }
+            _ => {}
+        }
+        if kind == "user" {
+            let uuid = vstr(&v, "uuid").unwrap_or_default();
+            let sidechain = v.get("isSidechain").and_then(Value::as_bool) == Some(true);
+            let is_meta = v.get("isMeta").and_then(Value::as_bool) == Some(true);
+            if is_meta {
+                meta_message_ids.insert(uuid.clone());
+            }
+            // Descendants of meta messages are meta-related too.
+            let parent_is_meta =
+                vstr(&v, "parentUuid").is_some_and(|p| meta_message_ids.contains(&p));
+            if parent_is_meta {
+                meta_message_ids.insert(uuid);
+            }
+            if snippet.is_none() && !sidechain && !is_meta && !parent_is_meta {
+                snippet = user_text(&v).map(|t| agtrace_types::truncate(t, 200));
+            }
+            if subagent_id.is_none() {
+                subagent_id = vstr(&v, "agentId");
+            }
+            if subagent_id.is_none()
+                && let Some(Value::Array(items)) = v.get("message").and_then(|m| m.get("content"))
+            {
+                subagent_id = items.iter().find_map(|i| vstr(i, "agentId"));
+            }
+            is_sidechain = sidechain;
+        }
+        if session_id.is_some() && cwd.is_some() && timestamp.is_some() && snippet.is_some() {
+            break;
+        }
+    }
+
+    Ok(ClaudeHeader {
+        session_id,
+        cwd,
+        timestamp,
+        snippet,
+        is_sidechain,
+        subagent_id,
+    })
+}
 
 pub struct ClaudeDiscovery;
 
@@ -154,5 +396,66 @@ impl LogDiscovery for ClaudeDiscovery {
     fn is_sidechain_file(&self, path: &Path) -> Result<bool> {
         let header = extract_claude_header(path)?;
         Ok(header.is_sidechain)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encodes_project_dirs_like_claude() {
+        assert_eq!(
+            encode_project_dir(Path::new("/work/demo-project")),
+            "-work-demo-project"
+        );
+        assert_eq!(
+            encode_project_dir(Path::new("/w/a.b_c/.wt/x")),
+            "-w-a-b-c--wt-x"
+        );
+    }
+
+    #[test]
+    fn agent_file_location_rule() {
+        assert!(is_agent_file_path(Path::new("/p/-proj/s.jsonl")));
+        assert!(is_agent_file_path(Path::new(
+            "/p/-proj/s/subagents/agent-a0000000000000001.jsonl"
+        )));
+        assert!(!is_agent_file_path(Path::new(
+            "/p/-proj/s/subagents/other.jsonl"
+        )));
+        assert!(!is_agent_file_path(Path::new(
+            "/p/-proj/s/tool-results/x.jsonl"
+        )));
+        assert!(!is_agent_file_path(Path::new(
+            "/p/-proj/s/subagents/agent-a0000000000000001.meta.json"
+        )));
+    }
+
+    #[test]
+    fn project_dirs_include_subprojects_and_aliases() {
+        let root = tempfile::tempdir().unwrap();
+        let other = tempfile::tempdir().unwrap();
+        for d in [
+            "-work-demo-project",
+            "-work-demo-project--wt-a",
+            "-work-else",
+        ] {
+            std::fs::create_dir_all(root.path().join(d)).unwrap();
+        }
+        std::fs::write(
+            root.path().join("-work-demo-project/.session-aliases"),
+            format!("{}\n", other.path().display()),
+        )
+        .unwrap();
+        let dirs = project_dirs(root.path(), Path::new("/work/demo-project"));
+        let names: Vec<_> = dirs
+            .iter()
+            .map(|d| d.file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+        assert!(names.contains(&"-work-demo-project".to_string()));
+        assert!(names.contains(&"-work-demo-project--wt-a".to_string()));
+        assert!(!names.contains(&"-work-else".to_string()));
+        assert!(dirs.contains(&other.path().to_path_buf()));
     }
 }

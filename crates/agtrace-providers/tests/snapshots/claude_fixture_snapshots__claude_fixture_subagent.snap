@@ -1,0 +1,220 @@
+---
+source: crates/agtrace-providers/tests/claude_fixture_snapshots.rs
+expression: "json!({\n    \"header\": header_json(h), \"diagnostics\": diagnostics, \"events\": events\n})"
+---
+{
+  "diagnostics": {
+    "decoded": 6,
+    "ignored_kinds": {},
+    "invalid_json": 0,
+    "lines": 6,
+    "samples": [],
+    "schema_mismatch": {},
+    "unknown_kinds": {}
+  },
+  "events": [
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "text": "Count the files in src."
+      },
+      "id": "27956570-bc8f-5fab-8601-ecb6af120dba",
+      "origin": {
+        "byte_offset": 0,
+        "line": 0,
+        "sub": 0
+      },
+      "parent_id": null,
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:09Z",
+      "type": "user"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "source": "attachment",
+        "to": "claude-opus-5-5"
+      },
+      "id": "01d6cf93-38f6-561a-83de-8c62ccd9d193",
+      "origin": {
+        "byte_offset": 369,
+        "line": 1,
+        "sub": 0
+      },
+      "parent_id": "27956570-bc8f-5fab-8601-ecb6af120dba",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:09Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "evidence": "model attachment: Opus 5.5 (1M context)",
+        "kind": "extended_marker",
+        "model": "claude-opus-5-5",
+        "tokens": 1000000
+      },
+      "id": "1fbdc232-597f-5412-a9df-6275d02c8003",
+      "origin": {
+        "byte_offset": 369,
+        "line": 1,
+        "sub": 1
+      },
+      "parent_id": "01d6cf93-38f6-561a-83de-8c62ccd9d193",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:09Z",
+      "type": "context_window_hint"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "arguments": {
+          "command": "ls src",
+          "description": "List src"
+        },
+        "name": "Bash",
+        "provider_call_id": "toolu_synthetic_s_ls"
+      },
+      "id": "d0adfa1e-cfe5-534c-b837-10eff60813a2",
+      "origin": {
+        "byte_offset": 884,
+        "line": 2,
+        "sub": 0
+      },
+      "parent_id": "1fbdc232-597f-5412-a9df-6275d02c8003",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:10Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "completeness": "partial_output",
+        "dedupe_key": "msg_synthetic_s1",
+        "input": {
+          "cache_read": 4000,
+          "cache_write": 800,
+          "uncached": 5
+        },
+        "model": "claude-opus-5-5",
+        "output": {
+          "generated": 12,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "a8cef074-6ae3-5992-a22a-3e296e2d3e55",
+      "origin": {
+        "byte_offset": 884,
+        "line": 2,
+        "sub": 1
+      },
+      "parent_id": "d0adfa1e-cfe5-534c-b837-10eff60813a2",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:10Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "is_error": false,
+        "output": "a.rs\nb.rs\nc.rs",
+        "tool_call_id": "d0adfa1e-cfe5-534c-b837-10eff60813a2"
+      },
+      "id": "335928a0-228d-5d66-9412-fba194d161eb",
+      "origin": {
+        "byte_offset": 1828,
+        "line": 3,
+        "sub": 0
+      },
+      "parent_id": "a8cef074-6ae3-5992-a22a-3e296e2d3e55",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:11Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": false,
+          "message_preview": "There are 3 files in src.",
+          "op": "handback"
+        },
+        "name": "SubagentHandback",
+        "provider_call_id": "toolu_synthetic_s_hb"
+      },
+      "id": "304a3cc4-594d-59b2-b8b6-788649a866cf",
+      "origin": {
+        "byte_offset": 2456,
+        "line": 4,
+        "sub": 0
+      },
+      "parent_id": "335928a0-228d-5d66-9412-fba194d161eb",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:12Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "completeness": "partial_output",
+        "dedupe_key": "msg_synthetic_s2",
+        "input": {
+          "cache_read": 4800,
+          "cache_write": 60,
+          "uncached": 4
+        },
+        "model": "claude-opus-5-5",
+        "output": {
+          "generated": 9,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "d4422403-6273-55b8-b99e-c16940fa67ac",
+      "origin": {
+        "byte_offset": 2456,
+        "line": 4,
+        "sub": 1
+      },
+      "parent_id": "304a3cc4-594d-59b2-b8b6-788649a866cf",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:12Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Report delivered to your caller.",
+        "tool_call_id": "304a3cc4-594d-59b2-b8b6-788649a866cf"
+      },
+      "id": "bbcb7b56-17f8-5d94-8dea-797182ef221d",
+      "origin": {
+        "byte_offset": 3403,
+        "line": 5,
+        "sub": 0
+      },
+      "parent_id": "d4422403-6273-55b8-b99e-c16940fa67ac",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:13Z",
+      "type": "tool_result"
+    }
+  ],
+  "header": {
+    "agent_type": "general-purpose",
+    "cwd": "/work/demo-project",
+    "depth": 1,
+    "id": "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+    "kind": "subagent",
+    "name": "Count source files",
+    "native_agent_id": "a0000000000000001",
+    "native_session_id": "00000000-0000-4000-8000-000000000001",
+    "parent": "claude:00000000-0000-4000-8000-000000000001",
+    "root": "claude:00000000-0000-4000-8000-000000000001",
+    "spawn_call_id": "toolu_synthetic_spawn_async",
+    "started_at": "2026-09-20T10:00:09Z",
+    "team": null,
+    "title": null
+  }
+}

@@ -1,0 +1,375 @@
+---
+source: crates/agtrace-providers/tests/claude_fixture_snapshots.rs
+expression: "json!({\n    \"header\": header_json(h), \"diagnostics\": diagnostics, \"events\": events\n})"
+---
+{
+  "diagnostics": {
+    "decoded": 12,
+    "ignored_kinds": {
+      "mode": 1
+    },
+    "invalid_json": 0,
+    "lines": 12,
+    "samples": [],
+    "schema_mismatch": {},
+    "unknown_kinds": {}
+  },
+  "events": [
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "key": "agent_type",
+        "value": "general-purpose"
+      },
+      "id": "69165a86-07b9-59d1-8d1f-d9b87945a627",
+      "origin": {
+        "byte_offset": 0,
+        "line": 0,
+        "sub": 0
+      },
+      "parent_id": null,
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "key": "permission_mode",
+        "value": "auto"
+      },
+      "id": "ef095d07-051d-5196-8947-94ed02c4108a",
+      "origin": {
+        "byte_offset": 192,
+        "line": 2,
+        "sub": 0
+      },
+      "parent_id": "69165a86-07b9-59d1-8d1f-d9b87945a627",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "body": "Review the parser module.",
+        "direction": "incoming",
+        "encrypted": false,
+        "from": {
+          "by": "team_member",
+          "value": {
+            "name": "team-lead",
+            "team": "session-00000001"
+          }
+        },
+        "kind": "new_task",
+        "to": [
+          {
+            "by": "id",
+            "value": "claude:00000000-0000-4000-8000-000000000002"
+          }
+        ]
+      },
+      "id": "9d62673c-9884-5ae7-aaba-2b198baa4523",
+      "origin": {
+        "byte_offset": 294,
+        "line": 3,
+        "sub": 0
+      },
+      "parent_id": "ef095d07-051d-5196-8947-94ed02c4108a",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "key": "team_name",
+        "value": "session-00000001"
+      },
+      "id": "de056731-f263-5fcc-ba69-21ed3cf7c69e",
+      "origin": {
+        "byte_offset": 826,
+        "line": 4,
+        "sub": 0
+      },
+      "parent_id": "9d62673c-9884-5ae7-aaba-2b198baa4523",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "source": "attachment",
+        "to": "claude-opus-5-5"
+      },
+      "id": "e4367c31-bd6f-5274-94c5-041fab9a0a49",
+      "origin": {
+        "byte_offset": 1521,
+        "line": 5,
+        "sub": 0
+      },
+      "parent_id": "de056731-f263-5fcc-ba69-21ed3cf7c69e",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "evidence": "model attachment: Opus 5.5 (1M context)",
+        "kind": "extended_marker",
+        "model": "claude-opus-5-5",
+        "tokens": 1000000
+      },
+      "id": "82da508e-2433-5c17-9935-e9ae31ef80de",
+      "origin": {
+        "byte_offset": 1521,
+        "line": 5,
+        "sub": 1
+      },
+      "parent_id": "e4367c31-bd6f-5274-94c5-041fab9a0a49",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "context_window_hint"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "arguments": {
+          "command": "cargo test -p parser",
+          "description": "Test"
+        },
+        "name": "Bash",
+        "provider_call_id": "toolu_synthetic_t_bash"
+      },
+      "id": "e824b03a-05b1-5e6b-928a-c7fb866e6310",
+      "origin": {
+        "byte_offset": 2130,
+        "line": 6,
+        "sub": 0
+      },
+      "parent_id": "82da508e-2433-5c17-9935-e9ae31ef80de",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "dedupe_key": "msg_synthetic_t1",
+        "input": {
+          "cache_read": 8000,
+          "cache_write": 700,
+          "uncached": 9
+        },
+        "model": "claude-opus-5-5",
+        "output": {
+          "generated": 40,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "89f678ca-2307-5ccd-88f7-82c601b01388",
+      "origin": {
+        "byte_offset": 2130,
+        "line": 6,
+        "sub": 1
+      },
+      "parent_id": "e824b03a-05b1-5e6b-928a-c7fb866e6310",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "is_error": false,
+        "output": "test result: FAILED. 3 failed",
+        "tool_call_id": "e824b03a-05b1-5e6b-928a-c7fb866e6310"
+      },
+      "id": "be1a6ecf-b7f2-5760-8ef2-3b2666b6f988",
+      "origin": {
+        "byte_offset": 3453,
+        "line": 7,
+        "sub": 0
+      },
+      "parent_id": "89f678ca-2307-5ccd-88f7-82c601b01388",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:20Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "body": "Please focus on error handling.",
+        "direction": "incoming",
+        "encrypted": false,
+        "from": {
+          "by": "team_member",
+          "value": {
+            "name": "team-lead",
+            "team": "session-00000001"
+          }
+        },
+        "kind": "message",
+        "summary": "focus on errors",
+        "to": [
+          {
+            "by": "id",
+            "value": "claude:00000000-0000-4000-8000-000000000002"
+          }
+        ]
+      },
+      "id": "989c5a75-e08e-5a6f-bc2f-640c0e4982b9",
+      "origin": {
+        "byte_offset": 4203,
+        "line": 8,
+        "sub": 0
+      },
+      "parent_id": "be1a6ecf-b7f2-5760-8ef2-3b2666b6f988",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:21Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "arguments": {
+          "encrypted": false,
+          "message_preview": "Done, found 3 bugs in the parser.",
+          "op": "send",
+          "summary": "found 3 bugs",
+          "target": "team-lead"
+        },
+        "name": "SendMessage",
+        "provider_call_id": "toolu_synthetic_t_send"
+      },
+      "id": "74578ef0-2d6b-5d05-a73c-e381d3be9a48",
+      "origin": {
+        "byte_offset": 4799,
+        "line": 9,
+        "sub": 0
+      },
+      "parent_id": "989c5a75-e08e-5a6f-bc2f-640c0e4982b9",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:25Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "dedupe_key": "msg_synthetic_t2",
+        "input": {
+          "cache_read": 8700,
+          "cache_write": 90,
+          "uncached": 7
+        },
+        "model": "claude-opus-5-5",
+        "output": {
+          "generated": 60,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "20c658d0-596e-5c4a-8bf7-cebcbd6d61fc",
+      "origin": {
+        "byte_offset": 4799,
+        "line": 9,
+        "sub": 1
+      },
+      "parent_id": "74578ef0-2d6b-5d05-a73c-e381d3be9a48",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:25Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "is_error": false,
+        "output": "Message sent to team-lead's inbox",
+        "tool_call_id": "74578ef0-2d6b-5d05-a73c-e381d3be9a48"
+      },
+      "id": "1e03e4e1-847b-5568-b7e9-769748630793",
+      "origin": {
+        "byte_offset": 6247,
+        "line": 10,
+        "sub": 0
+      },
+      "parent_id": "20c658d0-596e-5c4a-8bf7-cebcbd6d61fc",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:26Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "body": "Done, found 3 bugs in the parser.",
+        "direction": "outgoing",
+        "encrypted": false,
+        "from": {
+          "by": "id",
+          "value": "claude:00000000-0000-4000-8000-000000000002"
+        },
+        "kind": "message",
+        "provider_message_id": "00000000-0000-4000-8000-000000000f02",
+        "summary": "found 3 bugs",
+        "to": [
+          {
+            "by": "team_member",
+            "value": {
+              "name": "team-lead",
+              "team": "session-00000001"
+            }
+          }
+        ]
+      },
+      "id": "9d1ec5de-40c2-51f6-a378-e9f57c8fa64e",
+      "origin": {
+        "byte_offset": 6247,
+        "line": 10,
+        "sub": 1
+      },
+      "parent_id": "1e03e4e1-847b-5568-b7e9-769748630793",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:26Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000002",
+      "content": {
+        "duration_ms": 21000,
+        "outcome": {
+          "outcome": "completed"
+        }
+      },
+      "id": "6a138133-a265-50b1-8522-2f585800c762",
+      "origin": {
+        "byte_offset": 7182,
+        "line": 11,
+        "sub": 0
+      },
+      "parent_id": "9d1ec5de-40c2-51f6-a378-e9f57c8fa64e",
+      "session_id": "6496e30f-2a38-5d85-9cf1-4846ff0bb776",
+      "timestamp": "2026-09-20T10:00:27Z",
+      "type": "turn_end"
+    }
+  ],
+  "header": {
+    "agent_type": "general-purpose",
+    "cwd": "/work/demo-project",
+    "depth": 0,
+    "id": "claude:00000000-0000-4000-8000-000000000002",
+    "kind": "teammate",
+    "name": "audit-A",
+    "native_agent_id": "audit-A@session-00000001",
+    "native_session_id": "00000000-0000-4000-8000-000000000002",
+    "parent": null,
+    "root": "claude:00000000-0000-4000-8000-000000000002",
+    "spawn_call_id": null,
+    "started_at": "2026-09-20T10:00:06Z",
+    "team": "session-00000001",
+    "title": null
+  }
+}

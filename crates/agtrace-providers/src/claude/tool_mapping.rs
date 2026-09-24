@@ -4,6 +4,13 @@ use serde_json::Value;
 
 /// Registry of Claude Code tools
 const CLAUDE_TOOLS: &[ToolSpec] = &[
+    // Agent tools (spawn / message / stop / output / list / handback)
+    ToolSpec::new("Agent", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("SendMessage", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("TaskStop", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("TaskOutput", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("ListAgents", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("SubagentHandback", ToolOrigin::System, ToolKind::Agent),
     // Ask tools
     ToolSpec::new("AskUserQuestion", ToolOrigin::System, ToolKind::Ask),
     // Execute tools
@@ -12,6 +19,7 @@ const CLAUDE_TOOLS: &[ToolSpec] = &[
     ToolSpec::new("BashOutput", ToolOrigin::System, ToolKind::Execute),
     ToolSpec::new("Skill", ToolOrigin::System, ToolKind::Execute),
     ToolSpec::new("SlashCommand", ToolOrigin::System, ToolKind::Execute),
+    ToolSpec::new("Monitor", ToolOrigin::System, ToolKind::Execute),
     // Write tools
     ToolSpec::new("Edit", ToolOrigin::System, ToolKind::Write),
     ToolSpec::new("Write", ToolOrigin::System, ToolKind::Write),
@@ -23,14 +31,13 @@ const CLAUDE_TOOLS: &[ToolSpec] = &[
     ToolSpec::new("Grep", ToolOrigin::System, ToolKind::Search),
     ToolSpec::new("WebFetch", ToolOrigin::System, ToolKind::Search),
     ToolSpec::new("WebSearch", ToolOrigin::System, ToolKind::Search),
+    ToolSpec::new("ToolSearch", ToolOrigin::System, ToolKind::Search),
     // Plan tools
     ToolSpec::new("Task", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("TaskCreate", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("TaskUpdate", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("TaskGet", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("TaskList", ToolOrigin::System, ToolKind::Plan),
-    ToolSpec::new("TaskStop", ToolOrigin::System, ToolKind::Plan),
-    ToolSpec::new("TaskOutput", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("TodoWrite", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("EnterPlanMode", ToolOrigin::System, ToolKind::Plan),
     ToolSpec::new("ExitPlanMode", ToolOrigin::System, ToolKind::Plan),

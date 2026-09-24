@@ -1,0 +1,1323 @@
+---
+source: crates/agtrace-providers/tests/claude_fixture_snapshots.rs
+expression: "json!({\n    \"header\": header_json(h), \"diagnostics\": diagnostics, \"events\": events\n})"
+---
+{
+  "diagnostics": {
+    "decoded": 52,
+    "ignored_kinds": {
+      "atis-latch": 1,
+      "attachment/skill_listing": 1,
+      "last-prompt": 1,
+      "mode": 3
+    },
+    "invalid_json": 1,
+    "lines": 54,
+    "samples": [
+      {
+        "byte_offset": 34443,
+        "line": 51,
+        "message": "EOF while parsing a value at line 1 column 82"
+      },
+      {
+        "byte_offset": 34617,
+        "kind": "assistant",
+        "line": 53,
+        "message": "invalid type: integer `42`, expected struct AssistantMessage"
+      }
+    ],
+    "schema_mismatch": {
+      "assistant": 1
+    },
+    "unknown_kinds": {
+      "future-record-kind": 1
+    }
+  },
+  "events": [
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "key": "permission_mode",
+        "value": "auto"
+      },
+      "id": "5d7561b8-5375-5664-980b-08cdc8888927",
+      "origin": {
+        "byte_offset": 0,
+        "line": 0,
+        "sub": 0
+      },
+      "parent_id": null,
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:00Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "key": "title",
+        "value": "Demo project audit"
+      },
+      "id": "59bb48bd-4eec-55f9-90b9-ea7a26ab1f97",
+      "origin": {
+        "byte_offset": 185,
+        "line": 2,
+        "sub": 0
+      },
+      "parent_id": "5d7561b8-5375-5664-980b-08cdc8888927",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:00Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "source": "attachment",
+        "to": "claude-opus-5"
+      },
+      "id": "a1ca8a2a-6130-5191-8ed2-4e41890ad346",
+      "origin": {
+        "byte_offset": 287,
+        "line": 3,
+        "sub": 0
+      },
+      "parent_id": "59bb48bd-4eec-55f9-90b9-ea7a26ab1f97",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:00Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "text": "Audit the demo project with a small team."
+      },
+      "id": "c07e07b0-7796-5b77-acb0-4492942958ef",
+      "origin": {
+        "byte_offset": 1297,
+        "line": 5,
+        "sub": 0
+      },
+      "parent_id": "a1ca8a2a-6130-5191-8ed2-4e41890ad346",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:01Z",
+      "type": "user"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "text": "[thinking redacted]"
+      },
+      "id": "d5f48edd-ac1f-5cd2-8a65-aa0f8fb41b7d",
+      "origin": {
+        "byte_offset": 1809,
+        "line": 6,
+        "sub": 0
+      },
+      "parent_id": "c07e07b0-7796-5b77-acb0-4492942958ef",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:03Z",
+      "type": "reasoning"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "dedupe_key": "msg_synthetic_01",
+        "input": {
+          "cache_read": 9000,
+          "cache_write": 900,
+          "uncached": 12
+        },
+        "model": "claude-opus-5",
+        "output": {
+          "generated": 110,
+          "reasoning": 40,
+          "tool": 0
+        }
+      },
+      "id": "e44c2a72-bdb3-5b86-8e2e-0983c9ec0e34",
+      "origin": {
+        "byte_offset": 1809,
+        "line": 6,
+        "sub": 1
+      },
+      "parent_id": "d5f48edd-ac1f-5cd2-8a65-aa0f8fb41b7d",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:03Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "text": "I will spawn a teammate, a background agent and a fork."
+      },
+      "id": "7455a65c-499b-5aae-8488-7cddb22c85d0",
+      "origin": {
+        "byte_offset": 2996,
+        "line": 7,
+        "sub": 0
+      },
+      "parent_id": "e44c2a72-bdb3-5b86-8e2e-0983c9ec0e34",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:03Z",
+      "type": "message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "agent_type": "general-purpose",
+          "encrypted": false,
+          "fork": false,
+          "message_preview": "Review the parser module.",
+          "model": "opus",
+          "name": "audit-A",
+          "op": "spawn",
+          "summary": "Audit parser"
+        },
+        "name": "Agent",
+        "provider_call_id": "toolu_synthetic_spawn_team"
+      },
+      "id": "c780e23b-1bf5-5516-8f50-9beb0a3a88f8",
+      "origin": {
+        "byte_offset": 4196,
+        "line": 8,
+        "sub": 0
+      },
+      "parent_id": "7455a65c-499b-5aae-8488-7cddb22c85d0",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:04Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Spawned successfully.\nagent_id: audit-A@session-00000001",
+        "tool_call_id": "c780e23b-1bf5-5516-8f50-9beb0a3a88f8"
+      },
+      "id": "362e9991-b062-53b8-95c2-c143a3d2ea01",
+      "origin": {
+        "byte_offset": 5553,
+        "line": 9,
+        "sub": 0
+      },
+      "parent_id": "c780e23b-1bf5-5516-8f50-9beb0a3a88f8",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:05Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "agent_type": "general-purpose",
+        "child": {
+          "by": "team_member",
+          "value": {
+            "name": "audit-A",
+            "team": "session-00000001"
+          }
+        },
+        "description": "Audit parser",
+        "kind": "teammate",
+        "name": "audit-A",
+        "requested_model": "opus",
+        "spawn_call_id": "toolu_synthetic_spawn_team",
+        "tool_call_id": "c780e23b-1bf5-5516-8f50-9beb0a3a88f8"
+      },
+      "id": "60a43fe7-e17c-5d8a-9c57-d555aa35c9c6",
+      "origin": {
+        "byte_offset": 5553,
+        "line": 9,
+        "sub": 1
+      },
+      "parent_id": "362e9991-b062-53b8-95c2-c143a3d2ea01",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:05Z",
+      "type": "agent_spawn"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "text": "[thinking redacted]"
+      },
+      "id": "548f5115-f6a3-5d7b-831d-1f6f56045e2f",
+      "origin": {
+        "byte_offset": 6589,
+        "line": 10,
+        "sub": 0
+      },
+      "parent_id": "60a43fe7-e17c-5d8a-9c57-d555aa35c9c6",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "reasoning"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "completeness": "partial_output",
+        "dedupe_key": "msg_synthetic_02",
+        "input": {
+          "cache_read": 9900,
+          "cache_write": 300,
+          "uncached": 8
+        },
+        "model": "claude-opus-5",
+        "output": {
+          "generated": 3,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "a0add2c4-c68e-5e90-9250-8e3085b44df1",
+      "origin": {
+        "byte_offset": 6589,
+        "line": 10,
+        "sub": 1
+      },
+      "parent_id": "548f5115-f6a3-5d7b-831d-1f6f56045e2f",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "agent_type": "general-purpose",
+          "encrypted": false,
+          "fork": false,
+          "message_preview": "Count the files in src.",
+          "model": "opus",
+          "op": "spawn",
+          "summary": "Count source files"
+        },
+        "name": "Agent",
+        "provider_call_id": "toolu_synthetic_spawn_async"
+      },
+      "id": "10dab7f7-3306-58ce-a22c-1a70e75f9d3a",
+      "origin": {
+        "byte_offset": 7497,
+        "line": 11,
+        "sub": 0
+      },
+      "parent_id": "a0add2c4-c68e-5e90-9250-8e3085b44df1",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:06Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "agent_type": "fork",
+          "encrypted": false,
+          "fork": true,
+          "message_preview": "Check the docs folder.",
+          "op": "spawn",
+          "summary": "Fork: check docs"
+        },
+        "name": "Agent",
+        "provider_call_id": "toolu_synthetic_spawn_fork"
+      },
+      "id": "c5a65d1f-8e9b-528f-bb01-ed9f3fdac5aa",
+      "origin": {
+        "byte_offset": 8563,
+        "line": 12,
+        "sub": 0
+      },
+      "parent_id": "10dab7f7-3306-58ce-a22c-1a70e75f9d3a",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:07Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "dedupe_key": "msg_synthetic_02",
+        "input": {
+          "cache_read": 9900,
+          "cache_write": 300,
+          "uncached": 8
+        },
+        "model": "claude-opus-5",
+        "output": {
+          "generated": 120,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "a0add2c4-c68e-5e90-9250-8e3085b44df1",
+      "origin": {
+        "byte_offset": 8563,
+        "line": 12,
+        "sub": 1
+      },
+      "parent_id": "c5a65d1f-8e9b-528f-bb01-ed9f3fdac5aa",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:07Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "agent_id": "a0000000000000001",
+        "is_error": false,
+        "output": "Async agent launched successfully.\nagentId: a0000000000000001",
+        "tool_call_id": "10dab7f7-3306-58ce-a22c-1a70e75f9d3a"
+      },
+      "id": "871bf1ca-2cad-5a45-951c-1b41b7884332",
+      "origin": {
+        "byte_offset": 9875,
+        "line": 13,
+        "sub": 0
+      },
+      "parent_id": "a0add2c4-c68e-5e90-9250-8e3085b44df1",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "agent_type": "general-purpose",
+        "child": {
+          "by": "native_agent_id",
+          "value": "a0000000000000001"
+        },
+        "description": "Count source files",
+        "kind": "subagent",
+        "requested_model": "opus",
+        "resolved_model": "claude-opus-5-5[1m]",
+        "spawn_call_id": "toolu_synthetic_spawn_async",
+        "tool_call_id": "10dab7f7-3306-58ce-a22c-1a70e75f9d3a"
+      },
+      "id": "6b98a5bc-6799-5532-a369-16e8c6295db7",
+      "origin": {
+        "byte_offset": 9875,
+        "line": 13,
+        "sub": 1
+      },
+      "parent_id": "871bf1ca-2cad-5a45-951c-1b41b7884332",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "agent_spawn"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "evidence": "agent spawn resolvedModel",
+        "kind": "extended_marker",
+        "model": "claude-opus-5-5[1m]",
+        "tokens": 1000000
+      },
+      "id": "670ffccf-4c22-57a7-835d-0f22099c468e",
+      "origin": {
+        "byte_offset": 9875,
+        "line": 13,
+        "sub": 2
+      },
+      "parent_id": "6b98a5bc-6799-5532-a369-16e8c6295db7",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "context_window_hint"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "agent_id": "a0000000000000002",
+        "is_error": false,
+        "output": "Fork started.\nagentId: a0000000000000002",
+        "tool_call_id": "c5a65d1f-8e9b-528f-bb01-ed9f3fdac5aa"
+      },
+      "id": "d65bdcd1-277f-556b-9bcd-2fb29a668eef",
+      "origin": {
+        "byte_offset": 10805,
+        "line": 14,
+        "sub": 0
+      },
+      "parent_id": "670ffccf-4c22-57a7-835d-0f22099c468e",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "agent_type": "fork",
+        "child": {
+          "by": "native_agent_id",
+          "value": "a0000000000000002"
+        },
+        "description": "Fork: check docs",
+        "kind": "fork",
+        "resolved_model": "claude-opus-5",
+        "spawn_call_id": "toolu_synthetic_spawn_fork",
+        "tool_call_id": "c5a65d1f-8e9b-528f-bb01-ed9f3fdac5aa"
+      },
+      "id": "9f372781-e0b2-5551-8530-6ec33b5a7967",
+      "origin": {
+        "byte_offset": 10805,
+        "line": 14,
+        "sub": 1
+      },
+      "parent_id": "d65bdcd1-277f-556b-9bcd-2fb29a668eef",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:08Z",
+      "type": "agent_spawn"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": false,
+          "message_preview": "Please focus on error handling.",
+          "op": "send",
+          "summary": "focus on errors",
+          "target": "audit-A"
+        },
+        "name": "SendMessage",
+        "provider_call_id": "toolu_synthetic_send_1"
+      },
+      "id": "6a0098b7-4817-5b7a-a876-78c4c50c414c",
+      "origin": {
+        "byte_offset": 11704,
+        "line": 15,
+        "sub": 0
+      },
+      "parent_id": "9f372781-e0b2-5551-8530-6ec33b5a7967",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:10Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "dedupe_key": "msg_synthetic_03",
+        "input": {
+          "cache_read": 10300,
+          "cache_write": 200,
+          "uncached": 6
+        },
+        "model": "claude-opus-5",
+        "output": {
+          "generated": 80,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "75fc714a-d7dc-5ebc-9eb1-94c80cb1c071",
+      "origin": {
+        "byte_offset": 11704,
+        "line": 15,
+        "sub": 1
+      },
+      "parent_id": "6a0098b7-4817-5b7a-a876-78c4c50c414c",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:10Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "command": "sleep 1",
+          "description": "Wait",
+          "run_in_background": true
+        },
+        "name": "Bash",
+        "provider_call_id": "toolu_synthetic_bash_bg"
+      },
+      "id": "82a5b978-2400-5e90-abc2-93e85fdac630",
+      "origin": {
+        "byte_offset": 13098,
+        "line": 16,
+        "sub": 0
+      },
+      "parent_id": "75fc714a-d7dc-5ebc-9eb1-94c80cb1c071",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:10Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Message sent to audit-A's inbox",
+        "tool_call_id": "6a0098b7-4817-5b7a-a876-78c4c50c414c"
+      },
+      "id": "a1d16a18-5100-5c31-8127-1841db1f5f0b",
+      "origin": {
+        "byte_offset": 14382,
+        "line": 17,
+        "sub": 0
+      },
+      "parent_id": "82a5b978-2400-5e90-abc2-93e85fdac630",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:11Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "body": "Please focus on error handling.",
+        "direction": "outgoing",
+        "encrypted": false,
+        "from": {
+          "by": "id",
+          "value": "claude:00000000-0000-4000-8000-000000000001"
+        },
+        "kind": "message",
+        "provider_message_id": "00000000-0000-4000-8000-000000000f01",
+        "summary": "focus on errors",
+        "to": [
+          {
+            "by": "team_member",
+            "value": {
+              "name": "audit-A",
+              "team": "session-00000001"
+            }
+          }
+        ]
+      },
+      "id": "54fc88ed-ed7a-54a1-aa0a-16b038b54069",
+      "origin": {
+        "byte_offset": 14382,
+        "line": 17,
+        "sub": 1
+      },
+      "parent_id": "a1d16a18-5100-5c31-8127-1841db1f5f0b",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:11Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Command running in background with ID: b0000001",
+        "tool_call_id": "82a5b978-2400-5e90-abc2-93e85fdac630"
+      },
+      "id": "6b9bd67e-fdee-5d2e-b055-7bfca61ba512",
+      "origin": {
+        "byte_offset": 15262,
+        "line": 18,
+        "sub": 0
+      },
+      "parent_id": "54fc88ed-ed7a-54a1-aa0a-16b038b54069",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:11Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "text": "Waiting for results."
+      },
+      "id": "8094f97f-3a94-5ac6-9959-ff292e2537fe",
+      "origin": {
+        "byte_offset": 16021,
+        "line": 19,
+        "sub": 0
+      },
+      "parent_id": "6b9bd67e-fdee-5d2e-b055-7bfca61ba512",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:12Z",
+      "type": "message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "dedupe_key": "msg_synthetic_04",
+        "input": {
+          "cache_read": 10500,
+          "cache_write": 100,
+          "uncached": 5
+        },
+        "model": "claude-opus-5",
+        "output": {
+          "generated": 9,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "ab20d9cc-9b2c-5e52-816b-2f799df6c602",
+      "origin": {
+        "byte_offset": 16021,
+        "line": 19,
+        "sub": 1
+      },
+      "parent_id": "8094f97f-3a94-5ac6-9959-ff292e2537fe",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:12Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "kind": "stop_hook_summary",
+        "level": "info",
+        "text": "Stop hooks executed (count: 1): echo done"
+      },
+      "id": "1536aa9c-00b5-58ad-b06c-bfa6d486c460",
+      "origin": {
+        "byte_offset": 17181,
+        "line": 20,
+        "sub": 0
+      },
+      "parent_id": "ab20d9cc-9b2c-5e52-816b-2f799df6c602",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:13Z",
+      "type": "notification"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "duration_ms": 12000,
+        "outcome": {
+          "outcome": "completed"
+        },
+        "pending_background_agents": 2
+      },
+      "id": "af12fef3-f30b-52ce-9e33-c35252deb183",
+      "origin": {
+        "byte_offset": 17857,
+        "line": 21,
+        "sub": 0
+      },
+      "parent_id": "1536aa9c-00b5-58ad-b06c-bfa6d486c460",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:13Z",
+      "type": "turn_end"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "body": "Done, found 3 bugs in the parser.",
+        "direction": "incoming",
+        "encrypted": false,
+        "from": {
+          "by": "team_member",
+          "value": {
+            "name": "audit-A",
+            "team": "session-00000001"
+          }
+        },
+        "kind": "message",
+        "summary": "found 3 bugs",
+        "to": [
+          {
+            "by": "id",
+            "value": "claude:00000000-0000-4000-8000-000000000001"
+          }
+        ]
+      },
+      "id": "625b7737-cb9d-5a9e-b4d2-d17006b136a8",
+      "origin": {
+        "byte_offset": 18699,
+        "line": 25,
+        "sub": 0
+      },
+      "parent_id": "af12fef3-f30b-52ce-9e33-c35252deb183",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:30Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "reason": "available",
+        "target": {
+          "by": "team_member",
+          "value": {
+            "name": "audit-A",
+            "team": "session-00000001"
+          }
+        },
+        "transition": "idle"
+      },
+      "id": "d85efb73-9049-50ee-aaf2-e06fcb395e8d",
+      "origin": {
+        "byte_offset": 18699,
+        "line": 25,
+        "sub": 1
+      },
+      "parent_id": "625b7737-cb9d-5a9e-b4d2-d17006b136a8",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:30Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "content": "<task-notification>\n<task-id>b0000001</task-id>\n<tool-use-id>toolu_synthetic_bash_bg</tool-use-id>\n<output-file>/tmp/claude-demo/tasks/b0000001.output</output-file>\n<status>completed</status>\n<summary>Background command \"sleep 1\" completed (exit code 0)</summary>\n</task-notification>",
+        "operation": "enqueue"
+      },
+      "id": "51a482d4-a72b-55de-85bd-2d891fa16425",
+      "origin": {
+        "byte_offset": 19530,
+        "line": 26,
+        "sub": 0
+      },
+      "parent_id": "d85efb73-9049-50ee-aaf2-e06fcb395e8d",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:31Z",
+      "type": "queue_operation"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "kind": "task_notification",
+        "level": "info",
+        "text": "Background command \"sleep 1\" completed (exit code 0)"
+      },
+      "id": "70bbdb34-5a03-5bdc-b5bf-cad466f5d058",
+      "origin": {
+        "byte_offset": 19974,
+        "line": 27,
+        "sub": 0
+      },
+      "parent_id": "51a482d4-a72b-55de-85bd-2d891fa16425",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:31Z",
+      "type": "notification"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "native_agent_id",
+          "value": "a0000000000000002"
+        },
+        "transition": "completed",
+        "usage": {
+          "duration_ms": 9000,
+          "tool_uses": 2,
+          "total_tokens": 5200
+        }
+      },
+      "id": "0308d2e1-e522-5726-b07c-7edc57ddc94a",
+      "origin": {
+        "byte_offset": 20750,
+        "line": 28,
+        "sub": 0
+      },
+      "parent_id": "70bbdb34-5a03-5bdc-b5bf-cad466f5d058",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:32Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "body": "Docs look fine.",
+        "direction": "incoming",
+        "encrypted": false,
+        "from": {
+          "by": "native_agent_id",
+          "value": "a0000000000000002"
+        },
+        "kind": "task_notification",
+        "summary": "Agent \"Fork: check docs\" finished",
+        "to": [
+          {
+            "by": "id",
+            "value": "claude:00000000-0000-4000-8000-000000000001"
+          }
+        ]
+      },
+      "id": "077c6584-5542-57f6-8bb9-05dc1938daf6",
+      "origin": {
+        "byte_offset": 20750,
+        "line": 28,
+        "sub": 1
+      },
+      "parent_id": "0308d2e1-e522-5726-b07c-7edc57ddc94a",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:32Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "body": "There are 3 files in src.",
+        "direction": "incoming",
+        "encrypted": false,
+        "from": {
+          "by": "native_agent_id",
+          "value": "a0000000000000001"
+        },
+        "kind": "handback",
+        "to": [
+          {
+            "by": "id",
+            "value": "claude:00000000-0000-4000-8000-000000000001"
+          }
+        ]
+      },
+      "id": "4460212f-b22f-50e5-a433-22eb511c6a2b",
+      "origin": {
+        "byte_offset": 22799,
+        "line": 30,
+        "sub": 0
+      },
+      "parent_id": "077c6584-5542-57f6-8bb9-05dc1938daf6",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:34Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "native_agent_id",
+          "value": "a0000000000000001"
+        },
+        "transition": "completed",
+        "usage": {
+          "duration_ms": 6000,
+          "tool_uses": 1,
+          "total_tokens": 4100
+        }
+      },
+      "id": "75646eb3-fb30-5ec0-86f0-e6515887a9d7",
+      "origin": {
+        "byte_offset": 22799,
+        "line": 30,
+        "sub": 1
+      },
+      "parent_id": "4460212f-b22f-50e5-a433-22eb511c6a2b",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:34Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "content": "also check the tests",
+        "operation": "remove",
+        "reason": "absorbed_mid_turn"
+      },
+      "id": "ee020e25-112e-532e-b796-d30678e83d29",
+      "origin": {
+        "byte_offset": 23624,
+        "line": 31,
+        "sub": 0
+      },
+      "parent_id": "75646eb3-fb30-5ec0-86f0-e6515887a9d7",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:35Z",
+      "type": "queue_operation"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "text": "All agents reported."
+      },
+      "id": "2d8add82-59ce-5035-8c0e-79ea564b9b78",
+      "origin": {
+        "byte_offset": 23824,
+        "line": 32,
+        "sub": 0
+      },
+      "parent_id": "ee020e25-112e-532e-b796-d30678e83d29",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:36Z",
+      "type": "message"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "completeness": "partial_output",
+        "dedupe_key": "msg_synthetic_05",
+        "input": {
+          "cache_read": 10800,
+          "cache_write": 50,
+          "uncached": 4
+        },
+        "model": "claude-opus-5",
+        "output": {
+          "generated": 2,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "0be3314b-378f-5bb7-bdd1-e151eba5fb40",
+      "origin": {
+        "byte_offset": 23824,
+        "line": 32,
+        "sub": 1
+      },
+      "parent_id": "2d8add82-59ce-5035-8c0e-79ea564b9b78",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:36Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "outcome": {
+          "outcome": "interrupted"
+        }
+      },
+      "id": "0a04f909-7f6f-5e18-bd2d-ad033187646b",
+      "origin": {
+        "byte_offset": 24709,
+        "line": 33,
+        "sub": 0
+      },
+      "parent_id": "0be3314b-378f-5bb7-bdd1-e151eba5fb40",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:40Z",
+      "type": "turn_end"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "name": "/model"
+      },
+      "id": "56f948fc-6c79-5997-8cf1-f0237616e1ea",
+      "origin": {
+        "byte_offset": 25240,
+        "line": 34,
+        "sub": 0
+      },
+      "parent_id": "0a04f909-7f6f-5e18-bd2d-ad033187646b",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:41Z",
+      "type": "slash_command"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "from": "claude-opus-5",
+        "source": "local_command",
+        "to": "claude-opus-5-5"
+      },
+      "id": "630ffc46-46d2-501d-91e8-0167a2263425",
+      "origin": {
+        "byte_offset": 25794,
+        "line": 35,
+        "sub": 0
+      },
+      "parent_id": "56f948fc-6c79-5997-8cf1-f0237616e1ea",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:42Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "evidence": "local command: Set model to Opus 5.5 (1M context)",
+        "kind": "extended_marker",
+        "model": "claude-opus-5-5",
+        "tokens": 1000000
+      },
+      "id": "8dea2bd1-c311-5cc4-9e18-ac4f80ad0c4c",
+      "origin": {
+        "byte_offset": 25794,
+        "line": 35,
+        "sub": 1
+      },
+      "parent_id": "630ffc46-46d2-501d-91e8-0167a2263425",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:42Z",
+      "type": "context_window_hint"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "key": "title",
+        "value": "Demo project audit and fixes"
+      },
+      "id": "59bb48bd-4eec-55f9-90b9-ea7a26ab1f97",
+      "origin": {
+        "byte_offset": 26492,
+        "line": 38,
+        "sub": 0
+      },
+      "parent_id": "8dea2bd1-c311-5cc4-9e18-ac4f80ad0c4c",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:42Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "text": "Now stop the teammate and read the README."
+      },
+      "id": "4ddbdf87-57c8-5dd6-9515-1bdae01bfb99",
+      "origin": {
+        "byte_offset": 26604,
+        "line": 39,
+        "sub": 0
+      },
+      "parent_id": "59bb48bd-4eec-55f9-90b9-ea7a26ab1f97",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:50Z",
+      "type": "user"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "encrypted": false,
+          "op": "stop",
+          "target": "audit-A"
+        },
+        "name": "TaskStop",
+        "provider_call_id": "toolu_synthetic_stop_1"
+      },
+      "id": "c53a0a76-3f17-5502-a5cf-ecdab81bad2b",
+      "origin": {
+        "byte_offset": 27094,
+        "line": 40,
+        "sub": 0
+      },
+      "parent_id": "4ddbdf87-57c8-5dd6-9515-1bdae01bfb99",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:52Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "dedupe_key": "msg_synthetic_06",
+        "input": {
+          "cache_read": 11000,
+          "cache_write": 400,
+          "uncached": 20
+        },
+        "model": "claude-opus-5-5",
+        "output": {
+          "generated": 30,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "e791e0d1-20e6-56be-938b-82ea1d0a8e19",
+      "origin": {
+        "byte_offset": 27094,
+        "line": 40,
+        "sub": 1
+      },
+      "parent_id": "c53a0a76-3f17-5502-a5cf-ecdab81bad2b",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:52Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "Successfully stopped task: audit-A",
+        "tool_call_id": "c53a0a76-3f17-5502-a5cf-ecdab81bad2b"
+      },
+      "id": "c605d213-a786-5c3d-9684-84042c1b1561",
+      "origin": {
+        "byte_offset": 28339,
+        "line": 41,
+        "sub": 0
+      },
+      "parent_id": "e791e0d1-20e6-56be-938b-82ea1d0a8e19",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:53Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "team_member",
+          "value": {
+            "name": "audit-A",
+            "team": "session-00000001"
+          }
+        },
+        "transition": "killed"
+      },
+      "id": "b9edd1ff-9a58-508f-869d-7ae81b6a8aeb",
+      "origin": {
+        "byte_offset": 28339,
+        "line": 41,
+        "sub": 1
+      },
+      "parent_id": "c605d213-a786-5c3d-9684-84042c1b1561",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:53Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "arguments": {
+          "file_path": "/work/demo-project/README.md"
+        },
+        "name": "Read",
+        "provider_call_id": "toolu_synthetic_read_1"
+      },
+      "id": "ed22acf2-593d-5833-b774-1bcd9762ef2d",
+      "origin": {
+        "byte_offset": 29091,
+        "line": 42,
+        "sub": 0
+      },
+      "parent_id": "b9edd1ff-9a58-508f-869d-7ae81b6a8aeb",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:54Z",
+      "type": "tool_call"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "dedupe_key": "msg_synthetic_07",
+        "input": {
+          "cache_read": 11400,
+          "cache_write": 60,
+          "uncached": 10
+        },
+        "model": "claude-opus-5-5",
+        "output": {
+          "generated": 25,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "3f770ec3-a166-5b80-92d8-67b181ea85bf",
+      "origin": {
+        "byte_offset": 29091,
+        "line": 42,
+        "sub": 1
+      },
+      "parent_id": "ed22acf2-593d-5833-b774-1bcd9762ef2d",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:54Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "is_error": false,
+        "output": "# Demo\n[image]\n[tool_reference Read]",
+        "tool_call_id": "ed22acf2-593d-5833-b774-1bcd9762ef2d"
+      },
+      "id": "59f0d097-aba5-5516-89ec-90c1cb63e741",
+      "origin": {
+        "byte_offset": 30352,
+        "line": 43,
+        "sub": 0
+      },
+      "parent_id": "3f770ec3-a166-5b80-92d8-67b181ea85bf",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:00:55Z",
+      "type": "tool_result"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "duration_ms": 52000,
+        "post_tokens": 41000,
+        "pre_tokens": 973000,
+        "trigger": "auto"
+      },
+      "id": "0cf06227-294a-5cea-9fb0-62abcf19666d",
+      "origin": {
+        "byte_offset": 31089,
+        "line": 44,
+        "sub": 0
+      },
+      "parent_id": "59f0d097-aba5-5516-89ec-90c1cb63e741",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:01:00Z",
+      "type": "compaction"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "target": {
+          "by": "unknown",
+          "value": "background_agents"
+        },
+        "transition": "all_background_killed"
+      },
+      "id": "f6bcb01d-71e4-5a30-8e55-947b50a8a4be",
+      "origin": {
+        "byte_offset": 32618,
+        "line": 46,
+        "sub": 0
+      },
+      "parent_id": "0cf06227-294a-5cea-9fb0-62abcf19666d",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:01:02Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "key": "agent_name",
+        "value": "demo-lead"
+      },
+      "id": "9d32cb3e-99e4-5af9-86e1-bf29bec83aee",
+      "origin": {
+        "byte_offset": 33666,
+        "line": 48,
+        "sub": 0
+      },
+      "parent_id": "f6bcb01d-71e4-5a30-8e55-947b50a8a4be",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:01:02Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "kind": "pr_link",
+        "level": "info",
+        "text": "PR #7 linked: https://example.org/example/demo-project/pull/7"
+      },
+      "id": "d0db3a01-1f36-51d9-bd9d-3566f6117169",
+      "origin": {
+        "byte_offset": 33763,
+        "line": 49,
+        "sub": 0
+      },
+      "parent_id": "9d32cb3e-99e4-5af9-86e1-bf29bec83aee",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:01:03Z",
+      "type": "notification"
+    },
+    {
+      "agent": "claude:00000000-0000-4000-8000-000000000001",
+      "content": {
+        "duration_ms": 14000,
+        "outcome": {
+          "outcome": "completed"
+        }
+      },
+      "id": "234cf99b-edf7-5958-8e52-c1850723b5d0",
+      "origin": {
+        "byte_offset": 33981,
+        "line": 50,
+        "sub": 0
+      },
+      "parent_id": "d0db3a01-1f36-51d9-bd9d-3566f6117169",
+      "session_id": "5c9319e8-45d9-503e-8117-80f770e020d9",
+      "timestamp": "2026-09-20T10:01:04Z",
+      "type": "turn_end"
+    }
+  ],
+  "header": {
+    "agent_type": null,
+    "cwd": "/work/demo-project",
+    "depth": 0,
+    "id": "claude:00000000-0000-4000-8000-000000000001",
+    "kind": "main",
+    "name": "Demo project audit",
+    "native_agent_id": null,
+    "native_session_id": "00000000-0000-4000-8000-000000000001",
+    "parent": null,
+    "root": "claude:00000000-0000-4000-8000-000000000001",
+    "spawn_call_id": null,
+    "started_at": "2026-09-20T10:00:00Z",
+    "team": null,
+    "title": "Demo project audit"
+  }
+}

@@ -44,12 +44,24 @@ fn claude_fixture_tree() {
         vec![
             "claude:00000000-0000-4000-8000-000000000001",
             "claude:00000000-0000-4000-8000-000000000001/a0000000000000001",
+            "claude:00000000-0000-4000-8000-000000000001/a0000000000000002",
+            "claude:00000000-0000-4000-8000-000000000002",
         ]
     );
-    assert_eq!(headers[0].agent.kind, AgentKind::Main);
-    assert_eq!(headers[1].agent.kind, AgentKind::Subagent);
+    let kinds: Vec<_> = headers.iter().map(|h| h.agent.kind).collect();
+    assert_eq!(
+        kinds,
+        vec![
+            AgentKind::Main,
+            AgentKind::Subagent,
+            AgentKind::Fork,
+            AgentKind::Teammate
+        ]
+    );
     assert_eq!(headers[1].agent.parent.as_ref(), Some(&headers[0].agent.id));
-    for h in &headers {
+    assert_eq!(headers[2].agent.parent.as_ref(), Some(&headers[0].agent.id));
+    // The lead fixture deliberately contains bad lines (see claude_fixture_snapshots).
+    for h in &headers[1..] {
         assert!(assert_clean(&ClaudeProvider, h) > 0);
     }
 }

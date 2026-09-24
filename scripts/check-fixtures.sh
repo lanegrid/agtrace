@@ -36,8 +36,10 @@ while IFS= read -r -d '' file; do
     | grep -vE '@example\.(com|org)$' >/dev/null; then
     report "$rel contains an e-mail address"
   fi
-  if grep -noE '(sk-|cse_|toolu_)[A-Za-z0-9_-]+' "$file" | grep -vE ':(sk-|cse_|toolu_)synthetic' >/dev/null; then
-    report "$rel contains a non-synthetic token/id: $(grep -noE '(sk-|cse_|toolu_)[A-Za-z0-9_-]+' "$file" | grep -vE ':(sk-|cse_|toolu_)synthetic' | head -1)"
+  # Token prefixes must start a word ("task-notification" is not an "sk-" token).
+  token_re='(^|[^A-Za-z0-9])(sk-|cse_|toolu_)[A-Za-z0-9_-]+'
+  if grep -noE "$token_re" "$file" | grep -vE '(sk-|cse_|toolu_)synthetic' >/dev/null; then
+    report "$rel contains a non-synthetic token/id: $(grep -noE "$token_re" "$file" | grep -vE '(sk-|cse_|toolu_)synthetic' | head -1)"
   fi
 done < <(find "$FIXTURES" -type f -print0)
 
