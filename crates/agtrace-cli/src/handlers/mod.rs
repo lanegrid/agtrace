@@ -1,5 +1,6 @@
 mod context;
 
+pub mod agent_watch;
 pub mod demo;
 pub mod doctor_check;
 pub mod doctor_inspect;

@@ -36,3 +36,8 @@ pub use args::{
     ProviderCommand, SessionCommand,
 };
 pub use commands::run;
+
+/// Multi-agent watch TUI loop over an abstract workspace source.
+pub mod agent_watch {
+    pub use crate::handlers::agent_watch::{SharedWorkspace, WorkspaceSource, build, run};
+}
