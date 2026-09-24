@@ -359,3 +359,25 @@ fn latest_model_wins() {
     ]);
     assert_eq!(e.model.as_deref(), Some("claude-opus-5-5"));
 }
+
+#[test]
+fn apply_reports_whether_the_evidence_changed() {
+    let mut e = ContextEvidence::new();
+    assert!(e.apply(&model_change("claude-opus-5-5")));
+    assert!(!e.apply(&model_change("claude-opus-5-5")));
+    assert!(e.apply(&usage(None, 10, 0, 0)));
+    assert!(!e.apply(&usage(None, 10, 0, 0)));
+    assert!(!e.apply(&ev(EventPayload::User(agtrace_types::UserPayload {
+        text: "hi".into()
+    }))));
+}
+
+#[test]
+fn external_model_with_1m_suffix_sets_external_marker_once() {
+    let mut e = ContextEvidence::new();
+    assert!(!e.apply_external_model("claude-opus-5-5"));
+    assert_eq!(e.external_marker, None);
+    assert!(e.apply_external_model("claude-opus-5-5[1m]"));
+    assert!(!e.apply_external_model("claude-opus-5-5[1m]"));
+    assert_eq!(e.external_marker, Some(EXTENDED_CONTEXT_TOKENS));
+}

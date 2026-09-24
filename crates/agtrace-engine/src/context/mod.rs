@@ -57,7 +57,30 @@ impl ContextEvidence {
     }
 
     /// Fold one event. O(1) (marker map is tiny: one entry per model family seen).
-    pub fn apply(&mut self, event: &AgentEvent) {
+    /// Returns true if the evidence changed (callers re-resolve the window only then).
+    pub fn apply(&mut self, event: &AgentEvent) -> bool {
+        if !affects_context(&event.payload) {
+            return false;
+        }
+        let before = self.clone();
+        self.fold(event);
+        *self != before
+    }
+
+    /// Model string from side-state outside the agent's log (team config
+    /// `members[].model`, subagent `meta.json` model, spawn `resolved_model`).
+    /// A `[1m]` suffix sets [`ContextEvidence::external_marker`]. Returns true if changed.
+    pub fn apply_external_model(&mut self, model: &str) -> bool {
+        if has_extended_context_suffix(model)
+            && self.external_marker != Some(EXTENDED_CONTEXT_TOKENS)
+        {
+            self.external_marker = Some(EXTENDED_CONTEXT_TOKENS);
+            return true;
+        }
+        false
+    }
+
+    fn fold(&mut self, event: &AgentEvent) {
         match &event.payload {
             EventPayload::TokenUsage(usage) => {
                 if let Some(model) = &usage.model {
@@ -150,6 +173,17 @@ impl ContextEvidence {
 fn looks_like_model_id(s: &str) -> bool {
     let s = s.trim();
     !s.is_empty() && !s.contains(char::is_whitespace)
+}
+
+/// Payloads that [`ContextEvidence::apply`] reads.
+fn affects_context(p: &EventPayload) -> bool {
+    matches!(
+        p,
+        EventPayload::TokenUsage(_)
+            | EventPayload::ModelChange(_)
+            | EventPayload::ContextWindowHint(_)
+            | EventPayload::Compaction(_)
+    )
 }
 
 /// Smallest known tier ≥ `tokens` (or `tokens` itself when above every tier).

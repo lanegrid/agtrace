@@ -6,11 +6,13 @@
 //! - `fixtures`: Sample data generation and placement
 //! - `process`: Background process management for long-running commands
 //! - `providers`: Provider-specific testing utilities
+//! - `synth`: Small builders for synthetic agents / events (unit tests)
 
 pub mod assertions;
 pub mod fixtures;
 pub mod process;
 pub mod providers;
+pub mod synth;
 pub mod world;
 
 pub use world::TestWorld;

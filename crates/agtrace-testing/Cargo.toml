@@ -17,6 +17,8 @@ agtrace-sdk = { workspace = true }
 # Common dependencies
 anyhow = { workspace = true }
 serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true, features = ["v5"] }
 
 # Testing infrastructure
 tempfile = { workspace = true }
