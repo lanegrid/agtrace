@@ -291,6 +291,15 @@ fn test_watch_without_provider_watches_latest_from_any_provider() -> Result<()> 
     world.add_session(TestProvider::Claude, "claude-session.jsonl")?;
     world.add_session(TestProvider::Codex, "rollout-codex.jsonl")?;
 
+    // Make recency deterministic: files written in the same second can share an mtime
+    let now = std::time::SystemTime::now();
+    world.set_file_mtime(
+        TestProvider::Claude,
+        "claude-session.jsonl",
+        now - std::time::Duration::from_secs(120),
+    )?;
+    world.set_file_mtime(TestProvider::Codex, "rollout-codex.jsonl", now)?;
+
     world.run(&["init"])?;
 
     // Get session IDs for verification
