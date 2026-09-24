@@ -264,9 +264,9 @@ impl TuiRenderer {
     fn create_debug_turn(turn_id: usize) -> TurnItemViewModel {
         use crate::presentation::view_models::StepPreviewViewModel;
 
-        // Simulate progressive context usage
-        let max_context = 200_000u32;
-        let tokens_per_turn = 5_000u32;
+        // Simulate progressive context usage (2.5% of the window per turn)
+        let max_context = debug_context_window().tokens.min(u32::MAX as u64) as u32;
+        let tokens_per_turn = max_context / 40;
         let prev_total = (turn_id.saturating_sub(1) as u32) * tokens_per_turn;
         let delta_tokens = tokens_per_turn;
         let total = prev_total + delta_tokens;
@@ -343,12 +343,13 @@ impl TuiRenderer {
                 session_id: "debug-session".to_string(),
                 project_root: Some("/debug/project".to_string()),
                 log_path: None,
-                model: Some("debug-model".to_string()),
+                model: Some(DEBUG_MODEL.to_string()),
                 start_time: chrono::Utc::now(),
                 last_activity: chrono::Utc::now(),
                 elapsed_seconds: 0,
                 context_total: 0,
-                context_limit: Some(200_000),
+                context_limit: Some(debug_context_window().tokens),
+                context_source: Some(debug_context_window().provenance().to_string()),
                 context_usage_pct: Some(0.0),
                 context_color: StatusLevel::Info,
                 context_breakdown: ContextBreakdownViewModel {
@@ -421,4 +422,18 @@ impl Default for TuiRenderer {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Model shown by the debug screen.
+const DEBUG_MODEL: &str = "claude-opus-5";
+
+/// Context window of the debug model, resolved like any real agent's window.
+fn debug_context_window() -> agtrace_sdk::types::ContextWindow {
+    use agtrace_sdk::types::{AgentProvider, ContextEvidence};
+    agtrace_sdk::utils::resolve_context_window(
+        AgentProvider::ClaudeCode,
+        &ContextEvidence::with_model(DEBUG_MODEL),
+        &agtrace_sdk::utils::builtin_model_catalog(),
+    )
+    .expect("built-in model table covers the debug model")
 }

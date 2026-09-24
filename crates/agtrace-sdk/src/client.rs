@@ -191,6 +191,13 @@ impl Client {
         }
     }
 
+    /// Model catalog for context window resolution: built-in tables, provider caches
+    /// (`~/.codex/models_cache.json`) and the workspace `config.toml` `[context_window]`
+    /// overrides. Pass it to [`crate::utils::resolve_context_window`].
+    pub fn model_catalog(&self) -> Arc<dyn crate::types::ModelCatalog> {
+        self.inner.model_catalog()
+    }
+
     /// Get the watch service for low-level watch operations.
     /// Prefer using `client.watch()` for most use cases.
     pub fn watch_service(&self) -> crate::types::WatchService {

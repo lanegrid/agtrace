@@ -1,6 +1,7 @@
 use crate::client::{InsightOps, MonitorBuilder, ProjectOps, SessionOps, WatchService};
 use crate::config::Config;
 use crate::init::{InitConfig, InitProgress, InitResult, InitService};
+use crate::model_catalog::ConfiguredModelCatalog;
 use crate::ops::{CheckResult, DoctorService, InspectResult};
 use crate::{Error, Result};
 use agtrace_engine::DiagnoseResult;
@@ -14,6 +15,7 @@ pub struct AgTrace {
     db: Arc<Mutex<Database>>,
     config: Arc<Config>,
     provider_configs: Arc<Vec<(String, PathBuf)>>,
+    model_catalog: Arc<ConfiguredModelCatalog>,
 }
 
 impl AgTrace {
@@ -50,10 +52,13 @@ impl AgTrace {
             .map(|(name, cfg)| (name.clone(), cfg.log_root.clone()))
             .collect();
 
+        let model_catalog = ConfiguredModelCatalog::load(config.context_window.clone());
+
         Ok(Self {
             db: Arc::new(Mutex::new(db)),
             config: Arc::new(config),
             provider_configs: Arc::new(provider_configs),
+            model_catalog: Arc::new(model_catalog),
         })
     }
 
@@ -93,10 +98,13 @@ impl AgTrace {
             .map(|(name, cfg)| (name.clone(), cfg.log_root.clone()))
             .collect();
 
+        let model_catalog = ConfiguredModelCatalog::load(config.context_window.clone());
+
         Ok(Self {
             db: Arc::new(Mutex::new(db)),
             config: Arc::new(config),
             provider_configs: Arc::new(provider_configs),
+            model_catalog: Arc::new(model_catalog),
         })
     }
 
@@ -146,6 +154,12 @@ impl AgTrace {
 
     pub fn config(&self) -> &Config {
         &self.config
+    }
+
+    /// Model catalog for the context window resolver (built-in tables, provider caches,
+    /// `[context_window]` user overrides).
+    pub fn model_catalog(&self) -> Arc<ConfiguredModelCatalog> {
+        self.model_catalog.clone()
     }
 
     pub fn check_file(

@@ -234,8 +234,7 @@ pub use query::{EventType, Provider};
 /// # }
 /// ```
 pub mod utils {
-    use crate::types::TokenLimits;
-    use agtrace_providers::ProviderModelLimitResolver;
+    use crate::types::{AgentProvider, ContextEvidence, ContextWindow, ModelCatalog};
 
     // Event processing utilities
     pub use agtrace_engine::extract_state_updates;
@@ -246,21 +245,38 @@ pub mod utils {
         resolve_effective_project_hash, resolve_workspace_path,
     };
 
-    /// Create a TokenLimits instance with the default provider resolver.
+    /// Resolve an agent's context window from its folded evidence.
     ///
-    /// This is a convenience function for creating TokenLimits without needing
-    /// to manually instantiate the ProviderModelLimitResolver.
+    /// This is the only context-window computation in agtrace (design §3): fold every
+    /// event of one agent with [`ContextEvidence::apply`], then resolve against a catalog
+    /// (usually [`crate::Client::model_catalog`]).
     ///
     /// # Example
     ///
-    /// ```no_run
+    /// ```
+    /// use agtrace_sdk::types::{AgentProvider, ContextEvidence};
     /// use agtrace_sdk::utils;
     ///
-    /// let token_limits = utils::default_token_limits();
-    /// let limit = token_limits.get_limit("claude-3-5-sonnet");
+    /// let evidence = ContextEvidence::with_model("claude-opus-5");
+    /// let catalog = utils::builtin_model_catalog();
+    /// let window = utils::resolve_context_window(AgentProvider::ClaudeCode, &evidence, &catalog)
+    ///     .unwrap();
+    /// assert_eq!(window.tokens, 1_000_000);
     /// ```
-    pub fn default_token_limits() -> TokenLimits<ProviderModelLimitResolver> {
-        TokenLimits::new(ProviderModelLimitResolver)
+    pub fn resolve_context_window(
+        provider: AgentProvider,
+        evidence: &ContextEvidence,
+        catalog: &dyn ModelCatalog,
+    ) -> Option<ContextWindow> {
+        agtrace_engine::resolve_context_window(provider, evidence, catalog)
+    }
+
+    /// Catalog with the built-in model tables only (no user config, no provider caches).
+    ///
+    /// Deterministic; for tools without a workspace. Prefer
+    /// [`crate::Client::model_catalog`] when a client is available.
+    pub fn builtin_model_catalog() -> agtrace_providers::BuiltinModelCatalog {
+        agtrace_providers::BuiltinModelCatalog::tables_only()
     }
 
     // Event filtering utilities

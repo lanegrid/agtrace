@@ -60,14 +60,13 @@ pub fn present_watch_stream_update(
     state: &agtrace_sdk::types::SessionState,
     events: &VecDeque<agtrace_sdk::types::AgentEvent>,
     assembled_sessions: &[agtrace_sdk::types::AgentSession],
-    max_context: Option<u32>,
+    window: Option<&agtrace_sdk::types::ContextWindow>,
     notification: Option<&str>,
 ) -> WatchEventViewModel {
     use super::watch_tui::build_screen_view_model;
 
     // Use the same unified presenter as TUI
-    let screen =
-        build_screen_view_model(state, events, assembled_sessions, max_context, notification);
+    let screen = build_screen_view_model(state, events, assembled_sessions, window, notification);
 
     WatchEventViewModel::StreamUpdate {
         screen: Box::new(screen),

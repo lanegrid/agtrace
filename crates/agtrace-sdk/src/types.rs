@@ -32,6 +32,9 @@ pub use agtrace_types::{
     AgentTurn,
     CompactionPayload,
     CompactionTrigger,
+    // Context window resolution
+    ContextSource,
+    ContextWindow,
     ContextWindowHintPayload,
     EventOrigin,
     EventPayload,
@@ -44,6 +47,7 @@ pub use agtrace_types::{
     MessageBlock,
     MessageDirection,
     MessagePayload,
+    ModelCatalog,
     ModelChangePayload,
     ModelChangeSource,
     ParseDiagnostics,
@@ -84,7 +88,13 @@ pub use agtrace_types::{
 // Session Analysis Types (from agtrace-engine)
 // ============================================================================
 
+/// Provider of an agent log (agent-identity level; distinct from the query filter
+/// [`crate::Provider`]).
+pub use agtrace_types::Provider as AgentProvider;
+
 pub use agtrace_engine::{
+    // Context window evidence (fold events, then resolve)
+    ContextEvidence,
     // Token usage types
     ContextLimit,
     ContextWindowUsage,
@@ -125,6 +135,8 @@ pub use agtrace_runtime::{
     Config,
     // Init Types
     ConfigStatus,
+    ConfiguredModelCatalog,
+    ContextWindowConfig,
     CorpusStats,
     // Watch/Monitor Types
     DiscoveryEvent,
@@ -149,8 +161,6 @@ pub use agtrace_runtime::{
     StatsResult,
     StreamEvent,
     StreamHandle,
-    TokenLimit,
-    TokenLimits,
     WatchService,
     WorkspaceEvent,
 };

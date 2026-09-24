@@ -2,11 +2,10 @@ use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
 use agtrace_sdk::SessionHandle;
 use agtrace_sdk::types::{
-    AgentEvent, AgentId, EventOrigin, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs,
-    MessagePayload, ReasoningPayload, SessionState, TokenInput, TokenOutput, TokenUsagePayload,
-    ToolCallPayload, ToolResultPayload, UserPayload,
+    AgentEvent, AgentId, ContextWindowHintPayload, EventOrigin, EventPayload, ExecuteArgs,
+    FileEditArgs, FileReadArgs, MessagePayload, ReasoningPayload, SessionState, TokenInput,
+    TokenOutput, TokenUsagePayload, ToolCallPayload, ToolResultPayload, UserPayload,
 };
-use agtrace_sdk::utils::extract_state_updates;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use std::collections::VecDeque;
@@ -14,7 +13,10 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-const DEMO_CONTEXT_WINDOW_LIMIT: u64 = 150_000;
+/// Context window the synthetic scenario declares in-log (as a `ContextWindowHint`),
+/// resolved by the regular context resolver like any real agent's window.
+const DEMO_CONTEXT_WINDOW: u64 = 150_000;
+const DEMO_MODEL: &str = "demo-model";
 
 struct DemoConfig {
     step_delay: u64,
@@ -60,15 +62,14 @@ fn run_simulation(
     let start_time = Utc::now();
 
     let mut state = SessionState::new(session_id.clone(), None, None, start_time);
-    state.context_window_limit = Some(DEMO_CONTEXT_WINDOW_LIMIT);
-    state.model = Some("Demo Model".to_string());
+    let catalog = agtrace_sdk::utils::builtin_model_catalog();
 
     let mut events_buffer = VecDeque::new();
     let mut current_notification: Option<String> = None;
     let mut notification_ttl: usize = 0;
     let mut last_notification_threshold: f64 = 0.0;
 
-    let scenario = generate_scenario(&session_id, start_time, DEMO_CONTEXT_WINDOW_LIMIT);
+    let scenario = generate_scenario(&session_id, start_time, DEMO_CONTEXT_WINDOW);
 
     for (idx, event) in scenario.into_iter().enumerate() {
         match signal_rx.try_recv() {
@@ -77,36 +78,20 @@ fn run_simulation(
             _ => {}
         }
 
-        state.last_activity = event.timestamp;
-        state.event_count += 1;
-
         // Apply state updates using engine logic (same as watch handler)
-        let updates = extract_state_updates(&event);
-        if updates.is_new_turn {
-            state.turn_count += 1;
-        }
-        if let Some(usage) = updates.usage {
-            state.current_usage = usage;
-        }
-        if let Some(model) = updates.model {
-            state.model.get_or_insert(model);
-        }
-        if let Some(limit) = updates.context_window_limit {
-            state.context_window_limit.get_or_insert(limit);
-        }
+        state.apply_event(&event);
 
         events_buffer.push_back(event);
         // Don't truncate events in demo - we need all events to maintain turn history
         // In live watch mode, truncation makes sense to limit memory, but demo has fixed scenario
 
-        let max_context = state.context_window_limit.map(|x| x as u32);
+        let window = state.context_window(&catalog);
 
         // Calculate current usage percentage
-        let usage_pct = if let Some(limit) = state.context_window_limit {
-            (state.total_tokens().as_u64() as f64 / limit as f64) * 100.0
-        } else {
-            0.0
-        };
+        let usage_pct = window
+            .as_ref()
+            .map(|w| w.usage_ratio(state.total_tokens().as_u64()) * 100.0)
+            .unwrap_or(0.0);
 
         // Update notification based on usage percentage thresholds
         let new_notification = if idx == 0 {
@@ -154,7 +139,7 @@ fn run_simulation(
             &state,
             &events_buffer,
             &assembled_sessions,
-            max_context,
+            window.as_ref(),
             notification.map(|s| s.as_str()),
         );
 
@@ -517,6 +502,25 @@ impl ScenarioBuilder {
         self
     }
 
+    /// Declare the context window in-log (like Codex `model_context_window`).
+    fn context_window_hint(&mut self, model: &str) -> &mut Self {
+        let id = self.next_event_id();
+        let ts = self.timestamp;
+        self.events.push(AgentEvent {
+            id,
+            session_id: self.session_uuid,
+            parent_id: None,
+            timestamp: ts,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
+            payload: EventPayload::ContextWindowHint(ContextWindowHintPayload::Explicit {
+                tokens: self.max_context as u64,
+                model: Some(model.to_string()),
+            }),
+        });
+        self
+    }
+
     fn build(self) -> Vec<AgentEvent> {
         self.events
     }
@@ -524,6 +528,7 @@ impl ScenarioBuilder {
 
 fn generate_scenario(session_id: &str, start: DateTime<Utc>, max_context: u64) -> Vec<AgentEvent> {
     let mut builder = ScenarioBuilder::new(session_id, start, max_context);
+    builder.context_window_hint(DEMO_MODEL);
 
     // Turn 1: Error handling improvement
     builder.user(

@@ -1,85 +1,36 @@
-use std::collections::HashMap;
+//! Claude model knowledge: built-in context window table (consumed by the context
+//! resolver through [`crate::BuiltinModelCatalog`], never by the decoder).
+//!
+//! Keys are model-id prefixes matched longest-first against the normalized id
+//! (`[1m]` suffix and `-YYYYMMDD` snapshot stripped). Values are the default window on
+//! the Anthropic API. Bedrock/Vertex deployments of native-1M models may run at 200k;
+//! users override that in `config.toml` `[context_window]`.
 
-/// Model specification with named fields for type safety
-///
-/// NOTE: Why struct instead of tuple (&str, u64)?
-/// Tuples are position-dependent and lack semantic meaning:
-/// - ("claude-3-5", 200_000) vs (200_000, "claude-3-5") - compiler can't catch order mistakes
-/// - No field names make code less self-documenting
-/// - Hard to extend (adding output_limit would create complex tuples)
-///
-/// Structs provide:
-/// - Named fields prevent position errors (can't swap prefix and context_window)
-/// - Self-documenting code (field names explain purpose)
-/// - Easy to extend with new fields (e.g., output_limit, cache_support)
-/// - IDE auto-completion works
-/// - Compiler enforces all fields are provided
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ModelSpec {
-    pub prefix: &'static str,
-    pub context_window: u64,
-    /// Compaction buffer percentage (0-100)
-    /// When input tokens exceed (100% - compaction_buffer_pct), compaction is triggered
-    pub compaction_buffer_pct: f64,
-}
-
-impl ModelSpec {
-    /// Create a new model specification
-    ///
-    /// NOTE: Why const fn?
-    /// Allows construction at compile time in const context (MODEL_SPECS array).
-    /// Zero runtime overhead - all values computed at compile time.
-    pub const fn new(
-        prefix: &'static str,
-        context_window: u64,
-        compaction_buffer_pct: f64,
-    ) -> Self {
-        Self {
-            prefix,
-            context_window,
-            compaction_buffer_pct,
-        }
-    }
-}
-
-/// Compaction buffer percentage for Claude models (Claude Code default)
-/// When input tokens exceed (100% - COMPACTION_BUFFER_PCT), compaction is triggered
-const COMPACTION_BUFFER_PCT: f64 = 22.5;
-
-/// Claude provider model specifications
-///
-/// NOTE: Why array of structs instead of HashMap::insert or tuples?
-/// - Type safety: Named fields prevent position errors
-/// - Immutability: Data defined at compile time, cannot be accidentally modified
-/// - Duplicate detection: Tests verify no duplicate prefixes
-/// - Maintainability: Clear structure makes it obvious what each value represents
-/// - Extensibility: Easy to add new fields without breaking existing code
-const MODEL_SPECS: &[ModelSpec] = &[
-    // Claude 4.5 series (as of 2025-12-17)
-    ModelSpec::new("claude-sonnet-4-5", 200_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("claude-haiku-4-5", 200_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("claude-opus-4-5", 200_000, COMPACTION_BUFFER_PCT),
-    // Claude 4 series
-    ModelSpec::new("claude-sonnet-4", 200_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("claude-haiku-4", 200_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("claude-opus-4", 200_000, COMPACTION_BUFFER_PCT),
-    // Claude 3.5 series
-    ModelSpec::new("claude-3-5", 200_000, COMPACTION_BUFFER_PCT),
-    // Claude 3 series (fallback)
-    ModelSpec::new("claude-3", 200_000, COMPACTION_BUFFER_PCT),
+/// Model prefix → context window (tokens).
+pub const CONTEXT_WINDOWS: &[(&str, u64)] = &[
+    // Claude 5.x: native 1M context.
+    ("claude-opus-5", 1_000_000),
+    ("claude-opus-5-5", 1_000_000),
+    ("claude-fable-5", 1_000_000),
+    ("claude-fable-5-1", 1_000_000),
+    ("claude-mythos-5", 1_000_000),
+    ("claude-sonnet-5", 1_000_000),
+    // Claude 4.6+: native 1M context.
+    ("claude-opus-4-6", 1_000_000),
+    ("claude-opus-4-7", 1_000_000),
+    ("claude-opus-4-8", 1_000_000),
+    ("claude-sonnet-4-6", 1_000_000),
+    // Claude 4.5 and older: 200k.
+    ("claude-haiku-4-5", 200_000),
+    ("claude-opus-4", 200_000),
+    ("claude-sonnet-4", 200_000),
+    ("claude-haiku-4", 200_000),
+    ("claude-3", 200_000),
 ];
 
-/// Returns model prefix -> (context window, compaction buffer %) mapping
-pub fn get_model_limits() -> HashMap<&'static str, (u64, f64)> {
-    MODEL_SPECS
-        .iter()
-        .map(|spec| {
-            (
-                spec.prefix,
-                (spec.context_window, spec.compaction_buffer_pct),
-            )
-        })
-        .collect()
+/// Built-in context window for a Claude model id.
+pub fn context_window(model: &str) -> Option<u64> {
+    agtrace_types::longest_prefix_lookup(CONTEXT_WINDOWS, model)
 }
 
 #[cfg(test)]
@@ -88,43 +39,42 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn test_no_duplicate_prefixes() {
-        let prefixes: Vec<&str> = MODEL_SPECS.iter().map(|spec| spec.prefix).collect();
-        let unique_prefixes: HashSet<&str> = prefixes.iter().copied().collect();
-
-        assert_eq!(
-            prefixes.len(),
-            unique_prefixes.len(),
-            "Duplicate prefixes found in MODEL_SPECS: {:?}",
-            prefixes
-                .iter()
-                .enumerate()
-                .filter(|(i, p)| prefixes.iter().skip(i + 1).any(|other| other == *p))
-                .map(|(_, p)| p)
-                .collect::<Vec<_>>()
-        );
+    fn no_duplicate_prefixes() {
+        let set: HashSet<_> = CONTEXT_WINDOWS.iter().map(|(p, _)| p).collect();
+        assert_eq!(set.len(), CONTEXT_WINDOWS.len());
     }
 
     #[test]
-    fn test_model_limits_coverage() {
-        let limits = get_model_limits();
-
-        // Verify key models are defined
-        assert_eq!(limits.get("claude-sonnet-4-5"), Some(&(200_000, 22.5)));
-        assert_eq!(limits.get("claude-haiku-4-5"), Some(&(200_000, 22.5)));
-        assert_eq!(limits.get("claude-opus-4-5"), Some(&(200_000, 22.5)));
-        assert_eq!(limits.get("claude-sonnet-4"), Some(&(200_000, 22.5)));
-        assert_eq!(limits.get("claude-3-5"), Some(&(200_000, 22.5)));
-        assert_eq!(limits.get("claude-3"), Some(&(200_000, 22.5)));
+    fn current_models_are_1m() {
+        for m in [
+            "claude-opus-5",
+            "claude-opus-5-5",
+            "claude-opus-5-5[1m]",
+            "claude-fable-5",
+            "claude-fable-5-1",
+            "claude-sonnet-5",
+            "claude-opus-4-8",
+        ] {
+            assert_eq!(context_window(m), Some(1_000_000), "{m}");
+        }
     }
 
     #[test]
-    fn test_all_specs_converted() {
-        let limits = get_model_limits();
-        assert_eq!(
-            limits.len(),
-            MODEL_SPECS.len(),
-            "HashMap size should match MODEL_SPECS length"
-        );
+    fn older_models_are_200k() {
+        for m in [
+            "claude-haiku-4-5-20251001",
+            "claude-sonnet-4-5-20250929",
+            "claude-opus-4-5",
+            "claude-opus-4-1",
+            "claude-3-5-sonnet-20241022",
+        ] {
+            assert_eq!(context_window(m), Some(200_000), "{m}");
+        }
+    }
+
+    #[test]
+    fn unknown_model_is_none() {
+        assert_eq!(context_window("<synthetic>"), None);
+        assert_eq!(context_window("gpt-5"), None);
     }
 }

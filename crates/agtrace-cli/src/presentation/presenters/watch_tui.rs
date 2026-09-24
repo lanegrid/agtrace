@@ -8,7 +8,7 @@
 //! - ALL calculations and logic happen here (colors, widths, truncation)
 //! - Views should only need to map data to widgets, NO decisions
 
-use agtrace_sdk::types::SessionAnalysisExt;
+use agtrace_sdk::types::{ContextWindow, SessionAnalysisExt};
 use chrono::Utc;
 use std::collections::VecDeque;
 
@@ -26,10 +26,11 @@ pub fn build_screen_view_model(
     state: &agtrace_sdk::types::SessionState,
     events: &VecDeque<agtrace_sdk::types::AgentEvent>,
     assembled_sessions: &[agtrace_sdk::types::AgentSession],
-    max_context: Option<u32>,
+    window: Option<&ContextWindow>,
     notification: Option<&str>,
 ) -> TuiScreenViewModel {
-    let dashboard = build_dashboard(state, notification);
+    let max_context = window.map(|w| w.tokens.min(u32::MAX as u64) as u32);
+    let dashboard = build_dashboard(state, window, notification);
     let timeline = build_timeline(events);
     let turn_history = build_turn_history(state, assembled_sessions, max_context);
     let status_bar = build_status_bar(state, assembled_sessions);
@@ -45,18 +46,13 @@ pub fn build_screen_view_model(
 /// Build dashboard ViewModel with context usage calculations
 fn build_dashboard(
     state: &agtrace_sdk::types::SessionState,
+    window: Option<&ContextWindow>,
     notification: Option<&str>,
 ) -> DashboardViewModel {
     use agtrace_sdk::types::ContextLimit;
 
-    // Same fallback logic as present_session_state: try context_window_limit first, then model lookup
-    let token_limits = agtrace_sdk::utils::default_token_limits();
-    let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
-    let limit_u64 = state
-        .context_window_limit
-        .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
-
-    let limit_opt = limit_u64.map(ContextLimit::new);
+    // The window is resolved by the handler (context resolver, design §3).
+    let limit_opt = window.map(|w| ContextLimit::new(w.tokens));
     let total = state.total_tokens();
 
     let breakdown = ContextBreakdownViewModel {
@@ -97,6 +93,7 @@ fn build_dashboard(
         elapsed_seconds: elapsed.max(0) as u64,
         context_total: total.as_u64(),
         context_limit: limit_opt.map(|l| l.as_u64()),
+        context_source: window.map(|w| w.provenance().to_string()),
         context_usage_pct: usage_pct,
         context_color,
         context_breakdown: breakdown,
@@ -293,7 +290,7 @@ fn build_turn_history(
         };
     };
 
-    // max_context should come from the handler (already has model fallback logic)
+    // max_context comes from the resolved context window (handler)
     // If still None, we can't calculate usage bars - return empty
     let Some(max_context_u32) = max_context else {
         return TurnHistoryViewModel {

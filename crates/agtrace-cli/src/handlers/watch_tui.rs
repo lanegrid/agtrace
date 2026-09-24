@@ -8,6 +8,7 @@
 
 use std::collections::VecDeque;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
 
@@ -17,8 +18,9 @@ use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
 use agtrace_sdk::Client;
 use agtrace_sdk::types::AgentSession;
+use agtrace_sdk::types::ModelCatalog;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
-use agtrace_sdk::utils::{extract_state_updates, filter_display_events};
+use agtrace_sdk::utils::filter_display_events;
 
 pub enum WatchTarget {
     Provider { name: String },
@@ -33,8 +35,8 @@ struct WatchHandler {
     events: VecDeque<agtrace_sdk::types::AgentEvent>,
     /// Assembled sessions (main + child streams)
     assembled_sessions: Vec<AgentSession>,
-    /// Max context window
-    max_context: Option<u32>,
+    /// Model catalog for context window resolution
+    catalog: Arc<dyn ModelCatalog>,
     /// Notification message (for session switching, etc.)
     notification: Option<String>,
     /// Project root (CWD)
@@ -47,13 +49,14 @@ impl WatchHandler {
     fn new(
         state: SessionState,
         project_root: Option<std::path::PathBuf>,
+        catalog: Arc<dyn ModelCatalog>,
         tx: Sender<TuiEvent>,
     ) -> Self {
         Self {
             state,
             events: VecDeque::new(),
             assembled_sessions: Vec::new(),
-            max_context: None,
+            catalog,
             notification: None,
             project_root,
             tx,
@@ -75,29 +78,14 @@ impl WatchHandler {
 
     /// Send updated ViewModel to renderer
     fn send_update(&self) {
-        // Same fallback logic as build_dashboard: try context_window_limit first, then model lookup
-        let token_limits = agtrace_sdk::utils::default_token_limits();
-        let token_spec = self
-            .state
-            .model
-            .as_ref()
-            .and_then(|m| token_limits.get_limit(m));
-        let limit_from_state_or_model = self
-            .state
-            .context_window_limit
-            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()));
-
-        // Fallback to handler's cached max_context if still None
-        let max_context_for_metrics = limit_from_state_or_model
-            .or(self.max_context.map(|c| c as u64))
-            .map(|c| c as u32);
+        let window = self.state.context_window(self.catalog.as_ref());
 
         // Call Presenter (pure function) to build ViewModel
         let screen_vm = build_screen_view_model(
             &self.state,
             &self.events,
             &self.assembled_sessions,
-            max_context_for_metrics,
+            window.as_ref(),
             self.notification.as_deref(),
         );
 
@@ -137,23 +125,7 @@ impl WatchHandler {
                 continue;
             }
 
-            self.state.last_activity = event.timestamp;
-            self.state.event_count += 1;
-
-            let updates = extract_state_updates(event);
-            if updates.is_new_turn {
-                self.state.turn_count += 1;
-            }
-            if let Some(usage) = updates.usage {
-                self.state.current_usage = usage;
-            }
-            // Always update to latest model (not first-wins)
-            if let Some(model) = updates.model {
-                self.state.model = Some(model);
-            }
-            if let Some(limit) = updates.context_window_limit {
-                self.state.context_window_limit = Some(limit);
-            }
+            self.state.apply_event(event);
         }
 
         // Use sessions assembled by runtime (no local assembly needed)
@@ -272,9 +244,9 @@ fn handle_provider_watch(
     let mut handler = WatchHandler::new(
         initial_state,
         project_root.map(|p| p.to_path_buf()),
+        client.model_catalog(),
         tx.clone(),
     );
-    handler.max_context = Some(200_000); // Default fallback
 
     // Track current stream handle and mod_time for "most recently updated" switching
     let mut current_stream_handle: Option<agtrace_sdk::types::StreamHandle> = None;
@@ -481,10 +453,7 @@ fn handle_session_watch(
     // Initialize handler with initial state
     let initial_state = SessionState::new(session_id.to_string(), None, None, chrono::Utc::now());
 
-    let mut handler = WatchHandler::new(initial_state, None, tx.clone());
-
-    // Set default fallback (will be updated from actual events)
-    handler.max_context = Some(200_000); // Default to Claude Code's limit
+    let mut handler = WatchHandler::new(initial_state, None, client.model_catalog(), tx.clone());
 
     let poll_timeout = Duration::from_millis(100);
 

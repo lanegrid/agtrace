@@ -11,8 +11,9 @@ pub mod state_updates;
 pub mod workspace;
 
 pub use analysis::{SessionDigest, analyze_and_select_sessions};
+pub use context::{ContextEvidence, resolve as resolve_context_window};
 pub use diagnostics::{DiagnoseResult, FailureExample, FailureType, categorize_parse_error};
-pub use domain::{EventFilters, SessionState, TokenLimit, TokenLimits, filter_events};
+pub use domain::{EventFilters, SessionState, filter_events};
 pub use session::{
     AgentSession, AgentStep, AgentTurn, MessageBlock, ReasoningBlock, SessionAnalysisExt,
     SessionStats, SessionSummary, ToolCallBlock, ToolExecution, ToolResultBlock, TurnMetrics,
@@ -22,6 +23,6 @@ pub use state_updates::{StateUpdates, extract_state_updates};
 
 // Re-export from types for convenience
 pub use agtrace_types::{
-    CacheCreationTokens, CacheReadTokens, ContextLimit, ContextWindowUsage, FreshInputTokens,
-    ModelLimitResolver, ModelSpec, OutputTokens, TokenCount,
+    CacheCreationTokens, CacheReadTokens, ContextLimit, ContextSource, ContextWindow,
+    ContextWindowUsage, FreshInputTokens, ModelCatalog, OutputTokens, TokenCount,
 };

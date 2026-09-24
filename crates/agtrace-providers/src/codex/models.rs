@@ -1,110 +1,44 @@
-use std::collections::HashMap;
+//! Codex model knowledge: built-in context window table (consumed by the context
+//! resolver through [`crate::BuiltinModelCatalog`]).
+//!
+//! Values are the *effective* window Codex reports in its logs
+//! (`model_context_window` = `context_window` × `effective_context_window_percent`,
+//! 272_000 × 95% = 258_400). The live source of truth is the log itself
+//! (`ContextWindowHint::Explicit`) and `~/.codex/models_cache.json`; this table is the
+//! last fallback.
 
-/// Model specification with named fields for type safety
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ModelSpec {
-    pub prefix: &'static str,
-    pub context_window: u64,
-    /// Compaction buffer percentage (0-100)
-    /// When input tokens exceed (100% - compaction_buffer_pct), compaction is triggered
-    pub compaction_buffer_pct: f64,
-}
-
-impl ModelSpec {
-    pub const fn new(
-        prefix: &'static str,
-        context_window: u64,
-        compaction_buffer_pct: f64,
-    ) -> Self {
-        Self {
-            prefix,
-            context_window,
-            compaction_buffer_pct,
-        }
-    }
-}
-
-/// Compaction buffer percentage for Codex/OpenAI models
-/// NOTE: Set to 0 as the actual compaction behavior is not yet known
-const COMPACTION_BUFFER_PCT: f64 = 0.0;
-
-/// Codex/OpenAI provider model specifications
-const MODEL_SPECS: &[ModelSpec] = &[
-    // GPT-5.2 series (as of 2025-12-17)
-    ModelSpec::new("gpt-5.2", 400_000, COMPACTION_BUFFER_PCT),
-    // GPT-5.1 series
-    ModelSpec::new("gpt-5.1-codex-max", 400_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("gpt-5.1-codex-mini", 400_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("gpt-5.1-codex", 400_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("gpt-5.1", 400_000, COMPACTION_BUFFER_PCT),
-    // GPT-5 series
-    ModelSpec::new("gpt-5-codex-mini", 400_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("gpt-5-codex", 400_000, COMPACTION_BUFFER_PCT),
-    ModelSpec::new("gpt-5", 400_000, COMPACTION_BUFFER_PCT),
+/// Model prefix → effective context window (tokens).
+pub const CONTEXT_WINDOWS: &[(&str, u64)] = &[
+    ("gpt-6", 258_400),
+    ("gpt-5.6", 258_400),
+    ("gpt-5.5", 258_400),
+    ("gpt-5", 258_400),
 ];
 
-/// Returns model prefix -> (context window, compaction buffer %) mapping
-pub fn get_model_limits() -> HashMap<&'static str, (u64, f64)> {
-    MODEL_SPECS
-        .iter()
-        .map(|spec| {
-            (
-                spec.prefix,
-                (spec.context_window, spec.compaction_buffer_pct),
-            )
-        })
-        .collect()
+/// Built-in effective context window for a Codex model slug.
+pub fn context_window(model: &str) -> Option<u64> {
+    agtrace_types::longest_prefix_lookup(CONTEXT_WINDOWS, model)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
 
     #[test]
-    fn test_no_duplicate_prefixes() {
-        let prefixes: Vec<&str> = MODEL_SPECS.iter().map(|spec| spec.prefix).collect();
-        let unique_prefixes: HashSet<&str> = prefixes.iter().copied().collect();
-
-        assert_eq!(
-            prefixes.len(),
-            unique_prefixes.len(),
-            "Duplicate prefixes found in MODEL_SPECS: {:?}",
-            prefixes
-                .iter()
-                .enumerate()
-                .filter(|(i, p)| prefixes.iter().skip(i + 1).any(|other| other == *p))
-                .map(|(_, p)| p)
-                .collect::<Vec<_>>()
-        );
+    fn current_slugs() {
+        for m in [
+            "gpt-6-astra",
+            "gpt-5.6-sol",
+            "gpt-5.6-luna",
+            "gpt-5.5",
+            "gpt-5.1-codex-max",
+        ] {
+            assert_eq!(context_window(m), Some(258_400), "{m}");
+        }
     }
 
     #[test]
-    fn test_model_limits_coverage() {
-        let limits = get_model_limits();
-
-        // Verify GPT-5.2 series
-        assert_eq!(limits.get("gpt-5.2"), Some(&(400_000, 0.0)));
-
-        // Verify GPT-5.1 series
-        assert_eq!(limits.get("gpt-5.1-codex-max"), Some(&(400_000, 0.0)));
-        assert_eq!(limits.get("gpt-5.1-codex-mini"), Some(&(400_000, 0.0)));
-        assert_eq!(limits.get("gpt-5.1-codex"), Some(&(400_000, 0.0)));
-        assert_eq!(limits.get("gpt-5.1"), Some(&(400_000, 0.0)));
-
-        // Verify GPT-5 series
-        assert_eq!(limits.get("gpt-5-codex-mini"), Some(&(400_000, 0.0)));
-        assert_eq!(limits.get("gpt-5-codex"), Some(&(400_000, 0.0)));
-        assert_eq!(limits.get("gpt-5"), Some(&(400_000, 0.0)));
-    }
-
-    #[test]
-    fn test_all_specs_converted() {
-        let limits = get_model_limits();
-        assert_eq!(
-            limits.len(),
-            MODEL_SPECS.len(),
-            "HashMap size should match MODEL_SPECS length"
-        );
+    fn unknown_slug() {
+        assert_eq!(context_window("o3"), None);
     }
 }

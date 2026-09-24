@@ -18,9 +18,9 @@ pub mod builder;
 // Provider registry
 pub mod registry;
 
-// Token limits resolution
-pub mod token_limits;
-pub use token_limits::ProviderModelLimitResolver;
+// Model catalog (context window tables + provider caches)
+pub mod model_catalog;
+pub use model_catalog::BuiltinModelCatalog;
 
 // Tool analysis
 pub mod tool_analyzer;

@@ -3,11 +3,13 @@ use crate::presentation::presenters::watch as present_watch;
 use crate::presentation::view_models::{ViewMode, WatchEventViewModel};
 use crate::presentation::views::watch::WatchEventView;
 use agtrace_sdk::Client;
+use agtrace_sdk::types::ModelCatalog;
 use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
-use agtrace_sdk::utils::{extract_state_updates, filter_display_events};
+use agtrace_sdk::utils::filter_display_events;
 use anyhow::Result;
 use std::collections::VecDeque;
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::mpsc::RecvTimeoutError;
 use std::time::Duration;
 
@@ -97,6 +99,7 @@ pub fn handle_console(
                 rx_discovery,
                 latest_session,
                 project_root,
+                client.model_catalog(),
             );
 
             Ok(())
@@ -109,7 +112,12 @@ pub fn handle_console(
             // Attach to session
             let handle = watch_service.watch_session(&id)?;
 
-            process_stream_events_console(handle.receiver(), id, project_root);
+            process_stream_events_console(
+                handle.receiver(),
+                id,
+                project_root,
+                client.model_catalog(),
+            );
 
             Ok(())
         }
@@ -121,6 +129,7 @@ fn process_provider_events_console(
     rx_discovery: std::sync::mpsc::Receiver<WorkspaceEvent>,
     initial_session: Option<agtrace_sdk::types::SessionSummary>,
     project_root: Option<&Path>,
+    catalog: Arc<dyn ModelCatalog>,
 ) {
     let mut current_handle: Option<agtrace_sdk::types::StreamHandle> = None;
     let mut current_session_id: Option<String> = None;
@@ -270,39 +279,16 @@ fn process_provider_events_console(
                                 continue;
                             }
 
-                            state.last_activity = event.timestamp;
-                            state.event_count += 1;
-
-                            let updates = extract_state_updates(event);
-                            if updates.is_new_turn {
-                                state.turn_count += 1;
-                            }
-                            if let Some(usage) = updates.usage {
-                                state.current_usage = usage;
-                            }
-                            // Always update to latest model (not first-wins)
-                            if let Some(model) = updates.model {
-                                state.model = Some(model);
-                            }
-                            if let Some(limit) = updates.context_window_limit {
-                                state.context_window_limit = Some(limit);
-                            }
+                            state.apply_event(event);
                         }
 
-                        // Build max_context from state
-                        let token_limits = agtrace_sdk::utils::default_token_limits();
-                        let token_spec =
-                            state.model.as_ref().and_then(|m| token_limits.get_limit(m));
-                        let max_context = state
-                            .context_window_limit
-                            .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()))
-                            .map(|c| c as u32);
+                        let window = state.context_window(catalog.as_ref());
 
                         let update_event = present_watch::present_watch_stream_update(
                             state,
                             &event_buffer,
                             &sessions,
-                            max_context,
+                            window.as_ref(),
                             None, // no notification for console mode
                         );
                         print_event(&update_event, ViewMode::Standard);
@@ -345,6 +331,7 @@ fn process_stream_events_console(
     receiver: &std::sync::mpsc::Receiver<WorkspaceEvent>,
     session_id: String,
     project_root: Option<&Path>,
+    catalog: Arc<dyn ModelCatalog>,
 ) {
     let mut session_state: Option<SessionState> = None;
     let mut current_log_path: Option<std::path::PathBuf> = None;
@@ -391,38 +378,16 @@ fn process_stream_events_console(
                             continue;
                         }
 
-                        state.last_activity = event.timestamp;
-                        state.event_count += 1;
-
-                        let updates = extract_state_updates(event);
-                        if updates.is_new_turn {
-                            state.turn_count += 1;
-                        }
-                        if let Some(usage) = updates.usage {
-                            state.current_usage = usage;
-                        }
-                        // Always update to latest model (not first-wins)
-                        if let Some(model) = updates.model {
-                            state.model = Some(model);
-                        }
-                        if let Some(limit) = updates.context_window_limit {
-                            state.context_window_limit = Some(limit);
-                        }
+                        state.apply_event(event);
                     }
 
-                    // Build max_context from state
-                    let token_limits = agtrace_sdk::utils::default_token_limits();
-                    let token_spec = state.model.as_ref().and_then(|m| token_limits.get_limit(m));
-                    let max_context = state
-                        .context_window_limit
-                        .or_else(|| token_spec.as_ref().map(|spec| spec.effective_limit()))
-                        .map(|c| c as u32);
+                    let window = state.context_window(catalog.as_ref());
 
                     let update_event = present_watch::present_watch_stream_update(
                         state,
                         &event_buffer,
                         &sessions,
-                        max_context,
+                        window.as_ref(),
                         None, // no notification for console mode
                     );
                     print_event(&update_event, ViewMode::Standard);

@@ -4,6 +4,7 @@ pub mod header;
 pub mod io;
 pub mod mapper;
 pub mod models;
+pub mod models_cache;
 pub mod parser;
 pub mod provider;
 pub mod schema;
