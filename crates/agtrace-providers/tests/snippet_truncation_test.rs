@@ -3,7 +3,7 @@ use std::path::PathBuf;
 /// Test that Claude snippet extraction truncates long messages to 200 chars
 #[test]
 fn test_claude_snippet_truncation() {
-    use agtrace_providers::claude::extract_claude_header;
+    use agtrace_providers::{ClaudeProvider, Provider};
 
     let path = PathBuf::from("tests/samples/claude_session.jsonl");
 
@@ -12,9 +12,7 @@ fn test_claude_snippet_truncation() {
         return;
     }
 
-    let header = extract_claude_header(&path).expect("Failed to extract Claude header");
-
-    if let Some(snippet) = header.snippet {
+    if let Some(snippet) = ClaudeProvider.read_snippet(&path) {
         // Verify snippet is truncated (200 chars + "...(truncated)" = max 214 chars)
         assert!(
             snippet.chars().count() <= 214,
@@ -39,7 +37,7 @@ fn test_claude_snippet_truncation() {
 /// Test that Codex snippet extraction truncates long messages to 200 chars
 #[test]
 fn test_codex_snippet_truncation() {
-    use agtrace_providers::codex::io::extract_codex_header;
+    use agtrace_providers::{CodexProvider, Provider};
 
     let path = PathBuf::from("tests/samples/codex_session.jsonl");
 
@@ -48,9 +46,7 @@ fn test_codex_snippet_truncation() {
         return;
     }
 
-    let header = extract_codex_header(&path).expect("Failed to extract Codex header");
-
-    if let Some(snippet) = header.snippet {
+    if let Some(snippet) = CodexProvider.read_snippet(&path) {
         // Verify snippet is truncated (200 chars + "...(truncated)" = max 214 chars)
         assert!(
             snippet.chars().count() <= 214,

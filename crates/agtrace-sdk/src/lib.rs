@@ -84,18 +84,20 @@
 //!
 //! ## Real-time Monitoring
 //!
-//! Watch for events as they happen:
+//! Watch every agent of a project (main sessions, teammates, subagents, Codex
+//! threads) as a live tree:
 //!
 //! ```no_run
 //! use agtrace_sdk::Client;
-//! use futures::stream::StreamExt;
+//! use agtrace_sdk::watch::WatchScope;
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let client = Client::connect_default().await?;
-//! let mut stream = client.watch().all_providers().start()?;
-//! while let Some(event) = stream.next().await {
-//!     println!("Event: {:?}", event);
+//! let mut live = client.watch_workspace(WatchScope::project(std::env::current_dir()?))?;
+//! while live.changed().await.is_some() {
+//!     let view = live.view();
+//!     println!("{} agents, {} feed entries", view.agents.len(), view.feed.len());
 //! }
 //! # Ok(())
 //! # }
@@ -164,14 +166,14 @@ pub use agtrace_engine::workspace;
 pub use analysis::{AnalysisReport, Diagnostic, Insight, Severity};
 pub use client::{
     ChildSessionInfo, Client, ClientBuilder, InsightClient, ProjectClient, SessionClient,
-    SessionHandle, SystemClient, WatchClient,
+    SessionHandle, SystemClient,
 };
 pub use error::{Error, Result};
 pub use providers::{Providers, ProvidersBuilder};
 pub use types::{
     AgentEvent, EventPayload, ExportStrategy, SessionFilter, SessionSummary, ToolKind,
 };
-pub use watch::{LiveStream, WatchBuilder};
+pub use watch::{LiveWorkspace, WatchScope};
 
 // Query types for MCP and programmatic usage
 pub use query::{EventType, Provider};
@@ -196,30 +198,19 @@ pub use query::{EventType, Provider};
 /// ## Event Processing
 ///
 /// ```no_run
-/// use agtrace_sdk::{Client, utils};
-/// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
-/// use futures::stream::StreamExt;
+/// use agtrace_sdk::{Client, utils, types::SessionFilter};
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let client = Client::connect_default().await?;
-/// let mut stream = client.watch().all_providers().start()?;
-///
-/// let mut count = 0;
-/// while let Some(workspace_event) = stream.next().await {
-///     if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
-///         for event in events {
-///             let updates = utils::extract_state_updates(&event);
-///             if updates.is_new_turn {
-///                 println!("New turn started!");
-///             }
-///             if let Some(usage) = updates.usage {
-///                 println!("Token usage: {:?}", usage);
-///             }
+/// let sessions = client.sessions().list(SessionFilter::all().limit(1))?;
+/// if let Some(summary) = sessions.first() {
+///     for event in client.sessions().get(&summary.id)?.events()? {
+///         let updates = utils::extract_state_updates(&event);
+///         if updates.is_new_turn {
+///             println!("New turn started!");
 ///         }
 ///     }
-///     count += 1;
-///     if count >= 10 { break; }
 /// }
 /// # Ok(())
 /// # }
@@ -242,6 +233,9 @@ pub mod utils {
 
     // Event processing utilities
     pub use agtrace_engine::extract_state_updates;
+
+    // Provider home overrides (tests, demo)
+    pub use agtrace_core::{CLAUDE_HOME_ENV, CODEX_HOME_ENV};
 
     // Project management utilities
     pub use agtrace_core::{
@@ -293,29 +287,11 @@ pub mod utils {
     ///
     /// # Example
     ///
-    /// ```no_run
-    /// use agtrace_sdk::{Client, utils};
-    /// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
-    /// use futures::stream::StreamExt;
+    /// ```
+    /// use agtrace_sdk::utils;
     ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = Client::connect_default().await?;
-    /// let mut stream = client.watch().all_providers().start()?;
-    ///
-    /// let mut count = 0;
-    /// while let Some(workspace_event) = stream.next().await {
-    ///     if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
-    ///         let display_events = utils::filter_display_events(&events);
-    ///         for event in display_events {
-    ///             println!("Event: {:?}", event.payload);
-    ///         }
-    ///     }
-    ///     count += 1;
-    ///     if count >= 10 { break; }
-    /// }
-    /// # Ok(())
-    /// # }
+    /// let events = vec![];
+    /// assert!(utils::filter_display_events(&events).is_empty());
     /// ```
     pub fn filter_display_events(
         events: &[crate::types::AgentEvent],
@@ -331,33 +307,7 @@ pub mod utils {
     ///
     /// Returns `true` for main agent events, `false` for Claude subagent events.
     ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// use agtrace_sdk::{Client, utils};
-    /// use agtrace_sdk::watch::{StreamEvent, WorkspaceEvent};
-    /// use futures::stream::StreamExt;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// let client = Client::connect_default().await?;
-    /// let mut stream = client.watch().all_providers().start()?;
-    ///
-    /// let mut count = 0;
-    /// while let Some(workspace_event) = stream.next().await {
-    ///     if let WorkspaceEvent::Stream(StreamEvent::Events { events, .. }) = workspace_event {
-    ///         for event in &events {
-    ///             if utils::is_display_event(event) {
-    ///                 println!("Display event: {:?}", event.payload);
-    ///             }
-    ///         }
-    ///     }
-    ///     count += 1;
-    ///     if count >= 10 { break; }
-    /// }
-    /// # Ok(())
-    /// # }
-    /// ```
+    /// Used by the legacy single-session `watch` UI.
     pub fn is_display_event(event: &crate::types::AgentEvent) -> bool {
         !event.agent.is_claude_subagent()
     }

@@ -10,6 +10,7 @@ expression: "snapshot_req_resp(args, content)"
     "next_cursor": null,
     "sessions": [
       {
+        "agent_kind": "main",
         "id": "[ID]",
         "project_hash": "[PROJECT_HASH]",
         "project_root": "[PATH]",

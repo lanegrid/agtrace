@@ -75,6 +75,12 @@ pub trait Provider: Send + Sync {
     }
 
     fn tool_mapper(&self) -> &dyn ToolMapper;
+
+    /// First user prompt of the file (truncated), for session lists. Bounded head read;
+    /// `None` when there is none in the head or the provider has no notion of it.
+    fn read_snippet(&self, _path: &Path) -> Option<String> {
+        None
+    }
 }
 
 /// Walk `roots`, keep probed files with a header, optionally filtered to agents whose

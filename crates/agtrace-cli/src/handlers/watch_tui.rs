@@ -19,7 +19,7 @@ use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer}
 use agtrace_sdk::Client;
 use agtrace_sdk::types::AgentSession;
 use agtrace_sdk::types::ModelCatalog;
-use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
+use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WatchEvent as WorkspaceEvent};
 use agtrace_sdk::utils::filter_display_events;
 
 pub enum WatchTarget {

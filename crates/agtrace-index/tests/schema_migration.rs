@@ -4,7 +4,7 @@
 //! by dropping and recreating tables.
 
 use agtrace_index::{Database, ProjectRecord, SessionRecord};
-use agtrace_types::{ProjectHash, SessionOrder, SpawnContext};
+use agtrace_types::{ProjectHash, SessionOrder};
 use rusqlite::Connection;
 use std::path::Path;
 use tempfile::TempDir;
@@ -91,10 +91,10 @@ fn test_auto_migration_from_old_schema() {
         let version: i32 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 6, "Schema should be upgraded to version 6");
+        assert_eq!(version, 7, "Schema should be upgraded to version 7");
     }
 
-    // Verify new columns work - insert session with parent_session_id
+    // Verify new columns work - insert a child before its parent (no FK on parent)
     let project = ProjectRecord {
         hash: ProjectHash::from("new_hash"),
         root_path: Some("/new/path".to_string()),
@@ -111,11 +111,14 @@ fn test_auto_migration_from_old_schema() {
         end_ts: None,
         snippet: Some("parent".to_string()),
         is_valid: true,
+        agent_kind: "main".to_string(),
+        agent_name: None,
+        agent_path: None,
+        team_name: None,
+        root_session_id: None,
         parent_session_id: None,
-        spawned_by: None,
+        spawn_call_id: None,
     };
-    db.insert_or_update_session(&parent_session).unwrap();
-
     let child_session = SessionRecord {
         id: "child_session".to_string(),
         project_hash: ProjectHash::from("new_hash"),
@@ -125,13 +128,16 @@ fn test_auto_migration_from_old_schema() {
         end_ts: None,
         snippet: Some("child".to_string()),
         is_valid: true,
+        agent_kind: "codex_thread".to_string(),
+        agent_name: Some("judge".to_string()),
+        agent_path: Some("/root/judge".to_string()),
+        team_name: None,
+        root_session_id: Some("parent_session".to_string()),
         parent_session_id: Some("parent_session".to_string()),
-        spawned_by: Some(SpawnContext {
-            turn_index: 1,
-            step_index: 2,
-        }),
+        spawn_call_id: Some("call_synthetic_1".to_string()),
     };
     db.insert_or_update_session(&child_session).unwrap();
+    db.insert_or_update_session(&parent_session).unwrap();
 
     // Query using new columns
     let children = db.get_child_sessions("parent_session").unwrap();
@@ -141,8 +147,12 @@ fn test_auto_migration_from_old_schema() {
         children[0].parent_session_id,
         Some("parent_session".to_string())
     );
-    assert_eq!(children[0].spawned_by.as_ref().unwrap().turn_index, 1);
-    assert_eq!(children[0].spawned_by.as_ref().unwrap().step_index, 2);
+    assert_eq!(children[0].agent_kind, "codex_thread");
+    assert_eq!(children[0].agent_path.as_deref(), Some("/root/judge"));
+    assert_eq!(
+        children[0].spawn_call_id.as_deref(),
+        Some("call_synthetic_1")
+    );
 
     // Verify top_level_only filter works
     let top_level = db
@@ -208,8 +218,13 @@ fn test_current_version_preserves_data() {
         end_ts: None,
         snippet: Some("preserved".to_string()),
         is_valid: true,
+        agent_kind: "main".to_string(),
+        agent_name: None,
+        agent_path: None,
+        team_name: None,
+        root_session_id: None,
         parent_session_id: None,
-        spawned_by: None,
+        spawn_call_id: None,
     };
     db.insert_or_update_session(&session).unwrap();
     drop(db);

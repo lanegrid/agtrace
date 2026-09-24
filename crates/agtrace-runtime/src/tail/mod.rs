@@ -162,15 +162,25 @@ impl FileCursor {
     }
 
     /// Header of the file, once it has been readable.
-    #[allow(dead_code)] // consumed by the workspace watcher (design §4.2)
     pub(crate) fn header(&self) -> Option<&FileHeader> {
         self.header.as_ref()
     }
 
     /// Diagnostics of the current decoder (reset together with the cursor).
-    #[allow(dead_code)] // consumed by the workspace watcher (design §4.2)
     pub(crate) fn diagnostics(&self) -> Option<&ParseDiagnostics> {
         self.decoder.as_ref().map(|d| d.diagnostics())
+    }
+
+    /// End of the bytes read so far (consumed + buffered partial). A file whose
+    /// length differs has new (or truncated) content.
+    pub(crate) fn read_end(&self) -> u64 {
+        self.offset + self.partial.len() as u64
+    }
+
+    /// True while an incomplete line is buffered (it must be polled again so the
+    /// stale-partial timeout can fire).
+    pub(crate) fn has_partial(&self) -> bool {
+        !self.partial.is_empty()
     }
 
     /// First byte not yet consumed.

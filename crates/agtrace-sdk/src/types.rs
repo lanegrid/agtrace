@@ -139,7 +139,7 @@ pub use agtrace_runtime::{
     ConfiguredModelCatalog,
     ContextWindowConfig,
     CorpusStats,
-    // Watch/Monitor Types
+    // Legacy single-session watch types (old `watch` UI)
     DiscoveryEvent,
     // Event Filters
     EventFilters,
@@ -162,8 +162,14 @@ pub use agtrace_runtime::{
     StatsResult,
     StreamEvent,
     StreamHandle,
+    WatchEvent,
     WatchService,
-    WorkspaceEvent,
+};
+
+// Workspace watcher (design §4.2 / §4.4)
+pub use crate::watch::{
+    LiveWorkspace, ProcessStatus, SideStateUpdate, TeamMember, WatchRoots, WatchScope,
+    WatcherOptions, WorkspaceEvent, WorkspaceView,
 };
 
 // ============================================================================

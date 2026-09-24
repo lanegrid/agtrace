@@ -24,5 +24,10 @@ tokio.workspace = true
 futures.workspace = true
 dirs.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
 [dev-dependencies]
 tempfile.workspace = true
+filetime.workspace = true
+agtrace-testing = { path = "../agtrace-testing" }

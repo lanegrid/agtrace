@@ -15,11 +15,15 @@ pub mod tools;
 
 pub use self::decoder::ClaudeDecoder;
 pub use self::discovery::{
-    ClaudeDiscovery, ClaudeHeader, encode_project_dir, extract_claude_header,
-    extract_cwd_from_claude_file, is_agent_file_path, normalize_claude_file, project_dirs,
+    agent_files_in, encode_project_dir, is_agent_file_path, normalize_claude_file, project_dirs,
+    read_snippet,
 };
 pub use self::header::read_claude_header;
 pub use self::mapper::ClaudeToolMapper;
 pub use self::provider::ClaudeProvider;
-pub use self::sidecar::{ClaudeSubagentMeta, read_subagent_meta};
+pub use self::sidecar::{
+    ClaudeProcessEntry, ClaudeProcessStatus, ClaudeSubagentMeta, ClaudeTeamConfig,
+    ClaudeTeamMemberConfig, read_process_entry, read_subagent_meta, read_team_config,
+    session_registry_paths, team_config_paths,
+};
 pub use self::tool_mapping::{mcp_server_name, mcp_tool_name, parse_mcp_name};

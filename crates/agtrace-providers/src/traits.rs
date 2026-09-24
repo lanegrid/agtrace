@@ -1,44 +1,9 @@
 use agtrace_types::{AgentEvent, ParseDiagnostics, ToolCallPayload, ToolKind, ToolOrigin};
 use serde_json::Value;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::provider::{DecodeOptions, FileHeader, Provider};
 use crate::{Error, Result};
-
-/// Provider discovery and lifecycle management
-///
-/// Responsibilities:
-/// - Identify provider from file paths/patterns
-/// - Locate session files on filesystem
-/// - Extract session metadata
-pub trait LogDiscovery: Send + Sync {
-    /// Unique provider ID (e.g., "claude", "codex")
-    fn id(&self) -> &'static str;
-
-    /// Check if a file belongs to this provider
-    fn probe(&self, path: &Path) -> ProbeResult;
-
-    /// Resolve log root directory for a given project root
-    /// Returns None if provider doesn't organize by project
-    fn resolve_log_root(&self, project_root: &Path) -> Option<PathBuf>;
-
-    /// Scan for sessions in the log root
-    fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>>;
-
-    /// Extract session ID from file header (lightweight, no full parse)
-    fn extract_session_id(&self, path: &Path) -> Result<String>;
-
-    /// Extract project hash from file header (lightweight, no full parse)
-    /// Returns None if the file doesn't contain project information
-    fn extract_project_hash(&self, path: &Path) -> Result<Option<agtrace_types::ProjectHash>>;
-
-    /// Find all files belonging to a session (main + sidechains)
-    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>>;
-
-    /// Check if a file is a sidechain file (lightweight, no full parse)
-    /// Returns false for providers that don't support sidechains (Codex)
-    fn is_sidechain_file(&self, path: &Path) -> Result<bool>;
-}
 
 /// Tool call semantic interpretation
 ///
@@ -57,95 +22,18 @@ pub trait ToolMapper: Send + Sync {
     fn summarize(&self, kind: ToolKind, args: &Value) -> String;
 }
 
-// --- Helper types ---
-
-/// Probe result with confidence score
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ProbeResult {
-    /// Provider can handle this file with given confidence (0.0 - 1.0)
-    Confidence(f32),
-    /// Provider cannot handle this file
-    NoMatch,
-}
-
-impl ProbeResult {
-    /// Create high confidence match (1.0)
-    pub fn match_high() -> Self {
-        ProbeResult::Confidence(1.0)
-    }
-
-    /// Create medium confidence match (0.5)
-    pub fn match_medium() -> Self {
-        ProbeResult::Confidence(0.5)
-    }
-
-    /// Create low confidence match (0.3)
-    pub fn match_low() -> Self {
-        ProbeResult::Confidence(0.3)
-    }
-
-    /// Check if this is a match (confidence > 0)
-    pub fn is_match(&self) -> bool {
-        matches!(self, ProbeResult::Confidence(c) if *c > 0.0)
-    }
-
-    /// Get confidence score (0.0 if NoMatch)
-    pub fn confidence(&self) -> f32 {
-        match self {
-            ProbeResult::Confidence(c) => *c,
-            ProbeResult::NoMatch => 0.0,
-        }
-    }
-}
-
-/// Session index metadata
-///
-/// NOTE: Design rationale for latest_mod_time
-/// - `timestamp` represents session creation time (when first event was logged)
-/// - `latest_mod_time` represents last file update time (when session was last active)
-/// - For watch mode, we need to track "most recently updated" session, not just "most recently created"
-/// - This enables switching to sessions that are actively being updated, even if they were created earlier
-/// - Since watch bypasses DB indexing for real-time monitoring, we derive this directly from filesystem
-#[derive(Debug, Clone)]
-pub struct SessionIndex {
-    pub session_id: String,
-    pub timestamp: Option<String>,
-    pub latest_mod_time: Option<String>,
-    pub main_file: PathBuf,
-    pub sidechain_files: Vec<PathBuf>,
-    pub project_root: Option<PathBuf>,
-    /// Git repository identifier for worktree support (None for non-git directories)
-    pub repository_hash: Option<agtrace_types::RepositoryHash>,
-    pub snippet: Option<String>,
-    /// For subagent sessions: the parent session that spawned this
-    pub parent_session_id: Option<String>,
-    /// For subagent sessions: context about where in the parent this was spawned
-    pub spawned_by: Option<agtrace_types::SpawnContext>,
-}
-
 // --- Provider Adapter ---
 
-/// Adapter that bundles the provider contract with legacy discovery
-///
-/// `provider` is the header/decoder contract ([`Provider`]); `discovery` is the
-/// legacy session scanner used by the index (replaced by `Provider::discover`).
+/// Adapter bundling the provider contract ([`Provider`]: header, decoder, discovery)
+/// with its tool mapper.
 pub struct ProviderAdapter {
-    pub discovery: Box<dyn LogDiscovery>,
     pub provider: Box<dyn Provider>,
     pub mapper: Box<dyn ToolMapper>,
 }
 
 impl ProviderAdapter {
-    pub fn new(
-        discovery: Box<dyn LogDiscovery>,
-        provider: Box<dyn Provider>,
-        mapper: Box<dyn ToolMapper>,
-    ) -> Self {
-        Self {
-            discovery,
-            provider,
-            mapper,
-        }
+    pub fn new(provider: Box<dyn Provider>, mapper: Box<dyn ToolMapper>) -> Self {
+        Self { provider, mapper }
     }
 
     /// Create adapter for a provider by name
@@ -163,7 +51,6 @@ impl ProviderAdapter {
     /// Create Claude provider adapter
     pub fn claude() -> Self {
         Self::new(
-            Box::new(crate::claude::ClaudeDiscovery),
             Box::new(crate::claude::ClaudeProvider),
             Box::new(crate::claude::ClaudeToolMapper),
         )
@@ -172,15 +59,19 @@ impl ProviderAdapter {
     /// Create Codex provider adapter
     pub fn codex() -> Self {
         Self::new(
-            Box::new(crate::codex::CodexDiscovery),
             Box::new(crate::codex::CodexProvider),
             Box::new(crate::codex::CodexToolMapper),
         )
     }
 
-    /// Get provider ID
+    /// Provider name (`claude_code`, `codex`).
     pub fn id(&self) -> &'static str {
-        self.discovery.id()
+        self.provider.id().as_str()
+    }
+
+    /// Location rule of the provider (no content read).
+    pub fn probe(&self, path: &Path) -> bool {
+        self.provider.probe(path)
     }
 
     /// Decode a whole file (lenient per line), returning header, events and diagnostics.
@@ -198,7 +89,7 @@ impl ProviderAdapter {
 
     /// Process a file through the adapter (convenience method)
     pub fn process_file(&self, path: &Path) -> Result<Vec<AgentEvent>> {
-        if !self.discovery.probe(path).is_match() {
+        if !self.probe(path) {
             return Err(Error::Provider(format!(
                 "Provider {} cannot handle file: {}",
                 self.id(),
@@ -207,31 +98,4 @@ impl ProviderAdapter {
         }
         self.parse_file(path)
     }
-}
-
-/// Get the latest modification time from a list of file paths in RFC3339 format.
-///
-/// This utility function is used by discovery implementations to track when
-/// a session was last active (most recent file modification).
-///
-/// Returns None if no files have a valid modification time.
-pub fn get_latest_mod_time_rfc3339(files: &[&std::path::Path]) -> Option<String> {
-    use chrono::{DateTime, Utc};
-    use std::time::SystemTime;
-
-    let mut latest: Option<SystemTime> = None;
-
-    for path in files {
-        if let Ok(metadata) = std::fs::metadata(path)
-            && let Ok(modified) = metadata.modified()
-            && (latest.is_none() || Some(modified) > latest)
-        {
-            latest = Some(modified);
-        }
-    }
-
-    latest.map(|t| {
-        let dt: DateTime<Utc> = t.into();
-        dt.to_rfc3339()
-    })
 }

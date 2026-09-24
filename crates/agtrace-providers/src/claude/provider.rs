@@ -62,6 +62,10 @@ impl Provider for ClaudeProvider {
         Ok(headers)
     }
 
+    fn read_snippet(&self, path: &Path) -> Option<String> {
+        super::discovery::read_snippet(path)
+    }
+
     fn tool_mapper(&self) -> &dyn ToolMapper {
         &ClaudeToolMapper
     }
