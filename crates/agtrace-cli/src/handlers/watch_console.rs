@@ -4,7 +4,7 @@ use crate::presentation::view_models::{ViewMode, WatchEventViewModel};
 use crate::presentation::views::watch::WatchEventView;
 use agtrace_sdk::Client;
 use agtrace_sdk::types::ModelCatalog;
-use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WorkspaceEvent};
+use agtrace_sdk::types::{DiscoveryEvent, SessionState, StreamEvent, WatchEvent as WorkspaceEvent};
 use agtrace_sdk::utils::filter_display_events;
 use anyhow::Result;
 use std::collections::VecDeque;

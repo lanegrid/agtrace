@@ -1,4 +1,4 @@
-use agtrace_types::{ProjectHash, RepositoryHash, SpawnContext};
+use agtrace_types::{ProjectHash, RepositoryHash};
 
 /// Project metadata record from the index database.
 ///
@@ -35,10 +35,21 @@ pub struct SessionRecord {
     pub snippet: Option<String>,
     /// Whether the session was successfully parsed and validated.
     pub is_valid: bool,
-    /// Parent session ID for subagent sessions.
+    /// Agent kind of the file owner: `main`, `teammate`, `codex_thread`, `fork`.
+    pub agent_kind: String,
+    /// Display name (teammate name, Codex agent_path leaf / nickname).
+    pub agent_name: Option<String>,
+    /// Hierarchical path (Codex `agent_path`, e.g. `/root/judge`).
+    pub agent_path: Option<String>,
+    /// Claude Agent Teams team name.
+    pub team_name: Option<String>,
+    /// Root session of the tree (Codex `session_id`; Claude lead for teammates when known).
+    pub root_session_id: Option<String>,
+    /// Parent session ID (Codex parent thread; Claude team lead). No FK: children may be
+    /// indexed before their parent.
     pub parent_session_id: Option<String>,
-    /// Spawn context for subagent sessions (turn/step where spawned).
-    pub spawned_by: Option<SpawnContext>,
+    /// Provider call id of the spawning tool call in the parent.
+    pub spawn_call_id: Option<String>,
 }
 
 /// Log file metadata record from the index database.
@@ -50,8 +61,14 @@ pub struct LogFileRecord {
     pub path: String,
     /// Session UUID this file belongs to.
     pub session_id: String,
-    /// File role (main, metadata, etc.).
+    /// File role: `main` (session owner), `subagent` or `fork` (Claude `subagents/`).
     pub role: String,
+    /// Agent id (`claude:<sid>`, `claude:<sid>/<aid>`, `codex:<thread>`).
+    pub agent_id: String,
+    /// Agent display name (subagents: meta.json name / description).
+    pub agent_name: Option<String>,
+    /// Provider call id of the spawning tool call (subagents: meta.json `toolUseId`).
+    pub spawn_call_id: Option<String>,
     /// File size in bytes.
     pub file_size: Option<i64>,
     /// File modification time (ISO 8601 timestamp).
@@ -80,10 +97,25 @@ pub struct SessionSummary {
     pub start_ts: Option<String>,
     /// First user message snippet for display.
     pub snippet: Option<String>,
-    /// Parent session ID for subagent sessions.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Agent kind of the file owner: `main`, `teammate`, `codex_thread`, `fork`.
+    #[serde(default)]
+    pub agent_kind: String,
+    /// Display name (teammate name, Codex agent_path leaf / nickname).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_name: Option<String>,
+    /// Hierarchical path (Codex `agent_path`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_path: Option<String>,
+    /// Claude Agent Teams team name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub team_name: Option<String>,
+    /// Root session of the tree this session belongs to.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root_session_id: Option<String>,
+    /// Parent session ID (Codex parent thread; Claude team lead).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_session_id: Option<String>,
-    /// Spawn context for subagent sessions (turn/step where spawned).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawned_by: Option<SpawnContext>,
+    /// Provider call id of the spawning tool call in the parent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spawn_call_id: Option<String>,
 }

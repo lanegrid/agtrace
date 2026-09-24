@@ -8,7 +8,7 @@ use crate::query::{
     SearchEventsArgs, SearchEventsResponse,
 };
 use crate::types::*;
-use crate::watch::WatchBuilder;
+use crate::watch::{LiveWorkspace, WatchScope};
 
 // ============================================================================
 // ClientBuilder
@@ -170,11 +170,34 @@ impl Client {
         }
     }
 
-    /// Access watch/monitoring operations.
-    pub fn watch(&self) -> WatchClient {
-        WatchClient {
-            inner: self.inner.clone(),
-        }
+    /// Watch a live multi-agent workspace (design §4.2 / §4.4).
+    ///
+    /// Starts the bounded workspace watcher for `scope` and folds its events into a
+    /// [`crate::watch::WorkspaceView`] on a background thread; context windows are
+    /// resolved against [`Client::model_catalog`]. Works from sync and async code (no
+    /// tokio runtime required).
+    ///
+    /// ```no_run
+    /// use agtrace_sdk::Client;
+    /// use agtrace_sdk::watch::WatchScope;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::connect_default().await?;
+    /// let mut live = client.watch_workspace(WatchScope::project(std::env::current_dir()?))?;
+    /// while live.changed().await.is_some() {
+    ///     let view = live.view();
+    ///     for (id, depth) in view.tree() {
+    ///         let agent = &view.agents[id];
+    ///         println!("{}{} {:?}", "  ".repeat(depth), agent.label(), agent.status);
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn watch_workspace(&self, scope: WatchScope) -> Result<LiveWorkspace> {
+        let watcher = self.inner.watch_workspace(scope).map_err(Error::Runtime)?;
+        Ok(LiveWorkspace::start(watcher, self.model_catalog()))
     }
 
     /// Access insights/analysis operations.
@@ -198,8 +221,8 @@ impl Client {
         self.inner.model_catalog()
     }
 
-    /// Get the watch service for low-level watch operations.
-    /// Prefer using `client.watch()` for most use cases.
+    /// Legacy single-session watch service used by the old `watch` UI.
+    /// Prefer [`Client::watch_workspace`].
     pub fn watch_service(&self) -> crate::types::WatchService {
         self.inner.watch_service()
     }
@@ -325,8 +348,13 @@ impl SessionClient {
                 project_root: None,
                 start_ts: None,
                 snippet: None,
+                agent_kind: String::new(),
+                agent_name: None,
+                agent_path: None,
+                team_name: None,
+                root_session_id: None,
                 parent_session_id: None,
-                spawned_by: None,
+                spawn_call_id: None,
             }]
         } else {
             self.list_without_refresh(filter)?
@@ -624,10 +652,10 @@ impl SessionHandle {
         Ok(crate::analysis::SessionAnalyzer::new(session))
     }
 
-    /// Get child sessions (subagents) that were spawned from this session.
-    ///
-    /// Returns a list of child session summaries with their spawn context
-    /// (turn_index, step_index). Returns empty vector for standalone sessions.
+    /// Child sessions of this session in the index: Codex child threads (and forks) and
+    /// Claude teammates whose team config names this session as lead. Claude
+    /// subagents are not sessions of their own (they are streams of this session).
+    /// Returns an empty vector for standalone sessions.
     pub fn child_sessions(&self) -> Result<Vec<ChildSessionInfo>> {
         match &self.source {
             SessionSource::Workspace { inner, id } => {
@@ -642,7 +670,11 @@ impl SessionHandle {
                     .map(|c| ChildSessionInfo {
                         session_id: c.id,
                         provider: c.provider,
-                        spawned_by: c.spawned_by,
+                        agent_kind: c.agent_kind,
+                        agent_name: c.agent_name,
+                        agent_path: c.agent_path,
+                        spawn_call_id: c.spawn_call_id,
+                        spawned_by: None,
                         snippet: c.snippet,
                     })
                     .collect())
@@ -652,11 +684,20 @@ impl SessionHandle {
     }
 }
 
-/// Information about a child session (subagent) spawned from a parent session.
+/// Information about a child session spawned from a parent session.
 #[derive(Debug, Clone)]
 pub struct ChildSessionInfo {
     pub session_id: String,
     pub provider: String,
+    /// `teammate`, `codex_thread`, `fork`, ...
+    pub agent_kind: String,
+    pub agent_name: Option<String>,
+    /// Codex `agent_path` (`/root/judge`).
+    pub agent_path: Option<String>,
+    /// Provider call id of the spawning tool call in the parent.
+    pub spawn_call_id: Option<String>,
+    /// Turn/step spawn position. No longer indexed (always `None`); kept until the
+    /// session view moves to `spawn_call_id`.
     pub spawned_by: Option<agtrace_types::SpawnContext>,
     pub snippet: Option<String>,
 }
@@ -674,38 +715,6 @@ impl ProjectClient {
     /// List all projects in the workspace.
     pub fn list(&self) -> Result<Vec<ProjectInfo>> {
         self.inner.projects().list().map_err(Error::Runtime)
-    }
-}
-
-// ============================================================================
-// WatchClient
-// ============================================================================
-
-/// Client for live monitoring operations.
-pub struct WatchClient {
-    inner: Arc<agtrace_runtime::AgTrace>,
-}
-
-impl WatchClient {
-    /// Create a watch builder for configuring monitoring.
-    pub fn builder(&self) -> WatchBuilder {
-        WatchBuilder::new(self.inner.clone())
-    }
-
-    /// Watch all providers (convenience method).
-    pub fn all_providers(&self) -> WatchBuilder {
-        WatchBuilder::new(self.inner.clone()).all_providers()
-    }
-
-    /// Watch a specific provider (convenience method).
-    pub fn provider(&self, name: &str) -> WatchBuilder {
-        WatchBuilder::new(self.inner.clone()).provider(name)
-    }
-
-    /// Watch a specific session (convenience method).
-    pub fn session(&self, _id: &str) -> WatchBuilder {
-        // WatchBuilder doesn't have a session method yet, return builder for now
-        WatchBuilder::new(self.inner.clone())
     }
 }
 

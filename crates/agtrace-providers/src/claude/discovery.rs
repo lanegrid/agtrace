@@ -4,16 +4,13 @@
 //!   plus the directories listed in its `.session-aliases` file.
 //! - Agent files: `<project>/<sessionId>.jsonl` (main / teammate transcripts) and
 //!   `<project>/<sessionId>/subagents/agent-<agentId>.jsonl`. `tool-results/` is not.
-//! - [`ClaudeDiscovery`] is the legacy index scanner (`LogDiscovery`), kept until the
-//!   index is rebuilt on `Provider::discover`.
+//! - [`read_snippet`] extracts the first user prompt for the session index.
 
-use crate::traits::{LogDiscovery, ProbeResult, SessionIndex};
-use crate::{Error, Result};
+use crate::Result;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
 
 /// Claude's project directory name for a working directory
 /// (`/work/demo-project` -> `-work-demo-project`).
@@ -144,28 +141,6 @@ fn vstr(v: &Value, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-/// Extract cwd from a Claude session file by reading the first few lines
-pub fn extract_cwd_from_claude_file(path: &Path) -> Option<String> {
-    head_records(path, 10).ok()?.iter().find_map(|v| {
-        matches!(
-            v.get("type").and_then(Value::as_str),
-            Some("user" | "assistant")
-        )
-        .then(|| vstr(v, "cwd"))
-        .flatten()
-    })
-}
-
-#[derive(Debug)]
-pub struct ClaudeHeader {
-    pub session_id: Option<String>,
-    pub cwd: Option<String>,
-    pub timestamp: Option<String>,
-    pub snippet: Option<String>,
-    pub is_sidechain: bool,
-    pub subagent_id: Option<String>,
-}
-
 /// First text of a user message (string content or first text block).
 fn user_text(v: &Value) -> Option<&str> {
     let content = v.get("message")?.get("content")?;
@@ -180,223 +155,34 @@ fn user_text(v: &Value) -> Option<&str> {
     }
 }
 
-/// Extract header information from Claude file (legacy index scanning).
-pub fn extract_claude_header(path: &Path) -> Result<ClaudeHeader> {
-    let mut session_id = None;
-    let mut cwd = None;
-    let mut timestamp = None;
-    let mut snippet = None;
-    let mut is_sidechain = false;
-    let mut subagent_id = None;
+/// First user prompt of a transcript (head read, ≤ 200 records), truncated to 200 chars.
+///
+/// Skips sidechain records, `isMeta` records and their descendants.
+pub fn read_snippet(path: &Path) -> Option<String> {
     let mut meta_message_ids = HashSet::new();
-
-    for v in head_records(path, 200)? {
-        let kind = v.get("type").and_then(Value::as_str).unwrap_or("");
-        match kind {
-            "file-history-snapshot" => meta_message_ids.clear(),
-            "user" | "assistant" => {
-                if session_id.is_none() {
-                    session_id = vstr(&v, "sessionId");
-                }
-                if cwd.is_none() {
-                    cwd = vstr(&v, "cwd");
-                }
-                if timestamp.is_none() {
-                    timestamp = vstr(&v, "timestamp");
-                }
-            }
-            _ => {}
+    for v in head_records(path, 200).ok()? {
+        if v.get("type").and_then(Value::as_str) != Some("user") {
+            continue;
         }
-        if kind == "user" {
-            let uuid = vstr(&v, "uuid").unwrap_or_default();
-            let sidechain = v.get("isSidechain").and_then(Value::as_bool) == Some(true);
-            let is_meta = v.get("isMeta").and_then(Value::as_bool) == Some(true);
-            if is_meta {
-                meta_message_ids.insert(uuid.clone());
-            }
-            // Descendants of meta messages are meta-related too.
-            let parent_is_meta =
-                vstr(&v, "parentUuid").is_some_and(|p| meta_message_ids.contains(&p));
-            if parent_is_meta {
-                meta_message_ids.insert(uuid);
-            }
-            if snippet.is_none() && !sidechain && !is_meta && !parent_is_meta {
-                snippet = user_text(&v).map(|t| agtrace_types::truncate(t, 200));
-            }
-            if subagent_id.is_none() {
-                subagent_id = vstr(&v, "agentId");
-            }
-            if subagent_id.is_none()
-                && let Some(Value::Array(items)) = v.get("message").and_then(|m| m.get("content"))
-            {
-                subagent_id = items.iter().find_map(|i| vstr(i, "agentId"));
-            }
-            is_sidechain = sidechain;
+        let uuid = vstr(&v, "uuid").unwrap_or_default();
+        let sidechain = v.get("isSidechain").and_then(Value::as_bool) == Some(true);
+        let is_meta = v.get("isMeta").and_then(Value::as_bool) == Some(true);
+        if is_meta {
+            meta_message_ids.insert(uuid.clone());
         }
-        if session_id.is_some() && cwd.is_some() && timestamp.is_some() && snippet.is_some() {
-            break;
+        // Descendants of meta messages are meta-related too.
+        let parent_is_meta = vstr(&v, "parentUuid").is_some_and(|p| meta_message_ids.contains(&p));
+        if parent_is_meta {
+            meta_message_ids.insert(uuid);
+        }
+        if sidechain || is_meta || parent_is_meta {
+            continue;
+        }
+        if let Some(text) = user_text(&v) {
+            return Some(agtrace_types::truncate(text, 200));
         }
     }
-
-    Ok(ClaudeHeader {
-        session_id,
-        cwd,
-        timestamp,
-        snippet,
-        is_sidechain,
-        subagent_id,
-    })
-}
-
-pub struct ClaudeDiscovery;
-
-impl LogDiscovery for ClaudeDiscovery {
-    fn id(&self) -> &'static str {
-        "claude_code"
-    }
-
-    fn probe(&self, path: &Path) -> ProbeResult {
-        if !path.is_file() {
-            return ProbeResult::NoMatch;
-        }
-
-        if path.extension().is_none_or(|e| e != "jsonl") {
-            return ProbeResult::NoMatch;
-        }
-
-        if let Ok(metadata) = std::fs::metadata(path)
-            && metadata.len() == 0
-        {
-            return ProbeResult::NoMatch;
-        }
-
-        ProbeResult::match_high()
-    }
-
-    fn resolve_log_root(&self, _project_root: &Path) -> Option<PathBuf> {
-        None
-    }
-
-    fn scan_sessions(&self, log_root: &Path) -> Result<Vec<SessionIndex>> {
-        let mut sessions: HashMap<String, SessionIndex> = HashMap::new();
-
-        // max_depth(4) to reach:
-        // - depth 0: log_root (e.g., ~/.claude/projects/-proj-hash/)
-        // - depth 1: session files (e.g., {session_id}.jsonl)
-        // - depth 2: session directories (e.g., {session_id}/)
-        // - depth 3: subagents directory (e.g., {session_id}/subagents/)
-        // - depth 4: sidechain files (e.g., {session_id}/subagents/agent-xxx.jsonl)
-        for entry in WalkDir::new(log_root)
-            .max_depth(4)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-
-            if self.probe(path) == ProbeResult::NoMatch {
-                continue;
-            }
-
-            let header = match extract_claude_header(path) {
-                Ok(h) => h,
-                Err(_) => continue,
-            };
-
-            let session_id = match header.session_id {
-                Some(id) => id,
-                None => continue,
-            };
-
-            let session = sessions
-                .entry(session_id.clone())
-                .or_insert_with(|| SessionIndex {
-                    session_id: session_id.clone(),
-                    timestamp: header.timestamp.clone(),
-                    latest_mod_time: None, // Will be computed after all files are collected
-                    main_file: path.to_path_buf(),
-                    sidechain_files: Vec::new(),
-                    project_root: header.cwd.clone().map(PathBuf::from),
-                    repository_hash: None, // Computed at index time from project_root
-                    snippet: header.snippet.clone(),
-                    parent_session_id: None, // Claude uses in-file sidechain linking
-                    spawned_by: None,
-                });
-
-            if header.is_sidechain {
-                if !session.sidechain_files.contains(&path.to_path_buf()) {
-                    session.sidechain_files.push(path.to_path_buf());
-                }
-            } else {
-                session.main_file = path.to_path_buf();
-            }
-
-            if !header.is_sidechain || session.timestamp.is_none() {
-                if session.timestamp.is_none() {
-                    session.timestamp = header.timestamp.clone();
-                }
-                if session.project_root.is_none() {
-                    session.project_root = header.cwd.clone().map(PathBuf::from);
-                }
-                if session.snippet.is_none() {
-                    session.snippet = header.snippet.clone();
-                }
-            }
-        }
-
-        // NOTE: Compute latest_mod_time for each session after all files are collected
-        // This tracks when the session was last active (most recent file modification)
-        // Critical for watch mode to identify "most recently updated" vs "most recently created" sessions
-        for session in sessions.values_mut() {
-            let mut all_files = vec![session.main_file.as_path()];
-            all_files.extend(session.sidechain_files.iter().map(|p| p.as_path()));
-            session.latest_mod_time = crate::get_latest_mod_time_rfc3339(&all_files);
-        }
-
-        Ok(sessions.into_values().collect())
-    }
-
-    fn extract_session_id(&self, path: &Path) -> Result<String> {
-        let header = extract_claude_header(path)?;
-        header
-            .session_id
-            .ok_or_else(|| Error::Parse(format!("No session_id in file: {}", path.display())))
-    }
-
-    fn extract_project_hash(&self, path: &Path) -> Result<Option<agtrace_types::ProjectHash>> {
-        let header = extract_claude_header(path)?;
-        Ok(header
-            .cwd
-            .map(|cwd| agtrace_core::project_hash_from_root(&cwd)))
-    }
-
-    fn find_session_files(&self, log_root: &Path, session_id: &str) -> Result<Vec<PathBuf>> {
-        let mut matching_files = Vec::new();
-
-        for entry in WalkDir::new(log_root)
-            .max_depth(3)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let path = entry.path();
-
-            if self.probe(path) == ProbeResult::NoMatch {
-                continue;
-            }
-
-            if let Ok(header) = extract_claude_header(path)
-                && header.session_id.as_deref() == Some(session_id)
-            {
-                matching_files.push(path.to_path_buf());
-            }
-        }
-
-        Ok(matching_files)
-    }
-
-    fn is_sidechain_file(&self, path: &Path) -> Result<bool> {
-        let header = extract_claude_header(path)?;
-        Ok(header.is_sidechain)
-    }
+    None
 }
 
 #[cfg(test)]

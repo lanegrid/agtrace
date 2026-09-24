@@ -80,7 +80,7 @@ impl SampleFiles {
         dest_name: &str,
         target_project_dir: &str,
         log_root: &Path,
-        provider_adapter: &agtrace_providers::ProviderAdapter,
+        _provider_adapter: &agtrace_providers::ProviderAdapter,
     ) -> Result<()> {
         let source = self.samples_dir.join(sample_name);
 
@@ -103,13 +103,8 @@ impl SampleFiles {
         // - Replace this if/else with: `provider_adapter.discovery.encode_project_path()`
         //
         // This abstraction belongs in agtrace-providers, NOT in test utilities.
-        let project_log_dir = if let Some(provider_subdir) = provider_adapter
-            .discovery
-            .resolve_log_root(&canonical_project_dir)
-        {
-            // Provider uses project-specific subdirectory
-            log_root.join(provider_subdir)
-        } else {
+        // Claude-style flat structure with encoded project names
+        let project_log_dir = {
             // Provider uses flat structure with encoded project names (e.g., Claude)
             let encoded = target_project_dir
                 .replace(['/', '.'], "-")

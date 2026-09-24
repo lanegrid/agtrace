@@ -6,6 +6,4 @@
 mod scenarios {
     mod filtering;
     mod isolation;
-    mod spawn_context;
-    mod watch;
 }

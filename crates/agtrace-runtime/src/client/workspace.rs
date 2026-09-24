@@ -3,6 +3,7 @@ use crate::config::Config;
 use crate::init::{InitConfig, InitProgress, InitResult, InitService};
 use crate::model_catalog::ConfiguredModelCatalog;
 use crate::ops::{CheckResult, DoctorService, InspectResult};
+use crate::workspace::{WatchRoots, WatchScope, WatcherOptions, WorkspaceWatcher};
 use crate::{Error, Result};
 use agtrace_engine::DiagnoseResult;
 use agtrace_index::Database;
@@ -138,14 +139,51 @@ impl AgTrace {
             self.db.clone(),
             self.config.clone(),
             self.provider_configs.clone(),
+            self.watch_roots(),
         )
     }
 
+    /// Legacy session-update feed (old `watch` UI); see [`WatchService`].
     pub fn workspace_monitor(&self) -> Result<MonitorBuilder> {
-        Ok(MonitorBuilder::new(
-            self.db.clone(),
-            self.provider_configs.clone(),
-        ))
+        Ok(MonitorBuilder::new(self.watch_roots()))
+    }
+
+    /// Provider directories for the workspace watcher, for the enabled providers.
+    ///
+    /// `AGTRACE_CLAUDE_HOME` / `AGTRACE_CODEX_HOME` win (tests, demo); otherwise the
+    /// configured log roots are used (`<claude home>/projects`, `<codex home>/sessions`),
+    /// and the Claude home (registry, teams) is the parent of the projects root.
+    pub fn watch_roots(&self) -> WatchRoots {
+        let log_root = |name: &str| {
+            self.provider_configs
+                .iter()
+                .find(|(n, _)| n == name)
+                .map(|(_, p)| p.clone())
+        };
+        let env_set = |var: &str| std::env::var_os(var).is_some_and(|v| !v.is_empty());
+        let mut roots = WatchRoots::default();
+        if let Some(projects) = log_root("claude_code") {
+            if env_set(agtrace_core::CLAUDE_HOME_ENV) {
+                roots.claude_home = agtrace_core::claude_home();
+                roots.claude_projects = agtrace_core::claude_projects_root();
+            } else {
+                roots.claude_home = projects.parent().map(PathBuf::from);
+                roots.claude_projects = Some(projects);
+            }
+        }
+        if let Some(sessions) = log_root("codex") {
+            roots.codex_sessions = if env_set(agtrace_core::CODEX_HOME_ENV) {
+                agtrace_core::codex_sessions_root()
+            } else {
+                Some(sessions)
+            };
+        }
+        roots
+    }
+
+    /// Start the workspace watcher (design §4.2) for `scope`.
+    pub fn watch_workspace(&self, scope: WatchScope) -> Result<WorkspaceWatcher> {
+        WorkspaceWatcher::start(scope, self.watch_roots(), WatcherOptions::default())
     }
 
     pub fn database(&self) -> Arc<Mutex<Database>> {

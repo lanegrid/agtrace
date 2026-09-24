@@ -1,21 +1,34 @@
-use crate::runtime::{SessionStreamer, WatchContext, WorkspaceEvent, WorkspaceSupervisor};
-use crate::{Error, Result};
-use agtrace_index::Database;
+//! Legacy session-switching feed for the old `watch` TUI / console.
+//!
+//! The old UI follows one session at a time and switches to the most recently
+//! updated one. This adapter runs the [`WorkspaceWatcher`] (bounded discovery,
+//! project scope, 2 h window) and reports every root agent (`Main` kind) that
+//! produced events as a legacy [`DiscoveryEvent::SessionUpdated`] — except for the
+//! initial tails of the startup burst, like the old supervisor that only reported
+//! file changes. It replaces the old recursive `notify` supervisor and goes away
+//! with the old UI.
+
+use crate::Result;
+use crate::runtime::{DiscoveryEvent, SessionStreamer, WatchEvent};
+use crate::workspace::{WatchRoots, WatchScope, WatcherOptions, WorkspaceEvent, WorkspaceWatcher};
+use agtrace_types::{AgentId, AgentKind, AgentRef};
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, channel};
+use std::time::Duration;
+
+/// A pause this long in the watcher's output ends the startup burst.
+const STARTUP_QUIET: Duration = Duration::from_millis(150);
 
 pub struct MonitorBuilder {
-    db: Arc<Mutex<Database>>,
-    provider_configs: Arc<Vec<(String, PathBuf)>>,
+    roots: WatchRoots,
     project_root: Option<PathBuf>,
 }
 
 impl MonitorBuilder {
-    pub fn new(db: Arc<Mutex<Database>>, provider_configs: Arc<Vec<(String, PathBuf)>>) -> Self {
+    pub fn new(roots: WatchRoots) -> Self {
         Self {
-            db,
-            provider_configs,
+            roots,
             project_root: None,
         }
     }
@@ -25,60 +38,90 @@ impl MonitorBuilder {
         self
     }
 
+    /// Start the workspace watcher and translate its events. Without a project root
+    /// every project is in scope (`/`).
     pub fn start_background_scan(self) -> Result<WorkspaceMonitor> {
-        let mut contexts = Vec::new();
-
-        for (provider_name, root) in self.provider_configs.iter() {
-            if let Ok(adapter) = agtrace_providers::create_adapter(provider_name) {
-                contexts.push(WatchContext {
-                    provider_name: provider_name.clone(),
-                    provider: Arc::new(adapter),
-                    root: root.clone(),
-                });
-            }
-        }
-
-        let supervisor = WorkspaceSupervisor::start(contexts, self.db.clone(), self.project_root)?;
-
-        Ok(WorkspaceMonitor {
-            db: self.db,
-            supervisor,
-            provider_configs: self.provider_configs,
-        })
+        let root = self.project_root.unwrap_or_else(|| PathBuf::from("/"));
+        let watcher = WorkspaceWatcher::start(
+            WatchScope::project(root),
+            self.roots,
+            WatcherOptions::default(),
+        )?;
+        let (tx, rx) = channel();
+        std::thread::Builder::new()
+            .name("legacy-watch-adapter".to_string())
+            .spawn(move || {
+                let mut roots: HashMap<AgentId, AgentRef> = HashMap::new();
+                let mut seen: HashSet<String> = HashSet::new();
+                let mut startup = true;
+                loop {
+                    let event = if startup {
+                        match watcher.receiver().recv_timeout(STARTUP_QUIET) {
+                            Ok(event) => event,
+                            Err(RecvTimeoutError::Timeout) => {
+                                startup = false;
+                                continue;
+                            }
+                            Err(RecvTimeoutError::Disconnected) => break,
+                        }
+                    } else {
+                        match watcher.receiver().recv() {
+                            Ok(event) => event,
+                            Err(_) => break,
+                        }
+                    };
+                    let out = match event {
+                        WorkspaceEvent::AgentDiscovered(agent)
+                        | WorkspaceEvent::AgentUpdated(agent) => {
+                            if agent.kind == AgentKind::Main && agent.parent.is_none() {
+                                roots.insert(agent.id.clone(), agent);
+                            }
+                            None
+                        }
+                        WorkspaceEvent::Events { agent, events, .. }
+                            if !events.is_empty() && !startup =>
+                        {
+                            roots.get(&agent).map(|r| {
+                                let session_id = r.native_session_id.clone();
+                                let is_new = seen.insert(session_id.clone());
+                                let mod_time = std::fs::metadata(&r.file)
+                                    .ok()
+                                    .and_then(|m| m.modified().ok())
+                                    .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339());
+                                WatchEvent::Discovery(DiscoveryEvent::SessionUpdated {
+                                    session_id,
+                                    provider_name: r.provider.as_str().to_string(),
+                                    is_new,
+                                    mod_time,
+                                })
+                            })
+                        }
+                        WorkspaceEvent::Error(msg) => Some(WatchEvent::Error(msg)),
+                        _ => None,
+                    };
+                    if let Some(out) = out
+                        && tx.send(out).is_err()
+                    {
+                        break;
+                    }
+                }
+            })
+            .map_err(|e| crate::Error::InvalidOperation(format!("Failed to start watcher: {e}")))?;
+        Ok(WorkspaceMonitor { rx })
     }
 }
 
 pub struct WorkspaceMonitor {
-    db: Arc<Mutex<Database>>,
-    supervisor: WorkspaceSupervisor,
-    provider_configs: Arc<Vec<(String, PathBuf)>>,
+    rx: Receiver<WatchEvent>,
 }
 
 impl WorkspaceMonitor {
-    pub fn receiver(&self) -> &Receiver<WorkspaceEvent> {
-        self.supervisor.receiver()
+    pub fn receiver(&self) -> &Receiver<WatchEvent> {
+        &self.rx
     }
 
-    pub fn next_event(&self) -> Option<WorkspaceEvent> {
-        self.supervisor.receiver().recv().ok()
-    }
-
-    pub fn attach(&self, session_id: &str, provider_name: Option<&str>) -> Result<StreamHandle> {
-        let provider_name = if let Some(name) = provider_name {
-            name.to_string()
-        } else {
-            self.provider_configs
-                .first()
-                .map(|(n, _)| n.clone())
-                .ok_or_else(|| Error::InvalidOperation("No providers available".to_string()))?
-        };
-
-        let adapter = agtrace_providers::create_adapter(&provider_name)?;
-
-        let streamer =
-            SessionStreamer::attach(session_id.to_string(), self.db.clone(), Arc::new(adapter))?;
-
-        Ok(StreamHandle { streamer })
+    pub fn next_event(&self) -> Option<WatchEvent> {
+        self.rx.recv().ok()
     }
 }
 
@@ -91,7 +134,7 @@ impl StreamHandle {
         Self { streamer }
     }
 
-    pub fn receiver(&self) -> &Receiver<WorkspaceEvent> {
+    pub fn receiver(&self) -> &Receiver<WatchEvent> {
         self.streamer.receiver()
     }
 }

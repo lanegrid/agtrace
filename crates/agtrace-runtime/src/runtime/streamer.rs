@@ -6,7 +6,7 @@
 //! without re-parsing any file. New files of the session (e.g. Claude subagent
 //! transcripts created after attach) are adopted as they appear.
 
-use crate::runtime::events::{StreamEvent, WorkspaceEvent};
+use crate::runtime::events::{StreamEvent, WatchEvent};
 use crate::tail::{FileCursor, TailOutcome, provider_for};
 use crate::{Error, Result};
 use agtrace_engine::{AgentSession, assemble_sessions};
@@ -79,7 +79,6 @@ impl TrackedFile {
 }
 
 struct StreamContext {
-    adapter: Arc<ProviderAdapter>,
     provider: Arc<dyn Provider>,
     session_id: String,
     /// Files known to belong to this session. Grows dynamically as new
@@ -96,7 +95,6 @@ impl StreamContext {
     fn new(adapter: Arc<ProviderAdapter>, session_id: String, paths: Vec<PathBuf>) -> Self {
         let provider = provider_for(adapter.provider.id());
         let mut ctx = Self {
-            adapter,
             provider,
             session_id,
             files: Vec::new(),
@@ -119,19 +117,21 @@ impl StreamContext {
         if self.files.iter().any(|f| f.cursor.path() == path) || self.foreign_files.contains(path) {
             return;
         }
-        if !self.adapter.discovery.probe(path).is_match() {
+        if !path.is_file() || !self.provider.probe(path) {
             // Not cached: an empty or partially written file may become
             // a valid session file on a later poll tick.
             return;
         }
-        match self.adapter.discovery.extract_session_id(path) {
-            Ok(id) if id == self.session_id => self.track(path.to_path_buf()),
-            Ok(_) => {
+        match self.provider.read_header(path) {
+            Ok(Some(header)) if header.agent.native_session_id == self.session_id => {
+                self.track(path.to_path_buf())
+            }
+            Ok(Some(_)) => {
                 self.foreign_files.insert(path.to_path_buf());
             }
             // Header not readable yet (e.g., first line still being
             // written) - retry on the next event.
-            Err(_) => {}
+            _ => {}
         }
     }
 
@@ -184,11 +184,11 @@ fn merge_by_timestamp(lists: Vec<&[AgentEvent]>) -> Vec<AgentEvent> {
 pub struct SessionStreamer {
     _watcher: PollWatcher,
     _handle: JoinHandle<()>,
-    rx: Receiver<WorkspaceEvent>,
+    rx: Receiver<WatchEvent>,
 }
 
 impl SessionStreamer {
-    pub fn receiver(&self) -> &Receiver<WorkspaceEvent> {
+    pub fn receiver(&self) -> &Receiver<WatchEvent> {
         &self.rx
     }
 
@@ -266,7 +266,7 @@ impl SessionStreamer {
 
         let tx_attached = tx_out.clone();
         let first_file = session_files.first().cloned().unwrap();
-        let _ = tx_attached.send(WorkspaceEvent::Stream(StreamEvent::Attached {
+        let _ = tx_attached.send(WatchEvent::Stream(StreamEvent::Attached {
             session_id: session_id.clone(),
             path: first_file.clone(),
         }));
@@ -295,10 +295,9 @@ impl SessionStreamer {
                         }
                         Err(RecvTimeoutError::Timeout) => {}
                         Err(RecvTimeoutError::Disconnected) => {
-                            let _ =
-                                tx_worker.send(WorkspaceEvent::Stream(StreamEvent::Disconnected {
-                                    reason: "Stream ended".to_string(),
-                                }));
+                            let _ = tx_worker.send(WatchEvent::Stream(StreamEvent::Disconnected {
+                                reason: "Stream ended".to_string(),
+                            }));
                             break;
                         }
                     }
@@ -317,11 +316,11 @@ impl SessionStreamer {
 }
 
 /// Poll all files and send what changed. Returns false once the receiver is gone.
-fn publish(context: &mut StreamContext, tx: &Sender<WorkspaceEvent>) -> bool {
+fn publish(context: &mut StreamContext, tx: &Sender<WatchEvent>) -> bool {
     let (events, errors) = context.poll_all();
     for e in errors {
         if tx
-            .send(WorkspaceEvent::Error(format!("Stream error: {}", e)))
+            .send(WatchEvent::Error(format!("Stream error: {}", e)))
             .is_err()
         {
             return false;
@@ -330,7 +329,7 @@ fn publish(context: &mut StreamContext, tx: &Sender<WorkspaceEvent>) -> bool {
     if events.is_empty() {
         return true;
     }
-    tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
+    tx.send(WatchEvent::Stream(StreamEvent::Events {
         events,
         sessions: context.sessions.clone(),
     }))
@@ -374,9 +373,9 @@ fn find_session_files(
 
             if path.is_dir() {
                 visit_dir(&path, session_id, provider, files)?;
-            } else if provider.discovery.probe(&path).is_match()
-                && let Ok(id) = provider.discovery.extract_session_id(&path)
-                && id == session_id
+            } else if provider.provider.probe(&path)
+                && let Ok(Some(header)) = provider.provider.read_header(&path)
+                && header.agent.native_session_id == session_id
             {
                 files.push(path);
             }

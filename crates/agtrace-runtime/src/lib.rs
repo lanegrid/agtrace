@@ -6,6 +6,7 @@ pub(crate) mod ops;
 pub(crate) mod runtime;
 pub(crate) mod storage;
 pub(crate) mod tail;
+pub(crate) mod workspace;
 
 // Error types
 pub mod error;
@@ -19,6 +20,10 @@ pub use client::{
     StreamHandle, WatchService, WorkspaceMonitor,
 };
 pub use runtime::SessionStreamer;
+pub use workspace::{
+    ProcessStatus, RescanHandle, SideStateUpdate, TeamMember, WatchRoots, WatchScope,
+    WatcherOptions, WorkspaceEvent, WorkspaceWatcher,
+};
 
 // Data types used as inputs/outputs in public APIs
 pub use agtrace_engine::{EventFilters, SessionState, filter_events};
@@ -29,7 +34,7 @@ pub use ops::{
     CheckResult, CheckStatus, CorpusStats, DoctorService, IndexProgress, InspectContentType,
     InspectLine, InspectResult, PackResult, ProjectInfo, StatsResult,
 };
-pub use runtime::{DiscoveryEvent, StreamEvent, WorkspaceEvent};
+pub use runtime::{DiscoveryEvent, StreamEvent, WatchEvent};
 pub use storage::RawFileContent;
 
 // Error types

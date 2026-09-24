@@ -513,18 +513,10 @@ impl TestWorld {
     pub fn get_session_file_path(&self, provider: TestProvider, filename: &str) -> Result<PathBuf> {
         let log_root = self.temp_dir.path().join(provider.default_log_dir_name());
         let project_dir = self.cwd.to_string_lossy();
-        let adapter = provider.adapter();
-
-        // Canonicalize target_project_dir to match project_hash_from_root behavior
-        let canonical_project_dir = self.cwd.canonicalize().unwrap_or_else(|_| self.cwd.clone());
 
         // WORST: Provider-specific branching in test code - MUST move to LogDiscovery trait
-        let project_log_dir = if let Some(provider_subdir) =
-            adapter.discovery.resolve_log_root(&canonical_project_dir)
-        {
-            // Provider uses project-specific subdirectory
-            log_root.join(provider_subdir)
-        } else {
+        // Claude-style flat structure with encoded project names
+        let project_log_dir = {
             // Provider uses flat structure with encoded project names (e.g., Claude)
             let encoded = project_dir
                 .replace(['/', '.'], "-")
@@ -590,7 +582,7 @@ impl TestWorld {
     /// // Add a specific Codex sample file
     /// world.add_session_from_sample(
     ///     TestProvider::Codex,
-    ///     "codex_parent_with_spawns.jsonl",
+    ///     "codex_session.jsonl",
     ///     "rollout-parent.jsonl"
     /// ).unwrap();
     /// ```

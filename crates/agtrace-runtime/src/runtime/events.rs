@@ -7,6 +7,7 @@ use std::path::PathBuf;
 /// - SessionUpdated.is_new: True if first time seeing this session_id in this process
 /// - SessionUpdated.mod_time: File modification timestamp for "most recently updated" detection
 /// - Watch handlers use mod_time to switch to actively updated sessions, not just is_new
+#[allow(clippy::large_enum_variant)] // legacy, short-lived
 #[derive(Debug, Clone)]
 pub enum DiscoveryEvent {
     NewSession {
@@ -40,8 +41,11 @@ pub enum StreamEvent {
     },
 }
 
+/// Legacy single-session watch event (old `watch` TUI / console). Replaced by
+/// [`crate::WorkspaceEvent`] from the workspace watcher.
+#[allow(clippy::large_enum_variant)] // legacy, short-lived
 #[derive(Debug, Clone)]
-pub enum WorkspaceEvent {
+pub enum WatchEvent {
     Discovery(DiscoveryEvent),
     Stream(StreamEvent),
     Error(String),

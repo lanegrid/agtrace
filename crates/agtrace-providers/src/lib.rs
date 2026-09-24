@@ -29,10 +29,7 @@ pub mod tool_analyzer;
 pub(crate) mod tool_spec;
 
 // Traits
-pub use traits::{
-    LogDiscovery, ProbeResult, ProviderAdapter, SessionIndex, ToolMapper,
-    get_latest_mod_time_rfc3339,
-};
+pub use traits::{ProviderAdapter, ToolMapper};
 
 // Provider contract
 pub use agtrace_types::{LineError, ParseDiagnostics};

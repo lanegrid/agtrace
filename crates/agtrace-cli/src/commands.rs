@@ -365,16 +365,25 @@ pub async fn run(cli: Cli) -> Result<()> {
             let target = if let Some(session_id) = id {
                 handlers::watch_tui::WatchTarget::Session { id: session_id }
             } else {
+                // Legacy UI: the provider only picks the initial session; the session
+                // feed covers every enabled provider (bounded workspace watcher). The
+                // default is the provider of the project's newest indexed session.
                 let provider_name = provider
                     .map(|p| p.to_string())
                     .or_else(|| {
+                        let filter = match ctx.project_hash() {
+                            Some(hash) => agtrace_sdk::types::SessionFilter::project(hash),
+                            None => agtrace_sdk::types::SessionFilter::all(),
+                        };
                         workspace
-                            .watch_service()
-                            .find_most_recent_provider(ctx.project_root.as_deref())
+                            .sessions()
+                            .list(filter.limit(1))
+                            .ok()?
+                            .into_iter()
+                            .next()
+                            .map(|s| s.provider)
                     })
                     .or_else(|| {
-                        // Fallback: Select first enabled provider from config
-                        // This allows watch to start in waiting mode even when no sessions exist yet
                         workspace
                             .watch_service()
                             .config()

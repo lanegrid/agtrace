@@ -96,7 +96,7 @@ impl DoctorService {
                 continue;
             }
 
-            if provider.discovery.probe(path).is_match() {
+            if provider.probe(path) {
                 all_files.push(path.to_path_buf());
             }
         }

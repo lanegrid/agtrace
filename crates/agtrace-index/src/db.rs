@@ -146,8 +146,13 @@ mod tests {
             end_ts: Some("2025-12-10T10:15:00Z".to_string()),
             snippet: Some("Test session".to_string()),
             is_valid: true,
+            agent_kind: "main".to_string(),
+            agent_name: None,
+            agent_path: None,
+            team_name: None,
+            root_session_id: None,
             parent_session_id: None,
-            spawned_by: None,
+            spawn_call_id: None,
         };
 
         db.insert_or_update_session(&session).unwrap();
@@ -186,8 +191,13 @@ mod tests {
             end_ts: None,
             snippet: None,
             is_valid: true,
+            agent_kind: "main".to_string(),
+            agent_name: None,
+            agent_path: None,
+            team_name: None,
+            root_session_id: None,
             parent_session_id: None,
-            spawned_by: None,
+            spawn_call_id: None,
         };
         db.insert_or_update_session(&session).unwrap();
 
@@ -195,6 +205,9 @@ mod tests {
             path: "/path/to/log.jsonl".to_string(),
             session_id: "session-001".to_string(),
             role: "main".to_string(),
+            agent_id: "claude:session-001".to_string(),
+            agent_name: None,
+            spawn_call_id: None,
             file_size: Some(1024),
             mod_time: Some("2025-12-10T10:05:00Z".to_string()),
         };
@@ -228,8 +241,13 @@ mod tests {
                 end_ts: None,
                 snippet: Some(format!("Session {}", i)),
                 is_valid: true,
+                agent_kind: "main".to_string(),
+                agent_name: None,
+                agent_path: None,
+                team_name: None,
+                root_session_id: None,
                 parent_session_id: None,
-                spawned_by: None,
+                spawn_call_id: None,
             };
             db.insert_or_update_session(&session).unwrap();
         }
@@ -278,8 +296,13 @@ mod tests {
                 end_ts: None,
                 snippet: None,
                 is_valid: true,
+                agent_kind: "main".to_string(),
+                agent_name: None,
+                agent_path: None,
+                team_name: None,
+                root_session_id: None,
                 parent_session_id: None,
-                spawned_by: None,
+                spawn_call_id: None,
             };
             db.insert_or_update_session(&session).unwrap();
         }

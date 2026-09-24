@@ -223,7 +223,8 @@ impl SessionHandle {
             project_root,
             provider: index_summary.provider,
             parent_session_id: index_summary.parent_session_id,
-            spawned_by: index_summary.spawned_by,
+            // Turn/step spawn positions are no longer indexed (v7 stores spawn_call_id).
+            spawned_by: None,
         })
     }
 

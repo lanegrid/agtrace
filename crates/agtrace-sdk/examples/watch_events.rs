@@ -1,91 +1,53 @@
-//! Real-time event watching example
+//! Live multi-agent workspace example
 //!
 //! This example demonstrates:
-//! - Setting up a live event stream
-//! - Watching for events from all providers
-//! - Displaying events as they arrive in real-time
+//! - Watching every agent of the current project (main sessions, teammates,
+//!   subagents, Codex threads) with `Client::watch_workspace`
+//! - Redrawing the agent tree whenever the view changes
 //!
 //! NOTE: This will run until Ctrl+C is pressed.
-//! Start an agent session in another terminal to see events appear.
+//! Start an agent session in this directory in another terminal to see it appear.
 
 use agtrace_sdk::Client;
-use futures::stream::StreamExt;
+use agtrace_sdk::watch::WatchScope;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== agtrace SDK: Real-time Event Watching Example ===\n");
+    println!("=== agtrace SDK: Live Workspace Example ===\n");
 
-    // 1. Connect to workspace (uses system path resolution)
     let client = Client::connect_default().await?;
-    println!("✓ Connected to workspace\n");
+    let project = std::env::current_dir()?;
+    println!(
+        "Watching agents of {} (Ctrl+C to exit)\n",
+        project.display()
+    );
 
-    // 2. Start watching for events from all providers
-    println!("Watching for agent activity...");
-    println!("(Start an agent session in another terminal to see events)\n");
-    println!("Press Ctrl+C to exit\n");
-
-    let mut stream = client.watch().all_providers().start()?;
-
-    let mut event_count = 0;
-    let start_time = std::time::Instant::now();
-
-    // 3. Process events as they arrive using the Stream trait
-    while let Some(workspace_event) = stream.next().await {
-        use agtrace_sdk::watch::WorkspaceEvent;
-
-        match workspace_event {
-            WorkspaceEvent::Discovery(discovery) => {
-                use agtrace_sdk::watch::DiscoveryEvent;
-                match discovery {
-                    DiscoveryEvent::NewSession { summary } => {
-                        println!("─────────────────────────────────────────────");
-                        println!("📍 New session discovered!");
-                        println!("   Session ID: {}", summary.id);
-                        println!("   Provider:   {}", summary.provider);
-                        println!("─────────────────────────────────────────────");
-                    }
-                    DiscoveryEvent::SessionUpdated {
-                        session_id,
-                        provider_name,
-                        is_new,
-                        ..
-                    } => {
-                        if is_new {
-                            println!("✨ Session started: {} ({})", session_id, provider_name);
-                        }
-                    }
-                    DiscoveryEvent::SessionRemoved { session_id } => {
-                        println!("🗑️  Session removed: {}", session_id);
-                    }
-                }
-                event_count += 1;
-            }
-            WorkspaceEvent::Stream(stream_event) => {
-                use agtrace_sdk::watch::StreamEvent;
-                match stream_event {
-                    StreamEvent::Attached { session_id, .. } => {
-                        println!("🔗 Attached to session: {}", session_id);
-                    }
-                    StreamEvent::Events { events, .. } => {
-                        println!("  📦 Received {} new event(s)", events.len());
-                        event_count += events.len();
-                    }
-                    StreamEvent::Disconnected { reason } => {
-                        println!("🔌 Disconnected: {}", reason);
-                    }
-                }
-            }
-            WorkspaceEvent::Error(err) => {
-                println!("❌ Error: {}", err);
-            }
-        }
-
-        // Show activity indicator every 10 seconds
-        let elapsed = start_time.elapsed().as_secs();
-        if event_count == 0 && elapsed > 0 && elapsed.is_multiple_of(10) {
-            eprintln!("  (Waiting for events... {} seconds elapsed)", elapsed);
+    let mut live = client.watch_workspace(WatchScope::project(project))?;
+    while live.changed().await.is_some() {
+        let view = live.view();
+        println!("--- {} agents ---", view.agents.len());
+        for (id, depth) in view.tree() {
+            let agent = &view.agents[id];
+            let ctx = agent
+                .window
+                .as_ref()
+                .map(|w| {
+                    format!(
+                        " {}% of {} [{}]",
+                        agent.context.last_context_tokens * 100 / w.tokens.max(1),
+                        w.tokens,
+                        w.provenance()
+                    )
+                })
+                .unwrap_or_default();
+            println!(
+                "{}{} {:?}{}",
+                "  ".repeat(depth),
+                agent.label(),
+                agent.status,
+                ctx
+            );
         }
     }
-
     Ok(())
 }

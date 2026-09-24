@@ -57,6 +57,10 @@ impl Provider for CodexProvider {
         Ok(headers)
     }
 
+    fn read_snippet(&self, path: &Path) -> Option<String> {
+        super::io::read_snippet(path)
+    }
+
     fn tool_mapper(&self) -> &dyn ToolMapper {
         &CodexToolMapper
     }
