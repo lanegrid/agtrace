@@ -1,0 +1,10 @@
+---
+source: crates/agtrace-cli/tests/agent_watch.rs
+assertion_line: 81
+expression: "rows.join(\"\\n\")"
+---
+/root Idle collapsed=true hidden=2
+s-lead Running collapsed=false hidden=0
+  audit-A Idle collapsed=false hidden=0
+  audit-B Idle collapsed=false hidden=0
+  fork: bench Running collapsed=false hidden=0

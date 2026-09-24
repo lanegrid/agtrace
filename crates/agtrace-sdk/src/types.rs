@@ -54,6 +54,7 @@ pub use agtrace_types::{
     // Domain types
     ProjectHash,
     ProjectScope,
+    QueueOperationPayload,
     ReasoningBlock,
     ReasoningPayload,
     RepositoryHash,

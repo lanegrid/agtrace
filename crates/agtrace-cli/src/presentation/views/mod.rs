@@ -1,3 +1,4 @@
+pub mod agent_watch;
 pub mod doctor;
 pub mod index;
 pub mod init;

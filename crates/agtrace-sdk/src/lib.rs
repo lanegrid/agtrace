@@ -156,6 +156,10 @@ pub mod watch;
 // Re-export core domain types for convenience
 pub use agtrace_engine::AgentSession;
 
+/// Live multi-agent workspace model (agent graph, per-agent state, feed), folded
+/// from watcher events. Consumed by the `watch` TUI.
+pub use agtrace_engine::workspace;
+
 // Public facade
 pub use analysis::{AnalysisReport, Diagnostic, Insight, Severity};
 pub use client::{
