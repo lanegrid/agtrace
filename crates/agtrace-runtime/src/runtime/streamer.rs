@@ -1,127 +1,184 @@
+//! Live stream of one session's events, built on the incremental tailer.
+//!
+//! Every file of the session has a [`FileCursor`]; a poll decodes only newly
+//! appended lines. The per-file event lists are kept (with the upsert rule) so
+//! that the assembled sessions of the legacy [`StreamEvent`] API can be rebuilt
+//! without re-parsing any file. New files of the session (e.g. Claude subagent
+//! transcripts created after attach) are adopted as they appear.
+
 use crate::runtime::events::{StreamEvent, WorkspaceEvent};
+use crate::tail::{FileCursor, TailOutcome, provider_for};
 use crate::{Error, Result};
 use agtrace_engine::{AgentSession, assemble_sessions};
 use agtrace_index::Database;
-use agtrace_providers::ProviderAdapter;
+use agtrace_providers::{DecodeOptions, Provider, ProviderAdapter};
 use agtrace_types::AgentEvent;
 use notify::{Event, EventKind, PollWatcher, RecursiveMode, Watcher};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Duration;
+use uuid::Uuid;
+
+/// How often tracked files are polled for appended bytes.
+const POLL_INTERVAL: Duration = Duration::from_millis(100);
+
+/// One tracked file: its cursor plus every event decoded from it so far.
+struct TrackedFile {
+    cursor: FileCursor,
+    events: Vec<AgentEvent>,
+    /// Event id -> index in `events` (upsert rule: same id replaces).
+    index: HashMap<Uuid, usize>,
+}
+
+impl TrackedFile {
+    fn new(cursor: FileCursor) -> Self {
+        Self {
+            cursor,
+            events: Vec::new(),
+            index: HashMap::new(),
+        }
+    }
+
+    fn upsert(&mut self, event: AgentEvent) {
+        match self.index.get(&event.id) {
+            Some(&i) => self.events[i] = event,
+            None => {
+                self.index.insert(event.id, self.events.len());
+                self.events.push(event);
+            }
+        }
+    }
+
+    /// Poll the cursor and fold the result. Returns the events that are new to
+    /// the consumer (after a reset: only those not delivered before).
+    fn poll(&mut self) -> std::io::Result<Vec<AgentEvent>> {
+        match self.cursor.poll()? {
+            TailOutcome::Unchanged => Ok(Vec::new()),
+            TailOutcome::Appended(events) => {
+                for event in &events {
+                    self.upsert(event.clone());
+                }
+                Ok(events)
+            }
+            TailOutcome::Reset(events) => {
+                let previous = std::mem::take(&mut self.index);
+                self.events.clear();
+                for event in &events {
+                    self.upsert(event.clone());
+                }
+                Ok(events
+                    .into_iter()
+                    .filter(|e| !previous.contains_key(&e.id))
+                    .collect())
+            }
+        }
+    }
+}
 
 struct StreamContext {
-    provider: Arc<ProviderAdapter>,
+    adapter: Arc<ProviderAdapter>,
+    provider: Arc<dyn Provider>,
     session_id: String,
     /// Files known to belong to this session. Grows dynamically as new
     /// files appear (e.g., subagent transcripts created mid-session).
-    session_files: Vec<PathBuf>,
+    files: Vec<TrackedFile>,
     /// Files confirmed to belong to a different session (negative cache,
     /// avoids re-reading headers on every fs poll tick).
     foreign_files: HashSet<PathBuf>,
-    /// Events per file, preserving file-internal order
-    file_events: HashMap<PathBuf, Vec<AgentEvent>>,
     /// Assembled sessions (main + child streams)
     sessions: Vec<AgentSession>,
 }
 
 impl StreamContext {
-    fn new(
-        provider: Arc<ProviderAdapter>,
-        session_id: String,
-        session_files: Vec<PathBuf>,
-    ) -> Self {
-        Self {
+    fn new(adapter: Arc<ProviderAdapter>, session_id: String, paths: Vec<PathBuf>) -> Self {
+        let provider = provider_for(adapter.provider.id());
+        let mut ctx = Self {
+            adapter,
             provider,
             session_id,
-            session_files,
+            files: Vec::new(),
             foreign_files: HashSet::new(),
-            file_events: HashMap::new(),
             sessions: Vec::new(),
+        };
+        for path in paths {
+            ctx.track(path);
         }
+        ctx
     }
 
-    fn load_all_events(&mut self) -> Result<Vec<AgentEvent>> {
-        for path in self.session_files.clone() {
-            let events = Self::load_file(&path, &self.provider)?;
-            self.file_events.insert(path, events);
-        }
-
-        let all_events = self.merge_all_events();
-        self.sessions = assemble_sessions(&all_events);
-
-        Ok(all_events)
+    fn track(&mut self, path: PathBuf) {
+        let cursor = FileCursor::new(self.provider.clone(), path, DecodeOptions::default());
+        self.files.push(TrackedFile::new(cursor));
     }
 
-    /// Check whether `path` belongs to this session, adopting it into
-    /// `session_files` if it is a newly appeared session file (e.g., a
-    /// subagent transcript created after attach).
-    fn is_session_file(&mut self, path: &Path) -> bool {
-        if self.session_files.iter().any(|p| p == path) {
-            return true;
+    /// Adopt `path` if it is a newly appeared file of this session.
+    fn consider(&mut self, path: &Path) {
+        if self.files.iter().any(|f| f.cursor.path() == path) || self.foreign_files.contains(path) {
+            return;
         }
-        if self.foreign_files.contains(path) {
-            return false;
-        }
-        if !self.provider.discovery.probe(path).is_match() {
+        if !self.adapter.discovery.probe(path).is_match() {
             // Not cached: an empty or partially written file may become
             // a valid session file on a later poll tick.
-            return false;
+            return;
         }
-        match self.provider.discovery.extract_session_id(path) {
-            Ok(id) if id == self.session_id => {
-                self.session_files.push(path.to_path_buf());
-                true
-            }
+        match self.adapter.discovery.extract_session_id(path) {
+            Ok(id) if id == self.session_id => self.track(path.to_path_buf()),
             Ok(_) => {
                 self.foreign_files.insert(path.to_path_buf());
-                false
             }
             // Header not readable yet (e.g., first line still being
             // written) - retry on the next event.
-            Err(_) => false,
+            Err(_) => {}
         }
     }
 
-    fn handle_change(&mut self, path: &Path) -> Result<Vec<AgentEvent>> {
-        let all_file_events = Self::load_file(path, &self.provider)?;
-        let last_count = self.file_events.get(path).map(|e| e.len()).unwrap_or(0);
-
-        // Determine new events for the return value
-        let new_events: Vec<AgentEvent> = if all_file_events.len() >= last_count {
-            all_file_events.iter().skip(last_count).cloned().collect()
-        } else {
-            // File shrunk (e.g., log rotation) - treat all events as new
-            all_file_events.clone()
-        };
-
-        // Replace the entire file's events to preserve correct ordering
-        // This fixes the bug where extend + sort would break event ordering
-        // for events with identical timestamps (e.g., ToolCall before ToolResult)
-        self.file_events.insert(path.to_path_buf(), all_file_events);
-
-        // Rebuild all_events from all files and reassemble sessions
-        let all_events = self.merge_all_events();
-        self.sessions = assemble_sessions(&all_events);
-
-        Ok(new_events)
+    /// Poll every tracked file. Returns the newly decoded events (merged across
+    /// files by timestamp, file order preserved) and re-assembles the sessions
+    /// when anything changed.
+    fn poll_all(&mut self) -> (Vec<AgentEvent>, Vec<String>) {
+        let mut per_file = Vec::with_capacity(self.files.len());
+        let mut errors = Vec::new();
+        for file in &mut self.files {
+            match file.poll() {
+                Ok(new) => per_file.push(new),
+                // Deleted (or not yet recreated): nothing to read.
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => per_file.push(Vec::new()),
+                Err(e) => {
+                    errors.push(format!("{}: {}", file.cursor.path().display(), e));
+                    per_file.push(Vec::new());
+                }
+            }
+        }
+        let new_events = merge_by_timestamp(per_file.iter().map(Vec::as_slice).collect());
+        if !new_events.is_empty() {
+            let all = merge_by_timestamp(self.files.iter().map(|f| f.events.as_slice()).collect());
+            self.sessions = assemble_sessions(&all);
+        }
+        (new_events, errors)
     }
+}
 
-    /// Merge events from all files, sorting by timestamp while preserving
-    /// file-internal order for events with identical timestamps
-    fn merge_all_events(&self) -> Vec<AgentEvent> {
-        let mut all_events: Vec<AgentEvent> =
-            self.file_events.values().flatten().cloned().collect();
-        // Stable sort preserves file-internal order for same-timestamp events
-        all_events.sort_by_key(|a| a.timestamp);
-        all_events
+/// Merge per-file event lists into one list ordered by timestamp.
+///
+/// Within a file the order is the file order (never re-sorted: timestamps are
+/// display-only and may be non-monotonic); across files the earliest head wins,
+/// ties going to the earlier file.
+fn merge_by_timestamp(lists: Vec<&[AgentEvent]>) -> Vec<AgentEvent> {
+    let total = lists.iter().map(|l| l.len()).sum();
+    let mut out = Vec::with_capacity(total);
+    let mut heads = vec![0usize; lists.len()];
+    while out.len() < total {
+        let next = (0..lists.len())
+            .filter(|&i| heads[i] < lists[i].len())
+            .min_by_key(|&i| (lists[i][heads[i]].timestamp, i))
+            .expect("remaining events");
+        out.push(lists[next][heads[next]].clone());
+        heads[next] += 1;
     }
-
-    fn load_file(path: &Path, provider: &Arc<ProviderAdapter>) -> Result<Vec<AgentEvent>> {
-        Ok(provider.parse_file(path)?)
-    }
+    out
 }
 
 pub struct SessionStreamer {
@@ -216,13 +273,11 @@ impl SessionStreamer {
 
         let mut context = StreamContext::new(provider, session_id, session_files);
 
-        if let Ok(events) = context.load_all_events()
-            && !events.is_empty()
-        {
-            let _ = tx_out.send(WorkspaceEvent::Stream(StreamEvent::Events {
-                events: events.clone(),
-                sessions: context.sessions.clone(),
-            }));
+        // Initial attach = tail every file from offset 0.
+        if !publish(&mut context, &tx_out) {
+            return Err(Error::InvalidOperation(
+                "Stream receiver closed".to_string(),
+            ));
         }
 
         let tx_worker = tx_out.clone();
@@ -230,20 +285,25 @@ impl SessionStreamer {
             .name("session-streamer".to_string())
             .spawn(move || {
                 loop {
-                    match rx_fs.recv() {
+                    match rx_fs.recv_timeout(POLL_INTERVAL) {
                         Ok(event) => {
-                            if let Err(e) = handle_fs_event(&event, &mut context, &tx_worker) {
-                                let _ = tx_worker
-                                    .send(WorkspaceEvent::Error(format!("Stream error: {}", e)));
+                            adopt_new_files(&event, &mut context);
+                            // Coalesce a burst of fs events into one poll.
+                            while let Ok(event) = rx_fs.try_recv() {
+                                adopt_new_files(&event, &mut context);
                             }
                         }
-                        Err(_) => {
+                        Err(RecvTimeoutError::Timeout) => {}
+                        Err(RecvTimeoutError::Disconnected) => {
                             let _ =
                                 tx_worker.send(WorkspaceEvent::Stream(StreamEvent::Disconnected {
                                     reason: "Stream ended".to_string(),
                                 }));
                             break;
                         }
+                    }
+                    if !publish(&mut context, &tx_worker) {
+                        break; // receiver dropped
                     }
                 }
             })?;
@@ -256,27 +316,37 @@ impl SessionStreamer {
     }
 }
 
-fn handle_fs_event(
-    event: &Event,
-    context: &mut StreamContext,
-    tx: &Sender<WorkspaceEvent>,
-) -> Result<()> {
+/// Poll all files and send what changed. Returns false once the receiver is gone.
+fn publish(context: &mut StreamContext, tx: &Sender<WorkspaceEvent>) -> bool {
+    let (events, errors) = context.poll_all();
+    for e in errors {
+        if tx
+            .send(WorkspaceEvent::Error(format!("Stream error: {}", e)))
+            .is_err()
+        {
+            return false;
+        }
+    }
+    if events.is_empty() {
+        return true;
+    }
+    tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
+        events,
+        sessions: context.sessions.clone(),
+    }))
+    .is_ok()
+}
+
+/// Track files of this session that appeared after attach. Content changes of
+/// tracked files are picked up by the periodic poll, not by fs events.
+fn adopt_new_files(event: &Event, context: &mut StreamContext) {
     // Create matters too: subagent transcripts (e.g., Claude's
     // {session_id}/subagents/agent-*.jsonl) are created after attach.
     if let EventKind::Create(_) | EventKind::Modify(_) = event.kind {
         for path in &event.paths {
-            if context.is_session_file(path)
-                && let Ok(new_events) = context.handle_change(path)
-                && !new_events.is_empty()
-            {
-                let _ = tx.send(WorkspaceEvent::Stream(StreamEvent::Events {
-                    events: new_events,
-                    sessions: context.sessions.clone(),
-                }));
-            }
+            context.consider(path);
         }
     }
-    Ok(())
 }
 
 fn find_session_files(
@@ -317,4 +387,72 @@ fn find_session_files(
 
     visit_dir(log_root, session_id, provider, &mut session_files)?;
     Ok(session_files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use agtrace_types::{AgentId, EventOrigin, EventPayload, UserPayload};
+    use chrono::{DateTime, TimeZone, Utc};
+
+    fn ev(agent: &AgentId, line: u64, ts: DateTime<Utc>) -> AgentEvent {
+        AgentEvent {
+            id: Uuid::new_v4(),
+            session_id: Uuid::nil(),
+            agent: agent.clone(),
+            parent_id: None,
+            timestamp: ts,
+            origin: EventOrigin::new(line, 0, 0),
+            payload: EventPayload::User(UserPayload {
+                text: format!("{line}"),
+            }),
+        }
+    }
+
+    #[test]
+    fn merge_keeps_file_order_even_with_non_monotonic_timestamps() {
+        let main = AgentId::claude_session("s");
+        let sub = AgentId::claude_subagent("s", "a1");
+        let t = |s| Utc.with_ymd_and_hms(2026, 9, 20, 10, 0, s).unwrap();
+        // Main file: timestamps go backwards at line 1.
+        let a = vec![ev(&main, 0, t(10)), ev(&main, 1, t(5)), ev(&main, 2, t(20))];
+        let b = vec![ev(&sub, 0, t(7)), ev(&sub, 1, t(15))];
+        let merged = merge_by_timestamp(vec![&a, &b]);
+        assert_eq!(merged.len(), 5);
+        let main_lines: Vec<u64> = merged
+            .iter()
+            .filter(|e| e.agent == main)
+            .map(|e| e.origin.line)
+            .collect();
+        assert_eq!(main_lines, vec![0, 1, 2], "file order must be preserved");
+        let sub_lines: Vec<u64> = merged
+            .iter()
+            .filter(|e| e.agent == sub)
+            .map(|e| e.origin.line)
+            .collect();
+        assert_eq!(sub_lines, vec![0, 1]);
+        // Interleaved by timestamp across files: sub@7 precedes main@10.
+        assert_eq!(merged[0].agent, sub);
+    }
+
+    #[test]
+    fn upsert_replaces_event_with_same_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let cursor = FileCursor::new(
+            provider_for(agtrace_providers::ProviderId::ClaudeCode),
+            dir.path().join("x.jsonl"),
+            DecodeOptions::default(),
+        );
+        let mut file = TrackedFile::new(cursor);
+        let agent = AgentId::claude_session("s");
+        let t = Utc.with_ymd_and_hms(2026, 9, 20, 10, 0, 0).unwrap();
+        let first = ev(&agent, 0, t);
+        let mut again = first.clone();
+        again.origin.line = 7;
+        file.upsert(first);
+        file.upsert(ev(&agent, 1, t));
+        file.upsert(again);
+        assert_eq!(file.events.len(), 2);
+        assert_eq!(file.events[0].origin.line, 7);
+    }
 }
