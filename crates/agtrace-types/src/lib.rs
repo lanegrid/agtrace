@@ -1,3 +1,5 @@
+pub mod agent;
+pub mod diagnostics;
 pub mod domain;
 pub mod error;
 pub mod event;
@@ -5,6 +7,8 @@ pub mod model_limits;
 pub mod tool;
 mod util;
 
+pub use agent::*;
+pub use diagnostics::*;
 pub use domain::*;
 pub use error::{Error, Result};
 pub use event::*;

@@ -98,10 +98,10 @@ impl<'a> fmt::Display for LabGrepView<'a> {
             writeln!(f, "{}", "=".repeat(80).bright_black())?;
             writeln!(
                 f,
-                "Match #{} | Session: {} | Stream: {:?}",
+                "Match #{} | Session: {} | Agent: {}",
                 i + 1,
                 event.session_id.yellow(),
-                event.stream_id
+                event.agent
             )?;
 
             if self.data.json_output {
@@ -175,11 +175,11 @@ impl<'a> fmt::Display for LabGrepView<'a> {
                             operation, task_id, content
                         )?;
                     }
-                    crate::presentation::view_models::EventPayloadViewModel::Summary {
-                        summary,
-                        leaf_uuid,
+                    crate::presentation::view_models::EventPayloadViewModel::Other {
+                        kind,
+                        content,
                     } => {
-                        writeln!(f, "Summary (leaf_uuid={:?}): {}", leaf_uuid, summary)?;
+                        writeln!(f, "{}: {}", kind, content)?;
                     }
                 }
             }

@@ -202,14 +202,63 @@ fn event_to_timeline_item(event: &agtrace_sdk::types::AgentEvent) -> TimelineEve
             format!("Queue: {}", qo.operation),
             StatusLevel::Info,
         ),
-        EventPayload::Summary(s) => {
-            let preview = truncate_text(&s.summary, 150);
-            (
-                "📝".to_string(),
-                format!("Summary: {}", preview),
-                StatusLevel::Info,
-            )
-        }
+        EventPayload::AgentSpawn(spawn) => (
+            "🧬".to_string(),
+            format!(
+                "Spawn: {}",
+                spawn.name.as_deref().unwrap_or(match &spawn.child {
+                    agtrace_sdk::types::AgentHandle::Path(p) => p.as_str(),
+                    agtrace_sdk::types::AgentHandle::NativeAgentId(a) => a.as_str(),
+                    _ => "agent",
+                })
+            ),
+            StatusLevel::Info,
+        ),
+        EventPayload::AgentLifecycle(l) => (
+            "🔁".to_string(),
+            format!("Agent: {:?}", l.transition),
+            StatusLevel::Info,
+        ),
+        EventPayload::AgentMessage(m) => (
+            "✉️".to_string(),
+            format!(
+                "Agent message: {}",
+                m.body
+                    .as_deref()
+                    .map(|b| truncate_text(b, 150))
+                    .unwrap_or_else(|| "[encrypted]".to_string())
+            ),
+            StatusLevel::Info,
+        ),
+        EventPayload::Compaction(c) => (
+            "🗜".to_string(),
+            match c.pre_tokens {
+                Some(pre) => format!("Compaction (pre {} tokens)", pre),
+                None => "Compaction".to_string(),
+            },
+            StatusLevel::Info,
+        ),
+        EventPayload::TurnEnd(_) => ("🏁".to_string(), "Turn end".to_string(), StatusLevel::Info),
+        EventPayload::ModelChange(m) => (
+            "🔀".to_string(),
+            format!("Model: {}", m.to),
+            StatusLevel::Info,
+        ),
+        EventPayload::ContextWindowHint(_) => (
+            "📐".to_string(),
+            "Context window hint".to_string(),
+            StatusLevel::Info,
+        ),
+        EventPayload::AgentAttribute(a) => (
+            "🏷".to_string(),
+            format!("{:?}: {}", a.key, truncate_text(&a.value, 150)),
+            StatusLevel::Info,
+        ),
+        EventPayload::ToolSubAction(sa) => (
+            "🔧".to_string(),
+            format!("Sub-action: {}", sa.call.name()),
+            StatusLevel::Info,
+        ),
     };
 
     TimelineEventViewModel {
@@ -227,12 +276,10 @@ fn build_turn_history(
     assembled_sessions: &[agtrace_sdk::types::AgentSession],
     max_context: Option<u32>,
 ) -> TurnHistoryViewModel {
-    use agtrace_sdk::types::StreamId;
-
-    // Find main session (stream_id == Main)
+    // Find main session (the file-owner agent, not a Claude subagent)
     let main_session = assembled_sessions
         .iter()
-        .find(|s| matches!(s.stream_id, StreamId::Main));
+        .find(|s| !s.agent.is_claude_subagent());
 
     // Detect waiting state and provide contextual information
     let waiting_state = detect_waiting_state(state, main_session, max_context);
@@ -257,10 +304,10 @@ fn build_turn_history(
         };
     };
 
-    // Collect child sessions (stream_id != Main)
+    // Collect child sessions (Claude subagents)
     let child_sessions: Vec<_> = assembled_sessions
         .iter()
-        .filter(|s| !matches!(s.stream_id, StreamId::Main))
+        .filter(|s| s.agent.is_claude_subagent())
         .collect();
 
     let metrics = session.compute_turn_metrics(max_context);
@@ -473,15 +520,10 @@ fn build_child_stream_view_model(
     child: &agtrace_sdk::types::AgentSession,
     max_context: Option<u32>,
 ) -> ChildStreamViewModel {
-    use agtrace_sdk::types::StreamId;
-
-    // Build stream label from stream_id
-    let stream_label = match &child.stream_id {
-        StreamId::Main => "main".to_string(),
-        StreamId::Sidechain { agent_id } => {
-            format!("sidechain:{}", &agent_id[..8.min(agent_id.len())])
-        }
-        StreamId::Subagent { name } => format!("subagent:{}", name),
+    // Build stream label from the agent id
+    let stream_label = match child.agent.native_agent_id() {
+        Some(agent_id) => format!("sidechain:{}", &agent_id[..8.min(agent_id.len())]),
+        None => "main".to_string(),
     };
 
     // Get first user message
@@ -691,6 +733,19 @@ fn build_generic_tool_preview(payload: &agtrace_sdk::types::ToolCallPayload) -> 
                 None => ("🔌".to_string(), format!("mcp: {}", name)),
             }
         }
+        ToolCallPayload::Agent {
+            name, arguments, ..
+        } => (
+            "🤖".to_string(),
+            format_tool_target(
+                name,
+                arguments
+                    .target
+                    .clone()
+                    .or_else(|| arguments.name.clone())
+                    .or_else(|| arguments.summary.clone()),
+            ),
+        ),
         ToolCallPayload::Generic { name, .. } => ("🔧".to_string(), format!("Tool: {}", name)),
     }
 }
@@ -804,8 +859,6 @@ fn build_status_bar(
     state: &agtrace_sdk::types::SessionState,
     assembled_sessions: &[agtrace_sdk::types::AgentSession],
 ) -> StatusBarViewModel {
-    use agtrace_sdk::types::StreamId;
-
     let session_preview: String = state.session_id.chars().take(8).collect();
     let status_message = format!("Watching session {}...", session_preview);
     let status_level = StatusLevel::Info;
@@ -814,7 +867,7 @@ fn build_status_bar(
     // This ensures status bar shows the same turn count as the turn history panel
     let main_session_turn_count = assembled_sessions
         .iter()
-        .find(|s| matches!(s.stream_id, StreamId::Main))
+        .find(|s| !s.agent.is_claude_subagent())
         .map(|s| s.turns.len())
         .unwrap_or(0);
 
@@ -960,9 +1013,7 @@ mod tests {
         let mut step = empty_step();
         step.message = Some(MessageBlock {
             event_id: Uuid::new_v4(),
-            content: MessagePayload {
-                text: "All done".to_string(),
-            },
+            content: MessagePayload::new("All done".to_string()),
         });
 
         let preview = build_step_preview(&step, 0, Utc::now());

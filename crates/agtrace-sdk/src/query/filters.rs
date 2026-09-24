@@ -46,26 +46,30 @@ pub enum EventType {
     SlashCommand,
     /// Background task queue operation
     QueueOperation,
-    /// Session summary
-    Summary,
+    /// Child agent spawned
+    AgentSpawn,
+    /// Agent lifecycle transition
+    AgentLifecycle,
+    /// Inter-agent message
+    AgentMessage,
+    /// Context compaction
+    Compaction,
+    /// End of an agent turn
+    TurnEnd,
+    /// Model switch
+    ModelChange,
+    /// Context window evidence
+    ContextWindowHint,
+    /// Agent attribute (title, name, ...)
+    AgentAttribute,
+    /// Sub-action inside a tool call
+    ToolSubAction,
 }
 
 impl EventType {
     /// Match against EventPayload variant.
     pub fn matches_payload(self, payload: &EventPayload) -> bool {
-        matches!(
-            (self, payload),
-            (EventType::ToolCall, EventPayload::ToolCall(_))
-                | (EventType::ToolResult, EventPayload::ToolResult(_))
-                | (EventType::Message, EventPayload::Message(_))
-                | (EventType::User, EventPayload::User(_))
-                | (EventType::Reasoning, EventPayload::Reasoning(_))
-                | (EventType::TokenUsage, EventPayload::TokenUsage(_))
-                | (EventType::Notification, EventPayload::Notification(_))
-                | (EventType::SlashCommand, EventPayload::SlashCommand(_))
-                | (EventType::QueueOperation, EventPayload::QueueOperation(_))
-                | (EventType::Summary, EventPayload::Summary(_))
-        )
+        self == Self::from_payload(payload)
     }
 
     /// Create EventType from EventPayload.
@@ -80,7 +84,15 @@ impl EventType {
             EventPayload::Notification(_) => EventType::Notification,
             EventPayload::SlashCommand(_) => EventType::SlashCommand,
             EventPayload::QueueOperation(_) => EventType::QueueOperation,
-            EventPayload::Summary(_) => EventType::Summary,
+            EventPayload::AgentSpawn(_) => EventType::AgentSpawn,
+            EventPayload::AgentLifecycle(_) => EventType::AgentLifecycle,
+            EventPayload::AgentMessage(_) => EventType::AgentMessage,
+            EventPayload::Compaction(_) => EventType::Compaction,
+            EventPayload::TurnEnd(_) => EventType::TurnEnd,
+            EventPayload::ModelChange(_) => EventType::ModelChange,
+            EventPayload::ContextWindowHint(_) => EventType::ContextWindowHint,
+            EventPayload::AgentAttribute(_) => EventType::AgentAttribute,
+            EventPayload::ToolSubAction(_) => EventType::ToolSubAction,
         }
     }
 }

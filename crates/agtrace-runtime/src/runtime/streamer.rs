@@ -120,7 +120,7 @@ impl StreamContext {
     }
 
     fn load_file(path: &Path, provider: &Arc<ProviderAdapter>) -> Result<Vec<AgentEvent>> {
-        Ok(provider.parser.parse_file(path)?)
+        Ok(provider.parse_file(path)?)
     }
 }
 

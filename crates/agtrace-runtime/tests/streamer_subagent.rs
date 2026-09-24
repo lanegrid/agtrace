@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use agtrace_runtime::{SessionStreamer, StreamEvent, WorkspaceEvent};
-use agtrace_types::StreamId;
 
 const SESSION_ID: &str = "11111111-2222-3333-4444-555555555555";
 
@@ -64,10 +63,7 @@ fn subagent_file_created_after_attach_appears_in_stream() {
     while Instant::now() < deadline {
         match streamer.receiver().recv_timeout(Duration::from_millis(200)) {
             Ok(WorkspaceEvent::Stream(StreamEvent::Events { sessions, .. })) => {
-                if sessions
-                    .iter()
-                    .any(|s| matches!(s.stream_id, StreamId::Sidechain { .. }))
-                {
+                if sessions.iter().any(|s| s.agent.is_claude_subagent()) {
                     saw_sidechain = true;
                     break;
                 }

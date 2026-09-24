@@ -166,8 +166,18 @@ impl TurnBuilder {
 
             EventPayload::Notification(_) => {}
 
-            // QueueOperation and Summary are metadata events, not turn content
-            EventPayload::QueueOperation(_) | EventPayload::Summary(_) => {}
+            // Metadata / multi-agent / context events are not step content (yet):
+            // passed through and ignored by turn assembly.
+            EventPayload::QueueOperation(_)
+            | EventPayload::AgentSpawn(_)
+            | EventPayload::AgentLifecycle(_)
+            | EventPayload::AgentMessage(_)
+            | EventPayload::Compaction(_)
+            | EventPayload::TurnEnd(_)
+            | EventPayload::ModelChange(_)
+            | EventPayload::ContextWindowHint(_)
+            | EventPayload::AgentAttribute(_)
+            | EventPayload::ToolSubAction(_) => {}
 
             // User and SlashCommand are turn triggers, handled in assembler
             EventPayload::User(_) | EventPayload::SlashCommand(_) => unreachable!(),
@@ -216,7 +226,7 @@ impl TurnBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use agtrace_types::{MessagePayload, ReasoningPayload, StreamId};
+    use agtrace_types::{AgentId, EventOrigin, MessagePayload, ReasoningPayload};
 
     #[test]
     fn test_turn_builder_basic() {
@@ -280,12 +290,10 @@ mod tests {
             id: Uuid::new_v4(),
             session_id: user_id,
             parent_id: None,
-            stream_id: StreamId::Main,
+            agent: AgentId::claude_session("test-session"),
+            origin: EventOrigin::default(),
             timestamp,
-            metadata: None,
-            payload: EventPayload::Message(MessagePayload {
-                text: "Response".to_string(),
-            }),
+            payload: EventPayload::Message(MessagePayload::new("Response".to_string())),
         };
 
         builder.add_event(&msg_event);
@@ -314,9 +322,9 @@ mod tests {
             id: Uuid::new_v4(),
             session_id: user_id,
             parent_id: None,
-            stream_id: StreamId::Main,
+            agent: AgentId::claude_session("test-session"),
+            origin: EventOrigin::default(),
             timestamp,
-            metadata: None,
             payload: EventPayload::Reasoning(ReasoningPayload {
                 text: "Thinking 1".to_string(),
             }),
@@ -326,9 +334,9 @@ mod tests {
             id: Uuid::new_v4(),
             session_id: user_id,
             parent_id: None,
-            stream_id: StreamId::Main,
+            agent: AgentId::claude_session("test-session"),
+            origin: EventOrigin::default(),
             timestamp,
-            metadata: None,
             payload: EventPayload::Reasoning(ReasoningPayload {
                 text: "Thinking 2".to_string(),
             }),

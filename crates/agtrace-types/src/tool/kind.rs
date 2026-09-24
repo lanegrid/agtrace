@@ -16,6 +16,8 @@ pub enum ToolKind {
     Search,
     /// User interaction (questions, prompts)
     Ask,
+    /// Multi-agent operations (spawn / message / stop / wait / list / handback / output)
+    Agent,
     /// Other/unknown operations
     Other,
 }

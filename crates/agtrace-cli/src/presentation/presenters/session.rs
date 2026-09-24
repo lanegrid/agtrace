@@ -7,7 +7,7 @@ use crate::presentation::view_models::{
     TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
 };
 use agtrace_sdk::ChildSessionInfo;
-use agtrace_sdk::types::{AgentSession, SessionAnalysisExt, SessionSummary, StreamId};
+use agtrace_sdk::types::{AgentId, AgentSession, SessionAnalysisExt, SessionSummary};
 
 pub fn present_session_list(
     sessions: Vec<SessionSummary>,
@@ -93,6 +93,15 @@ fn add_session_list_guidance(
     result
 }
 
+/// Legacy stream label of an agent timeline within a session view:
+/// `"main"` for the file-owner agent, `"sidechain:<agentId>"` for Claude subagents.
+pub fn stream_label(agent: &AgentId) -> String {
+    match agent.native_agent_id() {
+        Some(aid) => format!("sidechain:{aid}"),
+        None => "main".to_string(),
+    }
+}
+
 /// Present a full session (all streams) as a single view model.
 ///
 /// Streams are ordered Main-first, then by stream_id. Producing one view model
@@ -110,25 +119,26 @@ pub fn present_session_detail(
     log_files: Vec<String>,
     children: &[ChildSessionInfo],
 ) -> CommandResultViewModel<SessionDetailViewModel> {
-    // Order: Main first, then others by stream_id string
+    // Order: main agent first, then subagents by agent id
     let mut ordered: Vec<&AgentSession> = streams.iter().collect();
-    ordered.sort_by(|a, b| match (&a.stream_id, &b.stream_id) {
-        (StreamId::Main, StreamId::Main) => std::cmp::Ordering::Equal,
-        (StreamId::Main, _) => std::cmp::Ordering::Less,
-        (_, StreamId::Main) => std::cmp::Ordering::Greater,
-        (a_id, b_id) => a_id.as_str().cmp(&b_id.as_str()),
-    });
+    ordered.sort_by(
+        |a, b| match (a.agent.is_claude_subagent(), b.agent.is_claude_subagent()) {
+            (false, false) => std::cmp::Ordering::Equal,
+            (false, true) => std::cmp::Ordering::Less,
+            (true, false) => std::cmp::Ordering::Greater,
+            (true, true) => a.agent.cmp(&b.agent),
+        },
+    );
 
     let stream_views = ordered
         .iter()
         .map(|session| {
             // Children (subagent sessions in separate files) attach to the main stream only
-            let stream_children: &[ChildSessionInfo] =
-                if matches!(session.stream_id, StreamId::Main) {
-                    children
-                } else {
-                    &[]
-                };
+            let stream_children: &[ChildSessionInfo] = if !session.agent.is_claude_subagent() {
+                children
+            } else {
+                &[]
+            };
             build_stream_analysis(session, max_context, stream_children)
         })
         .collect();
@@ -225,7 +235,7 @@ fn build_stream_analysis(
         .collect();
 
     StreamAnalysisViewModel {
-        stream_id: session.stream_id.as_str(),
+        stream_id: stream_label(&session.agent),
         spawned_by: session.spawned_by.as_ref().map(present_spawn_context),
         status: if session.turns.is_empty() {
             "Empty".to_string()

@@ -11,11 +11,27 @@ pub(crate) enum ClaudeRecord {
     System(SystemRecord),
     Progress(ProgressRecord),
     QueueOperation(QueueOperationRecord),
-    Summary(SummaryRecord),
     PrLink(PrLinkRecord),
     Attachment(AttachmentRecord),
     #[serde(other)]
     Unknown,
+}
+
+impl ClaudeRecord {
+    /// `sessionId` carried by the record, if any.
+    #[cfg(test)]
+    pub(crate) fn session_id(&self) -> Option<&str> {
+        match self {
+            ClaudeRecord::User(r) => Some(&r.session_id),
+            ClaudeRecord::Assistant(r) => Some(&r.session_id),
+            ClaudeRecord::System(r) => Some(&r.session_id),
+            ClaudeRecord::Progress(r) => Some(&r.session_id),
+            ClaudeRecord::QueueOperation(r) => Some(&r.session_id),
+            ClaudeRecord::PrLink(r) => Some(&r.session_id),
+            ClaudeRecord::Attachment(r) => Some(&r.session_id),
+            ClaudeRecord::FileHistorySnapshot(_) | ClaudeRecord::Unknown => None,
+        }
+    }
 }
 
 /// Attachment record (v2.1+): rich inline context injected into the transcript.
@@ -450,19 +466,6 @@ pub(crate) struct QueueOperationRecord {
     pub content: Option<String>,
     #[serde(default)]
     pub task_id: Option<String>,
-}
-
-/// Summary record
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct SummaryRecord {
-    pub summary: String,
-    #[serde(default)]
-    pub leaf_uuid: Option<String>,
-    #[serde(default)]
-    pub session_id: Option<String>,
-    #[serde(default)]
-    pub timestamp: Option<String>,
 }
 
 /// Compaction metadata for compact_boundary system events

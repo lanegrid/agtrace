@@ -66,29 +66,30 @@ fn test_session_assembly_structure() {
             session_id,
             parent_id: None,
             timestamp: base_time,
-            stream_id: agtrace_types::StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::User(UserPayload {
                 text: "Hello".to_string(),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: reasoning_id,
             session_id,
             parent_id: Some(user_id),
             timestamp: base_time,
-            stream_id: agtrace_types::StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::Reasoning(ReasoningPayload {
                 text: "I should respond".to_string(),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: tool1_id,
             session_id,
             parent_id: Some(reasoning_id),
             timestamp: base_time,
-            stream_id: agtrace_types::StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::ToolCall(ToolCallPayload::Execute {
                 name: "bash".to_string(),
                 arguments: ExecuteArgs {
@@ -99,44 +100,41 @@ fn test_session_assembly_structure() {
                 },
                 provider_call_id: Some("call_1".to_string()),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: tool_result1_id,
             session_id,
             parent_id: Some(tool1_id),
             timestamp: base_time,
-            stream_id: agtrace_types::StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: "hello".to_string(),
                 tool_call_id: tool1_id,
                 is_error: false,
                 agent_id: None,
             }),
-            metadata: None,
         },
         AgentEvent {
             id: message_id,
             session_id,
             parent_id: Some(tool_result1_id),
             timestamp: base_time,
-            stream_id: agtrace_types::StreamId::Main,
-            payload: EventPayload::Message(MessagePayload {
-                text: "Done!".to_string(),
-            }),
-            metadata: None,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
+            payload: EventPayload::Message(MessagePayload::new("Done!".to_string())),
         },
         AgentEvent {
             id: token_usage_id,
             session_id,
             parent_id: Some(message_id),
             timestamp: base_time,
-            stream_id: agtrace_types::StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::TokenUsage(TokenUsagePayload::new(
-                agtrace_types::TokenInput::new(0, 100), // cached=0, uncached=100
+                agtrace_types::TokenInput::new(100, 0, 0), // uncached=100
                 agtrace_types::TokenOutput::new(50, 0, 0), // generated=50, reasoning=0, tool=0
             )),
-            metadata: None,
         },
     ];
 
@@ -198,22 +196,20 @@ fn test_step_status_determination() {
             session_id,
             parent_id: None,
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::User(UserPayload {
                 text: "Test 1".to_string(),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: msg1_id,
             session_id,
             parent_id: Some(user1_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
-            payload: EventPayload::Message(MessagePayload {
-                text: "Response".to_string(),
-            }),
-            metadata: None,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
+            payload: EventPayload::Message(MessagePayload::new("Response".to_string())),
         },
         // Turn 2: Tool without result -> InProgress
         AgentEvent {
@@ -221,18 +217,19 @@ fn test_step_status_determination() {
             session_id,
             parent_id: Some(msg1_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::User(UserPayload {
                 text: "Test 2".to_string(),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: tool2_id,
             session_id,
             parent_id: Some(user2_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::ToolCall(ToolCallPayload::Execute {
                 name: "bash".to_string(),
                 arguments: ExecuteArgs {
@@ -243,7 +240,6 @@ fn test_step_status_determination() {
                 },
                 provider_call_id: Some("call_2".to_string()),
             }),
-            metadata: None,
         },
         // Turn 3: Tool with result -> Done
         AgentEvent {
@@ -251,18 +247,19 @@ fn test_step_status_determination() {
             session_id,
             parent_id: Some(tool2_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::User(UserPayload {
                 text: "Test 3".to_string(),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: tool3_id,
             session_id,
             parent_id: Some(user3_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::ToolCall(ToolCallPayload::FileRead {
                 name: "read".to_string(),
                 arguments: FileReadArgs {
@@ -273,21 +270,20 @@ fn test_step_status_determination() {
                 },
                 provider_call_id: Some("call_3".to_string()),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: result3_id,
             session_id,
             parent_id: Some(tool3_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: "file content".to_string(),
                 tool_call_id: tool3_id,
                 is_error: false,
                 agent_id: None,
             }),
-            metadata: None,
         },
         // Turn 4: Reasoning only -> InProgress
         AgentEvent {
@@ -295,22 +291,22 @@ fn test_step_status_determination() {
             session_id,
             parent_id: Some(result3_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::User(UserPayload {
                 text: "Test 4".to_string(),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: reasoning4_id,
             session_id,
             parent_id: Some(user4_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::Reasoning(ReasoningPayload {
                 text: "Thinking...".to_string(),
             }),
-            metadata: None,
         },
         // Turn 5: Tool with error -> Failed
         AgentEvent {
@@ -318,18 +314,19 @@ fn test_step_status_determination() {
             session_id,
             parent_id: Some(reasoning4_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::User(UserPayload {
                 text: "Test 5".to_string(),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: tool5_id,
             session_id,
             parent_id: Some(user5_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::ToolCall(ToolCallPayload::Execute {
                 name: "bash".to_string(),
                 arguments: ExecuteArgs {
@@ -340,21 +337,20 @@ fn test_step_status_determination() {
                 },
                 provider_call_id: Some("call_5".to_string()),
             }),
-            metadata: None,
         },
         AgentEvent {
             id: result5_id,
             session_id,
             parent_id: Some(tool5_id),
             timestamp: base_time,
-            stream_id: StreamId::Main,
+            agent: agtrace_types::AgentId::claude_session("test-session"),
+            origin: Default::default(),
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: "command not found".to_string(),
                 tool_call_id: tool5_id,
                 is_error: true,
                 agent_id: None,
             }),
-            metadata: None,
         },
     ];
 

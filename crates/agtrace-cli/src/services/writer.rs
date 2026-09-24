@@ -22,18 +22,7 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
 
     for event in events {
         let ts_str = event.timestamp.to_rfc3339();
-        let event_type = match &event.payload {
-            EventPayload::User(_) => "User",
-            EventPayload::Message(_) => "Message",
-            EventPayload::Reasoning(_) => "Reasoning",
-            EventPayload::ToolCall(_) => "ToolCall",
-            EventPayload::ToolResult(_) => "ToolResult",
-            EventPayload::TokenUsage(_) => "TokenUsage",
-            EventPayload::Notification(_) => "Notification",
-            EventPayload::SlashCommand(_) => "SlashCommand",
-            EventPayload::QueueOperation(_) => "QueueOperation",
-            EventPayload::Summary(_) => "Summary",
-        };
+        let event_type = event.payload.kind_name();
 
         writeln!(file, "[{}] {}", ts_str, event_type)?;
 
@@ -89,8 +78,8 @@ pub fn write_text(path: &Path, events: &[AgentEvent]) -> Result<()> {
                     p.content.as_deref().unwrap_or("")
                 )?;
             }
-            EventPayload::Summary(p) => {
-                writeln!(file, "{}", p.summary)?;
+            other => {
+                writeln!(file, "{}", serde_json::to_string(other).unwrap_or_default())?;
             }
         }
 

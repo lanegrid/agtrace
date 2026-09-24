@@ -2,8 +2,8 @@ use crate::presentation::presenters::watch_tui::build_screen_view_model;
 use crate::presentation::renderers::tui::{RendererSignal, TuiEvent, TuiRenderer};
 use agtrace_sdk::SessionHandle;
 use agtrace_sdk::types::{
-    AgentEvent, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs, MessagePayload,
-    ReasoningPayload, SessionState, StreamId, TokenInput, TokenOutput, TokenUsagePayload,
+    AgentEvent, AgentId, EventOrigin, EventPayload, ExecuteArgs, FileEditArgs, FileReadArgs,
+    MessagePayload, ReasoningPayload, SessionState, TokenInput, TokenOutput, TokenUsagePayload,
     ToolCallPayload, ToolResultPayload, UserPayload,
 };
 use agtrace_sdk::utils::extract_state_updates;
@@ -172,7 +172,7 @@ fn run_simulation(
 struct ScenarioBuilder {
     events: Vec<AgentEvent>,
     session_uuid: uuid::Uuid,
-    stream_id: StreamId,
+    agent: AgentId,
     timestamp: DateTime<Utc>,
     event_counter: u32,
     call_counter: u32,
@@ -194,7 +194,7 @@ impl ScenarioBuilder {
         Self {
             events: Vec::new(),
             session_uuid,
-            stream_id: StreamId::Main,
+            agent: AgentId::claude_session(session_id),
             timestamp: start,
             event_counter: 0,
             call_counter: 0,
@@ -279,10 +279,10 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::TokenUsage(TokenUsagePayload::new(
-                TokenInput::new(0, capped_input as u64),
+                TokenInput::new(capped_input as u64, 0, 0),
                 TokenOutput::new(self.total_output_tokens as u64, 0, 0),
             )),
         });
@@ -304,8 +304,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::User(UserPayload { text: text_str }),
         });
         self
@@ -325,8 +325,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::Reasoning(ReasoningPayload { text: text_str }),
         });
         self
@@ -350,8 +350,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts1,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::ToolCall(ToolCallPayload::FileRead {
                 name: "Read".to_string(),
                 arguments: FileReadArgs {
@@ -370,8 +370,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts2,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: output_str,
                 tool_call_id: call_id,
@@ -406,8 +406,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts1,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::ToolCall(ToolCallPayload::FileEdit {
                 name: "Edit".to_string(),
                 arguments: FileEditArgs {
@@ -426,8 +426,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts2,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: format!(
                     "Applied {} edit{}.",
@@ -464,8 +464,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts1,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::ToolCall(ToolCallPayload::Execute {
                 name: "Bash".to_string(),
                 arguments: ExecuteArgs {
@@ -484,8 +484,8 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts2,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
             payload: EventPayload::ToolResult(ToolResultPayload {
                 output: output_str,
                 tool_call_id: call_id,
@@ -510,9 +510,9 @@ impl ScenarioBuilder {
             session_id: self.session_uuid,
             parent_id: None,
             timestamp: ts,
-            stream_id: self.stream_id.clone(),
-            metadata: None,
-            payload: EventPayload::Message(MessagePayload { text: text_str }),
+            agent: self.agent.clone(),
+            origin: EventOrigin::default(),
+            payload: EventPayload::Message(MessagePayload::new(text_str)),
         });
         self
     }

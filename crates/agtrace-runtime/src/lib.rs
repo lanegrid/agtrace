@@ -4,6 +4,7 @@ pub(crate) mod init;
 pub(crate) mod ops;
 pub(crate) mod runtime;
 pub(crate) mod storage;
+pub(crate) mod tail;
 
 // Error types
 pub mod error;

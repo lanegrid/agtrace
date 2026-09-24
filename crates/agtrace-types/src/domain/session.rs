@@ -5,7 +5,7 @@ use uuid::Uuid;
 use super::project::ProjectHash;
 use super::token_usage::ContextWindowUsage;
 use crate::{
-    MessagePayload, ReasoningPayload, SlashCommandPayload, StreamId, ToolCallPayload,
+    AgentId, MessagePayload, ReasoningPayload, SlashCommandPayload, ToolCallPayload,
     ToolResultPayload, UserPayload,
 };
 
@@ -99,9 +99,8 @@ pub struct SpawnContext {
 pub struct AgentSession {
     /// Unique session identifier.
     pub session_id: Uuid,
-    /// Stream identifier for multi-stream sessions.
-    /// Indicates whether this is the main conversation, a sidechain, or a subagent.
-    pub stream_id: StreamId,
+    /// Agent (log file owner) this session timeline belongs to.
+    pub agent: AgentId,
     /// For sidechain sessions: context about where this was spawned from in the parent session.
     /// None for main stream sessions or sidechains without identifiable parent context.
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -3,6 +3,8 @@ use uuid::Uuid;
 
 use crate::tool::ToolCallPayload;
 
+use super::agent_payload::*;
+
 /// Event payload variants
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "content")]
@@ -41,8 +43,58 @@ pub enum EventPayload {
     /// 9. Background task queue operation
     QueueOperation(QueueOperationPayload),
 
-    /// 10. Session summary
-    Summary(SummaryPayload),
+    /// 10. A child agent was spawned from this agent's log
+    AgentSpawn(AgentSpawnPayload),
+
+    /// 11. Lifecycle transition of an agent (running, idle, completed, killed, ...)
+    AgentLifecycle(AgentLifecyclePayload),
+
+    /// 12. Inter-agent message (incoming or outgoing)
+    AgentMessage(AgentMessagePayload),
+
+    /// 13. Context compaction boundary
+    Compaction(CompactionPayload),
+
+    /// 14. End of an agent turn
+    TurnEnd(TurnEndPayload),
+
+    /// 15. Model switch
+    ModelChange(ModelChangePayload),
+
+    /// 16. In-log evidence about the context window size
+    ContextWindowHint(ContextWindowHintPayload),
+
+    /// 17. Agent attribute (title, name, team, ...) — upserted by key
+    AgentAttribute(AgentAttributePayload),
+
+    /// 18. Sub-action executed inside a tool call (Codex exec sub-items)
+    ToolSubAction(ToolSubActionPayload),
+}
+
+impl EventPayload {
+    /// Variant name in PascalCase (e.g. "ToolCall", "AgentSpawn").
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            EventPayload::User(_) => "User",
+            EventPayload::Reasoning(_) => "Reasoning",
+            EventPayload::ToolCall(_) => "ToolCall",
+            EventPayload::ToolResult(_) => "ToolResult",
+            EventPayload::Message(_) => "Message",
+            EventPayload::TokenUsage(_) => "TokenUsage",
+            EventPayload::Notification(_) => "Notification",
+            EventPayload::SlashCommand(_) => "SlashCommand",
+            EventPayload::QueueOperation(_) => "QueueOperation",
+            EventPayload::AgentSpawn(_) => "AgentSpawn",
+            EventPayload::AgentLifecycle(_) => "AgentLifecycle",
+            EventPayload::AgentMessage(_) => "AgentMessage",
+            EventPayload::Compaction(_) => "Compaction",
+            EventPayload::TurnEnd(_) => "TurnEnd",
+            EventPayload::ModelChange(_) => "ModelChange",
+            EventPayload::ContextWindowHint(_) => "ContextWindowHint",
+            EventPayload::AgentAttribute(_) => "AgentAttribute",
+            EventPayload::ToolSubAction(_) => "ToolSubAction",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,7 +123,10 @@ pub struct ToolResultPayload {
     pub is_error: bool,
 
     /// Agent ID if this result spawned a subagent (e.g., "be466c0a")
-    /// Used to link sidechain sessions back to their parent turn/step
+    /// Used to link sidechain sessions back to their parent turn/step.
+    ///
+    /// Legacy linkage: superseded by `AgentSpawn` + `AgentRef.spawn_call_id`,
+    /// removed once the session assembler no longer needs it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent_id: Option<String>,
 }
@@ -80,73 +135,60 @@ pub struct ToolResultPayload {
 pub struct MessagePayload {
     /// Response text
     pub text: String,
+    /// Provider message phase (Codex assistant `phase`, e.g. "commentary", "final_answer")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phase: Option<String>,
+}
+
+impl MessagePayload {
+    pub fn new(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            phase: None,
+        }
+    }
 }
 
 // ============================================================================
 // Token Usage Normalization
 // ============================================================================
 //
-// # Design Rationale
+// Input:  total_input = uncached + cache_read + cache_write
+//   - Claude: uncached = input_tokens, cache_read = cache_read_input_tokens,
+//             cache_write = cache_creation_input_tokens
+//   - Codex:  uncached = input_tokens - cached_input_tokens,
+//             cache_read = cached_input_tokens, cache_write = cache_write_input_tokens
 //
-// This normalized token usage schema unifies diverse provider formats into a
-// consistent structure based on verified specifications and code behavior.
+// Output: total_output = generated + reasoning + tool
+//   - Claude: reasoning = output_tokens_details.thinking_tokens, generated = rest
+//   - Codex:  generated = output_tokens, reasoning = reasoning_output_tokens
 //
-// ## Input Token Normalization
-//
-// All providers (Claude, Codex) support the decomposition:
-//
-//   total_input = cached + uncached
-//
-// **Provider Mappings:**
-// - Claude:  cached = cache_read_input_tokens, uncached = input_tokens
-// - Codex:   cached = cached_input_tokens, uncached = input_tokens - cached_input_tokens
-//
-// **Specification Guarantee:**
-// This relationship is explicitly defined in each provider's API/implementation:
-// - Claude: API documentation and usage fields
-// - Codex: codex-rs `non_cached_input()` implementation
-//
-// ## Output Token Normalization
-//
-// All three providers internally distinguish between token types:
-//
-//   total_output = generated + reasoning + tool
-//
-// **Provider Mappings:**
-// - Claude:  generated = output_tokens, reasoning = 0*, tool = 0*
-// - Codex:   generated = output_tokens, reasoning = reasoning_output_tokens, tool = 0
-//
-// *Note: Claude's content[].type allows parsing reasoning/tool separately (not yet implemented)
-//
-// **Specification Guarantee:**
-// - Codex: Explicit reasoning_output_tokens field in TokenUsage
-// - Claude: message.content[].type distinguishes "thinking" and "tool_use"
-//
-// ## What This Schema Does NOT Track
-//
-// - **Billing/Pricing**: Token costs vary by provider and usage tier
-// - **Cache Creation**: Not uniformly tracked across providers
-// - **Visibility**: Whether tokens appear in UI (e.g., hidden reasoning)
-//
-// This schema focuses solely on **observable token accounting** as reported
-// by each provider, ensuring consistent cross-provider analysis.
+// Billing/pricing is out of scope.
 
-/// Input token breakdown (cached vs uncached)
+/// Input token breakdown
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct TokenInput {
-    /// Tokens read from cache (still consume context window)
-    pub cached: u64,
     /// Fresh tokens processed without cache
     pub uncached: u64,
+    /// Tokens read from cache (still consume context window)
+    #[serde(alias = "cached")]
+    pub cache_read: u64,
+    /// Tokens written to cache (still consume context window)
+    #[serde(default)]
+    pub cache_write: u64,
 }
 
 impl TokenInput {
-    pub fn new(cached: u64, uncached: u64) -> Self {
-        Self { cached, uncached }
+    pub fn new(uncached: u64, cache_read: u64, cache_write: u64) -> Self {
+        Self {
+            uncached,
+            cache_read,
+            cache_write,
+        }
     }
 
     pub fn total(&self) -> u64 {
-        self.cached + self.uncached
+        self.uncached + self.cache_read + self.cache_write
     }
 }
 
@@ -175,20 +217,68 @@ impl TokenOutput {
     }
 }
 
+/// Whether a usage record is final.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum UsageCompleteness {
+    #[default]
+    Final,
+    /// Stream-start snapshot: input/cache exact, output must not be summed as final.
+    PartialOutput,
+}
+
+impl UsageCompleteness {
+    pub fn is_final(&self) -> bool {
+        matches!(self, UsageCompleteness::Final)
+    }
+}
+
 /// Normalized token usage across all providers
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct TokenUsagePayload {
     pub input: TokenInput,
     pub output: TokenOutput,
+    /// Model that produced this usage (message.model / current turn model)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// Provider key identifying the request (Claude message.id; Codex response_id)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dedupe_key: Option<String>,
+    #[serde(default, skip_serializing_if = "UsageCompleteness::is_final")]
+    pub completeness: UsageCompleteness,
 }
 
 impl TokenUsagePayload {
     pub fn new(input: TokenInput, output: TokenOutput) -> Self {
-        Self { input, output }
+        Self {
+            input,
+            output,
+            ..Default::default()
+        }
+    }
+
+    pub fn with_model(mut self, model: Option<String>) -> Self {
+        self.model = model;
+        self
+    }
+
+    pub fn with_dedupe_key(mut self, key: Option<String>) -> Self {
+        self.dedupe_key = key;
+        self
+    }
+
+    pub fn with_completeness(mut self, completeness: UsageCompleteness) -> Self {
+        self.completeness = completeness;
+        self
     }
 
     pub fn total_tokens(&self) -> u64 {
         self.input.total() + self.output.total()
+    }
+
+    /// Tokens occupying the context window for the request (= input total).
+    pub fn context_tokens(&self) -> u64 {
+        self.input.total()
     }
 }
 
@@ -199,6 +289,9 @@ pub struct NotificationPayload {
     /// Optional severity level (e.g., "info", "warning", "error")
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub level: Option<String>,
+    /// Provider subtype (e.g., "turn_duration", "api_error", "pr_link") for filtering
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
 }
 
 /// Slash command invocation (e.g., /commit, /review-pr, /skaffold-repo)
@@ -222,14 +315,7 @@ pub struct QueueOperationPayload {
     /// Task identifier
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub task_id: Option<String>,
-}
-
-/// Session summary record
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SummaryPayload {
-    /// Summary text
-    pub summary: String,
-    /// Leaf UUID reference
+    /// Why the operation happened (e.g., "absorbed_mid_turn")
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub leaf_uuid: Option<String>,
+    pub reason: Option<String>,
 }

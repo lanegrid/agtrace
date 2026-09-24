@@ -816,6 +816,9 @@ fn format_tool_args(tool_call: &agtrace_sdk::types::ToolCallPayload) -> String {
         ToolCallPayload::Mcp { arguments, .. } => {
             json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
         }
+        ToolCallPayload::Agent { arguments, .. } => {
+            json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
+        }
         ToolCallPayload::Generic { arguments, .. } => {
             json::format_compact(&serde_json::to_value(arguments).unwrap_or_default())
         }

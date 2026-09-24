@@ -3,40 +3,16 @@ use agtrace_types::SpawnContext;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
-use super::parser::normalize_codex_session;
 use super::schema::{CodexRecord, EventMsgPayload};
 
-/// Parse Codex JSONL file and normalize to AgentEvent
+/// Parse a Codex JSONL file and normalize to AgentEvent (lenient per line).
 pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent>> {
-    let text = std::fs::read_to_string(path)?;
-
-    let mut records: Vec<CodexRecord> = Vec::new();
-    let mut session_id_from_meta: Option<String> = None;
-    let mut subagent_type: Option<String> = None;
-
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        let record: CodexRecord = serde_json::from_str(line)?;
-
-        // Extract session_id and subagent_type from session_meta record
-        if let CodexRecord::SessionMeta(ref meta) = record {
-            session_id_from_meta = Some(meta.payload.id.clone());
-            // Extract subagent information from source field
-            if let super::schema::SessionSource::Subagent { subagent } = &meta.payload.source {
-                subagent_type = Some(subagent.clone());
-            }
-        }
-
-        records.push(record);
-    }
-
-    // session_id should be extracted from file content, fallback to "unknown-session"
-    let session_id = session_id_from_meta.unwrap_or_else(|| "unknown-session".to_string());
-
-    Ok(normalize_codex_session(records, &session_id, subagent_type))
+    let (_, events, _) = crate::provider::decode_file(
+        &super::CodexProvider,
+        path,
+        crate::provider::DecodeOptions::default(),
+    )?;
+    Ok(events)
 }
 
 /// Extract cwd from a Codex session file by reading the first few records
@@ -47,11 +23,11 @@ pub fn extract_cwd_from_codex_file(path: &Path) -> Option<String> {
     for line in reader.lines().take(10).flatten() {
         if let Ok(record) = serde_json::from_str::<CodexRecord>(&line) {
             match record {
-                CodexRecord::SessionMeta(meta) => {
-                    return Some(meta.payload.cwd.clone());
+                CodexRecord::SessionMeta(meta) if meta.payload.cwd.is_some() => {
+                    return meta.payload.cwd.clone();
                 }
-                CodexRecord::TurnContext(turn) => {
-                    return Some(turn.payload.cwd.clone());
+                CodexRecord::TurnContext(turn) if turn.payload.cwd.is_some() => {
+                    return turn.payload.cwd.clone();
                 }
                 _ => continue,
             }
@@ -100,22 +76,23 @@ pub fn extract_codex_header(path: &Path) -> Result<CodexHeader> {
                         session_id = Some(meta.payload.id.clone());
                     }
                     if cwd.is_none() {
-                        cwd = Some(meta.payload.cwd.clone());
+                        cwd = meta.payload.cwd.clone();
                     }
                     if timestamp.is_none() {
                         timestamp = Some(meta.timestamp.clone());
                     }
                     // Extract subagent information from source field
-                    if subagent_type.is_none()
-                        && let super::schema::SessionSource::Subagent { subagent } =
-                            &meta.payload.source
-                    {
-                        subagent_type = Some(subagent.clone());
+                    if subagent_type.is_none() {
+                        subagent_type = meta
+                            .payload
+                            .source
+                            .as_ref()
+                            .and_then(super::schema::source_subagent_label);
                     }
                 }
                 CodexRecord::TurnContext(turn) => {
                     if cwd.is_none() {
-                        cwd = Some(turn.payload.cwd.clone());
+                        cwd = turn.payload.cwd.clone();
                     }
                     if timestamp.is_none() {
                         timestamp = Some(turn.timestamp.clone());

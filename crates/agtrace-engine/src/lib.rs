@@ -2,11 +2,13 @@
 // This layer sits between normalized events (types) and CLI presentation
 
 pub mod analysis;
+pub mod context;
 pub mod diagnostics;
 pub mod domain;
 pub mod export;
 pub mod session;
 pub mod state_updates;
+pub mod workspace;
 
 pub use analysis::{SessionDigest, analyze_and_select_sessions};
 pub use diagnostics::{DiagnoseResult, FailureExample, FailureType, categorize_parse_error};

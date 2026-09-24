@@ -3,7 +3,7 @@ use crate::presentation::presenters;
 use crate::presentation::view_models::CommandResultViewModel;
 use crate::presentation::{ConsoleRenderer, Renderer};
 use agtrace_sdk::Client;
-use agtrace_sdk::types::{AgentEvent, EventPayload, SessionFilter};
+use agtrace_sdk::types::{AgentEvent, EventPayload, RawFileContent, SessionFilter};
 use anyhow::{Context, Result};
 use regex::Regex;
 
@@ -14,16 +14,18 @@ use regex::Regex;
 //
 // Design:
 //   - Normal mode (--json): Shows normalized EventPayload via presenters (user-friendly, type-safe)
-//   - Raw mode (--raw): Shows complete AgentEvent including metadata (debugging, verification)
+//   - Raw mode (--raw): Shows the complete AgentEvent plus the raw provider record it was
+//     decoded from. The raw line is re-read on demand from the agent's log file at
+//     `event.origin.byte_offset` (events do not carry a copy of the raw record).
 //
-// Why metadata is essential:
-//   1. Validation: Compare provider-specific schemas (metadata.message, metadata.payload) with normalized content
+// Why the raw record is essential:
+//   1. Validation: Compare provider-specific schemas with normalized content
 //   2. Debugging: Inspect how provider ToolMappers normalize tool calls (Claude, Codex)
 //   3. Investigation: Access original tool inputs when normalized arguments differ (e.g., Codex stringified JSON)
 //
 // Example workflow:
 //   $ agtrace lab grep '"name":"Read"' --raw --limit 1
-//   # Inspect content.arguments (normalized FileReadArgs) vs metadata.message.content[].input (raw Claude schema)
+//   # Inspect content.arguments (normalized FileReadArgs) vs the raw Claude record
 //
 //   $ agtrace lab grep '"name":"mcp__o3__o3-search"' --raw --limit 1
 //   # Verify Mcp variant parsing and McpArgs::parse_name() behavior
@@ -149,18 +151,7 @@ impl EventMatcher {
     }
 
     fn matches_event_type(&self, event: &AgentEvent, event_type: &str) -> bool {
-        let actual_type = match &event.payload {
-            EventPayload::ToolCall(_) => "ToolCall",
-            EventPayload::ToolResult(_) => "ToolResult",
-            EventPayload::User(_) => "User",
-            EventPayload::Message(_) => "Message",
-            EventPayload::Reasoning(_) => "Reasoning",
-            EventPayload::TokenUsage(_) => "TokenUsage",
-            EventPayload::Notification(_) => "Notification",
-            EventPayload::SlashCommand(_) => "SlashCommand",
-            EventPayload::QueueOperation(_) => "QueueOperation",
-            EventPayload::Summary(_) => "Summary",
-        };
+        let actual_type = event.payload.kind_name();
         actual_type.eq_ignore_ascii_case(event_type)
     }
 
@@ -177,6 +168,33 @@ impl EventMatcher {
             _ => false,
         }
     }
+}
+
+/// Re-read the raw provider record an event was decoded from.
+///
+/// The agent's file is picked from the session's log files (Claude subagents live in
+/// `agent-<id>.jsonl`; everything else in the main file), then the line starting at
+/// `origin.byte_offset` is returned (pretty-printed when it is JSON).
+fn raw_record_for(event: &AgentEvent, files: &[RawFileContent]) -> Option<String> {
+    let file = match event.agent.native_agent_id() {
+        Some(aid) => {
+            let name = format!("agent-{aid}.jsonl");
+            files.iter().find(|f| f.path.ends_with(&name))
+        }
+        None => files
+            .iter()
+            .find(|f| !f.path.contains("/subagents/"))
+            .or_else(|| files.first()),
+    }?;
+    let start = usize::try_from(event.origin.byte_offset).ok()?;
+    let rest = file.content.get(start..)?;
+    let line = rest.split('\n').next()?.trim_end_matches('\r');
+    Some(
+        serde_json::from_str::<serde_json::Value>(line)
+            .ok()
+            .and_then(|v| serde_json::to_string_pretty(&v).ok())
+            .unwrap_or_else(|| line.to_string()),
+    )
 }
 
 pub fn handle(
@@ -203,12 +221,13 @@ pub fn handle(
     let max_matches = options.limit.unwrap_or(10);
 
     if options.raw_output {
-        // Raw mode: output complete AgentEvent with metadata
+        // Raw mode: output complete AgentEvent plus the raw record (re-read by byte offset)
         let mut count = 0;
 
         'outer: for session_summary in sessions {
             let session = client.sessions().get(&session_summary.id)?;
             let events = session.events()?;
+            let raw_files = session.raw_files().unwrap_or_default();
 
             for event in &events {
                 if matcher.matches(event)? {
@@ -223,14 +242,19 @@ pub fn handle(
                     count += 1;
                     println!("\x1b[90m{}\x1b[39m", "=".repeat(80));
                     println!(
-                        "Match #{} | Session: \x1b[33m{}\x1b[39m | Stream: {:?}",
+                        "Match #{} | Session: \x1b[33m{}\x1b[39m | Agent: {} | Line: {}",
                         count,
                         &session_summary.id.to_string()[..8],
-                        event.stream_id
+                        event.agent,
+                        event.origin.line + 1
                     );
 
                     let json = serde_json::to_string_pretty(&event)?;
                     println!("{}", json);
+                    if let Some(raw) = raw_record_for(event, &raw_files) {
+                        println!("\x1b[90m--- raw record ---\x1b[39m");
+                        println!("{}", raw);
+                    }
                     println!("\x1b[90m{}\x1b[39m", "=".repeat(80));
 
                     if count >= max_matches {

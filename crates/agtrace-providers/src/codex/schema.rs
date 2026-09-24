@@ -1,51 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Source of the session (CLI or subagent)
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(untagged)]
-pub(crate) enum SessionSource {
-    /// Subagent session with type (e.g., {"subagent":"review"})
-    Subagent { subagent: String },
-    /// Regular CLI session (e.g., "cli")
-    Cli(String),
-}
-
-#[cfg(test)]
-mod session_source_tests {
-    use super::*;
-
-    #[test]
-    fn test_session_source_subagent_parsing() {
-        let json = r#"{"subagent":"review"}"#;
-        let source: SessionSource = serde_json::from_str(json).unwrap();
-
-        match source {
-            SessionSource::Subagent { subagent } => {
-                assert_eq!(subagent, "review");
-            }
-            SessionSource::Cli(s) => {
-                panic!("Expected Subagent but got Cli: {}", s);
-            }
-        }
-    }
-
-    #[test]
-    fn test_session_source_cli_parsing() {
-        let json = r#""cli""#;
-        let source: SessionSource = serde_json::from_str(json).unwrap();
-
-        match source {
-            SessionSource::Cli(s) => {
-                assert_eq!(s, "cli");
-            }
-            SessionSource::Subagent { .. } => {
-                panic!("Expected Cli but got Subagent");
-            }
-        }
-    }
-}
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -67,13 +22,20 @@ pub(crate) struct SessionMetaRecord {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct SessionMetaPayload {
     pub id: String,
-    pub timestamp: String,
-    pub cwd: String,
-    pub originator: String,
-    pub cli_version: String,
+    #[serde(default)]
+    pub timestamp: Option<String>,
+    #[serde(default)]
+    pub cwd: Option<String>,
+    #[serde(default)]
+    pub originator: Option<String>,
+    #[serde(default)]
+    pub cli_version: Option<String>,
     #[serde(default)]
     pub instructions: Option<String>,
-    pub source: SessionSource,
+    /// `"cli"` / `"vscode"` / `{"subagent":"review"}` /
+    /// `{"subagent":{"thread_spawn":{...}}}` — kept untyped, read leniently.
+    #[serde(default)]
+    pub source: Option<Value>,
     #[serde(default)]
     pub model_provider: Option<String>,
     #[serde(default)]
@@ -106,7 +68,6 @@ pub(crate) enum ResponseItemPayload {
     FunctionCallOutput(FunctionCallOutputPayload),
     CustomToolCall(CustomToolCallPayload),
     CustomToolCallOutput(CustomToolCallOutputPayload),
-    GhostSnapshot(GhostSnapshotPayload),
     #[serde(other)]
     Unknown,
 }
@@ -114,7 +75,11 @@ pub(crate) enum ResponseItemPayload {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct MessagePayload {
     pub role: String,
+    #[serde(default)]
     pub content: Vec<MessageContent>,
+    /// Assistant message phase (e.g. "commentary", "final_answer")
+    #[serde(default)]
+    pub phase: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -133,6 +98,7 @@ pub(crate) enum MessageContent {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct ReasoningPayload {
+    #[serde(default)]
     pub summary: Vec<SummaryText>,
     #[serde(default)]
     pub content: Option<String>,
@@ -161,12 +127,15 @@ pub(crate) struct FunctionCallPayload {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct FunctionCallOutputPayload {
     pub call_id: String,
+    /// String or content-item array (flattened)
+    #[serde(deserialize_with = "crate::lenient::deserialize_flat_output")]
     pub output: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct CustomToolCallPayload {
-    pub status: String,
+    #[serde(default)]
+    pub status: Option<String>,
     pub call_id: String,
     pub name: String,
     pub input: String,
@@ -175,22 +144,9 @@ pub(crate) struct CustomToolCallPayload {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct CustomToolCallOutputPayload {
     pub call_id: String,
+    /// String or content-item array (flattened)
+    #[serde(deserialize_with = "crate::lenient::deserialize_flat_output")]
     pub output: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub(crate) struct GhostSnapshotPayload {
-    pub ghost_commit: GhostCommit,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub(crate) struct GhostCommit {
-    pub id: String,
-    pub parent: String,
-    #[serde(default)]
-    pub preexisting_untracked_files: Vec<String>,
-    #[serde(default)]
-    pub preexisting_untracked_dirs: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -255,20 +211,28 @@ pub(crate) struct TokenCountPayload {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct TokenInfo {
-    pub total_token_usage: TokenUsage,
+    #[serde(default)]
+    pub total_token_usage: Option<TokenUsage>,
     pub last_token_usage: TokenUsage,
-    pub model_context_window: u32,
+    /// Nullable in recent Codex versions
+    #[serde(default)]
+    pub model_context_window: Option<u64>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub(crate) struct TokenUsage {
-    pub input_tokens: u32,
     #[serde(default)]
-    pub cached_input_tokens: u32,
-    pub output_tokens: u32,
+    pub input_tokens: u64,
     #[serde(default)]
-    pub reasoning_output_tokens: u32,
-    pub total_tokens: u32,
+    pub cached_input_tokens: u64,
+    #[serde(default)]
+    pub cache_write_input_tokens: u64,
+    #[serde(default)]
+    pub output_tokens: u64,
+    #[serde(default)]
+    pub reasoning_output_tokens: u64,
+    #[serde(default)]
+    pub total_tokens: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -279,31 +243,84 @@ pub(crate) struct TurnContextRecord {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub(crate) struct TurnContextPayload {
-    pub cwd: String,
-    pub approval_policy: String,
-    pub sandbox_policy: SandboxPolicy,
-    pub model: String,
+    #[serde(default)]
+    pub cwd: Option<String>,
+    #[serde(default)]
+    pub approval_policy: Option<Value>,
+    #[serde(default)]
+    pub sandbox_policy: Option<Value>,
+    #[serde(default)]
+    pub model: Option<String>,
     #[serde(default)]
     pub effort: Option<String>,
-    pub summary: String,
+    #[serde(default)]
+    pub summary: Option<Value>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-#[serde(untagged)]
-pub(crate) enum SandboxPolicy {
-    // New format (v0.63+): {"type": "read-only"}
-    Simple {
-        #[serde(rename = "type")]
-        policy_type: String,
-    },
-    // Old format (v0.53): {"mode": "workspace-write", "network_access": false, ...}
-    Detailed {
-        mode: String,
-        #[serde(default)]
-        network_access: Option<bool>,
-        #[serde(default)]
-        exclude_tmpdir_env_var: bool,
-        #[serde(default)]
-        exclude_slash_tmp: bool,
-    },
+/// Subagent label from a `session_meta.source` value, if the session is a child.
+///
+/// - `{"subagent":"review"}` (legacy) → `"review"`
+/// - `{"subagent":{"thread_spawn":{...}}}` → `agent_role`, else `"thread_spawn"`
+pub(crate) fn source_subagent_label(source: &Value) -> Option<String> {
+    let sub = source.get("subagent")?;
+    if let Some(s) = sub.as_str() {
+        return Some(s.to_string());
+    }
+    let spawn = sub.get("thread_spawn");
+    spawn
+        .and_then(|t| t.get("agent_role"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .or_else(|| sub.as_object().and_then(|o| o.keys().next().cloned()))
+}
+
+#[cfg(test)]
+mod source_tests {
+    use super::*;
+
+    #[test]
+    fn legacy_subagent_string() {
+        let v = serde_json::json!({"subagent":"review"});
+        assert_eq!(source_subagent_label(&v).as_deref(), Some("review"));
+    }
+
+    #[test]
+    fn thread_spawn_object() {
+        let v = serde_json::json!({"subagent":{"thread_spawn":{"parent_thread_id":"p","depth":1,"agent_path":"/root/judge","agent_nickname":"Judge","agent_role":null}}});
+        assert_eq!(source_subagent_label(&v).as_deref(), Some("thread_spawn"));
+    }
+
+    #[test]
+    fn cli_source_is_root() {
+        assert_eq!(source_subagent_label(&serde_json::json!("cli")), None);
+    }
+
+    #[test]
+    fn session_meta_with_thread_spawn_source_parses() {
+        let line = r#"{"timestamp":"2026-09-20T10:00:00Z","type":"session_meta","payload":{"id":"01900000-0000-7000-8000-000000000002","session_id":"01900000-0000-7000-8000-000000000001","timestamp":"2026-09-20T10:00:00Z","cwd":"/work/demo-project","originator":"codex_cli_rs","cli_version":"0.153.0","source":{"subagent":{"thread_spawn":{"parent_thread_id":"01900000-0000-7000-8000-000000000001","depth":1,"agent_path":"/root/judge","agent_nickname":"Judge","agent_role":null}}}}}"#;
+        let rec: CodexRecord = serde_json::from_str(line).unwrap();
+        assert!(matches!(rec, CodexRecord::SessionMeta(_)));
+    }
+
+    #[test]
+    fn array_tool_output_is_flattened() {
+        let line = r#"{"type":"function_call_output","call_id":"c1","output":[{"type":"input_text","text":"a"},{"type":"input_text","text":"b"}]}"#;
+        let p: ResponseItemPayload = serde_json::from_str(line).unwrap();
+        match p {
+            ResponseItemPayload::FunctionCallOutput(o) => assert_eq!(o.output, "a\nb"),
+            other => panic!("unexpected {other:?}"),
+        }
+    }
+
+    #[test]
+    fn null_model_context_window_parses() {
+        let line = r#"{"type":"token_count","info":{"total_token_usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2},"last_token_usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2},"model_context_window":null},"rate_limits":null}"#;
+        let p: EventMsgPayload = serde_json::from_str(line).unwrap();
+        match p {
+            EventMsgPayload::TokenCount(t) => {
+                assert_eq!(t.info.unwrap().model_context_window, None)
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+    }
 }

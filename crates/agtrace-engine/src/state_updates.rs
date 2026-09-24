@@ -1,5 +1,4 @@
-use agtrace_types::{AgentEvent, ContextWindowUsage, EventPayload};
-use serde_json::Value;
+use agtrace_types::{AgentEvent, ContextWindowHintPayload, ContextWindowUsage, EventPayload};
 
 /// Pure data extracted from an AgentEvent to update runtime session state.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -13,6 +12,9 @@ pub struct StateUpdates {
 }
 
 /// Extract state updates from a single event without performing I/O or side effects.
+///
+/// Model and context-window evidence come from typed payloads
+/// (`TokenUsage.model`, `ModelChange`, `ContextWindowHint::Explicit`).
 pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
     let mut updates = StateUpdates::default();
 
@@ -21,74 +23,34 @@ pub fn extract_state_updates(event: &AgentEvent) -> StateUpdates {
             updates.is_new_turn = true;
         }
         EventPayload::TokenUsage(usage) => {
-            // Convert normalized TokenUsagePayload to ContextWindowUsage
-            // The new TokenUsagePayload separates input into cached/uncached.
-            // To avoid double-counting, fresh_input = uncached only (not total).
-            updates.usage = Some(ContextWindowUsage::from_raw(
-                usage.input.uncached as i32, // fresh input tokens (not from cache)
-                0,                           // cache_creation - not separately tracked
-                usage.input.cached as i32,   // cache_read tokens (still consume context)
-                usage.output.total() as i32, // total output tokens
-            ));
+            // fresh_input = uncached only (not total) to avoid double-counting cache reads.
+            updates.usage = Some(ContextWindowUsage::from_token_usage(usage));
             updates.reasoning_tokens = Some(usage.output.reasoning as i32);
+            updates.model = usage.model.clone();
+        }
+        EventPayload::ModelChange(change) => {
+            updates.model = Some(change.to.clone());
+        }
+        EventPayload::ContextWindowHint(ContextWindowHintPayload::Explicit { tokens, model }) => {
+            updates.context_window_limit = Some(*tokens);
+            updates.model = model.clone();
         }
         EventPayload::ToolResult(result) => {
-            if result.is_error {
-                updates.is_error = true;
-            } else {
-                // Explicitly mark success so consumers can reset counters if needed.
-                updates.is_error = false;
-            }
+            // Explicitly mark success so consumers can reset counters if needed.
+            updates.is_error = result.is_error;
         }
         _ => {}
     }
 
-    if let Some(metadata) = &event.metadata {
-        if updates.model.is_none() {
-            updates.model = extract_model(metadata);
-        }
-
-        if updates.context_window_limit.is_none() {
-            updates.context_window_limit = extract_context_window_limit(metadata);
-        }
-    }
-
     updates
-}
-
-fn extract_model(metadata: &Value) -> Option<String> {
-    metadata
-        .get("message")
-        .and_then(|m| m.get("model"))
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
-        .or_else(|| {
-            metadata
-                .get("model")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-        })
-}
-
-fn extract_context_window_limit(metadata: &Value) -> Option<u64> {
-    metadata
-        .get("info")
-        .and_then(|info| info.get("model_context_window"))
-        .and_then(|v| v.as_u64())
-        .or_else(|| {
-            metadata
-                .get("payload")
-                .and_then(|payload| payload.get("info"))
-                .and_then(|info| info.get("model_context_window"))
-                .and_then(|v| v.as_u64())
-        })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use agtrace_types::{
-        TokenInput, TokenOutput, TokenUsagePayload, ToolResultPayload, UserPayload,
+        AgentId, EventOrigin, TokenInput, TokenOutput, TokenUsagePayload, ToolResultPayload,
+        UserPayload,
     };
     use chrono::Utc;
     use std::str::FromStr;
@@ -100,9 +62,9 @@ mod tests {
             session_id: Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap(),
             parent_id: None,
             timestamp: Utc::now(),
-            stream_id: agtrace_types::StreamId::Main,
+            agent: AgentId::claude_session("s"),
+            origin: EventOrigin::default(),
             payload,
-            metadata: None,
         }
     }
 
@@ -118,22 +80,14 @@ mod tests {
     }
 
     #[test]
-    fn extracts_token_usage_and_reasoning() {
-        let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
-            TokenInput::new(20, 100),   // cached=20, uncached=100
-            TokenOutput::new(43, 7, 0), // generated=43, reasoning=7, tool=0
-        )));
-
-        let mut meta = serde_json::Map::new();
-        meta.insert(
-            "model".to_string(),
-            serde_json::Value::String("claude-3-5-sonnet-20241022".to_string()),
-        );
-        meta.insert(
-            "info".to_string(),
-            serde_json::json!({ "model_context_window": 200000 }),
-        );
-        event.metadata = Some(Value::Object(meta));
+    fn extracts_token_usage_model_and_reasoning() {
+        let event = base_event(EventPayload::TokenUsage(
+            TokenUsagePayload::new(
+                TokenInput::new(100, 20, 0), // uncached=100, cache_read=20
+                TokenOutput::new(43, 7, 0),  // generated=43, reasoning=7, tool=0
+            )
+            .with_model(Some("claude-3-5-sonnet-20241022".to_string())),
+        ));
 
         let updates = extract_state_updates(&event);
 
@@ -148,24 +102,47 @@ mod tests {
             updates.model,
             Some("claude-3-5-sonnet-20241022".to_string())
         );
-        assert_eq!(updates.context_window_limit, Some(200_000));
+        assert_eq!(updates.context_window_limit, None);
     }
 
     #[test]
-    fn extracts_context_window_limit_from_payload_info() {
-        let mut event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
-            TokenInput::new(0, 10),    // cached=0, uncached=10
-            TokenOutput::new(5, 0, 0), // generated=5, reasoning=0, tool=0
+    fn extracts_cache_write_as_cache_creation() {
+        let event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
+            TokenInput::new(10, 100, 30),
+            TokenOutput::new(5, 0, 0),
         )));
+        let usage = extract_state_updates(&event).usage.unwrap();
+        assert_eq!(usage.cache_creation.0, 30);
+        assert_eq!(usage.input_tokens(), 140);
+    }
 
-        event.metadata = Some(serde_json::json!({
-            "payload": {
-                "info": { "model_context_window": 123_000 }
-            }
-        }));
+    #[test]
+    fn extracts_context_window_limit_from_hint() {
+        let event = base_event(EventPayload::ContextWindowHint(
+            ContextWindowHintPayload::Explicit {
+                tokens: 123_000,
+                model: Some("gpt-5.6-sol".to_string()),
+            },
+        ));
 
         let updates = extract_state_updates(&event);
         assert_eq!(updates.context_window_limit, Some(123_000));
+        assert_eq!(updates.model.as_deref(), Some("gpt-5.6-sol"));
+    }
+
+    #[test]
+    fn extracts_model_from_model_change() {
+        let event = base_event(EventPayload::ModelChange(
+            agtrace_types::ModelChangePayload {
+                from: None,
+                to: "claude-opus-5-5".to_string(),
+                source: agtrace_types::ModelChangeSource::AssistantMessage,
+            },
+        ));
+        assert_eq!(
+            extract_state_updates(&event).model.as_deref(),
+            Some("claude-opus-5-5")
+        );
     }
 
     #[test]
@@ -201,8 +178,8 @@ mod tests {
         //   total_tokens:   190 (120 + 20 + 50) ❌ cached counted twice!
 
         let event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
-            TokenInput::new(20, 100),   // cached=20, uncached=100
-            TokenOutput::new(50, 0, 0), // generated=50, reasoning=0, tool=0
+            TokenInput::new(100, 20, 0), // uncached=100, cache_read=20
+            TokenOutput::new(50, 0, 0),  // generated=50, reasoning=0, tool=0
         )));
 
         let updates = extract_state_updates(&event);
@@ -231,7 +208,7 @@ mod tests {
         // conversion done in session assembly (stats::merge_usage)
 
         let token_payload = TokenUsagePayload::new(
-            TokenInput::new(30, 200),    // cached=30, uncached=200
+            TokenInput::new(200, 30, 0), // uncached=200, cache_read=30
             TokenOutput::new(80, 10, 5), // generated=80, reasoning=10, tool=5
         );
 
@@ -286,17 +263,19 @@ mod tests {
         }
 
         let user = base_event(EventPayload::User(UserPayload { text: "hi".into() }));
-        let mut usage_event = base_event(EventPayload::TokenUsage(TokenUsagePayload::new(
-            TokenInput::new(5, 120),    // cached=5, uncached=120
-            TokenOutput::new(27, 3, 0), // generated=27, reasoning=3, tool=0
-        )));
-        let mut meta = serde_json::Map::new();
-        meta.insert("model".into(), serde_json::Value::String("claude-3".into()));
-        meta.insert(
-            "info".into(),
-            serde_json::json!({"model_context_window": 100000}),
-        );
-        usage_event.metadata = Some(Value::Object(meta));
+        let hint_event = base_event(EventPayload::ContextWindowHint(
+            ContextWindowHintPayload::Explicit {
+                tokens: 100_000,
+                model: None,
+            },
+        ));
+        let usage_event = base_event(EventPayload::TokenUsage(
+            TokenUsagePayload::new(
+                TokenInput::new(120, 5, 0), // uncached=120, cache_read=5
+                TokenOutput::new(27, 3, 0), // generated=27, reasoning=3, tool=0
+            )
+            .with_model(Some("claude-3".to_string())),
+        ));
 
         let tool_err = base_event(EventPayload::ToolResult(ToolResultPayload {
             tool_call_id: Uuid::from_str("00000000-0000-0000-0000-000000000009").unwrap(),
@@ -308,6 +287,7 @@ mod tests {
         let mut state = SessionState::default();
 
         state.apply(extract_state_updates(&user), false);
+        state.apply(extract_state_updates(&hint_event), false);
         state.apply(extract_state_updates(&usage_event), false);
         state.apply(extract_state_updates(&tool_err), true);
 

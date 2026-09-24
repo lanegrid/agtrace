@@ -130,7 +130,7 @@ impl EventMatch {
                         .unwrap_or_default()
                 )
             }
-            EventPayload::Summary(s) => s.summary.clone(),
+            other => serde_json::to_string(other).unwrap_or_default(),
         };
 
         if text.len() > 200 {

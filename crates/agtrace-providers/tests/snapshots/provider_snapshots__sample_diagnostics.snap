@@ -1,0 +1,28 @@
+---
+source: crates/agtrace-providers/tests/provider_snapshots.rs
+expression: "(claude, codex)"
+---
+[
+  {
+    "lines": 26,
+    "decoded": 26,
+    "invalid_json": 0,
+    "schema_mismatch": {},
+    "unknown_kinds": {},
+    "ignored_kinds": {
+      "file-history-snapshot": 4
+    },
+    "samples": []
+  },
+  {
+    "lines": 55,
+    "decoded": 55,
+    "invalid_json": 0,
+    "schema_mismatch": {},
+    "unknown_kinds": {},
+    "ignored_kinds": {
+      "response_item/ghost_snapshot": 2
+    },
+    "samples": []
+  }
+]

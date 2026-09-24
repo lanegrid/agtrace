@@ -171,6 +171,17 @@ impl ContextWindowUsage {
         }
     }
 
+    /// Build from a normalized [`crate::TokenUsagePayload`]
+    /// (fresh_input = uncached, cache_creation = cache_write, cache_read = cache_read).
+    pub fn from_token_usage(usage: &crate::TokenUsagePayload) -> Self {
+        Self::from_raw(
+            usage.input.uncached as i32,
+            usage.input.cache_write as i32,
+            usage.input.cache_read as i32,
+            usage.output.total() as i32,
+        )
+    }
+
     /// Input-side tokens (fresh + cache creation + cache read)
     pub fn input_tokens(&self) -> i32 {
         self.fresh_input.0 + self.cache_creation.0 + self.cache_read.0
