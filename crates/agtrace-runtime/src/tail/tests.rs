@@ -259,16 +259,16 @@ fn fixture_files() -> Vec<(ProviderId, PathBuf)> {
             {
                 continue;
             }
-            let s = path.to_string_lossy();
-            let name = path.file_name().unwrap().to_string_lossy();
-            let provider = if s.contains("/codex/")
-                || name.starts_with("rollout")
-                || name.starts_with("codex")
-            {
+            // Only agent log files: let each provider's probe decide (sidecars such as
+            // Codex `session_index.jsonl` are not agent files).
+            let provider = if path.to_string_lossy().contains("/codex/") {
                 ProviderId::Codex
             } else {
                 ProviderId::ClaudeCode
             };
+            if !provider_for(provider).probe(path) {
+                continue;
+            }
             files.push((provider, path.to_path_buf()));
         }
     }

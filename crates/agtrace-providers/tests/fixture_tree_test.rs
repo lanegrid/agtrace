@@ -57,8 +57,10 @@ fn claude_fixture_tree() {
 #[test]
 fn codex_fixture_tree() {
     let headers = discover(&CodexProvider, fixture_root().join("codex/home/sessions"));
-    assert_eq!(headers.len(), 2);
-    let (root, child) = (&headers[0], &headers[1]);
+    assert_eq!(headers.len(), 3);
+    let (root, child, fork) = (&headers[0], &headers[1], &headers[2]);
+    assert_eq!(fork.agent.kind, AgentKind::Fork);
+    assert_eq!(fork.agent.parent.as_ref(), Some(&root.agent.id));
     assert_eq!(root.agent.kind, AgentKind::Main);
     assert_eq!(child.agent.kind, AgentKind::CodexThread);
     assert_eq!(child.agent.parent.as_ref(), Some(&root.agent.id));
@@ -73,6 +75,6 @@ fn codex_fixture_tree() {
         decode_file(&CodexProvider, &root.agent.file, DecodeOptions::default()).unwrap();
     assert!(events.iter().any(|e| matches!(
         &e.payload,
-        EventPayload::ToolResult(r) if r.output == "Exit code: 0\nREADME.md\nsrc"
+        EventPayload::ToolResult(r) if r.output.ends_with("Output:\n\nlib.rs\nparser.rs\n")
     )));
 }

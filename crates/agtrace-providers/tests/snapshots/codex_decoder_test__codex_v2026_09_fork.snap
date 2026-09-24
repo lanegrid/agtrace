@@ -1,0 +1,168 @@
+---
+source: crates/agtrace-providers/tests/codex_decoder_test.rs
+expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
+---
+{
+  "diagnostics": {
+    "decoded": 14,
+    "ignored_kinds": {
+      "fork_prefix": 5
+    },
+    "invalid_json": 0,
+    "lines": 14,
+    "samples": [],
+    "schema_mismatch": {},
+    "unknown_kinds": {}
+  },
+  "events": [
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
+        "source": "thread_settings",
+        "to": "gpt-6-astra"
+      },
+      "id": "e3253fde-6eb6-5ecb-b0ae-031a974c1ac7",
+      "origin": {
+        "byte_offset": 2881,
+        "line": 6,
+        "sub": 0
+      },
+      "parent_id": null,
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:23Z",
+      "type": "model_change"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
+        "kind": "explicit",
+        "model": "gpt-6-astra",
+        "tokens": 258400
+      },
+      "id": "8660c0c4-ee46-5d9c-b92e-199ce987386f",
+      "origin": {
+        "byte_offset": 3388,
+        "line": 7,
+        "sub": 0
+      },
+      "parent_id": "e3253fde-6eb6-5ecb-b0ae-031a974c1ac7",
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:23.500Z",
+      "type": "context_window_hint"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
+        "target": {
+          "by": "id",
+          "value": "codex:01900000-0000-7000-8000-000000000003"
+        },
+        "transition": "running"
+      },
+      "id": "0187e674-ce44-5fba-8e35-d6d1c5762108",
+      "origin": {
+        "byte_offset": 3388,
+        "line": 7,
+        "sub": 1
+      },
+      "parent_id": "8660c0c4-ee46-5d9c-b92e-199ce987386f",
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:23.500Z",
+      "type": "agent_lifecycle"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
+        "direction": "incoming",
+        "encrypted": true,
+        "from": {
+          "by": "path",
+          "value": "/root"
+        },
+        "kind": "new_task",
+        "provider_message_id": "amsg_synthetic_f1",
+        "to": [
+          {
+            "by": "path",
+            "value": "/root/forker"
+          }
+        ],
+        "triggers_turn": true
+      },
+      "id": "41c93533-be93-5aec-8665-e207616d413a",
+      "origin": {
+        "byte_offset": 4145,
+        "line": 10,
+        "sub": 0
+      },
+      "parent_id": "0187e674-ce44-5fba-8e35-d6d1c5762108",
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:25Z",
+      "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
+        "phase": "commentary",
+        "text": "Forked analysis in progress."
+      },
+      "id": "9b1a046e-09d1-582b-92d6-189b22e9fd95",
+      "origin": {
+        "byte_offset": 4618,
+        "line": 11,
+        "sub": 0
+      },
+      "parent_id": "41c93533-be93-5aec-8665-e207616d413a",
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:25.500Z",
+      "type": "message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
+        "dedupe_key": "resp_synthetic_f1",
+        "input": {
+          "cache_read": 14000,
+          "cache_write": 0,
+          "uncached": 1000
+        },
+        "model": "gpt-6-astra",
+        "output": {
+          "generated": 30,
+          "reasoning": 0,
+          "tool": 0
+        }
+      },
+      "id": "0df34644-8db2-5ef1-8bc2-cd32f9104eb9",
+      "origin": {
+        "byte_offset": 4928,
+        "line": 12,
+        "sub": 0
+      },
+      "parent_id": "9b1a046e-09d1-582b-92d6-189b22e9fd95",
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:26Z",
+      "type": "token_usage"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
+        "duration_ms": 5000,
+        "outcome": {
+          "outcome": "interrupted"
+        },
+        "turn_id": "turn-f1"
+      },
+      "id": "886d846d-6b38-5a67-b7ce-1f47008857f4",
+      "origin": {
+        "byte_offset": 5696,
+        "line": 13,
+        "sub": 0
+      },
+      "parent_id": "0df34644-8db2-5ef1-8bc2-cd32f9104eb9",
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:26.500Z",
+      "type": "turn_end"
+    }
+  ]
+}

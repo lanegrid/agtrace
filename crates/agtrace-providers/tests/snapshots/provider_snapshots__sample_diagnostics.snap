@@ -15,13 +15,16 @@ expression: "(claude, codex)"
     "samples": []
   },
   {
-    "lines": 55,
-    "decoded": 55,
+    "lines": 38,
+    "decoded": 38,
     "invalid_json": 0,
     "schema_mismatch": {},
     "unknown_kinds": {},
     "ignored_kinds": {
-      "response_item/ghost_snapshot": 2
+      "event_msg/item_completed/AgentMessage": 1,
+      "event_msg/item_completed/Reasoning": 3,
+      "event_msg/item_completed/UserMessage": 1,
+      "response_item/message/user(injected)": 1
     },
     "samples": []
   }

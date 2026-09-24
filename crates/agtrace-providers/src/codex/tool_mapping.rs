@@ -21,6 +21,15 @@ const CODEX_TOOLS: &[ToolSpec] = &[
     ToolSpec::new("shell_command", ToolOrigin::System, ToolKind::Execute),
     // Plan tools
     ToolSpec::new("update_plan", ToolOrigin::System, ToolKind::Plan),
+    // exec: JS program running tools.exec_command / apply_patch / ... (Codex >= 0.153)
+    ToolSpec::new("exec", ToolOrigin::System, ToolKind::Execute),
+    // multi_agent v2 collaboration tools
+    ToolSpec::new("spawn_agent", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("send_message", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("followup_task", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("interrupt_agent", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("wait_agent", ToolOrigin::System, ToolKind::Agent),
+    ToolSpec::new("list_agents", ToolOrigin::System, ToolKind::Agent),
 ];
 
 /// Classify Codex tool by origin and semantic kind

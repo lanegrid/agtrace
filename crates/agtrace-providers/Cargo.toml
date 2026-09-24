@@ -11,7 +11,7 @@ keywords = ["agtrace-internal"]
 agtrace-types.workspace = true
 agtrace-core.workspace = true
 serde.workspace = true
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["raw_value"] }
 walkdir.workspace = true
 dirs.workspace = true
 chrono.workspace = true
