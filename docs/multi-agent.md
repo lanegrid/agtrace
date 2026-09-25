@@ -80,7 +80,14 @@ Codex uses to address messages.
   `AgentAttribute(RuntimeSessionId)`, and the lead is resolved through it.
 - **Continued transcripts.** A transcript continued in another one ends with a
   `continued-in` record. It is the same logical session: the watch tree shows it under its
-  continuation, marked "(earlier transcript)", with status done.
+  continuation, marked `earlier transcript · <name>`, with status done. So is a
+  transcript whose id another transcript was written under as its runtime session id,
+  and a transcript without any conversation (only `/clear`, `/resume`, …) that carries
+  another session's `agent-name` / `ai-title` (shown as `/clear · <name>`). See
+  [watch: Sessions](commands/watch.md#sessions).
+- **Session kind.** Records of background (daemon / job) sessions carry
+  `sessionKind: "bg"`, reported once as `AgentAttribute(SessionKind)`; the process
+  registry's `kind` says the same for live processes.
 - **Async subagents and forks** are written under the parent session's directory as
   `subagents/agent-<aid>.jsonl`. The `<aid>` is `a` followed by 16 hex digits. The
   `.meta.json` sidecar holds the spawning tool call id (`toolUseId`), the agent type and

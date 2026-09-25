@@ -627,7 +627,13 @@ impl WatcherState {
         if self.roots.claude_home.is_none() {
             return;
         }
-        let sessions: Vec<String> = self
+        let best = self.registry_by_session();
+        // Tracked Claude sessions, the runtime ids they wrote under (a resumed /
+        // respawned process registers under its runtime id), and — project scope —
+        // live processes in the project that have no transcript yet (a bg job
+        // waiting for work is a session too). Entries reported before stay in the
+        // set so that their end is reported.
+        let mut sessions: Vec<String> = self
             .tracked
             .values()
             .filter(|t| {
@@ -635,7 +641,19 @@ impl WatcherState {
             })
             .map(|t| t.agent.native_session_id.clone())
             .collect();
-        let best = self.registry_by_session();
+        sessions.extend(self.runtime_aliases.ids().map(str::to_string));
+        if let WatchScope::Project { root, .. } = &self.scope {
+            sessions.extend(
+                best.iter()
+                    .filter(|(_, (file, entry))| {
+                        file.alive && entry.cwd.as_ref().is_some_and(|c| c.starts_with(root))
+                    })
+                    .map(|(sid, _)| sid.to_string()),
+            );
+        }
+        sessions.extend(self.registry_emitted.keys().cloned());
+        sessions.sort();
+        sessions.dedup();
         let mut updates = Vec::new();
         for sid in sessions {
             let update = match best.get(sid.as_str()) {
@@ -648,7 +666,13 @@ impl WatcherState {
                         Some(ClaudeProcessStatus::Idle) => Some(ProcessStatus::Idle),
                         _ => None,
                     },
-                    name: entry.name.clone(),
+                    // A name derived from the directory names the project, not
+                    // the session.
+                    name: entry
+                        .name
+                        .clone()
+                        .filter(|_| entry.name_source.as_deref() != Some("derived")),
+                    bg: entry.kind.as_deref() == Some("bg"),
                     updated_at: entry
                         .updated_at
                         .and_then(DateTime::<Utc>::from_timestamp_millis)
@@ -662,6 +686,7 @@ impl WatcherState {
                         alive: true,
                         status,
                         name,
+                        bg,
                         ..
                     }) => Some(SideStateUpdate::ClaudeProcess {
                         session_id: sid.clone(),
@@ -669,6 +694,7 @@ impl WatcherState {
                         alive: false,
                         status: *status,
                         name: name.clone(),
+                        bg: *bg,
                         updated_at: DateTime::<Utc>::from(now),
                     }),
                     _ => None,

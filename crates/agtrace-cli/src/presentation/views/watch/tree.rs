@@ -90,6 +90,9 @@ fn row(r: &AgentRowVm, focused: bool) -> Row<'static> {
         Style::default()
     };
     spans.push(Span::styled(r.label.clone(), label_style));
+    if r.folded_done > 0 {
+        spans.push(Span::styled(format!(" +{} done", r.folded_done), dim()));
+    }
     let status = Line::from(vec![
         Span::styled(status_glyph(r.status), status_style(r.status)),
         Span::raw(" "),

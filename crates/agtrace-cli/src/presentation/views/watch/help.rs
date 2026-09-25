@@ -7,9 +7,10 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 pub const KEYS: &[(&str, &str)] = &[
-    ("1 / 2", "overview / agents screen"),
-    ("Enter → l", "open the selected agent's detail"),
-    ("Esc ← h", "back: help / detail / tree / filter / reset"),
+    ("0 / 1 / 2", "sessions / overview / agents screen"),
+    ("Enter → l", "open the agent's detail (sessions: focus it)"),
+    ("a", "all sessions (drop the session focus)"),
+    ("Esc ← h", "back: help/detail/tree/filter/reset/focus"),
     ("i n r t", "detail: instructions / now / result / timeline"),
     ("Tab/S-Tab", "cycle panes (agents) / sections (detail)"),
     ("j/k ↓/↑", "move selection, or scroll pane / section"),
@@ -19,10 +20,10 @@ pub const KEYS: &[(&str, &str)] = &[
     ("G / g", "jump to end (follow) / top"),
     ("/", "find agents by name (↵ open, Esc clear)"),
     ("+ - ] [", "overview activity window: 15m 60m 4h all"),
-    ("space", "fold / unfold selected node"),
+    ("space", "fold / unfold node (sessions: older ones)"),
     ("f", "messages: all ↔ selected agent"),
-    ("d", "hide / show done & killed"),
-    ("a", "auto-select most active agent"),
+    ("d", "show / fold finished & killed agents"),
+    ("A", "auto-select most active agent"),
     ("R", "rescan now"),
     ("?", "toggle this help"),
     ("q / C-c", "quit"),

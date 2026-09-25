@@ -62,6 +62,8 @@ pub enum SideStateUpdate {
         alive: bool,
         status: Option<ProcessStatus>,
         name: Option<String>,
+        /// Background (daemon / job) session (registry `kind: "bg"`).
+        bg: bool,
         updated_at: DateTime<Utc>,
     },
     /// `~/.claude/teams/<team>/config.json` (full member list, replaces the previous one).

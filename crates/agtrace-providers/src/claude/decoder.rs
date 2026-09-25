@@ -1443,6 +1443,15 @@ impl ClaudeDecoder {
     fn map_record(&mut self, record: ClaudeRecord, text: &str, out: &mut Vec<AgentEvent>) {
         if let Some(env) = record.envelope() {
             self.runtime_alias(out, env);
+            if env.session_kind.is_some() {
+                let r = Rec {
+                    base: String::new(),
+                    ts: self.ts(env.timestamp.as_deref()),
+                    agent: self.agent.clone(),
+                };
+                let kind = env.session_kind.clone();
+                self.attribute(out, &r, AgentAttributeKey::SessionKind, kind);
+            }
         }
         match record {
             ClaudeRecord::User(r) => self.on_user(r, out),

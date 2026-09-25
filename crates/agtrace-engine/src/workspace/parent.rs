@@ -60,6 +60,11 @@ impl RuntimeAliases {
         self.0.get(runtime_session_id)
     }
 
+    /// Every runtime session id seen.
+    pub fn ids(&self) -> impl Iterator<Item = &str> {
+        self.0.keys().map(String::as_str)
+    }
+
     /// Runtime session ids that map to `agent`.
     pub fn of<'a>(&'a self, agent: &'a AgentId) -> impl Iterator<Item = &'a str> + 'a {
         self.0

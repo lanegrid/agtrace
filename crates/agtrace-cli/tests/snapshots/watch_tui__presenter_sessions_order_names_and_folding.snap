@@ -1,0 +1,132 @@
+---
+source: crates/agtrace-cli/tests/watch_tui.rs
+expression: vm.sessions
+---
+{
+  "scope": "project demo-project",
+  "rows": [
+    {
+      "id": "claude:s-lead",
+      "provider": "claude_code",
+      "name": "Audit the parser with a team of reviewers",
+      "name_is_id": false,
+      "short_id": "s-lead",
+      "bg": false,
+      "state": "busy",
+      "has_transcript": true,
+      "agents": 5,
+      "running": 2,
+      "ctx": {
+        "pct": 42,
+        "used_tokens": 420000,
+        "window_tokens": 1000000,
+        "provenance": "1m"
+      },
+      "last_secs": 10,
+      "now": {
+        "type": "tool",
+        "name": "Bash",
+        "summary": "mise run test",
+        "elapsed_secs": 10
+      },
+      "selected": true,
+      "focused": false
+    },
+    {
+      "id": "codex:t-root",
+      "provider": "codex",
+      "name": "triage the flaky tests",
+      "name_is_id": false,
+      "short_id": "t-root",
+      "bg": false,
+      "state": "busy",
+      "has_transcript": true,
+      "agents": 4,
+      "running": 2,
+      "ctx": {
+        "pct": 12,
+        "used_tokens": 31000,
+        "window_tokens": 258400,
+        "provenance": "log"
+      },
+      "last_secs": 20,
+      "now": {
+        "type": "said",
+        "text": "Reproducing the flake in a loop."
+      },
+      "selected": false,
+      "focused": false
+    },
+    {
+      "id": "claude:c-team",
+      "provider": "claude_code",
+      "name": "Ship the release",
+      "name_is_id": false,
+      "short_id": "c-team",
+      "bg": true,
+      "state": "busy",
+      "has_transcript": true,
+      "agents": 14,
+      "running": 1,
+      "ctx": {
+        "pct": 25,
+        "used_tokens": 50000,
+        "window_tokens": 200000,
+        "provenance": "table"
+      },
+      "last_secs": 30,
+      "now": {
+        "type": "tool",
+        "name": "Bash",
+        "summary": "cargo publish --dry-run",
+        "elapsed_secs": 30
+      },
+      "selected": false,
+      "focused": false
+    },
+    {
+      "id": "claude:f00dcafe-job",
+      "provider": "claude_code",
+      "name": "f00dcafe",
+      "name_is_id": true,
+      "short_id": "f00dcafe",
+      "bg": true,
+      "state": "idle",
+      "has_transcript": false,
+      "agents": 0,
+      "running": 0,
+      "ctx": null,
+      "last_secs": 180,
+      "now": {
+        "type": "none"
+      },
+      "selected": false,
+      "focused": false
+    },
+    {
+      "id": "claude:c-done",
+      "provider": "claude_code",
+      "name": "rename the config keys",
+      "name_is_id": false,
+      "short_id": "c-done",
+      "bg": false,
+      "state": "recent",
+      "has_transcript": true,
+      "agents": 1,
+      "running": 0,
+      "ctx": null,
+      "last_secs": 1400,
+      "now": {
+        "type": "idle",
+        "secs": 1400
+      },
+      "selected": false,
+      "focused": false
+    }
+  ],
+  "live": 4,
+  "recent": 1,
+  "older": 1,
+  "older_folded": 1,
+  "focus": null
+}

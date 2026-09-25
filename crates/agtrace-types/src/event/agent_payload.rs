@@ -222,6 +222,9 @@ pub enum AgentAttributeKey {
     /// Reasoning effort the agent currently runs with ("low", "medium", "high"; Claude
     /// record `effort`, Codex `turn_context.effort` / thread settings).
     Effort,
+    /// Kind of Claude session that wrote the transcript (record `sessionKind`; `bg` =
+    /// background daemon / job session, or an agent spawned by one).
+    SessionKind,
 }
 
 /// Agent attribute; upserted by key (latest wins), except

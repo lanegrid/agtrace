@@ -24,6 +24,7 @@ mod feed;
 mod input;
 mod parent;
 mod ring;
+mod session;
 pub mod status;
 mod timeline;
 mod view;
@@ -44,6 +45,9 @@ pub use parent::{
     teammate_spawns,
 };
 pub use ring::RingBuffer;
+pub use session::{
+    CODEX_SESSION_LIVE, SESSION_RECENT, Session, SessionFold, SessionNameSource, SessionState,
+};
 pub use status::{AgentStatus, StatusSource};
 pub use timeline::{
     RunningTool, TIMELINE_TEXT_MAX, TimelineEntry, TimelineItem, handle_label, one_line,

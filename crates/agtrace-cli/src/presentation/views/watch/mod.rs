@@ -1,7 +1,8 @@
 //! Ratatui views of the multi-agent watch TUI (design §6.1).
 //!
-//! Three screens: the overview (`1`, [`overview`]), the agents screen (`2`, below)
-//! and the agent detail (`Enter`, [`detail`]).
+//! Screens: the sessions list (`0`, [`sessions`]), the overview (`1`,
+//! [`overview`]), the agents screen (`2`, below) and the agent detail (`Enter`,
+//! [`detail`]).
 //!
 //! ```text
 //! ┏ ▶ Agents ━━━━━━━━┓┌ lead · model · 42% of 1.0M [1m] ──┐
@@ -24,6 +25,7 @@ mod focus;
 mod help;
 pub mod input;
 pub mod overview;
+pub mod sessions;
 mod status_bar;
 mod style;
 mod tree;
@@ -99,6 +101,17 @@ pub fn layout(area: Rect) -> WatchLayout {
 pub fn render(f: &mut Frame, vm: &WatchScreenVm) {
     let l = layout(f.area());
     match vm.screen {
+        Screen::Sessions => {
+            let (main, feed_area, _) = overview::areas(l.area);
+            sessions::render(f, main, vm);
+            feed::render(
+                f,
+                feed_area,
+                vm,
+                feed_area.height.saturating_sub(2) as usize,
+                false,
+            );
+        }
         Screen::Overview => {
             let (main, feed_area, _) = overview::areas(l.area);
             overview::render(f, main, vm);

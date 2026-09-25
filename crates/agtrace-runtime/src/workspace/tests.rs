@@ -510,3 +510,70 @@ fn watcher_thread_streams_events_and_stops_on_drop() {
     watcher.rescan();
     drop(watcher); // joins the thread
 }
+
+/// A live process of the project that has not written a transcript yet (a bg job
+/// waiting for work) is reported, so the sessions list can show it; one of another
+/// project is not.
+#[test]
+fn live_process_without_transcript_is_reported_in_project_scope() {
+    let fx = fixture();
+    let entry = |sid: &str, cwd: &str| {
+        serde_json::json!({
+            "pid": std::process::id(),
+            "sessionId": sid,
+            "cwd": cwd,
+            "kind": "bg",
+            "name": &sid[..8],
+            "status": "idle",
+            "updatedAt": 1789898460000i64
+        })
+        .to_string()
+    };
+    let dir = fx.claude_home().join("sessions");
+    std::fs::write(
+        dir.join("1000001.json"),
+        entry(
+            "0000abcd-0000-4000-8000-000000000077",
+            "/work/demo-project/sub",
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("1000002.json"),
+        entry("0000dcba-0000-4000-8000-000000000088", "/work/elsewhere"),
+    )
+    .unwrap();
+    let mut state = project_state(&fx);
+    let out = state.discovery_tick(SystemTime::now());
+    let reported: Vec<(&str, bool)> = out
+        .iter()
+        .filter_map(|e| match e {
+            WorkspaceEvent::SideState(SideStateUpdate::ClaudeProcess {
+                session_id,
+                alive: true,
+                bg,
+                ..
+            }) => Some((session_id.as_str(), *bg)),
+            _ => None,
+        })
+        .collect();
+    assert!(
+        reported.contains(&("0000abcd-0000-4000-8000-000000000077", true)),
+        "{reported:?}"
+    );
+    assert!(
+        !reported
+            .iter()
+            .any(|(s, _)| *s == "0000dcba-0000-4000-8000-000000000088"),
+        "{reported:?}"
+    );
+
+    // Gone: reported dead once.
+    std::fs::remove_file(dir.join("1000001.json")).unwrap();
+    let out = state.discovery_tick(SystemTime::now());
+    assert!(out.iter().any(|e| matches!(
+        e,
+        WorkspaceEvent::SideState(SideStateUpdate::ClaudeProcess { session_id, alive: false, .. })
+            if session_id == "0000abcd-0000-4000-8000-000000000077"
+    )));
+}

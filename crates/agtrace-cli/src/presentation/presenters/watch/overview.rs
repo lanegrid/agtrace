@@ -4,12 +4,13 @@
 use std::collections::HashSet;
 
 use agtrace_sdk::types::AgentId;
-use agtrace_sdk::workspace::{AgentStatus, AgentView, WorkspaceView, one_line};
+use agtrace_sdk::workspace::{AgentStatus, AgentView, Session, WorkspaceView, one_line};
 use chrono::{DateTime, Duration, Utc};
 
+use super::sessions::state_vm;
 use super::{ctx, provider_name, status_vm};
 use crate::presentation::view_models::watch::{
-    AgentRowVm, NowVm, OverviewRowVm, OverviewVm, RootHeaderVm, UiState,
+    AgentRowVm, FoldedVm, NowVm, OverviewRowVm, OverviewVm, RootHeaderVm, SessionStateVm, UiState,
 };
 
 /// Characters kept of the one-line "now" text (the view clips further).
@@ -72,6 +73,8 @@ pub(super) fn build_overview(
     view: &WorkspaceView,
     ui: &UiState,
     tree: &[AgentRowVm],
+    sessions: &[Session],
+    visible: &HashSet<AgentId>,
     now: DateTime<Utc>,
 ) -> OverviewVm {
     let lanes = Lanes::new(view, tree, ui, now);
@@ -97,7 +100,15 @@ pub(super) fn build_overview(
                 selected: r.selected,
                 collapsed: r.collapsed,
                 hidden_descendants: r.hidden_descendants,
-                root: (r.depth == 0).then(|| root_header(view, a, now)),
+                root: (r.depth == 0).then(|| {
+                    let session = sessions.iter().find(|s| s.root == id);
+                    let folded = if ui.filter.is_empty() {
+                        folded(view, &id, visible)
+                    } else {
+                        FoldedVm::default()
+                    };
+                    root_header(view, a, session, folded, now)
+                }),
             })
         })
         .collect();
@@ -105,28 +116,59 @@ pub(super) fn build_overview(
         window: ui.window.label().to_string(),
         cell: lanes.map(|l| l.cell_label()).unwrap_or_default(),
         rows,
+        older_hidden: 0,
     }
 }
 
-fn root_header(view: &WorkspaceView, a: &AgentView, now: DateTime<Utc>) -> RootHeaderVm {
-    let mut agents = 0;
-    let mut running = 0;
-    let mut stack = vec![a.id()];
-    let mut seen = HashSet::new();
-    while let Some(id) = stack.pop() {
-        if !seen.insert(id) {
+/// Finished agents of the session rooted at `root` that are not shown.
+fn folded(view: &WorkspaceView, root: &AgentId, visible: &HashSet<AgentId>) -> FoldedVm {
+    let mut out = FoldedVm::default();
+    for id in view.session_agents(root) {
+        if visible.contains(id) {
             continue;
         }
-        let Some(v) = view.agent(id) else { continue };
-        agents += 1;
-        if v.status == AgentStatus::Running {
-            running += 1;
+        let Some(a) = view.agent(id) else { continue };
+        if a.session_fold.is_some() {
+            out.transcripts += 1;
+            continue;
         }
-        stack.extend(v.children.iter());
+        match a.status {
+            AgentStatus::Done => out.done += 1,
+            AgentStatus::Killed => out.killed += 1,
+            _ => {}
+        }
     }
+    out
+}
+
+fn root_header(
+    view: &WorkspaceView,
+    a: &AgentView,
+    session: Option<&Session>,
+    folded: FoldedVm,
+    now: DateTime<Utc>,
+) -> RootHeaderVm {
+    let (agents, running) = match session {
+        Some(s) => (s.agents, s.running),
+        None => {
+            let ids = view.session_agents(a.id());
+            let running = ids
+                .iter()
+                .filter(|id| {
+                    view.agent(id)
+                        .is_some_and(|v| v.status == AgentStatus::Running)
+                })
+                .count();
+            (ids.len(), running)
+        }
+    };
     RootHeaderVm {
-        label: a.label(),
+        label: session.map(|s| s.name.clone()).unwrap_or_else(|| a.label()),
         provider: provider_name(a.agent.provider).to_string(),
+        bg: session.is_some_and(|s| s.bg),
+        state: session
+            .map(|s| state_vm(s.state))
+            .unwrap_or(SessionStateVm::Older),
         status: status_vm(a.status),
         age_secs: a.agent.started_at.map(|s| (now - s).num_seconds().max(0)),
         model: a.model.clone(),
@@ -135,6 +177,7 @@ fn root_header(view: &WorkspaceView, a: &AgentView, now: DateTime<Utc>) -> RootH
         compactions: a.detail.compactions,
         agents,
         running,
+        folded,
     }
 }
 

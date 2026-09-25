@@ -82,6 +82,7 @@ pub(crate) struct RegistryEntry {
     pub alive: bool,
     pub status: Option<ProcessStatus>,
     pub name: Option<String>,
+    pub bg: bool,
     pub updated_at: DateTime<Utc>,
 }
 

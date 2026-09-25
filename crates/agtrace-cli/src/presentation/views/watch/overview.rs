@@ -1,12 +1,18 @@
-//! Overview screen: every agent of every root with status, context bar, activity
-//! lane and what it is doing now, plus a compact message feed.
+//! Overview screen: a summary of the sessions, then per session a header line and
+//! its active agents with status, context bar, activity lane and what each is
+//! doing now (finished agents fold into one line per session), plus a compact
+//! message feed.
 //!
 //! ```text
 //! ┏ ▶ Overview · project demo · last 60m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+//! ┃ Sessions · 2 live  0 list · ↵ there focuses one                                 ┃
+//! ┃    claude  s-lead          ● busy      5 (3 run)  42%  now  ▸ Bash mise run …  ┃
+//! ┃    codex   Review parser   ○ idle      4 (2 run)  12%   2m  idle 2m            ┃
 //! ┃   agent          status  context     activity · 1 cell = 2m       now          ┃
 //! ┃ s-lead · busy 5m · claude-opus-5-5[1m] · ctx 42% of 1.0M [1m] · ⟲1 · 5 agents  ┃
 //! ┃▶ s-lead          ● busy  ███░░░ 42%  ▂▁  ▃▃·····▂   ▸ Bash mise run test (10s)┃
 //! ┃  ├ T audit-A     ○ idle  █░░░░░ 12%    ▂  ▁         idle 3m                  ┃
+//! ┃    ✓ 1 finished · 1 earlier transcript  (d to show)                            ┃
 //! ```
 
 use ratatui::Frame;
@@ -21,7 +27,7 @@ use super::style::{
 };
 use crate::presentation::presenters::watch::tokens;
 use crate::presentation::view_models::watch::{
-    NowVm, OverviewRowVm, RootHeaderVm, StatusVm, WatchScreenVm,
+    FoldedVm, NowVm, OverviewRowVm, RootHeaderVm, StatusVm, WatchScreenVm,
 };
 
 /// Columns of a status cell (`⊘ kill`).
@@ -82,34 +88,68 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
     }
     if ov.rows.is_empty() {
         f.render_widget(block, area);
-        let text = if vm.status.filter.is_empty() {
-            " no agents yet".to_string()
-        } else {
+        let text = if !vm.status.filter.is_empty() {
             format!(
                 " no agent matches \"{}\" — Esc clears the filter",
                 vm.status.filter
             )
+        } else if let Some(name) = &vm.status.focus {
+            format!(" session {name} has no transcript yet — a for all sessions")
+        } else {
+            " no agents yet".to_string()
         };
         f.render_widget(Paragraph::new(Line::styled(text, dim())), inner);
         return;
     }
     let cols = columns(inner.width as usize);
-    let [head, body] = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(inner);
+    // Sessions summary: at most a third of the area (and 6 lines).
+    let summary = super::sessions::summary_lines(
+        &vm.sessions,
+        inner.width as usize,
+        ((inner.height as usize).saturating_sub(1) / 3).min(6),
+    );
+    let [top, head, body] = Layout::vertical([
+        Constraint::Length(summary.len() as u16),
+        Constraint::Length(1),
+        Constraint::Min(0),
+    ])
+    .areas(inner);
+    f.render_widget(Paragraph::new(summary), top);
     // Old sessions have no activity in the window: say how to widen it.
     let quiet = ov.rows.iter().all(|r| r.lane.trim().is_empty());
     f.render_widget(Paragraph::new(header_line(cols, &ov.cell, quiet)), head);
 
-    // Root header lines are interleaved with the rows; keep the selected row visible.
+    // Root header lines are interleaved with the rows, each session's folded
+    // finished agents follow its rows; keep the selected row visible.
     let mut lines: Vec<Line> = Vec::with_capacity(ov.rows.len() * 2);
     let mut selected_line = 0;
+    let mut folded = FoldedVm::default();
     for r in &ov.rows {
         if let Some(h) = &r.root {
+            if folded.total() > 0 {
+                lines.push(folded_line(folded));
+            }
+            folded = h.folded;
             lines.push(root_line(h, inner.width as usize));
         }
         if r.selected {
             selected_line = lines.len();
         }
         lines.push(row_line(r, cols));
+    }
+    if folded.total() > 0 {
+        lines.push(folded_line(folded));
+    }
+    if ov.older_hidden > 0 {
+        let noun = if ov.older_hidden == 1 {
+            "session"
+        } else {
+            "sessions"
+        };
+        lines.push(Line::styled(
+            format!(" ▸ {} older {noun} — 0 to list", ov.older_hidden),
+            dim(),
+        ));
     }
     let height = body.height as usize;
     let start = if selected_line < height {
@@ -127,7 +167,43 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
     f.render_widget(Paragraph::new(visible), body);
 }
 
-fn pad(s: &str, width: usize) -> String {
+/// `✓ 18 finished · ⊘ 3 killed  (d to show)` under a session's rows.
+fn folded_line(f: FoldedVm) -> Line<'static> {
+    let mut spans = vec![Span::raw("    ")];
+    if f.done > 0 {
+        spans.push(Span::styled(
+            format!("✓ {} finished", f.done),
+            status_style(StatusVm::Done),
+        ));
+    }
+    if f.killed > 0 {
+        if f.done > 0 {
+            spans.push(Span::styled(" · ", dim()));
+        }
+        spans.push(Span::styled(
+            format!("⊘ {} killed", f.killed),
+            status_style(StatusVm::Killed),
+        ));
+    }
+    if f.transcripts > 0 {
+        if f.done + f.killed > 0 {
+            spans.push(Span::styled(" · ", dim()));
+        }
+        let noun = if f.transcripts == 1 {
+            "transcript"
+        } else {
+            "transcripts"
+        };
+        spans.push(Span::styled(
+            format!("{} earlier {noun}", f.transcripts),
+            dim(),
+        ));
+    }
+    spans.push(Span::styled("  (d to show)", dim()));
+    Line::from(spans)
+}
+
+pub(super) fn pad(s: &str, width: usize) -> String {
     let s = clip(s, width);
     let w = text_width(&s);
     format!("{s}{}", " ".repeat(width.saturating_sub(w)))
@@ -160,12 +236,16 @@ fn root_line(h: &RootHeaderVm, width: usize) -> Line<'static> {
     if h.provider == "codex" {
         spans.push(Span::styled("codex ", dim()));
     }
+    // A prompt used as the name can be long: the facts after it matter too.
     spans.push(Span::styled(
-        h.label.clone(),
+        clip(&h.label, (width / 3).max(24)),
         Style::default().add_modifier(Modifier::BOLD),
     ));
     spans.push(sep());
     spans.push(Span::styled(status_word(h.status), status_style(h.status)));
+    if h.bg {
+        spans.push(Span::styled(" (bg)", dim()));
+    }
     if let Some(age) = h.age_secs {
         spans.push(Span::styled(format!(" · up {}", short(age)), dim()));
     }
@@ -207,7 +287,7 @@ fn root_line(h: &RootHeaderVm, width: usize) -> Line<'static> {
 }
 
 /// Drop trailing spans that do not fit (and clip the last one).
-fn clip_line(spans: Vec<Span<'static>>, width: usize) -> Line<'static> {
+pub(super) fn clip_line(spans: Vec<Span<'static>>, width: usize) -> Line<'static> {
     let mut out = Vec::new();
     let mut w = 0;
     for s in spans {

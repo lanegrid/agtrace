@@ -11,6 +11,7 @@
 
 mod detail;
 mod overview;
+mod sessions;
 
 pub use detail::SPARK_WIDTH;
 
@@ -22,15 +23,15 @@ use agtrace_sdk::types::{
     MessageDirection, SubActionStatus, TurnOutcome,
 };
 use agtrace_sdk::workspace::{
-    AgentStatus, AgentView, FeedEntry, FeedKind, FeedParty, TimelineEntry, TimelineItem,
-    WorkspaceView,
+    AgentStatus, AgentView, FeedEntry, FeedKind, FeedParty, Session, SessionFold, SessionState,
+    TimelineEntry, TimelineItem, WorkspaceView,
 };
 use chrono::{DateTime, FixedOffset, Utc};
 
 use crate::presentation::view_models::watch::{
-    ActivityVm, AgentRowVm, AgentTimelineVm, ConsoleVm, CtxVm, FeedFilter, FeedRowKind, FeedRowVm,
-    FocusVm, KeyedRow, RowKind, Screen, StatusBarVm, StatusVm, TimelineRowVm, UiState,
-    WatchScreenVm,
+    ActivityVm, AgentRowVm, AgentTimelineVm, ConsoleVm, CtxVm, DONE_FOLD_MIN, FeedFilter,
+    FeedRowKind, FeedRowVm, FocusVm, KeyedRow, RowKind, Screen, StatusBarVm, StatusVm,
+    TimelineRowVm, UiState, WatchScreenVm,
 };
 
 /// Build the whole screen from the current workspace snapshot.
@@ -39,14 +40,33 @@ use crate::presentation::view_models::watch::{
 /// may be frozen for fixtures).
 pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> WatchScreenVm {
     let filter = ui.filter.to_lowercase();
-    let visible = visibility(view, ui.hide_done, &filter);
-    let selected = effective_selection(view, ui, &visible);
+    let all_sessions = view.sessions(now);
+    let focus = focus_root(view, ui);
+    // Session order (live first), narrowed to the focused session; the compact
+    // overview leaves the older sessions to the sessions screen.
+    // (Only when there is something newer: an old `--session` or a quiet project
+    // still shows its sessions.)
+    let compact = focus.is_none()
+        && !ui.show_older
+        && rows_screen(ui) == Screen::Overview
+        && all_sessions
+            .iter()
+            .any(|s| s.has_transcript && s.state != SessionState::Older);
+    let roots: Vec<AgentId> = all_sessions
+        .iter()
+        .filter(|s| s.has_transcript && focus.as_ref().is_none_or(|f| s.root == *f))
+        .filter(|s| !compact || s.state != SessionState::Older)
+        .map(|s| s.root.clone())
+        .collect();
+    let fold = done_fold(ui);
+    let visible = visibility(view, &roots, fold, &filter);
+    let selected = effective_selection(view, ui, &roots, &visible);
 
     let mut tree = Vec::new();
     let mut seen = HashSet::new();
-    let roots: Vec<&AgentId> = view.roots.iter().filter(|r| visible.contains(*r)).collect();
-    let n = roots.len();
-    for (i, root) in roots.into_iter().enumerate() {
+    let shown_roots: Vec<&AgentId> = roots.iter().filter(|r| visible.contains(*r)).collect();
+    let n = shown_roots.len();
+    for (i, root) in shown_roots.into_iter().enumerate() {
         push_rows(
             view,
             ui,
@@ -61,24 +81,47 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
         );
     }
 
-    let focus = build_focus(view, ui, selected.as_ref(), now);
-    let feed = build_feed(view, ui, selected.as_ref());
-    // `hidden` counts what "hide done" hides, not what the filter leaves out.
-    let unfiltered = if filter.is_empty() {
-        visible.len()
-    } else {
-        visibility(view, ui.hide_done, "").len()
-    };
-    let mut status = build_status(view, ui, unfiltered);
+    // Root rows are named like their session.
+    for row in tree.iter_mut().filter(|r| r.depth == 0) {
+        if let Some(s) = all_sessions.iter().find(|s| s.root.as_str() == row.id) {
+            row.label = s.name.clone();
+        }
+    }
+
+    let members: HashSet<&AgentId> = roots.iter().flat_map(|r| view.session_agents(r)).collect();
+    let focus_view = build_focus(view, ui, selected.as_ref(), now);
+    let feed = build_feed(
+        view,
+        ui,
+        selected.as_ref(),
+        focus.is_some().then_some(&members),
+    );
+    let focus_name = focus.as_ref().map(|f| {
+        all_sessions
+            .iter()
+            .find(|s| s.root == *f)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| f.native_session_id().chars().take(8).collect())
+    });
+    let mut status = build_status(view, ui, &members, &visible, &all_sessions, focus_name);
+    if ui.screen == Screen::Sessions {
+        status.folded = 0;
+    }
     if !filter.is_empty() {
-        status.matches = view
-            .agents
-            .values()
+        status.matches = members
+            .iter()
+            .filter_map(|id| view.agent(id))
             .filter(|a| visible.contains(a.id()) && matches_filter(view, a, &filter))
             .count();
     }
-    let overview =
-        (ui.screen == Screen::Overview).then(|| overview::build_overview(view, ui, &tree, now));
+    let sessions = sessions::build_sessions(view, ui, &all_sessions, focus.as_ref(), now);
+    let overview = (ui.screen == Screen::Overview).then(|| {
+        let mut ov = overview::build_overview(view, ui, &tree, &all_sessions, &visible, now);
+        if compact {
+            ov.older_hidden = sessions.older;
+        }
+        ov
+    });
     // The detail screen keeps the agent it was opened on (auto-select or tree
     // changes do not switch it); it falls back to the selection.
     let detail = (ui.screen == Screen::Detail)
@@ -94,10 +137,11 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
 
     WatchScreenVm {
         screen: ui.screen,
+        sessions,
         overview,
         detail,
         tree,
-        focus,
+        focus: focus_view,
         feed,
         status,
         focus_pane: ui.focus,
@@ -112,6 +156,16 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
     }
 }
 
+/// Root of the focused session: the focus id, or the session it has since been
+/// folded into (a stub that turned out to belong to another session).
+fn focus_root(view: &WorkspaceView, ui: &UiState) -> Option<AgentId> {
+    let id = ui.session_focus.as_deref().and_then(AgentId::parse)?;
+    Some(match view.agent(&id) {
+        Some(_) => view.session_root(&id).clone(),
+        None => id,
+    })
+}
+
 /// Build the console (line printer) snapshot: the screen plus every agent's
 /// timeline and the workspace feed, keyed by event id so the printer emits each
 /// row once (design §6.3, `watch --mode console`).
@@ -119,12 +173,20 @@ pub fn build_console(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> 
     let ui = UiState {
         screen: Screen::Agents,
         feed_filter: FeedFilter::All,
-        hide_done: false,
+        show_done: true,
+        session_focus: None,
         collapsed: Default::default(),
         filter: String::new(),
         ..ui.clone()
     };
-    let screen = build_screen(view, &ui, now);
+    let mut screen = build_screen(view, &ui, now);
+    // The console prefixes timeline rows with agent labels (`[/root]`): root rows
+    // keep theirs instead of the session name.
+    for row in screen.tree.iter_mut().filter(|r| r.depth == 0) {
+        if let Some(a) = AgentId::parse(&row.id).and_then(|id| view.agent(&id)) {
+            row.label = tree_label(view, a);
+        }
+    }
     let timelines = screen
         .tree
         .iter()
@@ -161,8 +223,40 @@ pub fn build_console(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> 
 // Tree
 // ============================================================================
 
-fn is_hideable(status: AgentStatus) -> bool {
-    matches!(status, AgentStatus::Done | AgentStatus::Killed)
+/// Agents that the done fold hides: finished ones (failed ones stay visible),
+/// and other transcripts of the session (earlier, `/clear` stubs) unless running.
+fn is_foldable(a: &AgentView) -> bool {
+    matches!(a.status, AgentStatus::Done | AgentStatus::Killed)
+        || (a.session_fold.is_some() && a.status != AgentStatus::Running)
+}
+
+/// How finished agents are folded on the current screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DoneFold {
+    /// `d`: everything shown.
+    Off,
+    /// Overview: every finished agent below a session root.
+    All,
+    /// Agents tree: a parent's finished children when it has more than `n`.
+    Crowded(usize),
+}
+
+/// Screen whose rows `vm.tree` holds (the detail steps through its origin's).
+fn rows_screen(ui: &UiState) -> Screen {
+    match ui.screen {
+        Screen::Detail => ui.detail_return,
+        s => s,
+    }
+}
+
+fn done_fold(ui: &UiState) -> DoneFold {
+    if ui.show_done {
+        return DoneFold::Off;
+    }
+    match rows_screen(ui) {
+        Screen::Agents => DoneFold::Crowded(DONE_FOLD_MIN),
+        Screen::Overview | Screen::Sessions | Screen::Detail => DoneFold::All,
+    }
 }
 
 /// The agent's labels or id contain `needle` (lowercase), ignoring case.
@@ -177,14 +271,21 @@ fn matches_filter(view: &WorkspaceView, a: &AgentView, needle: &str) -> bool {
     .any(|s| s.to_lowercase().contains(needle))
 }
 
-/// Agents shown in the tree: all, or (hide_done) those that are not Done/Killed or
-/// have a shown descendant; with a `/` filter (lowercase, non-empty), only the
-/// matching agents and their ancestors.
-fn visibility(view: &WorkspaceView, hide_done: bool, filter: &str) -> HashSet<AgentId> {
+/// Agents shown below `roots`: all but the finished ones `fold` hides (kept when a
+/// descendant is shown); with a `/` filter (lowercase, non-empty), only the
+/// matching agents and their ancestors (folds ignored: finished agents are found).
+fn visibility(
+    view: &WorkspaceView,
+    roots: &[AgentId],
+    fold: DoneFold,
+    filter: &str,
+) -> HashSet<AgentId> {
+    /// Returns whether `id` is shown.
     fn visit(
         view: &WorkspaceView,
         id: &AgentId,
-        hide_done: bool,
+        depth: usize,
+        fold: DoneFold,
         filter: &str,
         out: &mut HashSet<AgentId>,
         seen: &mut HashSet<AgentId>,
@@ -195,24 +296,66 @@ fn visibility(view: &WorkspaceView, hide_done: bool, filter: &str) -> HashSet<Ag
         let Some(a) = view.agent(id) else {
             return false;
         };
-        let mut any_child = false;
-        for c in &a.children {
-            any_child |= visit(view, c, hide_done, filter, out, seen);
+        let shown_children: Vec<bool> = a
+            .children
+            .iter()
+            .map(|c| visit(view, c, depth + 1, fold, filter, out, seen))
+            .collect();
+        let mut any_child = shown_children.iter().any(|x| *x);
+        if !filter.is_empty() {
+            let shown = any_child || matches_filter(view, a, filter);
+            if shown {
+                out.insert(id.clone());
+            }
+            return shown;
         }
-        let shown = if filter.is_empty() {
-            !hide_done || !is_hideable(a.status) || any_child
-        } else {
-            any_child || ((!hide_done || !is_hideable(a.status)) && matches_filter(view, a, filter))
-        };
+        // Crowded fold: a parent with few finished children keeps them.
+        if let DoneFold::Crowded(n) = fold {
+            let folded: Vec<&AgentId> = a
+                .children
+                .iter()
+                .zip(&shown_children)
+                .filter(|(c, shown)| !**shown && out_candidate(view, c))
+                .map(|(c, _)| c)
+                .collect();
+            if !folded.is_empty() && folded.len() <= n {
+                for c in folded {
+                    restore(view, c, out);
+                }
+                any_child = true;
+            }
+        }
+        let shown = depth == 0
+            || any_child
+            || match fold {
+                DoneFold::Off => true,
+                DoneFold::All | DoneFold::Crowded(_) => !is_foldable(a),
+            };
         if shown {
             out.insert(id.clone());
         }
         shown
     }
+    /// A child hidden by the fold (finished, no shown descendant).
+    fn out_candidate(view: &WorkspaceView, id: &AgentId) -> bool {
+        view.agent(id).is_some_and(is_foldable)
+    }
+    /// Show a folded subtree again (everything below it is finished).
+    fn restore(view: &WorkspaceView, id: &AgentId, out: &mut HashSet<AgentId>) {
+        let mut stack = vec![id];
+        while let Some(cur) = stack.pop() {
+            if !out.insert(cur.clone()) {
+                continue;
+            }
+            if let Some(a) = view.agent(cur) {
+                stack.extend(a.children.iter());
+            }
+        }
+    }
     let mut out = HashSet::new();
     let mut seen = HashSet::new();
-    for r in &view.roots {
-        visit(view, r, hide_done, filter, &mut out, &mut seen);
+    for r in roots {
+        visit(view, r, 0, fold, filter, &mut out, &mut seen);
     }
     out
 }
@@ -253,6 +396,7 @@ fn is_folded(ui: &UiState, id: &str) -> bool {
 fn effective_selection(
     view: &WorkspaceView,
     ui: &UiState,
+    roots: &[AgentId],
     visible: &HashSet<AgentId>,
 ) -> Option<AgentId> {
     let shown = |id: &AgentId| is_row_shown(view, ui, visible, id);
@@ -275,7 +419,7 @@ fn effective_selection(
         }
         // Filtered out: jump to the first match rather than an unrelated ancestor.
         if !ui.filter.is_empty()
-            && let Some(m) = first_match(view, visible, &ui.filter.to_lowercase())
+            && let Some(m) = first_match(view, roots, visible, &ui.filter.to_lowercase())
         {
             return Some(m);
         }
@@ -284,16 +428,21 @@ fn effective_selection(
         }
     }
     if !ui.filter.is_empty()
-        && let Some(m) = first_match(view, visible, &ui.filter.to_lowercase())
+        && let Some(m) = first_match(view, roots, visible, &ui.filter.to_lowercase())
     {
         return Some(m);
     }
-    view.roots.iter().find(|r| shown(r)).cloned()
+    roots.iter().find(|r| shown(r)).cloned()
 }
 
 /// First agent matching the filter, in tree order.
-fn first_match(view: &WorkspaceView, visible: &HashSet<AgentId>, needle: &str) -> Option<AgentId> {
-    let mut stack: Vec<&AgentId> = view.roots.iter().rev().collect();
+fn first_match(
+    view: &WorkspaceView,
+    roots: &[AgentId],
+    visible: &HashSet<AgentId>,
+    needle: &str,
+) -> Option<AgentId> {
+    let mut stack: Vec<&AgentId> = roots.iter().rev().collect();
     let mut seen = HashSet::new();
     while let Some(id) = stack.pop() {
         if !visible.contains(id) || !seen.insert(id) {
@@ -334,6 +483,11 @@ fn push_rows(
     } else {
         0
     };
+    let folded_done = if ui.filter.is_empty() && !collapsed {
+        a.children.iter().filter(|c| !visible.contains(*c)).count()
+    } else {
+        0
+    };
     out.push(AgentRowVm {
         id: id.as_str().to_string(),
         depth,
@@ -348,6 +502,7 @@ fn push_rows(
         collapsed,
         has_children: !children.is_empty(),
         hidden_descendants,
+        folded_done,
         busy_tool: a.current_tool.is_some(),
     });
     if collapsed {
@@ -378,14 +533,23 @@ fn push_rows(
 }
 
 /// Tree label: Codex children show their path relative to the parent row
-/// (`/root/judge/x` under `/root/judge` ⇒ `x`); a Claude transcript shown under its
-/// continuation is marked as the earlier transcript (it usually has the same title);
+/// (`/root/judge/x` under `/root/judge` ⇒ `x`); a Claude transcript folded into
+/// its session is marked as the earlier transcript or by its command (`/clear`);
 /// everything else uses the agent label.
 fn tree_label(view: &WorkspaceView, a: &AgentView) -> String {
-    if let (Some(next), Some(parent)) = (a.continued_in(), a.tree_parent.as_ref())
-        && parent.native_session_id() == next
-    {
-        return format!("{} (earlier transcript)", a.label());
+    // Folded transcripts usually carry the session's name: what they are comes
+    // first, so it survives clipping in narrow panes.
+    match a.session_fold {
+        Some(SessionFold::Continued | SessionFold::RuntimeAlias) => {
+            return format!("earlier transcript · {}", a.label());
+        }
+        Some(SessionFold::Stub) => {
+            let what = a
+                .first_command()
+                .unwrap_or_else(|| "no conversation".to_string());
+            return format!("{what} · {}", a.label());
+        }
+        None => {}
     }
     let parent_path = a
         .tree_parent
@@ -768,7 +932,12 @@ fn involves(e: &FeedEntry, id: &AgentId) -> bool {
     e.source == *id || e.from.agent() == Some(id) || e.to.iter().any(|p| p.agent() == Some(id))
 }
 
-fn build_feed(view: &WorkspaceView, ui: &UiState, selected: Option<&AgentId>) -> Vec<FeedRowVm> {
+fn build_feed(
+    view: &WorkspaceView,
+    ui: &UiState,
+    selected: Option<&AgentId>,
+    session: Option<&HashSet<&AgentId>>,
+) -> Vec<FeedRowVm> {
     // Labels are cached: party_label walks the agent map.
     let mut labels: HashMap<String, String> = HashMap::new();
     let mut label = |p: &FeedParty| -> String {
@@ -780,6 +949,7 @@ fn build_feed(view: &WorkspaceView, ui: &UiState, selected: Option<&AgentId>) ->
     };
     view.feed
         .iter()
+        .filter(|e| session.is_none_or(|m| m.contains(&e.source)))
         .filter(|e| match (ui.feed_filter, selected) {
             (FeedFilter::Selected, Some(id)) => involves(e, id),
             _ => true,
@@ -823,23 +993,38 @@ fn build_feed(view: &WorkspaceView, ui: &UiState, selected: Option<&AgentId>) ->
 // Status bar
 // ============================================================================
 
-fn build_status(view: &WorkspaceView, ui: &UiState, visible: usize) -> StatusBarVm {
-    let count = |s: AgentStatus| view.agents.values().filter(|a| a.status == s).count();
+fn build_status(
+    view: &WorkspaceView,
+    ui: &UiState,
+    members: &HashSet<&AgentId>,
+    visible: &HashSet<AgentId>,
+    sessions: &[Session],
+    focus: Option<String>,
+) -> StatusBarVm {
+    let agents: Vec<&AgentView> = members.iter().filter_map(|id| view.agent(id)).collect();
+    let count = |s: AgentStatus| agents.iter().filter(|a| a.status == s).count();
+    let folded = if ui.filter.is_empty() {
+        agents.iter().filter(|a| !visible.contains(a.id())).count()
+    } else {
+        0
+    };
     StatusBarVm {
-        scope: ui.scope.clone(),
-        agents: view.agents.len(),
+        scope: match &focus {
+            Some(name) => format!("session {name}"),
+            None => ui.scope.clone(),
+        },
+        focus,
+        sessions: sessions.len(),
+        live: sessions.iter().filter(|s| s.is_live()).count(),
+        agents: agents.len(),
         running: count(AgentStatus::Running),
         idle: count(AgentStatus::Idle),
-        hidden: view.agents.len().saturating_sub(visible),
-        done_hideable: view
-            .agents
-            .len()
-            .saturating_sub(visibility(view, true, "").len()),
+        folded,
         diagnostics: view.total_diagnostic_errors(),
         errors: view.errors.len(),
         last_error: view.errors.last().cloned(),
         feed_filter: ui.feed_filter,
-        hide_done: ui.hide_done,
+        show_done: ui.show_done,
         auto_select: ui.auto_select,
         collapsed: ui.collapsed.len(),
         filter: ui.filter.clone(),
