@@ -149,7 +149,9 @@ agtrace has two paths over the same provider decoders: a **live path** for `watc
    directories:
    - the project's Claude directory: top-level transcripts, plus `<sid>/subagents/` for
      tracked sessions;
-   - today's and yesterday's Codex date directories;
+   - today's and yesterday's Codex date directories; older date directories the scope
+     reaches (the days overlapping `since`, or a Codex root's creation date onwards for
+     `Root`) are re-listed only every 30 s, since new rollouts are always created today;
    - `~/.claude/sessions/*.json` and the team configs of tracked teams.
 
    Each new file's header is read once. `WatchScope` then decides whether to track it:

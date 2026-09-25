@@ -334,6 +334,101 @@ fn root_scope_finds_an_old_codex_root_outside_recent_date_dirs() {
     assert_eq!(discovered(&out).len(), 3);
 }
 
+fn days_ago(n: u64) -> chrono::NaiveDate {
+    Local::now().date_naive() - chrono::Days::new(n)
+}
+
+/// `AgentDiscovered` count per agent (a tree must never list an agent twice).
+fn discovery_counts(events: &[WorkspaceEvent]) -> std::collections::BTreeMap<AgentId, usize> {
+    let mut counts = std::collections::BTreeMap::new();
+    for e in events {
+        if let WorkspaceEvent::AgentDiscovered(a) = e {
+            *counts.entry(a.id.clone()).or_insert(0) += 1;
+        }
+    }
+    counts
+}
+
+fn codex_ids() -> BTreeSet<AgentId> {
+    [CODEX_ROOT, CODEX_CHILD, CODEX_FORK]
+        .into_iter()
+        .map(AgentId::codex_thread)
+        .collect()
+}
+
+#[test]
+fn root_scope_finds_descendants_in_later_date_dirs() {
+    // A long-running tree: root created 10 days ago, children on later days (each
+    // rollout lives in the dir of its creation date), none today or yesterday.
+    let fx = LiveFixture::new(days_ago(10)).unwrap();
+    fx.move_codex_to_day(CODEX_CHILD, days_ago(9)).unwrap();
+    fx.move_codex_to_day(CODEX_FORK, days_ago(3)).unwrap();
+    let mut state = WatcherState::new(
+        WatchScope::Root(AgentId::codex_thread(CODEX_ROOT)),
+        roots(&fx),
+    );
+    let now = SystemTime::now();
+    let mut out = state.discovery_tick(now);
+    assert_eq!(discovered(&out), codex_ids());
+    out.extend(state.discovery_tick(now + Duration::from_secs(1)));
+    out.extend(state.discovery_tick(now + Duration::from_secs(40)));
+    assert!(
+        discovery_counts(&out).values().all(|n| *n == 1),
+        "{:?}",
+        discovery_counts(&out)
+    );
+}
+
+#[test]
+fn project_scope_window_reaches_older_date_dirs() {
+    // Rollouts created 5 days ago and still written to (fresh mtimes).
+    let fx = LiveFixture::new(days_ago(5)).unwrap();
+    let mut wide = WatcherState::new(
+        WatchScope::Project {
+            root: PROJECT_ROOT.into(),
+            since: Duration::from_secs(7 * 24 * 3600),
+        },
+        roots(&fx),
+    );
+    let out = wide.discovery_tick(SystemTime::now());
+    assert!(codex_ids().is_subset(&discovered(&out)));
+}
+
+#[test]
+fn older_date_dirs_are_relisted_on_a_slow_cadence() {
+    let fx = LiveFixture::new(days_ago(5)).unwrap();
+    let child = fx.codex_file(CODEX_CHILD);
+    let stashed = fx.stash(&child).unwrap();
+    let mut state = WatcherState::new(
+        WatchScope::Project {
+            root: PROJECT_ROOT.into(),
+            since: Duration::from_secs(7 * 24 * 3600),
+        },
+        roots(&fx),
+    );
+    let now = SystemTime::now();
+    state.discovery_tick(now);
+    fx.restore(&stashed, &child).unwrap();
+    let child_id = AgentId::codex_thread(CODEX_CHILD);
+    let out = state.discovery_tick(now + Duration::from_secs(1));
+    assert!(!discovered(&out).contains(&child_id));
+    let out = state.discovery_tick(now + Duration::from_secs(31));
+    assert!(discovered(&out).contains(&child_id));
+}
+
+#[test]
+fn codex_history_range_is_empty_for_recent_windows() {
+    use super::state::codex_history_range;
+    let today = days_ago(0);
+    assert!(codex_history_range(today, today).is_empty());
+    assert!(codex_history_range(days_ago(1), today).is_empty());
+    // `first - 1` (offset margin) ..= the day before yesterday.
+    assert_eq!(
+        codex_history_range(days_ago(4), today),
+        vec![days_ago(5), days_ago(4), days_ago(3), days_ago(2)]
+    );
+}
+
 #[test]
 fn registry_entry_removal_is_reported_dead_once() {
     let fx = fixture();

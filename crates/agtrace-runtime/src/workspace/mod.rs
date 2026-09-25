@@ -11,13 +11,18 @@
 //!     `<claude home>/sessions/<pid>.json` (never the `*.key` files) and
 //!     `<claude home>/teams/*/config.json` of teams relevant to tracked agents.
 //!   - Codex: `<codex home>/sessions/<today>/` and `<yesterday>/` (local dates).
-//!     Each new rollout's header (line 0) is read once.
+//!     Older date dirs the scope reaches are re-listed every 30 s only (new
+//!     rollouts are always created in today's dir): for [`WatchScope::Project`]
+//!     the local dates overlapping `since`, for a Codex [`WatchScope::Root`] the
+//!     root's creation date onwards (a long-running tree's children live in the
+//!     dirs of their own creation dates). Each new rollout's header (line 0) is
+//!     read once.
 //! - A new file is read with `Provider::read_header` (retried next tick while it is
 //!   not an agent file yet), filtered by project and time window ([`WatchScope`]),
 //!   then tracked and tailed from offset 0.
 //!
-//! Nothing here walks a whole provider tree except the one-off lookup of an old
-//! Codex root for [`WatchScope::Root`].
+//! Nothing here walks a whole provider tree except the one-off lookup of the date
+//! dir of an old Codex root for [`WatchScope::Root`].
 
 mod liveness;
 mod state;

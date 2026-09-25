@@ -17,15 +17,20 @@ use agtrace_providers::{DecodeOptions, FileHeader, Provider, ProviderId};
 use agtrace_types::{
     AgentAttributeKey, AgentEvent, AgentHandle, AgentId, AgentKind, AgentRef, EventPayload,
 };
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Local, NaiveDate, Utc};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 /// Upper bound of list/accept rounds per discovery tick (roots, then their
 /// subagent dirs, then children linked to those, ...).
 const MAX_DISCOVERY_ROUNDS: usize = 4;
+
+/// How often Codex date dirs older than yesterday are re-listed. New rollouts are
+/// always created in today's dir, so older dirs only matter for files that already
+/// exist (initial discovery) or that become active again (project window).
+const CODEX_HISTORY_RELIST: Duration = Duration::from_secs(30);
 
 /// Order in which ready candidates are tracked: parents first, then by start time.
 type AcceptOrder = (bool, Option<DateTime<Utc>>);
@@ -86,9 +91,11 @@ pub(crate) struct WatcherState {
     runtime_aliases: RuntimeAliases,
     /// Root scope, Claude target: the project dir holding `<sid>.jsonl`.
     root_claude_dir: Option<PathBuf>,
-    /// Root scope, Codex target: date dirs outside today/yesterday that hold it.
-    codex_extra_dirs: Vec<PathBuf>,
-    codex_root_lookup_done: bool,
+    /// Root scope, Codex target: local date of the dir holding the root rollout
+    /// (`None` until looked up, `Some(None)` if not found).
+    codex_root_day: Option<Option<NaiveDate>>,
+    /// When the Codex date dirs older than yesterday are listed next.
+    codex_history_due: Option<SystemTime>,
 }
 
 impl WatcherState {
@@ -108,8 +115,8 @@ impl WatcherState {
             referenced_teams: HashSet::new(),
             runtime_aliases: RuntimeAliases::new(),
             root_claude_dir: None,
-            codex_extra_dirs: Vec::new(),
-            codex_root_lookup_done: false,
+            codex_root_day: None,
+            codex_history_due: None,
         }
     }
 
@@ -123,8 +130,14 @@ impl WatcherState {
         let mut out = Vec::new();
         self.refresh_registry();
         self.refresh_teams();
-        for _ in 0..MAX_DISCOVERY_ROUNDS {
-            for (path, provider) in self.list_files(now) {
+        let history = self
+            .codex_history_due
+            .is_none_or(|due| now >= due || now + CODEX_HISTORY_RELIST < due);
+        if history {
+            self.codex_history_due = Some(now + CODEX_HISTORY_RELIST);
+        }
+        for round in 0..MAX_DISCOVERY_ROUNDS {
+            for (path, provider) in self.list_files(now, history && round == 0) {
                 self.update_candidate(path, provider);
             }
             if self.accept_candidates(now, &mut out) == 0 {
@@ -166,7 +179,9 @@ impl WatcherState {
     // Discovery
     // ------------------------------------------------------------------
 
-    fn list_files(&mut self, now: SystemTime) -> Vec<(PathBuf, ProviderId)> {
+    /// Files of the discovery set. `history` adds the Codex date dirs older than
+    /// yesterday that the scope reaches.
+    fn list_files(&mut self, now: SystemTime, history: bool) -> Vec<(PathBuf, ProviderId)> {
         let mut files = Vec::new();
         for dir in self.claude_project_dirs() {
             for path in list_dir(&dir) {
@@ -197,7 +212,7 @@ impl WatcherState {
                 }
             }
         }
-        for dir in self.codex_dirs(now) {
+        for dir in self.codex_dirs(now, history) {
             for path in list_dir(&dir) {
                 if path.is_file() && self.codex.probe(&path) {
                     files.push((path, ProviderId::Codex));
@@ -226,40 +241,48 @@ impl WatcherState {
         }
     }
 
-    /// `<sessions>/<today>` and `<yesterday>` (local dates), plus the date dir of an
-    /// older Codex root in Root scope.
-    fn codex_dirs(&mut self, now: SystemTime) -> Vec<PathBuf> {
+    /// `<sessions>/<today>` and `<yesterday>` (local dates); with `history`, also the
+    /// older date dirs the scope reaches (see [`codex_history_range`]).
+    fn codex_dirs(&mut self, now: SystemTime, history: bool) -> Vec<PathBuf> {
         let Some(sessions) = self.roots.codex_sessions.clone() else {
             return Vec::new();
         };
         let today = DateTime::<Local>::from(now).date_naive();
-        let mut dirs: Vec<PathBuf> = [Some(today), today.pred_opt()]
+        let mut days: Vec<NaiveDate> = [Some(today), today.pred_opt()]
             .into_iter()
             .flatten()
-            .map(|d| {
-                sessions
-                    .join(d.format("%Y").to_string())
-                    .join(d.format("%m").to_string())
-                    .join(d.format("%d").to_string())
-            })
             .collect();
-        if let WatchScope::Root(target) = &self.scope
-            && target.provider() == ProviderId::Codex
-            && !self.codex_root_lookup_done
-        {
-            self.codex_root_lookup_done = true;
-            let suffix = format!("-{}.jsonl", target.native_session_id());
-            let in_recent = dirs.iter().any(|d| {
-                list_dir(d)
-                    .iter()
-                    .any(|p| p.to_string_lossy().ends_with(&suffix))
-            });
-            if !in_recent && let Some(dir) = find_file_dir(&sessions, &suffix) {
-                self.codex_extra_dirs.push(dir);
+        if history {
+            let first = match &self.scope {
+                WatchScope::Project { since, .. } => {
+                    let start = now.checked_sub(*since).unwrap_or(SystemTime::UNIX_EPOCH);
+                    Some(DateTime::<Local>::from(start).date_naive())
+                }
+                WatchScope::Root(target) if target.provider() == ProviderId::Codex => {
+                    *self.codex_root_day.get_or_insert_with(|| {
+                        // Recent dirs first; the tree walk is a one-off for old roots.
+                        let suffix = format!("-{}.jsonl", target.native_session_id());
+                        let has_root = |dir: &Path| {
+                            list_dir(dir)
+                                .iter()
+                                .any(|p| p.to_string_lossy().ends_with(&suffix))
+                        };
+                        days.iter()
+                            .copied()
+                            .find(|d| has_root(&date_dir(&sessions, *d)))
+                            .or_else(|| {
+                                find_file_dir(&sessions, &suffix)
+                                    .and_then(|dir| date_of_dir(&sessions, &dir))
+                            })
+                    })
+                }
+                WatchScope::Root(_) => None,
+            };
+            if let Some(first) = first {
+                days.extend(codex_history_range(first, today));
             }
         }
-        dirs.extend(self.codex_extra_dirs.iter().cloned());
-        dirs
+        days.into_iter().map(|d| date_dir(&sessions, d)).collect()
     }
 
     fn update_candidate(&mut self, path: PathBuf, provider: ProviderId) {
@@ -777,6 +800,48 @@ fn list_dir(dir: &Path) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = entries.flatten().map(|e| e.path()).collect();
     paths.sort();
     paths
+}
+
+/// `<sessions>/YYYY/MM/DD` of a local date.
+fn date_dir(sessions: &Path, day: NaiveDate) -> PathBuf {
+    sessions.join(day.format("%Y/%m/%d").to_string())
+}
+
+/// Local date of a `<sessions>/YYYY/MM/DD` dir.
+fn date_of_dir(sessions: &Path, dir: &Path) -> Option<NaiveDate> {
+    let rel = dir
+        .strip_prefix(sessions)
+        .ok()?
+        .to_string_lossy()
+        .into_owned();
+    NaiveDate::parse_from_str(&rel.replace(std::path::MAIN_SEPARATOR, "/"), "%Y/%m/%d").ok()
+}
+
+/// Codex date dirs older than yesterday that a scope starting on local date `first`
+/// reaches: `first - 1` (margin for a changed UTC offset) up to the day before
+/// yesterday. Rollouts live in the dir of their *creation* date, so a tree started
+/// on `first` has all of its descendants in these dirs, today's or yesterday's.
+/// Empty when `first` is today or yesterday (e.g. the default 2 h project window).
+pub(crate) fn codex_history_range(first: NaiveDate, today: NaiveDate) -> Vec<NaiveDate> {
+    let (Some(yesterday), Some(last)) = (
+        today.pred_opt(),
+        today.pred_opt().and_then(|d| d.pred_opt()),
+    ) else {
+        return Vec::new();
+    };
+    if first >= yesterday {
+        return Vec::new();
+    }
+    let mut day = first.pred_opt().unwrap_or(first);
+    let mut out = Vec::new();
+    while day <= last {
+        out.push(day);
+        match day.succ_opt() {
+            Some(next) => day = next,
+            None => break,
+        }
+    }
+    out
 }
 
 /// One-off lookup (names only) of the directory holding a file whose name ends with
