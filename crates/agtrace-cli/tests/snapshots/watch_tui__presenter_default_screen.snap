@@ -4,21 +4,169 @@ expression: "screen(&view, &ui())"
 ---
 {
   "screen": "agents",
+  "sessions": {
+    "scope": "project demo-project",
+    "rows": [
+      {
+        "id": "claude:s-lead",
+        "provider": "claude_code",
+        "name": "Audit the parser with a team of reviewers",
+        "name_is_id": false,
+        "short_id": "s-lead",
+        "bg": false,
+        "state": "busy",
+        "has_transcript": true,
+        "agents": 5,
+        "running": 2,
+        "ctx": {
+          "pct": 42,
+          "used_tokens": 420000,
+          "window_tokens": 1000000,
+          "provenance": "1m"
+        },
+        "last_secs": 10,
+        "now": {
+          "type": "tool",
+          "name": "Bash",
+          "summary": "mise run test",
+          "elapsed_secs": 10
+        },
+        "selected": true,
+        "focused": false
+      },
+      {
+        "id": "codex:t-root",
+        "provider": "codex",
+        "name": "triage the flaky tests",
+        "name_is_id": false,
+        "short_id": "t-root",
+        "bg": false,
+        "state": "busy",
+        "has_transcript": true,
+        "agents": 4,
+        "running": 2,
+        "ctx": {
+          "pct": 12,
+          "used_tokens": 31000,
+          "window_tokens": 258400,
+          "provenance": "log"
+        },
+        "last_secs": 20,
+        "now": {
+          "type": "said",
+          "text": "Reproducing the flake in a loop."
+        },
+        "selected": false,
+        "focused": false
+      }
+    ],
+    "live": 2,
+    "recent": 0,
+    "older": 0,
+    "older_folded": 0,
+    "focus": null
+  },
   "tree": [
     {
-      "id": "codex:t-root",
+      "id": "claude:s-lead",
       "depth": 0,
       "guides": [],
       "is_last_sibling": false,
-      "label": "/root",
-      "provider": "codex",
+      "label": "Audit the parser with a team of reviewers",
+      "provider": "claude_code",
       "badge": null,
-      "status": "idle",
-      "ctx_pct": 12,
+      "status": "running",
+      "ctx_pct": 42,
       "selected": true,
       "collapsed": false,
       "has_children": true,
       "hidden_descendants": 0,
+      "folded_done": 0,
+      "busy_tool": true
+    },
+    {
+      "id": "claude:s-audit-a",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "audit-A",
+      "provider": "claude_code",
+      "badge": "T",
+      "status": "idle",
+      "ctx_pct": 12,
+      "selected": false,
+      "collapsed": false,
+      "has_children": false,
+      "hidden_descendants": 0,
+      "folded_done": 0,
+      "busy_tool": false
+    },
+    {
+      "id": "claude:s-audit-b",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "audit-B",
+      "provider": "claude_code",
+      "badge": "T",
+      "status": "idle",
+      "ctx_pct": 9,
+      "selected": false,
+      "collapsed": false,
+      "has_children": false,
+      "hidden_descendants": 0,
+      "folded_done": 0,
+      "busy_tool": false
+    },
+    {
+      "id": "claude:s-lead/a7ac2e91",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "explore call sites",
+      "provider": "claude_code",
+      "badge": "S",
+      "status": "done",
+      "ctx_pct": 15,
+      "selected": false,
+      "collapsed": false,
+      "has_children": false,
+      "hidden_descendants": 0,
+      "folded_done": 0,
+      "busy_tool": false
+    },
+    {
+      "id": "claude:s-lead/f0cc1a22",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": true,
+      "label": "fork: bench",
+      "provider": "claude_code",
+      "badge": "F",
+      "status": "running",
+      "ctx_pct": 75,
+      "selected": false,
+      "collapsed": false,
+      "has_children": false,
+      "hidden_descendants": 0,
+      "folded_done": 0,
+      "busy_tool": true
+    },
+    {
+      "id": "codex:t-root",
+      "depth": 0,
+      "guides": [],
+      "is_last_sibling": true,
+      "label": "triage the flaky tests",
+      "provider": "codex",
+      "badge": null,
+      "status": "idle",
+      "ctx_pct": 12,
+      "selected": false,
+      "collapsed": false,
+      "has_children": true,
+      "hidden_descendants": 0,
+      "folded_done": 0,
       "busy_tool": false
     },
     {
@@ -35,6 +183,7 @@ expression: "screen(&view, &ui())"
       "collapsed": false,
       "has_children": true,
       "hidden_descendants": 0,
+      "folded_done": 0,
       "busy_tool": true
     },
     {
@@ -53,6 +202,7 @@ expression: "screen(&view, &ui())"
       "collapsed": false,
       "has_children": false,
       "hidden_descendants": 0,
+      "folded_done": 0,
       "busy_tool": false
     },
     {
@@ -69,107 +219,30 @@ expression: "screen(&view, &ui())"
       "collapsed": false,
       "has_children": false,
       "hidden_descendants": 0,
+      "folded_done": 0,
       "busy_tool": false
-    },
-    {
-      "id": "claude:s-lead",
-      "depth": 0,
-      "guides": [],
-      "is_last_sibling": true,
-      "label": "s-lead",
-      "provider": "claude_code",
-      "badge": null,
-      "status": "running",
-      "ctx_pct": 42,
-      "selected": false,
-      "collapsed": false,
-      "has_children": true,
-      "hidden_descendants": 0,
-      "busy_tool": true
-    },
-    {
-      "id": "claude:s-audit-a",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "audit-A",
-      "provider": "claude_code",
-      "badge": "T",
-      "status": "idle",
-      "ctx_pct": 12,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "claude:s-audit-b",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "audit-B",
-      "provider": "claude_code",
-      "badge": "T",
-      "status": "idle",
-      "ctx_pct": 9,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "claude:s-lead/a7ac2e91",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "explore call sites",
-      "provider": "claude_code",
-      "badge": "S",
-      "status": "done",
-      "ctx_pct": 15,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "claude:s-lead/f0cc1a22",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": true,
-      "label": "fork: bench",
-      "provider": "claude_code",
-      "badge": "F",
-      "status": "running",
-      "ctx_pct": 75,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "busy_tool": true
     }
   ],
   "focus": {
-    "agent_id": "codex:t-root",
-    "title": "/root",
-    "provider": "codex",
+    "agent_id": "claude:s-lead",
+    "title": "s-lead",
+    "provider": "claude_code",
     "kind": "main",
     "team": null,
-    "status": "idle",
-    "model": "gpt-5.6",
+    "status": "running",
+    "model": "claude-opus-5-5[1m]",
     "ctx": {
-      "pct": 12,
-      "used_tokens": 31000,
-      "window_tokens": 258400,
-      "provenance": "log"
+      "pct": 42,
+      "used_tokens": 420000,
+      "window_tokens": 1000000,
+      "provenance": "1m"
     },
     "activity": {
-      "type": "turn_ended",
-      "outcome": "completed",
-      "ago_secs": 159
+      "type": "tool",
+      "name": "Bash",
+      "summary": "mise run test",
+      "elapsed_secs": 10,
+      "more": 0
     },
     "rows": [
       {
@@ -177,77 +250,119 @@ expression: "screen(&view, &ui())"
         "icon": "›",
         "kind": "user",
         "label": "user",
-        "text": "triage the flaky tests"
+        "text": "Audit the parser with a team of reviewers"
       },
       {
         "time": "12:00",
         "icon": "◆",
         "kind": "model_change",
         "label": "model",
-        "text": "gpt-5.6"
+        "text": "claude-opus-5"
+      },
+      {
+        "time": "12:00",
+        "icon": "•",
+        "kind": "assistant",
+        "label": "",
+        "text": "Spawning two reviewers and an explorer."
       },
       {
         "time": "12:00",
         "icon": "⇢",
         "kind": "spawn",
         "label": "spawn",
-        "text": "judge (thread)"
-      },
-      {
-        "time": "12:00",
-        "icon": "→",
-        "kind": "message_out",
-        "label": "/root/judge",
-        "text": "NEW_TASK [encrypted]"
+        "text": "audit-A (teammate, general-purpose, claude-opus-5)"
       },
       {
         "time": "12:00",
         "icon": "⇢",
         "kind": "spawn",
         "label": "spawn",
-        "text": "scout (thread)"
+        "text": "audit-B (teammate, general-purpose)"
       },
       {
         "time": "12:00",
         "icon": "→",
         "kind": "message_out",
-        "label": "/root/scout",
-        "text": "NEW_TASK [encrypted]"
+        "label": "audit-A",
+        "text": "NEW_TASK \"review parser\""
       },
       {
-        "time": "12:02",
+        "time": "12:00",
+        "icon": "⇢",
+        "kind": "spawn",
+        "label": "spawn",
+        "text": "explore call sites (subagent, Explore, claude-sonnet-5)"
+      },
+      {
+        "time": "12:00",
+        "icon": "⇢",
+        "kind": "spawn",
+        "label": "spawn",
+        "text": "fork: bench (fork)"
+      },
+      {
+        "time": "12:00",
+        "icon": "⏹",
+        "kind": "interrupt",
+        "label": "interrupted",
+        "text": ""
+      },
+      {
+        "time": "12:00",
+        "icon": "↲",
+        "kind": "queued",
+        "label": "queued",
+        "text": "also check the tokenizer"
+      },
+      {
+        "time": "12:01",
         "icon": "←",
         "kind": "message_in",
-        "label": "/root/scout",
-        "text": "FINAL_ANSWER \"3 flaky tests, all in watch_command.rs\""
+        "label": "audit-A",
+        "text": "MESSAGE \"done, found 3 bugs\""
+      },
+      {
+        "time": "12:01",
+        "icon": "◆",
+        "kind": "model_change",
+        "label": "model",
+        "text": "claude-opus-5 → claude-opus-5-5[1m]"
+      },
+      {
+        "time": "12:01",
+        "icon": "⟲",
+        "kind": "compaction",
+        "label": "compact",
+        "text": "974k→112k (auto)"
+      },
+      {
+        "time": "12:01",
+        "icon": "◇",
+        "kind": "lifecycle",
+        "label": "audit-B",
+        "text": "idle"
       },
       {
         "time": "12:02",
         "icon": "◇",
         "kind": "lifecycle",
-        "label": "/root/scout",
+        "label": "explore call sites",
         "text": "done"
       },
       {
         "time": "12:02",
-        "icon": "⟲",
-        "kind": "compaction",
-        "label": "compact",
-        "text": "240k→? (auto)"
+        "icon": "←",
+        "kind": "message_in",
+        "label": "explore call sites",
+        "text": "TASK_NOTIFY \"found 2 call sites\""
       },
       {
-        "time": "12:02",
-        "icon": "→",
-        "kind": "message_out",
-        "label": "/root/judge",
-        "text": "MESSAGE [encrypted]"
-      },
-      {
-        "time": "12:02",
-        "icon": "─",
-        "kind": "turn_end",
-        "label": "turn end",
-        "text": ""
+        "time": "12:04",
+        "icon": "▸",
+        "kind": "tool",
+        "label": "Bash",
+        "text": "mise run test"
       }
     ],
     "follow": true
@@ -263,7 +378,7 @@ expression: "screen(&view, &ui())"
       "tag": "spawn teammate",
       "text": "general-purpose",
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     },
     {
       "time": "12:00",
@@ -275,7 +390,7 @@ expression: "screen(&view, &ui())"
       "tag": "spawn teammate",
       "text": "general-purpose",
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     },
     {
       "time": "12:00",
@@ -287,7 +402,7 @@ expression: "screen(&view, &ui())"
       "tag": "NEW_TASK",
       "text": "review parser",
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     },
     {
       "time": "12:00",
@@ -299,7 +414,7 @@ expression: "screen(&view, &ui())"
       "tag": "spawn subagent",
       "text": "Explore",
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     },
     {
       "time": "12:00",
@@ -311,6 +426,30 @@ expression: "screen(&view, &ui())"
       "tag": "spawn fork",
       "text": null,
       "encrypted": false,
+      "involves_selected": true
+    },
+    {
+      "time": "12:00",
+      "kind": "spawn",
+      "from": "/root",
+      "to": [
+        "/root/judge"
+      ],
+      "tag": "spawn thread",
+      "text": null,
+      "encrypted": false,
+      "involves_selected": false
+    },
+    {
+      "time": "12:00",
+      "kind": "message",
+      "from": "/root",
+      "to": [
+        "/root/judge"
+      ],
+      "tag": "NEW_TASK",
+      "text": null,
+      "encrypted": true,
       "involves_selected": false
     },
     {
@@ -318,36 +457,12 @@ expression: "screen(&view, &ui())"
       "kind": "spawn",
       "from": "/root",
       "to": [
-        "/root/judge"
-      ],
-      "tag": "spawn thread",
-      "text": null,
-      "encrypted": false,
-      "involves_selected": true
-    },
-    {
-      "time": "12:00",
-      "kind": "message",
-      "from": "/root",
-      "to": [
-        "/root/judge"
-      ],
-      "tag": "NEW_TASK",
-      "text": null,
-      "encrypted": true,
-      "involves_selected": true
-    },
-    {
-      "time": "12:00",
-      "kind": "spawn",
-      "from": "/root",
-      "to": [
         "/root/scout"
       ],
       "tag": "spawn thread",
       "text": null,
       "encrypted": false,
-      "involves_selected": true
+      "involves_selected": false
     },
     {
       "time": "12:00",
@@ -359,7 +474,7 @@ expression: "screen(&view, &ui())"
       "tag": "NEW_TASK",
       "text": null,
       "encrypted": true,
-      "involves_selected": true
+      "involves_selected": false
     },
     {
       "time": "12:01",
@@ -371,7 +486,7 @@ expression: "screen(&view, &ui())"
       "tag": "MESSAGE",
       "text": "done, found 3 bugs",
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     },
     {
       "time": "12:01",
@@ -393,7 +508,7 @@ expression: "screen(&view, &ui())"
       "tag": "idle",
       "text": null,
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     },
     {
       "time": "12:02",
@@ -405,7 +520,7 @@ expression: "screen(&view, &ui())"
       "tag": "FINAL_ANSWER",
       "text": "3 flaky tests, all in watch_command.rs",
       "encrypted": false,
-      "involves_selected": true
+      "involves_selected": false
     },
     {
       "time": "12:02",
@@ -415,7 +530,7 @@ expression: "screen(&view, &ui())"
       "tag": "done",
       "text": null,
       "encrypted": false,
-      "involves_selected": true
+      "involves_selected": false
     },
     {
       "time": "12:02",
@@ -427,7 +542,7 @@ expression: "screen(&view, &ui())"
       "tag": "MESSAGE",
       "text": null,
       "encrypted": true,
-      "involves_selected": true
+      "involves_selected": false
     },
     {
       "time": "12:02",
@@ -437,7 +552,7 @@ expression: "screen(&view, &ui())"
       "tag": "done",
       "text": null,
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     },
     {
       "time": "12:02",
@@ -449,21 +564,23 @@ expression: "screen(&view, &ui())"
       "tag": "TASK_NOTIFY",
       "text": "found 2 call sites",
       "encrypted": false,
-      "involves_selected": false
+      "involves_selected": true
     }
   ],
   "status": {
     "scope": "project demo-project",
+    "focus": null,
+    "sessions": 2,
+    "live": 2,
     "agents": 9,
     "running": 4,
     "idle": 3,
-    "hidden": 0,
-    "done_hideable": 2,
+    "folded": 0,
     "diagnostics": 0,
     "errors": 0,
     "last_error": null,
     "feed_filter": "all",
-    "hide_done": false,
+    "show_done": false,
     "auto_select": false,
     "collapsed": 0,
     "filter": "",

@@ -20,6 +20,7 @@ use super::feed::{FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW};
 use super::input::{SideStateUpdate, TeamMember, WorkspaceEvent};
 use super::parent::{RuntimeAliases, team_lead_agent, teammate_parent};
 use super::ring::RingBuffer;
+use super::session::SessionFold;
 use super::status::{
     AgentFacts, AgentStatus, ParentContext, RegistryEntry, StatusSignals, StatusSource,
     TerminalOrigin, derive_status,
@@ -120,6 +121,9 @@ pub struct AgentView {
     pub discovered: bool,
     /// History, instructions, result and totals (overview / detail screens).
     pub detail: AgentDetail,
+    /// Why this transcript is shown under another one of the same logical session
+    /// (None: a root, or linked by a spawn / its provider root).
+    pub session_fold: Option<SessionFold>,
     signals: StatusSignals,
     spawn_prompts: VecDeque<SpawnPrompt>,
     open_tools: Vec<RunningTool>,
@@ -148,6 +152,7 @@ impl AgentView {
             spawn: None,
             discovered,
             detail: AgentDetail::default(),
+            session_fold: None,
             signals: StatusSignals::default(),
             spawn_prompts: VecDeque::new(),
             open_tools: Vec::new(),
@@ -199,7 +204,7 @@ impl AgentView {
 
     /// The `agent-name` display name, except for teammates: theirs is the process
     /// display name inherited from the lead, not the teammate's own name.
-    fn display_name(&self) -> Option<&str> {
+    pub(super) fn display_name(&self) -> Option<&str> {
         (self.agent.kind != AgentKind::Teammate)
             .then(|| self.attributes.get(&AgentAttributeKey::AgentName))
             .flatten()
@@ -330,8 +335,8 @@ pub struct WorkspaceView {
     /// team → agent whose log spawned members of that team (fallback team lead).
     team_spawners: BTreeMap<String, AgentId>,
     /// Runtime session ids of Claude transcripts (resume / bg respawn aliases).
-    runtime_aliases: RuntimeAliases,
-    registry: BTreeMap<AgentId, BTreeMap<u32, RegistryEntry>>,
+    pub(super) runtime_aliases: RuntimeAliases,
+    pub(super) registry: BTreeMap<AgentId, BTreeMap<u32, RegistryEntry>>,
     subagent_meta: BTreeMap<AgentId, SubagentMeta>,
     /// Parents before children (tree pre-order).
     order: Vec<AgentId>,
@@ -397,11 +402,11 @@ impl WorkspaceView {
         out
     }
 
-    /// Name from the Claude process registry, if the agent has a live entry.
+    /// Name from the Claude process registry, if the agent has a live entry (its
+    /// own, or one of a runtime session id it wrote under).
     pub fn registry_name(&self, id: &AgentId) -> Option<&str> {
-        self.registry
-            .get(id)?
-            .values()
+        self.registry_entries(id)
+            .into_iter()
             .filter(|e| e.alive)
             .max_by_key(|e| e.updated_at)?
             .name
@@ -464,11 +469,16 @@ impl WorkspaceView {
 
     fn apply_events(&mut self, ctx: &AgentId, events: &[AgentEvent], reset: bool) {
         let v = self.ensure_agent(ctx);
+        let fold_before = v.fold_key();
         if reset {
             v.reset_own_state();
         }
         for ev in events {
             self.apply_own_event(ctx, ev);
+        }
+        // Stub transcripts fold into the session they share a name with.
+        if self.agents.get(ctx).map(AgentView::fold_key) != Some(fold_before) {
+            self.structure_dirty = true;
         }
     }
 
@@ -699,6 +709,7 @@ impl WorkspaceView {
                 alive,
                 status,
                 name,
+                bg,
                 updated_at,
             } => {
                 let entries = self
@@ -713,6 +724,7 @@ impl WorkspaceView {
                             alive,
                             status,
                             name,
+                            bg,
                             updated_at,
                         },
                     );
@@ -1249,12 +1261,7 @@ impl WorkspaceView {
                 .or_else(|| {
                     (a.root != *id && self.agents.contains_key(&a.root)).then(|| a.root.clone())
                 })
-                .or_else(|| {
-                    // A continued transcript is shown under its continuation (same
-                    // logical session), not as an unrelated root.
-                    let next = AgentId::claude_session(self.agents[id].continued_in()?);
-                    (next != *id && self.agents.contains_key(&next)).then_some(next)
-                });
+                .or_else(|| self.same_session_parent(id));
             tparent.insert(id.clone(), p);
         }
         // Break cycles (malformed data): an agent on a cycle becomes top-level.
@@ -1273,9 +1280,20 @@ impl WorkspaceView {
             }
         }
 
+        let folds: BTreeMap<AgentId, SessionFold> = ids
+            .iter()
+            .filter_map(|id| {
+                let (p, why) = self.same_session_parent_why(id)?;
+                (tparent[id].as_ref() == Some(&p)
+                    && self.agents[id].agent.parent.as_ref() != Some(&p)
+                    && self.agents[id].agent.root == *id)
+                    .then_some((id.clone(), why))
+            })
+            .collect();
         for v in self.agents.values_mut() {
             v.children.clear();
             v.tree_parent = tparent[&v.agent.id].clone();
+            v.session_fold = folds.get(&v.agent.id).copied();
         }
         let mut roots = Vec::new();
         for (id, p) in &tparent {
@@ -1468,7 +1486,6 @@ impl WorkspaceView {
     }
 
     fn refresh_statuses(&mut self, now: DateTime<Utc>) {
-        let empty = BTreeMap::new();
         for id in self.order.clone() {
             let parent = match self.agents[&id].tree_parent.as_ref() {
                 Some(p) => {
@@ -1483,7 +1500,13 @@ impl WorkspaceView {
                     all_background_killed_at: None,
                 },
             };
-            let registry = self.registry.get(&id).unwrap_or(&empty);
+            let registry: BTreeMap<u32, RegistryEntry> = self
+                .registry_entries(&id)
+                .into_iter()
+                .enumerate()
+                .map(|(i, e)| (i as u32, e.clone()))
+                .collect();
+            let registry = &registry;
             let v = self.agents.get_mut(&id).expect("from order");
             let facts = AgentFacts {
                 provider: v.agent.provider,

@@ -75,6 +75,9 @@ pub(crate) struct Envelope {
     /// transcript's `sessionId` after a resume / bg daemon respawn.
     #[serde(default, rename = "session_id")]
     pub runtime_session_id: Option<String>,
+    /// `bg` for background (daemon / job) sessions and agents they spawned.
+    #[serde(default)]
+    pub session_kind: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

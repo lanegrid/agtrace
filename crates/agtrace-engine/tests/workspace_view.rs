@@ -366,6 +366,7 @@ fn registry_wins_while_alive_and_dead_pid_means_done_until_resumed() {
         alive,
         status,
         name: Some("demo".into()),
+        bg: false,
         updated_at: ts(at),
     };
     ws.side(proc(true, Some(ProcessStatus::Idle), 2));
@@ -748,6 +749,7 @@ fn subagent_staleness_depends_on_parent() {
         alive: true,
         status: Some(ProcessStatus::Busy),
         name: None,
+        bg: false,
         updated_at: ts(0),
     });
     // Parent still running: a silent subagent stays Running.
@@ -760,6 +762,7 @@ fn subagent_staleness_depends_on_parent() {
         alive: false,
         status: None,
         name: None,
+        bg: false,
         updated_at: ts(20 * 60),
     });
     assert_eq!(ws.status(&lead), AgentStatus::Done);

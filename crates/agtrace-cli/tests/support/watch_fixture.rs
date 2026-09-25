@@ -475,3 +475,142 @@ pub fn workspace() -> WorkspaceView {
     }
     view
 }
+
+/// Watcher events of more sessions around the scenario (sessions screen, compact
+/// overview):
+/// - `c-team` "Ship the release": a live bg Claude session (idle process) whose
+///   lead finished 3 subagents and killed 8, with one still running; plus an old
+///   `/clear` stub `c-team-clear` that inherited its name (folded into it);
+/// - `f00dcafe-job`: a live bg process that has no transcript yet;
+/// - `c-done`: a Claude session that went quiet 23 minutes ago (recent);
+/// - `x-old`: a Codex thread last written 2.5 hours ago (older).
+pub fn more_session_events() -> Vec<WorkspaceEvent> {
+    use agtrace_sdk::types::SlashCommandPayload;
+    use agtrace_sdk::workspace::{ProcessStatus, SideStateUpdate};
+
+    let mut out = Vec::new();
+    let push = |out: &mut Vec<WorkspaceEvent>, events: Vec<AgentEvent>| {
+        let agent = events[0].agent.clone();
+        out.push(WorkspaceEvent::Events {
+            agent,
+            events,
+            reset: false,
+        });
+    };
+
+    let team = AgentBuilder::claude_main("c-team").started(30).build();
+    out.push(WorkspaceEvent::AgentDiscovered(team.clone()));
+    let mut l = EventLog::new(&team.id);
+    let mut ev = vec![
+        l.at(30)
+            .attribute(AgentAttributeKey::AgentName, "Ship the release"),
+        l.at(30).attribute(AgentAttributeKey::SessionKind, "bg"),
+        l.at(31).user("cut the v2 release"),
+        l.at(32).usage(50_000, Some("claude-opus-5")),
+    ];
+    let subs: Vec<(String, Option<LifecycleTransition>)> = (0..8)
+        .map(|i| (format!("k{i}"), Some(LifecycleTransition::Killed)))
+        .chain((0..3).map(|i| (format!("d{i}"), Some(LifecycleTransition::Completed))))
+        .chain(std::iter::once(("r0".to_string(), None)))
+        .collect();
+    for (i, (aid, _)) in subs.iter().enumerate() {
+        ev.push(spawn(
+            l.at(40 + i as i64),
+            handle::native(aid),
+            AgentKind::Subagent,
+            &format!("step {aid}"),
+            Some("general-purpose"),
+            None,
+        ));
+    }
+    for (aid, end) in &subs {
+        if let Some(t) = end {
+            ev.push(l.at(200).lifecycle(handle::native(aid), *t));
+        }
+    }
+    ev.push(l.at(210).assistant("Waiting for the last step."));
+    ev.push(l.at(211).turn_end());
+    push(&mut out, ev);
+    for (i, (aid, _)) in subs.iter().enumerate() {
+        let r = AgentBuilder::claude_subagent("c-team", aid)
+            .started(40 + i as i64)
+            .build();
+        out.push(WorkspaceEvent::AgentDiscovered(r.clone()));
+        let mut s = EventLog::new(&r.id);
+        let mut ev = vec![s.at(40 + i as i64).user(&format!("do step {aid}"))];
+        if aid == "r0" {
+            ev.push(exec(s.at(270), "Bash", "cargo publish --dry-run"));
+        }
+        push(&mut out, ev);
+    }
+    out.push(WorkspaceEvent::SideState(SideStateUpdate::ClaudeProcess {
+        session_id: "c-team".to_string(),
+        pid: 501,
+        alive: true,
+        status: Some(ProcessStatus::Idle),
+        name: Some("c-team".to_string()),
+        bg: true,
+        updated_at: ts(211),
+    }));
+
+    let stub = AgentBuilder::claude_main("c-team-clear")
+        .started(-8000)
+        .build();
+    out.push(WorkspaceEvent::AgentDiscovered(stub.clone()));
+    let mut s = EventLog::new(&stub.id);
+    push(
+        &mut out,
+        vec![
+            s.at(-8000)
+                .attribute(AgentAttributeKey::AgentName, "Ship the release"),
+            s.at(-8000)
+                .push(EventPayload::SlashCommand(SlashCommandPayload {
+                    name: "clear".to_string(),
+                    args: None,
+                })),
+        ],
+    );
+
+    out.push(WorkspaceEvent::SideState(SideStateUpdate::ClaudeProcess {
+        session_id: "f00dcafe-job".to_string(),
+        pid: 502,
+        alive: true,
+        status: Some(ProcessStatus::Idle),
+        name: Some("f00dcafe".to_string()),
+        bg: true,
+        updated_at: ts(120),
+    }));
+
+    let done = AgentBuilder::claude_main("c-done").started(-1200).build();
+    out.push(WorkspaceEvent::AgentDiscovered(done.clone()));
+    let mut d = EventLog::new(&done.id);
+    push(
+        &mut out,
+        vec![
+            d.at(-1200).user("rename the config keys"),
+            d.at(-1150).assistant("Renamed."),
+            d.at(-1100).turn_end(),
+        ],
+    );
+
+    let old = AgentBuilder::codex_root("x-old").started(-9000).build();
+    out.push(WorkspaceEvent::AgentDiscovered(old.clone()));
+    let mut o = EventLog::new(&old.id);
+    push(
+        &mut out,
+        vec![
+            o.at(-9000).user("bump the lockfile"),
+            o.at(-8990).turn_end(),
+        ],
+    );
+    out
+}
+
+/// The scenario plus [`more_session_events`], folded at [`now`].
+pub fn many_sessions() -> WorkspaceView {
+    let mut view = WorkspaceView::new();
+    for e in events().into_iter().chain(more_session_events()) {
+        view.apply(e, &resolve, now());
+    }
+    view
+}

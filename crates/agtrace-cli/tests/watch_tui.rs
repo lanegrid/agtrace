@@ -8,7 +8,8 @@ use agtrace::presentation::presenters::watch::build_screen;
 use std::time::{Duration, Instant};
 
 use agtrace::presentation::view_models::watch::{
-    FeedFilter, Pane, RowKind, Screen, Scroll, TOAST_TTL, Toast, UiState, Viewport, WatchScreenVm,
+    FeedFilter, NowVm, Pane, RowKind, Screen, Scroll, TOAST_TTL, Toast, UiState, Viewport,
+    WatchScreenVm,
 };
 use agtrace::presentation::views::watch::input::{
     Effect, action_for, action_in, apply, expire_toast, sync_selection,
@@ -88,10 +89,10 @@ fn presenter_codex_child_selected_with_feed_filter() {
 }
 
 #[test]
-fn presenter_tree_hide_done_and_collapse() {
+fn presenter_tree_done_fold_and_collapse() {
     let view = fixture::workspace();
     let mut ui = ui();
-    ui.hide_done = true;
+    // Default: the agents tree keeps finished children of a parent with few of them.
     ui.collapsed.insert("codex:t-root".to_string());
     let vm = screen(&view, &ui);
     let rows: Vec<String> = vm
@@ -325,7 +326,14 @@ fn presenter_overview_rows() {
         .iter()
         .filter_map(|r| r.root.as_ref().map(|h| h.label.as_str()))
         .collect();
-    assert_eq!(roots, vec!["/root", "s-lead"]);
+    // Live sessions by activity, named by their first prompt (no other name).
+    assert_eq!(
+        roots,
+        vec![
+            "Audit the parser with a team of reviewers",
+            "triage the flaky tests"
+        ]
+    );
     for r in &ov.rows {
         assert_eq!(
             r.lane.chars().count(),
@@ -683,10 +691,13 @@ fn keys_move_selection_and_collapse() {
     assert!(collapsed.tree[0].collapsed);
     let hidden = collapsed.tree[0].hidden_descendants;
     assert_eq!(hidden, before - collapsed.tree.len());
-    assert_eq!(toast(&ui), format!("▸ collapsed /root (+{hidden} hidden)"));
+    // Live sessions come first: the busy lead, then the Codex tree.
+    // Root rows carry the session name.
+    let name = "Audit the parser with a team of reviewers";
+    assert_eq!(toast(&ui), format!("▸ collapsed {name} (+{hidden} hidden)"));
     press(&view, &mut ui, KeyCode::Char(' '));
     assert_eq!(screen(&view, &ui).tree.len(), before);
-    assert_eq!(toast(&ui), "▾ expanded /root");
+    assert_eq!(toast(&ui), format!("▾ expanded {name}"));
 
     assert_eq!(press(&view, &mut ui, KeyCode::Char('q')), Effect::Quit);
     assert_eq!(press(&view, &mut ui, KeyCode::Char('R')), Effect::Rescan);
@@ -728,7 +739,6 @@ fn moves_between_frames_accumulate() {
 #[test]
 fn open_keys_open_the_detail_and_esc_returns() {
     let view = fixture::workspace();
-    let before = screen(&view, &ui()).tree.len();
     for code in [KeyCode::Enter, KeyCode::Right, KeyCode::Char('l')] {
         for (start, pane) in [
             (Screen::Agents, Pane::Tree),
@@ -739,6 +749,7 @@ fn open_keys_open_the_detail_and_esc_returns() {
             let mut ui = ui();
             ui.screen = start;
             ui.focus = pane;
+            let before = screen(&view, &ui).tree.len();
             select(&mut ui, "claude:s-audit-a");
             press(&view, &mut ui, code);
             assert_eq!(ui.screen, Screen::Detail, "{code:?} {start:?} {pane:?}");
@@ -785,9 +796,9 @@ fn number_keys_switch_screens() {
     press(&view, &mut ui, KeyCode::Char('G'));
     assert_eq!(ui.selected.as_deref(), order.last().map(String::as_str));
     // Esc on the overview resets the view toggles.
-    ui.hide_done = true;
+    ui.show_done = true;
     press(&view, &mut ui, KeyCode::Esc);
-    assert!(!ui.hide_done);
+    assert!(!ui.show_done);
     assert_eq!(toast(&ui), "view reset");
 }
 
@@ -873,7 +884,7 @@ fn detail_sections_cycle_and_scroll() {
     // Toggles of the tree screens are ignored here.
     press(&view, &mut ui, KeyCode::Char(' '));
     press(&view, &mut ui, KeyCode::Char('d'));
-    assert!(ui.collapsed.is_empty() && !ui.hide_done);
+    assert!(ui.collapsed.is_empty() && !ui.show_done);
     assert_eq!(ui.screen, Screen::Detail);
 }
 
@@ -905,7 +916,8 @@ fn detail_opens_on_a_sensible_section() {
         ("codex:t-scout", DetailSection::Result),
         ("claude:s-audit-a", DetailSection::Timeline),
     ] {
-        let mut ui = home();
+        // The agents tree: the overview folds the finished agents away.
+        let mut ui = ui();
         select(&mut ui, id);
         press(&view, &mut ui, KeyCode::Enter);
         assert_eq!(ui.screen, Screen::Detail, "{id}");
@@ -919,13 +931,13 @@ fn detail_opens_on_a_sensible_section() {
 fn detail_section_is_remembered_across_agents() {
     use agtrace::presentation::view_models::watch::DetailSection;
     let view = fixture::workspace();
-    let mut ui = home();
+    let mut ui = ui();
     select(&mut ui, "claude:s-lead");
     press(&view, &mut ui, KeyCode::Enter);
     press(&view, &mut ui, KeyCode::Char('t'));
     assert_eq!(ui.detail_section, DetailSection::Timeline);
     press(&view, &mut ui, KeyCode::Esc);
-    assert_eq!(ui.screen, Screen::Overview);
+    assert_eq!(ui.screen, Screen::Agents);
     select(&mut ui, "claude:s-lead/a7ac2e91");
     press(&view, &mut ui, KeyCode::Enter);
     assert_eq!(opened_section(&view, &mut ui), DetailSection::Timeline);
@@ -1028,11 +1040,11 @@ fn slash_filters_agents_by_name() {
     ui.collapsed.insert("claude:s-lead".to_string());
     press(&view, &mut ui, KeyCode::Char('/'));
     assert!(ui.filter_editing);
-    // Keys are text now: `d` does not hide done agents, `q` does not quit.
+    // Keys are text now: `D` / `A` do not toggle anything, `q` does not quit.
     for c in "AUDIT".chars() {
         assert_eq!(press(&view, &mut ui, KeyCode::Char(c)), Effect::None);
     }
-    assert!(!ui.hide_done);
+    assert!(!ui.show_done && !ui.auto_select);
     let vm = screen(&view, &ui);
     sync_selection(&mut ui, &vm);
     let ids: Vec<&str> = vm.tree.iter().map(|r| r.id.as_str()).collect();
@@ -1077,7 +1089,8 @@ fn slash_filters_agents_by_name() {
     assert!(screen(&view, &ui).tree.is_empty());
     press(&view, &mut ui, KeyCode::Esc);
     assert!(!ui.filter_editing && ui.filter.is_empty());
-    assert_eq!(screen(&view, &ui).tree.len(), 9);
+    // Overview: the two finished agents are folded again.
+    assert_eq!(screen(&view, &ui).tree.len(), 7);
 }
 
 /// Collapsed sections: one summary line naming the key; the status bar lists the
@@ -1119,7 +1132,7 @@ fn back_keys_step_out_one_level() {
         };
         select(&mut ui, "codex:t-judge");
         ui.collapsed.insert("claude:s-lead".to_string());
-        ui.hide_done = true;
+        ui.show_done = true;
         ui.feed_filter = FeedFilter::Selected;
         ui.feed_scroll = Scroll::Offset(0);
         ui.timeline_scroll = Scroll::Offset(0);
@@ -1132,12 +1145,12 @@ fn back_keys_step_out_one_level() {
 
         press(&view, &mut ui, code);
         assert_eq!(ui.focus, Pane::Tree, "{code:?}: timeline → tree");
-        assert!(ui.hide_done, "{code:?}: toggles survive the first step");
+        assert!(ui.show_done, "{code:?}: toggles survive the first step");
         assert!(ui.toast.is_none(), "{code:?}");
 
         press(&view, &mut ui, code);
         assert!(ui.collapsed.is_empty(), "{code:?}");
-        assert!(!ui.hide_done, "{code:?}");
+        assert!(!ui.show_done, "{code:?}");
         assert_eq!(ui.feed_filter, FeedFilter::All, "{code:?}");
         assert_eq!(ui.timeline_scroll, Scroll::Follow, "{code:?}");
         assert_eq!(ui.feed_scroll, Scroll::Follow, "{code:?}");
@@ -1252,39 +1265,40 @@ fn toggles_raise_toasts_and_help_swallows_keys() {
     press(&view, &mut ui, KeyCode::Char('f'));
     assert_eq!(toast(&ui), "messages: all");
 
-    let hideable = screen(&view, &ui).status.done_hideable;
-    assert!(hideable > 0);
+    // The overview folds finished agents by default; `d` shows them.
+    ui.screen = Screen::Overview;
+    let folded = screen(&view, &ui).status.folded;
+    assert!(folded > 0);
     press(&view, &mut ui, KeyCode::Char('d'));
-    assert!(ui.hide_done);
-    assert_eq!(
-        toast(&ui),
-        format!("done agents hidden ({hideable}) — d to show")
-    );
-    assert_eq!(screen(&view, &ui).status.hidden, hideable);
+    assert!(ui.show_done);
+    assert_eq!(toast(&ui), "finished agents shown — d to fold");
+    assert_eq!(screen(&view, &ui).status.folded, 0);
     press(&view, &mut ui, KeyCode::Char('d'));
-    assert!(!ui.hide_done);
-    assert_eq!(toast(&ui), "done agents shown");
+    assert!(!ui.show_done);
+    assert_eq!(toast(&ui), "finished agents folded — d to show");
+    assert_eq!(screen(&view, &ui).status.folded, folded);
     press(&view, &mut ui, KeyCode::Char('d'));
+    ui.screen = Screen::Agents;
 
-    press(&view, &mut ui, KeyCode::Char('a'));
+    press(&view, &mut ui, KeyCode::Char('A'));
     assert!(ui.auto_select);
     assert_eq!(toast(&ui), "auto-select on");
     // Auto-select picks the most recently active agent (lead's Bash at 12:04:50).
     let vm = screen(&view, &ui);
     assert_eq!(vm.focus.agent_id.as_deref(), Some("claude:s-lead"));
-    press(&view, &mut ui, KeyCode::Char('a'));
+    press(&view, &mut ui, KeyCode::Char('A'));
     assert_eq!(toast(&ui), "auto-select off");
 
     press(&view, &mut ui, KeyCode::Char('?'));
     assert!(ui.show_help);
     // While help is open other keys are swallowed.
     press(&view, &mut ui, KeyCode::Char('d'));
-    assert!(ui.hide_done);
+    assert!(ui.show_done);
     press(&view, &mut ui, KeyCode::Char(' '));
     assert!(ui.collapsed.is_empty());
     press(&view, &mut ui, KeyCode::Esc);
     assert!(!ui.show_help);
-    assert!(ui.hide_done, "Esc only closed help");
+    assert!(ui.show_done, "Esc only closed help");
 }
 
 #[test]
@@ -1414,6 +1428,210 @@ fn continued_transcript_row_is_nested_and_marked() {
         .collect();
     assert_eq!(
         rows,
-        vec![(0, "Same title"), (1, "Same title (earlier transcript)")]
+        vec![(0, "Same title"), (1, "earlier transcript · Same title")]
+    );
+}
+
+// ------------------------------------------------------------------ sessions
+
+/// Sessions presenter: live first (busy, idle incl. a process without a
+/// transcript), then recent; older ones folded; names from the best source; the
+/// `/clear` stub folded into its session instead of listed.
+#[test]
+fn presenter_sessions_order_names_and_folding() {
+    let view = fixture::many_sessions();
+    let vm = screen(&view, &home());
+    let rows: Vec<(String, String, bool, bool)> = vm
+        .sessions
+        .rows
+        .iter()
+        .map(|r| (r.id.clone(), r.name.clone(), r.bg, r.has_transcript))
+        .collect();
+    assert_eq!(
+        rows,
+        vec![
+            (
+                "claude:s-lead".into(),
+                "Audit the parser with a team of reviewers".into(),
+                false,
+                true
+            ),
+            (
+                "codex:t-root".into(),
+                "triage the flaky tests".into(),
+                false,
+                true
+            ),
+            (
+                "claude:c-team".into(),
+                "Ship the release".into(),
+                true,
+                true
+            ),
+            ("claude:f00dcafe-job".into(), "f00dcafe".into(), true, false),
+            (
+                "claude:c-done".into(),
+                "rename the config keys".into(),
+                false,
+                true
+            ),
+        ]
+    );
+    assert_eq!(
+        (vm.sessions.live, vm.sessions.recent, vm.sessions.older),
+        (4, 1, 1)
+    );
+    assert_eq!(vm.sessions.older_folded, 1);
+    // The busy step of the team session is what the session does now.
+    let team = &vm.sessions.rows[2];
+    assert_eq!(team.agents, 14, "lead, 12 subagents, the folded stub");
+    assert!(matches!(&team.now, NowVm::Tool { name, .. } if name == "Bash"));
+    assert_eq!(vm.status.sessions, 6);
+    assert_eq!(vm.status.live, 4);
+    insta::assert_json_snapshot!(vm.sessions);
+}
+
+#[test]
+fn render_sessions_screen_80x24_and_140x40() {
+    let view = fixture::many_sessions();
+    let mut ui = home();
+    ui.screen = Screen::Sessions;
+    insta::assert_snapshot!("render_sessions_80x24", draw(&view, &mut ui, 80, 24));
+    ui.show_older = true;
+    ui.session_focus = Some("claude:c-team".to_string());
+    ui.session_cursor = Some("codex:t-root".to_string());
+    insta::assert_snapshot!("render_sessions_140x40", draw(&view, &mut ui, 140, 40));
+}
+
+/// Compact overview: a summary of the sessions on top, then per session its
+/// active agents; the 11 finished / killed steps of the team session fold into one
+/// line (`d` shows them), so every live session fits on one screen.
+#[test]
+fn render_compact_overview_with_many_sessions() {
+    let view = fixture::many_sessions();
+    let mut ui = overview_ui();
+    let out = draw(&view, &mut ui, 140, 40);
+    // 3 finished steps, 8 killed steps and the folded `/clear` stub.
+    assert!(
+        out.contains("✓ 3 finished · ⊘ 8 killed · 1 earlier transcript  (d to show)"),
+        "{out}"
+    );
+    assert!(out.contains("▸ 1 older session — 0 to list"), "{out}");
+    assert!(!out.contains("step k0"), "{out}");
+    assert!(out.contains("Ship the release"), "{out}");
+    insta::assert_snapshot!("render_overview_sessions_140x40", out);
+    insta::assert_snapshot!(
+        "render_overview_sessions_80x24",
+        draw(&view, &mut overview_ui(), 80, 24)
+    );
+    // `d` shows the finished agents again.
+    ui.show_done = true;
+    let vm = screen(&view, &ui);
+    assert!(vm.tree.iter().any(|r| r.label == "step k0"));
+    assert_eq!(vm.status.folded, 0);
+}
+
+/// The agents tree keeps finished children unless a parent has more than
+/// `DONE_FOLD_MIN` of them; the parent row then counts them.
+#[test]
+fn agents_tree_folds_crowded_finished_children() {
+    let view = fixture::many_sessions();
+    let vm = screen(&view, &ui());
+    let team = vm.tree.iter().find(|r| r.id == "claude:c-team").unwrap();
+    assert_eq!(team.folded_done, 12, "11 steps and the folded stub");
+    assert!(
+        vm.tree.iter().any(|r| r.label == "step r0"),
+        "running step kept"
+    );
+    // The lead with a single finished subagent keeps it.
+    assert!(vm.tree.iter().any(|r| r.label == "explore call sites"));
+    let out = draw(&view, &mut ui(), 160, 30);
+    assert!(out.contains("Ship the release +12 done"), "{out}");
+}
+
+/// `0` opens the sessions screen; j/k pick; Enter narrows the other screens to that
+/// session (tree, feed, counts, title) and returns; `a` goes back to all.
+#[test]
+fn sessions_screen_focuses_a_session() {
+    let view = fixture::many_sessions();
+    let mut ui = home();
+    press(&view, &mut ui, KeyCode::Char('0'));
+    assert_eq!(ui.screen, Screen::Sessions);
+    press(&view, &mut ui, KeyCode::Char('j'));
+    assert_eq!(ui.session_cursor.as_deref(), Some("codex:t-root"));
+    press(&view, &mut ui, KeyCode::Enter);
+    assert_eq!(ui.screen, Screen::Overview, "back where it was opened from");
+    assert_eq!(ui.session_focus.as_deref(), Some("codex:t-root"));
+    assert_eq!(
+        toast(&ui),
+        "session: triage the flaky tests — a for all sessions"
+    );
+    let vm = screen(&view, &ui);
+    assert!(vm.tree.iter().all(|r| r.id.starts_with("codex:t-")));
+    assert_eq!(vm.focus.agent_id.as_deref(), Some("codex:t-root"));
+    assert_eq!(vm.status.focus.as_deref(), Some("triage the flaky tests"));
+    assert_eq!(vm.status.scope, "session triage the flaky tests");
+    assert_eq!(vm.status.agents, 4);
+    assert!(
+        vm.feed.iter().all(|f| f.from.starts_with("/root")),
+        "only the session's messages"
+    );
+    // The agents screen and the detail are narrowed too (J/K stay inside).
+    press(&view, &mut ui, KeyCode::Char('2'));
+    assert!(
+        screen(&view, &ui)
+            .tree
+            .iter()
+            .all(|r| r.id.starts_with("codex:"))
+    );
+    let out = draw(&view, &mut ui, 100, 30);
+    assert!(out.contains("session: triage the flaky tests"), "{out}");
+
+    press(&view, &mut ui, KeyCode::Char('a'));
+    assert_eq!(ui.session_focus, None);
+    assert_eq!(toast(&ui), "all sessions");
+    press(&view, &mut ui, KeyCode::Char('a'));
+    assert_eq!(toast(&ui), "showing all sessions — 0 to pick one");
+
+    // Esc on the sessions screen returns without a change; space lists the
+    // older sessions.
+    press(&view, &mut ui, KeyCode::Char('0'));
+    press(&view, &mut ui, KeyCode::Char(' '));
+    assert!(ui.show_older);
+    assert_eq!(screen(&view, &ui).sessions.rows.len(), 6);
+    press(&view, &mut ui, KeyCode::Esc);
+    assert_eq!(ui.screen, Screen::Agents);
+    assert_eq!(ui.session_focus, None);
+}
+
+/// Esc on a home screen resets the view toggles first; only then drops the
+/// session focus (help / detail / pane / filter come before both, as before).
+#[test]
+fn esc_clears_toggles_before_the_session_focus() {
+    let view = fixture::many_sessions();
+    let mut ui = home();
+    ui.session_focus = Some("claude:c-team".to_string());
+    ui.show_done = true;
+    press(&view, &mut ui, KeyCode::Esc);
+    assert!(!ui.show_done);
+    assert_eq!(toast(&ui), "view reset");
+    assert!(ui.session_focus.is_some(), "focus survives the reset");
+    press(&view, &mut ui, KeyCode::Esc);
+    assert_eq!(ui.session_focus, None);
+    assert_eq!(toast(&ui), "all sessions");
+    press(&view, &mut ui, KeyCode::Esc);
+    assert_eq!(toast(&ui), "view reset");
+}
+
+/// Focus on a live process without a transcript: an empty overview that says so.
+#[test]
+fn focus_on_a_process_without_transcript() {
+    let view = fixture::many_sessions();
+    let mut ui = home();
+    ui.session_focus = Some("claude:f00dcafe-job".to_string());
+    let out = draw(&view, &mut ui, 100, 24);
+    assert!(
+        out.contains("session f00dcafe has no transcript yet — a for all sessions"),
+        "{out}"
     );
 }

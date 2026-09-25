@@ -132,6 +132,13 @@ pub struct ClaudeProcessEntry {
     pub status: Option<ClaudeProcessStatus>,
     #[serde(default)]
     pub name: Option<String>,
+    /// How `name` was chosen: `derived` (from the working directory, e.g.
+    /// `yohaku-studio-c8`), `auto` (title / job id), or set by the user.
+    #[serde(default)]
+    pub name_source: Option<String>,
+    /// `interactive` or `bg` (background daemon / job session).
+    #[serde(default)]
+    pub kind: Option<String>,
     /// Epoch milliseconds.
     #[serde(default)]
     pub updated_at: Option<i64>,

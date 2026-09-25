@@ -364,6 +364,37 @@ fn runtime_session_ids_are_surfaced_as_aliases() {
     assert_eq!(ids.len(), events.len(), "event ids stay unique");
 }
 
+/// `sessionKind: "bg"` (background daemon / job sessions) becomes one
+/// `SessionKind` attribute (emitted again only when it changes).
+#[test]
+fn session_kind_is_an_attribute() {
+    let user = |n: u32, kind: &str| {
+        rec(
+            n,
+            n,
+            &format!(r#"{kind}"type":"user","message":{{"role":"user","content":"hi"}}"#),
+        )
+    };
+    let lines = vec![
+        user(1, ""),
+        user(2, r#""sessionKind":"bg","#),
+        user(3, r#""sessionKind":"bg","#),
+    ];
+    let (events, _) = decode_lines(&lines);
+    let kinds: Vec<&str> = events
+        .iter()
+        .filter_map(|e| match &e.payload {
+            EventPayload::AgentAttribute(a)
+                if a.key == agtrace_types::AgentAttributeKey::SessionKind =>
+            {
+                Some(a.value.as_str())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(kinds, vec!["bg"]);
+}
+
 fn plans(events: &[AgentEvent]) -> Vec<&agtrace_types::PlanPayload> {
     events
         .iter()

@@ -1,10 +1,14 @@
 //! Keybindings (design §6.2) and the UI-state reducer.
 //!
-//! Three screens: `1` overview (home), `2` agents (tree + timeline + feed), and
-//! the agent detail. Drill-down model: Enter / → / l open the selected agent's
-//! detail (from the overview or the agents screen), Esc / ← / h go back one
+//! Screens: `0` sessions, `1` overview (home), `2` agents (tree + timeline +
+//! feed), and the agent detail. Drill-down model: Enter / → / l open the selected
+//! agent's detail (from the overview or the agents screen), Esc / ← / h go back one
 //! level (close help, leave the detail to where it was opened from, return to the
-//! tree, then reset the view toggles). j/k act on the focused pane or section.
+//! tree, clear the filter, reset the view toggles, then drop the session focus).
+//! j/k act on the focused pane or section.
+//!
+//! Sessions: `0` lists them; Enter there narrows every screen to that session
+//! (session focus), `a` goes back to all sessions (on any screen).
 //!
 //! Direct keys: `i` `n` `r` `t` focus the Instructions / Now / Result / Timeline
 //! section of the detail (from the overview or the agents screen they open the
@@ -34,8 +38,11 @@ pub enum Action {
     /// Back one level: close help, leave the detail, return to the tree, or reset
     /// the view.
     Back,
+    ShowSessions,
     ShowOverview,
     ShowAgents,
+    /// Drop the session focus (all sessions).
+    AllSessions,
     /// Focus a detail section (opens the detail from the other screens).
     Section(DetailSection),
     /// Next / previous agent in tree order (detail: open its detail instead).
@@ -63,7 +70,7 @@ pub enum Action {
     Tail,
     Top,
     ToggleFeedFilter,
-    ToggleHideDone,
+    ToggleShowDone,
     ToggleAutoSelect,
     Rescan,
     ToggleHelp,
@@ -88,6 +95,7 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('u') if ctrl => Action::HalfPageUp,
         KeyCode::Char('d') if ctrl => Action::HalfPageDown,
         KeyCode::Char('q') => Action::Quit,
+        KeyCode::Char('0') => Action::ShowSessions,
         KeyCode::Char('1') => Action::ShowOverview,
         KeyCode::Char('2') => Action::ShowAgents,
         KeyCode::Char('+') | KeyCode::Char('=') | KeyCode::Char(']') => Action::WindowWider,
@@ -104,8 +112,9 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('G') | KeyCode::End => Action::Tail,
         KeyCode::Char('g') | KeyCode::Home => Action::Top,
         KeyCode::Char('f') => Action::ToggleFeedFilter,
-        KeyCode::Char('d') => Action::ToggleHideDone,
-        KeyCode::Char('a') => Action::ToggleAutoSelect,
+        KeyCode::Char('d') => Action::ToggleShowDone,
+        KeyCode::Char('a') => Action::AllSessions,
+        KeyCode::Char('A') => Action::ToggleAutoSelect,
         KeyCode::Char('i') => Action::Section(DetailSection::Instructions),
         KeyCode::Char('n') => Action::Section(DetailSection::Now),
         KeyCode::Char('r') => Action::Section(DetailSection::Result),
@@ -307,11 +316,17 @@ fn window_toast(before: LaneWindow, after: LaneWindow) -> String {
     format!("activity window: {what}{limit}")
 }
 
-/// Esc on the tree: back to the default screen (selection and auto-select are kept).
+/// View toggles that Esc on a home screen resets (before the session focus).
+fn view_toggled(ui: &UiState) -> bool {
+    !ui.collapsed.is_empty() || ui.show_done || ui.feed_filter == FeedFilter::Selected
+}
+
+/// Esc on the tree: back to the default screen (selection, auto-select and the
+/// session focus are kept).
 fn reset_view(ui: &mut UiState) {
     ui.collapsed.clear();
     ui.filter.clear();
-    ui.hide_done = false;
+    ui.show_done = false;
     ui.feed_filter = FeedFilter::All;
     ui.focus = Pane::Tree;
     ui.timeline_scroll = Scroll::Follow;
@@ -332,6 +347,9 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
     if ui.screen == Screen::Detail {
         return apply_detail(ui, action, vm, now);
     }
+    if ui.screen == Screen::Sessions {
+        return apply_sessions(ui, action, vm, now);
+    }
     let page = |h: usize| h.max(1);
     let target = scroll_target(ui);
     let height = match target {
@@ -346,8 +364,10 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
             toast = Some("rescanning…".to_string());
             effect = Effect::Rescan;
         }
+        Action::ShowSessions => show_sessions(ui, ui.screen),
         Action::ShowOverview => ui.screen = Screen::Overview,
         Action::ShowAgents => ui.screen = Screen::Agents,
+        Action::AllSessions => toast = Some(all_sessions(ui)),
         Action::WindowWider | Action::WindowNarrower => {
             let before = ui.window;
             ui.window = match action {
@@ -429,6 +449,9 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
                 ui.filter.clear();
                 toast = Some("filter cleared".to_string());
             }
+            _ if !view_toggled(ui) && ui.session_focus.is_some() => {
+                toast = Some(all_sessions(ui));
+            }
             _ => {
                 reset_view(ui);
                 toast = Some("view reset".to_string());
@@ -448,15 +471,12 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
                 FeedFilter::All => "messages: all".to_string(),
             });
         }
-        Action::ToggleHideDone => {
-            ui.hide_done = !ui.hide_done;
-            toast = Some(if ui.hide_done {
-                format!(
-                    "done agents hidden ({}) — d to show",
-                    vm.status.done_hideable
-                )
+        Action::ToggleShowDone => {
+            ui.show_done = !ui.show_done;
+            toast = Some(if ui.show_done {
+                "finished agents shown — d to fold".to_string()
             } else {
-                "done agents shown".to_string()
+                "finished agents folded — d to show".to_string()
             });
         }
         Action::ToggleAutoSelect => {
@@ -487,8 +507,10 @@ fn apply_detail(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Insta
             return Effect::Rescan;
         }
         Action::Back => ui.screen = ui.detail_return,
+        Action::ShowSessions => show_sessions(ui, ui.detail_return),
         Action::ShowOverview => ui.screen = Screen::Overview,
         Action::ShowAgents => ui.screen = Screen::Agents,
+        Action::AllSessions => ui.toast = Some(Toast::new(all_sessions(ui), now)),
         Action::NextPane => focus_section(ui, ui.detail_section.next()),
         Action::PrevPane => focus_section(ui, ui.detail_section.prev()),
         Action::Section(s) => focus_section(ui, s),
@@ -549,12 +571,117 @@ fn apply_detail(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Insta
         Action::Open
         | Action::ToggleCollapse
         | Action::ToggleFeedFilter
-        | Action::ToggleHideDone
+        | Action::ToggleShowDone
         | Action::ToggleAutoSelect
         | Action::FilterChar(_)
         | Action::FilterBackspace
         | Action::FilterAccept
         | Action::FilterCancel => {}
+    }
+    Effect::None
+}
+
+/// Open the sessions screen; Enter / Esc there return to `back` (overview or
+/// agents screen).
+fn show_sessions(ui: &mut UiState, back: Screen) {
+    ui.sessions_return = match back {
+        Screen::Agents => Screen::Agents,
+        _ => Screen::Overview,
+    };
+    ui.screen = Screen::Sessions;
+    ui.session_cursor = None;
+    ui.filter_editing = false;
+}
+
+/// Drop the session focus; the toast says what happened.
+fn all_sessions(ui: &mut UiState) -> String {
+    if ui.session_focus.take().is_some() {
+        "all sessions".to_string()
+    } else {
+        "showing all sessions — 0 to pick one".to_string()
+    }
+}
+
+/// Keys on the sessions screen: j/k pick a session, Enter focuses it, `a` shows
+/// all, space lists / folds the older ones, Esc returns without a change.
+fn apply_sessions(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant) -> Effect {
+    let rows = &vm.sessions.rows;
+    let cur = ui
+        .session_cursor
+        .as_deref()
+        .and_then(|id| rows.iter().position(|r| r.id == id))
+        .or_else(|| vm.sessions.selected_index());
+    let last = rows.len().saturating_sub(1);
+    let jump = ui.viewport.tree.max(2) / 2;
+    let mut toast: Option<String> = None;
+    let go = |to: usize, ui: &mut UiState| {
+        if let Some(r) = rows.get(to) {
+            ui.session_cursor = Some(r.id.clone());
+        }
+    };
+    match action {
+        Action::Quit => return Effect::Quit,
+        Action::Rescan => {
+            ui.toast = Some(Toast::new("rescanning…", now));
+            return Effect::Rescan;
+        }
+        Action::ToggleHelp => ui.show_help = true,
+        Action::Down | Action::NextAgent => go(cur.map_or(0, |i| (i + 1).min(last)), ui),
+        Action::Up | Action::PrevAgent => go(cur.map_or(0, |i| i.saturating_sub(1)), ui),
+        Action::PageDown | Action::HalfPageDown => go(cur.map_or(0, |i| (i + jump).min(last)), ui),
+        Action::PageUp | Action::HalfPageUp => go(cur.map_or(0, |i| i.saturating_sub(jump)), ui),
+        Action::Tail => go(last, ui),
+        Action::Top => go(0, ui),
+        Action::Open => {
+            if let Some(r) = cur.and_then(|i| rows.get(i)) {
+                ui.session_focus = Some(r.id.clone());
+                if r.has_transcript {
+                    ui.selected = Some(r.id.clone());
+                    ui.timeline_scroll = Scroll::Follow;
+                }
+                ui.auto_select = false;
+                ui.screen = ui.sessions_return;
+                toast = Some(format!("session: {} — a for all sessions", r.name));
+            }
+        }
+        Action::AllSessions => toast = Some(all_sessions(ui)),
+        Action::Back => ui.screen = ui.sessions_return,
+        Action::ShowOverview => ui.screen = Screen::Overview,
+        Action::ShowAgents => ui.screen = Screen::Agents,
+        Action::ToggleCollapse => {
+            ui.show_older = !ui.show_older;
+            toast = Some(if ui.show_older {
+                "older sessions listed — space to fold".to_string()
+            } else {
+                format!(
+                    "older sessions folded ({}) — space to list",
+                    vm.sessions.older
+                )
+            });
+        }
+        Action::WindowWider | Action::WindowNarrower => {
+            let before = ui.window;
+            ui.window = match action {
+                Action::WindowWider => before.wider(),
+                _ => before.narrower(),
+            };
+            toast = Some(window_toast(before, ui.window));
+        }
+        Action::ShowSessions
+        | Action::Section(_)
+        | Action::StartFilter
+        | Action::FilterChar(_)
+        | Action::FilterBackspace
+        | Action::FilterAccept
+        | Action::FilterCancel
+        | Action::NextPane
+        | Action::PrevPane
+        | Action::ToggleFeedFilter
+        | Action::ToggleShowDone
+        | Action::ToggleAutoSelect => {}
+    }
+    if let Some(text) = toast {
+        ui.toast = Some(Toast::new(text, now));
     }
     Effect::None
 }

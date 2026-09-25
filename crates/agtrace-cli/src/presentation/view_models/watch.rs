@@ -46,6 +46,8 @@ impl Pane {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Screen {
+    /// `0`: the sessions of the workspace (pick one to focus on).
+    Sessions,
     /// `1`: every agent with status, context, activity lane and current work.
     #[default]
     Overview,
@@ -211,6 +213,10 @@ impl Scroll {
     }
 }
 
+/// The agents tree folds a parent's finished children only when it has more than
+/// this many of them (the overview always folds them).
+pub const DONE_FOLD_MIN: usize = 5;
+
 /// Wrapped line count and visible height of one detail section (last frame).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SectionMetrics {
@@ -276,14 +282,25 @@ pub struct UiState {
     pub detail_scroll: [Scroll; 4],
     /// Overview activity lane span.
     pub window: LaneWindow,
+    /// Root id of the session the screens are narrowed to (`Enter` on the sessions
+    /// screen); None = all sessions.
+    pub session_focus: Option<String>,
+    /// Session under the cursor on the sessions screen.
+    pub session_cursor: Option<String>,
+    /// Screen the sessions screen returns to (Enter / Esc).
+    pub sessions_return: Screen,
+    /// Sessions screen: older (ended) sessions are listed instead of folded.
+    pub show_older: bool,
     pub selected: Option<String>,
     pub collapsed: BTreeSet<String>,
     pub focus: Pane,
     pub timeline_scroll: Scroll,
     pub feed_scroll: Scroll,
     pub feed_filter: FeedFilter,
-    /// Hide Done / Killed agents (kept when a descendant is still shown).
-    pub hide_done: bool,
+    /// Show finished (done / killed) agents. Off (default): the overview folds
+    /// them into one line per session, the agents tree folds them under a parent
+    /// that has more than [`DONE_FOLD_MIN`] of them.
+    pub show_done: bool,
     /// `/` name filter (case-insensitive substring); empty = off. Matching agents
     /// are shown with their ancestors, ignoring folds.
     pub filter: String,
@@ -312,13 +329,17 @@ impl Default for UiState {
             detail_auto: false,
             detail_scroll: initial_detail_scroll(),
             window: LaneWindow::M60,
+            session_focus: None,
+            session_cursor: None,
+            sessions_return: Screen::Overview,
+            show_older: false,
             selected: None,
             collapsed: BTreeSet::new(),
             focus: Pane::Tree,
             timeline_scroll: Scroll::Follow,
             feed_scroll: Scroll::Follow,
             feed_filter: FeedFilter::All,
-            hide_done: false,
+            show_done: false,
             filter: String::new(),
             filter_editing: false,
             auto_select: false,
@@ -348,6 +369,8 @@ impl UiState {
 #[derive(Debug, Clone, Serialize)]
 pub struct WatchScreenVm {
     pub screen: Screen,
+    /// Every session of the workspace (sessions screen, overview summary).
+    pub sessions: SessionsVm,
     /// Built on the overview screen only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub overview: Option<OverviewVm>,
@@ -407,6 +430,8 @@ pub struct AgentRowVm {
     pub has_children: bool,
     /// Descendants not shown because this node is collapsed.
     pub hidden_descendants: usize,
+    /// Finished children folded away (agents tree, more than [`DONE_FOLD_MIN`]).
+    pub folded_done: usize,
     /// A tool call is currently open.
     pub busy_tool: bool,
 }
@@ -506,21 +531,26 @@ pub struct FeedRowVm {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StatusBarVm {
+    /// Scope of the view: the watch scope, or `session <name>` while focused.
     pub scope: String,
+    /// Name of the focused session (None = all sessions).
+    pub focus: Option<String>,
+    /// Sessions of the workspace and how many are live.
+    pub sessions: usize,
+    pub live: usize,
+    /// Agents in view (the focused session's while focused).
     pub agents: usize,
     pub running: usize,
     pub idle: usize,
-    /// Agents hidden by the "hide done" toggle.
-    pub hidden: usize,
-    /// Agents the "hide done" toggle hides when it is on.
-    pub done_hideable: usize,
+    /// Finished agents folded away on this screen (`d` shows them).
+    pub folded: usize,
     /// Undecodable / schema-mismatched lines over all agents.
     pub diagnostics: u64,
     /// Watcher errors (I/O, permissions).
     pub errors: usize,
     pub last_error: Option<String>,
     pub feed_filter: FeedFilter,
-    pub hide_done: bool,
+    pub show_done: bool,
     pub auto_select: bool,
     /// Collapsed tree nodes.
     pub collapsed: usize,
@@ -541,15 +571,20 @@ pub struct OverviewVm {
     pub window: String,
     /// Time covered by one lane cell (`2m`).
     pub cell: String,
-    /// One row per tree row (same order, fold and hide-done state).
+    /// One row per tree row (same order, folds).
     pub rows: Vec<OverviewRowVm>,
+    /// Older sessions left out (listed on the sessions screen).
+    pub older_hidden: usize,
 }
 
-/// Summary line printed above each root's block.
+/// Summary line printed above each root's block (one per session).
 #[derive(Debug, Clone, Serialize)]
 pub struct RootHeaderVm {
+    /// Session display name.
     pub label: String,
     pub provider: String,
+    pub bg: bool,
+    pub state: SessionStateVm,
     pub status: StatusVm,
     /// Since the root started.
     pub age_secs: Option<i64>,
@@ -561,6 +596,94 @@ pub struct RootHeaderVm {
     /// Agents in the root's tree (itself included) and how many are running.
     pub agents: usize,
     pub running: usize,
+    /// Finished agents of the session folded away (printed after its rows).
+    pub folded: FoldedVm,
+}
+
+/// Finished agents (and the session's other transcripts) folded into one line.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+pub struct FoldedVm {
+    pub done: usize,
+    pub killed: usize,
+    /// Earlier / `/clear` transcripts of the session.
+    pub transcripts: usize,
+}
+
+impl FoldedVm {
+    pub fn total(&self) -> usize {
+        self.done + self.killed + self.transcripts
+    }
+}
+
+// ============================================================================
+// Sessions
+// ============================================================================
+
+/// Liveness of a session (sort order).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionStateVm {
+    Busy,
+    Idle,
+    Recent,
+    Older,
+}
+
+impl SessionStateVm {
+    pub fn is_live(self) -> bool {
+        matches!(self, SessionStateVm::Busy | SessionStateVm::Idle)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SessionsVm {
+    /// Watch scope (`project agtrace · since 2h`).
+    pub scope: String,
+    /// Listed sessions, in order (older ones only when `show_older`).
+    pub rows: Vec<SessionRowVm>,
+    pub live: usize,
+    pub recent: usize,
+    pub older: usize,
+    /// Older sessions not listed (folded into one line).
+    pub older_folded: usize,
+    /// Root id of the focused session.
+    pub focus: Option<String>,
+}
+
+impl SessionsVm {
+    pub fn total(&self) -> usize {
+        self.live + self.recent + self.older
+    }
+
+    pub fn selected_index(&self) -> Option<usize> {
+        self.rows.iter().position(|r| r.selected)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SessionRowVm {
+    /// Root agent id.
+    pub id: String,
+    /// `claude_code` / `codex`.
+    pub provider: String,
+    pub name: String,
+    /// The name is only the short id.
+    pub name_is_id: bool,
+    pub short_id: String,
+    pub bg: bool,
+    pub state: SessionStateVm,
+    /// False: a live process that has not written a transcript yet.
+    pub has_transcript: bool,
+    pub agents: usize,
+    pub running: usize,
+    /// Root context occupancy.
+    pub ctx: Option<CtxVm>,
+    /// Since the last write.
+    pub last_secs: Option<i64>,
+    /// What the root is doing now.
+    pub now: NowVm,
+    pub selected: bool,
+    pub focused: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

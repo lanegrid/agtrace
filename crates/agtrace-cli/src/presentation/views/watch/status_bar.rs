@@ -1,12 +1,14 @@
 //! One-line status bar.
 //!
 //! ```text
-//!  TIMELINE · lead  9 agents (4 running, 3 idle) · hide done      j/k scroll · G follow · Esc back
+//!  OVERVIEW  2 sessions (2 live) · 9 agents (4 run) · 1 folded   ↵ detail · 0 sessions · ? help
+//!  OVERVIEW  session: s-lead · 5 agents (3 run)          ↵ detail · a all · 0 sessions · ? help
 //! ```
 //!
 //! Left: the mode label (screen, focused pane or detail section, and whose
-//! timeline / detail), then the live toast, or else agent counts, diagnostics,
-//! errors and active toggles. Right: key hints for the screen / focused pane.
+//! timeline / detail), then the live toast, or else the session counts (or the
+//! focused session), agent counts, diagnostics, errors and active toggles. Right:
+//! key hints for the screen / focused pane.
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -66,6 +68,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
             vm.focus_pane,
             !toggles.is_empty(),
             !s.filter.is_empty(),
+            s.focus.is_some(),
         )
     };
     let essential = fit(&items, 0);
@@ -94,21 +97,39 @@ const fn hint(text: &'static str, drop_rank: u8) -> Hint {
 
 /// Key hints of the screen / focused pane; `Esc:reset` only on the home views
 /// (overview, agents tree) with toggles active (`Esc:clear filter` while a `/`
-/// filter is set: Esc clears it first).
-pub fn hints(screen: Screen, focus: Pane, toggles_active: bool, filtered: bool) -> Vec<Hint> {
+/// filter is set: Esc clears it first); `a all` while a session is focused.
+pub fn hints(
+    screen: Screen,
+    focus: Pane,
+    toggles_active: bool,
+    filtered: bool,
+    session_focus: bool,
+) -> Vec<Hint> {
+    let all = || hint("a all", 1);
     let (mut out, home) = match (screen, focus) {
-        (Screen::Overview, _) => (
-            vec![
-                hint("↵ detail", 0),
-                hint("/ find", 1),
-                hint("+/- window", 3),
-                hint("space fold", 4),
-                hint("d done", 5),
-                hint("2 agents", 2),
+        (Screen::Sessions, _) => {
+            let mut out = vec![hint("↵ focus", 0), hint("space older", 3)];
+            if session_focus {
+                out.push(all());
+            }
+            out.extend([hint("Esc back", 2), hint("? help", 0)]);
+            (out, false)
+        }
+        (Screen::Overview, _) => {
+            let mut out = vec![hint("↵ detail", 0), hint("/ find", 3)];
+            if session_focus {
+                out.push(all());
+            }
+            out.extend([
+                hint("0 sessions", 2),
+                hint("+/- window", 5),
+                hint("space fold", 6),
+                hint("d done", 4),
+                hint("2 agents", 4),
                 hint("? help", 0),
-            ],
-            true,
-        ),
+            ]);
+            (out, true)
+        }
         (Screen::Detail, _) => (
             vec![
                 hint("i/n/r/t section", 1),
@@ -119,18 +140,21 @@ pub fn hints(screen: Screen, focus: Pane, toggles_active: bool, filtered: bool) 
             ],
             false,
         ),
-        (Screen::Agents, Pane::Tree) => (
-            vec![
-                hint("↵ detail", 0),
-                hint("/ find", 2),
-                hint("space fold", 3),
-                hint("f msgs", 4),
-                hint("d done", 5),
-                hint("1 overview", 1),
+        (Screen::Agents, Pane::Tree) => {
+            let mut out = vec![hint("↵ detail", 0), hint("/ find", 3)];
+            if session_focus {
+                out.push(all());
+            }
+            out.extend([
+                hint("space fold", 4),
+                hint("f msgs", 5),
+                hint("d done", 6),
+                hint("0 sessions", 2),
+                hint("1 overview", 2),
                 hint("? help", 0),
-            ],
-            true,
-        ),
+            ]);
+            (out, true)
+        }
         (Screen::Agents, Pane::Timeline) => (
             vec![
                 hint("↵ detail", 1),
@@ -183,6 +207,7 @@ fn mode_label(vm: &WatchScreenVm) -> String {
         return "FIND".to_string();
     }
     match (vm.screen, vm.focus_pane) {
+        (Screen::Sessions, _) => "SESSIONS".to_string(),
         (Screen::Overview, _) => "OVERVIEW".to_string(),
         (Screen::Detail, _) => match &vm.detail {
             Some(d) => format!("DETAIL · {}", d.section.title().to_uppercase()),
@@ -204,8 +229,8 @@ fn toggles(s: &StatusBarVm) -> Vec<String> {
     if s.feed_filter == FeedFilter::Selected {
         out.push("feed:selected".to_string());
     }
-    if s.hide_done {
-        out.push("hide done".to_string());
+    if s.show_done {
+        out.push("done shown".to_string());
     }
     if s.collapsed > 0 {
         out.push(format!("{} collapsed", s.collapsed));
@@ -220,12 +245,32 @@ fn info(s: &StatusBarVm, toggles: &[String], counts: bool, spans: &mut Vec<Span<
     // Separator before every item but the first.
     let sep = |spans: &Vec<Span<'static>>| (spans.len() > base).then(|| Span::styled(" · ", dim()));
     if counts {
+        match &s.focus {
+            Some(name) => {
+                spans.push(Span::styled(
+                    format!("session: {}", super::style::clip(name, 28)),
+                    Style::default().fg(FOCUS_COLOR),
+                ));
+            }
+            None => {
+                let noun = if s.sessions == 1 {
+                    "session"
+                } else {
+                    "sessions"
+                };
+                spans.push(Span::raw(format!(
+                    "{} {noun} ({} live)",
+                    s.sessions, s.live
+                )));
+            }
+        }
+        spans.push(Span::styled(" · ", dim()));
         spans.push(Span::raw(format!(
-            "{} agents ({} running, {} idle)",
-            s.agents, s.running, s.idle
+            "{} agents ({} run)",
+            s.agents, s.running
         )));
-        if s.hidden > 0 {
-            spans.push(Span::styled(format!(" {} hidden", s.hidden), dim()));
+        if s.folded > 0 {
+            spans.push(Span::styled(format!(" · {} folded", s.folded), dim()));
         }
     }
     if s.diagnostics > 0 {

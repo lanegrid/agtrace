@@ -63,6 +63,7 @@ pub use agtrace_types::{
     RepositoryHash,
     SessionMetadata,
     SessionStats,
+    SlashCommandPayload,
     StepStatus,
     SubActionStatus,
     // Token usage types

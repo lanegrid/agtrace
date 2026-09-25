@@ -4,13 +4,15 @@ expression: help
 ---
 Monitor live agents in real-time.
 
-Shows every live root session of the current project (Claude Code and Codex) with
-its whole agent tree: teammates, subagents, forks and Codex child threads. The
-right pane follows the selected agent; the bottom pane is the inter-agent message
-feed. Press ? in the TUI for key bindings.
+Shows the sessions of the current project (Claude Code and Codex), live ones
+first, each with its agent tree: teammates, subagents, forks and Codex child
+threads. Screens: 0 sessions (Enter focuses one, a shows all again), 1 overview
+(active agents per session; finished ones fold into one line, d shows them),
+2 agents (tree, timeline and inter-agent message feed), Enter on an agent for its
+detail. Press ? in the TUI for key bindings.
 
-By default, root sessions whose log changed within --since (2h) or whose Claude
-process is still running are shown. Use --session to watch one session tree.
+By default, sessions whose log changed within --since (2h) or whose Claude process
+is still running are shown. Use --session to watch one session tree.
 
 Usage: agtrace watch [OPTIONS]
 
