@@ -10,7 +10,7 @@ expression: ov
       "id": "claude:s-lead",
       "depth": 0,
       "guides": [],
-      "is_last_sibling": false,
+      "is_last_sibling": true,
       "label": "Audit the parser with a team of reviewers",
       "badge": null,
       "provider": "claude_code",
@@ -29,9 +29,6 @@ expression: ov
         "summary": "mise run test",
         "elapsed_secs": 10
       },
-      "selected": true,
-      "collapsed": false,
-      "hidden_descendants": 0,
       "root": {
         "label": "Audit the parser with a team of reviewers",
         "provider": "claude_code",
@@ -51,7 +48,7 @@ expression: ov
         "agents": 5,
         "running": 2,
         "folded": {
-          "done": 1,
+          "done": 0,
           "killed": 0,
           "transcripts": 0
         }
@@ -78,9 +75,6 @@ expression: ov
         "type": "idle",
         "secs": 239
       },
-      "selected": false,
-      "collapsed": false,
-      "hidden_descendants": 0,
       "root": null
     },
     {
@@ -104,9 +98,29 @@ expression: ov
         "type": "idle",
         "secs": 201
       },
-      "selected": false,
-      "collapsed": false,
-      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "claude:s-lead/a7ac2e91",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "explore call sites",
+      "badge": "S",
+      "provider": "claude_code",
+      "status": "done",
+      "ctx": {
+        "pct": 15,
+        "used_tokens": 30000,
+        "window_tokens": 200000,
+        "provenance": "table"
+      },
+      "lane": "          ▃·▂  ",
+      "lane_tones": "          rrd  ",
+      "now": {
+        "type": "result",
+        "text": "found 2 call sites"
+      },
       "root": null
     },
     {
@@ -132,9 +146,6 @@ expression: ov
         "summary": "cargo bench -p agtrace-providers",
         "elapsed_secs": 40
       },
-      "selected": false,
-      "collapsed": false,
-      "hidden_descendants": 0,
       "root": null
     },
     {
@@ -158,9 +169,6 @@ expression: ov
         "type": "idle",
         "secs": 159
       },
-      "selected": false,
-      "collapsed": false,
-      "hidden_descendants": 0,
       "root": {
         "label": "triage the flaky tests",
         "provider": "codex",
@@ -180,7 +188,7 @@ expression: ov
         "agents": 4,
         "running": 2,
         "folded": {
-          "done": 1,
+          "done": 0,
           "killed": 0,
           "transcripts": 0
         }
@@ -190,7 +198,7 @@ expression: ov
       "id": "codex:t-judge",
       "depth": 1,
       "guides": [],
-      "is_last_sibling": true,
+      "is_last_sibling": false,
       "label": "judge",
       "badge": null,
       "provider": "codex",
@@ -209,16 +217,13 @@ expression: ov
         "summary": "cargo test -p agtrace-cli",
         "elapsed_secs": 240
       },
-      "selected": false,
-      "collapsed": false,
-      "hidden_descendants": 0,
       "root": null
     },
     {
       "id": "codex:t-judge-x",
       "depth": 2,
       "guides": [
-        false
+        true
       ],
       "is_last_sibling": true,
       "label": "x",
@@ -237,9 +242,29 @@ expression: ov
         "type": "said",
         "text": "Reproducing the flake in a loop."
       },
-      "selected": false,
-      "collapsed": false,
-      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "codex:t-scout",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": true,
+      "label": "scout",
+      "badge": null,
+      "provider": "codex",
+      "status": "done",
+      "ctx": {
+        "pct": 15,
+        "used_tokens": 40000,
+        "window_tokens": 258400,
+        "provenance": "log"
+      },
+      "lane": "          ▂▂   ",
+      "lane_tones": "          rr   ",
+      "now": {
+        "type": "result",
+        "text": "3 flaky tests, all in watch_command.rs"
+      },
       "root": null
     }
   ],

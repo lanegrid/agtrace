@@ -1,8 +1,9 @@
-//! Agent detail screen: header, context history and totals, then four focusable
-//! sections (Instructions, Now, Result, Timeline) with wrapped, scrollable text.
+//! Agent detail (content of an agent node): header, context history and totals,
+//! then four sections (Instructions, Now, Result, Timeline) with wrapped,
+//! scrollable text; `i` `n` `r` `t` pick the focused one.
 //!
 //! ```text
-//! ┏ ▶ Detail · audit-A ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+//! ┏ ▶ audit-A ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 //! ┃ audit-A · teammate of s-lead (team audit) · general-purpose · ○ idle 3m     ┃
 //! ┃ ctx ██░░░░░░░░ 12% of 200k [table]  ▁▁▂   in 24k / out 10 · 1 turns · 1 tools┃
 //! ┃── [i] Instructions (1) ───────────────────────────────────────────────────── ┃
@@ -30,7 +31,7 @@ use super::style::{
 };
 use crate::presentation::presenters::watch::tokens;
 use crate::presentation::view_models::watch::{
-    ActivityVm, DetailSection, DetailVm, PlanVm, ResultVm, RowKind, SectionMetrics, StatusVm,
+    ActivityVm, DetailSection, DetailVm, Pane, PlanVm, ResultVm, RowKind, SectionMetrics, StatusVm,
     TaskStatusVm, TimelineRowVm, WatchScreenVm,
 };
 
@@ -49,10 +50,10 @@ struct Plan {
 
 fn block(vm: &WatchScreenVm) -> Block<'static> {
     let title = match &vm.detail {
-        Some(d) => format!(" Detail · {} ", d.title),
-        None => " Detail ".to_string(),
+        Some(d) => format!(" {} ", d.title),
+        None => " Agent ".to_string(),
     };
-    pane_block(true, vec![Span::raw(title)])
+    pane_block(vm.focus_pane == Pane::Content, vec![Span::raw(title)])
 }
 
 /// Section area inside the block (below the header rows).
@@ -63,8 +64,8 @@ fn sections_area(area: Rect, vm: &WatchScreenVm) -> Rect {
     body
 }
 
-/// Wrapped totals and visible body heights of the sections for `area` (the screen
-/// area of the detail block, i.e. without the status bar).
+/// Wrapped totals and visible body heights of the sections for `area` (the
+/// content pane).
 pub fn metrics(area: Rect, vm: &WatchScreenVm) -> [SectionMetrics; 4] {
     let Some(d) = &vm.detail else {
         return Default::default();
@@ -83,7 +84,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
     f.render_widget(block, area);
     let Some(d) = &vm.detail else {
         f.render_widget(
-            Paragraph::new(Line::styled(" agent not found — Esc to go back", dim())),
+            Paragraph::new(Line::styled(" agent not found", dim())),
             inner,
         );
         return;

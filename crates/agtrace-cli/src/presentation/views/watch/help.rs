@@ -7,30 +7,29 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 pub const KEYS: &[(&str, &str)] = &[
-    ("0 / 1 / 2", "sessions / overview / agents screen"),
-    ("Enter → l", "open the agent's detail (sessions: focus it)"),
-    ("a", "all sessions (drop the session focus)"),
-    ("Esc ← h", "back: help/detail/tree/filter/reset/focus"),
-    ("i n r t", "detail: instructions / now / result / timeline"),
-    ("Tab/S-Tab", "cycle panes (agents) / sections (detail)"),
-    ("j/k ↓/↑", "move selection, or scroll pane / section"),
-    ("J / K", "next / previous agent (also in the detail)"),
-    ("PgUp/PgDn", "page scroll (overview: move selection)"),
-    ("C-u/C-d", "half-page scroll"),
-    ("G / g", "jump to end (follow) / top"),
-    ("/", "find agents by name (↵ open, Esc clear)"),
-    ("+ - ] [", "overview activity window: 15m 60m 4h all"),
-    ("space", "fold / unfold node (sessions: older ones)"),
-    ("f", "messages: all ↔ selected agent"),
+    ("↑↓ j k", "navigator: move (content follows); else scroll"),
+    ("→ l", "expand; again: first child; on an agent: read it"),
+    ("← h", "collapse, else parent; content/messages: back"),
+    ("Enter", "read the selection (focus the content)"),
+    ("Esc", "clear filter, else go to the top node"),
+    ("i n r t", "instructions / now / result / timeline"),
+    ("Tab/S-Tab", "focus navigator → content → messages"),
+    ("PgUp/PgDn", "page in the focused pane"),
+    ("C-u/C-d", "half page"),
+    ("g / G", "top / end (messages: follow)"),
+    ("/", "find agents by name (Esc clears)"),
     ("d", "show / fold finished & killed agents"),
-    ("A", "auto-select most active agent"),
+    ("space", "expand / collapse the selected node"),
+    ("+ - ] [", "activity window: 15m 60m 4h all"),
+    ("s", "hide / show the navigator (below 80 cols)"),
+    ("A", "follow the most recently active agent"),
     ("R", "rescan now"),
     ("?", "toggle this help"),
     ("q / C-c", "quit"),
 ];
 
 pub fn render(f: &mut Frame, area: Rect) {
-    let w = 62.min(area.width);
+    let w = 64.min(area.width);
     let h = (KEYS.len() as u16 + 2).min(area.height);
     let popup = Rect {
         x: area.x + (area.width - w) / 2,

@@ -1,9 +1,81 @@
 ---
 source: crates/agtrace-cli/tests/watch_tui.rs
-expression: "screen(&view, &ui())"
+expression: vm
 ---
 {
-  "screen": "agents",
+  "nav": {
+    "rows": [
+      {
+        "key": "@top",
+        "kind": "top",
+        "depth": 0,
+        "guides": [],
+        "is_last_sibling": true,
+        "parent": null,
+        "label": "demo-project",
+        "provider": "",
+        "badge": null,
+        "status": "unknown",
+        "state": null,
+        "bg": false,
+        "live": 2,
+        "folded": null,
+        "ctx_pct": null,
+        "expandable": true,
+        "expanded": true,
+        "first_item": null,
+        "matched": false,
+        "selected": true
+      },
+      {
+        "key": "claude:s-lead",
+        "kind": "session",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": false,
+        "parent": "@top",
+        "label": "Audit the parser with a team of reviewers",
+        "provider": "claude_code",
+        "badge": null,
+        "status": "running",
+        "state": "busy",
+        "bg": false,
+        "live": 0,
+        "folded": null,
+        "ctx_pct": 42,
+        "expandable": true,
+        "expanded": false,
+        "first_item": null,
+        "matched": false,
+        "selected": false
+      },
+      {
+        "key": "codex:t-root",
+        "kind": "session",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": true,
+        "parent": "@top",
+        "label": "triage the flaky tests",
+        "provider": "codex",
+        "badge": null,
+        "status": "running",
+        "state": "busy",
+        "bg": false,
+        "live": 0,
+        "folded": null,
+        "ctx_pct": 12,
+        "expandable": true,
+        "expanded": false,
+        "first_item": null,
+        "matched": false,
+        "selected": false
+      }
+    ]
+  },
+  "content": {
+    "type": "overview"
+  },
   "sessions": {
     "scope": "project demo-project",
     "rows": [
@@ -30,9 +102,7 @@ expression: "screen(&view, &ui())"
           "name": "Bash",
           "summary": "mise run test",
           "elapsed_secs": 10
-        },
-        "selected": true,
-        "focused": false
+        }
       },
       {
         "id": "codex:t-root",
@@ -55,317 +125,280 @@ expression: "screen(&view, &ui())"
         "now": {
           "type": "said",
           "text": "Reproducing the flake in a loop."
-        },
-        "selected": false,
-        "focused": false
+        }
       }
     ],
     "live": 2,
     "recent": 0,
-    "older": 0,
-    "older_folded": 0,
-    "focus": null
+    "older": 0
   },
-  "tree": [
-    {
-      "id": "claude:s-lead",
-      "depth": 0,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "Audit the parser with a team of reviewers",
-      "provider": "claude_code",
-      "badge": null,
-      "status": "running",
-      "ctx_pct": 42,
-      "selected": true,
-      "collapsed": false,
-      "has_children": true,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": true
-    },
-    {
-      "id": "claude:s-audit-a",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "audit-A",
-      "provider": "claude_code",
-      "badge": "T",
-      "status": "idle",
-      "ctx_pct": 12,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "claude:s-audit-b",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "audit-B",
-      "provider": "claude_code",
-      "badge": "T",
-      "status": "idle",
-      "ctx_pct": 9,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "claude:s-lead/a7ac2e91",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "explore call sites",
-      "provider": "claude_code",
-      "badge": "S",
-      "status": "done",
-      "ctx_pct": 15,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "claude:s-lead/f0cc1a22",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": true,
-      "label": "fork: bench",
-      "provider": "claude_code",
-      "badge": "F",
-      "status": "running",
-      "ctx_pct": 75,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": true
-    },
-    {
-      "id": "codex:t-root",
-      "depth": 0,
-      "guides": [],
-      "is_last_sibling": true,
-      "label": "triage the flaky tests",
-      "provider": "codex",
-      "badge": null,
-      "status": "idle",
-      "ctx_pct": 12,
-      "selected": false,
-      "collapsed": false,
-      "has_children": true,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "codex:t-judge",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": false,
-      "label": "judge",
-      "provider": "codex",
-      "badge": null,
-      "status": "running",
-      "ctx_pct": 77,
-      "selected": false,
-      "collapsed": false,
-      "has_children": true,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": true
-    },
-    {
-      "id": "codex:t-judge-x",
-      "depth": 2,
-      "guides": [
-        true
-      ],
-      "is_last_sibling": true,
-      "label": "x",
-      "provider": "codex",
-      "badge": null,
-      "status": "running",
-      "ctx_pct": 5,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": false
-    },
-    {
-      "id": "codex:t-scout",
-      "depth": 1,
-      "guides": [],
-      "is_last_sibling": true,
-      "label": "scout",
-      "provider": "codex",
-      "badge": null,
-      "status": "done",
-      "ctx_pct": 15,
-      "selected": false,
-      "collapsed": false,
-      "has_children": false,
-      "hidden_descendants": 0,
-      "folded_done": 0,
-      "busy_tool": false
-    }
-  ],
-  "focus": {
-    "agent_id": "claude:s-lead",
-    "title": "s-lead",
-    "provider": "claude_code",
-    "kind": "main",
-    "team": null,
-    "status": "running",
-    "model": "claude-opus-5-5[1m]",
-    "ctx": {
-      "pct": 42,
-      "used_tokens": 420000,
-      "window_tokens": 1000000,
-      "provenance": "1m"
-    },
-    "activity": {
-      "type": "tool",
-      "name": "Bash",
-      "summary": "mise run test",
-      "elapsed_secs": 10,
-      "more": 0
-    },
+  "overview": {
+    "window": "60m",
+    "cell": "",
     "rows": [
       {
-        "time": "12:00",
-        "icon": "›",
-        "kind": "user",
-        "label": "user",
-        "text": "Audit the parser with a team of reviewers"
+        "id": "claude:s-lead",
+        "depth": 0,
+        "guides": [],
+        "is_last_sibling": true,
+        "label": "Audit the parser with a team of reviewers",
+        "badge": null,
+        "provider": "claude_code",
+        "status": "running",
+        "ctx": {
+          "pct": 42,
+          "used_tokens": 420000,
+          "window_tokens": 1000000,
+          "provenance": "1m"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "tool",
+          "name": "Bash",
+          "summary": "mise run test",
+          "elapsed_secs": 10
+        },
+        "root": {
+          "label": "Audit the parser with a team of reviewers",
+          "provider": "claude_code",
+          "bg": false,
+          "state": "busy",
+          "status": "running",
+          "age_secs": 300,
+          "model": "claude-opus-5-5[1m]",
+          "effort": "high",
+          "ctx": {
+            "pct": 42,
+            "used_tokens": 420000,
+            "window_tokens": 1000000,
+            "provenance": "1m"
+          },
+          "compactions": 1,
+          "agents": 5,
+          "running": 2,
+          "folded": {
+            "done": 0,
+            "killed": 0,
+            "transcripts": 0
+          }
+        }
       },
       {
-        "time": "12:00",
-        "icon": "◆",
-        "kind": "model_change",
-        "label": "model",
-        "text": "claude-opus-5"
-      },
-      {
-        "time": "12:00",
-        "icon": "•",
-        "kind": "assistant",
-        "label": "",
-        "text": "Spawning two reviewers and an explorer."
-      },
-      {
-        "time": "12:00",
-        "icon": "⇢",
-        "kind": "spawn",
-        "label": "spawn",
-        "text": "audit-A (teammate, general-purpose, claude-opus-5)"
-      },
-      {
-        "time": "12:00",
-        "icon": "⇢",
-        "kind": "spawn",
-        "label": "spawn",
-        "text": "audit-B (teammate, general-purpose)"
-      },
-      {
-        "time": "12:00",
-        "icon": "→",
-        "kind": "message_out",
+        "id": "claude:s-audit-a",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": false,
         "label": "audit-A",
-        "text": "NEW_TASK \"review parser\""
+        "badge": "T",
+        "provider": "claude_code",
+        "status": "idle",
+        "ctx": {
+          "pct": 12,
+          "used_tokens": 24000,
+          "window_tokens": 200000,
+          "provenance": "table"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "idle",
+          "secs": 239
+        },
+        "root": null
       },
       {
-        "time": "12:00",
-        "icon": "⇢",
-        "kind": "spawn",
-        "label": "spawn",
-        "text": "explore call sites (subagent, Explore, claude-sonnet-5)"
-      },
-      {
-        "time": "12:00",
-        "icon": "⇢",
-        "kind": "spawn",
-        "label": "spawn",
-        "text": "fork: bench (fork)"
-      },
-      {
-        "time": "12:00",
-        "icon": "⏹",
-        "kind": "interrupt",
-        "label": "interrupted",
-        "text": ""
-      },
-      {
-        "time": "12:00",
-        "icon": "↲",
-        "kind": "queued",
-        "label": "queued",
-        "text": "also check the tokenizer"
-      },
-      {
-        "time": "12:01",
-        "icon": "←",
-        "kind": "message_in",
-        "label": "audit-A",
-        "text": "MESSAGE \"done, found 3 bugs\""
-      },
-      {
-        "time": "12:01",
-        "icon": "◆",
-        "kind": "model_change",
-        "label": "model",
-        "text": "claude-opus-5 → claude-opus-5-5[1m]"
-      },
-      {
-        "time": "12:01",
-        "icon": "⟲",
-        "kind": "compaction",
-        "label": "compact",
-        "text": "974k→112k (auto)"
-      },
-      {
-        "time": "12:01",
-        "icon": "◇",
-        "kind": "lifecycle",
+        "id": "claude:s-audit-b",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": false,
         "label": "audit-B",
-        "text": "idle"
+        "badge": "T",
+        "provider": "claude_code",
+        "status": "idle",
+        "ctx": {
+          "pct": 9,
+          "used_tokens": 18000,
+          "window_tokens": 200000,
+          "provenance": "table"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "idle",
+          "secs": 201
+        },
+        "root": null
       },
       {
-        "time": "12:02",
-        "icon": "◇",
-        "kind": "lifecycle",
+        "id": "claude:s-lead/a7ac2e91",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": false,
         "label": "explore call sites",
-        "text": "done"
+        "badge": "S",
+        "provider": "claude_code",
+        "status": "done",
+        "ctx": {
+          "pct": 15,
+          "used_tokens": 30000,
+          "window_tokens": 200000,
+          "provenance": "table"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "result",
+          "text": "found 2 call sites"
+        },
+        "root": null
       },
       {
-        "time": "12:02",
-        "icon": "←",
-        "kind": "message_in",
-        "label": "explore call sites",
-        "text": "TASK_NOTIFY \"found 2 call sites\""
+        "id": "claude:s-lead/f0cc1a22",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": true,
+        "label": "fork: bench",
+        "badge": "F",
+        "provider": "claude_code",
+        "status": "running",
+        "ctx": {
+          "pct": 75,
+          "used_tokens": 150000,
+          "window_tokens": 200000,
+          "provenance": "table"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "tool",
+          "name": "Bash",
+          "summary": "cargo bench -p agtrace-providers",
+          "elapsed_secs": 40
+        },
+        "root": null
       },
       {
-        "time": "12:04",
-        "icon": "▸",
-        "kind": "tool",
-        "label": "Bash",
-        "text": "mise run test"
+        "id": "codex:t-root",
+        "depth": 0,
+        "guides": [],
+        "is_last_sibling": true,
+        "label": "triage the flaky tests",
+        "badge": null,
+        "provider": "codex",
+        "status": "idle",
+        "ctx": {
+          "pct": 12,
+          "used_tokens": 31000,
+          "window_tokens": 258400,
+          "provenance": "log"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "idle",
+          "secs": 159
+        },
+        "root": {
+          "label": "triage the flaky tests",
+          "provider": "codex",
+          "bg": false,
+          "state": "busy",
+          "status": "idle",
+          "age_secs": 295,
+          "model": "gpt-5.6",
+          "effort": "medium",
+          "ctx": {
+            "pct": 12,
+            "used_tokens": 31000,
+            "window_tokens": 258400,
+            "provenance": "log"
+          },
+          "compactions": 1,
+          "agents": 4,
+          "running": 2,
+          "folded": {
+            "done": 0,
+            "killed": 0,
+            "transcripts": 0
+          }
+        }
+      },
+      {
+        "id": "codex:t-judge",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": false,
+        "label": "judge",
+        "badge": null,
+        "provider": "codex",
+        "status": "running",
+        "ctx": {
+          "pct": 77,
+          "used_tokens": 200000,
+          "window_tokens": 258400,
+          "provenance": "log"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "tool",
+          "name": "exec",
+          "summary": "cargo test -p agtrace-cli",
+          "elapsed_secs": 240
+        },
+        "root": null
+      },
+      {
+        "id": "codex:t-judge-x",
+        "depth": 2,
+        "guides": [
+          true
+        ],
+        "is_last_sibling": true,
+        "label": "x",
+        "badge": null,
+        "provider": "codex",
+        "status": "running",
+        "ctx": {
+          "pct": 5,
+          "used_tokens": 12000,
+          "window_tokens": 258400,
+          "provenance": "log"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "said",
+          "text": "Reproducing the flake in a loop."
+        },
+        "root": null
+      },
+      {
+        "id": "codex:t-scout",
+        "depth": 1,
+        "guides": [],
+        "is_last_sibling": true,
+        "label": "scout",
+        "badge": null,
+        "provider": "codex",
+        "status": "done",
+        "ctx": {
+          "pct": 15,
+          "used_tokens": 40000,
+          "window_tokens": 258400,
+          "provenance": "log"
+        },
+        "lane": "",
+        "lane_tones": "",
+        "now": {
+          "type": "result",
+          "text": "3 flaky tests, all in watch_command.rs"
+        },
+        "root": null
       }
     ],
-    "follow": true
+    "older_hidden": 0
   },
   "feed": [
     {
@@ -377,8 +410,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "spawn teammate",
       "text": "general-purpose",
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:00",
@@ -389,8 +421,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "spawn teammate",
       "text": "general-purpose",
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:00",
@@ -401,8 +432,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "NEW_TASK",
       "text": "review parser",
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:00",
@@ -413,8 +443,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "spawn subagent",
       "text": "Explore",
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:00",
@@ -425,8 +454,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "spawn fork",
       "text": null,
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:00",
@@ -437,8 +465,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "spawn thread",
       "text": null,
-      "encrypted": false,
-      "involves_selected": false
+      "encrypted": false
     },
     {
       "time": "12:00",
@@ -449,8 +476,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "NEW_TASK",
       "text": null,
-      "encrypted": true,
-      "involves_selected": false
+      "encrypted": true
     },
     {
       "time": "12:00",
@@ -461,8 +487,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "spawn thread",
       "text": null,
-      "encrypted": false,
-      "involves_selected": false
+      "encrypted": false
     },
     {
       "time": "12:00",
@@ -473,8 +498,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "NEW_TASK",
       "text": null,
-      "encrypted": true,
-      "involves_selected": false
+      "encrypted": true
     },
     {
       "time": "12:01",
@@ -485,8 +509,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "MESSAGE",
       "text": "done, found 3 bugs",
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:01",
@@ -497,8 +520,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "spawn thread",
       "text": null,
-      "encrypted": false,
-      "involves_selected": false
+      "encrypted": false
     },
     {
       "time": "12:01",
@@ -507,8 +529,7 @@ expression: "screen(&view, &ui())"
       "to": [],
       "tag": "idle",
       "text": null,
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:02",
@@ -519,8 +540,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "FINAL_ANSWER",
       "text": "3 flaky tests, all in watch_command.rs",
-      "encrypted": false,
-      "involves_selected": false
+      "encrypted": false
     },
     {
       "time": "12:02",
@@ -529,8 +549,7 @@ expression: "screen(&view, &ui())"
       "to": [],
       "tag": "done",
       "text": null,
-      "encrypted": false,
-      "involves_selected": false
+      "encrypted": false
     },
     {
       "time": "12:02",
@@ -541,8 +560,7 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "MESSAGE",
       "text": null,
-      "encrypted": true,
-      "involves_selected": false
+      "encrypted": true
     },
     {
       "time": "12:02",
@@ -551,8 +569,7 @@ expression: "screen(&view, &ui())"
       "to": [],
       "tag": "done",
       "text": null,
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     },
     {
       "time": "12:02",
@@ -563,13 +580,14 @@ expression: "screen(&view, &ui())"
       ],
       "tag": "TASK_NOTIFY",
       "text": "found 2 call sites",
-      "encrypted": false,
-      "involves_selected": true
+      "encrypted": false
     }
   ],
+  "feed_scope": "all",
   "status": {
-    "scope": "project demo-project",
-    "focus": null,
+    "crumbs": [
+      "demo-project"
+    ],
     "sessions": 2,
     "live": 2,
     "agents": 9,
@@ -579,17 +597,16 @@ expression: "screen(&view, &ui())"
     "diagnostics": 0,
     "errors": 0,
     "last_error": null,
-    "feed_filter": "all",
     "show_done": false,
     "auto_select": false,
-    "collapsed": 0,
     "filter": "",
     "filter_editing": false,
     "matches": 0
   },
-  "focus_pane": "tree",
-  "timeline_scroll": "follow",
+  "focus_pane": "navigator",
+  "content_scroll": 0,
   "feed_scroll": "follow",
+  "nav_hidden": false,
   "show_help": false,
   "toast": null
 }

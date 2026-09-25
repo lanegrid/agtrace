@@ -28,9 +28,7 @@ expression: vm.sessions
         "name": "Bash",
         "summary": "mise run test",
         "elapsed_secs": 10
-      },
-      "selected": true,
-      "focused": false
+      }
     },
     {
       "id": "codex:t-root",
@@ -53,9 +51,7 @@ expression: vm.sessions
       "now": {
         "type": "said",
         "text": "Reproducing the flake in a loop."
-      },
-      "selected": false,
-      "focused": false
+      }
     },
     {
       "id": "claude:c-team",
@@ -80,9 +76,7 @@ expression: vm.sessions
         "name": "Bash",
         "summary": "cargo publish --dry-run",
         "elapsed_secs": 30
-      },
-      "selected": false,
-      "focused": false
+      }
     },
     {
       "id": "claude:f00dcafe-job",
@@ -99,9 +93,7 @@ expression: vm.sessions
       "last_secs": 180,
       "now": {
         "type": "none"
-      },
-      "selected": false,
-      "focused": false
+      }
     },
     {
       "id": "claude:c-done",
@@ -119,14 +111,30 @@ expression: vm.sessions
       "now": {
         "type": "idle",
         "secs": 1400
-      },
-      "selected": false,
-      "focused": false
+      }
+    },
+    {
+      "id": "codex:x-old",
+      "provider": "codex",
+      "name": "bump the lockfile",
+      "name_is_id": false,
+      "short_id": "x-old",
+      "bg": false,
+      "state": "older",
+      "has_transcript": true,
+      "agents": 1,
+      "running": 0,
+      "ctx": null,
+      "last_secs": 9290,
+      "now": {
+        "type": "ended",
+        "status": "done",
+        "secs": 9290,
+        "reason": null
+      }
     }
   ],
   "live": 4,
   "recent": 1,
-  "older": 1,
-  "older_folded": 1,
-  "focus": null
+  "older": 1
 }

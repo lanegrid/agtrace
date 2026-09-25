@@ -1,0 +1,20 @@
+---
+source: crates/agtrace-cli/tests/watch_tui.rs
+expression: "nav(&vm).join(\"\\n\")"
+---
+▾ Top demo-project  ◀
+  ▾ Session Audit the parser with a team of reviewers
+      Agent audit-A
+      Agent audit-B
+      Agent explore call sites
+      Agent fork: bench
+  ▾ Session triage the flaky tests
+    ▾ Agent judge
+        Agent x
+      Agent scout
+  ▾ Session Ship the release
+      Agent step r0
+    ▸ Fold ⊘ 8 killed · ✓ 3 done · 1 earlier (d)
+    Session f00dcafe
+    Session rename the config keys
+  ▸ Older 1 older session

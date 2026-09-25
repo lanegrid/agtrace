@@ -33,10 +33,11 @@ Use --refresh to force a re-scan of all logs."
 
 Shows the sessions of the current project (Claude Code and Codex), live ones
 first, each with its agent tree: teammates, subagents, forks and Codex child
-threads. Screens: 0 sessions (Enter focuses one, a shows all again), 1 overview
-(active agents per session; finished ones fold into one line, d shows them),
-2 agents (tree, timeline and inter-agent message feed), Enter on an agent for its
-detail. Press ? in the TUI for key bindings.
+threads. A navigator on the left lists the scope, its sessions and their agents
+(finished ones fold into one node, d shows them in place); the right side shows
+the selected node (the overview, a session, an agent's detail) above the messages
+scoped to it. Up/Down move, Right/Left expand and collapse or walk the
+hierarchy, Enter reads the selection. Press ? in the TUI for key bindings.
 
 By default, sessions whose log changed within --since (2h) or whose Claude process
 is still running are shown. Use --session to watch one session tree."

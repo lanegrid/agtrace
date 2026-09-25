@@ -1,10 +1,12 @@
 //! View models and UI state of the multi-agent watch TUI (design §6).
 //!
-//! `WatchScreenVm` is a read-only snapshot built by
+//! The TUI is built around an always-visible **navigator** (scope → sessions →
+//! agent trees, with folded groups) and a content pane that shows the selected
+//! node. `WatchScreenVm` is a read-only snapshot built by
 //! [`crate::presentation::presenters::watch::build_screen`] from a
 //! `WorkspaceView` plus the [`UiState`]; the views only lay it out.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use chrono::FixedOffset;
@@ -14,47 +16,45 @@ use serde::Serialize;
 // UI state (owned by the handler, read by the presenter)
 // ============================================================================
 
-/// Pane that receives scroll keys.
+/// Pane that receives the movement / scroll keys (`Tab` cycles).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Pane {
+    /// The navigator: ↑/↓ move the selection, ←/→ walk the hierarchy.
     #[default]
-    Tree,
-    Timeline,
+    Navigator,
+    /// The content pane of the selected node: ↑/↓ scroll it.
+    Content,
+    /// The message feed: ↑/↓ scroll it.
     Feed,
 }
 
 impl Pane {
     pub fn next(self) -> Self {
         match self {
-            Pane::Tree => Pane::Timeline,
-            Pane::Timeline => Pane::Feed,
-            Pane::Feed => Pane::Tree,
+            Pane::Navigator => Pane::Content,
+            Pane::Content => Pane::Feed,
+            Pane::Feed => Pane::Navigator,
         }
     }
 
     pub fn prev(self) -> Self {
         match self {
-            Pane::Tree => Pane::Feed,
-            Pane::Timeline => Pane::Tree,
-            Pane::Feed => Pane::Timeline,
+            Pane::Navigator => Pane::Feed,
+            Pane::Content => Pane::Navigator,
+            Pane::Feed => Pane::Content,
         }
     }
 }
 
-/// Top-level screen of the watch TUI.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Screen {
-    /// `0`: the sessions of the workspace (pick one to focus on).
-    Sessions,
-    /// `1`: every agent with status, context, activity lane and current work.
-    #[default]
-    Overview,
-    /// `2`: agent tree + selected agent's timeline + message feed.
-    Agents,
-    /// `Enter` on an agent: instructions, current work, result and timeline.
-    Detail,
+/// Navigator key of the top (scope) node.
+pub const NAV_TOP: &str = "@top";
+/// Navigator key of the group of older sessions.
+pub const NAV_OLDER: &str = "@older";
+
+/// Navigator key of the group of finished children folded under `parent`.
+pub fn fold_key(parent: &str) -> String {
+    format!("@fold:{parent}")
 }
 
 /// Time span of the overview's activity lanes (`+` / `-`).
@@ -108,7 +108,7 @@ impl LaneWindow {
     }
 }
 
-/// Section of the agent detail screen (Tab cycles, j/k scroll the focused one).
+/// Section of the agent detail (`i` `n` `r` `t` pick one, j/k scroll it).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DetailSection {
@@ -177,16 +177,6 @@ pub fn initial_detail_scroll() -> [Scroll; 4] {
     DetailSection::ALL.map(DetailSection::initial_scroll)
 }
 
-/// Which feed entries are shown.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FeedFilter {
-    #[default]
-    All,
-    /// Only entries sent / received / emitted by the selected agent.
-    Selected,
-}
-
 /// Vertical position of a list whose newest rows are at the bottom.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -213,25 +203,34 @@ impl Scroll {
     }
 }
 
-/// The agents tree folds a parent's finished children only when it has more than
-/// this many of them (the overview always folds them).
-pub const DONE_FOLD_MIN: usize = 5;
+/// A parent's finished children fold into one navigator group only when there
+/// are at least this many of them (a single one is shown as it is).
+pub const NAV_FOLD_MIN: usize = 2;
 
-/// Wrapped line count and visible height of one detail section (last frame).
+/// Navigator width `clamp(24, 30%, 40)` columns; below this terminal width `s`
+/// can hide it.
+pub const NARROW_WIDTH: u16 = 80;
+
+/// Wrapped line count and visible height of one scrollable text (last frame).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SectionMetrics {
     pub total: usize,
     pub height: usize,
 }
 
-/// Content heights (rows) of the scrollable panes in the last layout.
+/// Sizes of the panes in the last layout (the reducer clamps scrolls and pages
+/// against them).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Viewport {
-    pub tree: usize,
-    pub timeline: usize,
+    /// Navigator rows (0 when hidden).
+    pub nav: usize,
     pub feed: usize,
     /// Cells of an overview activity lane (0 = no room for lanes).
     pub lane_cols: usize,
+    /// The terminal is narrower than [`NARROW_WIDTH`] (`s` may hide the navigator).
+    pub narrow: bool,
+    /// Overview-like content (top, session, folded group, older sessions).
+    pub content: SectionMetrics,
     /// Detail sections in [`DetailSection::index`] order.
     pub detail: [SectionMetrics; 4],
 }
@@ -261,57 +260,53 @@ impl Toast {
     }
 }
 
-/// Mutable UI context of the watch TUI (selection, collapse, scroll, filters).
+/// Mutable UI context of the watch TUI (selection, expansion, scroll, filters).
 ///
-/// Selection is kept by agent id (not row index) so it survives tree changes.
+/// The selection is a navigator key (an agent id, [`NAV_TOP`], [`NAV_OLDER`] or a
+/// [`fold_key`]), not a row index, so it survives tree changes.
 #[derive(Debug, Clone)]
 pub struct UiState {
-    pub screen: Screen,
-    /// Screen `Esc` returns to from the detail screen.
-    pub detail_return: Screen,
-    /// Agent shown on the detail screen (fixed while it is open).
-    pub detail_agent: Option<String>,
-    /// Section in effect on the detail screen.
+    /// Selected navigator node; None = the top node.
+    pub selected: Option<String>,
+    /// Expand (true) / collapse (false) overrides of navigator nodes; the others
+    /// use their default (sessions open when there is only one, agents open,
+    /// folded groups and older sessions closed).
+    pub open: BTreeMap<String, bool>,
+    pub focus: Pane,
+    /// On a session node, show its root agent's detail instead of the session
+    /// overview (`i` `n` `r` `t`, or → on a session without children).
+    pub root_detail: bool,
+    /// Section in effect in the agent detail.
     pub detail_section: DetailSection,
-    /// Section the user last picked (`i` `n` `r` `t`, Tab); kept across agents.
+    /// Section the user last picked (`i` `n` `r` `t`); kept across agents.
     pub detail_pref: Option<DetailSection>,
-    /// The detail was just opened: the presenter picks the section
+    /// A new agent was selected: the presenter picks the section
     /// ([`DetailVm::pick_section`]) and the handler stores it back.
     pub detail_auto: bool,
     /// Per detail section, in [`DetailSection::index`] order.
     pub detail_scroll: [Scroll; 4],
+    /// First visible line of overview-like content.
+    pub content_scroll: usize,
+    pub feed_scroll: Scroll,
     /// Overview activity lane span.
     pub window: LaneWindow,
-    /// Root id of the session the screens are narrowed to (`Enter` on the sessions
-    /// screen); None = all sessions.
-    pub session_focus: Option<String>,
-    /// Session under the cursor on the sessions screen.
-    pub session_cursor: Option<String>,
-    /// Screen the sessions screen returns to (Enter / Esc).
-    pub sessions_return: Screen,
-    /// Sessions screen: older (ended) sessions are listed instead of folded.
-    pub show_older: bool,
-    pub selected: Option<String>,
-    pub collapsed: BTreeSet<String>,
-    pub focus: Pane,
-    pub timeline_scroll: Scroll,
-    pub feed_scroll: Scroll,
-    pub feed_filter: FeedFilter,
-    /// Show finished (done / killed) agents. Off (default): the overview folds
-    /// them into one line per session, the agents tree folds them under a parent
-    /// that has more than [`DONE_FOLD_MIN`] of them.
+    /// Show finished (done / killed) agents in place. Off (default): a parent's
+    /// finished children fold into one navigator group (when there are at least
+    /// [`NAV_FOLD_MIN`] of them).
     pub show_done: bool,
     /// `/` name filter (case-insensitive substring); empty = off. Matching agents
     /// are shown with their ancestors, ignoring folds.
     pub filter: String,
     /// The filter is being typed (keys go to the filter text).
     pub filter_editing: bool,
-    /// Follow the most recently active agent.
+    /// Follow the most recently active agent shown in the navigator.
     pub auto_select: bool,
+    /// Navigator hidden (`s`, only below [`NARROW_WIDTH`] columns).
+    pub nav_hidden: bool,
     pub show_help: bool,
     /// Last state-change message; the presenter drops it once expired.
     pub toast: Option<Toast>,
-    /// Scope description for the status bar ("project agtrace").
+    /// Scope description ("project agtrace · since 2h").
     pub scope: String,
     /// Offset used to print wall-clock times.
     pub utc_offset: FixedOffset,
@@ -321,28 +316,22 @@ pub struct UiState {
 impl Default for UiState {
     fn default() -> Self {
         Self {
-            screen: Screen::Overview,
-            detail_return: Screen::Overview,
-            detail_agent: None,
+            selected: None,
+            open: BTreeMap::new(),
+            focus: Pane::Navigator,
+            root_detail: false,
             detail_section: DetailSection::Instructions,
             detail_pref: None,
-            detail_auto: false,
+            detail_auto: true,
             detail_scroll: initial_detail_scroll(),
-            window: LaneWindow::M60,
-            session_focus: None,
-            session_cursor: None,
-            sessions_return: Screen::Overview,
-            show_older: false,
-            selected: None,
-            collapsed: BTreeSet::new(),
-            focus: Pane::Tree,
-            timeline_scroll: Scroll::Follow,
+            content_scroll: 0,
             feed_scroll: Scroll::Follow,
-            feed_filter: FeedFilter::All,
+            window: LaneWindow::M60,
             show_done: false,
             filter: String::new(),
             filter_editing: false,
             auto_select: false,
+            nav_hidden: false,
             show_help: false,
             toast: None,
             scope: String::new(),
@@ -368,36 +357,124 @@ impl UiState {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct WatchScreenVm {
-    pub screen: Screen,
-    /// Every session of the workspace (sessions screen, overview summary).
+    pub nav: NavVm,
+    /// What the content pane shows (by the selected node).
+    pub content: ContentVm,
+    /// Every session of the workspace (overview summary, older sessions list).
     pub sessions: SessionsVm,
-    /// Built on the overview screen only.
+    /// Top, session and folded-group content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub overview: Option<OverviewVm>,
-    /// Built on the detail screen only.
+    /// Agent content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<DetailVm>,
-    pub tree: Vec<AgentRowVm>,
-    pub focus: FocusVm,
+    /// Messages scoped to the selection.
     pub feed: Vec<FeedRowVm>,
+    /// `all`, `this session`, the agent's label, ...
+    pub feed_scope: String,
     pub status: StatusBarVm,
     pub focus_pane: Pane,
     /// Scroll positions echoed from the UI state (the views clamp them).
-    pub timeline_scroll: Scroll,
+    pub content_scroll: usize,
     pub feed_scroll: Scroll,
+    pub nav_hidden: bool,
     pub show_help: bool,
     /// Live toast text (status bar), if any.
     pub toast: Option<String>,
 }
 
 impl WatchScreenVm {
-    /// Row index of the selected agent in `tree`.
+    /// Row index of the selected navigator node.
     pub fn selected_index(&self) -> Option<usize> {
-        self.tree.iter().position(|r| r.selected)
+        self.nav.rows.iter().position(|r| r.selected)
+    }
+
+    pub fn selected_row(&self) -> Option<&NavRowVm> {
+        self.nav.rows.iter().find(|r| r.selected)
     }
 }
 
-/// Agent status as shown in the tree.
+// ============================================================================
+// Navigator
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize)]
+pub struct NavVm {
+    /// Rows in display order: the top node, then the sessions and their trees.
+    pub rows: Vec<NavRowVm>,
+}
+
+/// Kind of a navigator node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NavKind {
+    /// The watch scope (project, all projects, session).
+    Top,
+    /// One session: its root agent and tree.
+    Session,
+    /// An agent below a session root.
+    Agent,
+    /// A parent's finished (done / killed) children and earlier transcripts.
+    Fold,
+    /// Sessions that ended more than an hour ago.
+    Older,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct NavRowVm {
+    /// Selection key (agent id, [`NAV_TOP`], [`NAV_OLDER`], [`fold_key`]).
+    pub key: String,
+    pub kind: NavKind,
+    /// 0 top, 1 sessions (and the older group), 2+ below.
+    pub depth: u16,
+    /// Per ancestor level below the sessions: true when that ancestor has later
+    /// siblings (a vertical guide continues).
+    pub guides: Vec<bool>,
+    pub is_last_sibling: bool,
+    /// Key of the parent node (None for the top node).
+    pub parent: Option<String>,
+    pub label: String,
+    /// `claude_code` / `codex`.
+    pub provider: String,
+    /// `T` teammate, `S` subagent, `F` fork.
+    pub badge: Option<char>,
+    /// Agent status; a session's liveness (busy → running, idle, ended → done).
+    pub status: StatusVm,
+    /// Session nodes: liveness and background flag.
+    pub state: Option<SessionStateVm>,
+    pub bg: bool,
+    /// Top node: live sessions in scope.
+    pub live: usize,
+    /// Folded group counts.
+    pub folded: Option<FoldedVm>,
+    pub ctx_pct: Option<u16>,
+    /// Has children (possibly hidden while collapsed).
+    pub expandable: bool,
+    pub expanded: bool,
+    /// Folded group: its first item; older group: the first older session.
+    pub first_item: Option<String>,
+    /// Matches the `/` filter.
+    pub matched: bool,
+    pub selected: bool,
+}
+
+/// What the content pane shows for the selected node.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ContentVm {
+    /// Top node: the multi-session overview.
+    Overview,
+    /// Session node: that session's overview.
+    Session { id: String, has_transcript: bool },
+    /// Agent node (or a session's root agent): the agent detail.
+    Agent { id: String },
+    /// Folded group: its items as overview rows.
+    Fold { parent: String, folded: FoldedVm },
+    /// The older sessions, as session lines.
+    Older { count: usize },
+}
+
+/// Agent status as shown in the navigator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatusVm {
@@ -409,14 +486,11 @@ pub enum StatusVm {
     Unknown,
 }
 
+/// One agent of the console tree (`watch --mode console`).
 #[derive(Debug, Clone, Serialize)]
 pub struct AgentRowVm {
     pub id: String,
     pub depth: u16,
-    /// Per ancestor level below the roots (depth-1 entries): true when that
-    /// ancestor has later siblings, i.e. a vertical guide continues.
-    pub guides: Vec<bool>,
-    pub is_last_sibling: bool,
     pub label: String,
     /// `claude_code` / `codex`.
     pub provider: String,
@@ -425,15 +499,6 @@ pub struct AgentRowVm {
     pub status: StatusVm,
     /// Context occupancy in percent; None when the window or usage is unknown.
     pub ctx_pct: Option<u16>,
-    pub selected: bool,
-    pub collapsed: bool,
-    pub has_children: bool,
-    /// Descendants not shown because this node is collapsed.
-    pub hidden_descendants: usize,
-    /// Finished children folded away (agents tree, more than [`DONE_FOLD_MIN`]).
-    pub folded_done: usize,
-    /// A tool call is currently open.
-    pub busy_tool: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -458,22 +523,6 @@ pub enum ActivityVm {
     },
     /// Nothing running; the last turn ended.
     TurnEnded { outcome: String, ago_secs: i64 },
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct FocusVm {
-    /// None when the workspace has no agents yet.
-    pub agent_id: Option<String>,
-    pub title: String,
-    pub provider: String,
-    pub kind: String,
-    pub team: Option<String>,
-    pub status: StatusVm,
-    pub model: Option<String>,
-    pub ctx: Option<CtxVm>,
-    pub activity: Option<ActivityVm>,
-    pub rows: Vec<TimelineRowVm>,
-    pub follow: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -525,44 +574,37 @@ pub struct FeedRowVm {
     /// Plaintext body / reason; None when encrypted or absent.
     pub text: Option<String>,
     pub encrypted: bool,
-    /// Involves the selected agent (highlighted).
-    pub involves_selected: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StatusBarVm {
-    /// Scope of the view: the watch scope, or `session <name>` while focused.
-    pub scope: String,
-    /// Name of the focused session (None = all sessions).
-    pub focus: Option<String>,
+    /// Breadcrumb of the selection: scope, session, agent / group.
+    pub crumbs: Vec<String>,
     /// Sessions of the workspace and how many are live.
     pub sessions: usize,
     pub live: usize,
-    /// Agents in view (the focused session's while focused).
+    /// Agents in scope.
     pub agents: usize,
     pub running: usize,
     pub idle: usize,
-    /// Finished agents folded away on this screen (`d` shows them).
+    /// Finished agents folded into navigator groups (`d` shows them).
     pub folded: usize,
     /// Undecodable / schema-mismatched lines over all agents.
     pub diagnostics: u64,
     /// Watcher errors (I/O, permissions).
     pub errors: usize,
     pub last_error: Option<String>,
-    pub feed_filter: FeedFilter,
     pub show_done: bool,
     pub auto_select: bool,
-    /// Collapsed tree nodes.
-    pub collapsed: usize,
     /// `/` filter text (empty = off) and whether it is being typed.
     pub filter: String,
     pub filter_editing: bool,
-    /// Agents matching the filter.
+    /// Navigator nodes matching the filter.
     pub matches: usize,
 }
 
 // ============================================================================
-// Overview screen
+// Overview content
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize)]
@@ -571,9 +613,9 @@ pub struct OverviewVm {
     pub window: String,
     /// Time covered by one lane cell (`2m`).
     pub cell: String,
-    /// One row per tree row (same order, folds).
+    /// One row per shown agent, in tree order.
     pub rows: Vec<OverviewRowVm>,
-    /// Older sessions left out (listed on the sessions screen).
+    /// Older sessions left out (listed under the navigator's older group).
     pub older_hidden: usize,
 }
 
@@ -639,24 +681,16 @@ impl SessionStateVm {
 pub struct SessionsVm {
     /// Watch scope (`project agtrace · since 2h`).
     pub scope: String,
-    /// Listed sessions, in order (older ones only when `show_older`).
+    /// Every session, in order (live, recent, older).
     pub rows: Vec<SessionRowVm>,
     pub live: usize,
     pub recent: usize,
     pub older: usize,
-    /// Older sessions not listed (folded into one line).
-    pub older_folded: usize,
-    /// Root id of the focused session.
-    pub focus: Option<String>,
 }
 
 impl SessionsVm {
     pub fn total(&self) -> usize {
         self.live + self.recent + self.older
-    }
-
-    pub fn selected_index(&self) -> Option<usize> {
-        self.rows.iter().position(|r| r.selected)
     }
 }
 
@@ -682,8 +716,6 @@ pub struct SessionRowVm {
     pub last_secs: Option<i64>,
     /// What the root is doing now.
     pub now: NowVm,
-    pub selected: bool,
-    pub focused: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -704,10 +736,7 @@ pub struct OverviewRowVm {
     /// ` ` none.
     pub lane_tones: String,
     pub now: NowVm,
-    pub selected: bool,
-    pub collapsed: bool,
-    pub hidden_descendants: usize,
-    /// Present on root rows.
+    /// Present on root rows (the top overview's session headers).
     pub root: Option<RootHeaderVm>,
 }
 
@@ -745,7 +774,7 @@ pub enum NowVm {
 }
 
 // ============================================================================
-// Detail screen
+// Agent detail
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize)]
@@ -921,14 +950,16 @@ pub enum ResultVm {
 // Console (line printer) view model
 // ============================================================================
 
-/// Snapshot for `watch --mode console`: the screen (tree, feed, status) plus the
-/// timeline of every agent, with stable keys so each row is printed once.
+/// Snapshot for `watch --mode console`: the agent tree of every session (nothing
+/// folded), the feed, plus the timeline of every agent, with stable keys so each
+/// row is printed once.
 #[derive(Debug, Clone, Serialize)]
 pub struct ConsoleVm {
-    pub screen: WatchScreenVm,
+    pub tree: Vec<AgentRowVm>,
+    pub feed: Vec<FeedRowVm>,
     /// Per agent, in tree order.
     pub timelines: Vec<AgentTimelineVm>,
-    /// Event id of each `screen.feed` row (same order).
+    /// Event id of each `feed` row (same order).
     pub feed_keys: Vec<String>,
 }
 

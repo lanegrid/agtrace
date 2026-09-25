@@ -1,19 +1,22 @@
-//! Overview screen: a summary of the sessions, then per session a header line and
-//! its active agents with status, context bar, activity lane and what each is
-//! doing now (finished agents fold into one line per session), plus a compact
-//! message feed.
+//! Overview content: for the top node, a summary of the sessions, then per
+//! session a header line and its agents in place with status, context bar,
+//! activity lane and what each is doing now (a session's finished agents fold
+//! into one line); for a session node, that session alone; for a folded group,
+//! its items.
 //!
 //! ```text
-//! ┏ ▶ Overview · project demo · last 60m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-//! ┃ Sessions · 2 live  0 list · ↵ there focuses one                                 ┃
-//! ┃    claude  s-lead          ● busy      5 (3 run)  42%  now  ▸ Bash mise run …  ┃
-//! ┃    codex   Review parser   ○ idle      4 (2 run)  12%   2m  idle 2m            ┃
-//! ┃   agent          status  context     activity · 1 cell = 2m       now          ┃
-//! ┃ s-lead · busy 5m · claude-opus-5-5[1m] · ctx 42% of 1.0M [1m] · ⟲1 · 5 agents  ┃
-//! ┃▶ s-lead          ● busy  ███░░░ 42%  ▂▁  ▃▃·····▂   ▸ Bash mise run test (10s)┃
-//! ┃  ├ T audit-A     ○ idle  █░░░░░ 12%    ▂  ▁         idle 3m                  ┃
-//! ┃    ✓ 1 finished · 1 earlier transcript  (d to show)                            ┃
+//! ┌ Overview · project demo · activity: last 60m ──────────────────────────────────┐
+//! │ Sessions · 2 live                                                               │
+//! │   claude  s-lead          ● busy      5 (3 run)  42%  now  ▸ Bash mise run …    │
+//! │   codex   Review parser   ○ idle      4 (2 run)  12%   2m  idle 2m              │
+//! │   agent          status  context     activity · 1 cell = 2m       now           │
+//! │ s-lead · busy 5m · claude-opus-5-5[1m] · ctx 42% of 1.0M [1m] · ⟲1 · 5 agents   │
+//! │   s-lead          ● busy  ███░░░ 42%  ▂▁  ▃▃·····▂   ▸ Bash mise run test (10s) │
+//! │   ├ T audit-A     ○ idle  █░░░░░ 12%    ▂  ▁         idle 3m                   │
+//! │     ✓ 3 finished · 1 earlier transcript  (d to show)                           │
 //! ```
+//!
+//! The rows below the column header scroll (content focus: ↑/↓, PgUp/PgDn, g/G).
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -27,7 +30,8 @@ use super::style::{
 };
 use crate::presentation::presenters::watch::tokens;
 use crate::presentation::view_models::watch::{
-    FoldedVm, NowVm, OverviewRowVm, RootHeaderVm, StatusVm, WatchScreenVm,
+    ContentVm, FoldedVm, NowVm, OverviewRowVm, Pane, RootHeaderVm, SectionMetrics, StatusVm,
+    WatchScreenVm,
 };
 
 /// Columns of a status cell (`⊘ kill`).
@@ -58,71 +62,130 @@ pub fn columns(inner_width: usize) -> Columns {
     Columns { name, lane, now }
 }
 
-/// Main area, feed and status line of the overview screen.
-pub fn areas(area: Rect) -> (Rect, Rect, Rect) {
-    let feed_h = (area.height / 5).clamp(4, 8);
-    let [main, feed, status] = Layout::vertical([
-        Constraint::Min(3),
-        Constraint::Length(feed_h),
-        Constraint::Length(1),
-    ])
-    .areas(area);
-    (main, feed, status)
+/// Block title of the content: what the selected node is.
+fn title(vm: &WatchScreenVm) -> Vec<Span<'static>> {
+    let window = vm
+        .overview
+        .as_ref()
+        .map(|o| o.window.clone())
+        .unwrap_or_default();
+    let mut title = match &vm.content {
+        ContentVm::Session { id, .. } => {
+            let mut spans = Vec::new();
+            match vm.sessions.rows.iter().find(|r| &r.id == id) {
+                Some(s) => {
+                    let (state, style) = super::sessions::state_cell(s);
+                    let provider = if s.provider == "codex" {
+                        "codex"
+                    } else {
+                        "claude"
+                    };
+                    spans.push(Span::styled(
+                        format!(" {} ", s.name),
+                        Style::default().add_modifier(Modifier::BOLD),
+                    ));
+                    spans.push(Span::raw(format!("· {provider} · ")));
+                    spans.push(Span::styled(state, style));
+                    if let Some(c) = &s.ctx {
+                        spans.push(Span::raw(" · ctx "));
+                        spans.push(Span::styled(format!("{}%", c.pct), ctx_style(c.pct)));
+                        spans.push(Span::raw(format!(
+                            " of {} [{}]",
+                            tokens(c.window_tokens),
+                            c.provenance
+                        )));
+                    }
+                    spans.push(Span::raw(" "));
+                }
+                None => spans.push(Span::raw(" Session ")),
+            }
+            spans
+        }
+        ContentVm::Fold { parent, folded } => {
+            let under = vm
+                .nav
+                .rows
+                .iter()
+                .find(|r| &r.key == parent)
+                .map(|r| format!(" · under {}", r.label))
+                .unwrap_or_default();
+            vec![Span::raw(format!(" {}{under} ", folded_text(*folded)))]
+        }
+        _ => {
+            let mut spans = vec![Span::raw(" Overview ")];
+            if !vm.sessions.scope.is_empty() {
+                spans.push(Span::raw(format!("· {} ", vm.sessions.scope)));
+            }
+            spans.push(Span::raw(format!("· activity: last {window} ")));
+            spans
+        }
+    };
+    title.extend(filter_title(vm));
+    title
 }
 
-pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
-    let Some(ov) = &vm.overview else { return };
-    let mut title = vec![Span::raw(" Overview ")];
-    if !vm.status.scope.is_empty() {
-        title.push(Span::raw(format!("· {} ", vm.status.scope)));
+/// `⊘ 20 killed · ✓ 3 done · 1 earlier transcript`.
+fn folded_text(f: FoldedVm) -> String {
+    let mut parts = Vec::new();
+    if f.killed > 0 {
+        parts.push(format!("⊘ {} killed", f.killed));
     }
-    title.push(Span::raw(format!("· activity: last {} ", ov.window)));
-    if let Some(f) = filter_title(vm) {
-        title.push(f);
+    if f.done > 0 {
+        parts.push(format!("✓ {} done", f.done));
     }
-    let block = pane_block(true, title);
-    let inner = block.inner(area);
-    if inner.height == 0 {
-        f.render_widget(block, area);
-        return;
+    if f.transcripts > 0 {
+        let noun = if f.transcripts == 1 {
+            "transcript"
+        } else {
+            "transcripts"
+        };
+        parts.push(format!("{} earlier {noun}", f.transcripts));
     }
+    parts.join(" · ")
+}
+
+/// Lines of the content inside the block: the fixed top (sessions summary,
+/// column header) and the scrolling body; or a one-line message when empty.
+fn content_lines(
+    vm: &WatchScreenVm,
+    width: usize,
+    height: usize,
+) -> (Vec<Line<'static>>, Vec<Line<'static>>) {
+    let Some(ov) = &vm.overview else {
+        return (Vec::new(), Vec::new());
+    };
     if ov.rows.is_empty() {
-        f.render_widget(block, area);
         let text = if !vm.status.filter.is_empty() {
             format!(
                 " no agent matches \"{}\" — Esc clears the filter",
                 vm.status.filter
             )
-        } else if let Some(name) = &vm.status.focus {
-            format!(" session {name} has no transcript yet — a for all sessions")
+        } else if let ContentVm::Session {
+            has_transcript: false,
+            ..
+        } = vm.content
+        {
+            " a live process without a transcript yet".to_string()
         } else {
             " no agents yet".to_string()
         };
-        f.render_widget(Paragraph::new(Line::styled(text, dim())), inner);
-        return;
+        return (vec![Line::styled(text, dim())], Vec::new());
     }
-    let cols = columns(inner.width as usize);
-    // Sessions summary: at most a third of the area (and 6 lines).
-    let summary = super::sessions::summary_lines(
-        &vm.sessions,
-        inner.width as usize,
-        ((inner.height as usize).saturating_sub(1) / 3).min(6),
-    );
-    let [top, head, body] = Layout::vertical([
-        Constraint::Length(summary.len() as u16),
-        Constraint::Length(1),
-        Constraint::Min(0),
-    ])
-    .areas(inner);
-    f.render_widget(Paragraph::new(summary), top);
+    let cols = columns(width);
+    // Sessions summary (top node): at most a third of the area (and 6 lines).
+    // (The navigator lists the sessions too: skipped when the pane is narrow.)
+    let mut top = if matches!(vm.content, ContentVm::Overview) && width >= 70 {
+        super::sessions::summary_lines(&vm.sessions, width, (height.saturating_sub(1) / 3).min(6))
+    } else {
+        Vec::new()
+    };
     // Old sessions have no activity in the window: say how to widen it.
     let quiet = ov.rows.iter().all(|r| r.lane.trim().is_empty());
-    f.render_widget(Paragraph::new(header_line(cols, &ov.cell, quiet)), head);
+    top.push(header_line(cols, &ov.cell, quiet));
 
     // Root header lines are interleaved with the rows, each session's folded
-    // finished agents follow its rows; keep the selected row visible.
+    // finished agents follow its rows.
     let mut lines: Vec<Line> = Vec::with_capacity(ov.rows.len() * 2);
-    let mut selected_line = 0;
     let mut folded = FoldedVm::default();
     for r in &ov.rows {
         if let Some(h) = &r.root {
@@ -130,10 +193,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
                 lines.push(folded_line(folded));
             }
             folded = h.folded;
-            lines.push(root_line(h, inner.width as usize));
-        }
-        if r.selected {
-            selected_line = lines.len();
+            lines.push(root_line(h, width));
         }
         lines.push(row_line(r, cols));
     }
@@ -147,17 +207,44 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
             "sessions"
         };
         lines.push(Line::styled(
-            format!(" ▸ {} older {noun} — 0 to list", ov.older_hidden),
+            format!(" ▸ {} older {noun} — in the navigator", ov.older_hidden),
             dim(),
         ));
     }
+    if matches!(vm.content, ContentVm::Fold { .. }) {
+        lines.push(Line::styled(
+            "   → lists them in the navigator · d shows them in place",
+            dim(),
+        ));
+    }
+    (top, lines)
+}
+
+/// Scrolling body lines and their visible height, for the content `area`.
+pub fn metrics(area: Rect, vm: &WatchScreenVm) -> SectionMetrics {
+    let block = pane_block(false, Vec::new());
+    let inner = block.inner(area);
+    let (top, body) = content_lines(vm, inner.width as usize, inner.height as usize);
+    SectionMetrics {
+        total: body.len(),
+        height: (inner.height as usize).saturating_sub(top.len()),
+    }
+}
+
+pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
+    let block = pane_block(vm.focus_pane == Pane::Content, title(vm));
+    let inner = block.inner(area);
+    if inner.height == 0 {
+        f.render_widget(block, area);
+        return;
+    }
+    let (top, lines) = content_lines(vm, inner.width as usize, inner.height as usize);
+    let [head, body] =
+        Layout::vertical([Constraint::Length(top.len() as u16), Constraint::Min(0)]).areas(inner);
+    f.render_widget(Paragraph::new(top), head);
     let height = body.height as usize;
-    let start = if selected_line < height {
-        0
-    } else {
-        selected_line + 1 - height
-    };
     let total = lines.len();
+    let start = vm.content_scroll.min(total.saturating_sub(height));
     let visible: Vec<Line> = lines.into_iter().skip(start).take(height).collect();
     let block = match more_marks(start, visible.len(), total) {
         Some(marks) => block.title_bottom(marks),
@@ -313,30 +400,19 @@ fn name_cell(r: &OverviewRowVm, width: usize) -> Vec<Span<'static>> {
     if r.depth > 0 {
         prefix.push_str(if r.is_last_sibling { "└ " } else { "├ " });
     }
-    if r.collapsed {
-        prefix.push_str(&format!("▸+{} ", r.hidden_descendants));
-    }
     if let Some(b) = r.badge {
         prefix.push_str(&format!("{b} "));
     }
-    if r.depth == 0 && r.provider == "codex" {
+    if r.root.is_some() && r.provider == "codex" {
         prefix.push_str("codex ");
     }
     let label_w = width.saturating_sub(text_width(&prefix));
     let label = pad(&r.label, label_w);
-    let label_style = if r.selected {
-        Style::default().add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-    };
-    vec![
-        Span::styled(clip(&prefix, width), dim()),
-        Span::styled(label, label_style),
-    ]
+    vec![Span::styled(clip(&prefix, width), dim()), Span::raw(label)]
 }
 
 fn row_line(r: &OverviewRowVm, cols: Columns) -> Line<'static> {
-    let mut spans = vec![Span::raw(if r.selected { "▶ " } else { "  " })];
+    let mut spans = vec![Span::raw("  ")];
     spans.extend(name_cell(r, cols.name));
     spans.push(Span::raw(" "));
     spans.push(Span::styled(
@@ -367,12 +443,7 @@ fn row_line(r: &OverviewRowVm, cols: Columns) -> Line<'static> {
         spans.push(Span::raw(" "));
     }
     spans.extend(now_spans(&r.now, cols.now));
-    let line = Line::from(spans);
-    if r.selected {
-        line.style(Style::default().add_modifier(Modifier::REVERSED))
-    } else {
-        line
-    }
+    Line::from(spans)
 }
 
 pub fn now_spans(now: &NowVm, width: usize) -> Vec<Span<'static>> {

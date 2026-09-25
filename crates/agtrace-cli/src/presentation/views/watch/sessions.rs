@@ -1,16 +1,12 @@
-//! Sessions screen (`0`) and the session lines shared with the overview's summary
-//! block.
+//! Session lines: the overview's summary block and the content of the
+//! navigator's older-sessions group.
 //!
 //! ```text
-//! ┏ ▶ Sessions · project demo · since 2h · 2 live, 1 recent ━━━━━━━━━━━━━━━━━━━━━━━━┓
-//! ┃   provider session                    state        agents     ctx  last  now    ┃
-//! ┃▶  claude   s-lead                     ● busy       5 (3 run)  42%  now   ▸ Bash ┃
-//! ┃ ◆ codex    Review the parser change   ○ idle       4 (2 run)  12%  2m    idle 2m┃
-//! ┃   claude   e76c4850                   ○ idle (bg)  —            —  28m   no tra…┃
-//! ┃   ▸ 3 older sessions — space to list                                            ┃
+//! ┌ Older sessions · 2 ───────────────────────────────────────────────────────┐
+//! │   provider session                    state        agents     ctx  last  now │
+//! │   codex    Review the parser change   ✓ ended      4          12%  2h    …   │
+//! │   claude   e76c4850                   ✓ ended      1            —  3d    …   │
 //! ```
-//!
-//! `▶` marks the cursor, `◆` the focused session.
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -19,12 +15,12 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
 use super::overview::{clip_line, now_spans, pad};
-use super::style::{FOCUS_COLOR, ctx_style, dim, more_marks, pane_block, short, status_style};
+use super::style::{ctx_style, dim, more_marks, pane_block, short, status_style};
 use crate::presentation::view_models::watch::{
-    SessionRowVm, SessionStateVm, SessionsVm, StatusVm, WatchScreenVm,
+    Pane, SectionMetrics, SessionRowVm, SessionStateVm, SessionsVm, StatusVm, WatchScreenVm,
 };
 
-/// Cursor / focus marks.
+/// Left margin.
 const MARK_W: usize = 3;
 const PROVIDER_W: usize = 9;
 /// `○ idle (bg)`.
@@ -54,7 +50,7 @@ fn columns(width: usize) -> Columns {
 }
 
 /// `● busy`, `○ idle (bg)`, `✓ ended`.
-fn state_cell(r: &SessionRowVm) -> (String, Style) {
+pub(super) fn state_cell(r: &SessionRowVm) -> (String, Style) {
     let (glyph, word, status) = match r.state {
         SessionStateVm::Busy => ("●", "busy", StatusVm::Running),
         SessionStateVm::Idle => ("○", "idle", StatusVm::Idle),
@@ -72,15 +68,11 @@ fn last_cell(secs: Option<i64>) -> String {
     }
 }
 
-/// One session line: marks, provider, name, state, agents, context, last write
-/// and (when there is room) what the root does now.
-pub fn session_line(r: &SessionRowVm, width: usize, cursor: bool) -> Line<'static> {
+/// One session line: provider, name, state, agents, context, last write and
+/// (when there is room) what the root does now.
+pub fn session_line(r: &SessionRowVm, width: usize) -> Line<'static> {
     let cols = columns(width);
-    let mark = format!(
-        "{}{} ",
-        if cursor && r.selected { "▶" } else { " " },
-        if r.focused { "◆" } else { " " }
-    );
+    let mark = " ".repeat(MARK_W);
     let provider = if r.provider == "codex" {
         "codex"
     } else {
@@ -88,8 +80,6 @@ pub fn session_line(r: &SessionRowVm, width: usize, cursor: bool) -> Line<'stati
     };
     let name_style = if r.name_is_id {
         dim()
-    } else if r.selected && cursor {
-        Style::default().add_modifier(Modifier::BOLD)
     } else {
         Style::default()
     };
@@ -102,7 +92,7 @@ pub fn session_line(r: &SessionRowVm, width: usize, cursor: bool) -> Line<'stati
         format!("{} ({} run)", r.agents, r.running)
     };
     let mut spans = vec![
-        Span::styled(mark, Style::default().fg(FOCUS_COLOR)),
+        Span::raw(mark),
         Span::styled(pad(provider, PROVIDER_W), dim()),
         Span::styled(pad(&r.name, cols.name), name_style),
         Span::raw(" "),
@@ -134,12 +124,7 @@ pub fn session_line(r: &SessionRowVm, width: usize, cursor: bool) -> Line<'stati
             ));
         }
     }
-    let line = clip_line(spans, width);
-    if cursor && r.selected {
-        line.style(Style::default().add_modifier(Modifier::REVERSED))
-    } else {
-        line
-    }
+    clip_line(spans, width)
 }
 
 fn header_line(width: usize) -> Line<'static> {
@@ -174,54 +159,42 @@ pub fn counts(s: &SessionsVm) -> String {
     parts.join(", ")
 }
 
-pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
-    let s = &vm.sessions;
-    let mut title = vec![Span::raw(" Sessions ")];
-    if !s.scope.is_empty() {
-        title.push(Span::raw(format!("· {} ", s.scope)));
+/// Lines of the older sessions (column header first).
+fn older_lines(vm: &WatchScreenVm, width: usize) -> Vec<Line<'static>> {
+    vm.sessions
+        .rows
+        .iter()
+        .filter(|r| r.state == SessionStateVm::Older)
+        .map(|r| session_line(r, width))
+        .collect()
+}
+
+/// Scrolling lines of the older sessions and their visible height.
+pub fn metrics(area: Rect, vm: &WatchScreenVm) -> SectionMetrics {
+    let inner = pane_block(false, Vec::new()).inner(area);
+    SectionMetrics {
+        total: older_lines(vm, inner.width as usize).len(),
+        height: (inner.height as usize).saturating_sub(1),
     }
-    title.push(Span::raw(format!("· {} ", counts(s))));
-    let block = pane_block(true, title);
+}
+
+/// Content of the navigator's older-sessions group.
+pub fn render_older(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
+    let s = &vm.sessions;
+    let title = vec![Span::raw(format!(" Older sessions · {} ", s.older))];
+    let block = pane_block(vm.focus_pane == Pane::Content, title);
     let inner = block.inner(area);
     if inner.height == 0 {
         f.render_widget(block, area);
         return;
     }
-    if s.total() == 0 {
-        f.render_widget(block, area);
-        f.render_widget(
-            Paragraph::new(Line::styled(" no sessions in scope yet", dim())),
-            inner,
-        );
-        return;
-    }
     let width = inner.width as usize;
     let [head, body] = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(inner);
     f.render_widget(Paragraph::new(header_line(width)), head);
-    let mut lines: Vec<Line> = s
-        .rows
-        .iter()
-        .map(|r| session_line(r, width, true))
-        .collect();
-    if s.older_folded > 0 {
-        let noun = if s.older_folded == 1 {
-            "session"
-        } else {
-            "sessions"
-        };
-        lines.push(Line::styled(
-            format!(
-                "{}▸ {} older {noun} — space to list",
-                " ".repeat(MARK_W),
-                s.older_folded
-            ),
-            dim(),
-        ));
-    }
+    let lines = older_lines(vm, width);
     let height = body.height as usize;
-    let sel = s.selected_index().unwrap_or(0);
-    let start = if sel < height { 0 } else { sel + 1 - height };
     let total = lines.len();
+    let start = vm.content_scroll.min(total.saturating_sub(height));
     let visible: Vec<Line> = lines.into_iter().skip(start).take(height).collect();
     let block = match more_marks(start, visible.len(), total) {
         Some(marks) => block.title_bottom(marks),
@@ -233,9 +206,9 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
 
 /// Summary block at the top of the overview: a title line and up to `max` lines of
 /// live / recent sessions (`+N more` when they do not fit). Empty when there is
-/// only one session or a session is focused.
+/// only one session.
 pub fn summary_lines(s: &SessionsVm, width: usize, max: usize) -> Vec<Line<'static>> {
-    if s.focus.is_some() || s.total() <= 1 || max < 2 {
+    if s.total() <= 1 || max < 2 {
         return Vec::new();
     }
     let rows: Vec<&SessionRowVm> = s
@@ -248,7 +221,7 @@ pub fn summary_lines(s: &SessionsVm, width: usize, max: usize) -> Vec<Line<'stat
             format!(" Sessions · {}", counts(s)),
             Style::default().add_modifier(Modifier::BOLD),
         ),
-        Span::styled("  · 0 to list / focus one", dim()),
+        Span::styled("  · pick one in the navigator", dim()),
     ])];
     let room = max - 1;
     let shown = if rows.len() > room {
@@ -257,12 +230,12 @@ pub fn summary_lines(s: &SessionsVm, width: usize, max: usize) -> Vec<Line<'stat
         rows.len()
     };
     for r in rows.iter().take(shown) {
-        out.push(session_line(r, width, false));
+        out.push(session_line(r, width));
     }
     let more = rows.len() - shown;
     if more > 0 {
         out.push(Line::styled(
-            format!("{}+{more} more — 0 to list", " ".repeat(MARK_W)),
+            format!("{}+{more} more in the navigator", " ".repeat(MARK_W)),
             dim(),
         ));
     }
