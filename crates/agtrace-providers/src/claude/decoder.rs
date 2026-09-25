@@ -27,7 +27,7 @@ use crate::provider::{DecodeOptions, FileHeader, LogDecoder};
 /// Placeholder for thinking blocks persisted without plaintext (signature only).
 const REDACTED_THINKING_MARKER: &str = "[thinking redacted]";
 /// Maximum size of message bodies kept in `AgentMessage` events.
-const BODY_MAX_BYTES: usize = 4096;
+const BODY_MAX_BYTES: usize = 16 * 1024;
 /// Implied size of an extended ("1M") context window.
 const EXTENDED_CONTEXT_TOKENS: u64 = 1_000_000;
 /// How many recent `message.id`s are remembered for usage dedupe / redaction markers.

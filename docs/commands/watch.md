@@ -9,6 +9,10 @@ one tree: main sessions, teammates, background subagents, forks, and Codex child
 For each agent it shows the status, context window usage, the current tool, and a timeline.
 The messages the agents send each other appear in a shared feed.
 
+It opens on an **overview** of every agent (status, context, an activity lane over time,
+and what each one is doing now). From there you can drill into one agent's **detail**:
+what it was asked to do, what it is doing, and what it produced.
+
 See [Multi-Agent Sessions](../multi-agent.md) for how the tree is built.
 
 ## Usage
@@ -49,6 +53,113 @@ never walks the whole provider tree.
 
 ## The TUI
 
+The TUI has three screens:
+
+| Key | Screen | Answers |
+|---|---|---|
+| `1` | **Overview** (start screen) | Which agents exist, which are running / idle / done over time, how full their context is, what each is doing now |
+| `2` | **Agents** | The agent tree next to the selected agent's timeline and the message feed |
+| `Enter` | **Agent detail** | What one agent was asked to do, what it is doing, what it produced |
+
+`Enter` (or `→` / `l`) on an agent opens its detail, from the overview or the agents
+screen. `Esc` returns to the screen you came from, with the same agent selected.
+
+### Overview (`1`)
+
+```
+┏ ▶ Overview · project demo-project · activity: last 15m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  agent                     status context     activity 1m/cell                     now              ┃
+┃ codex /root · idle · up 4m · gpt-5.6 · ctx █░░░░░░░░░ 12% of 258k [log] · ⟲1 · 4 agents (2 running) ┃
+┃  codex /root               ○ idle █░░░░░  12%                                ▃·⟲   idle 2m          ┃
+┃▶ ├ judge                   ● busy █████░  77%                                ▂▃▂·· ▸ exec cargo tes…┃
+┃  │ └ x                     ● busy █░░░░░   5%                                 ···▂ "Reproducing th…┃
+┃  └ scout                   ✓ done █░░░░░  15%                                ▂▂    result: "3 fla…┃
+┃ s-lead · busy · up 5m · claude-opus-5-5[1m] · ctx ████░░░░░░ 42% of 1.0M [1m] · ⟲1 · 5 agents       ┃
+┃  s-lead                    ● busy ███░░░  42%                                ▅⟲▂·▂ ▸ Bash mise run …┃
+┃  ├ T audit-A               ○ idle █░░░░░  12%                                ▃▂    idle 3m          ┃
+┃  ├ S explore call sites    ✓ done █░░░░░  15%                                ▃·▂   result: "found 2…┃
+┃  └ F fork: bench           ● busy █████░  75%                                ▂···▂ ▸ Bash cargo ben…┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+┌ Messages ───────────────────────────────────────────────────────────────────────────────────────────┐
+│12:02 explore call sites → s-lead TASK_NOTIFY  "found 2 call sites"                                  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ OVERVIEW  9 agents (4 running, 3 idle)                  ↵ detail · +/- window · space fold · ? help
+```
+
+Each root session gets a header line: its label, status and age, model, context bar with
+the window size and its source, the number of compactions (`⟲N`), and how many agents its
+tree has (and how many are running). Below it, one row per agent in tree order:
+
+- **status** and **context** (bar and percent; the source of the window size is in the
+  root header and in the agent detail);
+- **activity**: one cell per time slice, oldest on the left, the current minute on the
+  right. The glyph height (`▁▂▃▅▆`) is the event density (tool calls, messages, prompts,
+  assistant text). The colour is the status at that time: green running, blue idle, grey
+  ended. `⟲` marks a compaction. `·` means running without new events (a long tool call).
+  A blank cell is idle, ended, or before the agent existed. The cell width adapts to the
+  terminal width; `+` / `]` widen the window (15m → 60m → 4h → all) and `-` / `[` narrow
+  it;
+- **now**: the running tool and its elapsed time, the latest assistant text while running
+  without a tool, `idle Xm`, the result excerpt of a finished agent, or how long ago it
+  was killed / failed (and why, when known).
+
+`j` / `k` select a row, `Enter` opens its detail. `space` (fold), `d` (hide done), `f`
+(feed filter) and `a` (auto-select) work as on the agents screen; the rows follow the same
+fold and hide state. The bottom strip is the message feed (newest entries).
+
+### Agent detail (`Enter`)
+
+```
+┏ ▶ Detail · explore call sites ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃explore call sites · subagent of s-lead · Explore · claude-sonnet-5 · ✓ done 2m          ┃
+┃ctx ██░░░░░░░░ 15% of 200k [table]  ▂   in 30k / out 10 · 1 tools                        ┃
+┃── ▶ Instructions (1) ────────────────────────────────────────────────────────────────── ┃
+┃[12:00 spawned by s-lead]                                                                ┃
+┃  Find call sites of parse_line                                                          ┃
+┃── Now ───────────────────────────────────────────────────────────────────────────────── ┃
+┃done                                                                                     ┃
+┃last said (12:02):                                                                       ┃
+┃  Two call sites: decoder.rs and lab.rs.                                                 ┃
+┃── Result ────────────────────────────────────────────────────────────────────────────── ┃
+┃[12:02 TASK_NOTIFY]                                                                      ┃
+┃  found 2 call sites                                                                     ┃
+┃── Timeline (3) ──────────────────────────────────────────────────────────────────────── ┃
+┃12:00 › user Find call sites of parse_line                                               ┃
+┃12:00 ▸ Grep parse_line                                                                  ┃
+┃12:02 •      Two call sites: decoder.rs and lab.rs.                                      ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+ DETAIL · explore call sites · INSTRUCTIONS            Tab section · j/k scroll · Esc back
+```
+
+- **Header.** The agent, how it relates to its parent (`teammate of lead (team t)`,
+  `subagent of lead`, `thread of /root`, `main session`), its type and model, and the
+  status with the time spent in it.
+- **Context line.** Context bar and window (with its source), a sparkline of the context
+  occupancy over the agent's usage records (`⟲` = compaction), and totals: input and
+  output tokens summed over requests (a request logged more than once counts once; `≥`
+  marks output counts that are only stream-start snapshots), turns and tool calls.
+- **Instructions.** What the agent was asked to do, in full (wrapped, not cut to one
+  line): its initial task (a subagent's or fork's prompt, a teammate's first
+  `NEW_TASK`, a main session's first prompt), then later prompts, prompts queued
+  mid-turn, and messages addressed to it (follow-ups from its lead, peer messages).
+  Reports from its own children are not instructions. If the child's own log has no task
+  yet, the spawn call's prompt (or description) is shown. Codex encrypts inter-agent
+  bodies: the task shows as `[encrypted by Codex]` with the sender, the agent path, the
+  task name and the requested model.
+- **Now.** The running tool with its elapsed time, and the latest assistant text (or
+  reasoning when there is no text): what the agent is trying to do.
+- **Result.** The agent's `FINAL_ANSWER` / hand-back / task-notification result. A
+  finished agent without one shows its last assistant message; a killed or failed one
+  shows why, when known.
+- **Timeline.** The same rows as the agents screen's timeline.
+
+`Tab` / `Shift-Tab` move between the sections (the focused one is cyan, gets more room,
+and is named in the status bar). `j` / `k`, `PgUp` / `PgDn`, `Ctrl-u` / `Ctrl-d` scroll
+it; `G` / `g` jump to its end / top (the timeline follows its end again). Section
+headings show the visible range (`1-10/40 ↓`). Texts are kept up to 16 KiB each.
+
+### Agents screen (`2`)
+
 ```
 ┏ ▶ Agents · project demo-project ┓┌ s-lead · claude-opus-5-5[1m] · 42% of 1.0M [1m] ────────┐
 ┃▶ s-lead            ● busy  42%  ┃│now   ▸ Bash mise run test  (10s)                        │
@@ -67,16 +178,16 @@ never walks the whole provider tree.
 │12:02 /root → /root/judge         MESSAGE      [encrypted]                                  │
 │12:02 explore call sites → s-lead TASK_NOTIFY  "found 2 call sites"                         │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
- AGENTS  9 agents (4 running, 3 idle)          ↵ open · space fold · f msgs · d done · ? help
+ AGENTS  9 agents (4 running, 3 idle)    ↵ detail · space fold · f msgs · d done · 1 overview · ? help
 ```
 
-The tree is home. Three panes answer three questions: **Agents** (who is there and in
-what state), the **timeline** (what the selected agent is doing), and **Messages** (how
-the agents talk to each other). Enter dives into the selected agent's timeline, Esc comes
-back. The focused pane has a thick cyan border and a `▶` in its title; the other panes
-are dimmed.
+Three panes answer three questions: **Agents** (who is there and in what state), the
+**timeline** (what the selected agent is doing), and **Messages** (how the agents talk to
+each other). `Enter` opens the selected agent's detail; `Tab` moves the focus to the
+timeline or the feed, and `Esc` comes back to the tree. The focused pane has a thick cyan
+border and a `▶` in its title; the other panes are dimmed.
 
-### Agents (left)
+#### Agents (left)
 
 Each row is one agent, indented by depth:
 
@@ -92,7 +203,7 @@ A collapsed node shows `▸+N`. The tree title names the scope (`Agents · sessi
 The selected row stays highlighted while another pane has focus (reversed when the tree
 has focus, bold and underlined otherwise), so you can always see whose timeline is shown.
 
-### Focus pane (right)
+#### Focus pane (right)
 
 The focus pane follows the selected agent.
 
@@ -115,7 +226,7 @@ The focus pane follows the selected agent.
   - turn ends and interrupts
   - prompts queued and absorbed mid-turn
 
-### Messages (bottom)
+#### Messages (bottom)
 
 The workspace-wide inter-agent feed: `time from → to KIND text`.
 
@@ -129,25 +240,29 @@ focus, the other entries are dimmed (highlighted, not filtered; `f` filters).
 
 ### Status bar
 
-- **Left.** The mode: `AGENTS`, `TIMELINE · <agent>` or `MESSAGES`. Then the agent
+- **Left.** The mode: `OVERVIEW`, `AGENTS`, `TIMELINE · <agent>`, `MESSAGES`, or
+  `DETAIL · <agent> · <SECTION>`. Then the agent
   counts, hidden agents, the number of diagnostics (log lines agtrace could not decode),
   the last error and the active toggles. For about two seconds after a change, a short
   message replaces them: `▸ collapsed judge (+1 hidden)`, `done agents hidden (2) — d to
-  show`, `messages: s-lead only — f for all`, `view reset`, `rescanning…`, and so on. Keys
+  show`, `messages: s-lead only — f for all`, `activity window: last 4h`, `view reset`,
+  `rescanning…`, and so on. Keys
   that cannot act say why (`can't collapse the only session`, `x has no children`).
-- **Right.** Key hints for the focused pane. The tree adds `Esc:reset` while a view
-  toggle is active. Hints are shortened on narrow terminals.
+- **Right.** Key hints for the screen and the focused pane. The overview and the tree add
+  `Esc:reset` while a view toggle is active. Hints are shortened on narrow terminals.
 
 ### Keybindings
 
 | Key | Action |
 |---|---|
-| `Enter` / `→` / `l` | Open the selected agent: focus its timeline. |
-| `Esc` / `←` / `h` | Back one level: close help, then return to the tree, then (on the tree) reset the view: expand all, show done, feed: all, follow. The selection is kept. |
-| `j` / `k`, `↓` / `↑` | Act on the focused pane: move the selection in the tree, or scroll the timeline / feed by a line. |
+| `1` / `2` | Overview / agents screen (also from the detail). |
+| `Enter` / `→` / `l` | Open the selected agent's detail. |
+| `Esc` / `←` / `h` | Back one level: close help; leave the detail (to the screen it was opened from); return from the timeline / feed to the tree; then (on the tree or the overview) reset the view: expand all, show done, feed: all, follow. The selection is kept. |
+| `j` / `k`, `↓` / `↑` | Act on the focused pane: move the selection (overview, tree), or scroll the timeline / feed / detail section by a line. |
+| `+` / `]`, `-` / `[` | Overview activity window: wider / narrower (15m, 60m, 4h, all). |
 | `space` | Fold / unfold the selected node. The only root cannot be folded. |
-| `Tab` / `Shift-Tab` | Cycle pane focus: tree → timeline → feed. |
-| `PgUp` / `PgDn` | Scroll the focused pane by a page (the timeline when the tree has focus). |
+| `Tab` / `Shift-Tab` | Agents screen: cycle pane focus (tree → timeline → feed). Detail: cycle sections. |
+| `PgUp` / `PgDn` | Scroll the focused pane or section by a page (the timeline when the tree has focus; on the overview, move the selection). |
 | `Ctrl-u` / `Ctrl-d` | Scroll by half a page. |
 | `G` / `End` | Jump to the tail and resume auto-follow. |
 | `g` / `Home` | Jump to the top. |

@@ -149,7 +149,7 @@ pub(crate) fn normalize_claude_tool_call(
 }
 
 /// Maximum length (bytes) of prompt / message previews kept in agent tool args.
-const PREVIEW_MAX_BYTES: usize = 4096;
+const PREVIEW_MAX_BYTES: usize = 16 * 1024;
 
 /// Normalized arguments of Claude agent-management tools
 /// (`Agent`, `SendMessage`, `TaskStop`, `TaskOutput`, `ListAgents`, `SubagentHandback`).

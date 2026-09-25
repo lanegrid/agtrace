@@ -56,6 +56,7 @@ owo-colors = "4.2"
 is-terminal = "0.4"
 crossterm = "0.29"
 ratatui = "0.29.0"
+unicode-width = "0.2"
 
 # Dev dependencies
 insta = { version = "1.45", features = ["json", "redactions"] }

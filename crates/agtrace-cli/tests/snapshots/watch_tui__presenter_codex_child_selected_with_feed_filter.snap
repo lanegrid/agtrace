@@ -3,6 +3,7 @@ source: crates/agtrace-cli/tests/watch_tui.rs
 expression: vm
 ---
 {
+  "screen": "agents",
   "tree": [
     {
       "id": "codex:t-root",

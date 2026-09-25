@@ -1,0 +1,279 @@
+//! Overview screen: one row per agent with status, context, an activity lane over
+//! the chosen window, and what the agent is doing now.
+
+use std::collections::HashSet;
+
+use agtrace_sdk::types::AgentId;
+use agtrace_sdk::workspace::{AgentStatus, AgentView, WorkspaceView, one_line};
+use chrono::{DateTime, Duration, Utc};
+
+use super::{ctx, provider_name, status_vm};
+use crate::presentation::view_models::watch::{
+    AgentRowVm, NowVm, OverviewRowVm, OverviewVm, RootHeaderVm, UiState,
+};
+
+/// Characters kept of the one-line "now" text (the view clips further).
+const NOW_TEXT_MAX: usize = 160;
+
+/// Lane geometry: `cells` cells of `cell` each, the last one ending at `end`.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Lanes {
+    end: DateTime<Utc>,
+    cell: Duration,
+    cells: usize,
+}
+
+impl Lanes {
+    /// Cells sized to fit `cols` columns over the UI's window (whole minutes, since
+    /// activity is counted per minute); None when there is no room for lanes.
+    fn new(
+        view: &WorkspaceView,
+        tree: &[AgentRowVm],
+        ui: &UiState,
+        now: DateTime<Utc>,
+    ) -> Option<Self> {
+        let cols = ui.viewport.lane_cols as i64;
+        if cols == 0 {
+            return None;
+        }
+        let span = match ui.window.secs() {
+            Some(s) => s,
+            None => tree
+                .iter()
+                .filter_map(|r| AgentId::parse(&r.id))
+                .filter_map(|id| view.agent(&id)?.agent.started_at)
+                .min()
+                .map(|s| (now - s).num_seconds())
+                .unwrap_or(0)
+                .max(60),
+        };
+        let per_cell = (span + cols - 1) / cols;
+        let cell_secs = ((per_cell + 59) / 60).max(1) * 60;
+        let cells = ((span + cell_secs - 1) / cell_secs).clamp(1, cols) as usize;
+        let end = DateTime::from_timestamp((now.timestamp() + 59).div_euclid(60) * 60, 0)?;
+        Some(Self {
+            end,
+            cell: Duration::seconds(cell_secs),
+            cells,
+        })
+    }
+
+    fn cell_label(&self) -> String {
+        let m = self.cell.num_minutes();
+        match (m / 60, m % 60) {
+            (0, m) => format!("{m}m"),
+            (h, 0) => format!("{h}h"),
+            (h, m) => format!("{h}h{m:02}m"),
+        }
+    }
+}
+
+pub(super) fn build_overview(
+    view: &WorkspaceView,
+    ui: &UiState,
+    tree: &[AgentRowVm],
+    now: DateTime<Utc>,
+) -> OverviewVm {
+    let lanes = Lanes::new(view, tree, ui, now);
+    let rows = tree
+        .iter()
+        .filter_map(|r| {
+            let id = AgentId::parse(&r.id)?;
+            let a = view.agent(&id)?;
+            let (lane, lane_tones) = lanes.map(|l| lane(a, &l, now)).unwrap_or_default();
+            Some(OverviewRowVm {
+                id: r.id.clone(),
+                depth: r.depth,
+                guides: r.guides.clone(),
+                is_last_sibling: r.is_last_sibling,
+                label: r.label.clone(),
+                badge: r.badge,
+                provider: r.provider.clone(),
+                status: r.status,
+                ctx: ctx(a),
+                lane,
+                lane_tones,
+                now: now_of(a, now),
+                selected: r.selected,
+                collapsed: r.collapsed,
+                hidden_descendants: r.hidden_descendants,
+                root: (r.depth == 0).then(|| root_header(view, a, now)),
+            })
+        })
+        .collect();
+    OverviewVm {
+        window: ui.window.label().to_string(),
+        cell: lanes.map(|l| l.cell_label()).unwrap_or_default(),
+        rows,
+    }
+}
+
+fn root_header(view: &WorkspaceView, a: &AgentView, now: DateTime<Utc>) -> RootHeaderVm {
+    let mut agents = 0;
+    let mut running = 0;
+    let mut stack = vec![a.id()];
+    let mut seen = HashSet::new();
+    while let Some(id) = stack.pop() {
+        if !seen.insert(id) {
+            continue;
+        }
+        let Some(v) = view.agent(id) else { continue };
+        agents += 1;
+        if v.status == AgentStatus::Running {
+            running += 1;
+        }
+        stack.extend(v.children.iter());
+    }
+    RootHeaderVm {
+        label: a.label(),
+        provider: provider_name(a.agent.provider).to_string(),
+        status: status_vm(a.status),
+        age_secs: a.agent.started_at.map(|s| (now - s).num_seconds().max(0)),
+        model: a.model.clone(),
+        ctx: ctx(a),
+        compactions: a.detail.compactions,
+        agents,
+        running,
+    }
+}
+
+/// Density glyph for `events` over `minutes`.
+fn density(events: u32, minutes: i64) -> char {
+    let rate = events as f64 / minutes.max(1) as f64;
+    match rate {
+        r if r < 1.0 => '▁',
+        r if r < 3.0 => '▂',
+        r if r < 6.0 => '▃',
+        r if r < 12.0 => '▅',
+        _ => '▆',
+    }
+}
+
+fn tone(s: AgentStatus) -> char {
+    match s {
+        AgentStatus::Running => 'r',
+        AgentStatus::Idle | AgentStatus::Unknown => 'i',
+        AgentStatus::Done | AgentStatus::Killed | AgentStatus::Failed => 'd',
+    }
+}
+
+/// Glyphs and tones of one agent's lane.
+fn lane(a: &AgentView, l: &Lanes, now: DateTime<Utc>) -> (String, String) {
+    let mut glyphs = String::with_capacity(l.cells * 3);
+    let mut tones = String::with_capacity(l.cells);
+    let minutes = l.cell.num_minutes();
+    // Time of the latest signal: own-log write or reported transition.
+    let settled = a
+        .last_activity
+        .max(a.detail.status_history.last().map(|p| p.at));
+    for i in 0..l.cells {
+        let to = l.end - l.cell * (l.cells - 1 - i) as i32;
+        let from = to - l.cell;
+        let existed = a.agent.started_at.is_some_and(|s| s < to);
+        if !existed {
+            glyphs.push(' ');
+            tones.push(' ');
+            continue;
+        }
+        let (mut events, mut compactions) = (0, 0);
+        for b in a.detail.activity.between(from, to) {
+            events += b.events;
+            compactions += b.compactions;
+        }
+        // Cells after the last signal show the effective status (it may come
+        // from the process registry or staleness, which the signal history does
+        // not record: a session that went quiet is not "running" until now);
+        // earlier cells show the signal history.
+        let status = if to >= now || settled.is_none_or(|t| from >= t) {
+            Some(a.status)
+        } else {
+            a.detail.status_history.at(to - Duration::seconds(1))
+        };
+        let (g, t) = if compactions > 0 {
+            ('⟲', 'c')
+        } else if events > 0 {
+            (
+                density(events, minutes),
+                tone(status.unwrap_or(AgentStatus::Running)),
+            )
+        } else if status == Some(AgentStatus::Running) {
+            ('·', 'r')
+        } else {
+            (' ', ' ')
+        };
+        glyphs.push(g);
+        tones.push(t);
+    }
+    (glyphs, tones)
+}
+
+/// Newest of the last assistant text and reasoning (text preferred on a tie).
+fn latest_said(a: &AgentView) -> Option<&str> {
+    let d = &a.detail;
+    match (&d.last_message, &d.last_reasoning) {
+        (Some(m), Some(r)) if r.at > m.at => Some(&r.text),
+        (Some(m), _) => Some(&m.text),
+        (None, Some(r)) => Some(&r.text),
+        (None, None) => None,
+    }
+}
+
+pub(super) fn now_of(a: &AgentView, now: DateTime<Utc>) -> NowVm {
+    let ago = |t: Option<DateTime<Utc>>| t.map(|t| (now - t).num_seconds().max(0));
+    match a.status {
+        AgentStatus::Running => {
+            if let Some(t) = &a.current_tool {
+                return NowVm::Tool {
+                    name: t.name.clone(),
+                    summary: t.summary.clone(),
+                    elapsed_secs: (now - t.since).num_seconds().max(0),
+                };
+            }
+            match latest_said(a) {
+                Some(text) => NowVm::Said {
+                    text: one_line(text, NOW_TEXT_MAX),
+                },
+                None => NowVm::None,
+            }
+        }
+        AgentStatus::Idle => {
+            let since = a
+                .detail
+                .status_history
+                .entered(AgentStatus::Idle)
+                .or(a.last_active())
+                .or(a.last_activity);
+            NowVm::Idle {
+                secs: ago(since).unwrap_or(0),
+            }
+        }
+        AgentStatus::Done | AgentStatus::Killed | AgentStatus::Failed => {
+            let result = a
+                .detail
+                .result
+                .as_ref()
+                .filter(|r| !r.encrypted)
+                .and_then(|r| r.text.as_deref());
+            match result {
+                Some(text) if a.status == AgentStatus::Done => NowVm::Result {
+                    text: one_line(text, NOW_TEXT_MAX),
+                },
+                _ => {
+                    let ended = a
+                        .detail
+                        .status_history
+                        .last()
+                        .filter(|p| p.status.is_terminal())
+                        .map(|p| p.at)
+                        .or(a.last_activity);
+                    NowVm::Ended {
+                        status: status_vm(a.status),
+                        secs: ago(ended),
+                        reason: a.detail.end_reason.clone(),
+                    }
+                }
+            }
+        }
+        AgentStatus::Unknown => NowVm::None,
+    }
+}

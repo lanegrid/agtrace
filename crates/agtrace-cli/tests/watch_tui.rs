@@ -8,7 +8,7 @@ use agtrace::presentation::presenters::watch::build_screen;
 use std::time::{Duration, Instant};
 
 use agtrace::presentation::view_models::watch::{
-    FeedFilter, Pane, RowKind, Scroll, TOAST_TTL, Toast, UiState, Viewport, WatchScreenVm,
+    FeedFilter, Pane, RowKind, Screen, Scroll, TOAST_TTL, Toast, UiState, Viewport, WatchScreenVm,
 };
 use agtrace::presentation::views::watch::input::{
     Effect, action_for, apply, expire_toast, sync_selection,
@@ -24,7 +24,16 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier};
 
+/// UI state on the agents screen (`2`), which most tests below exercise.
 fn ui() -> UiState {
+    UiState {
+        screen: Screen::Agents,
+        ..home()
+    }
+}
+
+/// UI state as `watch` starts it: the overview screen.
+fn home() -> UiState {
     UiState::new("project demo-project", FixedOffset::east_opt(0).unwrap())
 }
 
@@ -276,6 +285,232 @@ fn render_empty_workspace() {
     insta::assert_snapshot!(draw(&view, &mut ui(), 80, 24));
 }
 
+// ------------------------------------------------------------------ overview / detail
+
+/// Overview at the fixture clock with the 15m window (the scenario spans 5 minutes).
+fn overview_ui() -> UiState {
+    use agtrace::presentation::view_models::watch::LaneWindow;
+    UiState {
+        window: LaneWindow::M15,
+        ..home()
+    }
+}
+
+#[test]
+fn render_overview_80x24() {
+    let view = fixture::workspace();
+    insta::assert_snapshot!(draw(&view, &mut overview_ui(), 80, 24));
+}
+
+#[test]
+fn render_overview_120x40() {
+    let view = fixture::workspace();
+    let mut ui = overview_ui();
+    select(&mut ui, "codex:t-judge");
+    insta::assert_snapshot!(draw(&view, &mut ui, 120, 40));
+}
+
+/// Overview rows: two roots with headers, lanes with compaction markers, and the
+/// "now" cell for running / idle / done agents.
+#[test]
+fn presenter_overview_rows() {
+    let view = fixture::workspace();
+    let mut ui = overview_ui();
+    ui.viewport = layout(Rect::new(0, 0, 120, 40)).viewport();
+    let vm = screen(&view, &ui);
+    let ov = vm.overview.expect("overview");
+    assert_eq!(ov.cell, "1m");
+    let roots: Vec<&str> = ov
+        .rows
+        .iter()
+        .filter_map(|r| r.root.as_ref().map(|h| h.label.as_str()))
+        .collect();
+    assert_eq!(roots, vec!["/root", "s-lead"]);
+    for r in &ov.rows {
+        assert_eq!(
+            r.lane.chars().count(),
+            r.lane_tones.chars().count(),
+            "{}",
+            r.id
+        );
+    }
+    let lead = ov.rows.iter().find(|r| r.id == "claude:s-lead").unwrap();
+    assert!(
+        lead.lane.contains('⟲'),
+        "compaction marker: {:?}",
+        lead.lane
+    );
+    insta::assert_json_snapshot!(ov);
+}
+
+#[test]
+fn overview_lane_follows_the_window() {
+    use agtrace::presentation::view_models::watch::LaneWindow;
+    let view = fixture::workspace();
+    let mut ui = overview_ui();
+    ui.viewport = layout(Rect::new(0, 0, 120, 40)).viewport();
+    let cols = ui.viewport.lane_cols;
+    assert!(cols >= 30, "{cols}");
+    for (w, cell) in [
+        (LaneWindow::M15, "1m"),
+        (LaneWindow::M60, "2m"),
+        (LaneWindow::H4, "6m"),
+        (LaneWindow::All, "1m"),
+    ] {
+        ui.window = w;
+        let ov = screen(&view, &ui).overview.unwrap();
+        assert_eq!(ov.cell, cell, "{w:?}");
+        assert!(ov.rows.iter().all(|r| r.lane.chars().count() <= cols));
+    }
+}
+
+/// Regression (real data): a session that went quiet and is done by staleness
+/// (not recorded in the signal history) was drawn "running" (`·`) until now.
+#[test]
+fn overview_lane_stops_when_a_quiet_session_is_done() {
+    use agtrace::presentation::view_models::watch::{LaneWindow, StatusVm};
+    use agtrace_sdk::workspace::WorkspaceEvent;
+    use agtrace_testing::synth::{AgentBuilder, EventLog, ts};
+
+    let now = ts(3 * 3600);
+    let mut view = WorkspaceView::new();
+    let lead = AgentBuilder::claude_main("s-quiet").started(0);
+    let id = lead.id();
+    view.apply(
+        WorkspaceEvent::AgentDiscovered(lead.build()),
+        &fixture::resolve,
+        now,
+    );
+    let mut l = EventLog::new(&id);
+    view.apply(
+        WorkspaceEvent::Events {
+            agent: id.clone(),
+            events: vec![l.at(0).user("go"), l.at(30).assistant("working")],
+            reset: false,
+        },
+        &fixture::resolve,
+        now,
+    );
+    assert_eq!(
+        view.agents[&id].status,
+        agtrace_sdk::workspace::AgentStatus::Done
+    );
+    let mut ui = UiState {
+        window: LaneWindow::H4,
+        ..home()
+    };
+    ui.viewport = layout(Rect::new(0, 0, 120, 40)).viewport();
+    let ov = build_screen(&view, &ui, now).overview.unwrap();
+    let row = &ov.rows[0];
+    assert_eq!(row.status, StatusVm::Done);
+    assert!(!row.lane.contains('·'), "lane: {:?}", row.lane);
+    assert!(row.lane.trim().starts_with('▁'), "lane: {:?}", row.lane);
+}
+
+/// A killed agent without a reported result shows its last message and why it ended.
+#[test]
+fn detail_result_of_a_killed_agent_is_its_last_message() {
+    use agtrace::presentation::view_models::watch::{ResultVm, StatusVm};
+    use agtrace_sdk::types::{AgentLifecyclePayload, EventPayload, LifecycleTransition};
+    use agtrace_sdk::workspace::WorkspaceEvent;
+    use agtrace_testing::synth::{AgentBuilder, EventLog, handle};
+
+    let mut view = WorkspaceView::new();
+    let mut apply = |e: WorkspaceEvent| view.apply(e, &fixture::resolve, fixture::now());
+    let lead = AgentBuilder::claude_main("s-k").started(0);
+    let sub = AgentBuilder::claude_subagent("s-k", "a9").started(5);
+    let (lead_id, sub_id) = (lead.id(), sub.id());
+    apply(WorkspaceEvent::AgentDiscovered(lead.build()));
+    apply(WorkspaceEvent::AgentDiscovered(sub.build()));
+    let mut s = EventLog::new(&sub_id);
+    apply(WorkspaceEvent::Events {
+        agent: sub_id.clone(),
+        events: vec![
+            s.at(5).user("render stills"),
+            s.at(9).assistant("report: /tmp/r.md"),
+        ],
+        reset: false,
+    });
+    let mut l = EventLog::new(&lead_id);
+    apply(WorkspaceEvent::Events {
+        agent: lead_id.clone(),
+        events: vec![
+            l.at(20)
+                .push(EventPayload::AgentLifecycle(AgentLifecyclePayload {
+                    target: handle::native("a9"),
+                    transition: LifecycleTransition::Killed,
+                    reason: Some("stopped by lead".to_string()),
+                    usage: None,
+                })),
+        ],
+        reset: false,
+    });
+    let vm = screen(&view, &detail_ui(sub_id.as_str()));
+    match vm.detail.unwrap().result {
+        ResultVm::LastMessage {
+            text,
+            status,
+            reason,
+            ..
+        } => {
+            assert_eq!(text, "report: /tmp/r.md");
+            assert_eq!(status, StatusVm::Killed);
+            assert_eq!(reason.as_deref(), Some("stopped by lead"));
+        }
+        other => panic!("{other:?}"),
+    }
+}
+
+fn detail_ui(id: &str) -> UiState {
+    let mut ui = ui();
+    select(&mut ui, id);
+    ui.screen = Screen::Detail;
+    ui.detail_agent = Some(id.to_string());
+    ui
+}
+
+/// Claude teammate: its task arrived as a NEW_TASK from the lead.
+#[test]
+fn render_detail_claude_teammate_120x40() {
+    let view = fixture::workspace();
+    let mut ui = detail_ui("claude:s-audit-a");
+    let vm = screen(&view, &ui);
+    let d = vm.detail.as_ref().unwrap();
+    assert_eq!(d.relation, "teammate of s-lead (team audit)");
+    assert_eq!(d.instructions[0].text.as_deref(), Some("review parser"));
+    insta::assert_snapshot!(draw(&view, &mut ui, 120, 40));
+}
+
+/// Claude subagent: prompt from its own log, result from the lead's task notification.
+#[test]
+fn render_detail_claude_subagent_with_result_120x40() {
+    let view = fixture::workspace();
+    let mut ui = detail_ui("claude:s-lead/a7ac2e91");
+    insta::assert_snapshot!(draw(&view, &mut ui, 120, 40));
+}
+
+/// Codex child: encrypted task (sender, path, no body) and a plaintext FINAL_ANSWER.
+#[test]
+fn presenter_detail_codex_child_encrypted_task_and_final_answer() {
+    let view = fixture::workspace();
+    let mut ui = detail_ui("codex:t-scout");
+    let vm = screen(&view, &ui);
+    let d = vm.detail.clone().unwrap();
+    let task = &d.instructions[0];
+    assert!(task.encrypted && task.text.is_none(), "{task:?}");
+    assert!(
+        task.note
+            .as_deref()
+            .is_some_and(|n| n.starts_with("[encrypted by Codex] NEW_TASK from /root")),
+        "{task:?}"
+    );
+    insta::assert_json_snapshot!(d);
+    insta::assert_snapshot!(
+        "render_detail_codex_child_80x24",
+        draw(&view, &mut ui, 80, 24)
+    );
+}
+
 // ------------------------------------------------------------------ input
 
 fn key(c: KeyCode) -> KeyEvent {
@@ -301,6 +536,7 @@ fn keys_move_selection_and_collapse() {
         tree: 10,
         timeline: 5,
         feed: 4,
+        ..Default::default()
     };
     let order: Vec<String> = screen(&view, &ui)
         .tree
@@ -361,26 +597,158 @@ fn moves_between_frames_accumulate() {
     assert!(toast(&ui).starts_with("▾ expanded"));
 }
 
-/// Enter / → / l dive into the selected agent's timeline; they never collapse.
+/// Enter / → / l open the selected agent's detail (from the agents tree, its
+/// timeline or feed, and the overview); they never collapse. Esc returns to the
+/// screen the detail was opened from, with the selection kept.
 #[test]
-fn open_keys_focus_timeline() {
+fn open_keys_open_the_detail_and_esc_returns() {
     let view = fixture::workspace();
     let before = screen(&view, &ui()).tree.len();
     for code in [KeyCode::Enter, KeyCode::Right, KeyCode::Char('l')] {
-        let mut ui = ui();
-        press(&view, &mut ui, code);
-        assert_eq!(ui.focus, Pane::Timeline, "{code:?}");
-        assert!(ui.collapsed.is_empty(), "{code:?}");
-        assert_eq!(screen(&view, &ui).tree.len(), before, "{code:?}");
-        // Already in the timeline: stays there.
-        press(&view, &mut ui, code);
-        assert_eq!(ui.focus, Pane::Timeline, "{code:?}");
+        for (start, pane) in [
+            (Screen::Agents, Pane::Tree),
+            (Screen::Agents, Pane::Timeline),
+            (Screen::Agents, Pane::Feed),
+            (Screen::Overview, Pane::Tree),
+        ] {
+            let mut ui = ui();
+            ui.screen = start;
+            ui.focus = pane;
+            select(&mut ui, "claude:s-audit-a");
+            press(&view, &mut ui, code);
+            assert_eq!(ui.screen, Screen::Detail, "{code:?} {start:?} {pane:?}");
+            assert_eq!(ui.detail_agent.as_deref(), Some("claude:s-audit-a"));
+            assert!(ui.collapsed.is_empty(), "{code:?}");
+            let vm = screen(&view, &ui);
+            assert_eq!(vm.detail.as_ref().unwrap().title, "audit-A");
+            // Already in the detail: stays there.
+            press(&view, &mut ui, code);
+            assert_eq!(ui.screen, Screen::Detail, "{code:?}");
+            press(&view, &mut ui, KeyCode::Esc);
+            assert_eq!(ui.screen, start, "{code:?}: back to where it was opened");
+            assert_eq!(ui.focus, pane, "{code:?}: pane focus kept");
+            assert_eq!(ui.selected.as_deref(), Some("claude:s-audit-a"));
+            assert_eq!(screen(&view, &ui).tree.len(), before, "{code:?}");
+        }
     }
-    // From the feed, open goes to the timeline too.
-    let mut ui = ui();
-    ui.focus = Pane::Feed;
+}
+
+/// `1` / `2` switch screens, also from the detail; the default is the overview.
+#[test]
+fn number_keys_switch_screens() {
+    let view = fixture::workspace();
+    let mut ui = home();
+    assert_eq!(ui.screen, Screen::Overview);
+    let vm = screen(&view, &ui);
+    assert!(vm.overview.is_some() && vm.detail.is_none());
+    press(&view, &mut ui, KeyCode::Char('2'));
+    assert_eq!(ui.screen, Screen::Agents);
+    assert!(screen(&view, &ui).overview.is_none());
     press(&view, &mut ui, KeyCode::Enter);
-    assert_eq!(ui.focus, Pane::Timeline);
+    assert_eq!(ui.screen, Screen::Detail);
+    press(&view, &mut ui, KeyCode::Char('1'));
+    assert_eq!(ui.screen, Screen::Overview);
+    // j/k move the selection on the overview.
+    let order: Vec<String> = screen(&view, &ui)
+        .tree
+        .iter()
+        .map(|r| r.id.clone())
+        .collect();
+    select(&mut ui, &order[0]);
+    press(&view, &mut ui, KeyCode::Char('j'));
+    assert_eq!(ui.selected.as_deref(), Some(order[1].as_str()));
+    press(&view, &mut ui, KeyCode::Char('G'));
+    assert_eq!(ui.selected.as_deref(), order.last().map(String::as_str));
+    // Esc on the overview resets the view toggles.
+    ui.hide_done = true;
+    press(&view, &mut ui, KeyCode::Esc);
+    assert!(!ui.hide_done);
+    assert_eq!(toast(&ui), "view reset");
+}
+
+/// `+` / `-` (and `]` / `[`) step the overview activity window and say so.
+#[test]
+fn window_keys_zoom_the_activity_lanes() {
+    use agtrace::presentation::view_models::watch::LaneWindow;
+    let view = fixture::workspace();
+    let mut ui = home();
+    assert_eq!(ui.window, LaneWindow::M60);
+    press(&view, &mut ui, KeyCode::Char('+'));
+    assert_eq!(ui.window, LaneWindow::H4);
+    assert_eq!(toast(&ui), "activity window: last 4h");
+    press(&view, &mut ui, KeyCode::Char(']'));
+    assert_eq!(ui.window, LaneWindow::All);
+    assert_eq!(
+        toast(&ui),
+        "activity window: all (since the oldest agent started)"
+    );
+    press(&view, &mut ui, KeyCode::Char('+'));
+    assert_eq!(
+        toast(&ui),
+        "activity window: all (since the oldest agent started) — widest"
+    );
+    for _ in 0..3 {
+        press(&view, &mut ui, KeyCode::Char('-'));
+    }
+    assert_eq!(ui.window, LaneWindow::M15);
+    assert_eq!(toast(&ui), "activity window: last 15m");
+    press(&view, &mut ui, KeyCode::Char('['));
+    assert_eq!(toast(&ui), "activity window: last 15m — narrowest");
+}
+
+/// Detail keys: Tab cycles sections, j/k/G/g scroll the focused one (clamped to
+/// the last frame's wrapped text), panes and toggles of other screens do not act.
+#[test]
+fn detail_sections_cycle_and_scroll() {
+    use agtrace::presentation::view_models::watch::{DetailSection, SectionMetrics};
+    let view = fixture::workspace();
+    let mut ui = ui();
+    select(&mut ui, "claude:s-lead");
+    press(&view, &mut ui, KeyCode::Enter);
+    assert_eq!(ui.detail_section, DetailSection::Instructions);
+    ui.viewport.detail = [
+        SectionMetrics {
+            total: 10,
+            height: 4,
+        },
+        SectionMetrics {
+            total: 2,
+            height: 3,
+        },
+        SectionMetrics {
+            total: 1,
+            height: 1,
+        },
+        SectionMetrics {
+            total: 20,
+            height: 5,
+        },
+    ];
+    press(&view, &mut ui, KeyCode::Char('j'));
+    assert_eq!(ui.detail_scroll[0], Scroll::Offset(1));
+    press(&view, &mut ui, KeyCode::PageDown);
+    assert_eq!(ui.detail_scroll[0], Scroll::Offset(5));
+    press(&view, &mut ui, KeyCode::Char('j'));
+    press(&view, &mut ui, KeyCode::Char('j'));
+    assert_eq!(ui.detail_scroll[0], Scroll::Offset(6), "clamped at the end");
+    press(&view, &mut ui, KeyCode::Char('g'));
+    assert_eq!(ui.detail_scroll[0], Scroll::Offset(0));
+
+    press(&view, &mut ui, KeyCode::BackTab);
+    assert_eq!(ui.detail_section, DetailSection::Timeline);
+    assert_eq!(ui.detail_scroll[3], Scroll::Follow);
+    press(&view, &mut ui, KeyCode::Char('k'));
+    assert_eq!(ui.detail_scroll[3], Scroll::Offset(14));
+    press(&view, &mut ui, KeyCode::Char('G'));
+    assert_eq!(ui.detail_scroll[3], Scroll::Follow);
+    press(&view, &mut ui, KeyCode::Tab);
+    assert_eq!(ui.detail_section, DetailSection::Instructions);
+
+    // Toggles of the tree screens are ignored here.
+    press(&view, &mut ui, KeyCode::Char(' '));
+    press(&view, &mut ui, KeyCode::Char('d'));
+    assert!(ui.collapsed.is_empty() && !ui.hide_done);
+    assert_eq!(ui.screen, Screen::Detail);
 }
 
 /// Esc / ← / h go back one level: help → closed, timeline / feed → tree, tree →
@@ -394,6 +762,7 @@ fn back_keys_step_out_one_level() {
             tree: 10,
             timeline: 5,
             feed: 4,
+            ..Default::default()
         };
         select(&mut ui, "codex:t-judge");
         ui.collapsed.insert("claude:s-lead".to_string());
@@ -489,6 +858,7 @@ fn scrolling_stops_follow_and_tail_restores_it() {
         tree: 10,
         timeline: 4,
         feed: 3,
+        ..Default::default()
     };
     let rows = screen(&view, &ui).focus.rows.len();
     assert!(rows > 8);
@@ -504,7 +874,7 @@ fn scrolling_stops_follow_and_tail_restores_it() {
     assert_eq!(ui.timeline_scroll, Scroll::Follow);
 
     // Timeline focused: j/k scroll it instead of moving the selection.
-    press(&view, &mut ui, KeyCode::Enter);
+    press(&view, &mut ui, KeyCode::Tab);
     press(&view, &mut ui, KeyCode::Char('k'));
     assert_eq!(ui.selected.as_deref(), Some("claude:s-lead"));
     assert!(matches!(ui.timeline_scroll, Scroll::Offset(_)));

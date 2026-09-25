@@ -37,7 +37,7 @@ use crate::presentation::view_models::watch::{ConsoleVm, StatusVm, UiState, Watc
 use crate::presentation::views::watch::input::{
     Effect, action_for, apply, expire_toast, sync_selection,
 };
-use crate::presentation::views::watch::{console, layout, render};
+use crate::presentation::views::watch::{console, detail, layout, render};
 
 /// Minimum interval between two frames.
 const FRAME: Duration = Duration::from_millis(100);
@@ -170,8 +170,11 @@ pub fn run(source: &dyn WorkspaceSource, mut ui: UiState) -> Result<()> {
         }
         if dirty && since_draw.is_none_or(|d| d >= FRAME) {
             let size = terminal.size()?;
-            ui.viewport = layout(Rect::new(0, 0, size.width, size.height)).viewport();
+            let l = layout(Rect::new(0, 0, size.width, size.height));
+            ui.viewport = l.viewport();
             let vm = build(source, &ui);
+            // Detail sections wrap their text: scroll keys clamp against this frame.
+            ui.viewport.detail = detail::metrics(l.detail(), &vm);
             sync_selection(&mut ui, &vm);
             terminal.draw(|f| render(f, &vm))?;
             screen = Some(vm);

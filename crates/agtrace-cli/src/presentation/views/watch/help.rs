@@ -7,14 +7,16 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 pub const KEYS: &[(&str, &str)] = &[
-    ("Enter → l", "open selected agent (focus timeline)"),
-    ("Esc ← h", "back: close help / to tree / reset view"),
-    ("j/k ↓/↑", "move selection (tree) or scroll pane"),
+    ("1 / 2", "overview / agents screen"),
+    ("Enter → l", "open the selected agent's detail"),
+    ("Esc ← h", "back: close help / detail / to tree / reset"),
+    ("j/k ↓/↑", "move selection, or scroll pane / section"),
+    ("Tab/S-Tab", "cycle panes (agents) / sections (detail)"),
+    ("+ - ] [", "overview activity window: 15m 60m 4h all"),
     ("space", "fold / unfold selected node"),
-    ("Tab/S-Tab", "cycle pane focus"),
-    ("PgUp/PgDn", "scroll focused pane"),
+    ("PgUp/PgDn", "scroll focused pane / section"),
     ("C-u/C-d", "half-page scroll"),
-    ("G / g", "jump to tail (follow) / top"),
+    ("G / g", "jump to end (follow) / top"),
     ("f", "messages: all ↔ selected agent"),
     ("d", "hide / show done & killed"),
     ("a", "auto-select most active agent"),
@@ -24,7 +26,7 @@ pub const KEYS: &[(&str, &str)] = &[
 ];
 
 pub fn render(f: &mut Frame, area: Rect) {
-    let w = 56.min(area.width);
+    let w = 58.min(area.width);
     let h = (KEYS.len() as u16 + 2).min(area.height);
     let popup = Rect {
         x: area.x + (area.width - w) / 2,
