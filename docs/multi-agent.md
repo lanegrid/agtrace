@@ -113,7 +113,7 @@ a new agent appears, so it does not matter which file is read first.
 | Child | Parent comes from |
 |---|---|
 | Claude subagent / fork | Its location: `<sid>/subagents/` gives parent `claude:<sid>`. The meta file's `toolUseId` gives the `spawn_call_id`. |
-| Claude teammate | (1) `~/.claude/teams/<team>/config.json` `leadSessionId`. (2) Otherwise, the agent whose log contains the `AgentSpawn` of that team member (the `Agent` tool result with `status: teammate_spawned`). |
+| Claude teammate | (1) The agent whose log contains the `AgentSpawn` of that team member (the `Agent` tool result with `status: teammate_spawned`), e.g. a subagent of the lead session. (2) Otherwise, the team lead: `~/.claude/teams/<team>/config.json` `leadSessionId`. The live view and the index agent tree (`session show`, MCP `get_agent_tree`) apply this same rule (`agtrace_engine::workspace::teammate_parent`). |
 | Codex child thread / fork | `session_meta` `parent_thread_id` (and `session_id` for the root). |
 
 Inside a parent's log, a spawn is decoded as an **`AgentSpawn`** event. The event refers to
@@ -163,8 +163,15 @@ Codex encrypts inter-agent message bodies (`gAAAA…` tokens). agtrace shows the
 the child's result, which is shown in full. Claude message bodies are plaintext.
 
 The same message often appears twice: outgoing in the sender's log and incoming in the
-recipient's log. The live feed deduplicates on `(from, to, kind)` with a ±2 s window and keeps
-the copy that has a plaintext body.
+recipient's log. The recipient logs it when it reads it, which can be much later: a busy Claude
+teammate reads queued messages at its next turn, and a Codex child (or fork) logs its
+`NEW_TASK` when it starts. The live feed pairs the two copies one-to-one (oldest unpaired copy
+first) when sender, recipients and kind match, the plaintext bodies agree, and the incoming copy
+is at most 1 h later (or 30 s earlier) than the outgoing one. The merged entry keeps the copy
+that has a plaintext body. Copies whose handles resolve only later (an agent discovered after
+its messages were read) are merged once they resolve. Repeated reports of one lifecycle
+transition (a subagent's hand-back and its later task notification, both "done") are merged
+when they are at most 60 s apart and nothing addressed the agent in between.
 
 ## Status
 

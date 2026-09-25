@@ -269,8 +269,11 @@ Rows are built from **file headers only**.
   - `agent_id`, `agent_name`, `spawn_call_id`, plus file size and mtime
 
   Claude subagents and forks are stored only here, under their parent session.
-- A teammate's parent is the team config's `leadSessionId` when the config exists at index
-  time. Otherwise it is left empty, and the live graph resolves it.
+- A teammate session's `parent_session_id` is the team config's `leadSessionId` when the
+  config exists at index time. Otherwise it is left empty, and the live graph resolves it.
+  The agent tree built from the index then applies the live view's rule
+  (`workspace::teammate_parent`): the teammate goes under the agent of the lead session whose
+  log spawned it (e.g. a subagent), else under the lead.
 
 ### agtrace-runtime (Orchestration)
 

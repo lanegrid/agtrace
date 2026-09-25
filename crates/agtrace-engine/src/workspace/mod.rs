@@ -10,23 +10,30 @@
 //!   Unresolvable handles are kept as pending links and retried whenever the agent
 //!   set changes (late discovery).
 //! - **Linking**: an `AgentSpawn` in P resolving to C sets `C.parent = P`; a teammate
-//!   whose team config names a lead is linked to it. Unlinked children are shown
+//!   without a known spawn is linked to the lead its team config names (the shared
+//!   rule in [`teammate_parent`], also used by the index agent tree). Unlinked children are shown
 //!   under their root.
 //! - **Status**: see [`status`] for the priority table.
-//! - **Feed**: inter-agent messages (deduplicated across sender / recipient logs),
-//!   spawns and lifecycle changes.
+//! - **Feed**: inter-agent messages (the sender's and the recipient's copy are
+//!   paired one-to-one into a single entry, also when a handle resolves late),
+//!   spawns and lifecycle changes (repeated reports of one transition merged).
 
 mod context_seam;
 mod feed;
 mod input;
+mod parent;
 mod ring;
 pub mod status;
 mod timeline;
 mod view;
 
 pub use context_seam::{CatalogResolver, ContextEvidence, ContextWindow, NoWindow, WindowResolver};
-pub use feed::{FEED_DEDUPE_WINDOW, FeedEntry, FeedKind, FeedParty};
+pub use feed::{
+    FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW, MESSAGE_CLOCK_SKEW,
+    MESSAGE_DELIVERY_WINDOW,
+};
 pub use input::{ProcessStatus, SideStateUpdate, TeamMember, WorkspaceEvent};
+pub use parent::{TeammateSpawn, find_teammate_spawn, teammate_parent, teammate_spawns};
 pub use ring::RingBuffer;
 pub use status::{AgentStatus, StatusSource};
 pub use timeline::{

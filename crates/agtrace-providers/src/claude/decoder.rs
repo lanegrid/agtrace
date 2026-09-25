@@ -956,7 +956,13 @@ impl ClaudeDecoder {
                 let summary = call
                     .input_str("summary")
                     .or_else(|| routing.and_then(|r| str_of(r, "summary")));
-                let (me, to) = (self.me(), self.member(target));
+                // `to` is a teammate name, or the id of a (background) subagent to resume.
+                let to = if is_subagent_id(&target) {
+                    AgentHandle::NativeAgentId(target)
+                } else {
+                    self.member(target)
+                };
+                let me = self.me();
                 self.agent_message(
                     out,
                     r,

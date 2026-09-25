@@ -476,4 +476,74 @@ mod tests {
         assert_eq!(child.kind, "codex_thread");
         assert_eq!(child.path.as_deref(), Some("/root/judge"));
     }
+
+    /// Parent consistency with the live view (shared `teammate_parent` rule): a
+    /// teammate spawned by a subagent of the lead session sits under that subagent
+    /// in the agent tree; without a known spawn it falls back to the team lead.
+    #[test]
+    fn agent_tree_puts_a_teammate_under_its_spawning_agent() {
+        use crate::client::SessionHandle;
+        use std::sync::{Arc, Mutex};
+
+        let tree_of = |fx: &LiveFixture| {
+            let db = Database::open_in_memory().unwrap();
+            index_fixture(fx, &db);
+            SessionHandle::for_tests(LEAD_SESSION, Arc::new(Mutex::new(db)))
+                .agent_tree()
+                .unwrap()
+        };
+        let mate = format!("claude:{TEAMMATE_SESSION}");
+        let sub = format!("claude:{LEAD_SESSION}/{SUBAGENT_ID}");
+
+        // Fixture as is: the lead's own log spawns the teammate.
+        let fx = LiveFixture::new(chrono::NaiveDate::from_ymd_opt(2026, 9, 20).unwrap()).unwrap();
+        let tree = tree_of(&fx);
+        let node = tree.children.iter().find(|c| c.agent_id == mate).unwrap();
+        assert_eq!(
+            node.spawn_call_id.as_deref(),
+            Some("toolu_synthetic_spawn_team"),
+            "spawn call id comes from the spawn"
+        );
+
+        // Move the teammate spawn (Agent call + teammate_spawned result) into the
+        // subagent's log: the subagent becomes the parent.
+        let lead_file = fx.lead_file();
+        let text = std::fs::read_to_string(&lead_file).unwrap();
+        let (spawn, rest): (Vec<&str>, Vec<&str>) = text
+            .lines()
+            .partition(|l| l.contains("toolu_synthetic_spawn_team"));
+        assert_eq!(spawn.len(), 2);
+        std::fs::write(&lead_file, rest.join("\n") + "\n").unwrap();
+        let sub_file = fx.subagent_file(SUBAGENT_ID);
+        let mut sub_text = std::fs::read_to_string(&sub_file).unwrap();
+        sub_text.push_str(&(spawn.join("\n") + "\n"));
+        std::fs::write(&sub_file, sub_text).unwrap();
+
+        let tree = tree_of(&fx);
+        assert!(
+            !tree.children.iter().any(|c| c.agent_id == mate),
+            "{:#?}",
+            tree
+        );
+        let sub_node = tree.children.iter().find(|c| c.agent_id == sub).unwrap();
+        let node = sub_node
+            .children
+            .iter()
+            .find(|c| c.agent_id == mate)
+            .expect("teammate under the spawning subagent");
+        assert_eq!(
+            node.spawn_call_id.as_deref(),
+            Some("toolu_synthetic_spawn_team")
+        );
+
+        // No spawn anywhere: the team lead.
+        let sub_text = std::fs::read_to_string(&sub_file).unwrap();
+        let kept: Vec<&str> = sub_text
+            .lines()
+            .filter(|l| !l.contains("toolu_synthetic_spawn_team"))
+            .collect();
+        std::fs::write(&sub_file, kept.join("\n") + "\n").unwrap();
+        let tree = tree_of(&fx);
+        assert!(tree.children.iter().any(|c| c.agent_id == mate));
+    }
 }
