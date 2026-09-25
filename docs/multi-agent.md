@@ -69,7 +69,18 @@ Codex uses to address messages.
 
 - **Teammates** are ordinary top-level transcripts in the project directory. Their records
   carry `teamName` and `agentName`, and the first record is usually an `agent-setting` line
-  (the agent type). The team's `config.json` names the lead session (`leadSessionId`).
+  (the agent type). The teammate name comes from that record envelope only: a teammate's
+  `agent-name` state record holds the display name inherited from its lead. The team's
+  `config.json` names the lead session (`leadSessionId`).
+- **Runtime session ids.** Records carry the transcript id (`sessionId`) and the runtime id
+  of the process that wrote them (`session_id`). After a resume or a bg daemon respawn the
+  process writes into an existing transcript under a new runtime id, and a team created
+  then names that runtime id as `leadSessionId` (the team is `session-<first 8 hex>`), which
+  has no transcript of its own. The decoder reports each such id once as
+  `AgentAttribute(RuntimeSessionId)`, and the lead is resolved through it.
+- **Continued transcripts.** A transcript continued in another one ends with a
+  `continued-in` record. It is the same logical session: the watch tree shows it under its
+  continuation, marked "(earlier transcript)", with status done.
 - **Async subagents and forks** are written under the parent session's directory as
   `subagents/agent-<aid>.jsonl`. The `<aid>` is `a` followed by 16 hex digits. The
   `.meta.json` sidecar holds the spawning tool call id (`toolUseId`), the agent type and
@@ -113,7 +124,7 @@ a new agent appears, so it does not matter which file is read first.
 | Child | Parent comes from |
 |---|---|
 | Claude subagent / fork | Its location: `<sid>/subagents/` gives parent `claude:<sid>`. The meta file's `toolUseId` gives the `spawn_call_id`. |
-| Claude teammate | (1) The agent whose log contains the `AgentSpawn` of that team member (the `Agent` tool result with `status: teammate_spawned`), e.g. a subagent of the lead session. (2) Otherwise, the team lead: `~/.claude/teams/<team>/config.json` `leadSessionId`. The live view and the index agent tree (`session show`, MCP `get_agent_tree`) apply this same rule (`agtrace_engine::workspace::teammate_parent`). |
+| Claude teammate | (1) The agent whose log contains the `AgentSpawn` of that team member (the `Agent` tool result with `status: teammate_spawned`), e.g. a subagent of the lead session. (2) Otherwise, the team lead: `~/.claude/teams/<team>/config.json` `leadSessionId`, the transcript with that id or, for a runtime id, the transcript that reported it as `RuntimeSessionId` (`workspace::team_lead_agent`). The live view and the index agent tree (`session show`, MCP `get_agent_tree`) apply this same rule (`agtrace_engine::workspace::teammate_parent`). |
 | Codex child thread / fork | `session_meta` `parent_thread_id` (and `session_id` for the root). |
 
 Inside a parent's log, a spawn is decoded as an **`AgentSpawn`** event. The event refers to
@@ -217,7 +228,7 @@ Every agent has a status: **running**, **idle**, **done**, **failed**, **killed*
   `spawn_call_id`. See [MCP Integration](mcp-integration.md).
 - **Index**: sessions (mains, teammates, Codex threads and forks) carry the agent columns
   above. Claude subagents and forks are `log_files` rows (role `subagent` / `fork`) under their
-  parent session. See [Architecture](architecture.md#index-schema-v7).
+  parent session. See [Architecture](architecture.md#index-schema-v8).
 
 ## Try it without your own logs
 

@@ -52,6 +52,11 @@ fn str_field(v: &Value, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+/// Record kinds that carry the common envelope (`sessionId`, `teamName`, `agentName`, ...).
+fn is_transcript_record(kind: &str) -> bool {
+    matches!(kind, "user" | "assistant" | "attachment" | "system")
+}
+
 fn scan_head(lines: &[String]) -> HeadScan {
     let mut scan = HeadScan {
         lines: lines.len(),
@@ -82,13 +87,18 @@ fn scan_head(lines: &[String]) -> HeadScan {
         {
             scan.sidechain_agent_id = str_field(&v, "agentId");
         }
-        if scan.team_name.is_none() {
-            scan.team_name = str_field(&v, "teamName");
-        }
-        if scan.agent_name.is_none() {
-            scan.agent_name = str_field(&v, "agentName");
-        }
         let kind = v.get("type").and_then(Value::as_str).unwrap_or("");
+        // Teammate identity comes from the transcript-record envelope only: the
+        // `agent-name` state record also has an `agentName` field, but it holds the
+        // process display name (a teammate inherits its lead's), not the teammate name.
+        if is_transcript_record(kind) {
+            if scan.team_name.is_none() {
+                scan.team_name = str_field(&v, "teamName");
+            }
+            if scan.agent_name.is_none() {
+                scan.agent_name = str_field(&v, "agentName");
+            }
+        }
         match kind {
             "agent-setting" if scan.agent_setting.is_none() => {
                 scan.agent_setting = str_field(&v, "agentSetting");
@@ -242,6 +252,33 @@ mod tests {
             Some("audit-A@session-00000001")
         );
         assert_eq!(h.agent.team.as_deref(), Some("session-00000001"));
+    }
+
+    /// A teammate's `agent-name` record holds the display name inherited from its
+    /// lead; the envelope `agentName` (the teammate name) must win even when the
+    /// state record comes first.
+    #[test]
+    fn teammate_name_ignores_inherited_agent_name_record() {
+        let line = USER.replace(
+            "\"cwd\"",
+            "\"teamName\":\"session-00000001\",\"agentName\":\"worker-1\",\"cwd\"",
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let path = write(
+            dir.path(),
+            "proj/t.jsonl",
+            &format!(
+                "{{\"type\":\"agent-setting\",\"agentSetting\":\"general-purpose\"}}\n\
+                 {{\"type\":\"agent-name\",\"agentName\":\"Lead display name\"}}\n{line}\n"
+            ),
+        );
+        let h = read_claude_header(&path).unwrap().unwrap();
+        assert_eq!(h.agent.kind, AgentKind::Teammate);
+        assert_eq!(h.agent.name.as_deref(), Some("worker-1"));
+        assert_eq!(
+            h.agent.native_agent_id.as_deref(),
+            Some("worker-1@session-00000001")
+        );
     }
 
     #[test]

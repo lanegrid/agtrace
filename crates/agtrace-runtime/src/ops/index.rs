@@ -546,4 +546,86 @@ mod tests {
         let tree = tree_of(&fx);
         assert!(tree.children.iter().any(|c| c.agent_id == mate));
     }
+    /// A resumed / bg-respawned lead: the team config's `leadSessionId` is the lead's
+    /// runtime session id, which names no transcript (the lead transcript's records
+    /// carry it as `session_id`), and the teammate's `agent-name` record holds the
+    /// lead's display name. The teammate is still in the lead's agent tree, under its
+    /// own name.
+    #[test]
+    fn agent_tree_resolves_a_runtime_lead_session_id() {
+        use crate::client::SessionHandle;
+        use std::sync::{Arc, Mutex};
+
+        const RUNTIME: &str = "00000000-0000-4000-8000-0000000000ff";
+        for collide in [false, true] {
+            let fx =
+                LiveFixture::new(chrono::NaiveDate::from_ymd_opt(2026, 9, 20).unwrap()).unwrap();
+            let rewrite = |path: &std::path::Path, f: &dyn Fn(String) -> String| {
+                let text = std::fs::read_to_string(path).unwrap();
+                std::fs::write(path, f(text)).unwrap();
+            };
+            let lead_file = fx.lead_file();
+            rewrite(&lead_file, &|t| {
+                t.replace(
+                    &format!("\"session_id\":\"{LEAD_SESSION}\""),
+                    &format!("\"session_id\":\"{RUNTIME}\""),
+                )
+            });
+            let config = fx.claude_home().join("teams/session-00000001/config.json");
+            rewrite(&config, &|t| t.replace(LEAD_SESSION, RUNTIME));
+            rewrite(&fx.teammate_file(), &|t| {
+                let mut lines: Vec<&str> = t.lines().collect();
+                lines.insert(
+                    1,
+                    r#"{"type":"agent-name","agentName":"Lead display name"}"#,
+                );
+                lines.join("\n") + "\n"
+            });
+
+            if collide {
+                // A teammate of another team whose transcript id equals the runtime id.
+                let other = std::fs::read_to_string(fx.teammate_file())
+                    .unwrap()
+                    .replace(TEAMMATE_SESSION, RUNTIME)
+                    .replace("session-00000001", "session-000000ee")
+                    .replace("audit-A", "other-mate");
+                std::fs::write(fx.project_dir().join(format!("{RUNTIME}.jsonl")), other).unwrap();
+            }
+
+            let db = Database::open_in_memory().unwrap();
+            index_fixture(&fx, &db);
+            let mate = db
+                .list_sessions(None, None, SessionOrder::default(), None, false)
+                .unwrap()
+                .into_iter()
+                .find(|s| s.id == TEAMMATE_SESSION)
+                .unwrap();
+            assert_eq!(mate.agent_name.as_deref(), Some("audit-A"));
+            assert_eq!(mate.parent_session_id.as_deref(), Some(RUNTIME));
+
+            let tree_db = Arc::new(Mutex::new(db));
+            let tree = SessionHandle::for_tests(LEAD_SESSION, tree_db.clone())
+                .agent_tree()
+                .unwrap();
+            let node = tree
+                .children
+                .iter()
+                .find(|c| c.agent_id == format!("claude:{TEAMMATE_SESSION}"))
+                .expect("teammate under the lead transcript");
+            assert_eq!(node.name.as_deref(), Some("audit-A"));
+            assert_eq!(
+                node.spawn_call_id.as_deref(),
+                Some("toolu_synthetic_spawn_team")
+            );
+            if collide {
+                let other = SessionHandle::for_tests(RUNTIME, tree_db.clone())
+                    .agent_tree()
+                    .unwrap();
+                assert!(
+                    other.children.is_empty(),
+                    "a teammate never leads: {other:#?}"
+                );
+            }
+        }
+    }
 }

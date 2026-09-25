@@ -167,6 +167,31 @@ pub fn get_children(conn: &Connection, parent_session_id: &str) -> Result<Vec<Se
     Ok(sessions)
 }
 
+/// `parent_session_id`s of teammate rows that name no session able to lead a team
+/// (none, or another teammate's). These are a lead's runtime session id after a
+/// resume / bg respawn, which only the lead transcript's records know (and which may
+/// coincide with some teammate's transcript id); the agent tree resolves them
+/// through runtime aliases.
+pub fn get_unresolved_lead_ids(conn: &Connection) -> Result<Vec<String>> {
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT DISTINCT s.parent_session_id
+        FROM sessions s
+        WHERE s.agent_kind = 'teammate' AND s.parent_session_id IS NOT NULL
+          AND s.is_valid = 1
+          AND NOT EXISTS (
+            SELECT 1 FROM sessions p
+            WHERE p.id = s.parent_session_id AND p.agent_kind != 'teammate'
+          )
+        ORDER BY s.parent_session_id
+        "#,
+    )?;
+    let ids = stmt
+        .query_map([], |row| row.get(0))?
+        .collect::<std::result::Result<Vec<String>, rusqlite::Error>>()?;
+    Ok(ids)
+}
+
 pub fn find_by_prefix(conn: &Connection, prefix: &str) -> Result<Option<String>> {
     let mut stmt = conn.prepare(
         r#"

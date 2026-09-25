@@ -91,7 +91,7 @@ fn test_auto_migration_from_old_schema() {
         let version: i32 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(version, 7, "Schema should be upgraded to version 7");
+        assert_eq!(version, 8, "Schema should be upgraded to version 8");
     }
 
     // Verify new columns work - insert a child before its parent (no FK on parent)

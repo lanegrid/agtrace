@@ -211,9 +211,15 @@ pub enum AgentAttributeKey {
     PermissionMode,
     ContinuedIn,
     Cwd,
+    /// Runtime (process) session id that wrote records of this transcript, when it
+    /// differs from the transcript id (Claude resume / bg daemon respawn). Unlike the
+    /// other keys this one accumulates: every distinct value is an alias of the agent
+    /// (e.g. a team config's `leadSessionId` may name it).
+    RuntimeSessionId,
 }
 
-/// Agent attribute; upserted by key (latest wins).
+/// Agent attribute; upserted by key (latest wins), except
+/// [`AgentAttributeKey::RuntimeSessionId`] (one event per distinct value).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentAttributePayload {
     pub key: AgentAttributeKey,

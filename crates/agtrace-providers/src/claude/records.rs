@@ -43,6 +43,19 @@ pub(crate) enum ClaudeRecord {
     Unknown,
 }
 
+impl ClaudeRecord {
+    /// Envelope of a transcript record (`user`, `assistant`, `attachment`, `system`).
+    pub(crate) fn envelope(&self) -> Option<&Envelope> {
+        match self {
+            Self::User(r) => Some(&r.env),
+            Self::Assistant(r) => Some(&r.env),
+            Self::Attachment(r) => Some(&r.env),
+            Self::System(r) => Some(&r.env),
+            _ => None,
+        }
+    }
+}
+
 /// Payload-less placeholder for ignored kinds (all fields are skipped).
 #[derive(Debug, Deserialize, Clone, Default)]
 pub(crate) struct IgnoredRecord {}
@@ -58,6 +71,10 @@ pub(crate) struct Envelope {
     /// Agent Teams: team of the teammate that wrote the record.
     #[serde(default)]
     pub team_name: Option<String>,
+    /// Runtime session id of the process that wrote the record; differs from the
+    /// transcript's `sessionId` after a resume / bg daemon respawn.
+    #[serde(default, rename = "session_id")]
+    pub runtime_session_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

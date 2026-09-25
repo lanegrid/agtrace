@@ -5,7 +5,9 @@
 use super::liveness::pid_alive;
 use super::{WatchRoots, WatchScope};
 use crate::tail::{FileCursor, TailOutcome, provider_for};
-use agtrace_engine::workspace::{ProcessStatus, SideStateUpdate, TeamMember, WorkspaceEvent};
+use agtrace_engine::workspace::{
+    ProcessStatus, RuntimeAliases, SideStateUpdate, TeamMember, WorkspaceEvent, team_lead_agent,
+};
 use agtrace_providers::claude::{
     ClaudeProcessEntry, ClaudeProcessStatus, ClaudeTeamConfig, is_agent_file_path, project_dirs,
     read_process_entry, read_subagent_meta, read_team_config, session_registry_paths,
@@ -79,6 +81,9 @@ pub(crate) struct WatcherState {
     teams_emitted: HashMap<String, SideStateUpdate>,
     /// Team names mentioned by tracked agents (headers, attributes, spawns).
     referenced_teams: HashSet<String>,
+    /// Runtime session ids of tracked Claude transcripts (a team config's
+    /// `leadSessionId` may be one of them).
+    runtime_aliases: RuntimeAliases,
     /// Root scope, Claude target: the project dir holding `<sid>.jsonl`.
     root_claude_dir: Option<PathBuf>,
     /// Root scope, Codex target: date dirs outside today/yesterday that hold it.
@@ -101,6 +106,7 @@ impl WatcherState {
             teams: HashMap::new(),
             teams_emitted: HashMap::new(),
             referenced_teams: HashSet::new(),
+            runtime_aliases: RuntimeAliases::new(),
             root_claude_dir: None,
             codex_extra_dirs: Vec::new(),
             codex_root_lookup_done: false,
@@ -340,9 +346,9 @@ impl WatcherState {
                     return false;
                 }
                 if agent.kind == AgentKind::Teammate
-                    && self.team_lead(agent.team.as_deref()).is_some_and(|lead| {
-                        self.agents.contains_key(&AgentId::claude_session(lead))
-                    })
+                    && self
+                        .team_lead_agent(agent.team.as_deref())
+                        .is_some_and(|lead| self.agents.contains_key(&lead))
                 {
                     return true;
                 }
@@ -358,8 +364,7 @@ impl WatcherState {
                     || agent.root == *target
                     || (agent.kind == AgentKind::Teammate
                         && target.provider() == ProviderId::ClaudeCode
-                        && self.team_lead(agent.team.as_deref())
-                            == Some(target.native_session_id()))
+                        && self.team_lead_agent(agent.team.as_deref()).as_ref() == Some(target))
             }
         }
     }
@@ -478,6 +483,7 @@ impl WatcherState {
 
     fn note_team_refs(&mut self, events: &[AgentEvent]) {
         for event in events {
+            self.runtime_aliases.record(event);
             match &event.payload {
                 EventPayload::AgentAttribute(a) if a.key == AgentAttributeKey::TeamName => {
                     self.referenced_teams.insert(a.value.clone());
@@ -708,6 +714,23 @@ impl WatcherState {
             .and_then(|c| c.lead_session_id.as_deref())
     }
 
+    /// Agent of a team's lead: `leadSessionId` resolved through runtime aliases.
+    fn team_lead_agent(&self, team: Option<&str>) -> Option<AgentId> {
+        self.resolve_lead(self.team_lead(team)?)
+    }
+
+    /// `leadSessionId` → lead agent (shared rule `team_lead_agent`).
+    fn resolve_lead(&self, lead_session_id: &str) -> Option<AgentId> {
+        team_lead_agent(
+            lead_session_id,
+            |id| {
+                let path = self.agents.get(id)?;
+                self.tracked.get(path).map(|t| t.agent.kind)
+            },
+            &self.runtime_aliases,
+        )
+    }
+
     /// Report configs of teams that tracked agents refer to, or whose lead is tracked.
     fn emit_teams(&mut self, out: &mut Vec<WorkspaceEvent>) {
         let mut updates = Vec::new();
@@ -715,7 +738,8 @@ impl WatcherState {
             let lead_tracked = config
                 .lead_session_id
                 .as_deref()
-                .is_some_and(|lead| self.agents.contains_key(&AgentId::claude_session(lead)));
+                .and_then(|lead| self.resolve_lead(lead))
+                .is_some_and(|lead| self.agents.contains_key(&lead));
             if !lead_tracked && !self.referenced_teams.contains(&config.name) {
                 continue;
             }

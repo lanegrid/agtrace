@@ -111,7 +111,7 @@ agtrace has two paths over the same provider decoders: a **live path** for `watc
       live path │                                      │ history path
                 ▼                                      ▼
 ┌───────────────────────────────────┐  ┌───────────────────────────────┐
-│ agtrace-runtime                   │  │ agtrace-index (SQLite, v7)    │
+│ agtrace-runtime                   │  │ agtrace-index (SQLite, v8)    │
 │  WorkspaceWatcher (one thread)    │  │  headers only: sessions +     │
 │   · 250 ms: stat tracked files,   │  │  log_files pointers, agent    │
 │     FileCursor tails new bytes    │  │  kind / parent / root columns │
@@ -253,7 +253,7 @@ Maintains a lightweight SQLite database for fast session lookup.
 - Enable fast queries like "show me all sessions for this project"
 - Never duplicate log content
 
-#### Index schema (v7)
+#### Index schema (v8)
 
 The index is rebuilt automatically when the schema version changes; there is no migration.
 Rows are built from **file headers only**.
@@ -273,7 +273,9 @@ Rows are built from **file headers only**.
   config exists at index time. Otherwise it is left empty, and the live graph resolves it.
   The agent tree built from the index then applies the live view's rule
   (`workspace::teammate_parent`): the teammate goes under the agent of the lead session whose
-  log spawned it (e.g. a subagent), else under the lead.
+  log spawned it (e.g. a subagent), else under the lead. A `leadSessionId` that is a runtime
+  session id (resumed / respawned lead) matches no session row; the tree finds such
+  teammates through the runtime ids the lead transcript reports.
 
 ### agtrace-runtime (Orchestration)
 
@@ -305,7 +307,7 @@ The official CLI application built on top of `agtrace-sdk`. Demonstrates best pr
 
 ```
 System data directory/agtrace/  # e.g., ~/Library/Application Support/agtrace on macOS (or AGTRACE_PATH)
-├── agtrace.db               # SQLite pointer index (schema v7)
+├── agtrace.db               # SQLite pointer index (schema v8)
 └── config.toml              # Providers and [context_window] overrides
 
 ~/.claude/                   # Claude Code (read only; not modified by agtrace)
