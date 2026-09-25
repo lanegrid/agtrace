@@ -324,3 +324,42 @@ fn send_message_to_a_subagent_id_targets_the_subagent() {
         )]]
     );
 }
+
+/// A resumed / respawned process writes into the same transcript under a new
+/// runtime `session_id`; each distinct one (other than the transcript id) is
+/// surfaced once as a `RuntimeSessionId` alias so team configs naming it resolve.
+#[test]
+fn runtime_session_ids_are_surfaced_as_aliases() {
+    const RUNTIME_A: &str = "00000000-0000-4000-8000-0000000000aa";
+    const RUNTIME_B: &str = "00000000-0000-4000-8000-0000000000bb";
+    let user = |n: u32, runtime: &str| {
+        rec(
+            n,
+            n,
+            &format!(
+                r#""session_id":"{runtime}","type":"user","message":{{"role":"user","content":"hi"}}"#
+            ),
+        )
+    };
+    let lines = vec![
+        user(1, SID),
+        user(2, RUNTIME_A),
+        user(3, RUNTIME_A),
+        user(4, RUNTIME_B),
+    ];
+    let (events, _) = decode_lines(&lines);
+    let aliases: Vec<&str> = events
+        .iter()
+        .filter_map(|e| match &e.payload {
+            EventPayload::AgentAttribute(a)
+                if a.key == agtrace_types::AgentAttributeKey::RuntimeSessionId =>
+            {
+                Some(a.value.as_str())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(aliases, vec![RUNTIME_A, RUNTIME_B]);
+    let ids: std::collections::HashSet<Uuid> = events.iter().map(|e| e.id).collect();
+    assert_eq!(ids.len(), events.len(), "event ids stay unique");
+}

@@ -2,8 +2,11 @@ use rusqlite::Connection;
 
 use crate::Result;
 
-// Schema version (increment when changing table definitions)
-pub const SCHEMA_VERSION: i32 = 7;
+// Schema version (increment when changing table definitions, or when rows built
+// from file headers change meaning and must be rebuilt).
+// v8: Claude teammate rows take their name from the record envelope, not from the
+//     `agent-name` record inherited from the lead.
+pub const SCHEMA_VERSION: i32 = 8;
 
 // NOTE: Database Design Rationale (Pointer Edition)
 //

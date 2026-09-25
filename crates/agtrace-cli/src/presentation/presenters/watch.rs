@@ -288,8 +288,15 @@ fn push_rows(
 }
 
 /// Tree label: Codex children show their path relative to the parent row
-/// (`/root/judge/x` under `/root/judge` ⇒ `x`); everything else uses the agent label.
+/// (`/root/judge/x` under `/root/judge` ⇒ `x`); a Claude transcript shown under its
+/// continuation is marked as the earlier transcript (it usually has the same title);
+/// everything else uses the agent label.
 fn tree_label(view: &WorkspaceView, a: &AgentView) -> String {
+    if let (Some(next), Some(parent)) = (a.continued_in(), a.tree_parent.as_ref())
+        && parent.native_session_id() == next
+    {
+        return format!("{} (earlier transcript)", a.label());
+    }
     let parent_path = a
         .tree_parent
         .as_ref()

@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 use super::context_seam::{ContextEvidence, ContextWindow, WindowResolver};
 use super::feed::{FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW};
 use super::input::{SideStateUpdate, TeamMember, WorkspaceEvent};
-use super::parent::teammate_parent;
+use super::parent::{RuntimeAliases, team_lead_agent, teammate_parent};
 use super::ring::RingBuffer;
 use super::status::{
     AgentFacts, AgentStatus, ParentContext, RegistryEntry, StatusSignals, StatusSource,
@@ -145,7 +145,7 @@ impl AgentView {
             Provider::ClaudeCode => a
                 .name
                 .clone()
-                .or_else(|| self.attributes.get(&AgentAttributeKey::AgentName).cloned())
+                .or_else(|| self.display_name().map(str::to_string))
                 .or_else(|| self.spawn.as_ref().and_then(|s| s.name.clone()))
                 .or_else(|| {
                     self.spawn
@@ -164,6 +164,23 @@ impl AgentView {
                     )
                 }),
         }
+    }
+
+    /// The `agent-name` display name, except for teammates: theirs is the process
+    /// display name inherited from the lead, not the teammate's own name.
+    fn display_name(&self) -> Option<&str> {
+        (self.agent.kind != AgentKind::Teammate)
+            .then(|| self.attributes.get(&AgentAttributeKey::AgentName))
+            .flatten()
+            .map(String::as_str)
+    }
+
+    /// Transcript id this (Claude) transcript was continued in (`continued-in`).
+    pub fn continued_in(&self) -> Option<&str> {
+        self.attributes
+            .get(&AgentAttributeKey::ContinuedIn)
+            .map(String::as_str)
+            .filter(|s| *s != self.agent.id.native_session_id())
     }
 
     /// Team of a Claude agent (header, else `team_context` attribute).
@@ -218,7 +235,8 @@ impl AgentView {
 
 #[derive(Debug, Clone)]
 struct TeamState {
-    lead: AgentId,
+    /// `leadSessionId` of the team config (possibly a runtime session id).
+    lead_session_id: String,
     members: Vec<TeamMember>,
 }
 
@@ -264,6 +282,8 @@ pub struct WorkspaceView {
     teams: BTreeMap<String, TeamState>,
     /// team → agent whose log spawned members of that team (fallback team lead).
     team_spawners: BTreeMap<String, AgentId>,
+    /// Runtime session ids of Claude transcripts (resume / bg respawn aliases).
+    runtime_aliases: RuntimeAliases,
     registry: BTreeMap<AgentId, BTreeMap<u32, RegistryEntry>>,
     subagent_meta: BTreeMap<AgentId, SubagentMeta>,
     /// Parents before children (tree pre-order).
@@ -439,8 +459,18 @@ impl WorkspaceView {
                 }
                 EventPayload::ModelChange(m) => v.own_model = Some(m.to.clone()),
                 EventPayload::AgentAttribute(a) => {
-                    team_changed = a.key == AgentAttributeKey::TeamName;
-                    v.attributes.insert(a.key, a.value.clone());
+                    team_changed = matches!(
+                        a.key,
+                        AgentAttributeKey::TeamName | AgentAttributeKey::ContinuedIn
+                    );
+                    if a.key != AgentAttributeKey::RuntimeSessionId {
+                        v.attributes.insert(a.key, a.value.clone());
+                    }
+                    // A continued transcript is finished: its process moved on to
+                    // the continuation (later activity here overrides this).
+                    if a.key == AgentAttributeKey::ContinuedIn {
+                        v.signals.own = Some((AgentStatus::Done, ts));
+                    }
                 }
                 EventPayload::ToolCall(c) => {
                     if v.open_tools.len() == MAX_OPEN_TOOLS {
@@ -477,7 +507,7 @@ impl WorkspaceView {
                 });
             }
         }
-        if team_changed {
+        if team_changed | self.runtime_aliases.record(ev) {
             self.structure_dirty = true;
         }
 
@@ -602,7 +632,7 @@ impl WorkspaceView {
                 self.teams.insert(
                     team,
                     TeamState {
-                        lead: AgentId::claude_session(&lead_session_id),
+                        lead_session_id,
                         members,
                     },
                 );
@@ -689,7 +719,8 @@ impl WorkspaceView {
             let lead = self
                 .teams
                 .get(team)
-                .map(|t| t.lead.clone())
+                .and_then(|t| self.team_lead(t))
+                .filter(|l| self.agents.contains_key(l))
                 .or_else(|| self.team_spawners.get(team).cloned());
             return match lead {
                 Some(l) if self.agents.contains_key(&l) => Resolution::Agent(l),
@@ -700,13 +731,7 @@ impl WorkspaceView {
             .agents
             .values()
             .filter(|v| v.agent.id != *ctx)
-            .filter(|v| {
-                v.agent.name.as_deref() == Some(name)
-                    || v.attributes
-                        .get(&AgentAttributeKey::AgentName)
-                        .map(|s| s.as_str())
-                        == Some(name)
-            })
+            .filter(|v| v.agent.name.as_deref() == Some(name) || v.display_name() == Some(name))
             .collect();
         match team {
             Some(t) => candidates.retain(|v| v.team() == Some(t)),
@@ -727,6 +752,15 @@ impl WorkspaceView {
             .max_by_key(|v| v.agent.started_at)
             .map(|v| Resolution::Agent(v.agent.id.clone()))
             .unwrap_or(Resolution::Pending)
+    }
+
+    /// Agent of a team's lead (`leadSessionId` may be a runtime session id).
+    fn team_lead(&self, t: &TeamState) -> Option<AgentId> {
+        team_lead_agent(
+            &t.lead_session_id,
+            |id| self.agents.get(id).map(|v| v.agent.kind),
+            &self.runtime_aliases,
+        )
     }
 
     fn handle_display(&self, ctx: &AgentId, h: &AgentHandle) -> String {
@@ -879,16 +913,19 @@ impl WorkspaceView {
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         for (team, st) in teams {
+            let lead = self.team_lead(&st);
+            let known: HashSet<AgentId> = self.agents.keys().cloned().collect();
             // A teammate whose team config names the lead is linked even without a spawn.
-            // (A spawn seen later re-links it to the spawner: `link`.)
+            // (A spawn seen later re-links it to the spawner: `link`.) A link to a lead
+            // that is not known is retried: the lead id may resolve later (alias).
             for v in self.agents.values_mut() {
                 if v.agent.kind == AgentKind::Teammate
-                    && v.agent.parent.is_none()
+                    && v.agent.parent.as_ref().is_none_or(|p| !known.contains(p))
                     && v.team() == Some(team.as_str())
                 {
                     let spawner = v.spawn.as_ref().map(|s| &s.by);
-                    let parent = teammate_parent(&v.agent.id, spawner, Some(&st.lead));
-                    if parent.is_some() {
+                    let parent = teammate_parent(&v.agent.id, spawner, lead.as_ref());
+                    if parent.is_some() && parent != v.agent.parent {
                         v.agent.parent = parent;
                         self.structure_dirty = true;
                     }
@@ -896,7 +933,7 @@ impl WorkspaceView {
             }
             for m in &st.members {
                 let target = if m.name == "team-lead" {
-                    Some(st.lead.clone())
+                    lead.clone()
                 } else {
                     self.agents
                         .values()
@@ -977,6 +1014,12 @@ impl WorkspaceView {
                 .filter(|p| p != id && self.agents.contains_key(p))
                 .or_else(|| {
                     (a.root != *id && self.agents.contains_key(&a.root)).then(|| a.root.clone())
+                })
+                .or_else(|| {
+                    // A continued transcript is shown under its continuation (same
+                    // logical session), not as an unrelated root.
+                    let next = AgentId::claude_session(self.agents[id].continued_in()?);
+                    (next != *id && self.agents.contains_key(&next)).then_some(next)
                 });
             tparent.insert(id.clone(), p);
         }

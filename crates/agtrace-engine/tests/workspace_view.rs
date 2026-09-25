@@ -1268,3 +1268,138 @@ fn diagnostics_and_errors_are_kept() {
         Some("permission denied")
     );
 }
+
+// ------------------------------------------------------------------ resume / runtime ids
+
+/// A resumed / bg-respawned lead: the team config names the lead's *runtime*
+/// session id, which has no transcript of its own. The lead transcript reports it
+/// as a `RuntimeSessionId` alias, and the teammate links to the transcript —
+/// whichever of config and alias arrives first.
+///
+/// The runtime id may also coincide with the transcript id of some teammate of
+/// another team (seen in real data); a teammate never leads, so the alias wins.
+#[test]
+fn team_lead_runtime_session_id_resolves_to_the_lead_transcript() {
+    for (alias_first, collide) in [(false, false), (true, false), (false, true), (true, true)] {
+        let mut ws = Ws::new();
+        let lead = ws.discover(AgentBuilder::claude_main("s-lead").started(0));
+        if collide {
+            ws.discover(AgentBuilder::claude_teammate("s-runtime", "other", "team-old").started(1));
+        }
+        let mate =
+            ws.discover(AgentBuilder::claude_teammate("s-mate", "worker", "session-rt").started(5));
+        let alias = EventLog::new(&lead)
+            .at(1)
+            .attribute(AgentAttributeKey::RuntimeSessionId, "s-runtime");
+        let config = SideStateUpdate::ClaudeTeam {
+            team: "session-rt".into(),
+            lead_session_id: "s-runtime".into(),
+            members: vec![],
+        };
+        if alias_first {
+            ws.one(alias);
+            ws.side(config);
+        } else {
+            ws.side(config);
+            assert_eq!(ws.tree_parent(&mate), None, "runtime id not resolvable yet");
+            ws.one(alias);
+        }
+        assert_eq!(
+            ws.parent(&mate),
+            Some(lead.clone()),
+            "alias_first={alias_first}"
+        );
+        assert_eq!(ws.tree_parent(&mate), Some(lead.clone()));
+        assert!(!ws.view.roots.contains(&mate));
+        // The alias is not an ordinary (latest-wins) attribute.
+        assert!(
+            !ws.view.agents[&lead]
+                .attributes
+                .contains_key(&AgentAttributeKey::RuntimeSessionId)
+        );
+
+        // "team-lead" handles of the teammate resolve to the transcript too.
+        let mut log = EventLog::new(&mate);
+        ws.one(log.at(6).message(
+            MessageDirection::Outgoing,
+            handle::id(&mate),
+            vec![handle::member(None, "team-lead")],
+            AgentMessageKind::Message,
+            "done",
+        ));
+        assert_eq!(
+            ws.view.feed.last().unwrap().to,
+            vec![FeedParty::Agent(lead)]
+        );
+    }
+}
+
+/// A teammate's `agent-name` record holds the display name inherited from its
+/// lead. The teammate name wins for the label, and the inherited name neither
+/// makes the teammate answer to the lead's name nor hides its own name.
+#[test]
+fn teammate_label_ignores_the_inherited_agent_name() {
+    let mut ws = Ws::new();
+    let lead = ws.discover(AgentBuilder::claude_main("s-lead").started(0));
+    let mate = ws.discover(AgentBuilder::claude_teammate("s-mate", "worker", "team-1").started(2));
+    let mut log = EventLog::new(&mate);
+    ws.one(
+        log.at(3)
+            .attribute(AgentAttributeKey::AgentName, "Lead display name"),
+    );
+    assert_eq!(ws.view.agents[&mate].label(), "worker");
+
+    // A handle naming the lead's display name does not resolve to the teammate.
+    let mut lead_log = EventLog::new(&lead);
+    ws.one(lead_log.at(4).message(
+        MessageDirection::Outgoing,
+        handle::id(&lead),
+        vec![handle::member(Some("team-1"), "Lead display name")],
+        AgentMessageKind::Message,
+        "hi",
+    ));
+    assert!(matches!(
+        ws.view.feed.last().unwrap().to[0],
+        FeedParty::Unresolved { .. }
+    ));
+
+    // Without a header name, the spawn name labels it, not the inherited name.
+    let mut r: AgentRef = AgentBuilder::claude_teammate("s-mate2", "x", "team-1")
+        .started(5)
+        .build();
+    r.name = None;
+    let mate2 = ws.discover(r);
+    let mut log2 = EventLog::new(&mate2);
+    ws.one(
+        log2.at(6)
+            .attribute(AgentAttributeKey::AgentName, "Lead display name"),
+    );
+    assert_ne!(ws.view.agents[&mate2].label(), "Lead display name");
+    ws.one(
+        lead_log
+            .at(7)
+            .spawn(handle::id(&mate2), AgentKind::Teammate, Some("worker-2")),
+    );
+    assert_eq!(ws.view.agents[&mate2].label(), "worker-2");
+}
+
+/// A transcript that was continued in another one (`continued-in`) is the same
+/// logical session: it is shown under its continuation and is finished.
+#[test]
+fn continued_transcript_is_shown_under_its_continuation() {
+    let mut ws = Ws::new();
+    let old = ws.discover(AgentBuilder::claude_main("s-old").started(0));
+    let new = ws.discover(AgentBuilder::claude_main("s-new").started(0));
+    let mut log = EventLog::new(&old);
+    ws.one(log.at(1).user("hi"));
+    assert_eq!(ws.status(&old), AgentStatus::Running);
+    assert_eq!(ws.view.roots.len(), 2);
+
+    ws.one(log.at(2).attribute(AgentAttributeKey::ContinuedIn, "s-new"));
+    assert_eq!(ws.tree_parent(&old), Some(new.clone()));
+    assert_eq!(ws.view.roots, vec![new.clone()]);
+    assert_eq!(ws.view.agents[&new].children, vec![old.clone()]);
+    assert_eq!(ws.status(&old), AgentStatus::Done);
+    // Not a spawn link: identity stays a root session.
+    assert_eq!(ws.parent(&old), None);
+}

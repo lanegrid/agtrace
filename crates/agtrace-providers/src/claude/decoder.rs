@@ -163,6 +163,10 @@ pub struct ClaudeDecoder {
     /// Models already reported as extended-context.
     context_markers: HashSet<String>,
     seen_user_record: bool,
+    /// Transcript session id of the file (records' `sessionId`).
+    session_id: String,
+    /// Runtime session ids already reported as aliases.
+    runtime_ids: HashSet<String>,
 }
 
 impl ClaudeDecoder {
@@ -185,6 +189,8 @@ impl ClaudeDecoder {
             attributes: HashMap::new(),
             context_markers: HashSet::new(),
             seen_user_record: false,
+            session_id,
+            runtime_ids: HashSet::new(),
         }
     }
 
@@ -330,6 +336,34 @@ impl ClaudeDecoder {
             &base,
             SemanticSuffix::AgentAttribute,
             EventPayload::AgentAttribute(AgentAttributePayload { key, value }),
+        );
+    }
+
+    /// `AgentAttribute(RuntimeSessionId)` once per distinct runtime `session_id` that
+    /// differs from the transcript id (resumed / respawned processes write into the
+    /// same transcript under a new runtime id; team configs name the runtime id).
+    fn runtime_alias(&mut self, out: &mut Vec<AgentEvent>, env: &Envelope) {
+        let Some(sid) = env.runtime_session_id.as_deref().filter(|s| !s.is_empty()) else {
+            return;
+        };
+        if sid == self.session_id || !self.runtime_ids.insert(sid.to_string()) {
+            return;
+        }
+        let r = Rec {
+            base: String::new(),
+            ts: self.ts(env.timestamp.as_deref()),
+            agent: self.agent.clone(),
+        };
+        let base = format!("{}#runtime-{sid}", self.agent);
+        self.push(
+            out,
+            &r,
+            &base,
+            SemanticSuffix::AgentAttribute,
+            EventPayload::AgentAttribute(AgentAttributePayload {
+                key: AgentAttributeKey::RuntimeSessionId,
+                value: sid.to_string(),
+            }),
         );
     }
 
@@ -1283,6 +1317,9 @@ impl ClaudeDecoder {
     // ---- dispatch ----
 
     fn map_record(&mut self, record: ClaudeRecord, text: &str, out: &mut Vec<AgentEvent>) {
+        if let Some(env) = record.envelope() {
+            self.runtime_alias(out, env);
+        }
         match record {
             ClaudeRecord::User(r) => self.on_user(r, out),
             ClaudeRecord::Assistant(r) => self.on_assistant(r, out),

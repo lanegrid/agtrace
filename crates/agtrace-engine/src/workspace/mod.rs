@@ -33,7 +33,10 @@ pub use feed::{
     MESSAGE_DELIVERY_WINDOW,
 };
 pub use input::{ProcessStatus, SideStateUpdate, TeamMember, WorkspaceEvent};
-pub use parent::{TeammateSpawn, find_teammate_spawn, teammate_parent, teammate_spawns};
+pub use parent::{
+    RuntimeAliases, TeammateSpawn, find_teammate_spawn, team_lead_agent, teammate_parent,
+    teammate_spawns,
+};
 pub use ring::RingBuffer;
 pub use status::{AgentStatus, StatusSource};
 pub use timeline::{

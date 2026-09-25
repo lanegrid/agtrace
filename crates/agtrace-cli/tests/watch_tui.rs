@@ -654,3 +654,43 @@ fn console_printer_emits_only_new_rows() {
         .collect();
     assert!(repeated.is_empty(), "reprinted rows: {repeated:#?}");
 }
+
+/// A transcript continued in another one is shown under its continuation and
+/// marked as the earlier transcript (both usually carry the same title).
+#[test]
+fn continued_transcript_row_is_nested_and_marked() {
+    use agtrace_sdk::types::AgentAttributeKey;
+    use agtrace_sdk::workspace::WorkspaceEvent;
+    use agtrace_testing::synth::{AgentBuilder, EventLog};
+
+    let mut view = WorkspaceView::new();
+    let mut apply = |e: WorkspaceEvent| view.apply(e, &fixture::resolve, fixture::now());
+    let old = AgentBuilder::claude_main("s-old")
+        .name("Same title")
+        .started(0);
+    let new = AgentBuilder::claude_main("s-new")
+        .name("Same title")
+        .started(0);
+    let old_id = old.id();
+    apply(WorkspaceEvent::AgentDiscovered(old.build()));
+    apply(WorkspaceEvent::AgentDiscovered(new.build()));
+    apply(WorkspaceEvent::Events {
+        agent: old_id.clone(),
+        events: vec![
+            EventLog::new(&old_id)
+                .at(1)
+                .attribute(AgentAttributeKey::ContinuedIn, "s-new"),
+        ],
+        reset: false,
+    });
+    let vm = screen(&view, &ui());
+    let rows: Vec<(u32, &str)> = vm
+        .tree
+        .iter()
+        .map(|r| (r.depth as u32, r.label.as_str()))
+        .collect();
+    assert_eq!(
+        rows,
+        vec![(0, "Same title"), (1, "Same title (earlier transcript)")]
+    );
+}

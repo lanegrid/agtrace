@@ -6,7 +6,7 @@ use crate::storage::{RawFileContent, get_raw_files};
 use crate::{Error, Result};
 use agtrace_engine::export::ExportStrategy;
 use agtrace_engine::workspace::{
-    TeammateSpawn, find_teammate_spawn, teammate_parent, teammate_spawns,
+    RuntimeAliases, find_teammate_spawn, teammate_parent, teammate_spawns,
 };
 use agtrace_index::{Database, SessionSummary};
 use agtrace_providers::ProviderAdapter;
@@ -337,10 +337,42 @@ fn session_node(
             children: Vec::new(),
         });
     }
-    // Child sessions (Codex threads / forks, teammates), recursively.
-    let children = db.get_child_sessions(&summary.id)?;
+    // Child sessions (Codex threads / forks, teammates), recursively. A teammate
+    // never leads a team: teammates naming a teammate session as lead belong to the
+    // transcript that has that id as a runtime alias (below).
+    let mut children = db.get_child_sessions(&summary.id)?;
+    if summary.agent_kind == "teammate" {
+        children.retain(|c| c.agent_kind != "teammate");
+    }
+    // Claude logs of this session, parsed at most once and only when needed.
+    let mut parsed: Option<Vec<AgentEvent>> = None;
+    // Teammates whose team config names a runtime session id of this transcript
+    // (resume / bg respawn) rather than a session that can lead.
+    if let Some(main) = main.filter(|f| f.agent_id.starts_with("claude:"))
+        && summary.agent_kind != "teammate"
+    {
+        let unresolved = db.get_unresolved_lead_ids()?;
+        if !unresolved.is_empty() {
+            let events = parsed.get_or_insert_with(|| claude_events_in(&files));
+            let aliases = RuntimeAliases::from_events(events.iter());
+            let me = AgentId::parse(&main.agent_id);
+            for sid in me.iter().flat_map(|me| aliases.of(me)) {
+                if unresolved.iter().any(|u| u == sid) {
+                    children.extend(
+                        db.get_child_sessions(sid)?
+                            .into_iter()
+                            .filter(|c| c.agent_kind == "teammate"),
+                    );
+                }
+            }
+        }
+    }
     let spawns = if children.iter().any(|c| c.agent_kind == "teammate") {
-        teammate_spawns_in(&files)
+        teammate_spawns(
+            parsed
+                .get_or_insert_with(|| claude_events_in(&files))
+                .iter(),
+        )
     } else {
         Vec::new()
     };
@@ -387,14 +419,14 @@ fn session_node(
     Ok(node)
 }
 
-/// Teammate spawns in a Claude session's own log files (main + subagents / forks).
-fn teammate_spawns_in(files: &[agtrace_index::LogFileRecord]) -> Vec<TeammateSpawn> {
+/// Events of a Claude session's own log files (main + subagents / forks).
+fn claude_events_in(files: &[agtrace_index::LogFileRecord]) -> Vec<AgentEvent> {
     files
         .iter()
         .filter(|f| f.agent_id.starts_with("claude:"))
         .filter_map(|f| {
             agtrace_providers::normalize_claude_file(std::path::Path::new(&f.path)).ok()
         })
-        .flat_map(|events| teammate_spawns(&events))
+        .flatten()
         .collect()
 }

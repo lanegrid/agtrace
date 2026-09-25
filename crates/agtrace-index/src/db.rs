@@ -74,6 +74,12 @@ impl Database {
         queries::session::get_children(&self.conn, parent_session_id)
     }
 
+    /// Teammate `parent_session_id`s that name no session able to lead (see
+    /// [`queries::session::get_unresolved_lead_ids`]).
+    pub fn get_unresolved_lead_ids(&self) -> Result<Vec<String>> {
+        queries::session::get_unresolved_lead_ids(&self.conn)
+    }
+
     // Log file operations
     pub fn insert_or_update_log_file(&self, log_file: &LogFileRecord) -> Result<()> {
         queries::log_file::insert_or_update(&self.conn, log_file)
