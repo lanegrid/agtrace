@@ -12,7 +12,11 @@ use crate::presentation::view_models::watch::{FeedFilter, Pane, Scroll, UiState,
 pub enum Action {
     Up,
     Down,
+    /// Focus the selected agent's timeline.
+    Open,
     ToggleCollapse,
+    Collapse,
+    Expand,
     NextPane,
     PrevPane,
     PageUp,
@@ -26,7 +30,8 @@ pub enum Action {
     ToggleAutoSelect,
     Rescan,
     ToggleHelp,
-    CloseHelp,
+    /// Close help, or reset every view toggle back to the default screen.
+    Back,
     Quit,
 }
 
@@ -50,7 +55,10 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('q') => Action::Quit,
         KeyCode::Char('j') | KeyCode::Down => Action::Down,
         KeyCode::Char('k') | KeyCode::Up => Action::Up,
-        KeyCode::Enter | KeyCode::Char(' ') => Action::ToggleCollapse,
+        KeyCode::Enter => Action::Open,
+        KeyCode::Char(' ') => Action::ToggleCollapse,
+        KeyCode::Left => Action::Collapse,
+        KeyCode::Right => Action::Expand,
         KeyCode::Tab => Action::NextPane,
         KeyCode::BackTab => Action::PrevPane,
         KeyCode::PageUp => Action::PageUp,
@@ -62,7 +70,7 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('a') => Action::ToggleAutoSelect,
         KeyCode::Char('r') => Action::Rescan,
         KeyCode::Char('?') => Action::ToggleHelp,
-        KeyCode::Esc => Action::CloseHelp,
+        KeyCode::Esc => Action::Back,
         _ => return None,
     })
 }
@@ -113,12 +121,36 @@ fn select(ui: &mut UiState, vm: &WatchScreenVm, idx: usize) {
     }
 }
 
+/// The selected row, if collapsing it can make sense: it has children and it is
+/// not the only root (folding the sole root would hide the whole tree and make a
+/// single-session watch look like an empty one).
+fn collapsible_selected(
+    vm: &WatchScreenVm,
+) -> Option<&crate::presentation::view_models::watch::AgentRowVm> {
+    let row = vm.selected_index().and_then(|i| vm.tree.get(i))?;
+    if !row.has_children {
+        return None;
+    }
+    let roots = vm.tree.iter().filter(|r| r.depth == 0).count();
+    (row.depth > 0 || roots > 1).then_some(row)
+}
+
+/// Esc: back to the default screen (selection and auto-select are kept).
+fn reset_view(ui: &mut UiState) {
+    ui.collapsed.clear();
+    ui.hide_done = false;
+    ui.feed_filter = FeedFilter::All;
+    ui.focus = Pane::Tree;
+    ui.timeline_scroll = Scroll::Follow;
+    ui.feed_scroll = Scroll::Follow;
+}
+
 /// Apply `action` to `ui`; `vm` is the screen currently displayed.
 pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm) -> Effect {
     if ui.show_help {
         match action {
             Action::Quit => return Effect::Quit,
-            Action::ToggleHelp | Action::CloseHelp => ui.show_help = false,
+            Action::ToggleHelp | Action::Back => ui.show_help = false,
             _ => {}
         }
         return Effect::None;
@@ -149,12 +181,20 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm) -> Effect {
         Action::HalfPageDown => scroll(ui, vm, target, false, page(height / 2)),
         Action::Tail => set_scroll(ui, target, Scroll::Follow),
         Action::Top => set_scroll(ui, target, Scroll::Offset(0)),
-        Action::ToggleCollapse => {
-            if let Some(row) = vm.selected_index().and_then(|i| vm.tree.get(i))
-                && row.has_children
-                && !ui.collapsed.remove(&row.id)
-            {
-                ui.collapsed.insert(row.id.clone());
+        Action::Open => ui.focus = Pane::Timeline,
+        Action::ToggleCollapse | Action::Collapse | Action::Expand => {
+            if let Some(row) = collapsible_selected(vm) {
+                let collapsed = ui.collapsed.contains(&row.id);
+                let want = match action {
+                    Action::Collapse => true,
+                    Action::Expand => false,
+                    _ => !collapsed,
+                };
+                if want {
+                    ui.collapsed.insert(row.id.clone());
+                } else {
+                    ui.collapsed.remove(&row.id);
+                }
             }
         }
         Action::NextPane => ui.focus = ui.focus.next(),
@@ -169,7 +209,7 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm) -> Effect {
         Action::ToggleHideDone => ui.hide_done = !ui.hide_done,
         Action::ToggleAutoSelect => ui.auto_select = !ui.auto_select,
         Action::ToggleHelp => ui.show_help = true,
-        Action::CloseHelp => {}
+        Action::Back => reset_view(ui),
     }
     Effect::None
 }

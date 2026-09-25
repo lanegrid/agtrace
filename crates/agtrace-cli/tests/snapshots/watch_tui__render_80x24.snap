@@ -1,9 +1,8 @@
 ---
 source: crates/agtrace-cli/tests/watch_tui.rs
-assertion_line: 145
 expression: "draw(&view, &mut ui(), 80, 24)"
 ---
-"┌ Agents ──────────────────┐┌ /root · gpt-5.6 · 12% of 258k [log] ─────────────┐"
+"┌ Agents · project demo-pro┐┌ /root · gpt-5.6 · 12% of 258k [log] ─────────────┐"
 "│▶ codex /root  ○ idle  12%││now   turn completed 2m39s ago                    │"
 "│  ├ judge      ● busy  77%││12:00 › user        triage the flaky tests        │"
 "│  │ └ x        ● busy   5%││12:00 ◆ model       gpt-5.6                       │"

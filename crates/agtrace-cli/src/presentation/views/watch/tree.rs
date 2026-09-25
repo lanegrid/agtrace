@@ -11,7 +11,13 @@ use crate::presentation::view_models::watch::{AgentRowVm, Pane, WatchScreenVm};
 
 pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     let focused = vm.focus_pane == Pane::Tree;
-    let block = pane_block(focused).title(" Agents ");
+    // Name the scope in the title so a single-session watch is obvious.
+    let title = if vm.status.scope.is_empty() {
+        " Agents ".to_string()
+    } else {
+        format!(" Agents · {} ", vm.status.scope)
+    };
+    let block = pane_block(focused).title(title);
     if vm.tree.is_empty() {
         let p = Paragraph::new(Line::styled(" no agents yet", dim())).block(block);
         f.render_widget(p, area);
@@ -56,7 +62,7 @@ fn row(r: &AgentRowVm, focused: bool) -> Row<'static> {
     }
     spans.push(Span::styled(prefix, dim()));
     if r.collapsed {
-        spans.push(Span::styled("▸", dim()));
+        spans.push(Span::styled(format!("▸+{} ", r.hidden_descendants), dim()));
     }
     if let Some(b) = r.badge {
         spans.push(Span::styled(format!("{b} "), dim()));
@@ -70,9 +76,6 @@ fn row(r: &AgentRowVm, focused: bool) -> Row<'static> {
         Style::default()
     };
     spans.push(Span::styled(r.label.clone(), label_style));
-    if r.collapsed && r.hidden_descendants > 0 {
-        spans.push(Span::styled(format!(" +{}", r.hidden_descendants), dim()));
-    }
     let status = Line::from(vec![
         Span::styled(status_glyph(r.status), status_style(r.status)),
         Span::raw(" "),

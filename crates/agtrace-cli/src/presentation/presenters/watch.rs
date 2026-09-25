@@ -731,5 +731,6 @@ fn build_status(view: &WorkspaceView, ui: &UiState, visible: usize) -> StatusBar
         feed_filter: ui.feed_filter,
         hide_done: ui.hide_done,
         auto_select: ui.auto_select,
+        collapsed: ui.collapsed.len(),
     }
 }

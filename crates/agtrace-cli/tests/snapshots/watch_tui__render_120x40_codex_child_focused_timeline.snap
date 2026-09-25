@@ -1,9 +1,8 @@
 ---
 source: crates/agtrace-cli/tests/watch_tui.rs
-assertion_line: 160
 expression: "draw(&view, &mut ui, 120, 40)"
 ---
-"┌ Agents ──────────────────────────────┐┌ /root/judge · gpt-5.6 · 77% of 258k [log] ───────────────────────────────────┐"
+"┌ Agents · project demo-project ───────┐┌ /root/judge · gpt-5.6 · 77% of 258k [log] ───────────────────────────────────┐"
 "│  codex /root              ○ idle  12%││now   ▸ exec cargo test -p agtrace-cli  (4m00s)                               │"
 "│▶ ├ judge                  ● busy  77%││12:00 ← /root NEW_TASK [encrypted]                                            │"
 "│  │ └ x                    ● busy   5%││12:01 ▸ exec  cargo test -p agtrace-cli                                       │"

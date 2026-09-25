@@ -219,7 +219,7 @@ fn keys_move_selection_and_collapse() {
 
     // Collapse the first root: its descendants disappear, then come back.
     let before = screen(&view, &ui).tree.len();
-    press(&view, &mut ui, KeyCode::Enter);
+    press(&view, &mut ui, KeyCode::Char(' '));
     let collapsed = screen(&view, &ui);
     assert!(collapsed.tree.len() < before);
     assert!(collapsed.tree[0].collapsed);
@@ -232,6 +232,78 @@ fn keys_move_selection_and_collapse() {
 
     assert_eq!(press(&view, &mut ui, KeyCode::Char('q')), Effect::Quit);
     assert_eq!(press(&view, &mut ui, KeyCode::Char('r')), Effect::Rescan);
+}
+
+/// Regression: Enter used to collapse the selected root, so the whole tree
+/// folded into one row and Esc (help-only) could not bring it back.
+#[test]
+fn enter_opens_agent_and_esc_restores_default_view() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    ui.viewport = Viewport {
+        tree: 10,
+        timeline: 5,
+        feed: 4,
+    };
+    let before = screen(&view, &ui).tree.len();
+
+    // Enter "opens" the selected agent: focus moves to its timeline, tree intact.
+    press(&view, &mut ui, KeyCode::Enter);
+    assert_eq!(ui.focus, Pane::Timeline);
+    assert_eq!(screen(&view, &ui).tree.len(), before);
+    assert!(ui.collapsed.is_empty());
+
+    // Left / Right collapse and expand the selected node.
+    press(&view, &mut ui, KeyCode::Esc);
+    press(&view, &mut ui, KeyCode::Left);
+    assert!(screen(&view, &ui).tree.len() < before);
+    press(&view, &mut ui, KeyCode::Right);
+    assert_eq!(screen(&view, &ui).tree.len(), before);
+
+    // Esc resets every view toggle back to the default screen.
+    press(&view, &mut ui, KeyCode::Char(' '));
+    press(&view, &mut ui, KeyCode::Char('h'));
+    press(&view, &mut ui, KeyCode::Char('f'));
+    press(&view, &mut ui, KeyCode::Tab);
+    press(&view, &mut ui, KeyCode::PageUp);
+    assert!(screen(&view, &ui).tree.len() < before);
+    press(&view, &mut ui, KeyCode::Esc);
+    assert!(ui.collapsed.is_empty());
+    assert!(!ui.hide_done);
+    assert_eq!(ui.feed_filter, FeedFilter::All);
+    assert_eq!(ui.focus, Pane::Tree);
+    assert_eq!(ui.timeline_scroll, Scroll::Follow);
+    assert_eq!(ui.feed_scroll, Scroll::Follow);
+    assert_eq!(screen(&view, &ui).tree.len(), before);
+}
+
+/// Regression: with a single root (e.g. `watch --session`), folding that root
+/// hid the whole tree and made the watch look like a one-row session list.
+#[test]
+fn sole_root_cannot_be_collapsed() {
+    use agtrace_sdk::workspace::WorkspaceEvent;
+    // Only the Claude tree: one root with teammates, a subagent and a fork.
+    let mut view = WorkspaceView::new();
+    for e in fixture::events() {
+        let keep = match &e {
+            WorkspaceEvent::AgentDiscovered(a) => a.id.as_str().starts_with("claude:"),
+            WorkspaceEvent::Events { agent, .. } => agent.as_str().starts_with("claude:"),
+            _ => true,
+        };
+        if keep {
+            view.apply(e, &fixture::resolve, fixture::now());
+        }
+    }
+    let mut ui = ui();
+    let vm = screen(&view, &ui);
+    assert_eq!(vm.tree.iter().filter(|r| r.depth == 0).count(), 1);
+    let before = vm.tree.len();
+    assert!(before > 1);
+
+    press(&view, &mut ui, KeyCode::Char(' '));
+    press(&view, &mut ui, KeyCode::Left);
+    assert!(ui.collapsed.is_empty());
+    assert_eq!(screen(&view, &ui).tree.len(), before);
 }
 
 #[test]

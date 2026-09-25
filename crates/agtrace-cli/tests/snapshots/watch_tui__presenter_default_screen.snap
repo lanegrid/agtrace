@@ -1,6 +1,5 @@
 ---
 source: crates/agtrace-cli/tests/watch_tui.rs
-assertion_line: 46
 expression: "screen(&view, &ui())"
 ---
 {
@@ -463,7 +462,8 @@ expression: "screen(&view, &ui())"
     "last_error": null,
     "feed_filter": "all",
     "hide_done": false,
-    "auto_select": false
+    "auto_select": false,
+    "collapsed": 0
   },
   "focus_pane": "tree",
   "timeline_scroll": "follow",
