@@ -1,0 +1,86 @@
+---
+source: crates/agtrace-cli/tests/watch_tui.rs
+expression: d
+---
+{
+  "agent_id": "codex:t-scout",
+  "title": "/root/scout",
+  "relation": "thread of /root",
+  "agent_type": null,
+  "model": "gpt-5.6",
+  "status": "done",
+  "status_secs": 181,
+  "ctx": {
+    "pct": 15,
+    "used_tokens": 40000,
+    "window_tokens": 258400,
+    "provenance": "log"
+  },
+  "spark": "▂",
+  "totals": {
+    "input_tokens": 40000,
+    "output_tokens": 10,
+    "output_partial": false,
+    "turns": 1,
+    "tool_calls": 0
+  },
+  "instructions": [
+    {
+      "time": "12:00",
+      "header": "spawned by /root · NEW_TASK",
+      "text": null,
+      "encrypted": true,
+      "note": "[encrypted by Codex] NEW_TASK from /root · path /root/scout · task scout"
+    }
+  ],
+  "now": {
+    "status": "done",
+    "tool": null,
+    "said": null,
+    "said_is_reasoning": false,
+    "said_time": null
+  },
+  "result": {
+    "type": "reported",
+    "time": "12:02",
+    "tag": "FINAL_ANSWER",
+    "text": "3 flaky tests, all in watch_command.rs",
+    "encrypted": false
+  },
+  "timeline": [
+    {
+      "time": "12:00",
+      "icon": "←",
+      "kind": "message_in",
+      "label": "/root",
+      "text": "NEW_TASK [encrypted]"
+    },
+    {
+      "time": "12:01",
+      "icon": "→",
+      "kind": "message_out",
+      "label": "/root",
+      "text": "FINAL_ANSWER \"3 flaky tests, all in watch_command.rs\""
+    },
+    {
+      "time": "12:02",
+      "icon": "─",
+      "kind": "turn_end",
+      "label": "turn end",
+      "text": ""
+    }
+  ],
+  "section": "instructions",
+  "scroll": [
+    {
+      "offset": 0
+    },
+    {
+      "offset": 0
+    },
+    {
+      "offset": 0
+    },
+    "follow"
+  ]
+}

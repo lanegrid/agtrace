@@ -153,7 +153,8 @@ same session directory or team lead; for Codex, the `session_id`. Children are n
 
 Messages between agents are decoded as `AgentMessage` events with a direction (incoming or
 outgoing relative to the log they are in), sender, recipients, kind, and an optional body.
-Bodies are truncated to 4 KiB.
+Bodies (and the prompts of spawn / send tool calls) are truncated to 16 KiB, enough for
+a full task description in the `watch` agent detail screen.
 
 | Provider | Source in the log | Kind |
 |---|---|---|

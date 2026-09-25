@@ -13,9 +13,9 @@ use super::records::ContentItem;
 pub(crate) const ROOT_PATH: &str = "/root";
 
 /// Maximum size of a plaintext message body kept on events.
-pub(crate) const MAX_BODY_BYTES: usize = 4096;
+pub(crate) const MAX_BODY_BYTES: usize = 16 * 1024;
 /// Maximum size of a message preview kept on tool-call arguments.
-const MAX_PREVIEW_BYTES: usize = 512;
+const MAX_PREVIEW_BYTES: usize = 16 * 1024;
 
 /// Agent operation of a collaboration tool (`namespace: "collaboration"`).
 pub(crate) fn agent_op(name: &str) -> Option<AgentOp> {

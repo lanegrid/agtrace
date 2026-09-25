@@ -1,0 +1,282 @@
+---
+source: crates/agtrace-cli/tests/watch_tui.rs
+expression: ov
+---
+{
+  "window": "15m",
+  "cell": "1m",
+  "rows": [
+    {
+      "id": "codex:t-root",
+      "depth": 0,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "/root",
+      "badge": null,
+      "provider": "codex",
+      "status": "idle",
+      "ctx": {
+        "pct": 12,
+        "used_tokens": 31000,
+        "window_tokens": 258400,
+        "provenance": "log"
+      },
+      "lane": "          ▃·⟲  ",
+      "lane_tones": "          rrc  ",
+      "now": {
+        "type": "idle",
+        "secs": 159
+      },
+      "selected": true,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": {
+        "label": "/root",
+        "provider": "codex",
+        "status": "idle",
+        "age_secs": 295,
+        "model": "gpt-5.6",
+        "ctx": {
+          "pct": 12,
+          "used_tokens": 31000,
+          "window_tokens": 258400,
+          "provenance": "log"
+        },
+        "compactions": 1,
+        "agents": 4,
+        "running": 2
+      }
+    },
+    {
+      "id": "codex:t-judge",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "judge",
+      "badge": null,
+      "provider": "codex",
+      "status": "running",
+      "ctx": {
+        "pct": 77,
+        "used_tokens": 200000,
+        "window_tokens": 258400,
+        "provenance": "log"
+      },
+      "lane": "          ▂▃▂··",
+      "lane_tones": "          rrrrr",
+      "now": {
+        "type": "tool",
+        "name": "exec",
+        "summary": "cargo test -p agtrace-cli",
+        "elapsed_secs": 240
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "codex:t-judge-x",
+      "depth": 2,
+      "guides": [
+        true
+      ],
+      "is_last_sibling": true,
+      "label": "x",
+      "badge": null,
+      "provider": "codex",
+      "status": "running",
+      "ctx": {
+        "pct": 5,
+        "used_tokens": 12000,
+        "window_tokens": 258400,
+        "provenance": "log"
+      },
+      "lane": "           ···▂",
+      "lane_tones": "           rrrr",
+      "now": {
+        "type": "said",
+        "text": "Reproducing the flake in a loop."
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "codex:t-scout",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": true,
+      "label": "scout",
+      "badge": null,
+      "provider": "codex",
+      "status": "done",
+      "ctx": {
+        "pct": 15,
+        "used_tokens": 40000,
+        "window_tokens": 258400,
+        "provenance": "log"
+      },
+      "lane": "          ▂▂   ",
+      "lane_tones": "          rr   ",
+      "now": {
+        "type": "result",
+        "text": "3 flaky tests, all in watch_command.rs"
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "claude:s-lead",
+      "depth": 0,
+      "guides": [],
+      "is_last_sibling": true,
+      "label": "s-lead",
+      "badge": null,
+      "provider": "claude_code",
+      "status": "running",
+      "ctx": {
+        "pct": 42,
+        "used_tokens": 420000,
+        "window_tokens": 1000000,
+        "provenance": "1m"
+      },
+      "lane": "          ▅⟲▂·▂",
+      "lane_tones": "          icrrr",
+      "now": {
+        "type": "tool",
+        "name": "Bash",
+        "summary": "mise run test",
+        "elapsed_secs": 10
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": {
+        "label": "s-lead",
+        "provider": "claude_code",
+        "status": "running",
+        "age_secs": 300,
+        "model": "claude-opus-5-5[1m]",
+        "ctx": {
+          "pct": 42,
+          "used_tokens": 420000,
+          "window_tokens": 1000000,
+          "provenance": "1m"
+        },
+        "compactions": 1,
+        "agents": 5,
+        "running": 2
+      }
+    },
+    {
+      "id": "claude:s-audit-a",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "audit-A",
+      "badge": "T",
+      "provider": "claude_code",
+      "status": "idle",
+      "ctx": {
+        "pct": 12,
+        "used_tokens": 24000,
+        "window_tokens": 200000,
+        "provenance": "table"
+      },
+      "lane": "          ▃▂   ",
+      "lane_tones": "          ri   ",
+      "now": {
+        "type": "idle",
+        "secs": 239
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "claude:s-audit-b",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "audit-B",
+      "badge": "T",
+      "provider": "claude_code",
+      "status": "idle",
+      "ctx": {
+        "pct": 9,
+        "used_tokens": 18000,
+        "window_tokens": 200000,
+        "provenance": "table"
+      },
+      "lane": "          ▃▂   ",
+      "lane_tones": "          ri   ",
+      "now": {
+        "type": "idle",
+        "secs": 201
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "claude:s-lead/a7ac2e91",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": false,
+      "label": "explore call sites",
+      "badge": "S",
+      "provider": "claude_code",
+      "status": "done",
+      "ctx": {
+        "pct": 15,
+        "used_tokens": 30000,
+        "window_tokens": 200000,
+        "provenance": "table"
+      },
+      "lane": "          ▃·▂  ",
+      "lane_tones": "          rrd  ",
+      "now": {
+        "type": "result",
+        "text": "found 2 call sites"
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": null
+    },
+    {
+      "id": "claude:s-lead/f0cc1a22",
+      "depth": 1,
+      "guides": [],
+      "is_last_sibling": true,
+      "label": "fork: bench",
+      "badge": "F",
+      "provider": "claude_code",
+      "status": "running",
+      "ctx": {
+        "pct": 75,
+        "used_tokens": 150000,
+        "window_tokens": 200000,
+        "provenance": "table"
+      },
+      "lane": "          ▂···▂",
+      "lane_tones": "          rrrrr",
+      "now": {
+        "type": "tool",
+        "name": "Bash",
+        "summary": "cargo bench -p agtrace-providers",
+        "elapsed_secs": 40
+      },
+      "selected": false,
+      "collapsed": false,
+      "hidden_descendants": 0,
+      "root": null
+    }
+  ]
+}

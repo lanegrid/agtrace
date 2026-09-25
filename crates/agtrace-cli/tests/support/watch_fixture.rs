@@ -399,6 +399,12 @@ pub fn events() -> Vec<WorkspaceEvent> {
 
     let mut sc = EventLog::new(&scout.id);
     push(vec![
+        sc.at(45).encrypted_message(
+            MessageDirection::Incoming,
+            handle::path("/root"),
+            vec![handle::path("/root/scout")],
+            AgentMessageKind::NewTask,
+        ),
         sc.at(45).window_hint(258_400),
         sc.at(46).usage(40_000, Some("gpt-5.6")),
         sc.at(119).message(

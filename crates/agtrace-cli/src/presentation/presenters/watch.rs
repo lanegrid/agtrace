@@ -9,6 +9,11 @@
 //! - feed: inter-agent messages, spawns and lifecycle changes (encrypted bodies are
 //!   never shown, only type and route).
 
+mod detail;
+mod overview;
+
+pub use detail::SPARK_WIDTH;
+
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
@@ -24,7 +29,8 @@ use chrono::{DateTime, FixedOffset, Utc};
 
 use crate::presentation::view_models::watch::{
     ActivityVm, AgentRowVm, AgentTimelineVm, ConsoleVm, CtxVm, FeedFilter, FeedRowKind, FeedRowVm,
-    FocusVm, KeyedRow, RowKind, StatusBarVm, StatusVm, TimelineRowVm, UiState, WatchScreenVm,
+    FocusVm, KeyedRow, RowKind, Screen, StatusBarVm, StatusVm, TimelineRowVm, UiState,
+    WatchScreenVm,
 };
 
 /// Build the whole screen from the current workspace snapshot.
@@ -57,8 +63,25 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
     let focus = build_focus(view, ui, selected.as_ref(), now);
     let feed = build_feed(view, ui, selected.as_ref());
     let status = build_status(view, ui, visible.len());
+    let overview =
+        (ui.screen == Screen::Overview).then(|| overview::build_overview(view, ui, &tree, now));
+    // The detail screen keeps the agent it was opened on (auto-select or tree
+    // changes do not switch it); it falls back to the selection.
+    let detail = (ui.screen == Screen::Detail)
+        .then(|| {
+            ui.detail_agent
+                .as_deref()
+                .and_then(AgentId::parse)
+                .and_then(|id| view.agent(&id))
+                .or_else(|| selected.as_ref().and_then(|id| view.agent(id)))
+                .map(|a| detail::build_detail(view, ui, a, now))
+        })
+        .flatten();
 
     WatchScreenVm {
+        screen: ui.screen,
+        overview,
+        detail,
         tree,
         focus,
         feed,
@@ -80,6 +103,7 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
 /// row once (design §6.3, `watch --mode console`).
 pub fn build_console(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> ConsoleVm {
     let ui = UiState {
+        screen: Screen::Agents,
         feed_filter: FeedFilter::All,
         hide_done: false,
         collapsed: Default::default(),

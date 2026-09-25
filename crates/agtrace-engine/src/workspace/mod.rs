@@ -19,6 +19,7 @@
 //!   spawns and lifecycle changes (repeated reports of one transition merged).
 
 mod context_seam;
+pub mod detail;
 mod feed;
 mod input;
 mod parent;
@@ -28,6 +29,10 @@ mod timeline;
 mod view;
 
 pub use context_seam::{CatalogResolver, ContextEvidence, ContextWindow, NoWindow, WindowResolver};
+pub use detail::{
+    ActivityBucket, ActivityHistory, AgentDetail, AgentResult, ContextPoint, DETAIL_TEXT_MAX,
+    Instruction, InstructionKind, Said, StatusHistory, StatusPoint, UsageTotals,
+};
 pub use feed::{
     FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW, MESSAGE_CLOCK_SKEW,
     MESSAGE_DELIVERY_WINDOW,

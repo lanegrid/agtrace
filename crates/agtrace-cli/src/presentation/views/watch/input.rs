@@ -1,8 +1,10 @@
 //! Keybindings (design §6.2) and the UI-state reducer.
 //!
-//! Drill-down model, the tree is home: Enter / → / l dive into the selected
-//! agent's timeline, Esc / ← / h go back one level (close help, return to the
-//! tree, then reset the view toggles). j/k act on the focused pane.
+//! Three screens: `1` overview (home), `2` agents (tree + timeline + feed), and
+//! the agent detail. Drill-down model: Enter / → / l open the selected agent's
+//! detail (from the overview or the agents screen), Esc / ← / h go back one
+//! level (close help, leave the detail to where it was opened from, return to the
+//! tree, then reset the view toggles). j/k act on the focused pane or section.
 //!
 //! [`action_for`] maps a key to an [`Action`]; [`apply`] updates the [`UiState`]
 //! against the last rendered screen (row order, row counts), raises a toast for
@@ -13,17 +15,24 @@ use std::time::Instant;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::presentation::view_models::watch::{
-    AgentRowVm, FeedFilter, Pane, Scroll, Toast, UiState, WatchScreenVm,
+    AgentRowVm, DetailSection, FeedFilter, LaneWindow, Pane, Screen, Scroll, Toast, UiState,
+    WatchScreenVm, initial_detail_scroll,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Up,
     Down,
-    /// Dive into the selected agent: focus its timeline.
+    /// Dive into the selected agent: open its detail screen.
     Open,
-    /// Back one level: close help, return to the tree, or reset the view.
+    /// Back one level: close help, leave the detail, return to the tree, or reset
+    /// the view.
     Back,
+    ShowOverview,
+    ShowAgents,
+    /// Overview activity window: next wider / narrower span.
+    WindowWider,
+    WindowNarrower,
     ToggleCollapse,
     NextPane,
     PrevPane,
@@ -59,6 +68,10 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('u') if ctrl => Action::HalfPageUp,
         KeyCode::Char('d') if ctrl => Action::HalfPageDown,
         KeyCode::Char('q') => Action::Quit,
+        KeyCode::Char('1') => Action::ShowOverview,
+        KeyCode::Char('2') => Action::ShowAgents,
+        KeyCode::Char('+') | KeyCode::Char('=') | KeyCode::Char(']') => Action::WindowWider,
+        KeyCode::Char('-') | KeyCode::Char('[') => Action::WindowNarrower,
         KeyCode::Char('j') | KeyCode::Down => Action::Down,
         KeyCode::Char('k') | KeyCode::Up => Action::Up,
         KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => Action::Open,
@@ -172,6 +185,52 @@ fn subtree_size(tree: &[AgentRowVm], idx: usize) -> usize {
         .sum()
 }
 
+/// Scroll the focused detail section by `n` lines (clamped against the last frame;
+/// the timeline follows again at its end).
+fn scroll_detail(ui: &mut UiState, up: bool, n: usize) {
+    let section = ui.detail_section;
+    let i = section.index();
+    let m = ui.viewport.detail[i];
+    let max = m.total.saturating_sub(m.height);
+    let cur = ui.detail_scroll[i].start(m.total, m.height);
+    ui.detail_scroll[i] = if up {
+        Scroll::Offset(cur.saturating_sub(n))
+    } else if cur + n >= max && section == DetailSection::Timeline {
+        Scroll::Follow
+    } else {
+        Scroll::Offset((cur + n).min(max))
+    };
+}
+
+/// Open the detail screen of the agent under the cursor.
+fn open_detail(ui: &mut UiState, vm: &WatchScreenVm) {
+    let Some(row) = cursor(ui, vm).and_then(|i| vm.tree.get(i)) else {
+        return;
+    };
+    ui.selected = Some(row.id.clone());
+    ui.detail_agent = Some(row.id.clone());
+    ui.detail_return = ui.screen;
+    ui.screen = Screen::Detail;
+    ui.detail_section = DetailSection::Instructions;
+    ui.detail_scroll = initial_detail_scroll();
+}
+
+fn window_toast(before: LaneWindow, after: LaneWindow) -> String {
+    let what = match after {
+        LaneWindow::All => "all (since the oldest agent started)".to_string(),
+        w => format!("last {}", w.label()),
+    };
+    let limit = if before == after {
+        match after {
+            LaneWindow::All => " — widest",
+            _ => " — narrowest",
+        }
+    } else {
+        ""
+    };
+    format!("activity window: {what}{limit}")
+}
+
 /// Esc on the tree: back to the default screen (selection and auto-select are kept).
 fn reset_view(ui: &mut UiState) {
     ui.collapsed.clear();
@@ -193,6 +252,9 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
         }
         return Effect::None;
     }
+    if ui.screen == Screen::Detail {
+        return apply_detail(ui, action, now);
+    }
     let page = |h: usize| h.max(1);
     let target = scroll_target(ui);
     let height = match target {
@@ -207,7 +269,17 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
             toast = Some("rescanning…".to_string());
             effect = Effect::Rescan;
         }
-        Action::Up | Action::Down if ui.focus == Pane::Tree => {
+        Action::ShowOverview => ui.screen = Screen::Overview,
+        Action::ShowAgents => ui.screen = Screen::Agents,
+        Action::WindowWider | Action::WindowNarrower => {
+            let before = ui.window;
+            ui.window = match action {
+                Action::WindowWider => before.wider(),
+                _ => before.narrower(),
+            };
+            toast = Some(window_toast(before, ui.window));
+        }
+        Action::Up | Action::Down if ui.focus == Pane::Tree || ui.screen == Screen::Overview => {
             let cur = cursor(ui, vm);
             let next = match (cur, action) {
                 (None, _) => 0,
@@ -216,6 +288,27 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
             };
             select(ui, vm, next);
         }
+        // The overview has no scrollable pane: page / end keys move the selection.
+        Action::PageUp
+        | Action::PageDown
+        | Action::HalfPageUp
+        | Action::HalfPageDown
+        | Action::Tail
+        | Action::Top
+            if ui.screen == Screen::Overview =>
+        {
+            let last = vm.tree.len().saturating_sub(1);
+            let cur = cursor(ui, vm).unwrap_or(0);
+            let jump = ui.viewport.tree.max(2) / 2;
+            let next = match action {
+                Action::PageUp | Action::HalfPageUp => cur.saturating_sub(jump),
+                Action::PageDown | Action::HalfPageDown => (cur + jump).min(last),
+                Action::Tail => last,
+                _ => 0,
+            };
+            select(ui, vm, next);
+        }
+        Action::NextPane | Action::PrevPane if ui.screen == Screen::Overview => {}
         Action::Up => scroll(ui, vm, target, true, 1),
         Action::Down => scroll(ui, vm, target, false, 1),
         Action::PageUp => scroll(ui, vm, target, true, page(height)),
@@ -224,10 +317,10 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
         Action::HalfPageDown => scroll(ui, vm, target, false, page(height / 2)),
         Action::Tail => set_scroll(ui, target, Scroll::Follow),
         Action::Top => set_scroll(ui, target, Scroll::Offset(0)),
-        Action::Open => ui.focus = Pane::Timeline,
+        Action::Open => open_detail(ui, vm),
         Action::Back => match ui.focus {
-            Pane::Timeline | Pane::Feed => ui.focus = Pane::Tree,
-            Pane::Tree => {
+            Pane::Timeline | Pane::Feed if ui.screen == Screen::Agents => ui.focus = Pane::Tree,
+            _ => {
                 reset_view(ui);
                 toast = Some("view reset".to_string());
             }
@@ -270,6 +363,54 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
         ui.toast = Some(Toast::new(text, now));
     }
     effect
+}
+
+/// Keys on the detail screen: sections instead of panes, Esc back to where the
+/// detail was opened from; the view toggles of the other screens do not apply.
+fn apply_detail(ui: &mut UiState, action: Action, now: Instant) -> Effect {
+    let i = ui.detail_section.index();
+    let page = ui.viewport.detail[i].height.max(1);
+    match action {
+        Action::Quit => return Effect::Quit,
+        Action::Rescan => {
+            ui.toast = Some(Toast::new("rescanning…", now));
+            return Effect::Rescan;
+        }
+        Action::Back => ui.screen = ui.detail_return,
+        Action::ShowOverview => ui.screen = Screen::Overview,
+        Action::ShowAgents => ui.screen = Screen::Agents,
+        Action::NextPane => ui.detail_section = ui.detail_section.next(),
+        Action::PrevPane => ui.detail_section = ui.detail_section.prev(),
+        Action::Up => scroll_detail(ui, true, 1),
+        Action::Down => scroll_detail(ui, false, 1),
+        Action::PageUp => scroll_detail(ui, true, page),
+        Action::PageDown => scroll_detail(ui, false, page),
+        Action::HalfPageUp => scroll_detail(ui, true, (page / 2).max(1)),
+        Action::HalfPageDown => scroll_detail(ui, false, (page / 2).max(1)),
+        Action::Tail => {
+            ui.detail_scroll[i] = match ui.detail_section {
+                DetailSection::Timeline => Scroll::Follow,
+                _ => Scroll::Offset(usize::MAX),
+            }
+        }
+        Action::Top => ui.detail_scroll[i] = Scroll::Offset(0),
+        Action::ToggleHelp => ui.show_help = true,
+        Action::WindowWider | Action::WindowNarrower => {
+            // The window belongs to the overview; apply it for when we return.
+            let before = ui.window;
+            ui.window = match action {
+                Action::WindowWider => before.wider(),
+                _ => before.narrower(),
+            };
+            ui.toast = Some(Toast::new(window_toast(before, ui.window), now));
+        }
+        Action::Open
+        | Action::ToggleCollapse
+        | Action::ToggleFeedFilter
+        | Action::ToggleHideDone
+        | Action::ToggleAutoSelect => {}
+    }
+    Effect::None
 }
 
 /// Drop the toast once it expired; true when it was visible until now (the

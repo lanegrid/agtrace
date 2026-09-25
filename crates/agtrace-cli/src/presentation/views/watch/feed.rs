@@ -11,7 +11,9 @@ use crate::presentation::view_models::watch::{
     FeedFilter, FeedRowKind, FeedRowVm, Pane, WatchScreenVm,
 };
 
-pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
+/// `panes`: the agents screen (pane focus and timeline spotlight apply); false on
+/// the overview, where the feed is a compact, unfocused strip.
+pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize, panes: bool) {
     let mut title = " Messages ".to_string();
     if vm.status.feed_filter == FeedFilter::Selected {
         title.push_str("(selected agent) ");
@@ -19,7 +21,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     if !vm.feed_scroll.is_follow() {
         title.push_str("· scrolled ");
     }
-    let block = pane_block(vm.focus_pane == Pane::Feed, vec![Span::raw(title)]);
+    let block = pane_block(panes && vm.focus_pane == Pane::Feed, vec![Span::raw(title)]);
     if vm.feed.is_empty() {
         let p = Paragraph::new(Line::styled(" no inter-agent messages yet", dim())).block(block);
         f.render_widget(p, area);
@@ -32,7 +34,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     let tag_w = col_width(visible.iter().map(|r| r.tag.as_str()), 14);
     // While the timeline has focus, rows not involving its agent recede so the
     // agent's own conversation stands out (highlighted, not filtered).
-    let spotlight = vm.focus_pane == Pane::Timeline;
+    let spotlight = panes && vm.focus_pane == Pane::Timeline;
     let rows: Vec<Row> = visible
         .iter()
         .zip(routes)

@@ -4,9 +4,9 @@
 //!  TIMELINE · lead  9 agents (4 running, 3 idle) · hide done      j/k scroll · G follow · Esc back
 //! ```
 //!
-//! Left: the mode label (which pane has focus, and whose timeline), then the live
-//! toast, or else agent counts, diagnostics, errors and active toggles. Right: key
-//! hints for the focused pane.
+//! Left: the mode label (screen, focused pane or detail section, and whose
+//! timeline / detail), then the live toast, or else agent counts, diagnostics,
+//! errors and active toggles. Right: key hints for the screen / focused pane.
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -15,7 +15,9 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
 use super::style::{FOCUS_COLOR, dim};
-use crate::presentation::view_models::watch::{FeedFilter, Pane, StatusBarVm, WatchScreenVm};
+use crate::presentation::view_models::watch::{
+    FeedFilter, Pane, Screen, StatusBarVm, WatchScreenVm,
+};
 
 pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
     let s = &vm.status;
@@ -42,8 +44,8 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
     let left = Line::from(spans);
 
     // Hints take what the left part leaves, dropping optional items first; the
-    // essential ones (`↵ open`, `? help`, `Esc back`, `Esc:reset`) always show.
-    let items = hints(vm.focus_pane, !toggles.is_empty());
+    // essential ones (`↵ detail`, `? help`, `Esc back`, `Esc:reset`) always show.
+    let items = hints(vm.screen, vm.focus_pane, !toggles.is_empty());
     let essential = fit(&items, 0);
     let avail = (area.width as usize)
         .saturating_sub(left.width() + 1)
@@ -68,28 +70,60 @@ const fn hint(text: &'static str, drop_rank: u8) -> Hint {
     Hint { text, drop_rank }
 }
 
-/// Key hints of the focused pane; `Esc:reset` only on the tree with toggles active.
-pub fn hints(focus: Pane, toggles_active: bool) -> Vec<Hint> {
-    let mut out = match focus {
-        Pane::Tree => vec![
-            hint("↵ open", 0),
-            hint("space fold", 1),
-            hint("f msgs", 2),
-            hint("d done", 3),
-            hint("? help", 0),
-        ],
-        Pane::Timeline => vec![
-            hint("j/k scroll", 1),
-            hint("G follow", 2),
-            hint("Esc back", 0),
-        ],
-        Pane::Feed => vec![
-            hint("j/k scroll", 1),
-            hint("f filter", 2),
-            hint("Esc back", 0),
-        ],
+/// Key hints of the screen / focused pane; `Esc:reset` only on the home views
+/// (overview, agents tree) with toggles active.
+pub fn hints(screen: Screen, focus: Pane, toggles_active: bool) -> Vec<Hint> {
+    let (mut out, home) = match (screen, focus) {
+        (Screen::Overview, _) => (
+            vec![
+                hint("↵ detail", 0),
+                hint("+/- window", 1),
+                hint("space fold", 3),
+                hint("d done", 4),
+                hint("2 agents", 2),
+                hint("? help", 0),
+            ],
+            true,
+        ),
+        (Screen::Detail, _) => (
+            vec![
+                hint("Tab section", 1),
+                hint("j/k scroll", 2),
+                hint("G/g end/top", 3),
+                hint("Esc back", 0),
+            ],
+            false,
+        ),
+        (Screen::Agents, Pane::Tree) => (
+            vec![
+                hint("↵ detail", 0),
+                hint("space fold", 2),
+                hint("f msgs", 3),
+                hint("d done", 4),
+                hint("1 overview", 1),
+                hint("? help", 0),
+            ],
+            true,
+        ),
+        (Screen::Agents, Pane::Timeline) => (
+            vec![
+                hint("↵ detail", 1),
+                hint("j/k scroll", 2),
+                hint("G follow", 3),
+                hint("Esc back", 0),
+            ],
+            false,
+        ),
+        (Screen::Agents, Pane::Feed) => (
+            vec![
+                hint("j/k scroll", 1),
+                hint("f filter", 2),
+                hint("Esc back", 0),
+            ],
+            false,
+        ),
     };
-    if focus == Pane::Tree && toggles_active {
+    if home && toggles_active {
         out.push(hint("Esc:reset", 0));
     }
     out
@@ -114,12 +148,21 @@ pub fn fit(items: &[Hint], width: usize) -> String {
         .unwrap_or_else(|| join(0))
 }
 
-/// `AGENTS`, `TIMELINE · <agent>`, `MESSAGES`.
+/// `OVERVIEW`, `AGENTS`, `TIMELINE · <agent>`, `MESSAGES`, `DETAIL · <agent> · <SECTION>`.
 fn mode_label(vm: &WatchScreenVm) -> String {
-    match vm.focus_pane {
-        Pane::Tree => "AGENTS".to_string(),
-        Pane::Timeline => format!("TIMELINE · {}", vm.focus.title),
-        Pane::Feed => "MESSAGES".to_string(),
+    match (vm.screen, vm.focus_pane) {
+        (Screen::Overview, _) => "OVERVIEW".to_string(),
+        (Screen::Detail, _) => match &vm.detail {
+            Some(d) => format!(
+                "DETAIL · {} · {}",
+                d.title,
+                d.section.title().to_uppercase()
+            ),
+            None => "DETAIL".to_string(),
+        },
+        (Screen::Agents, Pane::Tree) => "AGENTS".to_string(),
+        (Screen::Agents, Pane::Timeline) => format!("TIMELINE · {}", vm.focus.title),
+        (Screen::Agents, Pane::Feed) => "MESSAGES".to_string(),
     }
 }
 

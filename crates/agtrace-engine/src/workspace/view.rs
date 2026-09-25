@@ -1,15 +1,21 @@
 //! `WorkspaceView`: the incrementally folded agent graph + live per-agent state.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 
 use agtrace_types::{
-    AgentAttributeKey, AgentEvent, AgentHandle, AgentId, AgentKind, AgentRef, AgentSpawnPayload,
-    EventPayload, LifecycleTransition, MessageDirection, ParseDiagnostics, Provider, TurnOutcome,
+    AgentAttributeKey, AgentEvent, AgentHandle, AgentId, AgentKind, AgentMessageKind, AgentOp,
+    AgentRef, AgentSpawnPayload, EventPayload, LifecycleTransition, MessageDirection,
+    ParseDiagnostics, Provider, ToolCallPayload, TurnOutcome,
 };
 use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 use super::context_seam::{ContextEvidence, ContextWindow, WindowResolver};
+use super::detail::{
+    AgentDetail, AgentResult, ContextPoint, DETAIL_TEXT_MAX, Instruction, InstructionKind, Said,
+    cap_text,
+};
 use super::feed::{FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW};
 use super::input::{SideStateUpdate, TeamMember, WorkspaceEvent};
 use super::parent::{RuntimeAliases, team_lead_agent, teammate_parent};
@@ -31,6 +37,8 @@ pub const ERROR_CAPACITY: usize = 50;
 /// Unresolved spawns / lifecycle signals kept for late discovery (oldest dropped).
 pub const MAX_PENDING: usize = 1000;
 const MAX_OPEN_TOOLS: usize = 32;
+/// Recent spawn tool calls remembered per agent to attach their prompt to the spawn.
+const MAX_SPAWN_PROMPTS: usize = 32;
 const SETTLE_ROUNDS: usize = 8;
 
 /// How the agent was spawned (from the parent's `AgentSpawn`).
@@ -46,10 +54,14 @@ pub struct SpawnInfo {
     pub description: Option<String>,
     pub spawn_call_id: Option<String>,
     pub at: DateTime<Utc>,
+    /// Prompt / task text of the spawn tool call (capped), when plaintext.
+    pub prompt: Option<String>,
+    /// The spawn tool call's prompt was encrypted (Codex).
+    pub prompt_encrypted: bool,
 }
 
 impl SpawnInfo {
-    fn new(by: &AgentId, s: &AgentSpawnPayload, at: DateTime<Utc>) -> Self {
+    fn new(by: &AgentId, s: &AgentSpawnPayload, at: DateTime<Utc>, prompt: SpawnPrompt) -> Self {
         Self {
             by: by.clone(),
             kind: s.kind,
@@ -60,8 +72,18 @@ impl SpawnInfo {
             description: s.description.clone(),
             spawn_call_id: s.spawn_call_id.clone(),
             at,
+            prompt: prompt.text,
+            prompt_encrypted: prompt.encrypted,
         }
     }
+}
+
+/// Prompt of a spawn tool call, remembered until its `AgentSpawn` arrives.
+#[derive(Debug, Clone, Default)]
+struct SpawnPrompt {
+    call: Uuid,
+    text: Option<String>,
+    encrypted: bool,
 }
 
 /// Live state of one agent.
@@ -92,7 +114,10 @@ pub struct AgentView {
     pub spawn: Option<SpawnInfo>,
     /// False for placeholders created by events that arrived before discovery.
     pub discovered: bool,
+    /// History, instructions, result and totals (overview / detail screens).
+    pub detail: AgentDetail,
     signals: StatusSignals,
+    spawn_prompts: VecDeque<SpawnPrompt>,
     open_tools: Vec<RunningTool>,
     own_model: Option<String>,
     hint_model: Option<String>,
@@ -118,7 +143,9 @@ impl AgentView {
             attributes: HashMap::new(),
             spawn: None,
             discovered,
+            detail: AgentDetail::default(),
             signals: StatusSignals::default(),
+            spawn_prompts: VecDeque::new(),
             open_tools: Vec::new(),
             own_model: None,
             hint_model: None,
@@ -218,6 +245,8 @@ impl AgentView {
         self.signals.last_active = None;
         self.signals.last_write = None;
         self.signals.all_background_killed_at = None;
+        self.detail.reset_own();
+        self.spawn_prompts.clear();
     }
 
     fn add_external_model(&mut self, model: &str) {
@@ -250,8 +279,10 @@ struct SubagentMeta {
 #[derive(Debug, Clone)]
 enum Effect {
     Link(Box<SpawnInfo>),
-    Lifecycle(LifecycleTransition),
+    Lifecycle(LifecycleTransition, Option<String>),
     Terminal(AgentStatus),
+    /// The agent's result, reported in another agent's log.
+    Result(Box<AgentResult>),
 }
 
 #[derive(Debug, Clone)]
@@ -434,9 +465,11 @@ impl WorkspaceView {
             _ => false,
         };
         let item = timeline_item(ev, &|h| self.handle_display(ctx, h));
+        let instruction = self.instruction_of(ctx, ev);
 
         // Own state.
         let mut team_changed = false;
+        let mut spawn_prompt = SpawnPrompt::default();
         {
             let v = self.agents.get_mut(ctx).expect("ensured by caller");
             v.signals.last_write = v.signals.last_write.max(Some(ts));
@@ -444,6 +477,11 @@ impl WorkspaceView {
             let activity = is_activity(&ev.payload);
             if activity {
                 v.signals.last_active = v.signals.last_active.max(Some(ts));
+            }
+            let own_before = v.signals.own;
+            fold_detail(v, ev, activity, &mut spawn_prompt);
+            if let Some(i) = instruction {
+                v.detail.push_instruction(i);
             }
             if v.agent.started_at.is_none() {
                 v.agent.started_at = Some(ts);
@@ -497,6 +535,17 @@ impl WorkspaceView {
             if activity && !own_lifecycle {
                 v.signals.own = Some((AgentStatus::Running, ts));
             }
+            if v.signals.own != own_before
+                && let Some((st, at)) = v.signals.own
+            {
+                v.detail.status_history.record_own(at, st);
+            }
+            if let EventPayload::AgentLifecycle(l) = &ev.payload
+                && own_lifecycle
+                && let Some(r) = &l.reason
+            {
+                v.detail.end_reason = Some(one_line(r, TIMELINE_TEXT_MAX));
+            }
             v.current_tool = v.open_tools.last().cloned();
             if let Some(item) = item {
                 v.recent.push(TimelineEntry {
@@ -520,7 +569,7 @@ impl WorkspaceView {
                     self.team_spawners.insert(t.clone(), ctx.clone());
                     self.structure_dirty = true;
                 }
-                let info = SpawnInfo::new(ctx, s, ts);
+                let info = SpawnInfo::new(ctx, s, ts, spawn_prompt);
                 self.dispatch(ctx, &s.child, Effect::Link(Box::new(info)), ts);
                 let text = s
                     .description
@@ -549,7 +598,12 @@ impl WorkspaceView {
                     FeedParty::Agent(ctx.clone())
                 } else {
                     if !own_lifecycle {
-                        self.dispatch(ctx, &l.target, Effect::Lifecycle(l.transition), ts);
+                        self.dispatch(
+                            ctx,
+                            &l.target,
+                            Effect::Lifecycle(l.transition, l.reason.clone()),
+                            ts,
+                        );
                     }
                     self.party(ctx, &l.target)
                 };
@@ -569,10 +623,30 @@ impl WorkspaceView {
                 }
             }
             EventPayload::AgentMessage(m) => {
-                if m.kind == agtrace_types::AgentMessageKind::Handback
-                    && m.direction == MessageDirection::Incoming
+                if m.kind == AgentMessageKind::Handback && m.direction == MessageDirection::Incoming
                 {
                     self.dispatch(ctx, &m.from, Effect::Terminal(AgentStatus::Done), ts);
+                }
+                if is_result_kind(&m.kind) {
+                    let result = AgentResult {
+                        event_id: ev.id,
+                        at: ts,
+                        kind: m.kind.clone(),
+                        text: m.body.as_deref().map(|b| cap_text(b, DETAIL_TEXT_MAX)),
+                        encrypted: m.encrypted,
+                        own: m.direction == MessageDirection::Outgoing,
+                    };
+                    match m.direction {
+                        MessageDirection::Outgoing => self
+                            .agents
+                            .get_mut(ctx)
+                            .expect("ensured by caller")
+                            .detail
+                            .set_result(result),
+                        MessageDirection::Incoming => {
+                            self.dispatch(ctx, &m.from, Effect::Result(Box::new(result)), ts)
+                        }
+                    }
                 }
                 let from = self.party(ctx, &m.from);
                 let to = m.to.iter().map(|h| self.party(ctx, h)).collect();
@@ -763,6 +837,55 @@ impl WorkspaceView {
         )
     }
 
+    /// Instruction carried by an event of `ctx`'s own log: a user prompt, a queued
+    /// prompt absorbed mid-turn, or a message addressed to `ctx` (not a report from
+    /// one of its own children, and not a result / status notification).
+    fn instruction_of(&self, ctx: &AgentId, ev: &AgentEvent) -> Option<Instruction> {
+        let cap = |t: &str| Some(cap_text(t, DETAIL_TEXT_MAX)).filter(|t| !t.is_empty());
+        let (kind, from, text, encrypted) = match &ev.payload {
+            EventPayload::User(u) => (InstructionKind::Prompt, None, cap(&u.text)?.into(), false),
+            EventPayload::QueueOperation(q)
+                if q.reason.as_deref().is_some_and(|r| r.contains("absorbed")) =>
+            {
+                (
+                    InstructionKind::Queued,
+                    None,
+                    cap(q.content.as_deref()?)?.into(),
+                    false,
+                )
+            }
+            EventPayload::AgentMessage(m)
+                if m.direction == MessageDirection::Incoming && is_instruction_kind(&m.kind) =>
+            {
+                if let Resolution::Agent(sender) = self.resolve(ctx, &m.from)
+                    && (sender == *ctx
+                        || self
+                            .agents
+                            .get(&sender)
+                            .is_some_and(|s| s.agent.parent.as_ref() == Some(ctx)))
+                {
+                    return None;
+                }
+                let text = m.body.as_deref().or(m.summary.as_deref()).and_then(cap);
+                (
+                    InstructionKind::Message(m.kind.clone()),
+                    Some(self.handle_display(ctx, &m.from)),
+                    text,
+                    m.encrypted,
+                )
+            }
+            _ => return None,
+        };
+        Some(Instruction {
+            event_id: ev.id,
+            at: ev.timestamp,
+            kind,
+            from,
+            text,
+            encrypted,
+        })
+    }
+
     fn handle_display(&self, ctx: &AgentId, h: &AgentHandle) -> String {
         match self.resolve(ctx, h) {
             Resolution::Agent(id) => self.agents[&id].label(),
@@ -809,12 +932,28 @@ impl WorkspaceView {
             Effect::Terminal(st) => {
                 if let Some(v) = self.agents.get_mut(target) {
                     v.signals.set_terminal(st, at, TerminalOrigin::Event);
+                    v.detail.status_history.record_report(at, st);
                 }
             }
-            Effect::Lifecycle(tr) => {
+            Effect::Result(r) => {
+                if let Some(v) = self.agents.get_mut(target) {
+                    v.detail.set_result(*r);
+                }
+            }
+            Effect::Lifecycle(tr, reason) => {
                 let Some(v) = self.agents.get_mut(target) else {
                     return;
                 };
+                if let Some(st) = remote_status(tr) {
+                    v.detail.status_history.record_report(at, st);
+                }
+                if matches!(
+                    tr,
+                    LifecycleTransition::Killed | LifecycleTransition::Failed
+                ) && let Some(r) = reason
+                {
+                    v.detail.end_reason = Some(one_line(&r, TIMELINE_TEXT_MAX));
+                }
                 let s = &mut v.signals;
                 match tr {
                     LifecycleTransition::Completed => {
@@ -1274,6 +1413,135 @@ fn is_activity(p: &EventPayload) -> bool {
             | EventPayload::QueueOperation(_)
             | EventPayload::TurnEnd(_)
     )
+}
+
+/// Fold one own-log event into the agent's detail state (activity, context series,
+/// totals, last text, spawn prompts). `spawn_prompt` receives the prompt of the
+/// spawn tool call an `AgentSpawn` refers to.
+fn fold_detail(v: &mut AgentView, ev: &AgentEvent, activity: bool, spawn_prompt: &mut SpawnPrompt) {
+    let ts = ev.timestamp;
+    let d = &mut v.detail;
+    match &ev.payload {
+        EventPayload::TokenUsage(u) => {
+            d.totals.add_usage(u);
+            d.push_context(ContextPoint {
+                at: ts,
+                tokens: Some(u.context_tokens()),
+                compaction: false,
+            });
+        }
+        EventPayload::Compaction(c) => {
+            d.compactions += 1;
+            d.activity.record(ts, true);
+            d.push_context(ContextPoint {
+                at: ts,
+                tokens: c.post_tokens,
+                compaction: true,
+            });
+        }
+        EventPayload::TurnEnd(e) => {
+            d.totals.turns += 1;
+            if let TurnOutcome::Failed { error: Some(err) } = &e.outcome {
+                d.end_reason = Some(one_line(err, TIMELINE_TEXT_MAX));
+            }
+        }
+        EventPayload::ToolCall(c) => {
+            d.totals.tool_calls += 1;
+            if let ToolCallPayload::Agent { arguments, .. } = c {
+                match arguments.op {
+                    AgentOp::Spawn => {
+                        if v.spawn_prompts.len() == MAX_SPAWN_PROMPTS {
+                            v.spawn_prompts.pop_front();
+                        }
+                        v.spawn_prompts.push_back(SpawnPrompt {
+                            call: ev.id,
+                            text: arguments
+                                .message_preview
+                                .as_deref()
+                                .map(|t| cap_text(t, DETAIL_TEXT_MAX)),
+                            encrypted: arguments.encrypted,
+                        });
+                    }
+                    AgentOp::Handback => {
+                        if let Some(text) = arguments.message_preview.as_deref() {
+                            d.set_result(AgentResult {
+                                event_id: ev.id,
+                                at: ts,
+                                kind: AgentMessageKind::Handback,
+                                text: Some(cap_text(text, DETAIL_TEXT_MAX)),
+                                encrypted: false,
+                                own: true,
+                            });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        EventPayload::AgentSpawn(s) => {
+            if let Some(call) = s.tool_call_id
+                && let Some(i) = v.spawn_prompts.iter().position(|p| p.call == call)
+            {
+                *spawn_prompt = v.spawn_prompts.remove(i).unwrap_or_default();
+            }
+        }
+        EventPayload::Message(m) if !m.text.trim().is_empty() => {
+            d.last_message = Some(Said {
+                at: ts,
+                text: cap_text(&m.text, DETAIL_TEXT_MAX),
+            });
+        }
+        EventPayload::Reasoning(r) if !r.text.trim().is_empty() => {
+            d.last_reasoning = Some(Said {
+                at: ts,
+                text: cap_text(&r.text, DETAIL_TEXT_MAX),
+            });
+        }
+        _ => {}
+    }
+    if activity
+        && !matches!(
+            ev.payload,
+            EventPayload::TokenUsage(_) | EventPayload::Compaction(_)
+        )
+    {
+        v.detail.activity.record(ts, false);
+    }
+}
+
+/// Message kinds that ask the recipient to do something.
+fn is_instruction_kind(k: &AgentMessageKind) -> bool {
+    matches!(
+        k,
+        AgentMessageKind::NewTask
+            | AgentMessageKind::Message
+            | AgentMessageKind::Peer
+            | AgentMessageKind::Interrupt
+            | AgentMessageKind::Other(_)
+    )
+}
+
+/// Message kinds that carry the sender's result.
+fn is_result_kind(k: &AgentMessageKind) -> bool {
+    matches!(
+        k,
+        AgentMessageKind::FinalAnswer
+            | AgentMessageKind::Handback
+            | AgentMessageKind::TaskNotification
+    )
+}
+
+/// Status a parent-side lifecycle report puts the target in (status history only;
+/// the effective status is derived by [`derive_status`]).
+fn remote_status(tr: LifecycleTransition) -> Option<AgentStatus> {
+    Some(match tr {
+        LifecycleTransition::Completed => AgentStatus::Done,
+        LifecycleTransition::Killed => AgentStatus::Killed,
+        LifecycleTransition::Failed => AgentStatus::Failed,
+        LifecycleTransition::Idle | LifecycleTransition::Interrupted => AgentStatus::Idle,
+        LifecycleTransition::Running => AgentStatus::Running,
+        LifecycleTransition::AllBackgroundKilled => return None,
+    })
 }
 
 fn own_transition_status(tr: LifecycleTransition) -> AgentStatus {
