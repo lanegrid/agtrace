@@ -5,9 +5,12 @@ use crate::ops::{
 use crate::storage::{RawFileContent, get_raw_files};
 use crate::{Error, Result};
 use agtrace_engine::export::ExportStrategy;
+use agtrace_engine::workspace::{
+    TeammateSpawn, find_teammate_spawn, teammate_parent, teammate_spawns,
+};
 use agtrace_index::{Database, SessionSummary};
 use agtrace_providers::ProviderAdapter;
-use agtrace_types::AgentEvent;
+use agtrace_types::{AgentEvent, AgentId};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -240,7 +243,9 @@ impl SessionHandle {
 
     /// Agent tree of this session (design §6.4): the session's own agent, its Claude
     /// subagents / forks (log files of the session), and child sessions (Codex child
-    /// threads and forks, Claude teammates linked to their lead) recursively.
+    /// threads and forks, Claude teammates) recursively. A teammate is placed with
+    /// the live view's rule ([`teammate_parent`]): under the agent of this session
+    /// whose log spawned it, else under the team lead (this session).
     pub fn agent_tree(&self) -> Result<AgentNode> {
         let db = self.db.lock().unwrap();
         let summary = db
@@ -333,11 +338,63 @@ fn session_node(
         });
     }
     // Child sessions (Codex threads / forks, teammates), recursively.
-    for child in db.get_child_sessions(&summary.id)? {
+    let children = db.get_child_sessions(&summary.id)?;
+    let spawns = if children.iter().any(|c| c.agent_kind == "teammate") {
+        teammate_spawns_in(&files)
+    } else {
+        Vec::new()
+    };
+    for child in children {
         if visited.contains(&child.id) {
             continue;
         }
-        node.children.push(session_node(db, child, visited)?);
+        let teammate = (child.agent_kind == "teammate").then(|| {
+            let started = child
+                .start_ts
+                .as_deref()
+                .and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok())
+                .map(|t| t.with_timezone(&chrono::Utc));
+            find_teammate_spawn(
+                &spawns,
+                child.team_name.as_deref(),
+                child.agent_name.as_deref().unwrap_or_default(),
+                started,
+            )
+            .cloned()
+        });
+        let mut child_node = session_node(db, child, visited)?;
+        let Some(spawn) = teammate else {
+            node.children.push(child_node);
+            continue;
+        };
+        // Shared rule with the live view: the spawning agent, else the team lead
+        // (this session, whose team config links the teammate here).
+        if child_node.spawn_call_id.is_none() {
+            child_node.spawn_call_id = spawn.as_ref().and_then(|s| s.spawn_call_id.clone());
+        }
+        let lead = AgentId::parse(&node.agent_id);
+        let me = AgentId::parse(&child_node.agent_id);
+        let parent = me
+            .and_then(|me| teammate_parent(&me, spawn.as_ref().map(|s| &s.spawner), lead.as_ref()));
+        let target = parent
+            .and_then(|p| node.children.iter_mut().find(|c| c.agent_id == p.as_str()))
+            .filter(|c| c.session_id == summary.id);
+        match target {
+            Some(spawner) => spawner.children.push(child_node),
+            None => node.children.push(child_node),
+        }
     }
     Ok(node)
+}
+
+/// Teammate spawns in a Claude session's own log files (main + subagents / forks).
+fn teammate_spawns_in(files: &[agtrace_index::LogFileRecord]) -> Vec<TeammateSpawn> {
+    files
+        .iter()
+        .filter(|f| f.agent_id.starts_with("claude:"))
+        .filter_map(|f| {
+            agtrace_providers::normalize_claude_file(std::path::Path::new(&f.path)).ok()
+        })
+        .flat_map(|events| teammate_spawns(&events))
+        .collect()
 }

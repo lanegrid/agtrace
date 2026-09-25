@@ -10,8 +10,9 @@ use agtrace_types::{
 use chrono::{DateTime, Utc};
 
 use super::context_seam::{ContextEvidence, ContextWindow, WindowResolver};
-use super::feed::{FeedEntry, FeedKind, FeedParty};
+use super::feed::{FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW};
 use super::input::{SideStateUpdate, TeamMember, WorkspaceEvent};
+use super::parent::teammate_parent;
 use super::ring::RingBuffer;
 use super::status::{
     AgentFacts, AgentStatus, ParentContext, RegistryEntry, StatusSignals, StatusSource,
@@ -507,6 +508,7 @@ impl WorkspaceView {
                     text,
                     encrypted: false,
                     direction: None,
+                    merged: Vec::new(),
                 });
             }
             EventPayload::AgentLifecycle(l) => {
@@ -532,6 +534,7 @@ impl WorkspaceView {
                         text: l.reason.as_deref().map(|r| one_line(r, TIMELINE_TEXT_MAX)),
                         encrypted: false,
                         direction: None,
+                        merged: Vec::new(),
                     });
                 }
             }
@@ -557,6 +560,7 @@ impl WorkspaceView {
                         .map(|b| one_line(b, TIMELINE_TEXT_MAX)),
                     encrypted: m.encrypted,
                     direction: Some(m.direction),
+                    merged: Vec::new(),
                 });
             }
             _ => {}
@@ -876,14 +880,18 @@ impl WorkspaceView {
             .collect();
         for (team, st) in teams {
             // A teammate whose team config names the lead is linked even without a spawn.
+            // (A spawn seen later re-links it to the spawner: `link`.)
             for v in self.agents.values_mut() {
                 if v.agent.kind == AgentKind::Teammate
-                    && v.agent.id != st.lead
                     && v.agent.parent.is_none()
                     && v.team() == Some(team.as_str())
                 {
-                    v.agent.parent = Some(st.lead.clone());
-                    self.structure_dirty = true;
+                    let spawner = v.spawn.as_ref().map(|s| &s.by);
+                    let parent = teammate_parent(&v.agent.id, spawner, Some(&st.lead));
+                    if parent.is_some() {
+                        v.agent.parent = parent;
+                        self.structure_dirty = true;
+                    }
                 }
             }
             for m in &st.members {
@@ -1051,39 +1059,76 @@ impl WorkspaceView {
     // ---------------------------------------------------------------- feed
 
     fn push_feed(&mut self, entry: FeedEntry) {
-        let agents = &self.agents;
-        let same = |a: &FeedParty, b: &FeedParty| parties_eq(agents, a, b);
-        let existing = self.feed.iter().position(|x| {
-            if x.event_id == entry.event_id {
-                return true;
-            }
-            if x.kind != entry.kind || !x.within_window(&entry) {
-                return false;
-            }
-            match entry.kind {
-                FeedKind::Message(_) => {
-                    x.source != entry.source
-                        && x.direction != entry.direction
-                        && same(&x.from, &entry.from)
-                        && x.to.len() == entry.to.len()
-                        && entry.to.iter().all(|t| x.to.iter().any(|u| same(t, u)))
-                }
-                FeedKind::Lifecycle(_) => same(&x.from, &entry.from),
-                FeedKind::Spawn(_) => false,
-            }
-        });
-        match existing {
-            Some(i) => {
-                let x = self.feed.get_mut(i).expect("index from position");
-                if entry.has_better_body_than(x) {
-                    x.text = entry.text;
-                    x.encrypted = entry.encrypted;
-                }
-            }
+        // Replays (reset / re-read) of an event already in the feed add nothing.
+        if self.feed.iter().any(|x| x.covers(&entry.event_id)) {
+            return;
+        }
+        match self.find_duplicate(&entry, None) {
+            Some(i) => self
+                .feed
+                .get_mut(i)
+                .expect("index from find_duplicate")
+                .absorb(entry),
             None => self.feed.insert_by_key(entry, |e| e.ts),
         }
     }
 
+    /// Index of the feed entry that `e` duplicates (ignoring index `skip`):
+    /// - a message: the unpaired other side (other log, opposite direction, same
+    ///   parties and kind, compatible body, plausible delivery delay), oldest first;
+    /// - a lifecycle report: the nearest report of the same transition of the same
+    ///   agent within [`LIFECYCLE_DEDUPE_WINDOW`] with nothing addressed to the agent
+    ///   in between.
+    fn find_duplicate(&self, e: &FeedEntry, skip: Option<usize>) -> Option<usize> {
+        let same = |a: &FeedParty, b: &FeedParty| parties_eq(&self.agents, a, b);
+        let others = self
+            .feed
+            .iter()
+            .enumerate()
+            .filter(move |(i, x)| Some(*i) != skip && x.kind == e.kind);
+        match e.kind {
+            FeedKind::Spawn(_) => None,
+            FeedKind::Message(_) => {
+                if !e.merged.is_empty() {
+                    return None;
+                }
+                others
+                    .filter(|(_, x)| {
+                        x.merged.is_empty()
+                            && x.source != e.source
+                            && x.delivery_plausible(e)
+                            && same(&x.from, &e.from)
+                            && x.to.len() == e.to.len()
+                            && e.to.iter().all(|t| x.to.iter().any(|u| same(t, u)))
+                            && x.body_compatible(e)
+                    })
+                    .min_by_key(|(_, x)| x.ts)
+                    .map(|(i, _)| i)
+            }
+            FeedKind::Lifecycle(_) => others
+                .filter(|(_, x)| {
+                    (x.ts - e.ts).abs() <= LIFECYCLE_DEDUPE_WINDOW
+                        && same(&x.from, &e.from)
+                        && !self.addressed_between(&e.from, x.ts, e.ts)
+                })
+                .min_by_key(|(_, x)| (x.ts - e.ts).abs())
+                .map(|(i, _)| i),
+        }
+    }
+
+    /// True if a message or spawn addressed to `subject` lies strictly between `a` and `b`.
+    fn addressed_between(&self, subject: &FeedParty, a: DateTime<Utc>, b: DateTime<Utc>) -> bool {
+        let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+        self.feed.iter().any(|x| {
+            x.ts > lo
+                && x.ts < hi
+                && matches!(x.kind, FeedKind::Message(_) | FeedKind::Spawn(_))
+                && x.to.iter().any(|t| parties_eq(&self.agents, t, subject))
+        })
+    }
+
+    /// Re-resolve parties that were unresolved when their entry was pushed, and
+    /// merge entries that turn out to be duplicates once resolved.
     fn resolve_feed_parties(&mut self) {
         let mut updates: Vec<(usize, Option<FeedParty>, Vec<Option<FeedParty>>)> = Vec::new();
         for (i, e) in self.feed.iter().enumerate() {
@@ -1100,6 +1145,7 @@ impl WorkspaceView {
                 updates.push((i, from, to));
             }
         }
+        let mut changed = Vec::with_capacity(updates.len());
         for (i, from, to) in updates {
             let e = self.feed.get_mut(i).expect("index from enumerate");
             if let Some(f) = from {
@@ -1110,6 +1156,25 @@ impl WorkspaceView {
                     *slot = n;
                 }
             }
+            changed.push(e.event_id);
+        }
+        for id in changed {
+            let Some(i) = self.feed.iter().position(|e| e.event_id == id) else {
+                continue;
+            };
+            let e = self.feed.get(i).expect("index from position").clone();
+            let Some(j) = self.find_duplicate(&e, Some(i)) else {
+                continue;
+            };
+            // Keep the older entry (stable feed order), fold the newer one into it.
+            let older_is_j = self.feed.get(j).is_some_and(|x| x.ts <= e.ts);
+            let (keep, drop) = if older_is_j { (j, i) } else { (i, j) };
+            let dropped = self.feed.remove(drop).expect("index in range");
+            let keep = if drop < keep { keep - 1 } else { keep };
+            self.feed
+                .get_mut(keep)
+                .expect("index in range")
+                .absorb(dropped);
         }
     }
 

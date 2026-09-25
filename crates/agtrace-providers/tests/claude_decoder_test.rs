@@ -290,3 +290,37 @@ fn system_and_queue_records() {
     assert_eq!(p.len(), 6, "meta / caveat user records are ignored");
     assert_eq!(diag.unknown_kinds.get("system/brand_new_subtype"), Some(&1));
 }
+
+/// `SendMessage{to: <subagent id>}` resumes a background subagent: the recipient is
+/// that agent (`NativeAgentId`), not a team member named like the id.
+#[test]
+fn send_message_to_a_subagent_id_targets_the_subagent() {
+    let lines = vec![
+        assistant(
+            1,
+            "msg_synthetic_1",
+            r#"{"type":"tool_use","id":"toolu_synthetic_send","name":"SendMessage","input":{"to":"a0123456789abcdef","message":"Continue with part 2."}}"#,
+            Some("tool_use"),
+            &usage_json(10, true),
+        ),
+        rec(
+            2,
+            2,
+            r#""type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_synthetic_send","content":"Message sent","is_error":false}]},"toolUseResult":{"success":true,"message":"Message sent"}"#,
+        ),
+    ];
+    let (events, _) = decode_lines(&lines);
+    let to: Vec<_> = events
+        .iter()
+        .filter_map(|e| match &e.payload {
+            EventPayload::AgentMessage(m) => Some(m.to.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        to,
+        vec![vec![agtrace_types::AgentHandle::NativeAgentId(
+            "a0123456789abcdef".into()
+        )]]
+    );
+}

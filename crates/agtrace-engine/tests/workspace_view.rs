@@ -171,6 +171,43 @@ fn teammate_is_linked_by_team_config_without_spawn_event() {
     assert_eq!(ws.view.roots, vec![lead]);
 }
 
+/// Shared parent rule (`teammate_parent`): the spawning agent (here a subagent of
+/// the lead session) wins over the team lead, whichever arrives first.
+#[test]
+fn teammate_parent_is_the_spawning_agent_else_the_team_lead() {
+    for config_first in [false, true] {
+        let mut ws = Ws::new();
+        let lead = ws.discover(AgentBuilder::claude_main("s-lead").started(0));
+        let sub = ws.discover(AgentBuilder::claude_subagent("s-lead", "a01").started(1));
+        let mate =
+            ws.discover(AgentBuilder::claude_teammate("s-mate", "docs", "team-1").started(3));
+        let config = SideStateUpdate::ClaudeTeam {
+            team: "team-1".into(),
+            lead_session_id: "s-lead".into(),
+            members: vec![],
+        };
+        let spawn = EventLog::new(&sub).at(2).spawn(
+            handle::member(Some("team-1"), "docs"),
+            AgentKind::Teammate,
+            Some("docs"),
+        );
+        if config_first {
+            ws.side(config);
+            assert_eq!(ws.parent(&mate), Some(lead.clone()), "fallback: team lead");
+            ws.one(spawn);
+        } else {
+            ws.one(spawn);
+            ws.side(config);
+        }
+        assert_eq!(
+            ws.parent(&mate),
+            Some(sub.clone()),
+            "config_first={config_first}"
+        );
+        assert_eq!(ws.tree_parent(&mate), Some(sub.clone()));
+    }
+}
+
 #[test]
 fn team_lead_handle_resolves_to_team_lead() {
     let mut ws = Ws::new();
@@ -765,6 +802,256 @@ fn feed_dedupe_survives_late_discovery_and_replays() {
     assert_eq!(msgs.len(), 1, "{msgs:#?}");
     assert_eq!(msgs[0].from, FeedParty::Agent(lead));
     assert_eq!(msgs[0].to, vec![FeedParty::Agent(mate)]);
+}
+
+fn messages(ws: &Ws) -> Vec<&agtrace_engine::workspace::FeedEntry> {
+    ws.view
+        .feed
+        .iter()
+        .filter(|e| matches!(e.kind, FeedKind::Message(_)))
+        .collect()
+}
+
+fn lifecycles(ws: &Ws) -> Vec<&agtrace_engine::workspace::FeedEntry> {
+    ws.view
+        .feed
+        .iter()
+        .filter(|e| matches!(e.kind, FeedKind::Lifecycle(_)))
+        .collect()
+}
+
+/// A Claude teammate reads queued messages at its next turn: the incoming copy is
+/// logged seconds to minutes after the sender's `SendMessage`. Both copies are one
+/// feed entry, in both directions, whichever file is read first.
+#[test]
+fn feed_pairs_teammate_message_copies_across_delivery_delay() {
+    for recipient_first in [false, true] {
+        let mut ws = Ws::new();
+        let lead = ws.discover(AgentBuilder::claude_main("s-lead").started(0));
+        let mate =
+            ws.discover(AgentBuilder::claude_teammate("s-mate", "audit-A", "team-1").started(1));
+        ws.side(SideStateUpdate::ClaudeTeam {
+            team: "team-1".into(),
+            lead_session_id: "s-lead".into(),
+            members: vec![],
+        });
+        let mut lead_log = EventLog::new(&lead);
+        let mut mate_log = EventLog::new(&mate);
+        let sent = lead_log.at(11).message(
+            MessageDirection::Outgoing,
+            handle::id(&lead),
+            vec![handle::member(Some("team-1"), "audit-A")],
+            AgentMessageKind::Message,
+            "Please focus on error handling.",
+        );
+        let read = mate_log.at(21).message(
+            MessageDirection::Incoming,
+            handle::member(Some("team-1"), "team-lead"),
+            vec![handle::id(&mate)],
+            AgentMessageKind::Message,
+            "Please focus on error handling.",
+        );
+        let reply = mate_log.at(26).message(
+            MessageDirection::Outgoing,
+            handle::id(&mate),
+            vec![handle::member(None, "team-lead")],
+            AgentMessageKind::Message,
+            "Done, found 3 bugs.",
+        );
+        let reply_read = lead_log.at(90).message(
+            MessageDirection::Incoming,
+            handle::member(Some("team-1"), "audit-A"),
+            vec![handle::id(&lead)],
+            AgentMessageKind::Message,
+            "Done, found 3 bugs.",
+        );
+        if recipient_first {
+            ws.feed(vec![read, reply]);
+            ws.feed(vec![sent, reply_read]);
+        } else {
+            ws.feed(vec![sent, reply_read]);
+            ws.feed(vec![read, reply]);
+        }
+        let msgs = messages(&ws);
+        assert_eq!(
+            msgs.len(),
+            2,
+            "recipient_first={recipient_first}: {msgs:#?}"
+        );
+        assert_eq!(msgs[0].from, FeedParty::Agent(lead.clone()));
+        assert_eq!(msgs[0].to, vec![FeedParty::Agent(mate.clone())]);
+        assert_eq!(msgs[1].from, FeedParty::Agent(mate.clone()));
+        assert_eq!(msgs[1].to, vec![FeedParty::Agent(lead.clone())]);
+        assert!(msgs.iter().all(|m| m.merged.len() == 1));
+    }
+}
+
+/// Repeated identical messages pair one-to-one (oldest unpaired copy first), and a
+/// different body never pairs.
+#[test]
+fn feed_pairs_repeated_messages_one_to_one() {
+    let mut ws = Ws::new();
+    let root = ws.discover(AgentBuilder::codex_root("t-root"));
+    let child = ws.discover(AgentBuilder::codex_child(
+        "t-c",
+        "t-root",
+        "t-root",
+        "/root/judge",
+    ));
+    let mut root_log = EventLog::new(&root);
+    let mut child_log = EventLog::new(&child);
+    let send = |log: &mut EventLog, at: i64| {
+        log.at(at).encrypted_message(
+            MessageDirection::Outgoing,
+            handle::path("/root"),
+            vec![handle::path("/root/judge")],
+            AgentMessageKind::Message,
+        )
+    };
+    let recv = |log: &mut EventLog, at: i64, body: &str| {
+        log.at(at).message(
+            MessageDirection::Incoming,
+            handle::path("/root"),
+            vec![handle::path("/root/judge")],
+            AgentMessageKind::Message,
+            body,
+        )
+    };
+    ws.feed(vec![send(&mut root_log, 10), send(&mut root_log, 20)]);
+    ws.feed(vec![
+        recv(&mut child_log, 30, "first"),
+        recv(&mut child_log, 40, "second"),
+    ]);
+    let msgs = messages(&ws);
+    assert_eq!(msgs.len(), 2, "{msgs:#?}");
+    assert_eq!(msgs[0].text.as_deref(), Some("first"));
+    assert_eq!(msgs[1].text.as_deref(), Some("second"));
+
+    // Plaintext bodies that differ are different messages.
+    let mut ws = Ws::new();
+    let a = ws.discover(AgentBuilder::claude_main("s-a"));
+    let b = ws.discover(AgentBuilder::claude_teammate("s-b", "bee", "team-1"));
+    ws.one(EventLog::new(&a).at(1).message(
+        MessageDirection::Outgoing,
+        handle::id(&a),
+        vec![handle::id(&b)],
+        AgentMessageKind::Message,
+        "one",
+    ));
+    ws.one(EventLog::new(&b).at(2).message(
+        MessageDirection::Incoming,
+        handle::id(&a),
+        vec![handle::id(&b)],
+        AgentMessageKind::Message,
+        "two",
+    ));
+    assert_eq!(messages(&ws).len(), 2);
+}
+
+/// A forked Codex child logs its NEW_TASK (after the copied parent prefix) when it
+/// starts, well after the parent's send: one entry, plaintext side kept.
+#[test]
+fn feed_pairs_codex_fork_new_task_with_the_parents_send() {
+    let mut ws = Ws::new();
+    let root = ws.discover(AgentBuilder::codex_root("t-root"));
+    let fork = ws.discover(
+        AgentBuilder::codex_child("t-fork", "t-root", "t-root", "/root/forker")
+            .kind(AgentKind::Fork),
+    );
+    ws.one(EventLog::new(&root).at(14).encrypted_message(
+        MessageDirection::Outgoing,
+        handle::path("/root"),
+        vec![handle::path("/root/forker")],
+        AgentMessageKind::NewTask,
+    ));
+    ws.one(EventLog::new(&fork).at(25).message(
+        MessageDirection::Incoming,
+        handle::path("/root"),
+        vec![handle::path("/root/forker")],
+        AgentMessageKind::NewTask,
+        "analyse the fork",
+    ));
+    let msgs = messages(&ws);
+    assert_eq!(msgs.len(), 1, "{msgs:#?}");
+    assert_eq!(msgs[0].text.as_deref(), Some("analyse the fork"));
+    assert!(!msgs[0].encrypted);
+    assert_eq!(msgs[0].to, vec![FeedParty::Agent(fork)]);
+}
+
+/// The first copy was pushed with an unresolved recipient, the second copy arrived
+/// from a not-yet-discovered agent (different label): once discovery resolves the
+/// handle, the two entries are merged.
+#[test]
+fn feed_merges_copies_once_a_late_handle_resolves() {
+    let mut ws = Ws::new();
+    let root = ws.discover(AgentBuilder::codex_root("t-root"));
+    let child = AgentBuilder::codex_child("t-late", "t-root", "t-root", "/root/late");
+    let child_id = child.id();
+    ws.one(EventLog::new(&root).at(10).encrypted_message(
+        MessageDirection::Outgoing,
+        handle::path("/root"),
+        vec![handle::path("/root/late")],
+        AgentMessageKind::NewTask,
+    ));
+    // Child events before its header: a placeholder without a path.
+    ws.one(EventLog::new(&child_id).at(12).message(
+        MessageDirection::Incoming,
+        handle::id(&root),
+        vec![handle::id(&child_id)],
+        AgentMessageKind::NewTask,
+        "late task",
+    ));
+    assert_eq!(messages(&ws).len(), 2, "not resolvable yet");
+    ws.discover(child);
+    let msgs = messages(&ws);
+    assert_eq!(msgs.len(), 1, "{msgs:#?}");
+    assert_eq!(msgs[0].text.as_deref(), Some("late task"));
+    assert_eq!(msgs[0].to, vec![FeedParty::Agent(child_id.clone())]);
+    // A replay of either copy adds nothing.
+    ws.one(EventLog::new(&child_id).at(12).message(
+        MessageDirection::Incoming,
+        handle::id(&root),
+        vec![handle::id(&child_id)],
+        AgentMessageKind::NewTask,
+        "late task",
+    ));
+    assert_eq!(messages(&ws).len(), 1);
+}
+
+/// A Claude subagent's completion is reported twice by the parent log: the
+/// `SubagentHandback` result and, seconds later, the task-notification. One "done"
+/// entry, unless the agent was addressed (resumed) in between.
+#[test]
+fn feed_merges_repeated_lifecycle_reports() {
+    let mut ws = Ws::new();
+    let lead = ws.discover(AgentBuilder::claude_main("s-lead"));
+    let sub = ws.discover(AgentBuilder::claude_subagent("s-lead", "a01"));
+    let mut log = EventLog::new(&lead);
+    ws.one(
+        log.at(5)
+            .lifecycle(handle::native("a01"), LifecycleTransition::Completed),
+    );
+    ws.one(
+        log.at(9)
+            .lifecycle(handle::native("a01"), LifecycleTransition::Completed),
+    );
+    assert_eq!(lifecycles(&ws).len(), 1, "{:#?}", lifecycles(&ws));
+
+    // Resumed with SendMessage, completes again: a new entry.
+    ws.one(log.at(20).message(
+        MessageDirection::Outgoing,
+        handle::id(&lead),
+        vec![handle::native("a01")],
+        AgentMessageKind::Message,
+        "part 2",
+    ));
+    ws.one(
+        log.at(30)
+            .lifecycle(handle::native("a01"), LifecycleTransition::Completed),
+    );
+    let l = lifecycles(&ws);
+    assert_eq!(l.len(), 2, "{l:#?}");
+    assert!(l.iter().all(|e| e.from == FeedParty::Agent(sub.clone())));
 }
 
 #[test]

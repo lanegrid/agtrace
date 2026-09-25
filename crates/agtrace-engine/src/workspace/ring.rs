@@ -98,6 +98,11 @@ impl<T, const N: usize> RingBuffer<T, N> {
         self.items.get_mut(index)
     }
 
+    /// Remove and return the element at `index` (does not change [`Self::pushed`]).
+    pub fn remove(&mut self, index: usize) -> Option<T> {
+        self.items.remove(index)
+    }
+
     pub fn clear(&mut self) {
         self.items.clear();
         self.pushed = 0;
