@@ -51,6 +51,9 @@ pub use agtrace_types::{
     ModelChangePayload,
     ModelChangeSource,
     ParseDiagnostics,
+    PlanItem,
+    PlanItemStatus,
+    PlanPayload,
     // Domain types
     ProjectHash,
     ProjectScope,

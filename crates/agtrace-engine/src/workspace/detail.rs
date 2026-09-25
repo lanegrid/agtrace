@@ -1,6 +1,6 @@
 //! Per-agent history and detail state behind the watch overview and agent detail
 //! screens: activity buckets, status history, context series, instructions,
-//! result, last assistant text and usage totals.
+//! plan (task list / plan text / goal), result, last assistant text and usage totals.
 //!
 //! Everything here is folded incrementally (O(1) amortised per event) and bounded:
 //! activity is kept per minute for [`ACTIVITY_RETENTION`], the other series are
@@ -8,7 +8,7 @@
 
 use std::collections::VecDeque;
 
-use agtrace_types::{AgentMessageKind, TokenUsagePayload};
+use agtrace_types::{AgentMessageKind, PlanItem, PlanItemStatus, TokenUsagePayload};
 use chrono::{DateTime, Duration, Utc};
 use uuid::Uuid;
 
@@ -27,6 +27,8 @@ pub const CONTEXT_SERIES_CAPACITY: usize = 256;
 pub const INSTRUCTION_CAPACITY: usize = 32;
 /// Maximum bytes kept of an instruction, result or assistant text.
 pub const DETAIL_TEXT_MAX: usize = 16 * 1024;
+/// Tasks kept per agent (completed ones are evicted first).
+pub const PLAN_TASK_CAPACITY: usize = 64;
 /// Usage dedupe keys remembered for totals (re-emitted records are near each other).
 const RECENT_USAGE_KEYS: usize = 64;
 
@@ -309,6 +311,177 @@ pub struct Said {
     pub text: String,
 }
 
+// ---------------------------------------------------------------- plan
+
+/// One task of the agent's task list.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanTask {
+    /// Provider task id (None for list-only tools such as `TodoWrite`).
+    pub id: Option<String>,
+    /// None while only updates of the task were seen (a shared team task created
+    /// in a log that was not folded yet).
+    pub subject: Option<String>,
+    /// Present-continuous form shown while in progress ("Running tests").
+    pub active_form: Option<String>,
+    pub status: PlanItemStatus,
+    /// Last change.
+    pub at: DateTime<Utc>,
+    /// Another agent that created / last updated the task (team-shared lists).
+    pub by: Option<String>,
+}
+
+impl PlanTask {
+    fn from_item(item: &PlanItem, at: DateTime<Utc>, by: Option<String>) -> Self {
+        Self {
+            id: item.id.clone(),
+            subject: Some(item.subject.clone()),
+            active_form: item.active_form.clone(),
+            status: item.status.clone(),
+            at,
+            by,
+        }
+    }
+
+    /// Text shown while the task runs: the active form, else the subject.
+    pub fn doing(&self) -> Option<&str> {
+        self.active_form.as_deref().or(self.subject.as_deref())
+    }
+}
+
+/// Goal of the agent (Codex thread goal).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlanGoal {
+    pub at: DateTime<Utc>,
+    pub objective: String,
+    pub status: Option<String>,
+}
+
+/// A task-list change, from the agent's own log or reported by a teammate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TaskChange {
+    Created(PlanItem),
+    Updated {
+        id: String,
+        status: Option<PlanItemStatus>,
+        subject: Option<String>,
+        active_form: Option<String>,
+    },
+}
+
+/// What the agent is trying to do: its task list (bounded), latest plan text and
+/// goal.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PlanState {
+    /// Tasks in creation order.
+    pub tasks: Vec<PlanTask>,
+    /// Latest plan text (Codex plan mode), capped at [`DETAIL_TEXT_MAX`].
+    pub text: Option<Said>,
+    pub goal: Option<PlanGoal>,
+}
+
+impl PlanState {
+    pub fn is_empty(&self) -> bool {
+        self.tasks.is_empty() && self.text.is_none() && self.goal.is_none()
+    }
+
+    /// The task in progress that changed last.
+    pub fn in_progress(&self) -> Option<&PlanTask> {
+        self.tasks
+            .iter()
+            .filter(|t| t.status == PlanItemStatus::InProgress)
+            .max_by_key(|t| t.at)
+    }
+
+    pub fn task(&self, id: &str) -> Option<&PlanTask> {
+        self.tasks.iter().find(|t| t.id.as_deref() == Some(id))
+    }
+
+    fn position(&self, id: Option<&str>) -> Option<usize> {
+        let id = id?;
+        self.tasks.iter().position(|t| t.id.as_deref() == Some(id))
+    }
+
+    /// Apply a change at `at`; `by` names the reporting agent when the change comes
+    /// from another agent's log. An update of an unknown task adds a subject-less
+    /// entry (its creation may be folded later and fills it in).
+    pub(crate) fn apply(&mut self, change: &TaskChange, at: DateTime<Utc>, by: Option<String>) {
+        match change {
+            TaskChange::Created(item) => match self.position(item.id.as_deref()) {
+                Some(i) => {
+                    let t = &mut self.tasks[i];
+                    t.subject = Some(item.subject.clone());
+                    if item.active_form.is_some() {
+                        t.active_form.clone_from(&item.active_form);
+                    }
+                    // A later update (folded first) keeps its status.
+                    if t.at <= at {
+                        t.status = item.status.clone();
+                        t.at = at;
+                        t.by = by;
+                    }
+                }
+                None => self.push(PlanTask::from_item(item, at, by)),
+            },
+            TaskChange::Updated {
+                id,
+                status,
+                subject,
+                active_form,
+            } => {
+                if *status == Some(PlanItemStatus::Deleted) {
+                    self.tasks.retain(|t| t.id.as_deref() != Some(id.as_str()));
+                    return;
+                }
+                let i = match self.position(Some(id)) {
+                    Some(i) => i,
+                    None => {
+                        self.push(PlanTask {
+                            id: Some(id.clone()),
+                            subject: None,
+                            active_form: None,
+                            status: PlanItemStatus::Pending,
+                            at,
+                            by: None,
+                        });
+                        self.tasks.len() - 1
+                    }
+                };
+                let t = &mut self.tasks[i];
+                if subject.is_some() {
+                    t.subject.clone_from(subject);
+                }
+                if active_form.is_some() {
+                    t.active_form.clone_from(active_form);
+                }
+                if t.at <= at {
+                    if let Some(s) = status {
+                        t.status = s.clone();
+                    }
+                    t.at = at;
+                    t.by = by;
+                }
+            }
+        }
+    }
+
+    /// Replace the whole list (`TodoWrite`).
+    pub(crate) fn replace(&mut self, items: &[PlanItem], at: DateTime<Utc>) {
+        self.tasks.clear();
+        for item in items {
+            self.push(PlanTask::from_item(item, at, None));
+        }
+    }
+
+    fn push(&mut self, t: PlanTask) {
+        self.tasks.push(t);
+        if self.tasks.len() > PLAN_TASK_CAPACITY {
+            let done = |t: &PlanTask| t.status == PlanItemStatus::Completed;
+            let i = self.tasks.iter().position(done).unwrap_or(0);
+            self.tasks.remove(i);
+        }
+    }
+}
+
 // ---------------------------------------------------------------- totals
 
 /// Token and call totals of the agent's own log.
@@ -373,6 +546,8 @@ pub struct AgentDetail {
     pub initial_task: Option<Instruction>,
     /// Later instructions, oldest first.
     pub instructions: RingBuffer<Instruction, INSTRUCTION_CAPACITY>,
+    /// Task list, plan text and goal.
+    pub plan: PlanState,
     pub result: Option<AgentResult>,
     pub last_message: Option<Said>,
     pub last_reasoning: Option<Said>,
@@ -534,6 +709,58 @@ mod tests {
         let c = cap_text(s, 10);
         assert!(c.len() <= 10, "{c}");
         assert!(c.ends_with('…'));
+    }
+
+    #[test]
+    fn plan_applies_changes_in_event_time_and_is_bounded() {
+        let item = |id: usize, status: PlanItemStatus| PlanItem {
+            id: Some(id.to_string()),
+            subject: format!("task {id}"),
+            active_form: None,
+            status,
+        };
+        let mut p = PlanState::default();
+        // An update folded before its creation keeps its (newer) status.
+        p.apply(
+            &TaskChange::Updated {
+                id: "1".into(),
+                status: Some(PlanItemStatus::InProgress),
+                subject: None,
+                active_form: Some("Doing 1".into()),
+            },
+            t(10),
+            Some("mate".into()),
+        );
+        assert_eq!(p.tasks[0].subject, None);
+        p.apply(
+            &TaskChange::Created(item(1, PlanItemStatus::Pending)),
+            t(5),
+            None,
+        );
+        let t1 = p.task("1").unwrap();
+        assert_eq!(t1.subject.as_deref(), Some("task 1"));
+        assert_eq!(t1.status, PlanItemStatus::InProgress);
+        assert_eq!(t1.by.as_deref(), Some("mate"));
+        assert_eq!(p.in_progress().and_then(PlanTask::doing), Some("Doing 1"));
+
+        // Bounded: completed tasks are evicted first, then the oldest.
+        for i in 2..=PLAN_TASK_CAPACITY + 1 {
+            let status = if i == 30 {
+                PlanItemStatus::Completed
+            } else {
+                PlanItemStatus::Pending
+            };
+            p.apply(&TaskChange::Created(item(i, status)), t(20), None);
+        }
+        assert_eq!(p.tasks.len(), PLAN_TASK_CAPACITY);
+        assert!(p.task("30").is_none(), "the completed task went first");
+        assert!(p.task("1").is_some());
+        p.apply(
+            &TaskChange::Created(item(99, PlanItemStatus::Pending)),
+            t(30),
+            None,
+        );
+        assert!(p.task("1").is_none(), "then the oldest");
     }
 
     #[test]

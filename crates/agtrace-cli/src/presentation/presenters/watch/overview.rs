@@ -130,6 +130,7 @@ fn root_header(view: &WorkspaceView, a: &AgentView, now: DateTime<Utc>) -> RootH
         status: status_vm(a.status),
         age_secs: a.agent.started_at.map(|s| (now - s).num_seconds().max(0)),
         model: a.model.clone(),
+        effort: a.effort().map(str::to_string),
         ctx: ctx(a),
         compactions: a.detail.compactions,
         agents,
@@ -227,6 +228,11 @@ pub(super) fn now_of(a: &AgentView, now: DateTime<Utc>) -> NowVm {
                     name: t.name.clone(),
                     summary: t.summary.clone(),
                     elapsed_secs: (now - t.since).num_seconds().max(0),
+                };
+            }
+            if let Some(text) = a.detail.plan.in_progress().and_then(|t| t.doing()) {
+                return NowVm::Task {
+                    text: one_line(text, NOW_TEXT_MAX),
                 };
             }
             match latest_said(a) {

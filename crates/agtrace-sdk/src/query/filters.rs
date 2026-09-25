@@ -64,6 +64,8 @@ pub enum EventType {
     AgentAttribute,
     /// Sub-action inside a tool call
     ToolSubAction,
+    /// Task list / plan / goal update
+    Plan,
 }
 
 impl EventType {
@@ -93,6 +95,7 @@ impl EventType {
             EventPayload::ContextWindowHint(_) => EventType::ContextWindowHint,
             EventPayload::AgentAttribute(_) => EventType::AgentAttribute,
             EventPayload::ToolSubAction(_) => EventType::ToolSubAction,
+            EventPayload::Plan(_) => EventType::Plan,
         }
     }
 }

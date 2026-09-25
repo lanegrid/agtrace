@@ -177,7 +177,8 @@ impl TurnBuilder {
             | EventPayload::ModelChange(_)
             | EventPayload::ContextWindowHint(_)
             | EventPayload::AgentAttribute(_)
-            | EventPayload::ToolSubAction(_) => {}
+            | EventPayload::ToolSubAction(_)
+            | EventPayload::Plan(_) => {}
 
             // User and SlashCommand are turn triggers, handled in assembler
             EventPayload::User(_) | EventPayload::SlashCommand(_) => unreachable!(),

@@ -542,9 +542,108 @@ fn turns_models_context_and_compaction() {
     assert_eq!(diag.ignored_kinds.get("world_state"), Some(&2));
     assert_eq!(
         diag.ignored_kinds.get("event_msg/thread_goal_updated"),
-        Some(&1)
+        None
     );
     assert!(diag.unknown_kinds.is_empty(), "{:?}", diag.unknown_kinds);
+
+    // turn_context / thread_settings_applied carry the same effort: one attribute.
+    let efforts = payloads(&events, |p| match p {
+        EventPayload::AgentAttribute(a) if a.key == AgentAttributeKey::Effort => {
+            Some(a.value.clone())
+        }
+        _ => None,
+    });
+    assert_eq!(efforts, vec!["medium".to_string()]);
+    let goals = payloads(&events, |p| match p {
+        EventPayload::Plan(g @ PlanPayload::Goal { .. }) => Some(g.clone()),
+        _ => None,
+    });
+    assert_eq!(
+        goals,
+        vec![PlanPayload::Goal {
+            objective: "synthetic".into(),
+            status: Some("paused".into())
+        }]
+    );
+    // The spawn call's requested effort reaches the AgentSpawn.
+    let spawn_efforts = payloads(&events, |p| match p {
+        EventPayload::AgentSpawn(s) => Some(s.requested_effort.clone()),
+        _ => None,
+    });
+    assert_eq!(spawn_efforts.first(), Some(&Some("medium".to_string())));
+}
+
+/// Plan-mode `Plan` items and goal updates become typed plan events; effort
+/// changes from turn_context and thread settings are attributes (on change).
+#[test]
+fn plan_goal_and_effort() {
+    let dir = tempfile::tempdir().unwrap();
+    let line = |ordinal: u64, sec: u32, body: &str| {
+        format!(
+            r#"{{"timestamp":"2026-09-20T10:00:{sec:02}.000Z","type":{body},"ordinal":{ordinal}}}"#
+        )
+    };
+    let path = write_rollout(
+        dir.path(),
+        &[
+            meta_line(""),
+            line(
+                1,
+                1,
+                r#""turn_context","payload":{"turn_id":"t1","model":"gpt-6-astra","effort":"low"}"#,
+            ),
+            line(
+                2,
+                2,
+                r#""event_msg","payload":{"type":"thread_goal_updated","threadId":"x","goal":{"objective":"Ship the parser","status":"active"}}"#,
+            ),
+            line(
+                3,
+                3,
+                r#""event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"Plan","id":"t1-plan","text":"\n# Plan\n\n1. Read\n2. Fix\n"}}"#,
+            ),
+            line(
+                4,
+                4,
+                r#""event_msg","payload":{"type":"thread_settings_applied","thread_id":"x","thread_settings":{"model":"gpt-6-astra","reasoning_effort":"high"}}"#,
+            ),
+            line(
+                5,
+                5,
+                r#""turn_context","payload":{"turn_id":"t2","model":"gpt-6-astra","effort":"high"}"#,
+            ),
+            line(
+                6,
+                6,
+                r#""event_msg","payload":{"type":"thread_goal_updated","threadId":"x","goal":{"objective":"   "}}"#,
+            ),
+        ],
+    );
+    let (_, events, diag) = decode(&path);
+    assert!(!diag.has_errors(), "{diag:?}");
+    let plans = payloads(&events, |p| match p {
+        EventPayload::Plan(p) => Some(p.clone()),
+        _ => None,
+    });
+    assert_eq!(
+        plans,
+        vec![
+            PlanPayload::Goal {
+                objective: "Ship the parser".into(),
+                status: Some("active".into())
+            },
+            PlanPayload::Text {
+                text: "# Plan\n\n1. Read\n2. Fix".into()
+            },
+        ]
+    );
+    let efforts = payloads(&events, |p| match p {
+        EventPayload::AgentAttribute(a) if a.key == AgentAttributeKey::Effort => {
+            Some(a.value.clone())
+        }
+        _ => None,
+    });
+    assert_eq!(efforts, vec!["low".to_string(), "high".to_string()]);
 }
 
 /// The FINAL_ANSWER is delivered before the turn ends: an event after the turn

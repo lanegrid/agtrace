@@ -31,6 +31,7 @@ fn payload_matches(payload: &EventPayload, pattern: &str) -> bool {
         EventPayload::TurnEnd(_) => pattern == "turnend" || pattern == "turn",
         EventPayload::ModelChange(_) => pattern == "model" || pattern == "modelchange",
         EventPayload::ContextWindowHint(_) => pattern == "context" || pattern == "contextwindow",
+        EventPayload::Plan(_) => pattern == "plan",
     }
 }
 
@@ -39,7 +40,7 @@ fn payload_matches(payload: &EventPayload, pattern: &str) -> bool {
 /// Applies `only` filter first (if present), then `hide` filter.
 /// Supported patterns: "user", "assistant"/"message", "tool",
 /// "reasoning", "token"/"tokenusage", "notification"/"info", "command",
-/// "queue", "agent", "compaction", "turn", "model", "context".
+/// "queue", "agent", "compaction", "turn", "model", "context", "plan".
 pub fn filter_events(events: &[AgentEvent], filters: EventFilters) -> Vec<AgentEvent> {
     let mut filtered = events.to_vec();
 

@@ -240,6 +240,11 @@ expression: response
                   "const": "ToolSubAction",
                   "description": "Sub-action inside a tool call",
                   "type": "string"
+                },
+                {
+                  "const": "Plan",
+                  "description": "Task list / plan / goal update",
+                  "type": "string"
                 }
               ]
             },

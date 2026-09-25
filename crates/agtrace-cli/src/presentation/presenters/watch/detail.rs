@@ -1,13 +1,13 @@
 //! Agent detail screen: who the agent is, what it was asked to do, what it is doing
 //! now, what it produced, and its timeline.
 
-use agtrace_sdk::types::{AgentKind, AgentProvider};
-use agtrace_sdk::workspace::{AgentView, Instruction, InstructionKind, WorkspaceView};
+use agtrace_sdk::types::{AgentKind, AgentProvider, PlanItemStatus};
+use agtrace_sdk::workspace::{AgentView, Instruction, InstructionKind, PlanTask, WorkspaceView};
 use chrono::{DateTime, Utc};
 
 use super::{activity, ctx, hhmm, message_tag, status_vm, timeline_row};
 use crate::presentation::view_models::watch::{
-    DetailNowVm, DetailVm, InstructionVm, ResultVm, TotalsVm, UiState,
+    DetailNowVm, DetailVm, InstructionVm, PlanVm, ResultVm, TaskStatusVm, TaskVm, TotalsVm, UiState,
 };
 
 /// Context sparkline width (samples).
@@ -33,6 +33,7 @@ pub(super) fn build_detail(
         relation: relation(view, a),
         agent_type: a.agent.agent_type.clone(),
         model: a.model.clone(),
+        effort: a.effort().map(str::to_string),
         status: status_vm(a.status),
         status_secs: status_since.map(|t| (now - t).num_seconds().max(0)),
         ctx: ctx(a),
@@ -45,7 +46,7 @@ pub(super) fn build_detail(
             tool_calls: a.detail.totals.tool_calls,
         },
         instructions: instructions(view, a, ui),
-        now: now_section(a, ui, now),
+        now: now_section(view, a, ui, now),
         result: result(a, ui),
         timeline: a
             .recent
@@ -212,7 +213,12 @@ fn instructions(view: &WorkspaceView, a: &AgentView, ui: &UiState) -> Vec<Instru
     out
 }
 
-fn now_section(a: &AgentView, ui: &UiState, now: DateTime<Utc>) -> DetailNowVm {
+fn now_section(
+    view: &WorkspaceView,
+    a: &AgentView,
+    ui: &UiState,
+    now: DateTime<Utc>,
+) -> DetailNowVm {
     let d = &a.detail;
     let (said, reasoning) = match (&d.last_message, &d.last_reasoning) {
         (Some(m), _) => (Some(m), false),
@@ -222,9 +228,64 @@ fn now_section(a: &AgentView, ui: &UiState, now: DateTime<Utc>) -> DetailNowVm {
     DetailNowVm {
         status: status_vm(a.status),
         tool: a.current_tool.as_ref().and_then(|_| activity(a, now)),
+        plan: plan(view, a, ui),
         said: said.map(|s| s.text.clone()),
         said_is_reasoning: reasoning,
         said_time: said.map(|s| hhmm(s.at, ui.utc_offset)),
+    }
+}
+
+/// `shared`: the same task in the lead's list, for a task this agent only updated
+/// (team-shared lists), to name it.
+fn task_vm(t: &PlanTask, shared: Option<&PlanTask>) -> TaskVm {
+    let status = match t.status {
+        PlanItemStatus::Pending => TaskStatusVm::Pending,
+        PlanItemStatus::InProgress => TaskStatusVm::InProgress,
+        PlanItemStatus::Completed => TaskStatusVm::Completed,
+        PlanItemStatus::Deleted | PlanItemStatus::Other(_) => TaskStatusVm::Other,
+    };
+    let subject = t
+        .subject
+        .as_deref()
+        .or(shared.and_then(|s| s.subject.as_deref()));
+    let text = match status {
+        TaskStatusVm::InProgress => t
+            .active_form
+            .as_deref()
+            .or(shared.and_then(|s| s.active_form.as_deref()))
+            .or(subject),
+        _ => subject,
+    }
+    .map(str::to_string)
+    .or_else(|| t.id.as_ref().map(|id| format!("#{id}")))
+    .unwrap_or_default();
+    TaskVm {
+        status,
+        text,
+        by: t.by.clone(),
+    }
+}
+
+fn plan(view: &WorkspaceView, a: &AgentView, ui: &UiState) -> PlanVm {
+    let p = &a.detail.plan;
+    let parent = a
+        .spawn
+        .as_ref()
+        .map(|s| &s.by)
+        .or(a.agent.parent.as_ref())
+        .and_then(|id| view.agent(id));
+    let shared = |t: &PlanTask| {
+        let id = t.id.as_deref().filter(|_| t.subject.is_none())?;
+        parent?.detail.plan.task(id)
+    };
+    PlanVm {
+        goal: p
+            .goal
+            .as_ref()
+            .map(|g| (g.objective.clone(), g.status.clone())),
+        tasks: p.tasks.iter().map(|t| task_vm(t, shared(t))).collect(),
+        text: p.text.as_ref().map(|t| t.text.clone()),
+        text_time: p.text.as_ref().map(|t| hhmm(t.at, ui.utc_offset)),
     }
 }
 

@@ -90,8 +90,8 @@ screen. `Esc` returns to the screen you came from, with the same agent selected.
 ```
 
 Each root session gets a header line: its label, status and age, model, context bar with
-the window size and its source, the number of compactions (`⟲N`), and how many agents its
-tree has (and how many are running). Below it, one row per agent in tree order:
+the window size and its source, the number of compactions (`⟲N`), how many agents its
+tree has (and how many are running), and its reasoning effort. Below it, one row per agent in tree order:
 
 - **status** and **context** (bar and percent; the source of the window size is in the
   root header and in the agent detail);
@@ -102,8 +102,8 @@ tree has (and how many are running). Below it, one row per agent in tree order:
   A blank cell is idle, ended, or before the agent existed. The cell width adapts to the
   terminal width; `+` / `]` widen the window (15m → 60m → 4h → all) and `-` / `[` narrow
   it;
-- **now**: the running tool and its elapsed time, the latest assistant text while running
-  without a tool, `idle Xm`, the result excerpt of a finished agent, or how long ago it
+- **now**: the running tool and its elapsed time; between tools, the task in progress
+  (`▸ Running the tests`, its active form) or else the latest assistant text; `idle Xm`, the result excerpt of a finished agent, or how long ago it
   was killed / failed (and why, when known).
 
 `j` / `k` select a row, `Enter` opens its detail. `space` (fold), `d` (hide done), `f`
@@ -135,8 +135,9 @@ fold and hide state. The bottom strip is the message feed (newest entries).
 ```
 
 - **Header.** The agent, how it relates to its parent (`teammate of lead (team t)`,
-  `subagent of lead`, `thread of /root`, `main session`), its type and model, and the
-  status with the time spent in it.
+  `subagent of lead`, `thread of /root`, `main session`), its type, model and reasoning
+  effort (`effort high`: the latest one in its own log, else the one its spawn call
+  requested), and the status with the time spent in it.
 - **Context line.** Context bar and window (with its source), a sparkline of the context
   occupancy over the agent's usage records (`⟲` = compaction), and totals: input and
   output tokens summed over requests (a request logged more than once counts once; `≥`
@@ -149,8 +150,15 @@ fold and hide state. The bottom strip is the message feed (newest entries).
   yet, the spawn call's prompt (or description) is shown. Codex encrypts inter-agent
   bodies: the task shows as `[encrypted by Codex]` with the sender, the agent path, the
   task name and the requested model.
-- **Now.** The running tool with its elapsed time, and the latest assistant text (or
-  reasoning when there is no text): what the agent is trying to do.
+- **Now.** The running tool with its elapsed time, the plan, and the latest assistant
+  text (or reasoning when there is no text): what the agent is trying to do. The plan
+  shows:
+  - a Codex thread's goal (`Goal: <objective> (active)`);
+  - the task list (Claude `TaskCreate` / `TaskUpdate`, legacy `TodoWrite`): `☐` pending,
+    `▸` in progress (with its active form), `✓` completed. Agent Teams share one list: a
+    teammate's change also shows in the lead's list, marked `[teammate]`, and a task a
+    teammate only updated shows in its own detail too;
+  - the latest plan-mode plan (Codex `Plan` item), wrapped.
 - **Result.** The agent's `FINAL_ANSWER` / hand-back / task-notification result. A
   finished agent without one shows its last assistant message; a killed or failed one
   shows why, when known.

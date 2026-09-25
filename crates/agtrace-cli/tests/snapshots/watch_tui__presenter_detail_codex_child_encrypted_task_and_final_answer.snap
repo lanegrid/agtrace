@@ -8,6 +8,7 @@ expression: d
   "relation": "thread of /root",
   "agent_type": null,
   "model": "gpt-5.6",
+  "effort": "low",
   "status": "done",
   "status_secs": 181,
   "ctx": {
@@ -36,6 +37,12 @@ expression: d
   "now": {
     "status": "done",
     "tool": null,
+    "plan": {
+      "goal": null,
+      "tasks": [],
+      "text": null,
+      "text_time": null
+    },
     "said": null,
     "said_is_reasoning": false,
     "said_time": null

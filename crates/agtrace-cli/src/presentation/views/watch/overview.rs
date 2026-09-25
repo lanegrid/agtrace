@@ -173,6 +173,11 @@ fn root_line(h: &RootHeaderVm, width: usize) -> Line<'static> {
             dim(),
         ));
     }
+    // Least important: clipped first on narrow terminals.
+    if let Some(e) = &h.effort {
+        spans.push(sep());
+        spans.push(Span::styled(format!("effort {e}"), dim()));
+    }
     clip_line(spans, width)
 }
 
@@ -275,6 +280,10 @@ pub fn now_spans(now: &NowVm, width: usize) -> Vec<Span<'static>> {
             Span::styled(format!("▸ {name} "), Style::default().fg(Color::Green)),
             Span::raw(summary.clone()),
             Span::styled(format!(" ({})", elapsed(*elapsed_secs)), dim()),
+        ],
+        NowVm::Task { text } => vec![
+            Span::styled("▸ ", Style::default().fg(Color::Cyan)),
+            Span::styled(text.clone(), Style::default().fg(Color::Cyan)),
         ],
         NowVm::Said { text } => vec![Span::styled(format!("\"{text}\""), dim())],
         NowVm::Idle { secs } => vec![Span::styled(

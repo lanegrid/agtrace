@@ -35,6 +35,23 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
     {
       "agent": "codex:01900000-0000-7000-8000-000000000003",
       "content": {
+        "key": "effort",
+        "value": "medium"
+      },
+      "id": "a556938b-f174-5274-9fbd-a272790592c7",
+      "origin": {
+        "byte_offset": 2881,
+        "line": 6,
+        "sub": 1
+      },
+      "parent_id": "e3253fde-6eb6-5ecb-b0ae-031a974c1ac7",
+      "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
+      "timestamp": "2026-09-20T10:00:23Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000003",
+      "content": {
         "kind": "explicit",
         "model": "gpt-6-astra",
         "tokens": 258400
@@ -45,7 +62,7 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
         "line": 7,
         "sub": 0
       },
-      "parent_id": "e3253fde-6eb6-5ecb-b0ae-031a974c1ac7",
+      "parent_id": "a556938b-f174-5274-9fbd-a272790592c7",
       "session_id": "d56858c3-fbc3-528f-b72b-4db561b27809",
       "timestamp": "2026-09-20T10:00:23.500Z",
       "type": "context_window_hint"

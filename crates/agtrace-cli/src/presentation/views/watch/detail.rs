@@ -25,8 +25,8 @@ use super::style::{
 };
 use crate::presentation::presenters::watch::tokens;
 use crate::presentation::view_models::watch::{
-    ActivityVm, DetailSection, DetailVm, ResultVm, RowKind, SectionMetrics, StatusVm,
-    TimelineRowVm, WatchScreenVm,
+    ActivityVm, DetailSection, DetailVm, PlanVm, ResultVm, RowKind, SectionMetrics, StatusVm,
+    TaskStatusVm, TimelineRowVm, WatchScreenVm,
 };
 
 /// Header rows above the sections (identity line, context / totals line).
@@ -218,6 +218,10 @@ fn identity_line(d: &DetailVm, width: usize) -> Line<'static> {
         spans.push(sep());
         spans.push(Span::styled(m.clone(), dim()));
     }
+    if let Some(e) = &d.effort {
+        spans.push(sep());
+        spans.push(Span::styled(format!("effort {e}"), dim()));
+    }
     spans.push(sep());
     let mut st = format!("{} {}", status_glyph(d.status), status_word(d.status));
     if let Some(s) = d.status_secs {
@@ -356,6 +360,7 @@ fn now(d: &DetailVm, width: usize) -> Vec<Line<'static>> {
             out.push(Line::styled(text.to_string(), status_style(d.now.status)));
         }
     }
+    plan_block(&mut out, &d.now.plan, width);
     if let Some(said) = &d.now.said {
         let what = if d.now.said_is_reasoning {
             "thinking"
@@ -367,6 +372,54 @@ fn now(d: &DetailVm, width: usize) -> Vec<Line<'static>> {
         body(&mut out, said, width, Style::default());
     }
     out
+}
+
+/// The "Plan" sub-block of the Now section: goal, task list and plan text.
+fn plan_block(out: &mut Vec<Line<'static>>, p: &PlanVm, width: usize) {
+    if p.is_empty() {
+        return;
+    }
+    if let Some((objective, status)) = &p.goal {
+        let mut text = format!("Goal: {objective}");
+        if let Some(s) = status {
+            text.push_str(&format!(" ({s})"));
+        }
+        for l in wrap(&text, width) {
+            out.push(Line::styled(l, Style::default().fg(Color::Cyan)));
+        }
+    }
+    if !p.tasks.is_empty() {
+        let done = p
+            .tasks
+            .iter()
+            .filter(|t| t.status == TaskStatusVm::Completed)
+            .count();
+        out.push(Line::styled(
+            format!("tasks ({done}/{} done):", p.tasks.len()),
+            dim(),
+        ));
+        for t in &p.tasks {
+            let (glyph, style) = match t.status {
+                TaskStatusVm::Pending => ("☐", Style::default()),
+                TaskStatusVm::InProgress => ("▸", Style::default().fg(Color::Cyan)),
+                TaskStatusVm::Completed => ("✓", dim()),
+                TaskStatusVm::Other => ("?", dim()),
+            };
+            let mut spans = vec![
+                Span::styled(format!("{INDENT}{glyph} "), style),
+                Span::styled(t.text.clone(), style),
+            ];
+            if let Some(by) = &t.by {
+                spans.push(Span::styled(format!("  [{by}]"), dim()));
+            }
+            out.push(fit(spans, width));
+        }
+    }
+    if let Some(text) = &p.text {
+        let time = p.text_time.as_deref().unwrap_or("");
+        out.push(Line::styled(format!("plan ({time}):"), dim()));
+        body(out, text, width, Style::default());
+    }
 }
 
 fn result(d: &DetailVm, width: usize) -> Vec<Line<'static>> {

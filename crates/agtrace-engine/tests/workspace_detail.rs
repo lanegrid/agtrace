@@ -7,10 +7,10 @@ use agtrace_engine::workspace::{
 };
 use agtrace_testing::synth::{AgentBuilder, EventLog, handle, ts};
 use agtrace_types::{
-    AgentEvent, AgentId, AgentKind, AgentLifecyclePayload, AgentMessageKind, AgentOp, AgentRef,
-    AgentSpawnPayload, AgentToolArgs, EventPayload, LifecycleTransition, MessageDirection,
-    QueueOperationPayload, ReasoningPayload, TokenInput, TokenOutput, TokenUsagePayload,
-    ToolCallPayload, TurnOutcome,
+    AgentAttributeKey, AgentEvent, AgentId, AgentKind, AgentLifecyclePayload, AgentMessageKind,
+    AgentOp, AgentRef, AgentSpawnPayload, AgentToolArgs, EventPayload, LifecycleTransition,
+    MessageDirection, PlanItem, PlanItemStatus, PlanPayload, QueueOperationPayload,
+    ReasoningPayload, TokenInput, TokenOutput, TokenUsagePayload, ToolCallPayload, TurnOutcome,
 };
 
 struct Ws {
@@ -336,6 +336,7 @@ fn spawn_prompt_is_attached_from_the_spawn_tool_call() {
         agent_type: Some("Explore".to_string()),
         requested_model: None,
         resolved_model: None,
+        requested_effort: None,
         description: Some("explore".to_string()),
         spawn_call_id: Some("toolu_1".to_string()),
         tool_call_id: Some(call.id),
@@ -407,4 +408,217 @@ fn last_text_totals_and_end_reason() {
         d.status_history.last().map(|p| p.status),
         Some(AgentStatus::Killed)
     );
+}
+
+fn task_created(id: &str, subject: &str, active: &str, team: Option<&str>) -> EventPayload {
+    EventPayload::Plan(PlanPayload::TaskCreated {
+        item: PlanItem {
+            id: Some(id.to_string()),
+            subject: subject.to_string(),
+            active_form: Some(active.to_string()),
+            status: PlanItemStatus::Pending,
+        },
+        description: None,
+        team: team.map(str::to_string),
+    })
+}
+
+fn task_updated(id: &str, status: PlanItemStatus, team: Option<&str>) -> EventPayload {
+    EventPayload::Plan(PlanPayload::TaskUpdated {
+        id: id.to_string(),
+        status: Some(status),
+        subject: None,
+        active_form: None,
+        team: team.map(str::to_string),
+    })
+}
+
+fn tasks_of(ws: &Ws, id: &AgentId) -> Vec<(Option<String>, PlanItemStatus, Option<String>)> {
+    ws.view.agents[id]
+        .detail
+        .plan
+        .tasks
+        .iter()
+        .map(|t| (t.subject.clone(), t.status.clone(), t.by.clone()))
+        .collect()
+}
+
+/// Claude Agent Teams share one task list: a teammate's update shows in the lead's
+/// list (attributed to the teammate) and in the teammate's own plan (with the
+/// subject from the lead's list); a deleted task disappears.
+#[test]
+fn team_task_updates_reach_the_lead_and_the_updater() {
+    let team = Some("t");
+    let mut ws = Ws::new();
+    let lead = ws.discover(AgentBuilder::claude_main("s-lead").started(0));
+    let mate = ws.discover(AgentBuilder::claude_teammate("s-mate", "mate", "t").started(5));
+    let mut l = EventLog::new(&lead);
+    ws.feed(vec![
+        l.at(0).user("Audit the parser"),
+        l.at(1).push(task_created("1", "Parse", "Parsing", team)),
+        l.at(2).push(task_created("2", "Test", "Testing", team)),
+        l.at(3)
+            .push(task_created("3", "Scratch", "Scratching", team)),
+        l.at(4).spawn(
+            handle::member(team, "mate"),
+            AgentKind::Teammate,
+            Some("mate"),
+        ),
+        l.at(6)
+            .push(task_updated("3", PlanItemStatus::Deleted, team)),
+    ]);
+    let mut m = EventLog::new(&mate);
+    ws.feed(vec![
+        m.at(20)
+            .push(task_updated("1", PlanItemStatus::InProgress, team)),
+        m.at(21).assistant("parsing"),
+    ]);
+
+    let mate_label = Some("mate".to_string());
+    assert_eq!(
+        tasks_of(&ws, &lead),
+        vec![
+            (
+                Some("Parse".into()),
+                PlanItemStatus::InProgress,
+                mate_label.clone()
+            ),
+            (Some("Test".into()), PlanItemStatus::Pending, None),
+        ]
+    );
+    assert_eq!(
+        tasks_of(&ws, &mate),
+        vec![(Some("Parse".into()), PlanItemStatus::InProgress, None)]
+    );
+    let doing = ws.view.agents[&mate].detail.plan.in_progress().unwrap();
+    assert_eq!(doing.doing(), Some("Parsing"));
+    // The lead is not working on it itself.
+    assert_eq!(
+        ws.view.agents[&lead]
+            .detail
+            .plan
+            .in_progress()
+            .map(|t| t.by.clone()),
+        Some(mate_label)
+    );
+}
+
+/// The teammate's log is folded before the lead's: its update waits for the lead
+/// to become resolvable and then applies on top of the (earlier) creation.
+#[test]
+fn team_task_update_folded_before_the_creation() {
+    let team = Some("t");
+    let mut ws = Ws::new();
+    let lead = ws.discover(AgentBuilder::claude_main("s-lead").started(0));
+    let mate = ws.discover(AgentBuilder::claude_teammate("s-mate", "mate", "t").started(5));
+    let mut m = EventLog::new(&mate);
+    ws.feed(vec![m.at(20).push(task_updated(
+        "1",
+        PlanItemStatus::Completed,
+        team,
+    ))]);
+    let mut l = EventLog::new(&lead);
+    ws.feed(vec![
+        l.at(1).push(task_created("1", "Parse", "Parsing", team)),
+        l.at(4).spawn(
+            handle::member(team, "mate"),
+            AgentKind::Teammate,
+            Some("mate"),
+        ),
+    ]);
+    assert_eq!(
+        tasks_of(&ws, &lead),
+        vec![(
+            Some("Parse".into()),
+            PlanItemStatus::Completed,
+            Some("mate".into())
+        )]
+    );
+    // The teammate only knows the id (the subject is looked up when shown).
+    assert_eq!(
+        tasks_of(&ws, &mate),
+        vec![(None, PlanItemStatus::Completed, None)]
+    );
+}
+
+/// Without a team the task list is the agent's own; a `TodoWrite` list replaces
+/// it; plan text and goal keep the latest value.
+#[test]
+fn own_task_list_plan_text_and_goal() {
+    let mut ws = Ws::new();
+    let id = ws.discover(AgentBuilder::codex_root("r1").started(0));
+    let mut l = EventLog::new(&id);
+    ws.feed(vec![
+        l.at(1).push(task_created("1", "Read", "Reading", None)),
+        l.at(2)
+            .push(task_updated("1", PlanItemStatus::Completed, None)),
+        l.at(3).push(EventPayload::Plan(PlanPayload::Goal {
+            objective: "Ship it".into(),
+            status: Some("active".into()),
+        })),
+        l.at(4).push(EventPayload::Plan(PlanPayload::Text {
+            text: "# Plan v1".into(),
+        })),
+        l.at(5).push(EventPayload::Plan(PlanPayload::Text {
+            text: "# Plan v2".into(),
+        })),
+        l.at(6).push(EventPayload::Plan(PlanPayload::Goal {
+            objective: "Ship it".into(),
+            status: Some("paused".into()),
+        })),
+    ]);
+    let p = &ws.view.agents[&id].detail.plan;
+    assert_eq!(p.tasks.len(), 1);
+    assert_eq!(p.tasks[0].status, PlanItemStatus::Completed);
+    assert!(p.in_progress().is_none());
+    assert_eq!(p.text.as_ref().map(|t| t.text.as_str()), Some("# Plan v2"));
+    let g = p.goal.as_ref().unwrap();
+    assert_eq!(
+        (g.objective.as_str(), g.status.as_deref()),
+        ("Ship it", Some("paused"))
+    );
+    // Plan events are not activity (the lane / running signal ignore them).
+    assert!(ws.view.agents[&id].detail.activity.is_empty());
+
+    ws.feed(vec![l.at(7).push(EventPayload::Plan(PlanPayload::Items {
+        items: vec![PlanItem {
+            id: None,
+            subject: "Write".into(),
+            active_form: None,
+            status: PlanItemStatus::InProgress,
+        }],
+    }))]);
+    let p = &ws.view.agents[&id].detail.plan;
+    assert_eq!(p.tasks.len(), 1);
+    assert_eq!(p.in_progress().and_then(|t| t.doing()), Some("Write"));
+}
+
+/// Effort: the own log's latest `Effort` attribute, else the spawn's request.
+#[test]
+fn effort_from_own_log_or_spawn_request() {
+    let mut ws = Ws::new();
+    let root = ws.discover(AgentBuilder::codex_root("r1").started(0));
+    let child = ws.discover(AgentBuilder::codex_child("c1", "r1", "r1", "/root/judge").started(5));
+    let mut r = EventLog::new(&root);
+    ws.feed(vec![
+        r.at(1).attribute(AgentAttributeKey::Effort, "low"),
+        r.at(2).attribute(AgentAttributeKey::Effort, "high"),
+        r.at(3).spawn_with(AgentSpawnPayload {
+            child: handle::path("/root/judge"),
+            kind: AgentKind::CodexThread,
+            name: Some("judge".into()),
+            agent_type: None,
+            requested_model: None,
+            resolved_model: None,
+            requested_effort: Some("medium".into()),
+            description: None,
+            spawn_call_id: None,
+            tool_call_id: None,
+        }),
+    ]);
+    assert_eq!(ws.view.agents[&root].effort(), Some("high"));
+    assert_eq!(ws.view.agents[&child].effort(), Some("medium"));
+    let mut c = EventLog::new(&child);
+    ws.feed(vec![c.at(6).attribute(AgentAttributeKey::Effort, "low")]);
+    assert_eq!(ws.view.agents[&child].effort(), Some("low"));
 }

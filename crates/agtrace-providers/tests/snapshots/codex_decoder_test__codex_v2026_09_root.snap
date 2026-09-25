@@ -11,7 +11,6 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
       "event_msg/item_completed/ContextCompaction": 1,
       "event_msg/item_completed/Reasoning": 1,
       "event_msg/item_completed/UserMessage": 1,
-      "event_msg/thread_goal_updated": 1,
       "response_item/message/developer": 3,
       "response_item/message/user(injected)": 1,
       "world_state": 2
@@ -81,6 +80,23 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
     {
       "agent": "codex:01900000-0000-7000-8000-000000000001",
       "content": {
+        "key": "effort",
+        "value": "medium"
+      },
+      "id": "5c739a43-0b8f-5938-99f5-f23689afeaf2",
+      "origin": {
+        "byte_offset": 1796,
+        "line": 5,
+        "sub": 1
+      },
+      "parent_id": "c0f3966f-89ca-5ef6-9152-f783d458437e",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:02.500Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
         "text": "Review the parser and fix bugs."
       },
       "id": "9e8240c8-abb7-5702-a122-566e08a8e74d",
@@ -89,7 +105,7 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
         "line": 6,
         "sub": 0
       },
-      "parent_id": "c0f3966f-89ca-5ef6-9152-f783d458437e",
+      "parent_id": "5c739a43-0b8f-5938-99f5-f23689afeaf2",
       "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
       "timestamp": "2026-09-20T10:00:03Z",
       "type": "user"
@@ -517,6 +533,7 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
         },
         "kind": "codex_thread",
         "name": "judge",
+        "requested_effort": "medium",
         "requested_model": "gpt-5.6-sol",
         "spawn_call_id": "call_spawn_1",
         "tool_call_id": "7b468691-159a-50b2-a9dc-fff5e34109c8"
@@ -1143,6 +1160,24 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
     {
       "agent": "codex:01900000-0000-7000-8000-000000000001",
       "content": {
+        "objective": "synthetic",
+        "op": "goal",
+        "status": "paused"
+      },
+      "id": "80b1d10c-d676-5aa5-98f2-f93105f2559c",
+      "origin": {
+        "byte_offset": 24145,
+        "line": 58,
+        "sub": 0
+      },
+      "parent_id": "8f1f7c1c-d3b8-5006-9d1a-78fb24f3423d",
+      "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
+      "timestamp": "2026-09-20T10:00:29Z",
+      "type": "plan"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000001",
+      "content": {
         "duration_ms": 1500,
         "outcome": {
           "outcome": "interrupted"
@@ -1155,7 +1190,7 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
         "line": 59,
         "sub": 0
       },
-      "parent_id": "8f1f7c1c-d3b8-5006-9d1a-78fb24f3423d",
+      "parent_id": "80b1d10c-d676-5aa5-98f2-f93105f2559c",
       "session_id": "f97373ae-aa5f-5b8c-b708-c5bf296e779c",
       "timestamp": "2026-09-20T10:00:29.500Z",
       "type": "turn_end"

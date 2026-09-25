@@ -363,3 +363,165 @@ fn runtime_session_ids_are_surfaced_as_aliases() {
     let ids: std::collections::HashSet<Uuid> = events.iter().map(|e| e.id).collect();
     assert_eq!(ids.len(), events.len(), "event ids stay unique");
 }
+
+fn plans(events: &[AgentEvent]) -> Vec<&agtrace_types::PlanPayload> {
+    events
+        .iter()
+        .filter_map(|e| match &e.payload {
+            EventPayload::Plan(p) => Some(p),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The record envelope's `effort` (or `perTurnEffort`) becomes an `Effort`
+/// attribute, emitted when it changes (also back to an earlier value).
+#[test]
+fn effort_is_an_attribute_emitted_on_change() {
+    let with_effort = |n: u32, extra: &str| {
+        let line = assistant(
+            n,
+            &format!("msg_synthetic_{n}"),
+            r#"{"type":"text","text":"ok"}"#,
+            Some("end_turn"),
+            &usage_json(1, true),
+        );
+        line.replacen(
+            r#""type":"assistant","#,
+            &format!(r#""type":"assistant",{extra}"#),
+            1,
+        )
+    };
+    let lines = vec![
+        with_effort(1, r#""effort":"high","#),
+        with_effort(2, r#""effort":"high","#),
+        with_effort(3, r#""effort":"medium","perTurnEffort":"medium","#),
+        with_effort(4, ""),
+        with_effort(5, r#""effort":"high","#),
+    ];
+    let (events, diag) = decode_lines(&lines);
+    assert_eq!(diag.error_count(), 0);
+    let efforts: Vec<&str> = events
+        .iter()
+        .filter_map(|e| match &e.payload {
+            EventPayload::AgentAttribute(a)
+                if a.key == agtrace_types::AgentAttributeKey::Effort =>
+            {
+                Some(a.value.as_str())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(efforts, vec!["high", "medium", "high"]);
+    let ids: std::collections::HashSet<Uuid> = events.iter().map(|e| e.id).collect();
+    assert_eq!(ids.len(), events.len(), "event ids stay unique");
+}
+
+/// `TaskCreate` (id from its result) and `TaskUpdate` become typed plan events;
+/// a failed update and a legacy `TodoWrite` list are handled too.
+#[test]
+fn task_tools_become_plan_events() {
+    use agtrace_types::{PlanItem, PlanItemStatus, PlanPayload};
+    let call = |n: u32, id: &str, name: &str, input: &str| {
+        assistant(
+            n,
+            &format!("msg_synthetic_{n}"),
+            &format!(r#"{{"type":"tool_use","id":"{id}","name":"{name}","input":{input}}}"#),
+            Some("tool_use"),
+            &usage_json(1, true),
+        )
+    };
+    let result = |n: u32, id: &str, tur: &str| {
+        rec(
+            n,
+            n,
+            &format!(
+                r#""type":"user","message":{{"role":"user","content":[{{"type":"tool_result","tool_use_id":"{id}","content":"ok"}}]}},"toolUseResult":{tur}"#
+            ),
+        )
+    };
+    let lines = vec![
+        call(
+            1,
+            "toolu_c1",
+            "TaskCreate",
+            r#"{"subject":"Run the tests","description":"All of them.","activeForm":"Running the tests"}"#,
+        ),
+        result(
+            2,
+            "toolu_c1",
+            r#"{"task":{"id":"1","subject":"Run the tests"}}"#,
+        ),
+        call(
+            3,
+            "toolu_u1",
+            "TaskUpdate",
+            r#"{"taskId":"1","status":"in_progress"}"#,
+        ),
+        result(
+            4,
+            "toolu_u1",
+            r#"{"success":true,"taskId":"1","updatedFields":["status"],"statusChange":{"from":"pending","to":"in_progress"}}"#,
+        ),
+        call(
+            5,
+            "toolu_u2",
+            "TaskUpdate",
+            r#"{"taskId":"9","status":"completed"}"#,
+        ),
+        result(
+            6,
+            "toolu_u2",
+            r#"{"success":false,"error":"Task not found"}"#,
+        ),
+        call(
+            7,
+            "toolu_t1",
+            "TodoWrite",
+            r#"{"todos":[{"content":"Read","activeForm":"Reading","status":"completed"},{"content":"Write","status":"in_progress"}]}"#,
+        ),
+    ];
+    let (events, diag) = decode_lines(&lines);
+    assert_eq!(diag.error_count(), 0);
+    let got: Vec<PlanPayload> = plans(&events).into_iter().cloned().collect();
+    assert_eq!(
+        got,
+        vec![
+            PlanPayload::TaskCreated {
+                item: PlanItem {
+                    id: Some("1".into()),
+                    subject: "Run the tests".into(),
+                    active_form: Some("Running the tests".into()),
+                    status: PlanItemStatus::Pending,
+                },
+                description: Some("All of them.".into()),
+                team: None,
+            },
+            PlanPayload::TaskUpdated {
+                id: "1".into(),
+                status: Some(PlanItemStatus::InProgress),
+                subject: None,
+                active_form: None,
+                team: None,
+            },
+            PlanPayload::Items {
+                items: vec![
+                    PlanItem {
+                        id: None,
+                        subject: "Read".into(),
+                        active_form: Some("Reading".into()),
+                        status: PlanItemStatus::Completed,
+                    },
+                    PlanItem {
+                        id: None,
+                        subject: "Write".into(),
+                        active_form: None,
+                        status: PlanItemStatus::InProgress,
+                    },
+                ],
+            },
+        ]
+    );
+    let ids: std::collections::HashSet<Uuid> = events.iter().map(|e| e.id).collect();
+    assert_eq!(ids.len(), events.len(), "event ids stay unique");
+}
