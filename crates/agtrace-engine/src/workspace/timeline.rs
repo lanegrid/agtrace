@@ -278,7 +278,9 @@ pub(crate) fn timeline_item(
         | EventPayload::Reasoning(_)
         | EventPayload::TokenUsage(_)
         | EventPayload::ContextWindowHint(_)
-        | EventPayload::AgentAttribute(_) => return None,
+        | EventPayload::AgentAttribute(_)
+        // Shown in the detail's plan (the tool calls behind it are on the timeline).
+        | EventPayload::Plan(_) => return None,
     };
     Some(item)
 }

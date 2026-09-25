@@ -202,6 +202,7 @@ impl EventLog {
             agent_type: None,
             requested_model: None,
             resolved_model: None,
+            requested_effort: None,
             description: None,
             spawn_call_id: Some(format!("call_synthetic_{}", self.line)),
             tool_call_id: None,

@@ -98,6 +98,12 @@ pub(crate) struct AssistantRecord {
     #[serde(flatten)]
     pub env: Envelope,
     pub message: AssistantMessage,
+    /// Reasoning effort of the request ("high", "medium").
+    #[serde(default)]
+    pub effort: Option<String>,
+    /// Per-turn effort override (equal to `effort` when present).
+    #[serde(default)]
+    pub per_turn_effort: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

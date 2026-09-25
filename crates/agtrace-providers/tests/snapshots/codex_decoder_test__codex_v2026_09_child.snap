@@ -75,6 +75,23 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
     {
       "agent": "codex:01900000-0000-7000-8000-000000000002",
       "content": {
+        "key": "effort",
+        "value": "medium"
+      },
+      "id": "1dcbc8d4-58ef-5034-b651-40552196c2f7",
+      "origin": {
+        "byte_offset": 1668,
+        "line": 4,
+        "sub": 1
+      },
+      "parent_id": "0cb30b9c-3bb7-5023-80b4-6217c764e52d",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:12Z",
+      "type": "agent_attribute"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
         "direction": "incoming",
         "encrypted": true,
         "from": {
@@ -97,7 +114,7 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
         "line": 6,
         "sub": 0
       },
-      "parent_id": "0cb30b9c-3bb7-5023-80b4-6217c764e52d",
+      "parent_id": "1dcbc8d4-58ef-5034-b651-40552196c2f7",
       "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
       "timestamp": "2026-09-20T10:00:13Z",
       "type": "agent_message"

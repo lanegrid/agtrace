@@ -61,10 +61,28 @@ expression: json_pretty
 }
 
 {
-  "id": "5bc68a89-fda4-5b5f-b2a2-4893c8832312",
+  "id": "e5195359-1dcf-59b8-bc8e-4cd9a6407c9d",
   "session_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
   "agent": "codex:019b04ae-b1c6-7c72-a134-a4c2de66058c",
   "parent_id": "2ef6f0ff-e691-57fd-8e84-ed563f39a317",
+  "timestamp": "2025-12-09T19:55:18.100Z",
+  "origin": {
+    "line": 3,
+    "byte_offset": 1101,
+    "sub": 1
+  },
+  "type": "agent_attribute",
+  "content": {
+    "key": "effort",
+    "value": "medium"
+  }
+}
+
+{
+  "id": "5bc68a89-fda4-5b5f-b2a2-4893c8832312",
+  "session_id": "44228030-e543-5440-b2d7-87b0cf50c73c",
+  "agent": "codex:019b04ae-b1c6-7c72-a134-a4c2de66058c",
+  "parent_id": "e5195359-1dcf-59b8-bc8e-4cd9a6407c9d",
   "timestamp": "2025-12-09T19:55:18.800Z",
   "origin": {
     "line": 4,

@@ -524,6 +524,8 @@ pub struct RootHeaderVm {
     /// Since the root started.
     pub age_secs: Option<i64>,
     pub model: Option<String>,
+    /// Reasoning effort (`high`).
+    pub effort: Option<String>,
     pub ctx: Option<CtxVm>,
     pub compactions: u32,
     /// Agents in the root's tree (itself included) and how many are running.
@@ -565,6 +567,10 @@ pub enum NowVm {
         summary: String,
         elapsed_secs: i64,
     },
+    /// Running between tools with a task in progress: its active form.
+    Task {
+        text: String,
+    },
     /// Running without an open tool: the latest assistant text / reasoning.
     Said {
         text: String,
@@ -597,6 +603,8 @@ pub struct DetailVm {
     pub relation: String,
     pub agent_type: Option<String>,
     pub model: Option<String>,
+    /// Reasoning effort (`high`): own log, else requested by the spawn call.
+    pub effort: Option<String>,
     pub status: StatusVm,
     /// Time in the current status.
     pub status_secs: Option<i64>,
@@ -638,11 +646,47 @@ pub struct InstructionVm {
 pub struct DetailNowVm {
     pub status: StatusVm,
     pub tool: Option<ActivityVm>,
+    /// What the agent is trying to do (goal, task list, plan text).
+    pub plan: PlanVm,
     /// Latest assistant text (or reasoning when there is no text), in full.
     pub said: Option<String>,
     /// `said` is reasoning, not assistant text.
     pub said_is_reasoning: bool,
     pub said_time: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct PlanVm {
+    /// `objective` and its status (`active`, `paused`, ...).
+    pub goal: Option<(String, Option<String>)>,
+    pub tasks: Vec<TaskVm>,
+    /// Latest plan text (Codex plan mode) and its time.
+    pub text: Option<String>,
+    pub text_time: Option<String>,
+}
+
+impl PlanVm {
+    pub fn is_empty(&self) -> bool {
+        self.goal.is_none() && self.tasks.is_empty() && self.text.is_none()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TaskStatusVm {
+    Pending,
+    InProgress,
+    Completed,
+    Other,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TaskVm {
+    pub status: TaskStatusVm,
+    /// Active form while in progress, else the subject (`#id` when unknown).
+    pub text: String,
+    /// Another agent that created / last updated the task.
+    pub by: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

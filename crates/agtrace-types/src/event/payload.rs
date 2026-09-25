@@ -69,6 +69,9 @@ pub enum EventPayload {
 
     /// 18. Sub-action executed inside a tool call (Codex exec sub-items)
     ToolSubAction(ToolSubActionPayload),
+
+    /// 19. Task list / plan / goal update of the agent
+    Plan(PlanPayload),
 }
 
 impl EventPayload {
@@ -93,6 +96,7 @@ impl EventPayload {
             EventPayload::ContextWindowHint(_) => "ContextWindowHint",
             EventPayload::AgentAttribute(_) => "AgentAttribute",
             EventPayload::ToolSubAction(_) => "ToolSubAction",
+            EventPayload::Plan(_) => "Plan",
         }
     }
 }

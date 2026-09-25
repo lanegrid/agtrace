@@ -84,6 +84,35 @@ fn str_of(v: &Value, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+/// Task id given as a string or a number.
+fn json_id(v: &Value) -> Option<String> {
+    match v {
+        Value::String(s) if !s.is_empty() => Some(s.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        _ => None,
+    }
+}
+
+/// Items of a legacy `TodoWrite{todos:[{content, activeForm, status}]}` call.
+fn todo_items(input: &Value) -> Option<Vec<PlanItem>> {
+    let todos = input.get("todos")?.as_array()?;
+    Some(
+        todos
+            .iter()
+            .filter_map(|t| {
+                Some(PlanItem {
+                    id: t.get("id").and_then(json_id),
+                    subject: str_of(t, "content").or_else(|| str_of(t, "subject"))?,
+                    active_form: str_of(t, "activeForm"),
+                    status: PlanItemStatus::parse(
+                        t.get("status").and_then(Value::as_str).unwrap_or("pending"),
+                    ),
+                })
+            })
+            .collect(),
+    )
+}
+
 /// Model ids that are not real models (synthetic error / interrupt messages).
 fn is_real_model(model: &str) -> bool {
     !model.is_empty() && !model.starts_with('<')
@@ -339,6 +368,28 @@ impl ClaudeDecoder {
         );
     }
 
+    /// `AgentAttribute(Effort)` when the reasoning effort changes. Unlike the
+    /// metadata attributes it can flip back and forth, so each change is its own
+    /// event (id from the record).
+    fn effort(&mut self, out: &mut Vec<AgentEvent>, r: &Rec, effort: Option<String>) {
+        let key = AgentAttributeKey::Effort;
+        let Some(value) = effort.filter(|v| !v.is_empty()) else {
+            return;
+        };
+        if self.attributes.get(&key) == Some(&value) {
+            return;
+        }
+        self.attributes.insert(key, value.clone());
+        let base = format!("{}-effort", r.base);
+        self.push(
+            out,
+            r,
+            &base,
+            SemanticSuffix::AgentAttribute,
+            EventPayload::AgentAttribute(AgentAttributePayload { key, value }),
+        );
+    }
+
     /// `AgentAttribute(RuntimeSessionId)` once per distinct runtime `session_id` that
     /// differs from the transcript id (resumed / respawned processes write into the
     /// same transcript under a new runtime id; team configs name the runtime id).
@@ -451,6 +502,8 @@ impl ClaudeDecoder {
 
     fn on_assistant(&mut self, rec: AssistantRecord, out: &mut Vec<AgentEvent>) {
         let r = self.rec(&rec.env);
+        let effort = rec.per_turn_effort.or(rec.effort);
+        self.effort(out, &r, effort);
         let msg: AssistantMessage = rec.message;
         let real_model = msg.model.as_deref().filter(|m| is_real_model(m));
         if let Some(model) = real_model {
@@ -516,7 +569,21 @@ impl ClaudeDecoder {
                         EventPayload::ToolCall(payload),
                     );
                     self.builder.register_tool_call(id.clone(), event_id);
-                    if matches!(name.as_str(), "Agent" | "SendMessage" | "TaskStop") {
+                    if name == "TodoWrite"
+                        && let Some(items) = todo_items(input)
+                    {
+                        self.push(
+                            out,
+                            &r,
+                            &base,
+                            SemanticSuffix::Plan,
+                            EventPayload::Plan(PlanPayload::Items { items }),
+                        );
+                    }
+                    if matches!(
+                        name.as_str(),
+                        "Agent" | "SendMessage" | "TaskStop" | "TaskCreate" | "TaskUpdate"
+                    ) {
                         self.agent_calls.insert(
                             id.clone(),
                             PendingAgentCall {
@@ -925,6 +992,7 @@ impl ClaudeDecoder {
                             .or_else(|| call_str("subagent_type")),
                         requested_model: str_of(result, "model").or_else(|| call_str("model")),
                         resolved_model: None,
+                        requested_effort: None,
                         description: call_str("description"),
                         spawn_call_id: Some(tool_use_id.to_string()),
                         tool_call_id,
@@ -954,6 +1022,7 @@ impl ClaudeDecoder {
                         agent_type,
                         requested_model: call_str("model"),
                         resolved_model: resolved.clone(),
+                        requested_effort: None,
                         description: str_of(result, "description")
                             .or_else(|| call_str("description")),
                         spawn_call_id: Some(tool_use_id.to_string()),
@@ -1008,6 +1077,61 @@ impl ClaudeDecoder {
                     text.as_deref().and_then(body),
                     summary,
                     str_of(result, "msg_id"),
+                );
+            }
+            "TaskCreate" => {
+                let Some(subject) = call.input_str("subject") else {
+                    return;
+                };
+                let id = result
+                    .get("task")
+                    .and_then(|t| t.get("id"))
+                    .and_then(json_id);
+                let item = PlanItem {
+                    id,
+                    subject,
+                    active_form: call.input_str("activeForm"),
+                    status: PlanItemStatus::Pending,
+                };
+                let team = self.team.clone();
+                self.push(
+                    out,
+                    r,
+                    base,
+                    SemanticSuffix::Plan,
+                    EventPayload::Plan(PlanPayload::TaskCreated {
+                        item,
+                        description: call.input_str("description").and_then(|d| body(&d)),
+                        team,
+                    }),
+                );
+            }
+            "TaskUpdate" if result.get("success").and_then(Value::as_bool) != Some(false) => {
+                let Some(id) = call
+                    .input
+                    .get("taskId")
+                    .and_then(json_id)
+                    .or_else(|| result.get("taskId").and_then(json_id))
+                else {
+                    return;
+                };
+                let status = call
+                    .input_str("status")
+                    .or_else(|| result.get("statusChange").and_then(|c| str_of(c, "to")))
+                    .map(|s| PlanItemStatus::parse(&s));
+                let team = self.team.clone();
+                self.push(
+                    out,
+                    r,
+                    base,
+                    SemanticSuffix::Plan,
+                    EventPayload::Plan(PlanPayload::TaskUpdated {
+                        id,
+                        status,
+                        subject: call.input_str("subject"),
+                        active_form: call.input_str("activeForm"),
+                        team,
+                    }),
                 );
             }
             "TaskStop" => {

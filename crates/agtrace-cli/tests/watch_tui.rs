@@ -511,6 +511,131 @@ fn presenter_detail_codex_child_encrypted_task_and_final_answer() {
     );
 }
 
+/// Claude lead: effort in the header; the team's task list in "Now", with the task
+/// a teammate works on attributed to it.
+#[test]
+fn render_detail_claude_lead_plan_100x30() {
+    use agtrace::presentation::view_models::watch::{DetailSection, TaskStatusVm};
+    let view = fixture::workspace();
+    let mut ui = detail_ui("claude:s-lead");
+    ui.detail_section = DetailSection::Now;
+    let vm = screen(&view, &ui);
+    let d = vm.detail.as_ref().unwrap();
+    assert_eq!(d.effort.as_deref(), Some("high"));
+    let tasks: Vec<(TaskStatusVm, &str, Option<&str>)> = d
+        .now
+        .plan
+        .tasks
+        .iter()
+        .map(|t| (t.status, t.text.as_str(), t.by.as_deref()))
+        .collect();
+    assert_eq!(
+        tasks,
+        vec![
+            (
+                TaskStatusVm::InProgress,
+                "Reviewing the parser",
+                Some("audit-A")
+            ),
+            (TaskStatusVm::Completed, "Scan for panics", Some("audit-B")),
+            (TaskStatusVm::Pending, "Write the summary", None),
+        ]
+    );
+    insta::assert_snapshot!(draw(&view, &mut ui, 100, 30));
+}
+
+/// Codex root: goal and plan-mode plan text in "Now".
+#[test]
+fn render_detail_codex_root_goal_and_plan_100x30() {
+    use agtrace::presentation::view_models::watch::DetailSection;
+    let view = fixture::workspace();
+    let mut ui = detail_ui("codex:t-root");
+    ui.detail_section = DetailSection::Now;
+    let vm = screen(&view, &ui);
+    let d = vm.detail.as_ref().unwrap();
+    assert_eq!(d.effort.as_deref(), Some("medium"));
+    assert_eq!(
+        d.now.plan.goal,
+        Some((
+            "Make the watch tests deterministic".to_string(),
+            Some("active".to_string())
+        ))
+    );
+    assert!(d.now.plan.text.as_deref().unwrap().starts_with("# Triage"));
+    insta::assert_snapshot!(draw(&view, &mut ui, 100, 30));
+}
+
+/// Between tools, the overview's "now" shows the task in progress (its active
+/// form) instead of the last text; an open tool still wins.
+#[test]
+fn overview_now_prefers_the_task_in_progress_between_tools() {
+    use agtrace::presentation::view_models::watch::NowVm;
+    use agtrace_sdk::types::{EventPayload, PlanItem, PlanItemStatus, PlanPayload};
+    use agtrace_sdk::workspace::WorkspaceEvent;
+    use agtrace_testing::synth::{AgentBuilder, EventLog};
+
+    let mut view = WorkspaceView::new();
+    let a = AgentBuilder::claude_main("s-t").started(0);
+    let id = a.id();
+    view.apply(
+        WorkspaceEvent::AgentDiscovered(a.build()),
+        &fixture::resolve,
+        fixture::now(),
+    );
+    let mut l = EventLog::new(&id);
+    let call = l.at(290).bash("cargo test");
+    let feed = |view: &mut WorkspaceView, events| {
+        view.apply(
+            WorkspaceEvent::Events {
+                agent: id.clone(),
+                events,
+                reset: false,
+            },
+            &fixture::resolve,
+            fixture::now(),
+        )
+    };
+    feed(
+        &mut view,
+        vec![
+            l.at(280).user("fix it"),
+            l.at(281).push(EventPayload::Plan(PlanPayload::Items {
+                items: vec![
+                    PlanItem {
+                        id: None,
+                        subject: "Read the code".into(),
+                        active_form: Some("Reading the code".into()),
+                        status: PlanItemStatus::Completed,
+                    },
+                    PlanItem {
+                        id: None,
+                        subject: "Run the tests".into(),
+                        active_form: Some("Running the tests".into()),
+                        status: PlanItemStatus::InProgress,
+                    },
+                ],
+            })),
+            l.at(282).assistant("Now the tests."),
+            call.clone(),
+        ],
+    );
+    let now_of = |view: &WorkspaceView| {
+        let vm = screen(view, &overview_ui());
+        vm.overview.unwrap().rows[0].now.clone()
+    };
+    assert!(
+        matches!(now_of(&view), NowVm::Tool { ref name, .. } if name == "Bash"),
+        "an open tool wins"
+    );
+    feed(&mut view, vec![l.at(295).tool_result(call.id, "ok", false)]);
+    assert_eq!(
+        now_of(&view),
+        NowVm::Task {
+            text: "Running the tests".into()
+        }
+    );
+}
+
 // ------------------------------------------------------------------ input
 
 fn key(c: KeyCode) -> KeyEvent {

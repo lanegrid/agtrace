@@ -6,12 +6,15 @@
 //! - plaintext and encrypted inter-agent messages, FINAL_ANSWER, idle notification,
 //!   task notification;
 //! - compaction, model change, interrupted turn, queued prompt absorbed mid-turn,
-//!   a failed Codex sub-action and running tools.
+//!   a failed Codex sub-action and running tools;
+//! - reasoning effort (own log and spawn request), a team-shared task list (created
+//!   by the lead, updated by a teammate), a Codex goal and plan text.
 #![allow(dead_code)]
 
 use agtrace_sdk::types::{
-    AgentEvent, AgentKind, AgentMessageKind, AgentProvider, AgentRef, AgentSpawnPayload,
-    ContextSource, ContextWindow, EventPayload, ExecuteArgs, LifecycleTransition, MessageDirection,
+    AgentAttributeKey, AgentEvent, AgentKind, AgentMessageKind, AgentProvider, AgentRef,
+    AgentSpawnPayload, ContextSource, ContextWindow, EventPayload, ExecuteArgs,
+    LifecycleTransition, MessageDirection, PlanItem, PlanItemStatus, PlanPayload,
     QueueOperationPayload, SubActionStatus, ToolCallPayload, ToolSubActionPayload, TurnOutcome,
 };
 use agtrace_sdk::workspace::{ContextEvidence, WorkspaceEvent, WorkspaceView};
@@ -59,6 +62,29 @@ fn exec(log: &mut EventLog, name: &str, command: &str) -> AgentEvent {
     })
 }
 
+fn task_created(log: &mut EventLog, id: &str, subject: &str, active: &str) -> AgentEvent {
+    log.push(EventPayload::Plan(PlanPayload::TaskCreated {
+        item: PlanItem {
+            id: Some(id.to_string()),
+            subject: subject.to_string(),
+            active_form: Some(active.to_string()),
+            status: PlanItemStatus::Pending,
+        },
+        description: None,
+        team: Some("audit".to_string()),
+    }))
+}
+
+fn task_updated(log: &mut EventLog, id: &str, status: PlanItemStatus) -> AgentEvent {
+    log.push(EventPayload::Plan(PlanPayload::TaskUpdated {
+        id: id.to_string(),
+        status: Some(status),
+        subject: None,
+        active_form: None,
+        team: Some("audit".to_string()),
+    }))
+}
+
 fn spawn(
     log: &mut EventLog,
     child: agtrace_sdk::types::AgentHandle,
@@ -74,6 +100,7 @@ fn spawn(
         agent_type: agent_type.map(str::to_string),
         requested_model: None,
         resolved_model: model.map(str::to_string),
+        requested_effort: None,
         description: None,
         spawn_call_id: Some(format!("call_{name}")),
         tool_call_id: None,
@@ -128,8 +155,12 @@ pub fn events() -> Vec<WorkspaceEvent> {
     let mut ev = vec![
         l.at(0).user("Audit the parser with a team of reviewers"),
         l.at(1).model_change(None, "claude-opus-5"),
+        l.at(1).attribute(AgentAttributeKey::Effort, "high"),
         l.at(2).usage(96_000, Some("claude-opus-5")),
         l.at(3).assistant("Spawning two reviewers and an explorer."),
+        task_created(l.at(4), "1", "Review the parser", "Reviewing the parser"),
+        task_created(l.at(4), "2", "Scan for panics", "Scanning for panics"),
+        task_created(l.at(4), "3", "Write the summary", "Writing the summary"),
         spawn(
             l.at(10),
             handle::member(team, "audit-A"),
@@ -224,6 +255,7 @@ pub fn events() -> Vec<WorkspaceEvent> {
             "review parser",
         ),
         a.at(13).usage(24_000, Some("claude-opus-5")),
+        task_updated(a.at(14), "1", PlanItemStatus::InProgress),
         call.clone(),
         a.at(35).tool_result(call.id, "3 failed", true),
         a.at(60).message(
@@ -241,8 +273,10 @@ pub fn events() -> Vec<WorkspaceEvent> {
     push(vec![
         b.at(13).user("scan for panics"),
         b.at(14).usage(18_000, Some("claude-opus-5")),
+        task_updated(b.at(15), "2", PlanItemStatus::InProgress),
         call.clone(),
         b.at(22).tool_result(call.id, "12 matches", false),
+        task_updated(b.at(95), "2", PlanItemStatus::Completed),
         b.at(95).assistant("No panics on the hot path."),
         b.at(99).turn_end(),
     ]);
@@ -281,7 +315,16 @@ pub fn events() -> Vec<WorkspaceEvent> {
         r.at(5).user("triage the flaky tests"),
         r.at(5).model_change(None, "gpt-5.6"),
         r.at(5).window_hint(258_400),
+        r.at(5).attribute(AgentAttributeKey::Effort, "medium"),
         r.at(6).usage(60_000, Some("gpt-5.6")),
+        r.at(7).push(EventPayload::Plan(PlanPayload::Goal {
+            objective: "Make the watch tests deterministic".to_string(),
+            status: Some("active".to_string()),
+        })),
+        r.at(30).push(EventPayload::Plan(PlanPayload::Text {
+            text: "# Triage\n\n1. Reproduce each flaky test in a loop.\n2. Fix the timing assumption.\n3. Verify with 50 runs."
+                .to_string(),
+        })),
         spawn(
             r.at(40),
             handle::id(&judge.id),
@@ -296,14 +339,18 @@ pub fn events() -> Vec<WorkspaceEvent> {
             vec![handle::path("/root/judge")],
             AgentMessageKind::NewTask,
         ),
-        spawn(
-            r.at(45),
-            handle::id(&scout.id),
-            AgentKind::CodexThread,
-            "scout",
-            None,
-            None,
-        ),
+        r.at(45).spawn_with(AgentSpawnPayload {
+            child: handle::id(&scout.id),
+            kind: AgentKind::CodexThread,
+            name: Some("scout".to_string()),
+            agent_type: None,
+            requested_model: None,
+            resolved_model: None,
+            requested_effort: Some("low".to_string()),
+            description: None,
+            spawn_call_id: Some("call_scout".to_string()),
+            tool_call_id: None,
+        }),
         r.at(45).encrypted_message(
             MessageDirection::Outgoing,
             handle::path("/root"),

@@ -231,6 +231,7 @@ agtrace crate.
   - conversation: `User`, `Message`, `Reasoning`, `ToolCall`, `ToolResult`, `TokenUsage`
   - multi-agent: `AgentSpawn`, `AgentLifecycle`, `AgentMessage`
   - turn and context: `TurnEnd`, `Compaction`, `ModelChange`, `ContextWindowHint`
+  - plan: `Plan` (task list changes, plan text, goal)
   - other: `AgentAttribute`, `ToolSubAction`, `Notification`, `SlashCommand`,
     `QueueOperation`
 - **Contract:** `Provider`, `LogDecoder`, `FileHeader`, `ParseDiagnostics`.

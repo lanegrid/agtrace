@@ -31,7 +31,8 @@ mod view;
 pub use context_seam::{CatalogResolver, ContextEvidence, ContextWindow, NoWindow, WindowResolver};
 pub use detail::{
     ActivityBucket, ActivityHistory, AgentDetail, AgentResult, ContextPoint, DETAIL_TEXT_MAX,
-    Instruction, InstructionKind, Said, StatusHistory, StatusPoint, UsageTotals,
+    Instruction, InstructionKind, PLAN_TASK_CAPACITY, PlanGoal, PlanState, PlanTask, Said,
+    StatusHistory, StatusPoint, TaskChange, UsageTotals,
 };
 pub use feed::{
     FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW, MESSAGE_CLOCK_SKEW,

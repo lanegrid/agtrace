@@ -25,6 +25,7 @@ pub enum SemanticSuffix {
     ContextWindowHint,
     AgentAttribute,
     ToolSubAction,
+    Plan,
 }
 
 impl SemanticSuffix {
@@ -48,6 +49,7 @@ impl SemanticSuffix {
             Self::ContextWindowHint => "ctxhint",
             Self::AgentAttribute => "attr",
             Self::ToolSubAction => "subaction",
+            Self::Plan => "plan",
         }
     }
 }

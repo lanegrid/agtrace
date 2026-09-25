@@ -46,6 +46,7 @@ const REASONING_ENCRYPTED: &str = "[reasoning encrypted]";
 struct PendingSpawn {
     fork: bool,
     model: Option<String>,
+    effort: Option<String>,
 }
 
 pub struct CodexDecoder {
@@ -64,6 +65,8 @@ pub struct CodexDecoder {
     seen_session_meta: bool,
     last_timestamp: Option<DateTime<Utc>>,
     model: Option<String>,
+    /// Current reasoning effort (emitted as an attribute on change).
+    effort: Option<String>,
     context_window: Option<u64>,
     turn_id: Option<String>,
     /// response_id -> usage already emitted (upsert when it changes).
@@ -101,6 +104,7 @@ impl CodexDecoder {
             seen_session_meta: false,
             last_timestamp: opts.fallback_timestamp,
             model: None,
+            effort: None,
             context_window: None,
             turn_id: None,
             usage_seen: HashMap::new(),
@@ -192,6 +196,25 @@ impl CodexDecoder {
                 from,
                 to: model,
                 source,
+            }),
+        );
+    }
+
+    /// `AgentAttribute(Effort)` when the reasoning effort changes.
+    fn set_effort(&mut self, cx: &mut Emit<'_>, effort: Option<String>) {
+        let Some(effort) = effort.filter(|e| !e.is_empty()) else {
+            return;
+        };
+        if self.effort.as_deref() == Some(effort.as_str()) {
+            return;
+        }
+        self.effort = Some(effort.clone());
+        self.push(
+            cx,
+            SemanticSuffix::AgentAttribute,
+            EventPayload::AgentAttribute(AgentAttributePayload {
+                key: AgentAttributeKey::Effort,
+                value: effort,
             }),
         );
     }
@@ -307,8 +330,12 @@ impl CodexDecoder {
                 let Some(p) = self.typed::<ThreadSettingsApplied>(payload, &kind, line) else {
                     return;
                 };
-                let model = p.thread_settings.and_then(|s| s.model);
+                let (model, effort) = p
+                    .thread_settings
+                    .map(|s| (s.model, s.reasoning_effort))
+                    .unwrap_or_default();
                 self.set_model(cx, model, ModelChangeSource::ThreadSettings);
+                self.set_effort(cx, effort);
             }
             "token_count" => {
                 let Some(p) = self.typed::<rec::TokenCount>(payload, &kind, line) else {
@@ -318,7 +345,23 @@ impl CodexDecoder {
                 self.set_context_window(cx, window);
             }
             "item_completed" => self.item_completed(cx, payload, line),
-            "thread_goal_updated" => self.diagnostics.record_ignored(&kind),
+            "thread_goal_updated" => {
+                let Some(p) = self.typed::<ThreadGoalUpdated>(payload, &kind, line) else {
+                    return;
+                };
+                let Some(goal) = p.goal else { return };
+                let Some(objective) = goal.objective.filter(|o| !o.trim().is_empty()) else {
+                    return;
+                };
+                self.push(
+                    cx,
+                    SemanticSuffix::Plan,
+                    EventPayload::Plan(PlanPayload::Goal {
+                        objective: collab::truncate_bytes(&objective, collab::MAX_BODY_BYTES),
+                        status: goal.status,
+                    }),
+                );
+            }
             _ => self.diagnostics.record_unknown(&kind),
         }
     }
@@ -343,8 +386,22 @@ impl CodexDecoder {
             | "AgentMessage"
             | "UserMessage"
             | "ContextCompaction"
-            | "Plan"
             | "CollabAgentToolCall" => self.diagnostics.record_ignored(&kind),
+            "Plan" => {
+                let Some(it) = self.typed::<rec::PlanItem>(Some(&ic.item), &kind, line) else {
+                    return;
+                };
+                let Some(text) = it.text.filter(|t| !t.trim().is_empty()) else {
+                    return;
+                };
+                self.push(
+                    cx,
+                    SemanticSuffix::Plan,
+                    EventPayload::Plan(PlanPayload::Text {
+                        text: collab::truncate_bytes(text.trim(), collab::MAX_BODY_BYTES),
+                    }),
+                );
+            }
             "CommandExecution" => {
                 let Some(it) = self.typed::<CommandExecutionItem>(Some(&ic.item), &kind, line)
                 else {
@@ -565,7 +622,8 @@ impl CodexDecoder {
                         kind,
                         name: it.agent_path.as_deref().and_then(collab::path_leaf),
                         agent_type: None,
-                        requested_model: spawn.and_then(|s| s.model),
+                        requested_model: spawn.as_ref().and_then(|s| s.model.clone()),
+                        requested_effort: spawn.and_then(|s| s.effort),
                         resolved_model: None,
                         description: None,
                         spawn_call_id: it.id,
@@ -810,6 +868,10 @@ impl CodexDecoder {
                         .get("model")
                         .and_then(Value::as_str)
                         .map(str::to_string),
+                    effort: args
+                        .get("reasoning_effort")
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
                 },
             );
         }
@@ -964,6 +1026,7 @@ impl LogDecoder for CodexDecoder {
                         self.turn_id = tc.turn_id;
                     }
                     self.set_model(&mut cx, tc.model, ModelChangeSource::TurnContext);
+                    self.set_effort(&mut cx, tc.effort);
                 }
             }
             "event_msg" => self.event_msg(&mut cx, env.payload, &line),

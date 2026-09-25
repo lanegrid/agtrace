@@ -117,6 +117,7 @@ fn spawn_before_child_discovery_links_on_late_discovery() {
         agent_type: Some("general-purpose".into()),
         requested_model: Some("opus".into()),
         resolved_model: None,
+        requested_effort: None,
         description: None,
         spawn_call_id: Some("toolu_synthetic_1".into()),
         tool_call_id: None,

@@ -6,15 +6,15 @@ use std::path::PathBuf;
 use agtrace_types::{
     AgentAttributeKey, AgentEvent, AgentHandle, AgentId, AgentKind, AgentMessageKind, AgentOp,
     AgentRef, AgentSpawnPayload, EventPayload, LifecycleTransition, MessageDirection,
-    ParseDiagnostics, Provider, ToolCallPayload, TurnOutcome,
+    ParseDiagnostics, PlanPayload, Provider, ToolCallPayload, TurnOutcome,
 };
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use super::context_seam::{ContextEvidence, ContextWindow, WindowResolver};
 use super::detail::{
-    AgentDetail, AgentResult, ContextPoint, DETAIL_TEXT_MAX, Instruction, InstructionKind, Said,
-    cap_text,
+    AgentDetail, AgentResult, ContextPoint, DETAIL_TEXT_MAX, Instruction, InstructionKind,
+    PlanGoal, Said, TaskChange, cap_text,
 };
 use super::feed::{FeedEntry, FeedKind, FeedParty, LIFECYCLE_DEDUPE_WINDOW};
 use super::input::{SideStateUpdate, TeamMember, WorkspaceEvent};
@@ -52,6 +52,8 @@ pub struct SpawnInfo {
     pub agent_type: Option<String>,
     pub requested_model: Option<String>,
     pub resolved_model: Option<String>,
+    /// Reasoning effort requested by the spawn call.
+    pub requested_effort: Option<String>,
     pub description: Option<String>,
     pub spawn_call_id: Option<String>,
     pub at: DateTime<Utc>,
@@ -70,6 +72,7 @@ impl SpawnInfo {
             agent_type: s.agent_type.clone(),
             requested_model: s.requested_model.clone(),
             resolved_model: s.resolved_model.clone(),
+            requested_effort: s.requested_effort.clone(),
             description: s.description.clone(),
             spawn_call_id: s.spawn_call_id.clone(),
             at,
@@ -211,6 +214,15 @@ impl AgentView {
             .filter(|s| *s != self.agent.id.native_session_id())
     }
 
+    /// Reasoning effort: the latest one of the agent's own log, else the one its
+    /// spawn call requested.
+    pub fn effort(&self) -> Option<&str> {
+        self.attributes
+            .get(&AgentAttributeKey::Effort)
+            .map(String::as_str)
+            .or_else(|| self.spawn.as_ref()?.requested_effort.as_deref())
+    }
+
     /// Team of a Claude agent (header, else `team_context` attribute).
     pub fn team(&self) -> Option<&str> {
         self.agent.team.as_deref().or_else(|| {
@@ -285,6 +297,8 @@ enum Effect {
     Terminal(AgentStatus),
     /// The agent's result, reported in another agent's log.
     Result(Box<AgentResult>),
+    /// A change of the team-shared task list, made by the named agent.
+    Task(Box<TaskChange>, String),
 }
 
 #[derive(Debug, Clone)]
@@ -627,6 +641,7 @@ impl WorkspaceView {
                     });
                 }
             }
+            EventPayload::Plan(p) => self.share_task_change(ctx, p, ts),
             EventPayload::AgentMessage(m) => {
                 if m.kind == AgentMessageKind::Handback && m.direction == MessageDirection::Incoming
                 {
@@ -891,6 +906,44 @@ impl WorkspaceView {
         })
     }
 
+    /// Team-shared task lists (Claude Agent Teams): a teammate's task change is
+    /// also shown in its lead's list, and a task the teammate only updated gets its
+    /// subject from the lead's list.
+    fn share_task_change(&mut self, ctx: &AgentId, p: &PlanPayload, at: DateTime<Utc>) {
+        let Some((change, team)) = task_change(p) else {
+            return;
+        };
+        let Some(team) = team else { return };
+        let lead = AgentHandle::TeamMember {
+            team: Some(team.to_string()),
+            name: "team-lead".to_string(),
+        };
+        if let (TaskChange::Updated { id, .. }, Resolution::Agent(l)) =
+            (&change, self.resolve(ctx, &lead))
+            && l != *ctx
+            && let Some(known) = self.agents.get(&l).and_then(|v| v.detail.plan.task(id))
+        {
+            let (subject, active_form) = (known.subject.clone(), known.active_form.clone());
+            let v = self.agents.get_mut(ctx).expect("ensured by caller");
+            if let Some(t) = v
+                .detail
+                .plan
+                .tasks
+                .iter_mut()
+                .find(|t| t.id.as_deref() == Some(id.as_str()))
+            {
+                if t.subject.is_none() {
+                    t.subject = subject;
+                }
+                if t.active_form.is_none() {
+                    t.active_form = active_form;
+                }
+            }
+        }
+        let by = self.agents.get(ctx).map(|v| v.label()).unwrap_or_default();
+        self.dispatch(ctx, &lead, Effect::Task(Box::new(change), by), at);
+    }
+
     fn handle_display(&self, ctx: &AgentId, h: &AgentHandle) -> String {
         match self.resolve(ctx, h) {
             Resolution::Agent(id) => self.agents[&id].label(),
@@ -975,6 +1028,11 @@ impl WorkspaceView {
             Effect::Result(r) => {
                 if let Some(v) = self.agents.get_mut(target) {
                     v.detail.set_result(*r);
+                }
+            }
+            Effect::Task(change, by) => {
+                if let Some(v) = self.agents.get_mut(target) {
+                    v.detail.plan.apply(&change, at, Some(by));
                 }
             }
             Effect::Lifecycle(tr, reason) => {
@@ -1467,7 +1525,33 @@ fn is_activity(p: &EventPayload) -> bool {
             | EventPayload::Notification(_)
             | EventPayload::QueueOperation(_)
             | EventPayload::TurnEnd(_)
+            | EventPayload::Plan(_)
     )
+}
+
+/// Task-list change of a plan event, with the team whose list it belongs to.
+fn task_change(p: &PlanPayload) -> Option<(TaskChange, Option<&str>)> {
+    match p {
+        PlanPayload::TaskCreated { item, team, .. } => {
+            Some((TaskChange::Created(item.clone()), team.as_deref()))
+        }
+        PlanPayload::TaskUpdated {
+            id,
+            status,
+            subject,
+            active_form,
+            team,
+        } => Some((
+            TaskChange::Updated {
+                id: id.clone(),
+                status: status.clone(),
+                subject: subject.clone(),
+                active_form: active_form.clone(),
+            },
+            team.as_deref(),
+        )),
+        PlanPayload::Items { .. } | PlanPayload::Text { .. } | PlanPayload::Goal { .. } => None,
+    }
 }
 
 /// Fold one own-log event into the agent's detail state (activity, context series,
@@ -1540,6 +1624,27 @@ fn fold_detail(v: &mut AgentView, ev: &AgentEvent, activity: bool, spawn_prompt:
                 *spawn_prompt = v.spawn_prompts.remove(i).unwrap_or_default();
             }
         }
+        EventPayload::Plan(p) => match p {
+            PlanPayload::Items { items } => d.plan.replace(items, ts),
+            PlanPayload::Text { text } => {
+                d.plan.text = Some(Said {
+                    at: ts,
+                    text: cap_text(text, DETAIL_TEXT_MAX),
+                });
+            }
+            PlanPayload::Goal { objective, status } => {
+                d.plan.goal = Some(PlanGoal {
+                    at: ts,
+                    objective: cap_text(objective, DETAIL_TEXT_MAX),
+                    status: status.clone(),
+                });
+            }
+            PlanPayload::TaskCreated { .. } | PlanPayload::TaskUpdated { .. } => {
+                if let Some((change, _)) = task_change(p) {
+                    d.plan.apply(&change, ts, None);
+                }
+            }
+        },
         EventPayload::Message(m) if !m.text.trim().is_empty() => {
             d.last_message = Some(Said {
                 at: ts,

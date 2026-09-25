@@ -50,6 +50,9 @@ pub(crate) struct TurnContext {
     pub turn_id: Option<String>,
     #[serde(default)]
     pub model: Option<String>,
+    /// Reasoning effort of the turn (`low` / `medium` / `high`).
+    #[serde(default)]
+    pub effort: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -140,6 +143,30 @@ pub(crate) struct ThreadSettingsApplied {
 pub(crate) struct ThreadSettings {
     #[serde(default)]
     pub model: Option<String>,
+    #[serde(default)]
+    pub reasoning_effort: Option<String>,
+}
+
+/// `event_msg.thread_goal_updated` (camelCase).
+#[derive(Debug, Deserialize)]
+pub(crate) struct ThreadGoalUpdated {
+    #[serde(default)]
+    pub goal: Option<ThreadGoal>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct ThreadGoal {
+    #[serde(default)]
+    pub objective: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+}
+
+/// `item_completed` `Plan` item: the plan-mode plan (markdown).
+#[derive(Debug, Deserialize)]
+pub(crate) struct PlanItem {
+    #[serde(default)]
+    pub text: Option<String>,
 }
 
 /// `event_msg.item_completed` with the item kept raw (dispatched on `item.type`).
