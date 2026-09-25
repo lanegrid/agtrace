@@ -6,8 +6,8 @@
 //! [`LiveSource`]; tests and the preview example use [`SharedWorkspace`].
 //!
 //! Redraws happen at most every 100 ms (10 fps), and only when the generation
-//! changed, a key was pressed, the terminal was resized, or once per second so
-//! that elapsed times keep ticking.
+//! changed, a key was pressed, the terminal was resized, a toast expired, or once
+//! per second so that elapsed times keep ticking.
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
@@ -34,7 +34,9 @@ use ratatui::layout::Rect;
 use crate::args::WatchFormat;
 use crate::presentation::presenters::watch::{build_console, build_screen};
 use crate::presentation::view_models::watch::{ConsoleVm, StatusVm, UiState, WatchScreenVm};
-use crate::presentation::views::watch::input::{Effect, action_for, apply, sync_selection};
+use crate::presentation::views::watch::input::{
+    Effect, action_for, apply, expire_toast, sync_selection,
+};
 use crate::presentation::views::watch::{console, layout, render};
 
 /// Minimum interval between two frames.
@@ -160,7 +162,10 @@ pub fn run(source: &dyn WorkspaceSource, mut ui: UiState) -> Result<()> {
     loop {
         let generation = source.generation();
         let since_draw = last_draw.map(|t| t.elapsed());
-        if drawn_generation != Some(generation) || since_draw.is_none_or(|d| d >= CLOCK_REDRAW) {
+        if drawn_generation != Some(generation)
+            || since_draw.is_none_or(|d| d >= CLOCK_REDRAW)
+            || expire_toast(&mut ui, Instant::now())
+        {
             dirty = true;
         }
         if dirty && since_draw.is_none_or(|d| d >= FRAME) {
@@ -187,7 +192,7 @@ pub fn run(source: &dyn WorkspaceSource, mut ui: UiState) -> Result<()> {
                 let (Some(action), Some(vm)) = (action_for(key), screen.as_ref()) else {
                     continue;
                 };
-                match apply(&mut ui, action, vm) {
+                match apply(&mut ui, action, vm, Instant::now()) {
                     Effect::Quit => break,
                     Effect::Rescan => source.rescan(),
                     Effect::None => {}

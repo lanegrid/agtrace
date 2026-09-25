@@ -5,6 +5,7 @@
 //! `WorkspaceView` plus the [`UiState`]; the views only lay it out.
 
 use std::collections::BTreeSet;
+use std::time::{Duration, Instant};
 
 use chrono::FixedOffset;
 use serde::Serialize;
@@ -85,6 +86,31 @@ pub struct Viewport {
     pub feed: usize,
 }
 
+/// How long a status-bar toast stays visible.
+pub const TOAST_TTL: Duration = Duration::from_secs(2);
+
+/// Short-lived status-bar message confirming a state change (set by the reducer).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Toast {
+    pub text: String,
+    /// When the toast was raised.
+    pub at: Instant,
+}
+
+impl Toast {
+    pub fn new(text: impl Into<String>, at: Instant) -> Self {
+        Self {
+            text: text.into(),
+            at,
+        }
+    }
+
+    /// Still visible at `now`.
+    pub fn is_live(&self, now: Instant) -> bool {
+        now.saturating_duration_since(self.at) < TOAST_TTL
+    }
+}
+
 /// Mutable UI context of the watch TUI (selection, collapse, scroll, filters).
 ///
 /// Selection is kept by agent id (not row index) so it survives tree changes.
@@ -101,6 +127,8 @@ pub struct UiState {
     /// Follow the most recently active agent.
     pub auto_select: bool,
     pub show_help: bool,
+    /// Last state-change message; the presenter drops it once expired.
+    pub toast: Option<Toast>,
     /// Scope description for the status bar ("project agtrace").
     pub scope: String,
     /// Offset used to print wall-clock times.
@@ -120,6 +148,7 @@ impl Default for UiState {
             hide_done: false,
             auto_select: false,
             show_help: false,
+            toast: None,
             scope: String::new(),
             utc_offset: FixedOffset::east_opt(0).expect("zero offset"),
             viewport: Viewport::default(),
@@ -152,6 +181,8 @@ pub struct WatchScreenVm {
     pub timeline_scroll: Scroll,
     pub feed_scroll: Scroll,
     pub show_help: bool,
+    /// Live toast text (status bar), if any.
+    pub toast: Option<String>,
 }
 
 impl WatchScreenVm {
@@ -299,6 +330,8 @@ pub struct StatusBarVm {
     pub idle: usize,
     /// Agents hidden by the "hide done" toggle.
     pub hidden: usize,
+    /// Agents the "hide done" toggle hides when it is on.
+    pub done_hideable: usize,
     /// Undecodable / schema-mismatched lines over all agents.
     pub diagnostics: u64,
     /// Watcher errors (I/O, permissions).

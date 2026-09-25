@@ -1,22 +1,30 @@
 //! Keybindings (design §6.2) and the UI-state reducer.
 //!
+//! Drill-down model, the tree is home: Enter / → / l dive into the selected
+//! agent's timeline, Esc / ← / h go back one level (close help, return to the
+//! tree, then reset the view toggles). j/k act on the focused pane.
+//!
 //! [`action_for`] maps a key to an [`Action`]; [`apply`] updates the [`UiState`]
-//! against the last rendered screen (row order, row counts) and reports effects
-//! that leave the UI (quit, rescan).
+//! against the last rendered screen (row order, row counts), raises a toast for
+//! every state change, and reports effects that leave the UI (quit, rescan).
+
+use std::time::Instant;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
-use crate::presentation::view_models::watch::{FeedFilter, Pane, Scroll, UiState, WatchScreenVm};
+use crate::presentation::view_models::watch::{
+    AgentRowVm, FeedFilter, Pane, Scroll, Toast, UiState, WatchScreenVm,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
     Up,
     Down,
-    /// Focus the selected agent's timeline.
+    /// Dive into the selected agent: focus its timeline.
     Open,
+    /// Back one level: close help, return to the tree, or reset the view.
+    Back,
     ToggleCollapse,
-    Collapse,
-    Expand,
     NextPane,
     PrevPane,
     PageUp,
@@ -30,8 +38,6 @@ pub enum Action {
     ToggleAutoSelect,
     Rescan,
     ToggleHelp,
-    /// Close help, or reset every view toggle back to the default screen.
-    Back,
     Quit,
 }
 
@@ -55,10 +61,9 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('q') => Action::Quit,
         KeyCode::Char('j') | KeyCode::Down => Action::Down,
         KeyCode::Char('k') | KeyCode::Up => Action::Up,
-        KeyCode::Enter => Action::Open,
+        KeyCode::Enter | KeyCode::Right | KeyCode::Char('l') => Action::Open,
+        KeyCode::Esc | KeyCode::Left | KeyCode::Char('h') => Action::Back,
         KeyCode::Char(' ') => Action::ToggleCollapse,
-        KeyCode::Left => Action::Collapse,
-        KeyCode::Right => Action::Expand,
         KeyCode::Tab => Action::NextPane,
         KeyCode::BackTab => Action::PrevPane,
         KeyCode::PageUp => Action::PageUp,
@@ -66,11 +71,10 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('G') | KeyCode::End => Action::Tail,
         KeyCode::Char('g') | KeyCode::Home => Action::Top,
         KeyCode::Char('f') => Action::ToggleFeedFilter,
-        KeyCode::Char('h') => Action::ToggleHideDone,
+        KeyCode::Char('d') => Action::ToggleHideDone,
         KeyCode::Char('a') => Action::ToggleAutoSelect,
         KeyCode::Char('r') => Action::Rescan,
         KeyCode::Char('?') => Action::ToggleHelp,
-        KeyCode::Esc => Action::Back,
         _ => return None,
     })
 }
@@ -121,21 +125,54 @@ fn select(ui: &mut UiState, vm: &WatchScreenVm, idx: usize) {
     }
 }
 
-/// The selected row, if collapsing it can make sense: it has children and it is
-/// not the only root (folding the sole root would hide the whole tree and make a
-/// single-session watch look like an empty one).
-fn collapsible_selected(
-    vm: &WatchScreenVm,
-) -> Option<&crate::presentation::view_models::watch::AgentRowVm> {
-    let row = vm.selected_index().and_then(|i| vm.tree.get(i))?;
-    if !row.has_children {
-        return None;
-    }
-    let roots = vm.tree.iter().filter(|r| r.depth == 0).count();
-    (row.depth > 0 || roots > 1).then_some(row)
+/// Row of the current selection. Several keys can arrive between two frames, all
+/// applied against the same (last drawn) screen, so `ui.selected` — updated by
+/// each move — is authoritative; the screen's highlight is the fallback.
+fn cursor(ui: &UiState, vm: &WatchScreenVm) -> Option<usize> {
+    ui.selected
+        .as_deref()
+        .and_then(|id| vm.tree.iter().position(|r| r.id == id))
+        .or_else(|| vm.selected_index())
 }
 
-/// Esc: back to the default screen (selection and auto-select are kept).
+/// Toggle the collapse state of the selected row and describe the outcome.
+///
+/// Guarded: a leaf has nothing to fold, and the sole root stays expanded (folding
+/// it would hide the whole tree and make a single-session watch look empty).
+fn toggle_collapse(ui: &mut UiState, vm: &WatchScreenVm) -> Option<String> {
+    let idx = cursor(ui, vm)?;
+    let row = &vm.tree[idx];
+    // `ui.collapsed`, not the (possibly stale) row flag: space space between two
+    // frames must fold and unfold.
+    if ui.collapsed.remove(&row.id) {
+        return Some(format!("▾ expanded {}", row.label));
+    }
+    if !row.has_children {
+        return Some(format!("{} has no children", row.label));
+    }
+    let roots = vm.tree.iter().filter(|r| r.depth == 0).count();
+    if row.depth == 0 && roots == 1 {
+        return Some("can't collapse the only session".to_string());
+    }
+    ui.collapsed.insert(row.id.clone());
+    Some(format!(
+        "▸ collapsed {} (+{} hidden)",
+        row.label,
+        subtree_size(&vm.tree, idx)
+    ))
+}
+
+/// Descendants of `tree[idx]` (shown rows plus those folded under them).
+fn subtree_size(tree: &[AgentRowVm], idx: usize) -> usize {
+    let depth = tree[idx].depth;
+    tree[idx + 1..]
+        .iter()
+        .take_while(|r| r.depth > depth)
+        .map(|r| 1 + r.hidden_descendants)
+        .sum()
+}
+
+/// Esc on the tree: back to the default screen (selection and auto-select are kept).
 fn reset_view(ui: &mut UiState) {
     ui.collapsed.clear();
     ui.hide_done = false;
@@ -145,8 +182,9 @@ fn reset_view(ui: &mut UiState) {
     ui.feed_scroll = Scroll::Follow;
 }
 
-/// Apply `action` to `ui`; `vm` is the screen currently displayed.
-pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm) -> Effect {
+/// Apply `action` to `ui`; `vm` is the screen currently displayed and `now`
+/// stamps the toast raised for the change.
+pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant) -> Effect {
     if ui.show_help {
         match action {
             Action::Quit => return Effect::Quit,
@@ -161,11 +199,16 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm) -> Effect {
         Pane::Feed => ui.viewport.feed,
         _ => ui.viewport.timeline,
     };
+    let mut toast: Option<String> = None;
+    let mut effect = Effect::None;
     match action {
         Action::Quit => return Effect::Quit,
-        Action::Rescan => return Effect::Rescan,
+        Action::Rescan => {
+            toast = Some("rescanning…".to_string());
+            effect = Effect::Rescan;
+        }
         Action::Up | Action::Down if ui.focus == Pane::Tree => {
-            let cur = vm.selected_index();
+            let cur = cursor(ui, vm);
             let next = match (cur, action) {
                 (None, _) => 0,
                 (Some(i), Action::Up) => i.saturating_sub(1),
@@ -182,21 +225,14 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm) -> Effect {
         Action::Tail => set_scroll(ui, target, Scroll::Follow),
         Action::Top => set_scroll(ui, target, Scroll::Offset(0)),
         Action::Open => ui.focus = Pane::Timeline,
-        Action::ToggleCollapse | Action::Collapse | Action::Expand => {
-            if let Some(row) = collapsible_selected(vm) {
-                let collapsed = ui.collapsed.contains(&row.id);
-                let want = match action {
-                    Action::Collapse => true,
-                    Action::Expand => false,
-                    _ => !collapsed,
-                };
-                if want {
-                    ui.collapsed.insert(row.id.clone());
-                } else {
-                    ui.collapsed.remove(&row.id);
-                }
+        Action::Back => match ui.focus {
+            Pane::Timeline | Pane::Feed => ui.focus = Pane::Tree,
+            Pane::Tree => {
+                reset_view(ui);
+                toast = Some("view reset".to_string());
             }
-        }
+        },
+        Action::ToggleCollapse => toast = toggle_collapse(ui, vm),
         Action::NextPane => ui.focus = ui.focus.next(),
         Action::PrevPane => ui.focus = ui.focus.prev(),
         Action::ToggleFeedFilter => {
@@ -205,13 +241,45 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm) -> Effect {
                 FeedFilter::Selected => FeedFilter::All,
             };
             ui.feed_scroll = Scroll::Follow;
+            toast = Some(match ui.feed_filter {
+                FeedFilter::Selected => format!("messages: {} only — f for all", vm.focus.title),
+                FeedFilter::All => "messages: all".to_string(),
+            });
         }
-        Action::ToggleHideDone => ui.hide_done = !ui.hide_done,
-        Action::ToggleAutoSelect => ui.auto_select = !ui.auto_select,
+        Action::ToggleHideDone => {
+            ui.hide_done = !ui.hide_done;
+            toast = Some(if ui.hide_done {
+                format!(
+                    "done agents hidden ({}) — d to show",
+                    vm.status.done_hideable
+                )
+            } else {
+                "done agents shown".to_string()
+            });
+        }
+        Action::ToggleAutoSelect => {
+            ui.auto_select = !ui.auto_select;
+            toast = Some(format!(
+                "auto-select {}",
+                if ui.auto_select { "on" } else { "off" }
+            ));
+        }
         Action::ToggleHelp => ui.show_help = true,
-        Action::Back => reset_view(ui),
     }
-    Effect::None
+    if let Some(text) = toast {
+        ui.toast = Some(Toast::new(text, now));
+    }
+    effect
+}
+
+/// Drop the toast once it expired; true when it was visible until now (the
+/// screen needs a redraw to clear it).
+pub fn expire_toast(ui: &mut UiState, now: Instant) -> bool {
+    if ui.toast.as_ref().is_some_and(|t| !t.is_live(now)) {
+        ui.toast = None;
+        return true;
+    }
+    false
 }
 
 /// Remember the selection the presenter resolved (first row, auto-select, or the

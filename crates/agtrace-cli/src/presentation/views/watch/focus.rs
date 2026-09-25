@@ -14,7 +14,7 @@ use crate::presentation::view_models::watch::{
 
 pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     let focus = &vm.focus;
-    let block = pane_block(vm.focus_pane == Pane::Timeline).title(title(focus));
+    let block = pane_block(vm.focus_pane == Pane::Timeline, title(focus));
     let inner = block.inner(area);
     f.render_widget(block, area);
     if inner.height == 0 {
@@ -40,7 +40,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     f.render_widget(table, body);
 }
 
-fn title(focus: &FocusVm) -> Line<'static> {
+fn title(focus: &FocusVm) -> Vec<Span<'static>> {
     let mut spans = vec![Span::styled(
         format!(" {} ", focus.title),
         Style::default().add_modifier(Modifier::BOLD),
@@ -62,7 +62,7 @@ fn title(focus: &FocusVm) -> Line<'static> {
             Style::default().fg(Color::Yellow),
         ));
     }
-    Line::from(spans)
+    spans
 }
 
 fn activity_line(focus: &FocusVm) -> Line<'static> {

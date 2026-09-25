@@ -1,14 +1,14 @@
 //! Ratatui views of the multi-agent watch TUI (design §6.1).
 //!
 //! ```text
-//! ┌ Agents ─────────┐┌ lead · model · 42% of 1.0M [1m] ──┐
-//! │▶ lead   ● busy 42%││ now ▸ Bash  mise run test (12s)  │
-//! │  ├ T audit-A ...  ││ 12:01 ▸ Bash  mise run test       │
-//! └──────────────────┘└───────────────────────────────────┘
+//! ┏ ▶ Agents ━━━━━━━━┓┌ lead · model · 42% of 1.0M [1m] ──┐
+//! ┃▶ lead   ● busy 42%┃│ now ▸ Bash  mise run test (12s)  │
+//! ┃  ├ T audit-A ...  ┃│ 12:01 ▸ Bash  mise run test       │
+//! ┗━━━━━━━━━━━━━━━━━━━┛└───────────────────────────────────┘
 //! ┌ Messages ─────────────────────────────────────────────┐
 //! │ 12:01 audit-A → lead   MESSAGE   "done, found 3 bugs" │
 //! └───────────────────────────────────────────────────────┘
-//!  scope · agents · diagnostics · ?:help
+//!  AGENTS  agents · diagnostics · toggles | toast      ↵ open · space fold · ? help
 //! ```
 //!
 //! Views are stateless: everything comes from [`WatchScreenVm`] (scroll positions

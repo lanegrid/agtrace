@@ -10,6 +10,7 @@
 //!   never shown, only type and route).
 
 use std::collections::{HashMap, HashSet};
+use std::time::Instant;
 
 use agtrace_sdk::types::{
     AgentId, AgentKind, AgentMessageKind, AgentProvider, CompactionTrigger, LifecycleTransition,
@@ -27,6 +28,9 @@ use crate::presentation::view_models::watch::{
 };
 
 /// Build the whole screen from the current workspace snapshot.
+///
+/// Toast expiry is judged against the monotonic clock (the workspace clock `now`
+/// may be frozen for fixtures).
 pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> WatchScreenVm {
     let visible = visibility(view, ui.hide_done);
     let selected = effective_selection(view, ui, &visible);
@@ -63,6 +67,11 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
         timeline_scroll: ui.timeline_scroll,
         feed_scroll: ui.feed_scroll,
         show_help: ui.show_help,
+        toast: ui
+            .toast
+            .as_ref()
+            .filter(|t| t.is_live(Instant::now()))
+            .map(|t| t.text.clone()),
     }
 }
 
@@ -725,6 +734,10 @@ fn build_status(view: &WorkspaceView, ui: &UiState, visible: usize) -> StatusBar
         running: count(AgentStatus::Running),
         idle: count(AgentStatus::Idle),
         hidden: view.agents.len().saturating_sub(visible),
+        done_hideable: view
+            .agents
+            .len()
+            .saturating_sub(visibility(view, true).len()),
         diagnostics: view.total_diagnostic_errors(),
         errors: view.errors.len(),
         last_error: view.errors.last().cloned(),
