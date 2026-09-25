@@ -1,6 +1,7 @@
 //! Shared colors, glyphs and small formatting helpers.
 
 use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders};
 
 use crate::presentation::view_models::watch::StatusVm;
@@ -53,17 +54,43 @@ pub fn dim() -> Style {
     Style::default().fg(Color::DarkGray)
 }
 
-/// Bordered block; the focused pane gets a highlighted border.
-pub fn pane_block<'a>(focused: bool) -> Block<'a> {
-    let border = if focused {
-        Style::default().fg(Color::Cyan)
+/// Accent of the focused pane (border, title marker, mode label).
+pub const FOCUS_COLOR: Color = Color::Cyan;
+
+/// Bordered block with `title`: the focused pane gets a thick bold cyan border
+/// and a `▶` marker in the title; the others are dimmed.
+pub fn pane_block<'a>(focused: bool, title: Vec<Span<'a>>) -> Block<'a> {
+    let (border, border_type) = if focused {
+        (
+            Style::default()
+                .fg(FOCUS_COLOR)
+                .add_modifier(Modifier::BOLD),
+            BorderType::Thick,
+        )
     } else {
-        Style::default().fg(Color::DarkGray)
+        (dim(), BorderType::Plain)
     };
+    let mut spans = Vec::with_capacity(title.len() + 1);
+    if focused {
+        spans.push(Span::styled(
+            " ▶",
+            Style::default()
+                .fg(FOCUS_COLOR)
+                .add_modifier(Modifier::BOLD),
+        ));
+        spans.extend(title);
+    } else {
+        // Unfocused: every title span is dimmed (colours kept for warnings).
+        spans.extend(title.into_iter().map(|s| {
+            let style = s.style.add_modifier(Modifier::DIM);
+            s.style(style)
+        }));
+    }
     Block::default()
         .borders(Borders::ALL)
-        .border_type(BorderType::Plain)
+        .border_type(border_type)
         .border_style(border)
+        .title(Line::from(spans))
 }
 
 /// `12s`, `3m04s`, `1h02m`.

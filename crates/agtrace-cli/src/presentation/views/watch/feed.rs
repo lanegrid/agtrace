@@ -6,7 +6,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Paragraph, Row, Table};
 
-use super::style::{col_width, dim, pane_block};
+use super::style::{FOCUS_COLOR, col_width, dim, pane_block};
 use crate::presentation::view_models::watch::{
     FeedFilter, FeedRowKind, FeedRowVm, Pane, WatchScreenVm,
 };
@@ -19,7 +19,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     if !vm.feed_scroll.is_follow() {
         title.push_str("· scrolled ");
     }
-    let block = pane_block(vm.focus_pane == Pane::Feed).title(title);
+    let block = pane_block(vm.focus_pane == Pane::Feed, vec![Span::raw(title)]);
     if vm.feed.is_empty() {
         let p = Paragraph::new(Line::styled(" no inter-agent messages yet", dim())).block(block);
         f.render_widget(p, area);
@@ -30,10 +30,13 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     let routes: Vec<String> = visible.iter().map(|r| route(r)).collect();
     let route_w = col_width(routes.iter().map(String::as_str), 30);
     let tag_w = col_width(visible.iter().map(|r| r.tag.as_str()), 14);
+    // While the timeline has focus, rows not involving its agent recede so the
+    // agent's own conversation stands out (highlighted, not filtered).
+    let spotlight = vm.focus_pane == Pane::Timeline;
     let rows: Vec<Row> = visible
         .iter()
         .zip(routes)
-        .map(|(r, route)| row(r, route))
+        .map(|(r, route)| row(r, route, spotlight))
         .collect();
     let table = Table::new(
         rows,
@@ -57,7 +60,7 @@ fn route(r: &FeedRowVm) -> String {
     }
 }
 
-fn row(r: &FeedRowVm, route: String) -> Row<'static> {
+fn row(r: &FeedRowVm, route: String, spotlight: bool) -> Row<'static> {
     let tag_style = match r.kind {
         FeedRowKind::Message => Style::default().fg(Color::Magenta),
         FeedRowKind::Spawn => Style::default().fg(Color::Blue),
@@ -70,14 +73,21 @@ fn row(r: &FeedRowVm, route: String) -> Row<'static> {
         (None, false) => Span::raw(""),
     };
     let route_style = if r.involves_selected {
-        Style::default().add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(FOCUS_COLOR)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default()
     };
-    Row::new(vec![
+    let row = Row::new(vec![
         Cell::from(Span::styled(r.time.clone(), dim())),
         Cell::from(Span::styled(route, route_style)),
         Cell::from(Span::styled(r.tag.clone(), tag_style)),
         Cell::from(text),
-    ])
+    ]);
+    if spotlight && !r.involves_selected {
+        row.style(Style::default().add_modifier(Modifier::DIM))
+    } else {
+        row
+    }
 }

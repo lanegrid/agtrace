@@ -17,7 +17,7 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     } else {
         format!(" Agents · {} ", vm.status.scope)
     };
-    let block = pane_block(focused).title(title);
+    let block = pane_block(focused, vec![Span::raw(title)]);
     if vm.tree.is_empty() {
         let p = Paragraph::new(Line::styled(" no agents yet", dim())).block(block);
         f.render_widget(p, area);
@@ -90,9 +90,15 @@ fn row(r: &AgentRowVm, focused: bool) -> Row<'static> {
         Cell::from(status),
         Cell::from(pct),
     ]);
-    if r.selected && focused {
-        row.style(Style::default().add_modifier(Modifier::REVERSED))
-    } else {
-        row
+    // The selection stays visible while another pane has focus, so the agent the
+    // timeline shows is always identifiable.
+    match (r.selected, focused) {
+        (true, true) => row.style(Style::default().add_modifier(Modifier::REVERSED)),
+        (true, false) => row.style(
+            Style::default()
+                .add_modifier(Modifier::BOLD)
+                .add_modifier(Modifier::UNDERLINED),
+        ),
+        (false, _) => row,
     }
 }

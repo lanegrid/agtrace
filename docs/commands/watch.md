@@ -50,25 +50,31 @@ never walks the whole provider tree.
 ## The TUI
 
 ```
-┌ Agents ─────────────────────────┐┌ s-lead · claude-opus-5-5[1m] · 42% of 1.0M [1m] ────────┐
-│▶ s-lead            ● busy  42%  ││now   ▸ Bash mise run test  (10s)                        │
-│  ├ T audit-A       ○ idle  12%  ││12:00 ⇢ spawn          audit-A (teammate, general-purpos│
-│  ├ T audit-B       ○ idle   9%  ││12:00 → audit-A        NEW_TASK "review parser"          │
-│  ├ S explore call  ✓ done  15%  ││12:00 ⇢ spawn          explore call sites (subagent)     │
-│  └ F fork: bench   ● busy  75%  ││12:00 ⏹ interrupted                                      │
-│  codex /root       ○ idle  12%  ││12:01 ← audit-A        MESSAGE "done, found 3 bugs"      │
-│  ├ judge           ● busy  77%  ││12:01 ◆ model          claude-opus-5 → claude-opus-5-5   │
-│  │ └ x             ● busy   5%  ││12:01 ⟲ compact        974k→112k (auto)                  │
-│  └ scout           ✓ done  15%  ││12:04 ▸ Bash           mise run test                     │
-└─────────────────────────────────┘└─────────────────────────────────────────────────────────┘
+┏ ▶ Agents · project demo-project ┓┌ s-lead · claude-opus-5-5[1m] · 42% of 1.0M [1m] ────────┐
+┃▶ s-lead            ● busy  42%  ┃│now   ▸ Bash mise run test  (10s)                        │
+┃  ├ T audit-A       ○ idle  12%  ┃│12:00 ⇢ spawn          audit-A (teammate, general-purpos│
+┃  ├ T audit-B       ○ idle   9%  ┃│12:00 → audit-A        NEW_TASK "review parser"          │
+┃  ├ S explore call  ✓ done  15%  ┃│12:00 ⇢ spawn          explore call sites (subagent)     │
+┃  └ F fork: bench   ● busy  75%  ┃│12:00 ⏹ interrupted                                      │
+┃  codex /root       ○ idle  12%  ┃│12:01 ← audit-A        MESSAGE "done, found 3 bugs"      │
+┃  ├ judge           ● busy  77%  ┃│12:01 ◆ model          claude-opus-5 → claude-opus-5-5   │
+┃  │ └ x             ● busy   5%  ┃│12:01 ⟲ compact        974k→112k (auto)                  │
+┃  └ scout           ✓ done  15%  ┃│12:04 ▸ Bash           mise run test                     │
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛└─────────────────────────────────────────────────────────┘
 ┌ Messages ──────────────────────────────────────────────────────────────────────────────────┐
 │12:01 audit-A → s-lead            MESSAGE      "done, found 3 bugs"                         │
 │12:02 /root/scout → /root         FINAL_ANSWER "3 flaky tests, all in watch_command.rs"     │
 │12:02 /root → /root/judge         MESSAGE      [encrypted]                                  │
 │12:02 explore call sites → s-lead TASK_NOTIFY  "found 2 call sites"                         │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
- scope: project demo-project · 9 agents (4 running, 3 idle) · ?:help q:quit
+ AGENTS  9 agents (4 running, 3 idle)          ↵ open · space fold · f msgs · d done · ? help
 ```
+
+The tree is home. Three panes answer three questions: **Agents** (who is there and in
+what state), the **timeline** (what the selected agent is doing), and **Messages** (how
+the agents talk to each other). Enter dives into the selected agent's timeline, Esc comes
+back. The focused pane has a thick cyan border and a `▶` in its title; the other panes
+are dimmed.
 
 ### Agents (left)
 
@@ -82,7 +88,9 @@ Each row is one agent, indented by depth:
 - **Context %.** Yellow from 80%, red from 95%. It is blank while the window or the usage is
   unknown.
 
-A collapsed node shows `▸+N`. The tree title names the scope (`Agents · session 1a2b3c4d`), and the status bar lists active view toggles with an `Esc:reset` hint.
+A collapsed node shows `▸+N`. The tree title names the scope (`Agents · session 1a2b3c4d`).
+The selected row stays highlighted while another pane has focus (reversed when the tree
+has focus, bold and underlined otherwise), so you can always see whose timeline is shown.
 
 ### Focus pane (right)
 
@@ -111,6 +119,9 @@ The focus pane follows the selected agent.
 
 The workspace-wide inter-agent feed: `time from → to KIND text`.
 
+Entries involving the selected agent have a bold cyan route. While the timeline has
+focus, the other entries are dimmed (highlighted, not filtered; `f` filters).
+
 - Kinds are `MESSAGE`, `NEW_TASK`, `FINAL_ANSWER`, `HANDBACK`, `TASK_NOTIFY`, `IDLE`,
   `INTERRUPT` and `PEER`, plus spawn and lifecycle entries.
 - Codex's encrypted bodies are shown as `[encrypted]`; `FINAL_ANSWER` is plaintext.
@@ -118,24 +129,30 @@ The workspace-wide inter-agent feed: `time from → to KIND text`.
 
 ### Status bar
 
-The scope, agent counts, hidden agents, the number of diagnostics (log lines agtrace could
-not decode), the last error, active toggles, and a key hint.
+- **Left.** The mode: `AGENTS`, `TIMELINE · <agent>` or `MESSAGES`. Then the agent
+  counts, hidden agents, the number of diagnostics (log lines agtrace could not decode),
+  the last error and the active toggles. For about two seconds after a change, a short
+  message replaces them: `▸ collapsed judge (+1 hidden)`, `done agents hidden (2) — d to
+  show`, `messages: s-lead only — f for all`, `view reset`, `rescanning…`, and so on. Keys
+  that cannot act say why (`can't collapse the only session`, `x has no children`).
+- **Right.** Key hints for the focused pane. The tree adds `Esc:reset` while a view
+  toggle is active. Hints are shortened on narrow terminals.
 
 ### Keybindings
 
 | Key | Action |
 |---|---|
-| `j` / `k`, `↓` / `↑` | Move the selection in the tree, or scroll the focused pane by a line. |
-| `Enter` | Open the selected agent (focus its timeline). |
-| `space` / `←` / `→` | Collapse / expand the selected node. The only root cannot be collapsed. |
-| `Esc` | Back: close help, or reset the view (expand all, show done, feed: all, focus tree, follow). |
+| `Enter` / `→` / `l` | Open the selected agent: focus its timeline. |
+| `Esc` / `←` / `h` | Back one level: close help, then return to the tree, then (on the tree) reset the view: expand all, show done, feed: all, follow. The selection is kept. |
+| `j` / `k`, `↓` / `↑` | Act on the focused pane: move the selection in the tree, or scroll the timeline / feed by a line. |
+| `space` | Fold / unfold the selected node. The only root cannot be folded. |
 | `Tab` / `Shift-Tab` | Cycle pane focus: tree → timeline → feed. |
 | `PgUp` / `PgDn` | Scroll the focused pane by a page (the timeline when the tree has focus). |
 | `Ctrl-u` / `Ctrl-d` | Scroll by half a page. |
 | `G` / `End` | Jump to the tail and resume auto-follow. |
 | `g` / `Home` | Jump to the top. |
 | `f` | Feed filter: all messages ↔ only those involving the selected agent. |
-| `h` | Hide or show agents that are done or killed. |
+| `d` | Hide or show agents that are done or killed. |
 | `a` | Toggle auto-select of the most recently active agent. |
 | `r` | Rescan for new agent files now. |
 | `?` | Toggle the help overlay. |

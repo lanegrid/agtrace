@@ -5,10 +5,14 @@
 mod fixture;
 
 use agtrace::presentation::presenters::watch::build_screen;
+use std::time::{Duration, Instant};
+
 use agtrace::presentation::view_models::watch::{
-    FeedFilter, Pane, RowKind, Scroll, UiState, Viewport, WatchScreenVm,
+    FeedFilter, Pane, RowKind, Scroll, TOAST_TTL, Toast, UiState, Viewport, WatchScreenVm,
 };
-use agtrace::presentation::views::watch::input::{Effect, action_for, apply, sync_selection};
+use agtrace::presentation::views::watch::input::{
+    Effect, action_for, apply, expire_toast, sync_selection,
+};
 use agtrace::presentation::views::watch::{layout, render};
 use agtrace::watch::{SharedWorkspace, build};
 use agtrace_sdk::workspace::WorkspaceView;
@@ -16,7 +20,9 @@ use chrono::FixedOffset;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
+use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
+use ratatui::style::{Color, Modifier};
 
 fn ui() -> UiState {
     UiState::new("project demo-project", FixedOffset::east_opt(0).unwrap())
@@ -30,12 +36,27 @@ fn select(ui: &mut UiState, id: &str) {
     ui.selected = Some(id.to_string());
 }
 
+fn draw_buffer(view: &WorkspaceView, ui: &mut UiState, w: u16, h: u16) -> Buffer {
+    ui.viewport = layout(Rect::new(0, 0, w, h)).viewport();
+    let vm = screen(view, ui);
+    let mut t = Terminal::new(TestBackend::new(w, h)).unwrap();
+    t.draw(|f| render(f, &vm)).unwrap();
+    t.backend().buffer().clone()
+}
+
 fn draw(view: &WorkspaceView, ui: &mut UiState, w: u16, h: u16) -> String {
     ui.viewport = layout(Rect::new(0, 0, w, h)).viewport();
     let vm = screen(view, ui);
     let mut t = Terminal::new(TestBackend::new(w, h)).unwrap();
     t.draw(|f| render(f, &vm)).unwrap();
     t.backend().to_string()
+}
+
+/// Text of buffer row `y`.
+fn line(buf: &Buffer, y: u16) -> String {
+    (0..buf.area.width)
+        .map(|x| buf[(x, y)].symbol())
+        .collect::<String>()
 }
 
 // ------------------------------------------------------------------ presenter
@@ -178,6 +199,78 @@ fn render_80x24_help_overlay() {
 }
 
 #[test]
+fn render_80x24_timeline_focused() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    select(&mut ui, "claude:s-lead");
+    ui.focus = Pane::Timeline;
+    insta::assert_snapshot!(draw(&view, &mut ui, 80, 24));
+}
+
+#[test]
+fn render_120x40_timeline_focused() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    select(&mut ui, "claude:s-lead");
+    ui.focus = Pane::Timeline;
+    insta::assert_snapshot!(draw(&view, &mut ui, 120, 40));
+}
+
+#[test]
+fn render_80x24_feed_focused() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    ui.focus = Pane::Feed;
+    insta::assert_snapshot!(draw(&view, &mut ui, 80, 24));
+}
+
+/// Collapse `codex:t-root` with space: the tree folds and the status bar shows
+/// the toast plus the `Esc:reset` hint.
+#[test]
+fn render_toast_after_collapse() {
+    let view = fixture::workspace();
+    for (w, h) in [(80, 24), (120, 40)] {
+        let mut ui = ui();
+        select(&mut ui, "codex:t-root");
+        press(&view, &mut ui, KeyCode::Char(' '));
+        insta::assert_snapshot!(format!("render_{w}x{h}_toast"), draw(&view, &mut ui, w, h));
+    }
+}
+
+/// With the timeline focused, feed rows involving its agent are highlighted
+/// (cyan bold route) and the others dimmed, not filtered out.
+#[test]
+fn timeline_focus_highlights_agent_feed_rows() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    select(&mut ui, "claude:s-lead");
+    ui.focus = Pane::Timeline;
+    let vm = screen(&view, &ui);
+    assert!(vm.feed.iter().any(|r| !r.involves_selected), "not filtered");
+    let buf = draw_buffer(&view, &mut ui, 120, 40);
+    let feed = layout(Rect::new(0, 0, 120, 40)).feed;
+    let height = ui.viewport.feed;
+    let start = vm.feed_scroll.start(vm.feed.len(), height);
+    let (mut hot, mut cold) = (0, 0);
+    for (i, r) in vm.feed.iter().skip(start).take(height).enumerate() {
+        let y = feed.y + 1 + i as u16;
+        let text = line(&buf, y);
+        assert!(text.contains(&r.from), "{text} / {r:?}");
+        // Route column starts after `│hh:mm `.
+        let cell = &buf[(feed.x + 7, y)];
+        if r.involves_selected {
+            assert_eq!(cell.fg, Color::Cyan, "{text}");
+            assert!(cell.modifier.contains(Modifier::BOLD), "{text}");
+            hot += 1;
+        } else {
+            assert!(cell.modifier.contains(Modifier::DIM), "{text}");
+            cold += 1;
+        }
+    }
+    assert!(hot > 0 && cold > 0, "hot={hot} cold={cold}");
+}
+
+#[test]
 fn render_empty_workspace() {
     let view = WorkspaceView::new();
     insta::assert_snapshot!(draw(&view, &mut ui(), 80, 24));
@@ -193,7 +286,11 @@ fn press(view: &WorkspaceView, ui: &mut UiState, code: KeyCode) -> Effect {
     let vm = screen(view, ui);
     sync_selection(ui, &vm);
     let action = action_for(key(code)).expect("bound key");
-    apply(ui, action, &vm)
+    apply(ui, action, &vm, Instant::now())
+}
+
+fn toast(ui: &UiState) -> &str {
+    ui.toast.as_ref().map(|t| t.text.as_str()).unwrap_or("")
 }
 
 #[test]
@@ -223,58 +320,125 @@ fn keys_move_selection_and_collapse() {
     let collapsed = screen(&view, &ui);
     assert!(collapsed.tree.len() < before);
     assert!(collapsed.tree[0].collapsed);
-    assert_eq!(
-        collapsed.tree[0].hidden_descendants,
-        before - collapsed.tree.len()
-    );
+    let hidden = collapsed.tree[0].hidden_descendants;
+    assert_eq!(hidden, before - collapsed.tree.len());
+    assert_eq!(toast(&ui), format!("▸ collapsed /root (+{hidden} hidden)"));
     press(&view, &mut ui, KeyCode::Char(' '));
     assert_eq!(screen(&view, &ui).tree.len(), before);
+    assert_eq!(toast(&ui), "▾ expanded /root");
 
     assert_eq!(press(&view, &mut ui, KeyCode::Char('q')), Effect::Quit);
     assert_eq!(press(&view, &mut ui, KeyCode::Char('r')), Effect::Rescan);
+    assert_eq!(toast(&ui), "rescanning…");
 }
 
-/// Regression: Enter used to collapse the selected root, so the whole tree
-/// folded into one row and Esc (help-only) could not bring it back.
+/// Regression: keys pressed between two frames are applied against the same
+/// (last drawn) screen; `j j j` must still move three rows, not one.
 #[test]
-fn enter_opens_agent_and_esc_restores_default_view() {
+fn moves_between_frames_accumulate() {
     let view = fixture::workspace();
     let mut ui = ui();
-    ui.viewport = Viewport {
-        tree: 10,
-        timeline: 5,
-        feed: 4,
-    };
-    let before = screen(&view, &ui).tree.len();
+    let vm = screen(&view, &ui);
+    sync_selection(&mut ui, &vm);
+    let now = Instant::now();
+    let hit = |ui: &mut UiState, code| apply(ui, action_for(key(code)).unwrap(), &vm, now);
+    for _ in 0..3 {
+        hit(&mut ui, KeyCode::Char('j'));
+    }
+    assert_eq!(ui.selected.as_deref(), Some(vm.tree[3].id.as_str()));
+    // Space acts on the row the selection moved to (`x`, a leaf), not the stale highlight.
+    hit(&mut ui, KeyCode::Char('k'));
+    hit(&mut ui, KeyCode::Char(' '));
+    assert_eq!(toast(&ui), format!("{} has no children", vm.tree[2].label));
 
-    // Enter "opens" the selected agent: focus moves to its timeline, tree intact.
+    // Fold and unfold the root within one frame.
+    let mut ui = self::ui();
+    sync_selection(&mut ui, &vm);
+    hit(&mut ui, KeyCode::Char(' '));
+    assert!(ui.collapsed.contains(&vm.tree[0].id));
+    hit(&mut ui, KeyCode::Char(' '));
+    assert!(ui.collapsed.is_empty());
+    assert!(toast(&ui).starts_with("▾ expanded"));
+}
+
+/// Enter / → / l dive into the selected agent's timeline; they never collapse.
+#[test]
+fn open_keys_focus_timeline() {
+    let view = fixture::workspace();
+    let before = screen(&view, &ui()).tree.len();
+    for code in [KeyCode::Enter, KeyCode::Right, KeyCode::Char('l')] {
+        let mut ui = ui();
+        press(&view, &mut ui, code);
+        assert_eq!(ui.focus, Pane::Timeline, "{code:?}");
+        assert!(ui.collapsed.is_empty(), "{code:?}");
+        assert_eq!(screen(&view, &ui).tree.len(), before, "{code:?}");
+        // Already in the timeline: stays there.
+        press(&view, &mut ui, code);
+        assert_eq!(ui.focus, Pane::Timeline, "{code:?}");
+    }
+    // From the feed, open goes to the timeline too.
+    let mut ui = ui();
+    ui.focus = Pane::Feed;
     press(&view, &mut ui, KeyCode::Enter);
     assert_eq!(ui.focus, Pane::Timeline);
-    assert_eq!(screen(&view, &ui).tree.len(), before);
-    assert!(ui.collapsed.is_empty());
+}
 
-    // Left / Right collapse and expand the selected node.
+/// Esc / ← / h go back one level: help → closed, timeline / feed → tree, tree →
+/// view reset (selection kept).
+#[test]
+fn back_keys_step_out_one_level() {
+    let view = fixture::workspace();
+    for code in [KeyCode::Esc, KeyCode::Left, KeyCode::Char('h')] {
+        let mut ui = ui();
+        ui.viewport = Viewport {
+            tree: 10,
+            timeline: 5,
+            feed: 4,
+        };
+        select(&mut ui, "codex:t-judge");
+        ui.collapsed.insert("claude:s-lead".to_string());
+        ui.hide_done = true;
+        ui.feed_filter = FeedFilter::Selected;
+        ui.feed_scroll = Scroll::Offset(0);
+        ui.timeline_scroll = Scroll::Offset(0);
+        ui.focus = Pane::Timeline;
+        ui.show_help = true;
+
+        press(&view, &mut ui, code);
+        assert!(!ui.show_help, "{code:?}: help closes first");
+        assert_eq!(ui.focus, Pane::Timeline, "{code:?}");
+
+        press(&view, &mut ui, code);
+        assert_eq!(ui.focus, Pane::Tree, "{code:?}: timeline → tree");
+        assert!(ui.hide_done, "{code:?}: toggles survive the first step");
+        assert!(ui.toast.is_none(), "{code:?}");
+
+        press(&view, &mut ui, code);
+        assert!(ui.collapsed.is_empty(), "{code:?}");
+        assert!(!ui.hide_done, "{code:?}");
+        assert_eq!(ui.feed_filter, FeedFilter::All, "{code:?}");
+        assert_eq!(ui.timeline_scroll, Scroll::Follow, "{code:?}");
+        assert_eq!(ui.feed_scroll, Scroll::Follow, "{code:?}");
+        assert_eq!(ui.selected.as_deref(), Some("codex:t-judge"), "{code:?}");
+        assert_eq!(toast(&ui), "view reset", "{code:?}");
+
+        // Feed → tree as well.
+        ui.focus = Pane::Feed;
+        press(&view, &mut ui, code);
+        assert_eq!(ui.focus, Pane::Tree, "{code:?}: feed → tree");
+    }
+}
+
+/// ← / → no longer fold: space is the only collapse key.
+#[test]
+fn arrows_do_not_collapse() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    press(&view, &mut ui, KeyCode::Left);
+    press(&view, &mut ui, KeyCode::Right);
     press(&view, &mut ui, KeyCode::Esc);
     press(&view, &mut ui, KeyCode::Left);
-    assert!(screen(&view, &ui).tree.len() < before);
-    press(&view, &mut ui, KeyCode::Right);
-    assert_eq!(screen(&view, &ui).tree.len(), before);
-
-    // Esc resets every view toggle back to the default screen.
-    press(&view, &mut ui, KeyCode::Char(' '));
-    press(&view, &mut ui, KeyCode::Char('h'));
-    press(&view, &mut ui, KeyCode::Char('f'));
-    press(&view, &mut ui, KeyCode::Tab);
-    press(&view, &mut ui, KeyCode::PageUp);
-    assert!(screen(&view, &ui).tree.len() < before);
-    press(&view, &mut ui, KeyCode::Esc);
     assert!(ui.collapsed.is_empty());
-    assert!(!ui.hide_done);
-    assert_eq!(ui.feed_filter, FeedFilter::All);
-    assert_eq!(ui.focus, Pane::Tree);
-    assert_eq!(ui.timeline_scroll, Scroll::Follow);
-    assert_eq!(ui.feed_scroll, Scroll::Follow);
-    assert_eq!(screen(&view, &ui).tree.len(), before);
 }
 
 /// Regression: with a single root (e.g. `watch --session`), folding that root
@@ -301,9 +465,19 @@ fn sole_root_cannot_be_collapsed() {
     assert!(before > 1);
 
     press(&view, &mut ui, KeyCode::Char(' '));
-    press(&view, &mut ui, KeyCode::Left);
     assert!(ui.collapsed.is_empty());
     assert_eq!(screen(&view, &ui).tree.len(), before);
+    assert_eq!(toast(&ui), "can't collapse the only session");
+}
+
+#[test]
+fn collapsing_a_leaf_explains_why_nothing_happened() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    select(&mut ui, "codex:t-scout");
+    press(&view, &mut ui, KeyCode::Char(' '));
+    assert!(ui.collapsed.is_empty());
+    assert_eq!(toast(&ui), "scout has no children");
 }
 
 #[test]
@@ -329,8 +503,14 @@ fn scrolling_stops_follow_and_tail_restores_it() {
     press(&view, &mut ui, KeyCode::Char('G'));
     assert_eq!(ui.timeline_scroll, Scroll::Follow);
 
-    // Feed pane: Tab twice, then scroll the feed.
-    press(&view, &mut ui, KeyCode::Tab);
+    // Timeline focused: j/k scroll it instead of moving the selection.
+    press(&view, &mut ui, KeyCode::Enter);
+    press(&view, &mut ui, KeyCode::Char('k'));
+    assert_eq!(ui.selected.as_deref(), Some("claude:s-lead"));
+    assert!(matches!(ui.timeline_scroll, Scroll::Offset(_)));
+    press(&view, &mut ui, KeyCode::Char('G'));
+
+    // Feed pane: Tab, then scroll the feed.
     press(&view, &mut ui, KeyCode::Tab);
     assert_eq!(ui.focus, Pane::Feed);
     press(&view, &mut ui, KeyCode::Char('k'));
@@ -339,26 +519,70 @@ fn scrolling_stops_follow_and_tail_restores_it() {
 }
 
 #[test]
-fn toggles_and_help() {
+fn toggles_raise_toasts_and_help_swallows_keys() {
     let view = fixture::workspace();
     let mut ui = ui();
+    select(&mut ui, "claude:s-lead");
     press(&view, &mut ui, KeyCode::Char('f'));
     assert_eq!(ui.feed_filter, FeedFilter::Selected);
-    press(&view, &mut ui, KeyCode::Char('h'));
+    assert_eq!(toast(&ui), "messages: s-lead only — f for all");
+    press(&view, &mut ui, KeyCode::Char('f'));
+    assert_eq!(toast(&ui), "messages: all");
+
+    let hideable = screen(&view, &ui).status.done_hideable;
+    assert!(hideable > 0);
+    press(&view, &mut ui, KeyCode::Char('d'));
     assert!(ui.hide_done);
+    assert_eq!(
+        toast(&ui),
+        format!("done agents hidden ({hideable}) — d to show")
+    );
+    assert_eq!(screen(&view, &ui).status.hidden, hideable);
+    press(&view, &mut ui, KeyCode::Char('d'));
+    assert!(!ui.hide_done);
+    assert_eq!(toast(&ui), "done agents shown");
+    press(&view, &mut ui, KeyCode::Char('d'));
+
     press(&view, &mut ui, KeyCode::Char('a'));
     assert!(ui.auto_select);
+    assert_eq!(toast(&ui), "auto-select on");
     // Auto-select picks the most recently active agent (lead's Bash at 12:04:50).
     let vm = screen(&view, &ui);
     assert_eq!(vm.focus.agent_id.as_deref(), Some("claude:s-lead"));
+    press(&view, &mut ui, KeyCode::Char('a'));
+    assert_eq!(toast(&ui), "auto-select off");
 
     press(&view, &mut ui, KeyCode::Char('?'));
     assert!(ui.show_help);
     // While help is open other keys are swallowed.
-    press(&view, &mut ui, KeyCode::Char('h'));
+    press(&view, &mut ui, KeyCode::Char('d'));
     assert!(ui.hide_done);
+    press(&view, &mut ui, KeyCode::Char(' '));
+    assert!(ui.collapsed.is_empty());
     press(&view, &mut ui, KeyCode::Esc);
     assert!(!ui.show_help);
+    assert!(ui.hide_done, "Esc only closed help");
+}
+
+#[test]
+fn toast_expires() {
+    let view = fixture::workspace();
+    let mut ui = ui();
+    let now = Instant::now();
+    ui.toast = Some(Toast::new("view reset", now));
+    assert_eq!(screen(&view, &ui).toast.as_deref(), Some("view reset"));
+    assert!(!expire_toast(&mut ui, now + Duration::from_millis(1500)));
+    assert!(ui.toast.is_some());
+
+    // Raised long enough ago: the presenter hides it, the loop drops it.
+    let old = now
+        .checked_sub(TOAST_TTL + Duration::from_millis(1))
+        .expect("monotonic clock past the TTL");
+    ui.toast = Some(Toast::new("view reset", old));
+    assert!(screen(&view, &ui).toast.is_none());
+    assert!(expire_toast(&mut ui, now));
+    assert!(ui.toast.is_none());
+    assert!(!expire_toast(&mut ui, now));
 }
 
 #[test]

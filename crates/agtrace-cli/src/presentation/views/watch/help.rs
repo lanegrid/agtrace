@@ -7,16 +7,16 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 pub const KEYS: &[(&str, &str)] = &[
-    ("j/k ↓/↑", "move selection (or scroll focused pane)"),
-    ("Enter", "open selected agent (focus timeline)"),
-    ("space ←/→", "collapse / expand node"),
-    ("Esc", "back: close help / reset view"),
+    ("Enter → l", "open selected agent (focus timeline)"),
+    ("Esc ← h", "back: close help / to tree / reset view"),
+    ("j/k ↓/↑", "move selection (tree) or scroll pane"),
+    ("space", "fold / unfold selected node"),
     ("Tab/S-Tab", "cycle pane focus"),
     ("PgUp/PgDn", "scroll focused pane"),
     ("C-u/C-d", "half-page scroll"),
     ("G / g", "jump to tail (follow) / top"),
-    ("f", "feed: all ↔ selected agent"),
-    ("h", "hide / show done & killed"),
+    ("f", "messages: all ↔ selected agent"),
+    ("d", "hide / show done & killed"),
     ("a", "auto-select most active agent"),
     ("r", "rescan now"),
     ("?", "toggle this help"),

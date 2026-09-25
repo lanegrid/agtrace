@@ -274,6 +274,7 @@ expression: vm
     "running": 4,
     "idle": 3,
     "hidden": 0,
+    "done_hideable": 2,
     "diagnostics": 0,
     "errors": 0,
     "last_error": null,
@@ -285,5 +286,6 @@ expression: vm
   "focus_pane": "tree",
   "timeline_scroll": "follow",
   "feed_scroll": "follow",
-  "show_help": false
+  "show_help": false,
+  "toast": null
 }

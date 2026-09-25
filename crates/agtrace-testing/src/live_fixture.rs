@@ -53,14 +53,14 @@ impl LiveFixture {
         fs::create_dir_all(fixture.codex_day_dir())?;
         for entry in fs::read_dir(src.join("codex/home/sessions/2026/09/20"))? {
             let path = entry?.path();
-            fs::copy(
+            copy_fresh(
                 &path,
-                fixture.codex_day_dir().join(path.file_name().unwrap()),
+                &fixture.codex_day_dir().join(path.file_name().unwrap()),
             )?;
         }
         let index = src.join("codex/home/session_index.jsonl");
         if index.exists() {
-            fs::copy(index, fixture.codex_home().join("session_index.jsonl"))?;
+            copy_fresh(&index, &fixture.codex_home().join("session_index.jsonl"))?;
         }
         Ok(fixture)
     }
@@ -178,8 +178,16 @@ fn copy_dir(src: &Path, dst: &Path) -> std::io::Result<()> {
         if entry.file_type().is_dir() {
             fs::create_dir_all(&target)?;
         } else {
-            fs::copy(entry.path(), &target)?;
+            copy_fresh(entry.path(), &target)?;
         }
     }
     Ok(())
+}
+
+/// Copy a file and stamp it with the current time. `fs::copy` keeps the source
+/// mtime on macOS, i.e. the checkout time, so fixtures older than the watcher's
+/// `since` window would silently drop out of project scope.
+fn copy_fresh(src: &Path, dst: &Path) -> std::io::Result<()> {
+    fs::copy(src, dst)?;
+    filetime::set_file_mtime(dst, filetime::FileTime::now())
 }
