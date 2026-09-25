@@ -1,44 +1,36 @@
-//! Bottom pane: workspace-wide inter-agent message feed.
+//! Bottom-right pane: inter-agent messages, spawns and lifecycle changes scoped
+//! to the selection (all, a session, an agent, a folded group).
 
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Paragraph, Row, Table};
 
-use super::style::{FOCUS_COLOR, col_width, dim, pane_block};
-use crate::presentation::view_models::watch::{
-    FeedFilter, FeedRowKind, FeedRowVm, Pane, WatchScreenVm,
-};
+use super::style::{col_width, dim, pane_block};
+use crate::presentation::view_models::watch::{FeedRowKind, FeedRowVm, Pane, WatchScreenVm};
 
-/// `panes`: the agents screen (pane focus and timeline spotlight apply); false on
-/// the overview, where the feed is a compact, unfocused strip.
-pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize, panes: bool) {
-    let mut title = " Messages ".to_string();
-    if vm.status.feed_filter == FeedFilter::Selected {
-        title.push_str("(selected agent) ");
-    }
+pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
+    let mut title = format!(" Messages · {} ", super::style::clip(&vm.feed_scope, 30));
     if !vm.feed_scroll.is_follow() {
         title.push_str("· scrolled ");
     }
-    let block = pane_block(panes && vm.focus_pane == Pane::Feed, vec![Span::raw(title)]);
+    let block = pane_block(vm.focus_pane == Pane::Feed, vec![Span::raw(title)]);
     if vm.feed.is_empty() {
-        let p = Paragraph::new(Line::styled(" no inter-agent messages yet", dim())).block(block);
+        let p = Paragraph::new(Line::styled(" no messages here yet", dim())).block(block);
         f.render_widget(p, area);
         return;
     }
+    let height = block.inner(area).height as usize;
     let start = vm.feed_scroll.start(vm.feed.len(), height);
     let visible: Vec<&FeedRowVm> = vm.feed.iter().skip(start).take(height).collect();
     let routes: Vec<String> = visible.iter().map(|r| route(r)).collect();
     let route_w = col_width(routes.iter().map(String::as_str), 30);
     let tag_w = col_width(visible.iter().map(|r| r.tag.as_str()), 14);
-    // While the timeline has focus, rows not involving its agent recede so the
-    // agent's own conversation stands out (highlighted, not filtered).
-    let spotlight = panes && vm.focus_pane == Pane::Timeline;
     let rows: Vec<Row> = visible
         .iter()
         .zip(routes)
-        .map(|(r, route)| row(r, route, spotlight))
+        .map(|(r, route)| row(r, route))
         .collect();
     let table = Table::new(
         rows,
@@ -62,7 +54,7 @@ fn route(r: &FeedRowVm) -> String {
     }
 }
 
-fn row(r: &FeedRowVm, route: String, spotlight: bool) -> Row<'static> {
+fn row(r: &FeedRowVm, route: String) -> Row<'static> {
     let tag_style = match r.kind {
         FeedRowKind::Message => Style::default().fg(Color::Magenta),
         FeedRowKind::Spawn => Style::default().fg(Color::Blue),
@@ -74,22 +66,10 @@ fn row(r: &FeedRowVm, route: String, spotlight: bool) -> Row<'static> {
         (Some(t), false) => Span::raw(t.clone()),
         (None, false) => Span::raw(""),
     };
-    let route_style = if r.involves_selected {
-        Style::default()
-            .fg(FOCUS_COLOR)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-    };
-    let row = Row::new(vec![
+    Row::new(vec![
         Cell::from(Span::styled(r.time.clone(), dim())),
-        Cell::from(Span::styled(route, route_style)),
+        Cell::from(Span::raw(route)),
         Cell::from(Span::styled(r.tag.clone(), tag_style)),
         Cell::from(text),
-    ]);
-    if spotlight && !r.involves_selected {
-        row.style(Style::default().add_modifier(Modifier::DIM))
-    } else {
-        row
-    }
+    ])
 }

@@ -37,7 +37,7 @@ use crate::presentation::view_models::watch::{ConsoleVm, StatusVm, UiState, Watc
 use crate::presentation::views::watch::input::{
     Effect, action_in, apply, expire_toast, sync_selection,
 };
-use crate::presentation::views::watch::{console, detail, layout, render};
+use crate::presentation::views::watch::{console, measure, render, viewport};
 
 /// Minimum interval between two frames.
 const FRAME: Duration = Duration::from_millis(100);
@@ -170,11 +170,11 @@ pub fn run(source: &dyn WorkspaceSource, mut ui: UiState) -> Result<()> {
         }
         if dirty && since_draw.is_none_or(|d| d >= FRAME) {
             let size = terminal.size()?;
-            let l = layout(Rect::new(0, 0, size.width, size.height));
-            ui.viewport = l.viewport();
+            let area = Rect::new(0, 0, size.width, size.height);
+            ui.viewport = viewport(area, &ui);
             let vm = build(source, &ui);
-            // Detail sections wrap their text: scroll keys clamp against this frame.
-            ui.viewport.detail = detail::metrics(l.detail(), &vm);
+            // Content wraps / folds its text: scroll keys clamp against this frame.
+            measure(area, &vm, &mut ui.viewport);
             sync_selection(&mut ui, &vm);
             terminal.draw(|f| render(f, &vm))?;
             screen = Some(vm);
@@ -319,7 +319,7 @@ impl ConsolePrinter {
     /// Lines for everything new in `vm` since the previous call.
     pub fn lines(&mut self, vm: &ConsoleVm) -> Vec<String> {
         let mut out = Vec::new();
-        for row in &vm.screen.tree {
+        for row in &vm.tree {
             match self.agents.insert(row.id.clone(), row.status) {
                 None => out.push(console::agent_added(row)),
                 Some(prev) if prev != row.status => out.push(console::agent_status(row)),
@@ -333,7 +333,7 @@ impl ConsolePrinter {
                 }
             }
         }
-        for (key, row) in vm.feed_keys.iter().zip(&vm.screen.feed) {
+        for (key, row) in vm.feed_keys.iter().zip(&vm.feed) {
             if self.feed.insert(key.clone()) {
                 out.push(console::feed(row));
             }

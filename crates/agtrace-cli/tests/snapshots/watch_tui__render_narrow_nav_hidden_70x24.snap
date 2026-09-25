@@ -1,0 +1,28 @@
+---
+source: crates/agtrace-cli/tests/watch_tui.rs
+expression: out
+---
+"┏ ▶ audit-A ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓"
+"┃audit-A · teammate of s-lead (team audit) · general-purpose · claud…┃"
+"┃ctx █░░░░░░░░░ 12% of 200k [table]  ▁   in 24k / out 10 · 1 turns ·…┃"
+"┃── [i] Instructions (1) ────────────────────────────────────────────┃"
+"┃[12:00 spawned by s-lead · NEW_TASK]                                ┃"
+"┃  review parser                                                     ┃"
+"┃── [n] Now ─────────────────────────────────────────────────────────┃"
+"┃idle — waiting for input                                            ┃"
+"┃tasks (0/1 done):                                                   ┃"
+"┃  ▸ Reviewing the parser                                            ┃"
+"┃── [r] Result ──────────────────────────────────────────────────────┃"
+"┃(idle — no result reported yet)                                     ┃"
+"┃── ▶ [t] Timeline (5) ─────────────────────────────────────── 2-5/5 ┃"
+"┃12:00 ▸ Bash     cargo test -p parser                               ┃"
+"┃12:00 ✗ error    3 failed                                           ┃"
+"┃12:01 → s-lead   MESSAGE "done, found 3 bugs"                       ┃"
+"┃12:01 ─ turn end                                                    ┃"
+"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
+"┌ Messages · audit-A ────────────────────────────────────────────────┐"
+"│12:00 s-lead → audit-A spawn teammate general-purpose               │"
+"│12:00 s-lead → audit-A NEW_TASK       "review parser"               │"
+"│12:01 audit-A → s-lead MESSAGE        "done, found 3 bugs"          │"
+"└────────────────────────────────────────────────────────────────────┘"
+" demo-… › Audit… › audit… · TIMELINE  navigat…  ← nav · s nav · ? help"

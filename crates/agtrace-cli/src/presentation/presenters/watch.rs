@@ -2,14 +2,16 @@
 //!
 //! [`build_screen`] is pure: `(&WorkspaceView, &UiState, now) -> WatchScreenVm`.
 //! It decides what is shown (requirements "selected" items only):
-//! - tree: roster with status, kind badge, context %;
-//! - focus: current activity + timeline of the selected agent (tool calls, Codex
-//!   sub-actions, messages, spawns, lifecycle, compaction, model change, turn end /
-//!   interrupt, queued prompts absorbed mid-turn, user prompts, assistant text);
-//! - feed: inter-agent messages, spawns and lifecycle changes (encrypted bodies are
-//!   never shown, only type and route).
+//! - navigator: the scope, its sessions (live first, older ones in one group) and
+//!   each session's agent tree, a parent's finished children folded into a group;
+//! - content of the selected node: the multi-session overview (top), a session's
+//!   overview, an agent's detail (instructions, now, result, timeline), the items
+//!   of a folded group, or the older sessions;
+//! - feed: inter-agent messages, spawns and lifecycle changes scoped to the
+//!   selection (encrypted bodies are never shown, only type and route).
 
 mod detail;
+mod navigator;
 mod overview;
 mod sessions;
 
@@ -29,9 +31,9 @@ use agtrace_sdk::workspace::{
 use chrono::{DateTime, FixedOffset, Utc};
 
 use crate::presentation::view_models::watch::{
-    ActivityVm, AgentRowVm, AgentTimelineVm, ConsoleVm, CtxVm, DONE_FOLD_MIN, FeedFilter,
-    FeedRowKind, FeedRowVm, FocusVm, KeyedRow, RowKind, Screen, StatusBarVm, StatusVm,
-    TimelineRowVm, UiState, WatchScreenVm,
+    ActivityVm, AgentRowVm, AgentTimelineVm, ConsoleVm, ContentVm, CtxVm, FeedRowKind, FeedRowVm,
+    FoldedVm, KeyedRow, NAV_FOLD_MIN, NavKind, RowKind, StatusBarVm, StatusVm, TimelineRowVm,
+    UiState, WatchScreenVm,
 };
 
 /// Build the whole screen from the current workspace snapshot.
@@ -41,112 +43,214 @@ use crate::presentation::view_models::watch::{
 pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> WatchScreenVm {
     let filter = ui.filter.to_lowercase();
     let all_sessions = view.sessions(now);
-    let focus = focus_root(view, ui);
-    // Session order (live first), narrowed to the focused session; the compact
-    // overview leaves the older sessions to the sessions screen.
-    // (Only when there is something newer: an old `--session` or a quiet project
-    // still shows its sessions.)
-    let compact = focus.is_none()
-        && !ui.show_older
-        && rows_screen(ui) == Screen::Overview
-        && all_sessions
-            .iter()
-            .any(|s| s.has_transcript && s.state != SessionState::Older);
     let roots: Vec<AgentId> = all_sessions
         .iter()
-        .filter(|s| s.has_transcript && focus.as_ref().is_none_or(|f| s.root == *f))
-        .filter(|s| !compact || s.state != SessionState::Older)
+        .filter(|s| s.has_transcript)
         .map(|s| s.root.clone())
         .collect();
-    let fold = done_fold(ui);
-    let visible = visibility(view, &roots, fold, &filter);
-    let selected = effective_selection(view, ui, &roots, &visible);
-
-    let mut tree = Vec::new();
-    let mut seen = HashSet::new();
-    let shown_roots: Vec<&AgentId> = roots.iter().filter(|r| visible.contains(*r)).collect();
-    let n = shown_roots.len();
-    for (i, root) in shown_roots.into_iter().enumerate() {
-        push_rows(
-            view,
-            ui,
-            &visible,
-            selected.as_ref(),
-            root,
-            0,
-            &mut Vec::new(),
-            i + 1 == n,
-            &mut tree,
-            &mut seen,
-        );
-    }
-
-    // Root rows are named like their session.
-    for row in tree.iter_mut().filter(|r| r.depth == 0) {
-        if let Some(s) = all_sessions.iter().find(|s| s.root.as_str() == row.id) {
-            row.label = s.name.clone();
-        }
-    }
-
-    let members: HashSet<&AgentId> = roots.iter().flat_map(|r| view.session_agents(r)).collect();
-    let focus_view = build_focus(view, ui, selected.as_ref(), now);
-    let feed = build_feed(
+    let plan = fold_plan(view, &roots, ui.show_done, &filter);
+    let nav = navigator::build(
         view,
         ui,
-        selected.as_ref(),
-        focus.is_some().then_some(&members),
+        &all_sessions,
+        &plan,
+        &filter,
+        top_label(&ui.scope),
     );
-    let focus_name = focus.as_ref().map(|f| {
+    let top = nav.rows.first().expect("the top node is always there");
+    let sel = nav.rows.iter().find(|r| r.selected).unwrap_or(top).clone();
+
+    let session_of = |id: &AgentId| {
         all_sessions
             .iter()
-            .find(|s| s.root == *f)
-            .map(|s| s.name.clone())
-            .unwrap_or_else(|| f.native_session_id().chars().take(8).collect())
-    });
-    let mut status = build_status(view, ui, &members, &visible, &all_sessions, focus_name);
-    if ui.screen == Screen::Sessions {
-        status.folded = 0;
-    }
-    if !filter.is_empty() {
-        status.matches = members
-            .iter()
-            .filter_map(|id| view.agent(id))
-            .filter(|a| visible.contains(a.id()) && matches_filter(view, a, &filter))
-            .count();
-    }
-    let sessions = sessions::build_sessions(view, ui, &all_sessions, focus.as_ref(), now);
-    let overview = (ui.screen == Screen::Overview).then(|| {
-        let mut ov = overview::build_overview(view, ui, &tree, &all_sessions, &visible, now);
-        if compact {
-            ov.older_hidden = sessions.older;
+            .find(|s| s.root == *view.session_root(id))
+    };
+    let (content, overview, detail, feed_scope) = match sel.kind {
+        NavKind::Top => {
+            // The compact overview leaves the older sessions to the navigator's
+            // group (only when there is something newer).
+            let newer = all_sessions.iter().any(|s| s.state != SessionState::Older);
+            let shown: Vec<&Session> = all_sessions
+                .iter()
+                .filter(|s| s.has_transcript && plan.visible.contains(&s.root))
+                .filter(|s| !newer || s.state != SessionState::Older)
+                .collect();
+            let rows = session_rows(view, &shown, &plan);
+            let mut ov = overview::build_overview(view, ui, rows, &all_sessions, &plan, now);
+            if newer {
+                ov.older_hidden = all_sessions
+                    .iter()
+                    .filter(|s| s.state == SessionState::Older)
+                    .count();
+            }
+            (ContentVm::Overview, Some(ov), None, FeedScope::All)
         }
-        ov
-    });
-    // The detail screen keeps the agent it was opened on (auto-select or tree
-    // changes do not switch it); it falls back to the selection.
-    let detail = (ui.screen == Screen::Detail)
-        .then(|| {
-            ui.detail_agent
-                .as_deref()
-                .and_then(AgentId::parse)
-                .and_then(|id| view.agent(&id))
-                .or_else(|| selected.as_ref().and_then(|id| view.agent(id)))
-                .map(|a| detail::build_detail(view, ui, a, now))
-        })
-        .flatten();
+        NavKind::Session => {
+            let s = all_sessions.iter().find(|s| s.root.as_str() == sel.key);
+            let has_transcript = s.is_some_and(|s| s.has_transcript);
+            let root = AgentId::parse(&sel.key);
+            match root.as_ref().and_then(|id| view.agent(id)) {
+                Some(a) if ui.root_detail => (
+                    ContentVm::Agent {
+                        id: sel.key.clone(),
+                    },
+                    None,
+                    Some(detail::build_detail(view, ui, a, now)),
+                    FeedScope::Sources(members(view, a.id())),
+                ),
+                _ => {
+                    let shown: Vec<&Session> = s.filter(|s| s.has_transcript).into_iter().collect();
+                    let rows = session_rows(view, &shown, &plan);
+                    let ov = overview::build_overview(view, ui, rows, &all_sessions, &plan, now);
+                    let scope = match &root {
+                        Some(r) if has_transcript => FeedScope::Sources(members(view, r)),
+                        _ => FeedScope::Sources(HashSet::new()),
+                    };
+                    (
+                        ContentVm::Session {
+                            id: sel.key.clone(),
+                            has_transcript,
+                        },
+                        Some(ov),
+                        None,
+                        scope,
+                    )
+                }
+            }
+        }
+        NavKind::Agent => {
+            let a = AgentId::parse(&sel.key).and_then(|id| view.agent(&id));
+            match a {
+                Some(a) => (
+                    ContentVm::Agent {
+                        id: sel.key.clone(),
+                    },
+                    None,
+                    Some(detail::build_detail(view, ui, a, now)),
+                    FeedScope::Agent(a.id().clone()),
+                ),
+                None => (ContentVm::Overview, None, None, FeedScope::All),
+            }
+        }
+        NavKind::Fold => {
+            let parent = sel.parent.clone().unwrap_or_default();
+            let items = AgentId::parse(&parent)
+                .and_then(|p| plan.groups.get(&p))
+                .cloned()
+                .unwrap_or_default();
+            let mut rows = Vec::new();
+            let mut seen = HashSet::new();
+            for (i, id) in items.iter().enumerate() {
+                walk(
+                    view,
+                    id,
+                    0,
+                    &mut Vec::new(),
+                    i + 1 == items.len(),
+                    &|_| true,
+                    &mut rows,
+                    &mut seen,
+                );
+            }
+            let sources: HashSet<AgentId> = rows.iter().map(|r| r.id.clone()).collect();
+            let rows = rows
+                .into_iter()
+                .filter_map(|r| {
+                    let label = tree_label(view, view.agent(&r.id)?);
+                    Some((r, label, false))
+                })
+                .collect();
+            let ov = overview::build_overview(view, ui, rows, &all_sessions, &plan, now);
+            (
+                ContentVm::Fold {
+                    parent,
+                    folded: sel.folded.unwrap_or_default(),
+                },
+                Some(ov),
+                None,
+                FeedScope::Sources(sources),
+            )
+        }
+        NavKind::Older => {
+            let older: Vec<&Session> = all_sessions
+                .iter()
+                .filter(|s| s.state == SessionState::Older)
+                .collect();
+            let sources = older
+                .iter()
+                .filter(|s| s.has_transcript)
+                .flat_map(|s| members(view, &s.root))
+                .collect();
+            (
+                ContentVm::Older { count: older.len() },
+                None,
+                None,
+                FeedScope::Sources(sources),
+            )
+        }
+    };
+
+    let feed = build_feed(view, ui, &feed_scope);
+    let feed_scope = match &feed_scope {
+        FeedScope::All => "all".to_string(),
+        FeedScope::Agent(id) => view.agent(id).map(|a| a.label()).unwrap_or_default(),
+        FeedScope::Sources(_) => match sel.kind {
+            NavKind::Session => "this session".to_string(),
+            NavKind::Fold => "folded agents".to_string(),
+            NavKind::Older => "older sessions".to_string(),
+            _ => "this session".to_string(),
+        },
+    };
+
+    // Breadcrumb: scope › session › agent / group.
+    let mut crumbs = vec![top.label.clone()];
+    match sel.kind {
+        NavKind::Top => {}
+        NavKind::Session => crumbs.push(sel.label.clone()),
+        NavKind::Agent | NavKind::Fold => {
+            let anchor = match sel.kind {
+                NavKind::Fold => sel.parent.as_deref().and_then(AgentId::parse),
+                _ => AgentId::parse(&sel.key),
+            };
+            if let Some(s) = anchor.as_ref().and_then(session_of) {
+                crumbs.push(s.name.clone());
+            }
+            match sel.kind {
+                NavKind::Agent => crumbs.push(sel.label.clone()),
+                _ => {
+                    if let Some(p) = anchor
+                        .as_ref()
+                        .filter(|p| view.session_root(p) != *p)
+                        .and_then(|p| view.agent(p))
+                    {
+                        crumbs.push(p.label());
+                    }
+                    crumbs.push(sel.label.clone());
+                }
+            }
+        }
+        NavKind::Older => crumbs.push(sel.label.clone()),
+    }
+
+    let sessions = sessions::build_sessions(view, ui, &all_sessions, now);
+    let mut status = build_status(view, ui, &roots, &plan, &all_sessions, crumbs);
+    if !filter.is_empty() {
+        status.matches = nav.rows.iter().filter(|r| r.matched).count();
+    }
 
     WatchScreenVm {
-        screen: ui.screen,
+        nav,
+        content,
         sessions,
         overview,
         detail,
-        tree,
-        focus: focus_view,
         feed,
+        feed_scope,
         status,
         focus_pane: ui.focus,
-        timeline_scroll: ui.timeline_scroll,
+        content_scroll: ui.content_scroll,
         feed_scroll: ui.feed_scroll,
+        nav_hidden: ui.nav_hidden,
         show_help: ui.show_help,
         toast: ui
             .toast
@@ -156,39 +260,93 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
     }
 }
 
-/// Root of the focused session: the focus id, or the session it has since been
-/// folded into (a stub that turned out to belong to another session).
-fn focus_root(view: &WorkspaceView, ui: &UiState) -> Option<AgentId> {
-    let id = ui.session_focus.as_deref().and_then(AgentId::parse)?;
-    Some(match view.agent(&id) {
-        Some(_) => view.session_root(&id).clone(),
-        None => id,
-    })
+/// Name of the top node: the scope without `project` and the `since` window
+/// (`yohaku-studio`, `all projects`, `session 01a07053`).
+fn top_label(scope: &str) -> String {
+    let base = scope.split(" · since ").next().unwrap_or(scope);
+    let base = base.strip_prefix("project ").unwrap_or(base);
+    if base.is_empty() {
+        "workspace".to_string()
+    } else {
+        base.to_string()
+    }
 }
 
-/// Build the console (line printer) snapshot: the screen plus every agent's
-/// timeline and the workspace feed, keyed by event id so the printer emits each
-/// row once (design §6.3, `watch --mode console`).
-pub fn build_console(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> ConsoleVm {
-    let ui = UiState {
-        screen: Screen::Agents,
-        feed_filter: FeedFilter::All,
-        show_done: true,
-        session_focus: None,
-        collapsed: Default::default(),
-        filter: String::new(),
-        ..ui.clone()
-    };
-    let mut screen = build_screen(view, &ui, now);
-    // The console prefixes timeline rows with agent labels (`[/root]`): root rows
-    // keep theirs instead of the session name.
-    for row in screen.tree.iter_mut().filter(|r| r.depth == 0) {
-        if let Some(a) = AgentId::parse(&row.id).and_then(|id| view.agent(&id)) {
-            row.label = tree_label(view, a);
+/// Agents of the session rooted at `root`.
+fn members(view: &WorkspaceView, root: &AgentId) -> HashSet<AgentId> {
+    view.session_agents(root).into_iter().cloned().collect()
+}
+
+/// Overview rows of `sessions`: each root (named like its session, with a header)
+/// and its agents shown in place, in tree order.
+fn session_rows(
+    view: &WorkspaceView,
+    sessions: &[&Session],
+    plan: &FoldPlan,
+) -> Vec<(TreeRow, String, bool)> {
+    let mut rows = Vec::new();
+    let mut seen = HashSet::new();
+    for s in sessions {
+        let mut tree = Vec::new();
+        let include = |id: &AgentId| plan.visible.contains(id);
+        walk(
+            view,
+            &s.root,
+            0,
+            &mut Vec::new(),
+            true,
+            &include,
+            &mut tree,
+            &mut seen,
+        );
+        for r in tree {
+            let Some(a) = view.agent(&r.id) else { continue };
+            let root = r.depth == 0;
+            let label = if root {
+                s.name.clone()
+            } else {
+                tree_label(view, a)
+            };
+            rows.push((r, label, root));
         }
     }
-    let timelines = screen
-        .tree
+    rows
+}
+
+/// Build the console (line printer) snapshot: every session's agent tree (nothing
+/// folded), every agent's timeline and the workspace feed, keyed by event id so
+/// the printer emits each row once (design §6.3, `watch --mode console`).
+pub fn build_console(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> ConsoleVm {
+    let mut rows = Vec::new();
+    let mut seen = HashSet::new();
+    for s in view.sessions(now).iter().filter(|s| s.has_transcript) {
+        walk(
+            view,
+            &s.root,
+            0,
+            &mut Vec::new(),
+            true,
+            &|_| true,
+            &mut rows,
+            &mut seen,
+        );
+    }
+    let tree: Vec<AgentRowVm> = rows
+        .iter()
+        .filter_map(|r| {
+            let a = view.agent(&r.id)?;
+            Some(AgentRowVm {
+                id: r.id.as_str().to_string(),
+                depth: r.depth,
+                label: tree_label(view, a),
+                provider: provider_name(a.agent.provider).to_string(),
+                badge: badge(a.agent.kind),
+                status: status_vm(a.status),
+                ctx_pct: ctx(a).map(|c| c.pct),
+            })
+        })
+        .collect();
+    let timelines = tree
         .iter()
         .filter_map(|row| {
             let id = AgentId::parse(&row.id)?;
@@ -210,17 +368,19 @@ pub fn build_console(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> 
             })
         })
         .collect();
-    // FeedFilter::All keeps `screen.feed` aligned with `view.feed`.
+    // The unscoped feed stays aligned with `view.feed`.
+    let feed = build_feed(view, ui, &FeedScope::All);
     let feed_keys = view.feed.iter().map(|e| e.event_id.to_string()).collect();
     ConsoleVm {
-        screen,
+        tree,
+        feed,
         timelines,
         feed_keys,
     }
 }
 
 // ============================================================================
-// Tree
+// Trees and folds
 // ============================================================================
 
 /// Agents that the done fold hides: finished ones (failed ones stay visible),
@@ -230,33 +390,85 @@ fn is_foldable(a: &AgentView) -> bool {
         || (a.session_fold.is_some() && a.status != AgentStatus::Running)
 }
 
-/// How finished agents are folded on the current screen.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum DoneFold {
-    /// `d`: everything shown.
-    Off,
-    /// Overview: every finished agent below a session root.
-    All,
-    /// Agents tree: a parent's finished children when it has more than `n`.
-    Crowded(usize),
+/// Which agents are shown in place, and which are folded into groups.
+pub(super) struct FoldPlan {
+    /// Agents shown in place (roots always, unless a `/` filter leaves them out).
+    pub visible: HashSet<AgentId>,
+    /// Parent → its finished children folded into one navigator group (tree order).
+    pub groups: HashMap<AgentId, Vec<AgentId>>,
 }
 
-/// Screen whose rows `vm.tree` holds (the detail steps through its origin's).
-fn rows_screen(ui: &UiState) -> Screen {
-    match ui.screen {
-        Screen::Detail => ui.detail_return,
-        s => s,
+/// Fold finished subtrees below the session roots: a parent's finished children
+/// (whose subtrees are finished too) form one group when there are at least
+/// [`NAV_FOLD_MIN`] of them; a single one stays in place. `d` (`show_done`) shows
+/// everything; a `/` filter (lowercase) shows its matches and their ancestors.
+fn fold_plan(view: &WorkspaceView, roots: &[AgentId], show_done: bool, filter: &str) -> FoldPlan {
+    if !filter.is_empty() || show_done {
+        return FoldPlan {
+            visible: visibility(view, roots, false, filter),
+            groups: HashMap::new(),
+        };
+    }
+    let mut visible = visibility(view, roots, true, "");
+    let mut groups = HashMap::new();
+    let parents: Vec<AgentId> = visible.iter().cloned().collect();
+    for p in parents {
+        let Some(a) = view.agent(&p) else { continue };
+        let folded: Vec<AgentId> = a
+            .children
+            .iter()
+            .filter(|c| !visible.contains(*c) && view.agent(c).is_some())
+            .cloned()
+            .collect();
+        if folded.is_empty() {
+            continue;
+        }
+        if folded.len() >= NAV_FOLD_MIN {
+            groups.insert(p, folded);
+        } else {
+            for c in &folded {
+                restore(view, c, &mut visible);
+            }
+        }
+    }
+    FoldPlan { visible, groups }
+}
+
+/// Show a folded subtree again (everything below it is finished).
+fn restore(view: &WorkspaceView, id: &AgentId, out: &mut HashSet<AgentId>) {
+    let mut stack = vec![id];
+    while let Some(cur) = stack.pop() {
+        if !out.insert(cur.clone()) {
+            continue;
+        }
+        if let Some(a) = view.agent(cur) {
+            stack.extend(a.children.iter());
+        }
     }
 }
 
-fn done_fold(ui: &UiState) -> DoneFold {
-    if ui.show_done {
-        return DoneFold::Off;
+/// Counts of the finished agents (and earlier transcripts) in the subtrees of `ids`.
+fn folded_counts(view: &WorkspaceView, ids: &[AgentId]) -> FoldedVm {
+    let mut out = FoldedVm::default();
+    let mut stack: Vec<&AgentId> = ids.iter().collect();
+    let mut seen = HashSet::new();
+    while let Some(id) = stack.pop() {
+        if !seen.insert(id) {
+            continue;
+        }
+        let Some(a) = view.agent(id) else { continue };
+        if a.session_fold.is_some() {
+            out.transcripts += 1;
+        } else {
+            match a.status {
+                AgentStatus::Done => out.done += 1,
+                AgentStatus::Killed => out.killed += 1,
+                _ => {}
+            }
+        }
+        stack.extend(a.children.iter());
     }
-    match rows_screen(ui) {
-        Screen::Agents => DoneFold::Crowded(DONE_FOLD_MIN),
-        Screen::Overview | Screen::Sessions | Screen::Detail => DoneFold::All,
-    }
+    out
 }
 
 /// The agent's labels or id contain `needle` (lowercase), ignoring case.
@@ -271,13 +483,13 @@ fn matches_filter(view: &WorkspaceView, a: &AgentView, needle: &str) -> bool {
     .any(|s| s.to_lowercase().contains(needle))
 }
 
-/// Agents shown below `roots`: all but the finished ones `fold` hides (kept when a
+/// Agents shown below `roots`: all but the finished subtrees (`fold`; kept when a
 /// descendant is shown); with a `/` filter (lowercase, non-empty), only the
 /// matching agents and their ancestors (folds ignored: finished agents are found).
 fn visibility(
     view: &WorkspaceView,
     roots: &[AgentId],
-    fold: DoneFold,
+    fold: bool,
     filter: &str,
 ) -> HashSet<AgentId> {
     /// Returns whether `id` is shown.
@@ -285,7 +497,7 @@ fn visibility(
         view: &WorkspaceView,
         id: &AgentId,
         depth: usize,
-        fold: DoneFold,
+        fold: bool,
         filter: &str,
         out: &mut HashSet<AgentId>,
         seen: &mut HashSet<AgentId>,
@@ -296,61 +508,19 @@ fn visibility(
         let Some(a) = view.agent(id) else {
             return false;
         };
-        let shown_children: Vec<bool> = a
-            .children
-            .iter()
-            .map(|c| visit(view, c, depth + 1, fold, filter, out, seen))
-            .collect();
-        let mut any_child = shown_children.iter().any(|x| *x);
-        if !filter.is_empty() {
-            let shown = any_child || matches_filter(view, a, filter);
-            if shown {
-                out.insert(id.clone());
-            }
-            return shown;
+        let mut any_child = false;
+        for c in &a.children {
+            any_child |= visit(view, c, depth + 1, fold, filter, out, seen);
         }
-        // Crowded fold: a parent with few finished children keeps them.
-        if let DoneFold::Crowded(n) = fold {
-            let folded: Vec<&AgentId> = a
-                .children
-                .iter()
-                .zip(&shown_children)
-                .filter(|(c, shown)| !**shown && out_candidate(view, c))
-                .map(|(c, _)| c)
-                .collect();
-            if !folded.is_empty() && folded.len() <= n {
-                for c in folded {
-                    restore(view, c, out);
-                }
-                any_child = true;
-            }
-        }
-        let shown = depth == 0
-            || any_child
-            || match fold {
-                DoneFold::Off => true,
-                DoneFold::All | DoneFold::Crowded(_) => !is_foldable(a),
-            };
+        let shown = if filter.is_empty() {
+            depth == 0 || any_child || !fold || !is_foldable(a)
+        } else {
+            any_child || matches_filter(view, a, filter)
+        };
         if shown {
             out.insert(id.clone());
         }
         shown
-    }
-    /// A child hidden by the fold (finished, no shown descendant).
-    fn out_candidate(view: &WorkspaceView, id: &AgentId) -> bool {
-        view.agent(id).is_some_and(is_foldable)
-    }
-    /// Show a folded subtree again (everything below it is finished).
-    fn restore(view: &WorkspaceView, id: &AgentId, out: &mut HashSet<AgentId>) {
-        let mut stack = vec![id];
-        while let Some(cur) = stack.pop() {
-            if !out.insert(cur.clone()) {
-                continue;
-            }
-            if let Some(a) = view.agent(cur) {
-                stack.extend(a.children.iter());
-            }
-        }
     }
     let mut out = HashSet::new();
     let mut seen = HashSet::new();
@@ -360,172 +530,45 @@ fn visibility(
     out
 }
 
-/// Parent chain in the displayed tree (nearest first).
-fn tree_ancestors<'a>(view: &'a WorkspaceView, id: &AgentId) -> Vec<&'a AgentId> {
-    let mut out = Vec::new();
-    let mut cur = view.agent(id).and_then(|a| a.tree_parent.as_ref());
-    while let Some(p) = cur {
-        if out.contains(&p) || out.len() > 64 {
-            break;
-        }
-        out.push(p);
-        cur = view.agent(p).and_then(|a| a.tree_parent.as_ref());
-    }
-    out
+/// One agent in a tree walk.
+#[derive(Debug, Clone)]
+pub(super) struct TreeRow {
+    pub id: AgentId,
+    pub depth: u16,
+    /// Per ancestor level below the walk's top: a vertical guide continues.
+    pub guides: Vec<bool>,
+    pub is_last: bool,
 }
 
-fn is_row_shown(
-    view: &WorkspaceView,
-    ui: &UiState,
-    visible: &HashSet<AgentId>,
-    id: &AgentId,
-) -> bool {
-    visible.contains(id)
-        && tree_ancestors(view, id)
-            .iter()
-            .all(|a| !is_folded(ui, a.as_str()))
-}
-
-/// Folds are ignored while a `/` filter is active (matches must stay visible).
-fn is_folded(ui: &UiState, id: &str) -> bool {
-    ui.filter.is_empty() && ui.collapsed.contains(id)
-}
-
-/// Selected agent: the most recently active one (auto), else the remembered one
-/// (or its nearest shown ancestor when collapsed / hidden), else the first row.
-fn effective_selection(
-    view: &WorkspaceView,
-    ui: &UiState,
-    roots: &[AgentId],
-    visible: &HashSet<AgentId>,
-) -> Option<AgentId> {
-    let shown = |id: &AgentId| is_row_shown(view, ui, visible, id);
-    if ui.auto_select {
-        let best = view
-            .agents
-            .values()
-            .filter(|a| shown(a.id()))
-            .filter_map(|a| a.last_activity.map(|t| (t, a.id())))
-            .max_by(|x, y| x.0.cmp(&y.0).then_with(|| y.1.cmp(x.1)));
-        if let Some((_, id)) = best {
-            return Some(id.clone());
-        }
-    }
-    if let Some(sel) = ui.selected.as_deref().and_then(AgentId::parse)
-        && let Some((id, _)) = view.agents.get_key_value(&sel)
-    {
-        if shown(id) {
-            return Some(id.clone());
-        }
-        // Filtered out: jump to the first match rather than an unrelated ancestor.
-        if !ui.filter.is_empty()
-            && let Some(m) = first_match(view, roots, visible, &ui.filter.to_lowercase())
-        {
-            return Some(m);
-        }
-        if let Some(a) = tree_ancestors(view, id).into_iter().find(|a| shown(a)) {
-            return Some(a.clone());
-        }
-    }
-    if !ui.filter.is_empty()
-        && let Some(m) = first_match(view, roots, visible, &ui.filter.to_lowercase())
-    {
-        return Some(m);
-    }
-    roots.iter().find(|r| shown(r)).cloned()
-}
-
-/// First agent matching the filter, in tree order.
-fn first_match(
-    view: &WorkspaceView,
-    roots: &[AgentId],
-    visible: &HashSet<AgentId>,
-    needle: &str,
-) -> Option<AgentId> {
-    let mut stack: Vec<&AgentId> = roots.iter().rev().collect();
-    let mut seen = HashSet::new();
-    while let Some(id) = stack.pop() {
-        if !visible.contains(id) || !seen.insert(id) {
-            continue;
-        }
-        let Some(a) = view.agent(id) else { continue };
-        if matches_filter(view, a, needle) {
-            return Some(id.clone());
-        }
-        stack.extend(a.children.iter().rev());
-    }
-    None
-}
-
+/// Depth-first walk from `id` over the children `include` accepts.
 #[allow(clippy::too_many_arguments)]
-fn push_rows(
+fn walk(
     view: &WorkspaceView,
-    ui: &UiState,
-    visible: &HashSet<AgentId>,
-    selected: Option<&AgentId>,
     id: &AgentId,
     depth: u16,
     guides: &mut Vec<bool>,
     is_last: bool,
-    out: &mut Vec<AgentRowVm>,
+    include: &dyn Fn(&AgentId) -> bool,
+    out: &mut Vec<TreeRow>,
     seen: &mut HashSet<AgentId>,
 ) {
     if !seen.insert(id.clone()) {
         return;
     }
-    let Some(a) = view.agent(id) else {
-        return;
-    };
-    let children: Vec<&AgentId> = a.children.iter().filter(|c| visible.contains(*c)).collect();
-    let collapsed = is_folded(ui, id.as_str()) && !children.is_empty();
-    let hidden_descendants = if collapsed {
-        count_descendants(view, visible, id)
-    } else {
-        0
-    };
-    let folded_done = if ui.filter.is_empty() && !collapsed {
-        a.children.iter().filter(|c| !visible.contains(*c)).count()
-    } else {
-        0
-    };
-    out.push(AgentRowVm {
-        id: id.as_str().to_string(),
+    let Some(a) = view.agent(id) else { return };
+    out.push(TreeRow {
+        id: id.clone(),
         depth,
         guides: guides.clone(),
-        is_last_sibling: is_last,
-        label: tree_label(view, a),
-        provider: provider_name(a.agent.provider).to_string(),
-        badge: badge(a.agent.kind),
-        status: status_vm(a.status),
-        ctx_pct: ctx(a).map(|c| c.pct),
-        selected: selected == Some(id),
-        collapsed,
-        has_children: !children.is_empty(),
-        hidden_descendants,
-        folded_done,
-        busy_tool: a.current_tool.is_some(),
+        is_last,
     });
-    if collapsed {
-        return;
-    }
-    // Guides are recorded for levels below the roots only (roots have no connector).
+    let children: Vec<&AgentId> = a.children.iter().filter(|c| include(c)).collect();
     if depth > 0 {
         guides.push(!is_last);
     }
     let n = children.len();
     for (i, c) in children.into_iter().enumerate() {
-        push_rows(
-            view,
-            ui,
-            visible,
-            selected,
-            c,
-            depth + 1,
-            guides,
-            i + 1 == n,
-            out,
-            seen,
-        );
+        walk(view, c, depth + 1, guides, i + 1 == n, include, out, seen);
     }
     if depth > 0 {
         guides.pop();
@@ -563,24 +606,6 @@ fn tree_label(view: &WorkspaceView, a: &AgentView) -> String {
         return rel.to_string();
     }
     a.label()
-}
-
-fn count_descendants(view: &WorkspaceView, visible: &HashSet<AgentId>, id: &AgentId) -> usize {
-    let mut n = 0;
-    let mut stack: Vec<&AgentId> = vec![id];
-    let mut seen = HashSet::new();
-    while let Some(cur) = stack.pop() {
-        if !seen.insert(cur) {
-            continue;
-        }
-        if let Some(a) = view.agent(cur) {
-            for c in a.children.iter().filter(|c| visible.contains(*c)) {
-                n += 1;
-                stack.push(c);
-            }
-        }
-    }
-    n
 }
 
 fn provider_name(p: AgentProvider) -> &'static str {
@@ -634,51 +659,6 @@ fn ctx(a: &AgentView) -> Option<CtxVm> {
         window_tokens: w.tokens,
         provenance: w.provenance().to_string(),
     })
-}
-
-// ============================================================================
-// Focus pane
-// ============================================================================
-
-fn build_focus(
-    view: &WorkspaceView,
-    ui: &UiState,
-    selected: Option<&AgentId>,
-    now: DateTime<Utc>,
-) -> FocusVm {
-    let Some(a) = selected.and_then(|id| view.agent(id)) else {
-        return FocusVm {
-            agent_id: None,
-            title: "waiting for agents…".to_string(),
-            provider: String::new(),
-            kind: String::new(),
-            team: None,
-            status: StatusVm::Unknown,
-            model: None,
-            ctx: None,
-            activity: None,
-            rows: Vec::new(),
-            follow: ui.timeline_scroll.is_follow(),
-        };
-    };
-    let offset = ui.utc_offset;
-    FocusVm {
-        agent_id: Some(a.id().as_str().to_string()),
-        title: a.label(),
-        provider: provider_name(a.agent.provider).to_string(),
-        kind: kind_name(a.agent.kind).to_string(),
-        team: a.team().map(str::to_string),
-        status: status_vm(a.status),
-        model: a.model.clone(),
-        ctx: ctx(a),
-        activity: activity(a, now),
-        rows: a
-            .recent
-            .iter()
-            .filter_map(|e| timeline_row(e, offset))
-            .collect(),
-        follow: ui.timeline_scroll.is_follow(),
-    }
 }
 
 fn activity(a: &AgentView, now: DateTime<Utc>) -> Option<ActivityVm> {
@@ -928,16 +908,22 @@ fn timeline_row(e: &TimelineEntry, offset: FixedOffset) -> Option<TimelineRowVm>
 // Feed
 // ============================================================================
 
+/// Which feed entries the selection shows.
+enum FeedScope {
+    /// Top node: everything in scope.
+    All,
+    /// Entries emitted by, sent by or addressed to one of these agents (a
+    /// session, a folded group, the older sessions).
+    Sources(HashSet<AgentId>),
+    /// Entries sent / received / emitted by one agent.
+    Agent(AgentId),
+}
+
 fn involves(e: &FeedEntry, id: &AgentId) -> bool {
     e.source == *id || e.from.agent() == Some(id) || e.to.iter().any(|p| p.agent() == Some(id))
 }
 
-fn build_feed(
-    view: &WorkspaceView,
-    ui: &UiState,
-    selected: Option<&AgentId>,
-    session: Option<&HashSet<&AgentId>>,
-) -> Vec<FeedRowVm> {
+fn build_feed(view: &WorkspaceView, ui: &UiState, scope: &FeedScope) -> Vec<FeedRowVm> {
     // Labels are cached: party_label walks the agent map.
     let mut labels: HashMap<String, String> = HashMap::new();
     let mut label = |p: &FeedParty| -> String {
@@ -949,10 +935,16 @@ fn build_feed(
     };
     view.feed
         .iter()
-        .filter(|e| session.is_none_or(|m| m.contains(&e.source)))
-        .filter(|e| match (ui.feed_filter, selected) {
-            (FeedFilter::Selected, Some(id)) => involves(e, id),
-            _ => true,
+        .filter(|e| match scope {
+            FeedScope::All => true,
+            FeedScope::Sources(ids) => {
+                ids.contains(&e.source)
+                    || e.from.agent().is_some_and(|a| ids.contains(a))
+                    || e.to
+                        .iter()
+                        .any(|p| p.agent().is_some_and(|a| ids.contains(a)))
+            }
+            FeedScope::Agent(id) => involves(e, id),
         })
         .map(|e| {
             let (kind, tag, text, encrypted) = match &e.kind {
@@ -983,7 +975,6 @@ fn build_feed(
                 tag,
                 text,
                 encrypted,
-                involves_selected: selected.is_some_and(|id| involves(e, id)),
             }
         })
         .collect()
@@ -996,24 +987,24 @@ fn build_feed(
 fn build_status(
     view: &WorkspaceView,
     ui: &UiState,
-    members: &HashSet<&AgentId>,
-    visible: &HashSet<AgentId>,
+    roots: &[AgentId],
+    plan: &FoldPlan,
     sessions: &[Session],
-    focus: Option<String>,
+    crumbs: Vec<String>,
 ) -> StatusBarVm {
+    let members: HashSet<&AgentId> = roots.iter().flat_map(|r| view.session_agents(r)).collect();
     let agents: Vec<&AgentView> = members.iter().filter_map(|id| view.agent(id)).collect();
     let count = |s: AgentStatus| agents.iter().filter(|a| a.status == s).count();
     let folded = if ui.filter.is_empty() {
-        agents.iter().filter(|a| !visible.contains(a.id())).count()
+        agents
+            .iter()
+            .filter(|a| !plan.visible.contains(a.id()))
+            .count()
     } else {
         0
     };
     StatusBarVm {
-        scope: match &focus {
-            Some(name) => format!("session {name}"),
-            None => ui.scope.clone(),
-        },
-        focus,
+        crumbs,
         sessions: sessions.len(),
         live: sessions.iter().filter(|s| s.is_live()).count(),
         agents: agents.len(),
@@ -1023,10 +1014,8 @@ fn build_status(
         diagnostics: view.total_diagnostic_errors(),
         errors: view.errors.len(),
         last_error: view.errors.last().cloned(),
-        feed_filter: ui.feed_filter,
         show_done: ui.show_done,
         auto_select: ui.auto_select,
-        collapsed: ui.collapsed.len(),
         filter: ui.filter.clone(),
         filter_editing: ui.filter_editing,
         matches: 0,

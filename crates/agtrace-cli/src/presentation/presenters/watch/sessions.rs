@@ -1,4 +1,4 @@
-//! Sessions list (`0` screen and the overview's summary block).
+//! Session lines (the overview's summary block, the older sessions list).
 
 use agtrace_sdk::types::AgentId;
 use agtrace_sdk::workspace::{
@@ -39,37 +39,16 @@ pub(super) fn state_vm(s: SessionState) -> SessionStateVm {
     }
 }
 
-/// Rows of every session (older ones folded unless `show_older`); the cursor is
-/// the remembered one when listed, else the focused session, else the first row.
+/// Rows of every session, in order (live, recent, older).
 pub(super) fn build_sessions(
     view: &WorkspaceView,
     ui: &UiState,
     sessions: &[Session],
-    focus: Option<&AgentId>,
     now: DateTime<Utc>,
 ) -> SessionsVm {
     let count = |f: fn(SessionState) -> bool| sessions.iter().filter(|s| f(s.state)).count();
-    let live = count(SessionState::is_live);
-    let recent = count(|s| s == SessionState::Recent);
-    let older = count(|s| s == SessionState::Older);
-    let listed: Vec<&Session> = sessions
+    let rows = sessions
         .iter()
-        .filter(|s| ui.show_older || s.state != SessionState::Older)
-        .collect();
-    let listed_id = |id: &str| listed.iter().any(|s| s.root.as_str() == id);
-    let cursor = ui
-        .session_cursor
-        .as_deref()
-        .filter(|id| listed_id(id))
-        .map(str::to_string)
-        .or_else(|| {
-            focus
-                .map(|f| f.as_str().to_string())
-                .filter(|id| listed_id(id))
-        })
-        .or_else(|| listed.first().map(|s| s.root.as_str().to_string()));
-    let rows = listed
-        .into_iter()
         .map(|s| {
             let root = view.agent(&s.root);
             SessionRowVm {
@@ -86,18 +65,14 @@ pub(super) fn build_sessions(
                 ctx: root.and_then(ctx),
                 last_secs: s.last_activity.map(|t| (now - t).num_seconds().max(0)),
                 now: session_now(view, &s.root, now),
-                selected: cursor.as_deref() == Some(s.root.as_str()),
-                focused: focus == Some(&s.root),
             }
         })
         .collect();
     SessionsVm {
         scope: ui.scope.clone(),
         rows,
-        live,
-        recent,
-        older,
-        older_folded: if ui.show_older { 0 } else { older },
-        focus: focus.map(|f| f.as_str().to_string()),
+        live: count(SessionState::is_live),
+        recent: count(|s| s == SessionState::Recent),
+        older: count(|s| s == SessionState::Older),
     }
 }

@@ -1,5 +1,6 @@
-//! Overview screen: one row per agent with status, context, an activity lane over
-//! the chosen window, and what the agent is doing now.
+//! Overview content (top node, session node, folded group): one row per agent
+//! with status, context, an activity lane over the chosen window, and what the
+//! agent is doing now; session roots get a header line.
 
 use std::collections::HashSet;
 
@@ -8,9 +9,9 @@ use agtrace_sdk::workspace::{AgentStatus, AgentView, Session, WorkspaceView, one
 use chrono::{DateTime, Duration, Utc};
 
 use super::sessions::state_vm;
-use super::{ctx, provider_name, status_vm};
+use super::{FoldPlan, TreeRow, badge, ctx, provider_name, status_vm};
 use crate::presentation::view_models::watch::{
-    AgentRowVm, FoldedVm, NowVm, OverviewRowVm, OverviewVm, RootHeaderVm, SessionStateVm, UiState,
+    FoldedVm, NowVm, OverviewRowVm, OverviewVm, RootHeaderVm, SessionStateVm, UiState,
 };
 
 /// Characters kept of the one-line "now" text (the view clips further).
@@ -29,7 +30,7 @@ impl Lanes {
     /// activity is counted per minute); None when there is no room for lanes.
     fn new(
         view: &WorkspaceView,
-        tree: &[AgentRowVm],
+        ids: &[&AgentId],
         ui: &UiState,
         now: DateTime<Utc>,
     ) -> Option<Self> {
@@ -39,10 +40,9 @@ impl Lanes {
         }
         let span = match ui.window.secs() {
             Some(s) => s,
-            None => tree
+            None => ids
                 .iter()
-                .filter_map(|r| AgentId::parse(&r.id))
-                .filter_map(|id| view.agent(&id)?.agent.started_at)
+                .filter_map(|id| view.agent(id)?.agent.started_at)
                 .min()
                 .map(|s| (now - s).num_seconds())
                 .unwrap_or(0)
@@ -69,41 +69,40 @@ impl Lanes {
     }
 }
 
+/// Overview of `rows` (agent, label, with a session header); session headers
+/// count the agents folded away (`plan`).
 pub(super) fn build_overview(
     view: &WorkspaceView,
     ui: &UiState,
-    tree: &[AgentRowVm],
+    rows: Vec<(TreeRow, String, bool)>,
     sessions: &[Session],
-    visible: &HashSet<AgentId>,
+    plan: &FoldPlan,
     now: DateTime<Utc>,
 ) -> OverviewVm {
-    let lanes = Lanes::new(view, tree, ui, now);
-    let rows = tree
+    let ids: Vec<&AgentId> = rows.iter().map(|(r, _, _)| &r.id).collect();
+    let lanes = Lanes::new(view, &ids, ui, now);
+    let rows = rows
         .iter()
-        .filter_map(|r| {
-            let id = AgentId::parse(&r.id)?;
-            let a = view.agent(&id)?;
+        .filter_map(|(r, label, header)| {
+            let a = view.agent(&r.id)?;
             let (lane, lane_tones) = lanes.map(|l| lane(a, &l, now)).unwrap_or_default();
             Some(OverviewRowVm {
-                id: r.id.clone(),
+                id: r.id.as_str().to_string(),
                 depth: r.depth,
                 guides: r.guides.clone(),
-                is_last_sibling: r.is_last_sibling,
-                label: r.label.clone(),
-                badge: r.badge,
-                provider: r.provider.clone(),
-                status: r.status,
+                is_last_sibling: r.is_last,
+                label: label.clone(),
+                badge: badge(a.agent.kind),
+                provider: provider_name(a.agent.provider).to_string(),
+                status: status_vm(a.status),
                 ctx: ctx(a),
                 lane,
                 lane_tones,
                 now: now_of(a, now),
-                selected: r.selected,
-                collapsed: r.collapsed,
-                hidden_descendants: r.hidden_descendants,
-                root: (r.depth == 0).then(|| {
-                    let session = sessions.iter().find(|s| s.root == id);
+                root: header.then(|| {
+                    let session = sessions.iter().find(|s| s.root == r.id);
                     let folded = if ui.filter.is_empty() {
-                        folded(view, &id, visible)
+                        folded(view, &r.id, &plan.visible)
                     } else {
                         FoldedVm::default()
                     };

@@ -10,11 +10,13 @@ teammates, background subagents, forks, and Codex child threads. For each agent 
 the status, context window usage, the current tool, and a timeline. The messages the
 agents send each other appear in a shared feed.
 
-It opens on an **overview**: a summary of the sessions, then per session its active
-agents (status, context, an activity lane over time, and what each one is doing now);
-finished agents fold into one line. `0` lists the sessions, and `Enter` there narrows
-every screen to one of them. From any agent you can drill into its **detail**: what it
-was asked to do, what it is doing, and what it produced.
+A **navigator** on the left is always visible: the scope, its sessions, and each
+session's agent tree, finished agents folded into one node. `↑` / `↓` move through it,
+`→` / `←` expand, collapse and walk up and down the hierarchy. The right side shows the
+selected node: the **overview** of every session (status, context, an activity lane over
+time, and what each agent is doing now), one session's overview, or an agent's **detail**
+(what it was asked to do, what it is doing, what it produced), above the messages scoped
+to that node.
 
 See [Multi-Agent Sessions](../multi-agent.md) for how the tree is built.
 
@@ -80,128 +82,118 @@ Other sessions have *ended*: **recent** when written to in the last hour, **olde
 otherwise.
 
 **Order.** Busy, idle, recent, older; within each group the most recently active first.
-The same order is used on every screen.
+The navigator and the overview use the same order.
 
 **Name.** The first of: the registry name (when it is not just an id or derived from the
 directory, like `yohaku-studio-c8`), the session's own name (`agent-name`, the title; a
 Codex thread's nickname), an excerpt of its first prompt, its first slash command with
 the short id (`/resume · fa330341`), or the short id. `(bg)` marks background (daemon /
-job) sessions. Root rows carry the session's name on every screen (the console keeps the
+job) sessions. Session nodes and root rows carry the session's name (the console keeps the
 agent labels).
 
 ## The TUI
 
-The TUI has four screens:
-
-| Key | Screen | Answers |
-|---|---|---|
-| `0` | **Sessions** | Which sessions exist now, which are live, what each is doing; pick one to focus on |
-| `1` | **Overview** (start screen) | Per session: which agents are active, their status over time, how full their context is, what each is doing now |
-| `2` | **Agents** | The agent tree next to the selected agent's timeline and the message feed |
-| `Enter` | **Agent detail** | What one agent was asked to do, what it is doing, what it produced |
-
-`Enter` (or `→` / `l`) on an agent opens its detail, from the overview or the agents
-screen; `i` / `n` / `r` / `t` open it directly at the Instructions / Now / Result /
-Timeline section. `Esc` returns to the screen you came from, with the same agent
-selected, and is always safe to press: it steps back one level at a time. `?` lists
-every key.
-
-To find an agent among many, press `/` and type part of its name (or id, or agent
-type): the overview and the tree keep only the matches and their parents (folds are
-ignored), and the first match is selected. `↑` / `↓` move between matches, `Enter`
-opens the selected one's detail and keeps the filter, `Esc` clears it. The pane title
-shows the filter and the number of matches (`/audit: 2 matches`).
-
-### Sessions (`0`)
+The TUI has no screens to switch between. A **navigator** is always on the left; the
+right side shows the **content** of the node selected in it, above the **messages**
+scoped to that node:
 
 ```
-┏ ▶ Sessions · project demo-project · 4 live, 1 recent, 1 older ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃   provider session                                   state       agents       ctx last now                    ┃
-┃   claude   Audit the parser with a team of reviewers ● busy      5 (2 run)    42%  now ▸ Bash mise run test   ┃
-┃▶  codex    triage the flaky tests                    ● busy      4 (2 run)    12%  now "Reproducing the flake…┃
-┃ ◆ claude   Ship the release                          ● busy (bg) 14 (1 run)   25%  now ▸ Bash cargo publish   ┃
-┃   claude   f00dcafe                                  ○ idle (bg) —              —   3m no transcript yet      ┃
-┃   claude   rename the config keys                    ✓ ended     1              —  23m idle 23m               ┃
-┃   ▸ 1 older session — space to list                                                                          ┃
+┏ ▶ Navigator ━━━━━━━━━━━━━━━━━━━━━━━━━┓┌ Overview · project demo-project · activity: last 15m ──────────────────────────────┐
+┃▶◆ demo-project  4 live               ┃│ Sessions · 4 live, 1 recent, 1 older  · pick one in the navigator                  │
+┃ ▸ ● Audit the parser with a tea…  42%┃│   claude   Audit the parser with a tea… ● busy      5 (2 run)    42%  now ▸ Bash … │
+┃ ▸ ● codex triage the flaky tests  12%┃│   codex    triage the flaky tests       ● busy      4 (2 run)    12%  now "Reprodu… │
+┃ ▾ ● Ship the release              25%┃│  agent                 status context     activity 1m/cell   now                   │
+┃  ├ ● S step r0                       ┃│ Audit the parser with a team of… · busy · up 5m · claude-opus-5-5[1m] · ctx ███…   │
+┃  └ ▸ ⊘ 8 killed · ✓ 3 done · 1 earli…┃│  Audit the parser wit… ● busy ███░░░  42%              ▅⟲▂·▂ ▸ Bash mise run te…  │
+┃   ○ f00dcafe                         ┃│  ├ T audit-A           ○ idle █░░░░░  12%              ▃▂    idle 3m              │
+┃   ✓ rename the config keys           ┃│  └ F fork: bench       ● busy █████░  75%              ▂···▂ ▸ Bash cargo bench…  │
+┃ ▸ ✓ 1 older session                  ┃│ Ship the release · idle (bg) · up 4m · claude-opus-5 · ctx ███░░░░░░░ 25% of 200k… │
+┃                                      ┃│  Ship the release      ○ idle ██░░░░  25%              ▆··▆  idle 1m              │
+┃                                      ┃│  └ S step r0           ● busy                          ▂···▂ ▸ Bash cargo publish…│
+┃                                      ┃│    ✓ 3 finished · ⊘ 8 killed · 1 earlier transcript  (d to show)                   │
+┃                                      ┃└────────────────────────────────────────────────────────────────────────────────────┘
+┃                                      ┃┌ Messages · all ────────────────────────────────────────────────────────────────────┐
+┃                                      ┃│12:03 step d0 done                                                                  │
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛└────────────────────────────────────────────────────────────────────────────────────┘
+ demo-project  6 sessions (4 live) · 25 agents (5 run) · 12 folded       ↑↓ move · → open · ← back · ↵ read · / find · ? help
 ```
 
-One row per session: provider, name, state (`● busy`, `○ idle`, `✓ ended`; `(bg)` for
-background sessions), its agents (and how many run), the root's context, the time since
-its last write, and what it does now (the root's work, or that of its most recently active
-running agent). `▶` is the cursor, `◆` the focused session. Older sessions are folded into
-one line; `space` lists them.
+`↑` / `↓` move through the navigator and the content follows at once. `→` and `←` walk
+the hierarchy: `→` expands a node, then goes to its first child, and on an agent without
+children moves the focus to the content to read it; `←` collapses a node, else goes to its
+parent. `Enter` focuses the content, `Esc` goes back. `?` lists every key.
 
-`j` / `k` move the cursor; `Enter` **focuses** the session: the overview, the agents
-screen and the detail (including `J` / `K`) show only that session, the message feed only
-its messages, the titles say `session <name>` and the status bar `session: <name>`. `a`
-(on any screen) goes back to all sessions. `Esc` returns to the screen `0` was pressed on
-without a change.
+### Navigator (left)
 
-### Overview (`1`)
+| Node | Shown as | Content (right) | Messages |
+|---|---|---|---|
+| **Scope** (top) | `◆ <project>  N live` (`all projects`, `session <id>`) | the overview of every session | all |
+| **Session** | `▸ ● <name>` (`codex` prefix for Codex) with its state glyph and root context | that session's overview | the session's |
+| **Agent** | `├ ○ T audit-A`: status glyph, kind badge, label, context | the agent's detail | the agent's |
+| **Folded group** | `└ ▸ ⊘ 8 killed · ✓ 3 done · 1 earlier (d)` | the folded agents as overview rows | theirs |
+| **Older sessions** | `▸ ✓ 2 older sessions` | the older sessions, one line each | theirs |
 
-```
-┏ ▶ Overview · project demo-project · activity: last 15m ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Sessions · 2 live  · 0 to list / focus one                                                                           ┃
-┃   claude   Audit the parser with a team of review… ● busy      5 (2 run)    42%  now ▸ Bash mise run test (10s)      ┃
-┃   codex    triage the flaky tests                  ● busy      4 (2 run)    12%  now "Reproducing the flake in a lo… ┃
-┃  agent                     status context     activity 1m/cell                           now                         ┃
-┃ Audit the parser with a team of review… · busy · up 5m · claude-opus-5-5[1m] · ctx ████░░░░░░ 42% of 1.0M [1m] · ⟲1 …┃
-┃  Audit the parser with a … ● busy ███░░░  42%                                      ▅⟲▂·▂ ▸ Bash mise run test (10s)  ┃
-┃  ├ T audit-A               ○ idle █░░░░░  12%                                      ▃▂    idle 3m                     ┃
-┃  ├ T audit-B               ○ idle █░░░░░   9%                                      ▃▂    idle 3m                     ┃
-┃  └ F fork: bench           ● busy █████░  75%                                      ▂···▂ ▸ Bash cargo bench -p agtra…┃
-┃    ✓ 1 finished  (d to show)                                                                                         ┃
-┃ codex triage the flaky tests · idle · up 4m · gpt-5.6 · ctx █░░░░░░░░░ 12% of 258k [log] · ⟲1 · 4 agents (2 running) ┃
-┃  codex triage the flaky t… ○ idle █░░░░░  12%                                      ▃·⟲   idle 2m                     ┃
-┃▶ └ judge                   ● busy █████░  77%                                      ▂▃▂·· ▸ exec cargo test -p agtrac…┃
-┃    └ x                     ● busy █░░░░░   5%                                       ···▂ "Reproducing the flake in a…┃
-┃    ✓ 1 finished  (d to show)                                                                                         ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
- OVERVIEW  2 sessions (2 live) · 9 agents (4 run) · 2 folded               ↵ detail · / find · 0 sessions · ? help
-```
+- **Sessions** are ordered busy, idle, recent (see [Sessions](#sessions)); sessions that
+  ended more than an hour ago collapse into one *older sessions* node while something newer
+  is in scope. A session node stands for its root agent too: its children are the root's
+  children. Sessions start collapsed when there are several, expanded when there is one.
+- **Agents** are indented by depth. Status: `● busy`, `○ idle`, `✓ done`, `✗ failed`,
+  `⊘ killed`, `·` unknown. Kind badge: `T` teammate, `S` subagent, `F` fork (main sessions
+  and Codex threads have none). Labels: a teammate's name, a subagent's description, a Codex
+  path relative to its parent, `earlier transcript · <name>` / `/clear · <name>` for the
+  session's other transcripts. The context percentage is yellow from 80%, red from 95%.
+- **Folded groups.** A parent's finished children (done or killed, with everything below
+  them finished too) and the session's earlier / `/clear` transcripts fold into one node,
+  its last child, when there are at least two of them; a single one stays in place. Failed
+  agents never fold. `→` on the group lists its items below it; `d` shows every finished
+  agent in place instead (again to fold).
+- `▶` marks the selection, `▸` / `▾` a collapsed / expanded node. The selection stays
+  highlighted while another pane has focus. When the list is longer than the pane, the
+  bottom border shows how many rows are above and below (`↑3 ↓10`).
 
-With more than one session (and none focused), the top block summarizes the live and
-recent ones (a third of the screen at most; `+N more — 0 to list` when they do not fit).
+`/` filters the navigator: type part of an agent's name (or id, or agent type); only the
+matching agents and their ancestors remain (folds and collapses are ignored, so finished
+agents are found), matches are highlighted and the first one is selected. `↑` / `↓` move,
+`Enter` keeps the filter, `Esc` clears it. The pane title shows the filter and the number
+of matches (`/audit: 2 matches`).
 
-The overview is compact, so that several live sessions fit on one screen:
+On terminals narrower than 80 columns, `s` hides the navigator so the content gets the
+full width (`s` again shows it; the keys keep moving the selection, and the breadcrumb in
+the status bar says where you are).
 
-- **Finished agents fold.** Done and killed agents below a session root (and the
-  session's earlier / `/clear` transcripts) are hidden unless something below them is
-  still shown, and counted in one line after the session's rows:
-  `✓ 18 finished · ⊘ 3 killed · 1 earlier transcript  (d to show)`. Failed agents stay
-  visible. `d` shows everything (again to fold).
-- **Older sessions** (ended more than an hour ago) are left to the sessions screen
-  (`▸ 2 older sessions — 0 to list`), unless nothing newer is in scope or `space` on the
-  sessions screen listed them.
+### Overview (scope and session nodes)
 
-Each session gets a header line: its name, status (`(bg)` for background sessions) and
-age, model, context bar with the window size and its source, the number of compactions
-(`⟲N`), how many agents its tree has (and how many are running), and its reasoning
-effort. Below it, one row per shown agent in tree order:
+The scope's overview has, with more than one session, a summary of the live and recent
+ones on top (a third of the pane at most; left out when the pane is narrow). Then per
+session a header line and its agents in place; a session node shows the same for that
+session alone.
 
-- **status** and **context** (bar and percent; the source of the window size is in the
-  root header and in the agent detail);
-- **activity**: one cell per time slice, oldest on the left, the current minute on the
+- **Header line**: the session's name, the root's status (`(bg)` for background
+  sessions) and age, model, context bar with the window size and its source, the number of
+  compactions (`⟲N`), how many agents its tree has (and how many run), and its reasoning
+  effort.
+- **Rows**, in tree order: **status** and **context** (bar and percent);
+  **activity**: one cell per time slice, oldest on the left, the current minute on the
   right. The glyph height (`▁▂▃▅▆`) is the event density (tool calls, messages, prompts,
-  assistant text). The colour is the status at that time: green running, blue idle, grey
-  ended. `⟲` marks a compaction. `·` means running without new events (a long tool call).
-  A blank cell is idle, ended, or before the agent existed. The cell width adapts to the
-  terminal width; `+` / `]` widen the window (15m → 60m → 4h → all) and `-` / `[` narrow
-  it;
-- **now**: the running tool and its elapsed time; between tools, the task in progress
-  (`▸ Running the tests`, its active form) or else the latest assistant text; `idle Xm`, the result excerpt of a finished agent, or how long ago it
-  was killed / failed (and why, when known).
+  assistant text); the colour is the status at that time (green running, blue idle, grey
+  ended); `⟲` marks a compaction; `·` means running without new events (a long tool call);
+  blank is idle, ended, or before the agent existed. The cell width adapts to the pane;
+  `+` / `]` widen the window (15m → 60m → 4h → all) and `-` / `[` narrow it. When no agent
+  had activity in the window, the column header says `no activity — + widens`;
+  **now**: the running tool and its elapsed time; between tools, the task in progress
+  (`▸ Running the tests`, its active form) or else the latest assistant text; `idle Xm`,
+  the result excerpt of a finished agent, or how long ago it was killed / failed (and why).
+- After a session's rows, its folded agents in one line:
+  `✓ 18 finished · ⊘ 3 killed · 1 earlier transcript  (d to show)`. Older sessions are
+  left to the navigator (`▸ 2 older sessions — in the navigator`).
 
-`j` / `k` select a row, `Enter` opens its detail. When the list is longer than the
-screen, the bottom border shows how many rows are above and below (`↑3 ↓10`). When no
-agent had activity in the window (an old session), the activity column header says
-`no activity — + widens`. `space` (fold), `f` (feed filter) and `A` (auto-select) work as
-on the agents screen. The bottom strip is the message feed (newest entries).
+With the content focused, `↑` / `↓`, `PgUp` / `PgDn`, `Ctrl-u` / `Ctrl-d`, `g` / `G`
+scroll the rows (the summary and the column header stay).
 
-### Agent detail (`Enter`)
+### Agent detail (agent nodes)
 
 ```
-┏ ▶ Detail · explore call sites ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┏ ▶ explore call sites ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃explore call sites · subagent of s-lead · Explore · claude-sonnet-5 · ✓ done 2m          ┃
 ┃ctx ██░░░░░░░░ 15% of 200k [table]  ▂   in 30k / out 10 · 1 tools                        ┃
 ┃── [i] Instructions (1) ──────────────────────────────────────────────────────────────── ┃
@@ -215,187 +207,113 @@ on the agents screen. The bottom strip is the message feed (newest entries).
 ┃12:00 › user Find call sites of parse_line                                               ┃
 ┃12:00 ▸ Grep parse_line                                                                  ┃
 ┃12:02 •      Two call sites: decoder.rs and lab.rs.                                      ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
- DETAIL · RESULT            i/n/r/t section · j/k scroll · J/K agent · G/g end/top · Esc back
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 ```
 
 - **Header.** The agent, how it relates to its parent (`teammate of lead (team t)`,
   `subagent of lead`, `thread of /root`, `main session`), its type, model and reasoning
   effort (`effort high`: the latest one in its own log, else the one its spawn call
   requested), and the status with the time spent in it.
-- **Context line.** Context bar and window (with its source), a sparkline of the context
-  occupancy over the agent's usage records (`⟲` = compaction), and totals: input and
-  output tokens summed over requests (a request logged more than once counts once; `≥`
-  marks output counts that are only stream-start snapshots), turns and tool calls.
+- **Context line.** Context bar and window with its source (`cfg`: `[context_window]` in
+  `config.toml`; `log`: a number in the log (Codex); `1m`: a `[1m]` / "(1M context)"
+  marker (Claude); `cache`: `~/.codex/models_cache.json`; `table`: the built-in model
+  table; `obs`: bumped to fit the observed usage), a sparkline of the context occupancy
+  over the agent's usage records (`⟲` = compaction), and totals: input and output tokens
+  summed over requests (a request logged more than once counts once; `≥` marks output
+  counts that are only stream-start snapshots), turns and tool calls.
 - **Instructions.** What the agent was asked to do, in full (wrapped, not cut to one
-  line): its initial task (a subagent's or fork's prompt, a teammate's first
-  `NEW_TASK`, a main session's first prompt), then later prompts, prompts queued
-  mid-turn, and messages addressed to it (follow-ups from its lead, peer messages).
-  Reports from its own children are not instructions. If the child's own log has no task
-  yet, the spawn call's prompt (or description) is shown. Codex encrypts inter-agent
-  bodies: the task shows as `[encrypted by Codex]` with the sender, the agent path, the
-  task name and the requested model.
+  line): its initial task (a subagent's or fork's prompt, a teammate's first `NEW_TASK`, a
+  main session's first prompt), then later prompts, prompts queued mid-turn, and messages
+  addressed to it (follow-ups from its lead, peer messages). Reports from its own children
+  are not instructions. If the child's own log has no task yet, the spawn call's prompt (or
+  description) is shown. Codex encrypts inter-agent bodies: the task shows as
+  `[encrypted by Codex]` with the sender, the agent path, the task name and the requested
+  model.
 - **Now.** The running tool with its elapsed time, the plan, and the latest assistant
   text (or reasoning when there is no text): what the agent is trying to do. The plan
-  shows:
-  - a Codex thread's goal (`Goal: <objective> (active)`);
-  - the task list (Claude `TaskCreate` / `TaskUpdate`, legacy `TodoWrite`): `☐` pending,
-    `▸` in progress (with its active form), `✓` completed. Agent Teams share one list: a
-    teammate's change also shows in the lead's list, marked `[teammate]`, and a task a
-    teammate only updated shows in its own detail too;
-  - the latest plan-mode plan (Codex `Plan` item), wrapped.
-- **Result.** The agent's `FINAL_ANSWER` / hand-back / task-notification result. A
-  finished agent without one shows its last assistant message; a killed or failed one
-  shows why, when known.
-- **Timeline.** The same rows as the agents screen's timeline.
+  shows a Codex thread's goal (`Goal: <objective> (active)`); the task list (Claude
+  `TaskCreate` / `TaskUpdate`, legacy `TodoWrite`: `☐` pending, `▸` in progress with its
+  active form, `✓` completed; Agent Teams share one list, so a teammate's change also shows
+  in the lead's list, marked `[teammate]`); and the latest plan-mode plan (Codex `Plan`
+  item).
+- **Result.** The agent's `FINAL_ANSWER` / hand-back / task-notification result. A finished
+  agent without one shows its last assistant message; a killed or failed one shows why,
+  when known.
+- **Timeline.** Newest at the bottom, following the end until you scroll up: user prompts
+  and slash commands, assistant text, tool calls and errors, Codex sub-actions, messages in
+  and out, spawns, lifecycle changes, compactions (`pre→post`), model changes, turn ends and
+  interrupts, prompts queued and absorbed mid-turn.
 
-Each section heading names the key that focuses it: `i` Instructions, `n` Now, `r`
-Result, `t` Timeline (`Tab` / `Shift-Tab` cycle through them). The focused section is
-cyan, marked `▶`, named in the status bar, and gets the room it needs. The other
-sections are shown in full when they fit (short ones always), partly when rows are
-left, or else collapsed to a one-line summary ending in `… press <key>`: the latest
-instruction, the running tool (or the task list, or the latest text), the result, the
-newest timeline row. `j` / `k`, `PgUp` / `PgDn`, `Ctrl-u` / `Ctrl-d` scroll the focused
-section; `G` / `g` jump to its end / top (the timeline follows its end again). Section
-headings show the visible range (`1-10/40 ↓`). Texts are kept up to 16 KiB each; runs of
-blank lines are shown as one.
+`i` / `n` / `r` / `t` show the Instructions / Now / Result / Timeline section and focus
+the content, from any pane: on a session node they show its root agent's detail (the
+navigator stays on the session), on the scope node the first session's root, on a folded
+group its first item. The focused section is cyan, marked `▶`, named in the breadcrumb,
+and gets the room it needs; the others are shown in full when they fit, partly when rows
+are left, or collapsed to a one-line summary ending in `… press <key>`. With the content
+focused, `↑` / `↓`, `PgUp` / `PgDn`, `Ctrl-u` / `Ctrl-d` scroll the section and `G` / `g`
+jump to its end / top (the timeline follows its end again). Section headings show the
+visible range (`1-10/40 ↓`). Texts are kept up to 16 KiB each; runs of blank lines are
+shown as one.
 
-The detail opens where the agent's state is: **Now** while it is running, **Result**
-once it ended (done, killed, failed) with a result, else the **Timeline**, and never on
-an empty section when another one has content. Once you pick a section (with a section
-key or `Tab`), the details of the next agents you open start on it too, unless that
-agent has nothing there. `J` / `K` step to the next / previous agent (in tree order)
-without leaving the detail; `Esc` still returns to where you opened the first one.
+The detail opens where the agent's state is: **Now** while it is running, **Result** once
+it ended (done, killed, failed) with a result, else the **Timeline**, and never on an empty
+section when another one has content. Once you pick a section with a section key, the next
+agents you select start on it too, unless that agent has nothing there.
 
-### Agents screen (`2`)
+### Messages (bottom right)
 
-```
-┏ ▶ Agents · project demo-project ┓┌ s-lead · claude-opus-5-5[1m] · 42% of 1.0M [1m] ────────┐
-┃▶ s-lead            ● busy  42%  ┃│now   ▸ Bash mise run test  (10s)                        │
-┃  ├ T audit-A       ○ idle  12%  ┃│12:00 ⇢ spawn          audit-A (teammate, general-purpos│
-┃  ├ T audit-B       ○ idle   9%  ┃│12:00 → audit-A        NEW_TASK "review parser"          │
-┃  ├ S explore call  ✓ done  15%  ┃│12:00 ⇢ spawn          explore call sites (subagent)     │
-┃  └ F fork: bench   ● busy  75%  ┃│12:00 ⏹ interrupted                                      │
-┃  codex /root       ○ idle  12%  ┃│12:01 ← audit-A        MESSAGE "done, found 3 bugs"      │
-┃  ├ judge           ● busy  77%  ┃│12:01 ◆ model          claude-opus-5 → claude-opus-5-5   │
-┃  │ └ x             ● busy   5%  ┃│12:01 ⟲ compact        974k→112k (auto)                  │
-┃  └ scout           ✓ done  15%  ┃│12:04 ▸ Bash           mise run test                     │
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛└─────────────────────────────────────────────────────────┘
-┌ Messages ──────────────────────────────────────────────────────────────────────────────────┐
-│12:01 audit-A → s-lead            MESSAGE      "done, found 3 bugs"                         │
-│12:02 /root/scout → /root         FINAL_ANSWER "3 flaky tests, all in watch_command.rs"     │
-│12:02 /root → /root/judge         MESSAGE      [encrypted]                                  │
-│12:02 explore call sites → s-lead TASK_NOTIFY  "found 2 call sites"                         │
-└────────────────────────────────────────────────────────────────────────────────────────────┘
- AGENTS  9 agents (4 running, 3 idle)  ↵ detail · / find · space fold · f msgs · 1 overview · ? help
-```
-
-Three panes answer three questions: **Agents** (who is there and in what state), the
-**timeline** (what the selected agent is doing), and **Messages** (how the agents talk to
-each other). `Enter` opens the selected agent's detail; `Tab` moves the focus to the
-timeline or the feed, and `Esc` comes back to the tree. The focused pane has a thick cyan
-border and a `▶` in its title; the other panes are dimmed.
-
-#### Agents (left)
-
-Each row is one agent, indented by depth:
-
-- **Label.** A teammate's name, a Codex path relative to its parent row, or a subagent's
-  description.
-- **Kind badge.** `T` teammate, `S` subagent, `F` fork. Main sessions and Codex threads have
-  no badge; Codex roots are prefixed with `codex`.
-- **Status.** `● busy`, `○ idle`, `✓ done`, `✗ fail`, `⊘ kill`, or `·` (unknown).
-- **Context %.** Yellow from 80%, red from 95%. It is blank while the window or the usage is
-  unknown.
-
-A collapsed node shows `▸+N`. The tree keeps finished agents, except under a parent with
-more than 5 of them: those fold, and the parent shows `+N done` (`d` shows them). The tree
-title names the scope (`Agents · session 1a2b3c4d`).
-The selected row stays highlighted while another pane has focus (reversed when the tree
-has focus, bold and underlined otherwise), so you can always see whose timeline is shown.
-
-#### Focus pane (right)
-
-The focus pane follows the selected agent.
-
-- **Header.** `name · model · pct% of <window> [<source>]`. The source says where the
-  context window size came from:
-  - `cfg`: `[context_window]` in `config.toml`
-  - `log`: an explicit number in the log (Codex)
-  - `1m`: a `[1m]` / "(1M context)" marker (Claude)
-  - `cache`: `~/.codex/models_cache.json`
-  - `table`: the built-in model table
-  - `obs`: bumped to fit the observed usage
-- **First line.** The current activity (running tool and elapsed time), or how long ago the
-  last turn ended.
-- **Timeline.** The newest rows are at the bottom and the pane auto-follows until you scroll
-  up. It shows:
-  - user prompts and slash commands, and one-line assistant text
-  - tool calls and errors, and Codex sub-actions
-  - messages in and out, spawns, and lifecycle changes
-  - compactions (`pre→post`) and model changes
-  - turn ends and interrupts
-  - prompts queued and absorbed mid-turn
-
-#### Messages (bottom)
-
-The workspace-wide inter-agent feed: `time from → to KIND text`.
-
-Entries involving the selected agent have a bold cyan route. While the timeline has
-focus, the other entries are dimmed (highlighted, not filtered; `f` filters).
+Inter-agent messages, spawns and lifecycle changes scoped to the selection: everything
+for the scope node, the session's for a session node, those an agent sent, received or
+emitted for an agent node (`Messages · audit-A`). One row per entry:
+`time from → to KIND text`.
 
 - Kinds are `MESSAGE`, `NEW_TASK`, `FINAL_ANSWER`, `HANDBACK`, `TASK_NOTIFY`, `IDLE`,
   `INTERRUPT` and `PEER`, plus spawn and lifecycle entries.
 - Codex's encrypted bodies are shown as `[encrypted]`; `FINAL_ANSWER` is plaintext.
 - A message logged by both the sender and the recipient is shown once.
 
+The newest entries are at the bottom; with the messages focused (`Tab`), scrolling up stops
+following the end and `G` resumes it.
+
 ### Status bar
 
-- **Left.** The mode: `SESSIONS`, `OVERVIEW`, `AGENTS`, `TIMELINE · <agent>`,
-  `MESSAGES`, `DETAIL · <SECTION>` (the agent is named in the detail's title), or `FIND`
-  with the filter being typed and its number of matches. Then (except on the detail)
-  `N sessions (M live)` — or `session: <name>` while a session is focused — the agents in
-  view and how many run, how many finished agents are folded, the number of diagnostics
-  (log lines agtrace could not decode), the last error and the active toggles. For about
-  two seconds after a change, a short message replaces them: `▸ collapsed judge (+1
-  hidden)`, `finished agents shown — d to fold`, `session: <name> — a for all sessions`,
-  `messages: s-lead only — f for all`, `activity window: last 4h`, `view reset`,
-  `filter cleared`, `all sessions`, `rescanning…`, and so on. Keys that cannot act say
-  why (`can't collapse the only session`, `x has no children`).
-- **Right.** Key hints for the screen and the focused pane. The overview and the tree add
-  `Esc:reset` while a view toggle is active (`Esc:clear filter` while a `/` filter is
-  set), and `a all` while a session is focused. Hints are shortened on narrow terminals,
-  keeping `↵ detail`, `? help` and `Esc back`.
+- **Left.** The breadcrumb of the selection, `project › session › agent · SECTION` (`FIND`
+  with the filter being typed and its number of matches), then the sessions in scope and how
+  many are live, the agents and how many run, how many finished agents are folded, the
+  number of diagnostics (log lines agtrace could not decode), the last error and the active
+  toggles (`done shown`, `auto`). For about two seconds after a change, a short message
+  replaces them: `▾ expanded judge`, `finished agents shown in place — d to fold`,
+  `activity window: last 4h`, `filter cleared`, `view reset`, `rescanning…`, and so on.
+  Keys that cannot act say why (`audit-A has no children`).
+- **Right.** Key hints for the focused pane, shortened on narrow terminals (`→ open`,
+  `← nav` and `? help` always stay).
 
 ### Keybindings
 
-| Key | Action |
-|---|---|
-| `0` / `1` / `2` | Sessions / overview / agents screen (also from the detail). |
-| `Enter` / `→` / `l` | Open the selected agent's detail. On the sessions screen: focus the selected session and return. |
-| `a` | All sessions: drop the session focus. |
-| `Esc` / `←` / `h` | Back one level: close help; leave the detail (to the screen it was opened from) or the sessions screen; return from the timeline / feed to the tree; clear the `/` filter; then (on the tree or the overview) reset the view toggles: expand all, fold finished agents, feed: all, follow; and once nothing is left to reset, drop the session focus. The selection is kept. |
-| `i` / `n` / `r` / `t` | Detail: focus the Instructions / Now / Result / Timeline section (remembered for the next agents). Overview, agents screen: open the selected agent's detail at that section. |
-| `j` / `k`, `↓` / `↑` | Act on the focused pane: move the selection (overview, tree), or scroll the timeline / feed / detail section by a line. |
-| `J` / `K` | Next / previous agent: in the detail, show that agent's detail; elsewhere, move the selection. |
-| `/` | Find agents by name: type to filter, `↑` / `↓` select, `Enter` opens the selected match (the filter stays), `Esc` clears it. From the detail, returns to the screen it was opened from first. |
-| `+` / `]`, `-` / `[` | Overview activity window: wider / narrower (15m, 60m, 4h, all). |
-| `space` | Fold / unfold the selected node. The only root cannot be folded. Sessions screen: list / fold the older sessions. |
-| `Tab` / `Shift-Tab` | Agents screen: cycle pane focus (tree → timeline → feed). Detail: cycle sections. |
-| `PgUp` / `PgDn` | Scroll the focused pane or section by a page (the timeline when the tree has focus; on the overview, move the selection). |
-| `Ctrl-u` / `Ctrl-d` | Scroll by half a page. |
-| `G` / `End` | Jump to the tail and resume auto-follow. |
-| `g` / `Home` | Jump to the top. |
-| `f` | Feed filter: all messages ↔ only those involving the selected agent. |
-| `d` | Show or fold finished (done / killed) agents and earlier transcripts. |
-| `A` | Toggle auto-select of the most recently active agent (it was `a`, now "all sessions"). |
-| `R` | Rescan for new agent files now (it was `r`, now the Result section key). |
-| `?` | Toggle the help overlay. |
-| `q`, `Ctrl-c` | Quit. |
+| Key | Navigator (focused by default) | Content / messages |
+|---|---|---|
+| `↑` / `↓`, `k` / `j` | Move the selection; the content follows. | Scroll by a line. |
+| `→` / `l` | Expand; if expanded, go to the first child; on an agent without children, focus the content. | — |
+| `←` / `h` | Collapse; if collapsed (or a leaf), go to the parent. | Back to the navigator. |
+| `Enter` | Focus the content (read / scroll). | — |
+| `Esc` | Clear the `/` filter; else go to the scope node; there, reset the view (collapse to the defaults, fold finished agents). | Back to the navigator. |
+| `i` / `n` / `r` / `t` | Show that section of the selected agent's detail (a session's root agent; see above) and focus the content. | Switch the section. |
+| `Tab` / `Shift-Tab` | Cycle the focus: navigator → content → messages. | Same. |
+| `PgUp` / `PgDn`, `Ctrl-u` / `Ctrl-d` | Move the selection by a page / half a page. | Scroll by a page / half a page. |
+| `g` / `Home`, `G` / `End` | First / last row. | Top / end (the timeline and the messages follow the end again). |
+| `/` | Filter the navigator by name (see above). | Same (focuses the navigator). |
+| `d` | Show finished (done / killed) agents and earlier transcripts in place, or fold them again. | Same. |
+| `space` | Expand / collapse the selected node. | — |
+| `+` / `]`, `-` / `[` | Activity window of the overview: wider / narrower (15m, 60m, 4h, all). | Same. |
+| `s` | Hide / show the navigator (below 80 columns). | Same. |
+| `A` | Follow the most recently active agent shown in the navigator. | Same. |
+| `R` | Rescan for new agent files now. | Same. |
+| `?` | Toggle the help overlay. | Same. |
+| `q`, `Ctrl-c` | Quit. | Same. |
 
-Scrolling up stops auto-follow. Scrolling back to the end or pressing `G` resumes it.
-Changing the selection resets the timeline to follow. Moving the selection by hand turns
-auto-select off.
+Selecting another node starts its content over (the detail picks its section again,
+scrolls go back to the top, the timeline and the messages follow their end). Moving the
+selection by hand turns `A` off.
 
 ## Console mode
 
