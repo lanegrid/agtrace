@@ -82,7 +82,7 @@ Each row is one agent, indented by depth:
 - **Context %.** Yellow from 80%, red from 95%. It is blank while the window or the usage is
   unknown.
 
-A collapsed node shows `▸` and `+N`.
+A collapsed node shows `▸+N`. The tree title names the scope (`Agents · session 1a2b3c4d`), and the status bar lists active view toggles with an `Esc:reset` hint.
 
 ### Focus pane (right)
 
@@ -126,7 +126,9 @@ not decode), the last error, active toggles, and a key hint.
 | Key | Action |
 |---|---|
 | `j` / `k`, `↓` / `↑` | Move the selection in the tree, or scroll the focused pane by a line. |
-| `Enter` / `space` | Collapse or expand the selected node. |
+| `Enter` | Open the selected agent (focus its timeline). |
+| `space` / `←` / `→` | Collapse / expand the selected node. The only root cannot be collapsed. |
+| `Esc` | Back: close help, or reset the view (expand all, show done, feed: all, focus tree, follow). |
 | `Tab` / `Shift-Tab` | Cycle pane focus: tree → timeline → feed. |
 | `PgUp` / `PgDn` | Scroll the focused pane by a page (the timeline when the tree has focus). |
 | `Ctrl-u` / `Ctrl-d` | Scroll by half a page. |
@@ -136,7 +138,7 @@ not decode), the last error, active toggles, and a key hint.
 | `h` | Hide or show agents that are done or killed. |
 | `a` | Toggle auto-select of the most recently active agent. |
 | `r` | Rescan for new agent files now. |
-| `?` | Toggle the help overlay (`Esc` also closes it). |
+| `?` | Toggle the help overlay. |
 | `q`, `Ctrl-c` | Quit. |
 
 Scrolling up stops auto-follow. Scrolling back to the end or pressing `G` resumes it.

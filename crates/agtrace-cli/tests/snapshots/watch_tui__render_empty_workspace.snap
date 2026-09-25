@@ -1,9 +1,8 @@
 ---
 source: crates/agtrace-cli/tests/watch_tui.rs
-assertion_line: 174
 expression: "draw(&view, &mut ui(), 80, 24)"
 ---
-"┌ Agents ──────────────────┐┌ waiting for agents… ─────────────────────────────┐"
+"┌ Agents · project demo-pro┐┌ waiting for agents… ─────────────────────────────┐"
 "│ no agents yet            ││                                                  │"
 "│                          ││                                                  │"
 "│                          ││                                                  │"

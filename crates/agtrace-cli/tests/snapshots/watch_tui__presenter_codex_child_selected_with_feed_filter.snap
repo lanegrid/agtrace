@@ -1,6 +1,5 @@
 ---
 source: crates/agtrace-cli/tests/watch_tui.rs
-assertion_line: 56
 expression: vm
 ---
 {
@@ -280,7 +279,8 @@ expression: vm
     "last_error": null,
     "feed_filter": "selected",
     "hide_done": false,
-    "auto_select": false
+    "auto_select": false,
+    "collapsed": 0
   },
   "focus_pane": "tree",
   "timeline_scroll": "follow",

@@ -1,9 +1,8 @@
 ---
 source: crates/agtrace-cli/tests/watch_tui.rs
-assertion_line: 168
 expression: "draw(&view, &mut ui, 80, 24)"
 ---
-"┌ Agents ──────────────────┐┌ s-lead · claude-opus-5-5[1m] · 42% of 1.0M [1m] ─┐"
+"┌ Agents · project demo-pro┐┌ s-lead · claude-opus-5-5[1m] · 42% of 1.0M [1m] ─┐"
 "│  codex /root  ○ idle  12%││now   ▸ Bash mise run test  (10s)                 │"
 "│  ├ judge      ● busy  77%││12:00 ⇢ spawn          audit-A (teammate, general-│"
 "│  │ └ x        ● busy   5%││12:00 ⇢ spawn          audit-B (teammate, general-│"

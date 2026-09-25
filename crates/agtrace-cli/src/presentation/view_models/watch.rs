@@ -307,6 +307,8 @@ pub struct StatusBarVm {
     pub feed_filter: FeedFilter,
     pub hide_done: bool,
     pub auto_select: bool,
+    /// Collapsed tree nodes.
+    pub collapsed: usize,
 }
 
 // ============================================================================

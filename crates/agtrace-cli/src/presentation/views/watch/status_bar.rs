@@ -51,7 +51,12 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
     if s.auto_select {
         toggles.push("auto");
     }
-    if !toggles.is_empty() {
+    let collapsed = (s.collapsed > 0).then(|| format!("{} collapsed", s.collapsed));
+    if let Some(c) = &collapsed {
+        toggles.push(c);
+    }
+    let changed = !toggles.is_empty();
+    if changed {
         spans.push(sep());
         spans.push(Span::styled(
             toggles.join(" "),
@@ -59,6 +64,11 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
         ));
     }
     spans.push(sep());
-    spans.push(Span::styled("?:help q:quit", dim()));
+    let hint = if changed {
+        "Esc:reset ?:help q:quit"
+    } else {
+        "?:help q:quit"
+    };
+    spans.push(Span::styled(hint, dim()));
     f.render_widget(Paragraph::new(Line::from(spans)), area);
 }

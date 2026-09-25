@@ -8,7 +8,9 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 pub const KEYS: &[(&str, &str)] = &[
     ("j/k ↓/↑", "move selection (or scroll focused pane)"),
-    ("Enter/space", "collapse / expand node"),
+    ("Enter", "open selected agent (focus timeline)"),
+    ("space ←/→", "collapse / expand node"),
+    ("Esc", "back: close help / reset view"),
     ("Tab/S-Tab", "cycle pane focus"),
     ("PgUp/PgDn", "scroll focused pane"),
     ("C-u/C-d", "half-page scroll"),
