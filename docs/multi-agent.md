@@ -213,7 +213,8 @@ Every agent has a status: **running**, **idle**, **done**, **failed**, **killed*
    - Claude: no registry entry and no write for 10 min ⇒ idle; idle for 2 h ⇒ done.
    - Claude subagent / fork: running with no write for 10 min while the parent is done or
      gone ⇒ done.
-   - Codex: running with no write for 30 min ⇒ idle; a root idle for 2 h ⇒ done.
+   - Codex: running with no write for 30 min ⇒ idle; a root idle for 2 h ⇒ done; a child
+     idle for 2 h ⇒ done once its parent is done or gone (only the parent can resume it).
 
 ## Where it shows up
 

@@ -115,6 +115,19 @@ impl LiveFixture {
             .unwrap_or_else(|| panic!("no rollout for {thread}"))
     }
 
+    /// Move a Codex rollout into the date dir of `day` (rollouts live in the dir of
+    /// their creation date; a long-running tree spans several). Returns the new path.
+    pub fn move_codex_to_day(&self, thread: &str, day: NaiveDate) -> std::io::Result<PathBuf> {
+        let from = self.codex_file(thread);
+        let dir = self
+            .codex_home()
+            .join(format!("sessions/{}", day.format("%Y/%m/%d")));
+        fs::create_dir_all(&dir)?;
+        let to = dir.join(from.file_name().unwrap());
+        fs::rename(&from, &to)?;
+        Ok(to)
+    }
+
     /// The (single) registry entry `sessions/<pid>.json`.
     pub fn registry_file(&self) -> PathBuf {
         fs::read_dir(self.claude_home().join("sessions"))

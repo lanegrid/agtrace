@@ -1,8 +1,9 @@
 //! Agent graph / live state fold (design §4.3) on synthetic events.
 
 use agtrace_engine::workspace::{
-    AgentStatus, CatalogResolver, ContextEvidence, FeedKind, FeedParty, NoWindow, ProcessStatus,
-    SideStateUpdate, StatusSource, TeamMember, TimelineItem, WorkspaceEvent, WorkspaceView,
+    AgentStatus, CatalogResolver, ContextEvidence, FeedKind, FeedParty, MAX_PENDING, NoWindow,
+    ProcessStatus, SideStateUpdate, StatusSource, TeamMember, TimelineItem, WorkspaceEvent,
+    WorkspaceView,
 };
 use agtrace_testing::synth::{AgentBuilder, EventLog, handle, ts};
 use agtrace_types::{
@@ -616,6 +617,106 @@ fn codex_thread_status_rules() {
     assert_eq!(ws.status(&child), AgentStatus::Running);
 }
 
+/// Regression (real Codex data): the child's trailing records after its
+/// FINAL_ANSWER, and a later `interrupt_agent` on the already-completed child,
+/// used to turn Done back into Idle ("idle 19d" for finished children).
+#[test]
+fn codex_completed_child_stays_done_after_trailing_records_and_interrupt() {
+    let mut ws = Ws::new();
+    let root = ws.discover(AgentBuilder::codex_root("t-root"));
+    let child = ws.discover(AgentBuilder::codex_child(
+        "t-child",
+        "t-root",
+        "t-root",
+        "/root/judge",
+    ));
+    let mut child_log = EventLog::new(&child);
+    let mut root_log = EventLog::new(&root);
+    ws.one(
+        child_log
+            .at(1)
+            .lifecycle(handle::id(&child), LifecycleTransition::Running),
+    );
+    ws.one(child_log.at(2).assistant("working"));
+    ws.one(
+        root_log
+            .at(10)
+            .lifecycle(handle::id(&child), LifecycleTransition::Completed),
+    );
+    assert_eq!(ws.status(&child), AgentStatus::Done);
+    // Bookkeeping written right after the final answer (usage, final text, turn end).
+    ws.one(child_log.at(11).usage(1_000, Some("gpt-5.6-terra")));
+    ws.one(child_log.at(11).assistant("final answer"));
+    ws.one(child_log.at(11).turn_end());
+    assert_eq!(ws.status(&child), AgentStatus::Done);
+    // Parent interrupts the finished child: nothing to interrupt, still Done.
+    ws.one(
+        root_log
+            .at(20)
+            .lifecycle(handle::id(&child), LifecycleTransition::Interrupted),
+    );
+    assert_eq!(ws.status(&child), AgentStatus::Done);
+    // A real new task (task_started in the child's log) re-opens it.
+    ws.one(
+        child_log
+            .at(30)
+            .lifecycle(handle::id(&child), LifecycleTransition::Running),
+    );
+    assert_eq!(ws.status(&child), AgentStatus::Running);
+}
+
+/// Regression (real Codex tree, 54 children): the root's log reports more
+/// lifecycle events for its children than `MAX_PENDING` before any child file is
+/// discovered (children live in later date dirs). The early children's
+/// `completed` must survive until they are discovered, instead of being evicted
+/// by later children's chatter.
+#[test]
+fn pending_child_terminals_survive_a_long_parent_log() {
+    let mut ws = Ws::new();
+    let root = ws.discover(AgentBuilder::codex_root("t-root"));
+    let per_child = 30;
+    let n = MAX_PENDING / per_child + 10;
+    let children: Vec<AgentBuilder> = (0..n)
+        .map(|i| {
+            AgentBuilder::codex_child(
+                &format!("t-child-{i:03}"),
+                "t-root",
+                "t-root",
+                &format!("/root/c{i:03}"),
+            )
+        })
+        .collect();
+    let mut root_log = EventLog::new(&root);
+    let mut events = Vec::new();
+    for (i, c) in children.iter().enumerate() {
+        let base = (i * per_child) as i64;
+        let h = handle::id(&c.id());
+        events.push(
+            root_log
+                .at(base)
+                .lifecycle(h.clone(), LifecycleTransition::Running),
+        );
+        for k in 1..per_child - 1 {
+            events.push(
+                root_log
+                    .at(base + k as i64)
+                    .lifecycle(h.clone(), LifecycleTransition::Idle),
+            );
+        }
+        events.push(
+            root_log
+                .at(base + per_child as i64 - 1)
+                .lifecycle(h, LifecycleTransition::Completed),
+        );
+    }
+    ws.feed(events);
+    for c in children {
+        let id = ws.discover(c);
+        assert_eq!(ws.status(&id), AgentStatus::Done, "{id:?}");
+    }
+    assert_eq!(ws.view.pending_links(), 0);
+}
+
 // ------------------------------------------------------------------ staleness
 
 #[test]
@@ -691,9 +792,17 @@ fn codex_staleness() {
     ws.tick(30 * 60);
     assert_eq!(ws.status(&child), AgentStatus::Idle);
     assert_eq!(ws.status(&root), AgentStatus::Idle);
+    ws.tick(2 * 3600 - 1);
+    assert_eq!(ws.status(&child), AgentStatus::Idle);
     ws.tick(2 * 3600);
     assert_eq!(ws.status(&root), AgentStatus::Done);
-    // Children never go Done by staleness.
+    // A child idle for 2 h under a finished parent is finished too (it can only be
+    // resumed through its parent).
+    assert_eq!(ws.status(&child), AgentStatus::Done);
+    assert_eq!(ws.source(&child), StatusSource::Staleness);
+    // The parent resumes: the stale child is merely idle again.
+    ws.one(EventLog::new(&root).at(2 * 3600 + 10).user("next"));
+    assert_eq!(ws.status(&root), AgentStatus::Running);
     assert_eq!(ws.status(&child), AgentStatus::Idle);
 }
 

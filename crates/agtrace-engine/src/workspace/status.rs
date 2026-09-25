@@ -10,7 +10,7 @@
 //! | 1 parent-side terminal | `terminal` (sticky until own-log activity after it) + parent `AllBackgroundKilled` |
 //! | 3 registry (Claude main/teammate) | wins while the pid is alive (§10.7); dead ⇒ Done |
 //! | 2 own log | latest of `own` (file order) and `remote` (parent-side non-terminal) |
-//! | 4 staleness | no write for a while ⇒ Idle / Done |
+//! | 4 staleness | no write for a while ⇒ Idle / Done (Codex child: only under a finished parent) |
 //!
 //! (Registry is checked before the own log because §10.7 makes it win while alive.)
 
@@ -96,6 +96,11 @@ pub(crate) struct StatusSignals {
     pub remote: Option<(AgentStatus, DateTime<Utc>)>,
     /// Timestamp of the latest *activity* event in the agent's own log.
     pub last_active: Option<DateTime<Utc>>,
+    /// Timestamp of the latest start of *new work* in the agent's own log (a
+    /// prompt, an incoming task/message, or a turn start). Only this re-opens a
+    /// parent-side terminal: records the agent writes while finishing (final
+    /// text, usage, turn end) must not.
+    pub last_started: Option<DateTime<Utc>>,
     /// Timestamp of the latest event of any kind in the agent's own log ("last write").
     pub last_write: Option<DateTime<Utc>>,
     /// This agent's log said "all background agents killed" at this time.
@@ -123,7 +128,8 @@ impl StatusSignals {
 
     /// Terminal still in force (not superseded by own activity).
     fn live_terminal(&self) -> Option<Terminal> {
-        self.terminal.filter(|t| !self.active_after(t.at))
+        self.terminal
+            .filter(|t| self.last_started.is_none_or(|s| s <= t.at))
     }
 
     /// Priority-2 status: latest of own log and parent-side non-terminal signals.
@@ -232,7 +238,10 @@ pub(crate) fn derive_status(
             return (AgentStatus::Done, StatusSource::Staleness);
         }
     } else if facts.provider == Provider::Codex {
-        if facts.is_root && live && stale(IDLE_TO_DONE) {
+        // A child is only ever resumed through its parent: once the parent is
+        // finished (or gone), an idle child is finished too, like the root.
+        let parent_gone = parent.status.is_none_or(AgentStatus::is_terminal);
+        if live && (facts.is_root || parent_gone) && stale(IDLE_TO_DONE) {
             return (AgentStatus::Done, StatusSource::Staleness);
         }
         if status == AgentStatus::Running && stale(CODEX_RUNNING_STALE) {

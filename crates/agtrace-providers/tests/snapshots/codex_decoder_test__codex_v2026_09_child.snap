@@ -361,26 +361,6 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
     {
       "agent": "codex:01900000-0000-7000-8000-000000000002",
       "content": {
-        "duration_ms": 20000,
-        "outcome": {
-          "outcome": "completed"
-        },
-        "turn_id": "turn-c1"
-      },
-      "id": "e55581fa-ce08-5523-b8c0-bab39c55880d",
-      "origin": {
-        "byte_offset": 9413,
-        "line": 21,
-        "sub": 0
-      },
-      "parent_id": "c6c27679-0c4e-53f0-854f-eb036566574c",
-      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
-      "timestamp": "2026-09-20T10:00:20.500Z",
-      "type": "turn_end"
-    },
-    {
-      "agent": "codex:01900000-0000-7000-8000-000000000002",
-      "content": {
         "body": "The parser looks correct.",
         "direction": "outgoing",
         "encrypted": false,
@@ -400,12 +380,32 @@ expression: "serde_json::json!({ \"diagnostics\": diag, \"events\": events })"
       "origin": {
         "byte_offset": 9413,
         "line": 21,
-        "sub": 1
+        "sub": 0
       },
-      "parent_id": "e55581fa-ce08-5523-b8c0-bab39c55880d",
+      "parent_id": "c6c27679-0c4e-53f0-854f-eb036566574c",
       "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
       "timestamp": "2026-09-20T10:00:20.500Z",
       "type": "agent_message"
+    },
+    {
+      "agent": "codex:01900000-0000-7000-8000-000000000002",
+      "content": {
+        "duration_ms": 20000,
+        "outcome": {
+          "outcome": "completed"
+        },
+        "turn_id": "turn-c1"
+      },
+      "id": "e55581fa-ce08-5523-b8c0-bab39c55880d",
+      "origin": {
+        "byte_offset": 9413,
+        "line": 21,
+        "sub": 1
+      },
+      "parent_id": "b9f48269-3a05-5b1f-9b8c-fef580849dfa",
+      "session_id": "802486a8-ab24-5f82-80fb-1887b3d34f29",
+      "timestamp": "2026-09-20T10:00:20.500Z",
+      "type": "turn_end"
     }
   ]
 }

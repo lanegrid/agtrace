@@ -34,7 +34,8 @@ pub const FEED_CAPACITY: usize = 500;
 pub const TIMELINE_CAPACITY: usize = 1000;
 /// Watcher errors kept for the status bar.
 pub const ERROR_CAPACITY: usize = 50;
-/// Unresolved spawns / lifecycle signals kept for late discovery (oldest dropped).
+/// Unresolved spawns / lifecycle signals kept for late discovery. When full, the
+/// oldest non-link entry of the target with the most entries is dropped.
 pub const MAX_PENDING: usize = 1000;
 const MAX_OPEN_TOOLS: usize = 32;
 /// Recent spawn tool calls remembered per agent to attach their prompt to the spawn.
@@ -243,6 +244,7 @@ impl AgentView {
         self.last_activity = None;
         self.signals.own = None;
         self.signals.last_active = None;
+        self.signals.last_started = None;
         self.signals.last_write = None;
         self.signals.all_background_killed_at = None;
         self.detail.reset_own();
@@ -534,6 +536,9 @@ impl WorkspaceView {
             }
             if activity && !own_lifecycle {
                 v.signals.own = Some((AgentStatus::Running, ts));
+            }
+            if starts_work(&ev.payload, own_lifecycle) {
+                v.signals.last_started = v.signals.last_started.max(Some(ts));
             }
             if v.signals.own != own_before
                 && let Some((st, at)) = v.signals.own
@@ -913,7 +918,7 @@ impl WorkspaceView {
             }
             Resolution::Pending => {
                 if self.unresolved.len() >= MAX_PENDING {
-                    self.unresolved.remove(0);
+                    self.evict_pending();
                 }
                 self.unresolved.push(PendingLink {
                     ctx: ctx.clone(),
@@ -923,6 +928,38 @@ impl WorkspaceView {
                 });
             }
             Resolution::Never => {}
+        }
+    }
+
+    /// Make room in the pending queue. A parent log can report far more events for
+    /// its children than fit before any child file is discovered (Codex children
+    /// live in later date dirs), so dropping the globally oldest entry would lose
+    /// early children's terminals entirely. Instead the target with the most
+    /// queued entries gives up its oldest non-link entry: no target can evict
+    /// another's effects, and each keeps its link and its latest reports.
+    fn evict_pending(&mut self) {
+        let mut counts: HashMap<(&AgentId, &AgentHandle), usize> = HashMap::new();
+        for p in &self.unresolved {
+            *counts.entry((&p.ctx, &p.handle)).or_default() += 1;
+        }
+        // Deterministic tie-break: the target whose first entry is oldest.
+        let max = counts.values().copied().max().unwrap_or(0);
+        let Some(first) = self
+            .unresolved
+            .iter()
+            .find(|p| counts[&(&p.ctx, &p.handle)] == max)
+        else {
+            return;
+        };
+        let (ctx, handle) = (first.ctx.clone(), first.handle.clone());
+        let same = |p: &PendingLink| p.ctx == ctx && p.handle == handle;
+        let idx = self
+            .unresolved
+            .iter()
+            .position(|p| same(p) && !matches!(p.effect, Effect::Link(_)))
+            .or_else(|| self.unresolved.iter().position(same));
+        if let Some(i) = idx {
+            self.unresolved.remove(i);
         }
     }
 
@@ -1403,6 +1440,24 @@ impl WorkspaceView {
 }
 
 /// Events that mean the agent is doing something (as opposed to metadata / turn end).
+/// Own-log events that start new work (and so re-open a finished agent).
+fn starts_work(p: &EventPayload, own_lifecycle: bool) -> bool {
+    match p {
+        EventPayload::User(_) | EventPayload::SlashCommand(_) => true,
+        EventPayload::AgentLifecycle(l) => {
+            own_lifecycle && l.transition == LifecycleTransition::Running
+        }
+        EventPayload::AgentMessage(m) => {
+            m.direction == MessageDirection::Incoming
+                && matches!(
+                    m.kind,
+                    AgentMessageKind::NewTask | AgentMessageKind::Message
+                )
+        }
+        _ => false,
+    }
+}
+
 fn is_activity(p: &EventPayload) -> bool {
     !matches!(
         p,

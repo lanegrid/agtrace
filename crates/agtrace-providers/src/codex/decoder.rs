@@ -273,8 +273,8 @@ impl CodexDecoder {
                     None => TurnOutcome::Completed,
                 };
                 let failed = matches!(outcome, TurnOutcome::Failed { .. });
-                self.turn_end(cx, outcome, p.turn_id, p.duration_ms);
-                // A child's final message is delivered to its parent as FINAL_ANSWER.
+                // A child's final message is delivered to its parent as FINAL_ANSWER,
+                // before the turn ends (nothing of the finished turn follows its end).
                 if !failed
                     && let (Some(parent), Some(text)) = (self.parent.clone(), p.last_agent_message)
                 {
@@ -295,6 +295,7 @@ impl CodexDecoder {
                         }),
                     );
                 }
+                self.turn_end(cx, outcome, p.turn_id, p.duration_ms);
             }
             "turn_aborted" => {
                 let Some(p) = self.typed::<TurnAborted>(payload, &kind, line) else {

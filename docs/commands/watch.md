@@ -48,8 +48,11 @@ exception is `--session` with a plain session id, which is looked up in the inde
 
 New agents are picked up while `watch` runs, so you can start it before or after your
 agents. Discovery is bounded: it lists the project's Claude directory (plus
-`subagents/` for tracked sessions) and today's and yesterday's Codex date directories. It
-never walks the whole provider tree.
+`subagents/` for tracked sessions) and today's and yesterday's Codex date directories.
+Older Codex date directories are listed every 30 s when the scope reaches them: the days
+overlapping a wider `--since`, or, with `--session`, every day since the Codex root was
+created (a long-running tree's threads live in the directories of their own start dates).
+It never walks the whole provider tree (except once, to find an old `--session` root).
 
 ## The TUI
 

@@ -547,6 +547,27 @@ fn turns_models_context_and_compaction() {
     assert!(diag.unknown_kinds.is_empty(), "{:?}", diag.unknown_kinds);
 }
 
+/// The FINAL_ANSWER is delivered before the turn ends: an event after the turn
+/// end would read as new activity and turn the finished child back to Running.
+#[test]
+fn final_answer_precedes_the_turn_end() {
+    let (_, events, _) = decode(&fixture(JUDGE));
+    let fa = events
+        .iter()
+        .position(|e| {
+            matches!(&e.payload, EventPayload::AgentMessage(m) if m.kind == AgentMessageKind::FinalAnswer)
+        })
+        .expect("final answer");
+    assert!(
+        matches!(
+            events.get(fa + 1).map(|e| &e.payload),
+            Some(EventPayload::TurnEnd(_))
+        ),
+        "{:?}",
+        events.get(fa + 1).map(|e| &e.payload)
+    );
+}
+
 #[test]
 fn failed_task_complete_is_a_failed_turn() {
     let dir = tempfile::tempdir().unwrap();
