@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::presentation::formatters::{display, json, number, text, time};
 use crate::presentation::view_models::{
-    AgentStepViewModel, SessionDetailViewModel, SessionListViewModel, SpawnContextViewModel,
+    AgentNodeViewModel, AgentStepViewModel, SessionDetailViewModel, SessionListViewModel,
     StreamAnalysisViewModel, ViewMode,
 };
 
@@ -239,13 +239,33 @@ pub struct SessionDetailView<'a> {
     mode: ViewMode,
 }
 
-/// Format a spawn context for display (1-based indices).
-fn format_spawn_context(ctx: &SpawnContextViewModel) -> String {
-    format!(
-        "spawned by Turn #{}, Step #{}",
-        ctx.turn_index + 1,
-        ctx.step_index + 1
-    )
+/// One line per agent of the tree (pre-order, indented by depth).
+fn write_agent_tree(
+    f: &mut fmt::Formatter,
+    node: &AgentNodeViewModel,
+    depth: usize,
+    indent: &str,
+) -> fmt::Result {
+    let label = node
+        .name
+        .as_deref()
+        .or(node.path.as_deref())
+        .unwrap_or(&node.agent_id);
+    let connector = if depth == 0 { "" } else { "└ " };
+    write!(
+        f,
+        "{indent}{}{connector}{label} ({})",
+        "  ".repeat(depth.saturating_sub(1)),
+        node.kind
+    )?;
+    if label != node.agent_id {
+        write!(f, "  {}", node.agent_id)?;
+    }
+    writeln!(f)?;
+    for child in &node.children {
+        write_agent_tree(f, child, depth + 1, indent)?;
+    }
+    Ok(())
 }
 
 impl<'a> SessionDetailView<'a> {
@@ -269,12 +289,12 @@ impl<'a> SessionDetailView<'a> {
         stream: &StreamAnalysisViewModel,
     ) -> fmt::Result {
         writeln!(f, "\n{}", "─".repeat(80))?;
-        let spawn_info = stream
-            .spawned_by
-            .as_ref()
-            .map(|ctx| format!(" ({})", format_spawn_context(ctx)))
+        let name = stream
+            .name
+            .as_deref()
+            .map(|n| format!(" ({n})"))
             .unwrap_or_default();
-        writeln!(f, "Stream: {}{}", stream.stream_id, spawn_info)?;
+        writeln!(f, "Stream: {}{}", stream.stream_id, name)?;
         writeln!(
             f,
             "Turns: {} | Tokens: {}\n",
@@ -346,8 +366,9 @@ impl<'a> SessionDetailView<'a> {
             writeln!(f, "Project:  {}... (hash only)", hash_prefix)?;
         }
 
-        if let Some(ref ctx) = self.data.session.spawned_by {
-            writeln!(f, "Spawned:  {}", format_spawn_context(ctx))?;
+        if let Some(agents) = self.data.agents.as_ref().filter(|a| !a.children.is_empty()) {
+            writeln!(f, "Agents:")?;
+            write_agent_tree(f, agents, 0, "  ")?;
         }
 
         writeln!(f, "{}", "=".repeat(80))?;
@@ -412,11 +433,6 @@ impl<'a> SessionDetailView<'a> {
             writeln!(f, "Model:         {}", model)?;
         }
 
-        // Spawn context (for subagent sessions stored in separate files)
-        if let Some(ref ctx) = self.data.session.spawned_by {
-            writeln!(f, "Spawned:       {}", format_spawn_context(ctx))?;
-        }
-
         if let Some(main) = self.main_stream() {
             // Status
             writeln!(f, "Status:        {}", main.status)?;
@@ -465,6 +481,12 @@ impl<'a> SessionDetailView<'a> {
             for log_file in &self.data.session.log_files {
                 writeln!(f, "               {}", log_file)?;
             }
+        }
+
+        // Agent tree (subagents, forks, teammates, Codex child threads)
+        if let Some(agents) = self.data.agents.as_ref().filter(|a| !a.children.is_empty()) {
+            writeln!(f, "Agents:")?;
+            write_agent_tree(f, agents, 0, "               ")?;
         }
 
         writeln!(f, "{}", "=".repeat(80))?;
@@ -649,14 +671,14 @@ impl<'a> TurnView<'a> {
         agent_id: Option<&str>,
     ) -> fmt::Result {
         let display_text = match (result.trim().is_empty(), agent_id) {
-            // Empty result with agent_id: show sidechain link
-            (true, Some(aid)) => format!("→ sidechain:{}", aid),
+            // Empty result of a spawning call: show the spawned agent
+            (true, Some(aid)) => format!("→ {}", aid),
             // Empty result without agent_id: show (empty)
             (true, None) => text::format_empty(result),
             // Non-empty result with agent_id: show both
             (false, Some(aid)) => {
                 let truncated = text::normalize_and_clean(result, TOOL_RESULT_LENGTH);
-                format!("{} (→ sidechain:{})", truncated, aid)
+                format!("{} (→ {})", truncated, aid)
             }
             // Non-empty result without agent_id: show truncated text
             (false, None) => text::normalize_and_clean(result, TOOL_RESULT_LENGTH),
@@ -778,7 +800,7 @@ impl<'a> fmt::Display for TurnView<'a> {
                 if i > 0 {
                     write!(f, ", ")?;
                 }
-                write!(f, "{}", child.session_id_short)?;
+                write!(f, "{}", child.label.as_deref().unwrap_or(&child.agent_id))?;
             }
             writeln!(f)?;
         }
@@ -830,17 +852,15 @@ mod tests {
     use super::*;
     use crate::presentation::view_models::session::{
         ContextWindowSummary, FilterSummary, SessionDetailViewModel, SessionInfoViewModel,
-        SessionListEntry, SessionListViewModel, SpawnContextViewModel, StreamAnalysisViewModel,
-        TurnAnalysisViewModel, TurnMetrics,
+        SessionListEntry, SessionListViewModel, StreamAnalysisViewModel, TurnAnalysisViewModel,
+        TurnMetrics,
     };
 
-    fn make_stream(
-        stream_id: &str,
-        spawned_by: Option<SpawnContextViewModel>,
-    ) -> StreamAnalysisViewModel {
+    fn make_stream(stream_id: &str, name: Option<&str>) -> StreamAnalysisViewModel {
         StreamAnalysisViewModel {
             stream_id: stream_id.to_string(),
-            spawned_by,
+            agent_id: format!("claude:test/{stream_id}"),
+            name: name.map(str::to_string),
             status: "Complete".to_string(),
             duration: None,
             start_time: None,
@@ -861,8 +881,26 @@ mod tests {
                 project_root: Some("/test/project/root".to_string()),
                 model: Some("test-model".to_string()),
                 log_files: vec![],
-                spawned_by: None,
             },
+            agents: Some(AgentNodeViewModel {
+                agent_id: "claude:test-session-id".to_string(),
+                session_id: "test-session-id".to_string(),
+                provider: "claude_code".to_string(),
+                kind: "main".to_string(),
+                name: None,
+                path: None,
+                spawn_call_id: None,
+                children: vec![AgentNodeViewModel {
+                    agent_id: "claude:test-session-id/abc12345".to_string(),
+                    session_id: "test-session-id".to_string(),
+                    provider: "claude_code".to_string(),
+                    kind: "subagent".to_string(),
+                    name: Some("Count files".to_string()),
+                    path: None,
+                    spawn_call_id: Some("toolu_1".to_string()),
+                    children: vec![],
+                }],
+            }),
             streams,
         }
     }
@@ -993,19 +1031,15 @@ mod tests {
     fn test_session_detail_with_sidechains_renders_stream_sections() {
         let data = make_session_detail(vec![
             make_stream("main", None),
-            make_stream(
-                "sidechain:abc12345",
-                Some(SpawnContextViewModel {
-                    turn_index: 1,
-                    step_index: 1,
-                }),
-            ),
+            make_stream("sidechain:abc12345", Some("Count files")),
         ]);
         let view = SessionDetailView::new(&data, ViewMode::Verbose);
         let output = format!("{}", view);
 
         assert!(output.contains("Streams:       2"));
-        assert!(output.contains("Stream: sidechain:abc12345 (spawned by Turn #2, Step #2)"));
+        assert!(output.contains("Stream: sidechain:abc12345 (Count files)"));
+        assert!(output.contains("Agents:"));
+        assert!(output.contains("└ Count files (subagent)  claude:test-session-id/abc12345"));
     }
 
     /// Regression test: a session with sidechains must serialize to a single
@@ -1017,20 +1051,8 @@ mod tests {
 
         let data = make_session_detail(vec![
             make_stream("main", None),
-            make_stream(
-                "sidechain:abc12345",
-                Some(SpawnContextViewModel {
-                    turn_index: 1,
-                    step_index: 1,
-                }),
-            ),
-            make_stream(
-                "sidechain:def67890",
-                Some(SpawnContextViewModel {
-                    turn_index: 2,
-                    step_index: 0,
-                }),
-            ),
+            make_stream("sidechain:abc12345", Some("Count files")),
+            make_stream("sidechain:def67890", None),
         ]);
         let result = CommandResultViewModel::new(data);
         let output = serde_json::to_string_pretty(&result).unwrap();
@@ -1040,7 +1062,11 @@ mod tests {
         let streams = parsed["content"]["streams"].as_array().unwrap();
         assert_eq!(streams.len(), 3);
         assert_eq!(streams[0]["stream_id"], "main");
-        assert_eq!(streams[1]["spawned_by"]["turn_index"], 1);
+        assert_eq!(streams[1]["name"], "Count files");
+        assert_eq!(
+            parsed["content"]["agents"]["children"][0]["kind"],
+            "subagent"
+        );
     }
 
     #[test]

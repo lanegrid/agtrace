@@ -55,11 +55,6 @@ pub(crate) struct Envelope {
     pub uuid: Option<String>,
     #[serde(default)]
     pub timestamp: Option<String>,
-    #[serde(default)]
-    pub is_sidechain: bool,
-    /// Subagent id (present in subagent files).
-    #[serde(default)]
-    pub agent_id: Option<String>,
     /// Agent Teams: team of the teammate that wrote the record.
     #[serde(default)]
     pub team_name: Option<String>,

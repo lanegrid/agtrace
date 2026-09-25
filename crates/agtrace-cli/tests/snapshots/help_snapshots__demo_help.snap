@@ -1,0 +1,46 @@
+---
+source: crates/agtrace-cli/tests/help_snapshots.rs
+expression: help
+---
+Replay a synthetic multi-agent workspace (a Claude Code lead with a teammate
+and a background subagent, plus a Codex root with a child thread) into a temporary
+directory at real-time pace, and watch it with the real workspace watcher and TUI.
+
+No agent logs of your own are needed; nothing outside the temporary directory is
+read or written.
+
+Usage: agtrace demo [OPTIONS]
+
+Options:
+      --speed <SPEED>
+          Replay speed: slow (0.5x), normal (1x, real time) or fast (4x)
+          
+          [default: normal]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+
+      --format <FORMAT>
+          Output format for command results
+          
+          [default: plain]
+          [possible values: plain, json]
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --project <PROJECT_ROOT>
+          Target project directory (defaults to current directory)
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+      --all-worktrees
+          Include sessions from all git worktrees of the current repository

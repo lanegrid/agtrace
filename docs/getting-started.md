@@ -97,6 +97,10 @@ agtrace watch
 claude  # or codex
 ```
 
+`watch` picks up the new session within a second or two. It also picks up every teammate,
+subagent, fork, or Codex child thread the session spawns, and shows them as one tree. To see
+what this looks like before running your own agents, try `agtrace demo`.
+
 **5. Explore session history:**
 ```bash
 agtrace session list
@@ -104,8 +108,12 @@ agtrace session show <session_id>
 agtrace lab grep "error" --json
 ```
 
+Supported versions: Claude Code ≥ 2.1.24x and Codex ≥ 0.153. See
+[Supported Providers](providers.md).
+
 ## Next Steps
 
 - Learn about [watch command](commands/watch.md) for live monitoring
+- Understand [multi-agent sessions](multi-agent.md)
 - Explore [session command](commands/session.md) for history inspection
 - Understand [CWD-scoped monitoring](faq.md#cwd-scoped-monitoring)

@@ -425,4 +425,55 @@ mod tests {
         // Incremental: nothing changed, nothing rescanned.
         assert_eq!(index_fixture(&fx, &db), (0, 0));
     }
+
+    #[test]
+    fn agent_tree_links_subagents_teammates_and_codex_threads() {
+        use crate::client::SessionHandle;
+        use std::sync::{Arc, Mutex};
+
+        let fx = LiveFixture::new(chrono::NaiveDate::from_ymd_opt(2026, 9, 20).unwrap()).unwrap();
+        let db = Database::open_in_memory().unwrap();
+        index_fixture(&fx, &db);
+        let db = Arc::new(Mutex::new(db));
+
+        let lead = SessionHandle::for_tests(LEAD_SESSION, db.clone())
+            .agent_tree()
+            .unwrap();
+        assert_eq!(lead.agent_id, format!("claude:{LEAD_SESSION}"));
+        assert_eq!(lead.kind, "main");
+        let kinds: Vec<(&str, &str)> = lead
+            .children
+            .iter()
+            .map(|c| (c.kind.as_str(), c.agent_id.as_str()))
+            .collect();
+        let sub = format!("claude:{LEAD_SESSION}/{SUBAGENT_ID}");
+        let fork = format!("claude:{LEAD_SESSION}/{FORK_ID}");
+        let mate = format!("claude:{TEAMMATE_SESSION}");
+        assert!(kinds.contains(&("subagent", sub.as_str())), "{kinds:?}");
+        assert!(kinds.contains(&("fork", fork.as_str())), "{kinds:?}");
+        assert!(kinds.contains(&("teammate", mate.as_str())), "{kinds:?}");
+        let subagent = lead.children.iter().find(|c| c.agent_id == sub).unwrap();
+        assert!(subagent.spawn_call_id.is_some());
+
+        let root = SessionHandle::for_tests(CODEX_ROOT, db)
+            .agent_tree()
+            .unwrap();
+        assert_eq!(root.agent_id, format!("codex:{CODEX_ROOT}"));
+        let ids: Vec<&str> = root.walk().iter().map(|n| n.agent_id.as_str()).collect();
+        assert!(
+            ids.contains(&format!("codex:{CODEX_CHILD}").as_str()),
+            "{ids:?}"
+        );
+        assert!(
+            ids.contains(&format!("codex:{CODEX_FORK}").as_str()),
+            "{ids:?}"
+        );
+        let child = root
+            .children
+            .iter()
+            .find(|c| c.agent_id == format!("codex:{CODEX_CHILD}"))
+            .unwrap();
+        assert_eq!(child.kind, "codex_thread");
+        assert_eq!(child.path.as_deref(), Some("/root/judge"));
+    }
 }

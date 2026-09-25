@@ -86,3 +86,44 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
+
+/// Parse a duration such as `90s`, `30m`, `2h` or `1d` (a bare number is minutes).
+pub fn parse_since(s: &str) -> Result<std::time::Duration, String> {
+    let s = s.trim();
+    let (num, unit) = match s.find(|c: char| !c.is_ascii_digit()) {
+        Some(i) => s.split_at(i),
+        None => (s, "m"),
+    };
+    let n: u64 = num
+        .parse()
+        .map_err(|_| format!("invalid duration '{s}' (expected e.g. 30m, 2h, 1d)"))?;
+    let secs = match unit {
+        "s" => n,
+        "m" => n * 60,
+        "h" => n * 3_600,
+        "d" => n * 86_400,
+        _ => return Err(format!("invalid duration unit in '{s}' (use s, m, h or d)")),
+    };
+    if secs == 0 {
+        return Err("duration must be positive".to_string());
+    }
+    Ok(std::time::Duration::from_secs(secs))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_since;
+    use std::time::Duration;
+
+    #[test]
+    fn parses_since_units() {
+        assert_eq!(parse_since("90s"), Ok(Duration::from_secs(90)));
+        assert_eq!(parse_since("30m"), Ok(Duration::from_secs(1_800)));
+        assert_eq!(parse_since("2h"), Ok(Duration::from_secs(7_200)));
+        assert_eq!(parse_since("1d"), Ok(Duration::from_secs(86_400)));
+        assert_eq!(parse_since("15"), Ok(Duration::from_secs(900)));
+        assert!(parse_since("0h").is_err());
+        assert!(parse_since("2w").is_err());
+        assert!(parse_since("h").is_err());
+    }
+}

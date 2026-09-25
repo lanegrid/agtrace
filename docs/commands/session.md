@@ -30,6 +30,8 @@ agtrace session list [OPTIONS]
 **Options:**
 - `--format json` - Output in JSON format for programmatic use
 - `--limit N` - Show only the N most recent sessions
+- `--provider <claude_code|codex>` - Filter by provider
+- `--all` - Include child sessions (teammates, Codex child threads and forks)
 
 **Example:**
 ```bash
@@ -46,20 +48,46 @@ agtrace session show <SESSION_ID> [OPTIONS]
 ```
 
 **Output includes:**
-- Session metadata (ID, timestamps, model)
+- Session metadata (ID, provider, project, log files)
+- The session's **agent tree** (see below)
 - Context window usage over time
-- Turn-by-turn breakdown
-- Tool usage summary
-- Token counts and costs
+- Turn-by-turn breakdown, per agent
+- Tool usage and token counts
 
 **Options:**
 - `--format json` - Output in JSON format
+- `--compact` / `--verbose` / `--quiet` - Output density
 
 **Example:**
 ```bash
-agtrace session show abc123def456
-agtrace session show abc123def456 --format json > session.json
+agtrace session show 00000000
+agtrace session show 00000000 --format json > session.json
 ```
+
+#### Agent tree
+
+When a session has children, `session show` prints an `Agents:` tree:
+
+```
+Agents:
+               Demo project audit (main)  claude:00000000-0000-4000-8000-000000000001
+               └ audit-A (teammate)  claude:00000000-0000-4000-8000-000000000002
+               └ Count source files (subagent)  claude:00000000-0000-4000-8000-000000000001/a0000000000000001
+               └ docs-fork (fork)  claude:00000000-0000-4000-8000-000000000001/a0000000000000002
+```
+
+The tree comes from the index:
+- **Claude subagents and forks** are log files of the session (`log_files.role` `subagent` / `fork`).
+- **Claude teammates** and **Codex child threads and forks** are child sessions (`sessions.parent_session_id`), included recursively.
+
+Each agent's timeline is shown as its own stream after the main conversation. A turn whose tool
+call spawned an agent lists it (`🔀 Spawned: …`). The match uses the index's `spawn_call_id`,
+the provider call id of the spawning tool call. See [Multi-Agent Sessions](../multi-agent.md).
+
+In JSON (`--format json`):
+- `content.agents` is the tree, with nodes of `{agent_id, session_id, provider, kind, name, path, spawn_call_id, children}`.
+- `content.streams[]` has one entry per agent timeline: `agent_id`, `name`, and a `stream_id` label (`main`, or `sidechain:<agentId>` for Claude subagents).
+- `turns[].spawned_children` lists the agents spawned in that turn.
 
 ## Use Cases
 
@@ -87,7 +115,7 @@ agtrace session show <SESSION_ID>
 See which tools were called and when:
 
 ```bash
-agtrace session show <SESSION_ID> --format json | jq '.turns[].steps[] | select(.type == "tool_call")'
+agtrace session show <SESSION_ID> --format json | jq '.content.streams[].turns[].steps[] | select(.kind == "ToolCall")'
 ```
 
 ## See Also

@@ -38,6 +38,14 @@ pub use args::{
 pub use commands::run;
 
 /// Multi-agent watch TUI loop over an abstract workspace source.
-pub mod agent_watch {
-    pub use crate::handlers::agent_watch::{SharedWorkspace, WorkspaceSource, build, run};
+pub mod watch {
+    pub use crate::handlers::watch::{
+        ConsolePrinter, LiveSource, SharedWorkspace, WorkspaceSource, build, run, run_console,
+    };
+    pub use crate::presentation::view_models::watch::UiState;
+}
+
+/// Synthetic multi-agent scenario of `agtrace demo` (also used by tests).
+pub mod demo {
+    pub use crate::handlers::demo::{Op, PROJECT, Step, TempWorkspace, apply, replay, scenario};
 }

@@ -1,4 +1,3 @@
-pub mod agent_watch;
 pub mod common;
 pub mod doctor;
 pub mod index;
@@ -10,7 +9,6 @@ pub mod provider;
 pub mod result;
 pub mod session;
 pub mod watch;
-pub mod watch_tui;
 
 use std::fmt::Display;
 
@@ -56,14 +54,8 @@ pub use provider::{
 };
 pub use result::CommandResultViewModel;
 pub use session::{
-    AgentStepViewModel, ContextUsage, ContextWindowSummary, FilterSummary, SessionDetailViewModel,
-    SessionInfoViewModel, SessionListEntry, SessionListViewModel, SpawnContextViewModel,
+    AgentNodeViewModel, AgentStepViewModel, ContextUsage, ContextWindowSummary, FilterSummary,
+    SessionDetailViewModel, SessionInfoViewModel, SessionListEntry, SessionListViewModel,
     SpawnedChildViewModel, StepItemViewModel, StreamAnalysisViewModel, TurnAnalysisViewModel,
     TurnMetrics, TurnUsageViewModel,
-};
-pub use watch::{WatchEventViewModel, WatchTargetViewModel};
-pub use watch_tui::{
-    ChildStreamViewModel, ContextBreakdownViewModel, DashboardViewModel, StatusBarViewModel,
-    StepPreviewViewModel, TimelineEventViewModel, TimelineViewModel, TuiScreenViewModel,
-    TurnHistoryViewModel, TurnItemViewModel, WaitingKind, WaitingState,
 };

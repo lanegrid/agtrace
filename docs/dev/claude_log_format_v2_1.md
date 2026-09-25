@@ -1,5 +1,26 @@
 # Claude Code log format changes (v2.1.x / Opus 4.7–4.8)
 
+> **Status: historical audit.** This page records the format survey of Claude Code
+> v2.1.119–v2.1.159. It is still useful as a reference for the record types and fields
+> listed below. The **supported minimum is now Claude Code 2.1.24x** (logs from 2026-09 on);
+> earlier transcripts are not decoded.
+>
+> The implementation notes below (`schema.rs`, `parser.rs`, `StreamId`,
+> `determine_stream_id`) describe the parser that has since been replaced. The current
+> decoder is `crates/agtrace-providers/src/claude/`:
+> - `header.rs`: identity
+> - `decoder.rs` / `records.rs`: records
+> - `tags.rs`: `<teammate-message>` / `<task-notification>` tags
+> - `sidecar.rs`: team config, session registry, and subagent meta
+>
+> It decodes line by line and leniently (unknown or invalid lines are counted as
+> diagnostics). The open items of §3 and the roadmap were resolved by that rewrite:
+> - Subagents are separate `subagents/agent-<id>.jsonl` files.
+> - Teammates are separate transcripts.
+> - Empty thinking becomes `[thinking redacted]`.
+>
+> See [Multi-Agent Sessions](../multi-agent.md).
+
 Audit of how the Claude Code JSONL transcript format diverged from what the
 `agtrace-providers` Claude parser (`crates/agtrace-providers/src/claude/`) was
 originally written against. Captured 2026-06 from ~40k records across recent

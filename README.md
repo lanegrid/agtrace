@@ -16,6 +16,7 @@ When I started using AI coding agents (Claude Code, Codex), I realized I was wor
 - How much of the context window was being consumed
 - What the agent was actually doing between my prompts
 - When the conversation was getting too long and performance would degrade
+- What the teammates, subagents, and child threads it spawned were doing, and what they told each other
 
 I found myself *guessing* the agent's internal state. That felt wrong.
 
@@ -25,10 +26,12 @@ Now I always run **agtrace** alongside my coding agent. It's become essential.
 
 ![agtrace with Claude Code](https://raw.githubusercontent.com/lanegrid/agtrace/main/docs/images/agtrace_live_use_screenshot.png)
 
+*(This screenshot and the demo below show the earlier single-session dashboard, which came before the multi-agent TUI.)*
+
 What I see:
-- **Context window usage** — A color-coded bar showing how full the conversation is
-- **Token consumption trends** — How much context each task uses over time
-- **Live activity** — Tool calls, file reads, reasoning traces as they happen
+- **Every agent at once**: the lead, its teammates, background subagents, forks, and Codex child threads, as one live tree with the status and context window usage of each
+- **Live activity**: tool calls, spawns, compactions, and model changes of the selected agent as they happen
+- **Inter-agent messages**: a shared feed of who asked whom to do what, and what came back
 
 For the first time, I can make informed decisions about when to start a new session, how to scope my requests, and whether the agent is stuck in a loop.
 
@@ -42,10 +45,16 @@ For the first time, I can make informed decisions about when to start a new sess
 npm install -g @lanegrid/agtrace
 cd my-project
 agtrace init      # One-time setup
-agtrace watch     # Launch dashboard in a separate terminal
+agtrace watch     # Launch the live multi-agent TUI in a separate terminal
+agtrace demo      # Or try it first on a synthetic multi-agent workspace
 ```
 
-Works with Claude Code and Codex (OpenAI). Zero config — just discovers existing logs.
+Works with Claude Code and Codex (OpenAI). Zero config: it discovers existing logs.
+
+**Supported versions:** Claude Code ≥ 2.1.24x (logs from 2026-09 on) and Codex ≥ 0.153
+(paginated rollouts, multi-agent v2). Older log formats are not supported. Lines agtrace
+cannot decode are counted as diagnostics and skipped; they never make a whole file fail.
+See [Supported Providers](docs/providers.md).
 
 ## Give Your Agent Memory of Past Sessions
 
@@ -67,6 +76,7 @@ See the [MCP Integration Guide](docs/mcp-integration.md) for more.
 
 ```bash
 agtrace session list       # Browse past sessions
+agtrace session show <id>  # Inspect one session, including its agent tree
 agtrace lab grep "error"   # Search across all sessions
 ```
 
@@ -76,7 +86,7 @@ If you're building your own IDE plugin, dashboard, or observability tool:
 
 ```toml
 [dependencies]
-agtrace-sdk = "0.6"
+agtrace-sdk = "0.9"
 ```
 
 See [SDK Documentation](https://docs.rs/agtrace-sdk) and [Examples](crates/agtrace-sdk/examples/).
@@ -84,6 +94,7 @@ See [SDK Documentation](https://docs.rs/agtrace-sdk) and [Examples](crates/agtra
 ## Documentation
 
 - [Getting Started](docs/getting-started.md)
+- [Multi-Agent Sessions](docs/multi-agent.md)
 - [MCP Integration](docs/mcp-integration.md)
 - [Architecture](docs/architecture.md)
 - [Full Documentation](docs/README.md)

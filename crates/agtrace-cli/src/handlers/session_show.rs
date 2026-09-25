@@ -20,8 +20,9 @@ pub fn handle(
         .metadata()?
         .ok_or_else(|| anyhow::anyhow!("Session metadata not available"))?;
 
-    // Get child sessions (subagents spawned from this session)
-    let children = session_handle.child_sessions().unwrap_or_default();
+    // Agent tree from the index: subagents / forks and child sessions (teammates,
+    // Codex child threads) of this session.
+    let tree = session_handle.agent_tree()?;
 
     // Use assemble_all() to get all streams (Main + Sidechain + Subagent)
     let sessions = session_handle
@@ -67,11 +68,10 @@ pub fn handle(
         &metadata.provider,
         metadata.project_hash.as_ref(),
         metadata.project_root.as_deref(),
-        metadata.spawned_by.as_ref(),
         model.as_deref(),
         &windows,
         log_files,
-        &children,
+        tree.as_ref(),
     );
 
     ctx.render(view_model)

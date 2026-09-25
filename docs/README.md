@@ -11,9 +11,13 @@ Welcome to the agtrace documentation. **agtrace** provides AI agents access to t
 
 ### Commands
 
-- [watch](commands/watch.md) - Live dashboard for session monitoring
+- [watch](commands/watch.md) - Live multi-agent TUI (agent tree, timeline, message feed)
 - [session](commands/session.md) - Session history and inspection
 - [lab](commands/lab.md) - Advanced history search and analysis
+
+### Concepts
+
+- [Multi-Agent Sessions](multi-agent.md) - How teammates, subagents, forks and Codex child threads are modeled and linked
 
 ### Integration
 
@@ -21,11 +25,11 @@ Welcome to the agtrace documentation. **agtrace** provides AI agents access to t
 
 ### Architecture
 
-- [Architecture Overview](architecture.md) - Pointer-based indexing and schema-on-read design
+- [Architecture Overview](architecture.md) - Data flow, live workspace watcher, pointer-based index
 
 ### Providers
 
-- [Supported Providers](providers.md) - Provider list and details
+- [Supported Providers](providers.md) - Supported providers and versions
 
 ## FAQ
 

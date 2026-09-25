@@ -13,12 +13,12 @@ agtrace exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io
 ### Claude Code
 
 ```bash
-claude code mcp add agtrace -- agtrace mcp serve
+claude mcp add agtrace -- agtrace mcp serve
 ```
 
 Verify the server is registered:
 ```bash
-claude code mcp list
+claude mcp list
 ```
 
 ### Codex (OpenAI)
@@ -98,12 +98,13 @@ agtrace sessions
 
 | Tool | Description |
 |------|-------------|
-| `list_sessions` | List recent AI agent sessions with cursor-based pagination. WORKFLOW: Call this first to discover available sessions, then use session IDs with other tools. Safe to call multiple times with different filters. |
+| `list_sessions` | List recent AI agent sessions with cursor-based pagination. WORKFLOW: Call this first to discover available sessions, then use session IDs with other tools. Safe to call multiple times with different filters. With `include_children`, child sessions (Claude teammates, Codex child threads and forks) are included; their summaries carry `agent_kind`, `agent_name`, `agent_path`, `team_name`, `root_session_id`, `parent_session_id` and `spawn_call_id`. |
 | `get_project_info` | List all projects that have been indexed by agtrace with their metadata. WORKFLOW: Use this to discover available projects and their hashes. Safe to call anytime. |
 | `analyze_session` | Run diagnostic analysis on a session to identify failures, loops, and issues. WORKFLOW: First call list_sessions to obtain session IDs, then use those IDs with this tool. Safe to call in parallel for multiple known session IDs. |
 | `search_events` | Search for events and return navigation coordinates (session_id, event_index, turn_index, step_index). Use this to find specific events, then use turn_index with list_turns or get_turns for detailed analysis. |
 | `list_turns` | List turns with metadata only (no payload content). Returns turn statistics including step_count, duration_ms, total_tokens, and tools_used. Use this to get an overview before drilling down with get_turns. |
 | `get_turns` | Get details for specific turns. Defaults are tuned for safety based on data distribution (max 30 steps/turn, 3000 chars/field). WORKFLOW: Fetch 1-2 turns at a time to avoid token limits. If data is marked '[TRUNCATED]' and critical, retry with higher limits. |
+| `get_agent_tree` | Get the agent tree of a session (argument: `session_id`). Returns the session's own agent, its Claude subagents and forks, and its child sessions (Claude teammates, Codex child threads and forks), recursively. Each node is `{agent_id, session_id, provider, kind, name, path, spawn_call_id, children}`. Child `session_id`s work with the other tools. See [Multi-Agent Sessions](multi-agent.md). |
 
 ## Real-World Example: Agent Self-Reflection
 
@@ -159,6 +160,7 @@ Once MCP is configured, you can ask your AI assistant:
 
 **Session exploration:**
 - *"Show me sessions from the last 2 hours"*
+- *"Which subagents and teammates did the last session spawn, and what did they report back?"*
 - *"List all sessions from the my-app project"*
 - *"What sessions had failures today?"*
 

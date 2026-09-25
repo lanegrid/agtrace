@@ -1,6 +1,5 @@
 mod context;
 
-pub mod agent_watch;
 pub mod demo;
 pub mod doctor_check;
 pub mod doctor_inspect;
@@ -16,7 +15,6 @@ pub mod project;
 pub mod provider;
 pub mod session_list;
 pub mod session_show;
-pub mod watch_console;
-pub mod watch_tui;
+pub mod watch;
 
 pub use context::HandlerContext;

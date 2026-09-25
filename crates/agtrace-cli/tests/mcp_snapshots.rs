@@ -270,3 +270,33 @@ fn test_mcp_error_session_not_found() -> Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_mcp_get_agent_tree() -> Result<()> {
+    let world = setup_world()?;
+
+    let client = Client::connect(world.data_dir()).await?;
+    let sessions = client.sessions().list(SessionFilter::all())?;
+    let session_id = &sessions[0].id;
+
+    let mut mcp = McpHarness::new(world.data_dir().to_str().unwrap())?;
+    let response = mcp.request(
+        "tools/call",
+        json!({
+            "name": "get_agent_tree",
+            "arguments": { "session_id": session_id }
+        }),
+    )?;
+
+    let mut content = extract_mcp_text_content(&response)?;
+    assert_eq!(
+        content["agent_id"].as_str(),
+        Some(format!("claude:{session_id}").as_str())
+    );
+    content["agent_id"] = json!("[ID]");
+    content["log_file"] = json!("[PATH]");
+    let args = json!({ "session_id": "[ID]" });
+    insta::assert_json_snapshot!("call_get_agent_tree", snapshot_req_resp(args, content));
+
+    Ok(())
+}

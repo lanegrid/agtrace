@@ -124,7 +124,6 @@ impl EventLog {
             output: output.to_string(),
             tool_call_id: call_id,
             is_error,
-            agent_id: None,
         }))
     }
 

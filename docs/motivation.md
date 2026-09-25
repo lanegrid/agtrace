@@ -2,12 +2,13 @@
 
 ## The Frustration
 
-I use AI coding agents daily. Claude Code, Codex — they're powerful, but they're also **black boxes**.
+I use AI coding agents daily. Claude Code, Codex: they're powerful, but they're also **black boxes**. And these days one agent is rarely alone: it spawns teammates, background subagents, forks, and child threads.
 
 When I'm in a session, I can't see:
 - How much of the context window I've used
 - Whether the agent is stuck in a loop
 - What's happening between my prompts
+- What the agents it spawned are doing, and what they tell each other
 
 I found myself guessing. "Is it about to hit context limits?" "Should I start a new session?" "What did it actually do to those files?"
 
@@ -22,9 +23,9 @@ agtrace watch
 ```
 
 Now I can see:
-- **Context window filling up** — colored bar, real-time
-- **Token consumption per task** — finally understanding how much different operations cost
-- **Live activity** — tool calls, file reads, reasoning traces
+- **Every agent at once**: the lead and everything it spawned, as one live tree with status and context window usage
+- **Live activity**: tool calls, spawns, compactions, and model changes of the selected agent
+- **Inter-agent messages**: who asked whom to do what, and what came back
 
 For the first time, I can make informed decisions instead of guessing.
 

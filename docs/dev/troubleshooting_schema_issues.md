@@ -4,12 +4,32 @@ This guide shows how to diagnose and fix schema compatibility issues using agtra
 
 ## Overview
 
-When provider log formats change between versions, agtrace may fail to parse them. This guide demonstrates a systematic workflow to:
+When provider log formats change between versions, agtrace may no longer understand some of their records. This guide demonstrates a systematic workflow to:
 1. Discover problems
 2. Inspect actual data
 3. Compare with expected schema
 4. Fix the schema definition
 5. Verify the fix
+
+### How decoding fails (lenient per line)
+
+Providers decode each file **line by line** and leniently. A line that is not JSON, has an
+unknown record kind, or fails the typed deserialize is **counted** in the file's
+`ParseDiagnostics` (`invalid_json`, `schema_mismatch[kind]`, `unknown_kinds[kind]`) and
+skipped. The rest of the file still decodes; only I/O errors fail a file. In `doctor`
+output, a "failure" is a file with invalid-JSON or schema-mismatch lines. The reason names
+the count and the first offending line.
+
+Only the supported formats are modeled: Claude Code ≥ 2.1.24x and Codex ≥ 0.153. Lines from
+older formats show up as diagnostics. That is expected, and there is no fix for them.
+
+The record structs live in `crates/agtrace-providers/src/<provider>/records.rs`, and the
+per-line logic in `decoder.rs`. Claude has two more files: `tags.rs` for XML-ish user-text
+tags and `sidecar.rs` for team config, the registry and meta files. Codex has two as well:
+`collab.rs` for multi-agent tools and `exec.rs` for exec sub-actions.
+
+> The example outputs below predate lenient decoding and show whole-file failures; the
+> workflow is the same.
 
 ## Workflow
 
@@ -29,7 +49,7 @@ Provider: Claude
 
   Failure breakdown:
   ✗ empty_file: 16 files
-    Example: /Users/.../a50cd2c1-d8df-4ae7-ae5d-887009d66940.jsonl
+    Example: ~/.claude/projects/-work-demo-project/00000000-0000-4000-8000-000000000001.jsonl
     Reason: No events extracted from file
 
     ... and 15 more files
@@ -41,7 +61,7 @@ Provider: Codex
 
   Failure breakdown:
   ✗ missing_field (model_provider): 19 files
-    Example: /Users/.../rollout-2025-10-28T16-24-01-019a29b3-d031-7b31-9f2d-8970fd673604.jsonl
+    Example: ~/.codex/sessions/.../rollout-2025-10-28T16-24-01-01900000-0000-7000-8000-000000000001.jsonl
     Reason: Missing required field: model_provider
 
     ... and 18 more files
@@ -61,11 +81,11 @@ Provider: Codex
 Use `agtrace doctor inspect` to view the raw content of a problematic file:
 
 ```bash
-$ agtrace doctor inspect /Users/.../rollout-2025-12-04...jsonl --lines 20
+$ agtrace doctor inspect ~/.codex/sessions/.../rollout-2025-12-04...jsonl --lines 20
 ```
 
-Compare the raw records with the schema structs in
-`crates/agtrace-providers/src/<provider>/schema.rs` to identify the gap
+Compare the raw records with the typed structs in
+`crates/agtrace-providers/src/<provider>/records.rs` to identify the gap
 (missing field, changed type, new record kind, etc.).
 
 ### Step 3: Validate Specific Files
@@ -73,13 +93,15 @@ Compare the raw records with the schema structs in
 Use `agtrace doctor check` to get detailed error information and suggestions:
 
 ```bash
-$ agtrace doctor check /Users/.../rollout-2025-12-04...jsonl
+$ agtrace doctor check ~/.codex/sessions/.../rollout-2025-12-04...jsonl
 ```
 
 ### Step 4: Fix the Schema
 
-Update the provider's schema definitions (`schema.rs`) and, if needed, the
-normalization logic (`parser.rs` / `io.rs`). See [Common Patterns](#common-patterns)
+Update the provider's record definitions (`records.rs`) and, if needed, the
+decoding logic (`decoder.rs`). Add a failing test first; a small line in the synthetic
+fixture tree or a `synth` builder is usually enough (see
+[Testing](testing_with_testworld.md#synthetic-fixtures)). See [Common Patterns](#common-patterns)
 below and the [Codex SandboxPolicy example](#example-fixing-codex-sandboxpolicy)
 for a complete walkthrough.
 
@@ -89,7 +111,7 @@ After updating the schema, rebuild and re-run the diagnosis:
 
 ```bash
 $ cargo build --release
-$ agtrace doctor check /Users/.../rollout-2025-12-04...jsonl
+$ agtrace doctor check ~/.codex/sessions/.../rollout-2025-12-04...jsonl
 $ agtrace doctor run --provider codex
 ```
 
@@ -140,53 +162,40 @@ pub enum Source {
 }
 ```
 
-### Pattern 3: Multiple Format Versions
+### Pattern 3: New Record Kind
 
-**Symptom:**
-```
-✗ parse_error: Files use different root structures
-```
+**Symptom:** `unknown_kinds["<kind>"]` grows (visible with `doctor check`, and in the
+`watch` status bar diagnostic count).
 
-**Solution:** Try multiple parsing strategies
+**Solution:** Decide whether the kind carries information worth an event:
+- **Yes:** Add a typed struct in `records.rs` and a decoder branch that emits the
+  matching `EventPayload`.
+- **No:** Add it to the decoder's ignored kinds. It is then counted in `ignored_kinds`, not
+  `unknown_kinds`.
 
-```rust
-pub fn normalize_file(path: &Path) -> Result<Vec<AgentEventV1>> {
-    let text = std::fs::read_to_string(path)?;
-
-    // Try format v2
-    if let Ok(data) = serde_json::from_str::<FormatV2>(&text) {
-        return Ok(normalize_v2(data));
-    }
-
-    // Fallback to format v1
-    if let Ok(data) = serde_json::from_str::<FormatV1>(&text) {
-        return Ok(normalize_v1(data));
-    }
-
-    anyhow::bail!("Unknown format")
-}
-```
+Old formats are not supported side by side. When a provider changes its format
+incompatibly, the decoder follows the new format and the minimum supported version is raised.
 
 ## Decision-Making Framework
 
 When you encounter a schema issue, ask:
 
-### 1. Is this a one-off corrupted file?
-- **Yes:** Skip it (use `continue` in scan)
-- **No:** Fix the schema
+### 1. Is this a one-off corrupted line?
+- **Yes:** Nothing to do; lenient decoding already skips and counts it
+- **No:** Fix the record definition
 
-### 2. Which format is more common?
-- **New format is dominant:** Update schema, add fallback for old
-- **Old format is dominant:** Keep schema, add support for new
-- **Both common:** Use enum or untagged union
+### 2. Is the file from a supported version?
+- **No:** (Claude Code < 2.1.24x, Codex < 0.153) Not supported; leave it
+- **Yes:** Update `records.rs` / `decoder.rs`, using `Option` and `#[serde(default)]` for
+  fields that are not needed to identify the record
 
 ### 3. Can metadata be recovered?
 - **Yes:** Extract from file path or synthesize reasonable defaults
 - **No:** Use placeholder values like `"unknown"` or `None`
 
 ### 4. Is backwards compatibility important?
-- **Yes:** Keep both formats working
-- **No:** Update schema, accept that old files may fail
+Within the supported versions, yes: keep fields optional. Across the minimum-version
+boundary, no: older formats are not decoded.
 
 ## Tips
 
@@ -202,9 +211,9 @@ When you encounter a schema issue, ask:
 # Full workflow in order
 agtrace doctor run                           # 1. Find problems (checks ALL files)
 agtrace doctor inspect <file> --lines 30     # 2. See actual data
-agtrace provider schema <provider>           # 3. See expected format
+# (compare with <provider>/records.rs)       # 3. See expected format
 agtrace doctor check <file>                  # 4. Get detailed error
-# (edit schema code)                         # 5. Fix the schema
+# (edit records.rs / decoder.rs)             # 5. Fix the decoder
 cargo build --release                        # 6. Rebuild
 agtrace doctor check <file>                  # 7. Test fix
 agtrace doctor run --provider <name>         # 8. Verify all files
@@ -215,7 +224,9 @@ agtrace doctor run --verbose
 
 ## Example: Fixing Codex SandboxPolicy
 
-This example shows the complete process of fixing a real schema issue.
+This historical example (from Codex 0.53 / 0.63, both of which are no longer supported)
+shows the complete process of fixing a schema issue. The `Detailed` variant below has since
+been removed.
 
 ### Problem Discovery
 ```bash
@@ -225,16 +236,16 @@ Provider: Codex
   Parse failures: 5 (50.0%)
 
   ✗ missing_field (network_access): 2 files
-    Example: /Users/.../rollout-2025-12-04...jsonl
+    Example: ~/.codex/sessions/.../rollout-2025-12-04...jsonl
 ```
 
 ### Investigation
 ```bash
-$ agtrace doctor inspect /Users/.../rollout-2025-12-04...jsonl --lines 10
+$ agtrace doctor inspect ~/.codex/sessions/.../rollout-2025-12-04...jsonl --lines 10
 
      5  ...{"type":"turn_context","payload":{..,"sandbox_policy":{"type":"read-only"},...
 
-$ agtrace doctor inspect /Users/.../rollout-2025-11-03...jsonl --lines 10
+$ agtrace doctor inspect ~/.codex/sessions/.../rollout-2025-11-03...jsonl --lines 10
 
      5  ...{"type":"turn_context","payload":{..,"sandbox_policy":{"mode":"workspace-write","network_access":false},...
 ```
@@ -283,7 +294,7 @@ The diagnostic workflow eliminates the need for manual file inspection with UNIX
 
 1. **`doctor run`** finds all problems deterministically by checking **every file** (no sampling)
 2. **`doctor inspect`** shows raw file content with line numbers
-3. **`provider schema`** displays expected format
+3. **`records.rs`** holds the expected format
 4. **`doctor check`** gives detailed errors with suggestions
 5. Fix code, rebuild, validate
 

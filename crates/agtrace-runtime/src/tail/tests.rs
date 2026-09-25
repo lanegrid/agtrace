@@ -3,6 +3,7 @@ use agtrace_providers::decode_file;
 use agtrace_types::EventPayload;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::Path;
 use uuid::Uuid;
 
 const SID: &str = "00000000-0000-4000-8000-0000000000aa";

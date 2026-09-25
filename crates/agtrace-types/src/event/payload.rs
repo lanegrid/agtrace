@@ -121,14 +121,6 @@ pub struct ToolResultPayload {
     /// Execution success or failure
     #[serde(default)]
     pub is_error: bool,
-
-    /// Agent ID if this result spawned a subagent (e.g., "be466c0a")
-    /// Used to link sidechain sessions back to their parent turn/step.
-    ///
-    /// Legacy linkage: superseded by `AgentSpawn` + `AgentRef.spawn_call_id`,
-    /// removed once the session assembler no longer needs it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agent_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

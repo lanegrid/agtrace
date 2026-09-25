@@ -853,7 +853,6 @@ impl CodexDecoder {
                 output,
                 tool_call_id,
                 is_error,
-                agent_id: None,
             }),
         );
     }

@@ -189,6 +189,14 @@ pub struct SessionHandle {
 }
 
 impl SessionHandle {
+    #[cfg(test)]
+    pub(crate) fn for_tests(id: &str, db: Arc<Mutex<Database>>) -> Self {
+        Self {
+            id: id.to_string(),
+            db,
+        }
+    }
+
     pub fn events(&self) -> Result<Vec<AgentEvent>> {
         let db = self.db.lock().unwrap();
         let service = SessionService::new(&db);
@@ -223,8 +231,6 @@ impl SessionHandle {
             project_root,
             provider: index_summary.provider,
             parent_session_id: index_summary.parent_session_id,
-            // Turn/step spawn positions are no longer indexed (v7 stores spawn_call_id).
-            spawned_by: None,
         })
     }
 
@@ -232,10 +238,106 @@ impl SessionHandle {
         &self.id
     }
 
-    /// Get child sessions (subagents) that were spawned from this session.
-    pub fn child_sessions(&self) -> Result<Vec<agtrace_index::SessionSummary>> {
+    /// Agent tree of this session (design §6.4): the session's own agent, its Claude
+    /// subagents / forks (log files of the session), and child sessions (Codex child
+    /// threads and forks, Claude teammates linked to their lead) recursively.
+    pub fn agent_tree(&self) -> Result<AgentNode> {
         let db = self.db.lock().unwrap();
-        db.get_child_sessions(&self.id)
-            .map_err(|e| Error::InvalidOperation(format!("Failed to get child sessions: {}", e)))
+        let summary = db
+            .get_session_by_id(&self.id)?
+            .ok_or_else(|| Error::InvalidOperation(format!("Session not found: {}", self.id)))?;
+        let mut visited = std::collections::HashSet::new();
+        session_node(&db, summary, &mut visited)
     }
+}
+
+/// One agent in a session's agent tree.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct AgentNode {
+    /// Agent id (`claude:<sid>`, `claude:<sid>/<aid>`, `codex:<thread>`).
+    pub agent_id: String,
+    /// Index session the agent's log belongs to.
+    pub session_id: String,
+    pub provider: String,
+    /// `main`, `subagent`, `fork`, `teammate` or `codex_thread`.
+    pub kind: String,
+    /// Display name (teammate name, subagent description, Codex path leaf).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Codex `agent_path` (`/root/judge`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Provider call id of the spawning tool call in the parent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spawn_call_id: Option<String>,
+    /// First user prompt (session owners only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snippet: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_ts: Option<String>,
+    /// Log file of the agent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_file: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<AgentNode>,
+}
+
+impl AgentNode {
+    /// Pre-order walk of the tree (self first).
+    pub fn walk(&self) -> Vec<&AgentNode> {
+        let mut out = vec![self];
+        for child in &self.children {
+            out.extend(child.walk());
+        }
+        out
+    }
+}
+
+fn session_node(
+    db: &Database,
+    summary: SessionSummary,
+    visited: &mut std::collections::HashSet<String>,
+) -> Result<AgentNode> {
+    visited.insert(summary.id.clone());
+    let files = db.get_session_files(&summary.id)?;
+    let main = files.iter().find(|f| f.role == "main");
+    let mut node = AgentNode {
+        agent_id: main
+            .map(|f| f.agent_id.clone())
+            .unwrap_or_else(|| summary.id.clone()),
+        session_id: summary.id.clone(),
+        provider: summary.provider.clone(),
+        kind: summary.agent_kind.clone(),
+        name: summary.agent_name.clone(),
+        path: summary.agent_path.clone(),
+        spawn_call_id: summary.spawn_call_id.clone(),
+        snippet: summary.snippet.clone(),
+        start_ts: summary.start_ts.clone(),
+        log_file: main.map(|f| f.path.clone()),
+        children: Vec::new(),
+    };
+    // Claude subagents / forks: log files of this session.
+    for file in files.iter().filter(|f| f.role != "main") {
+        node.children.push(AgentNode {
+            agent_id: file.agent_id.clone(),
+            session_id: summary.id.clone(),
+            provider: summary.provider.clone(),
+            kind: file.role.clone(),
+            name: file.agent_name.clone(),
+            path: None,
+            spawn_call_id: file.spawn_call_id.clone(),
+            snippet: None,
+            start_ts: None,
+            log_file: Some(file.path.clone()),
+            children: Vec::new(),
+        });
+    }
+    // Child sessions (Codex threads / forks, teammates), recursively.
+    for child in db.get_child_sessions(&summary.id)? {
+        if visited.contains(&child.id) {
+            continue;
+        }
+        node.children.push(session_node(db, child, visited)?);
+    }
+    Ok(node)
 }

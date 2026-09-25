@@ -1,4 +1,3 @@
-pub mod agent_watch;
 pub mod doctor;
 pub mod index;
 pub mod init;
@@ -7,5 +6,4 @@ pub mod pack;
 pub mod project;
 pub mod provider;
 pub mod session;
-pub mod tui;
 pub mod watch;

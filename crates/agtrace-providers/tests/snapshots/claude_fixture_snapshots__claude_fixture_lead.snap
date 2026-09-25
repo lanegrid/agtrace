@@ -359,7 +359,6 @@ expression: "json!({\n    \"header\": header_json(h), \"diagnostics\": diagnosti
     {
       "agent": "claude:00000000-0000-4000-8000-000000000001",
       "content": {
-        "agent_id": "a0000000000000001",
         "is_error": false,
         "output": "Async agent launched successfully.\nagentId: a0000000000000001",
         "tool_call_id": "10dab7f7-3306-58ce-a22c-1a70e75f9d3a"
@@ -423,7 +422,6 @@ expression: "json!({\n    \"header\": header_json(h), \"diagnostics\": diagnosti
     {
       "agent": "claude:00000000-0000-4000-8000-000000000001",
       "content": {
-        "agent_id": "a0000000000000002",
         "is_error": false,
         "output": "Fork started.\nagentId: a0000000000000002",
         "tool_call_id": "c5a65d1f-8e9b-528f-bb01-ed9f3fdac5aa"

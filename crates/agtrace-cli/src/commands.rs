@@ -347,74 +347,33 @@ pub async fn run(cli: Cli) -> Result<()> {
         }
 
         Commands::Watch {
-            provider,
-            id,
+            session,
+            since,
             mode,
-            debug,
         } => {
             use crate::args::WatchFormat;
 
             if mode == WatchFormat::Tui && !std::io::stdout().is_terminal() {
                 anyhow::bail!(
-                    "watch --mode tui requires a TTY (interactive terminal). Use --mode console for non-interactive streaming."
+                    "watch --mode tui requires a TTY (interactive terminal). Use --mode console for non-interactive output."
                 );
             }
 
             let workspace = ctx.open_workspace().await?;
-
-            let target = if let Some(session_id) = id {
-                handlers::watch_tui::WatchTarget::Session { id: session_id }
-            } else {
-                // Legacy UI: the provider only picks the initial session; the session
-                // feed covers every enabled provider (bounded workspace watcher). The
-                // default is the provider of the project's newest indexed session.
-                let provider_name = provider
-                    .map(|p| p.to_string())
-                    .or_else(|| {
-                        let filter = match ctx.project_hash() {
-                            Some(hash) => agtrace_sdk::types::SessionFilter::project(hash),
-                            None => agtrace_sdk::types::SessionFilter::all(),
-                        };
-                        workspace
-                            .sessions()
-                            .list(filter.limit(1))
-                            .ok()?
-                            .into_iter()
-                            .next()
-                            .map(|s| s.provider)
-                    })
-                    .or_else(|| {
-                        workspace
-                            .watch_service()
-                            .config()
-                            .providers
-                            .iter()
-                            .find(|(_, cfg)| cfg.enabled)
-                            .map(|(name, _)| name.clone())
-                    })
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "No enabled providers found. Run 'agtrace init' to setup providers."
-                        )
-                    })?;
-                handlers::watch_tui::WatchTarget::Provider {
-                    name: provider_name,
+            let target = match session {
+                Some(id) => handlers::watch::WatchTarget::Session(id),
+                None => {
+                    let root = if ctx.all_projects {
+                        PathBuf::from("/")
+                    } else {
+                        ctx.project_root
+                            .clone()
+                            .ok_or_else(|| anyhow::anyhow!("cannot determine the project root"))?
+                    };
+                    handlers::watch::WatchTarget::Project { root, since }
                 }
             };
-
-            match mode {
-                WatchFormat::Tui => handlers::watch_tui::handle(
-                    &workspace,
-                    ctx.project_root.as_deref(),
-                    target,
-                    debug,
-                ),
-                WatchFormat::Console => handlers::watch_console::handle_console(
-                    &workspace,
-                    ctx.project_root.as_deref(),
-                    target,
-                ),
-            }
+            handlers::watch::handle(&workspace, target, mode)
         }
 
         Commands::Mcp { command } => {
