@@ -35,7 +35,7 @@ use crate::args::WatchFormat;
 use crate::presentation::presenters::watch::{build_console, build_screen};
 use crate::presentation::view_models::watch::{ConsoleVm, StatusVm, UiState, WatchScreenVm};
 use crate::presentation::views::watch::input::{
-    Effect, action_for, apply, expire_toast, sync_selection,
+    Effect, action_in, apply, expire_toast, sync_selection,
 };
 use crate::presentation::views::watch::{console, detail, layout, render};
 
@@ -58,7 +58,7 @@ pub trait WorkspaceSource {
         Utc::now()
     }
 
-    /// `r` key: run a discovery pass now.
+    /// `R` key: run a discovery pass now.
     fn rescan(&self) {}
 }
 
@@ -192,7 +192,7 @@ pub fn run(source: &dyn WorkspaceSource, mut ui: UiState) -> Result<()> {
         }
         match event::read()? {
             Event::Key(key) => {
-                let (Some(action), Some(vm)) = (action_for(key), screen.as_ref()) else {
+                let (Some(action), Some(vm)) = (action_in(&ui, key), screen.as_ref()) else {
                     continue;
                 };
                 match apply(&mut ui, action, vm, Instant::now()) {
@@ -259,11 +259,13 @@ fn resolve_scope(client: &Client, target: WatchTarget) -> Result<(WatchScope, St
             let name = if root.parent().is_none() {
                 "all projects".to_string()
             } else {
-                root.file_name()
+                let name = root
+                    .file_name()
                     .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| root.display().to_string())
+                    .unwrap_or_else(|| root.display().to_string());
+                format!("project {name}")
             };
-            let label = format!("project {name} · since {}", format_since(since));
+            let label = format!("{name} · since {}", format_since(since));
             Ok((WatchScope::Project { root, since }, label))
         }
         WatchTarget::Session(id) => {

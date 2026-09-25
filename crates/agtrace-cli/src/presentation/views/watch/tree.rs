@@ -6,20 +6,30 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Paragraph, Row, Table};
 
-use super::style::{ctx_style, dim, pane_block, status_glyph, status_style, status_word};
+use super::style::{
+    ctx_style, dim, filter_title, more_marks, pane_block, status_glyph, status_style, status_word,
+};
 use crate::presentation::view_models::watch::{AgentRowVm, Pane, WatchScreenVm};
 
 pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
     let focused = vm.focus_pane == Pane::Tree;
     // Name the scope in the title so a single-session watch is obvious.
-    let title = if vm.status.scope.is_empty() {
+    // A filter replaces the scope (the narrow pane has room for one of them).
+    let title = if vm.status.scope.is_empty() || !vm.status.filter.is_empty() {
         " Agents ".to_string()
     } else {
         format!(" Agents · {} ", vm.status.scope)
     };
-    let block = pane_block(focused, vec![Span::raw(title)]);
+    let mut title = vec![Span::raw(title)];
+    title.extend(filter_title(vm));
+    let block = pane_block(focused, title);
     if vm.tree.is_empty() {
-        let p = Paragraph::new(Line::styled(" no agents yet", dim())).block(block);
+        let text = if vm.status.filter.is_empty() {
+            " no agents yet".to_string()
+        } else {
+            format!(" no match for \"{}\"", vm.status.filter)
+        };
+        let p = Paragraph::new(Line::styled(text, dim())).block(block);
         f.render_widget(p, area);
         return;
     }
@@ -37,6 +47,10 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
         .take(height.max(1))
         .map(|r| row(r, focused))
         .collect();
+    let block = match more_marks(start, rows.len(), vm.tree.len()) {
+        Some(marks) => block.title_bottom(marks),
+        None => block,
+    };
     let table = Table::new(
         rows,
         [

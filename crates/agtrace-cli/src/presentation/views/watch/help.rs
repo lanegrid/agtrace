@@ -9,24 +9,27 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 pub const KEYS: &[(&str, &str)] = &[
     ("1 / 2", "overview / agents screen"),
     ("Enter → l", "open the selected agent's detail"),
-    ("Esc ← h", "back: close help / detail / to tree / reset"),
-    ("j/k ↓/↑", "move selection, or scroll pane / section"),
+    ("Esc ← h", "back: help / detail / tree / filter / reset"),
+    ("i n r t", "detail: instructions / now / result / timeline"),
     ("Tab/S-Tab", "cycle panes (agents) / sections (detail)"),
-    ("+ - ] [", "overview activity window: 15m 60m 4h all"),
-    ("space", "fold / unfold selected node"),
-    ("PgUp/PgDn", "scroll focused pane / section"),
+    ("j/k ↓/↑", "move selection, or scroll pane / section"),
+    ("J / K", "next / previous agent (also in the detail)"),
+    ("PgUp/PgDn", "page scroll (overview: move selection)"),
     ("C-u/C-d", "half-page scroll"),
     ("G / g", "jump to end (follow) / top"),
+    ("/", "find agents by name (↵ open, Esc clear)"),
+    ("+ - ] [", "overview activity window: 15m 60m 4h all"),
+    ("space", "fold / unfold selected node"),
     ("f", "messages: all ↔ selected agent"),
     ("d", "hide / show done & killed"),
     ("a", "auto-select most active agent"),
-    ("r", "rescan now"),
+    ("R", "rescan now"),
     ("?", "toggle this help"),
     ("q / C-c", "quit"),
 ];
 
 pub fn render(f: &mut Frame, area: Rect) {
-    let w = 58.min(area.width);
+    let w = 62.min(area.width);
     let h = (KEYS.len() as u16 + 2).min(area.height);
     let popup = Rect {
         x: area.x + (area.width - w) / 2,

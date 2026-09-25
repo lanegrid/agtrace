@@ -16,8 +16,8 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
 use super::style::{
-    clip, ctx_bar, ctx_style, dim, elapsed, lane_style, pane_block, short, status_glyph,
-    status_style, status_word, text_width,
+    clip, ctx_bar, ctx_style, dim, elapsed, filter_title, lane_style, more_marks, pane_block,
+    short, status_glyph, status_style, status_word, text_width,
 };
 use crate::presentation::presenters::watch::tokens;
 use crate::presentation::view_models::watch::{
@@ -71,19 +71,33 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
         title.push(Span::raw(format!("· {} ", vm.status.scope)));
     }
     title.push(Span::raw(format!("· activity: last {} ", ov.window)));
+    if let Some(f) = filter_title(vm) {
+        title.push(f);
+    }
     let block = pane_block(true, title);
     let inner = block.inner(area);
-    f.render_widget(block, area);
     if inner.height == 0 {
+        f.render_widget(block, area);
         return;
     }
     if ov.rows.is_empty() {
-        f.render_widget(Paragraph::new(Line::styled(" no agents yet", dim())), inner);
+        f.render_widget(block, area);
+        let text = if vm.status.filter.is_empty() {
+            " no agents yet".to_string()
+        } else {
+            format!(
+                " no agent matches \"{}\" — Esc clears the filter",
+                vm.status.filter
+            )
+        };
+        f.render_widget(Paragraph::new(Line::styled(text, dim())), inner);
         return;
     }
     let cols = columns(inner.width as usize);
     let [head, body] = Layout::vertical([Constraint::Length(1), Constraint::Min(0)]).areas(inner);
-    f.render_widget(Paragraph::new(header_line(cols, &ov.cell)), head);
+    // Old sessions have no activity in the window: say how to widen it.
+    let quiet = ov.rows.iter().all(|r| r.lane.trim().is_empty());
+    f.render_widget(Paragraph::new(header_line(cols, &ov.cell, quiet)), head);
 
     // Root header lines are interleaved with the rows; keep the selected row visible.
     let mut lines: Vec<Line> = Vec::with_capacity(ov.rows.len() * 2);
@@ -103,7 +117,13 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
     } else {
         selected_line + 1 - height
     };
+    let total = lines.len();
     let visible: Vec<Line> = lines.into_iter().skip(start).take(height).collect();
+    let block = match more_marks(start, visible.len(), total) {
+        Some(marks) => block.title_bottom(marks),
+        None => block,
+    };
+    f.render_widget(block, area);
     f.render_widget(Paragraph::new(visible), body);
 }
 
@@ -113,7 +133,7 @@ fn pad(s: &str, width: usize) -> String {
     format!("{s}{}", " ".repeat(width.saturating_sub(w)))
 }
 
-fn header_line(cols: Columns, cell: &str) -> Line<'static> {
+fn header_line(cols: Columns, cell: &str, quiet: bool) -> Line<'static> {
     let mut text = format!(
         "{}{} {} {} ",
         " ".repeat(MARK_W),
@@ -122,7 +142,12 @@ fn header_line(cols: Columns, cell: &str) -> Line<'static> {
         pad("context", CTX_W)
     );
     if cols.lane > 0 {
-        text.push_str(&pad(&format!("activity {cell}/cell"), cols.lane));
+        let label = if quiet {
+            "no activity — + widens".to_string()
+        } else {
+            format!("activity {cell}/cell")
+        };
+        text.push_str(&pad(&label, cols.lane));
         text.push(' ');
     }
     text.push_str("now");

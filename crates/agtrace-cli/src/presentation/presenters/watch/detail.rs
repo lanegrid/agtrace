@@ -27,7 +27,7 @@ pub(super) fn build_detail(
         .entered(a.status)
         .or(a.last_active())
         .or(a.agent.started_at);
-    DetailVm {
+    let mut d = DetailVm {
         agent_id: a.id().as_str().to_string(),
         title: a.label(),
         relation: relation(view, a),
@@ -55,7 +55,11 @@ pub(super) fn build_detail(
             .collect(),
         section: ui.detail_section,
         scroll: ui.detail_scroll,
+    };
+    if ui.detail_auto {
+        d.section = d.pick_section(ui.detail_pref);
     }
+    d
 }
 
 fn parent_label(view: &WorkspaceView, a: &AgentView) -> Option<String> {
