@@ -9,7 +9,7 @@ use ratatui::widgets::{Cell, Paragraph, Row, Table};
 use super::style::{col_width, ctx_style, dim, elapsed, pane_block, status_style};
 use crate::presentation::presenters::watch::tokens;
 use crate::presentation::view_models::watch::{
-    ActivityVm, FocusVm, Pane, RowKind, TimelineRowVm, WatchScreenVm,
+    ActivityVm, FocusVm, Pane, RowKind, StatusVm, TimelineRowVm, WatchScreenVm,
 };
 
 pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm, height: usize) {
@@ -90,7 +90,18 @@ fn activity_line(focus: &FocusVm) -> Line<'static> {
             Span::styled(format!("turn {outcome} {} ago", elapsed(*ago_secs)), dim()),
         ]),
         None if focus.agent_id.is_none() => Line::styled("", dim()),
-        None => Line::from(vec![status, Span::styled("no activity yet", dim())]),
+        // Claude subagents log no turn ends: say how they ended instead.
+        None => {
+            let text = match focus.status {
+                StatusVm::Done => "done",
+                StatusVm::Killed => "killed",
+                StatusVm::Failed => "failed",
+                StatusVm::Idle => "idle",
+                StatusVm::Running => "working",
+                StatusVm::Unknown => "no activity yet",
+            };
+            Line::from(vec![status, Span::styled(text, dim())])
+        }
     }
 }
 

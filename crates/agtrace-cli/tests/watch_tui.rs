@@ -11,7 +11,7 @@ use agtrace::presentation::view_models::watch::{
     FeedFilter, Pane, RowKind, Screen, Scroll, TOAST_TTL, Toast, UiState, Viewport, WatchScreenVm,
 };
 use agtrace::presentation::views::watch::input::{
-    Effect, action_for, apply, expire_toast, sync_selection,
+    Effect, action_for, action_in, apply, expire_toast, sync_selection,
 };
 use agtrace::presentation::views::watch::{layout, render};
 use agtrace::watch::{SharedWorkspace, build};
@@ -645,7 +645,7 @@ fn key(c: KeyCode) -> KeyEvent {
 fn press(view: &WorkspaceView, ui: &mut UiState, code: KeyCode) -> Effect {
     let vm = screen(view, ui);
     sync_selection(ui, &vm);
-    let action = action_for(key(code)).expect("bound key");
+    let action = action_in(ui, key(code)).expect("bound key");
     apply(ui, action, &vm, Instant::now())
 }
 
@@ -689,7 +689,7 @@ fn keys_move_selection_and_collapse() {
     assert_eq!(toast(&ui), "▾ expanded /root");
 
     assert_eq!(press(&view, &mut ui, KeyCode::Char('q')), Effect::Quit);
-    assert_eq!(press(&view, &mut ui, KeyCode::Char('r')), Effect::Rescan);
+    assert_eq!(press(&view, &mut ui, KeyCode::Char('R')), Effect::Rescan);
     assert_eq!(toast(&ui), "rescanning…");
 }
 
@@ -830,6 +830,7 @@ fn detail_sections_cycle_and_scroll() {
     let mut ui = ui();
     select(&mut ui, "claude:s-lead");
     press(&view, &mut ui, KeyCode::Enter);
+    press(&view, &mut ui, KeyCode::Char('i'));
     assert_eq!(ui.detail_section, DetailSection::Instructions);
     ui.viewport.detail = [
         SectionMetrics {
@@ -874,6 +875,233 @@ fn detail_sections_cycle_and_scroll() {
     press(&view, &mut ui, KeyCode::Char('d'));
     assert!(ui.collapsed.is_empty() && !ui.hide_done);
     assert_eq!(ui.screen, Screen::Detail);
+}
+
+/// Section the detail opened on, once the presenter resolved it.
+fn opened_section(
+    view: &WorkspaceView,
+    ui: &mut UiState,
+) -> agtrace::presentation::view_models::watch::DetailSection {
+    let vm = screen(view, ui);
+    sync_selection(ui, &vm);
+    assert!(!ui.detail_auto, "the resolved section is stored back");
+    let d = vm.detail.expect("detail shown");
+    assert_eq!(d.section, ui.detail_section);
+    d.section
+}
+
+/// Regression (user report: "the timeline isn't fully visible when I open the
+/// detail"): the detail opened on Instructions, which took the screen for a long
+/// session. It now opens where the agent's state is: Now while running, the
+/// result once ended with one, else the timeline; never an empty section.
+#[test]
+fn detail_opens_on_a_sensible_section() {
+    use agtrace::presentation::view_models::watch::DetailSection;
+    let view = fixture::workspace();
+    for (id, want) in [
+        ("claude:s-lead", DetailSection::Now),
+        ("codex:t-judge", DetailSection::Now),
+        ("claude:s-lead/a7ac2e91", DetailSection::Result),
+        ("codex:t-scout", DetailSection::Result),
+        ("claude:s-audit-a", DetailSection::Timeline),
+    ] {
+        let mut ui = home();
+        select(&mut ui, id);
+        press(&view, &mut ui, KeyCode::Enter);
+        assert_eq!(ui.screen, Screen::Detail, "{id}");
+        assert_eq!(opened_section(&view, &mut ui), want, "{id}");
+    }
+}
+
+/// The section picked with i / n / r / t (or Tab) is kept for the next agents'
+/// details, unless that agent has nothing there.
+#[test]
+fn detail_section_is_remembered_across_agents() {
+    use agtrace::presentation::view_models::watch::DetailSection;
+    let view = fixture::workspace();
+    let mut ui = home();
+    select(&mut ui, "claude:s-lead");
+    press(&view, &mut ui, KeyCode::Enter);
+    press(&view, &mut ui, KeyCode::Char('t'));
+    assert_eq!(ui.detail_section, DetailSection::Timeline);
+    press(&view, &mut ui, KeyCode::Esc);
+    assert_eq!(ui.screen, Screen::Overview);
+    select(&mut ui, "claude:s-lead/a7ac2e91");
+    press(&view, &mut ui, KeyCode::Enter);
+    assert_eq!(opened_section(&view, &mut ui), DetailSection::Timeline);
+
+    // Tab counts as a choice too.
+    press(&view, &mut ui, KeyCode::BackTab);
+    assert_eq!(ui.detail_section, DetailSection::Result);
+    press(&view, &mut ui, KeyCode::Esc);
+    select(&mut ui, "codex:t-scout");
+    press(&view, &mut ui, KeyCode::Enter);
+    assert_eq!(opened_section(&view, &mut ui), DetailSection::Result);
+
+    // A running agent has no result yet: the default applies, the choice is kept.
+    press(&view, &mut ui, KeyCode::Esc);
+    select(&mut ui, "claude:s-lead");
+    press(&view, &mut ui, KeyCode::Enter);
+    assert_eq!(opened_section(&view, &mut ui), DetailSection::Now);
+    assert_eq!(ui.detail_pref, Some(DetailSection::Result));
+}
+
+/// i / n / r / t focus a section in the detail and open the detail at that
+/// section from the overview and the agents screen; R rescans.
+#[test]
+fn section_keys_focus_or_open_the_detail() {
+    use agtrace::presentation::view_models::watch::DetailSection;
+    let view = fixture::workspace();
+    for (code, want) in [
+        ('i', DetailSection::Instructions),
+        ('n', DetailSection::Now),
+        ('r', DetailSection::Result),
+        ('t', DetailSection::Timeline),
+    ] {
+        for start in [Screen::Overview, Screen::Agents] {
+            let mut ui = home();
+            ui.screen = start;
+            select(&mut ui, "claude:s-audit-a");
+            assert_eq!(
+                press(&view, &mut ui, KeyCode::Char(code)),
+                Effect::None,
+                "{code}"
+            );
+            assert_eq!(ui.screen, Screen::Detail, "{code} from {start:?}");
+            assert_eq!(ui.detail_agent.as_deref(), Some("claude:s-audit-a"));
+            assert_eq!(ui.detail_section, want, "{code}");
+            // Explicit: no presenter override, even for an empty section.
+            assert_eq!(screen(&view, &ui).detail.unwrap().section, want);
+            press(&view, &mut ui, KeyCode::Esc);
+            assert_eq!(ui.screen, start);
+        }
+    }
+    let mut ui = home();
+    select(&mut ui, "claude:s-lead");
+    press(&view, &mut ui, KeyCode::Enter);
+    press(&view, &mut ui, KeyCode::Char('i'));
+    assert_eq!(ui.detail_section, DetailSection::Instructions);
+    press(&view, &mut ui, KeyCode::Char('r'));
+    assert_eq!(ui.detail_section, DetailSection::Result);
+    assert_eq!(press(&view, &mut ui, KeyCode::Char('R')), Effect::Rescan);
+}
+
+/// J / K step to the next / previous agent (tree order) without leaving the
+/// detail; the other screens move the selection.
+#[test]
+fn shift_j_k_step_through_agents() {
+    let view = fixture::workspace();
+    let mut ui = home();
+    let order: Vec<String> = screen(&view, &ui)
+        .tree
+        .iter()
+        .map(|r| r.id.clone())
+        .collect();
+    select(&mut ui, &order[0]);
+    press(&view, &mut ui, KeyCode::Char('J'));
+    assert_eq!(ui.selected.as_deref(), Some(order[1].as_str()));
+    press(&view, &mut ui, KeyCode::Enter);
+    let back = ui.detail_return;
+    press(&view, &mut ui, KeyCode::Char('J'));
+    assert_eq!(ui.screen, Screen::Detail);
+    assert_eq!(ui.detail_agent.as_deref(), Some(order[2].as_str()));
+    assert_eq!(ui.selected.as_deref(), Some(order[2].as_str()));
+    press(&view, &mut ui, KeyCode::Char('K'));
+    press(&view, &mut ui, KeyCode::Char('K'));
+    assert_eq!(ui.detail_agent.as_deref(), Some(order[0].as_str()));
+    press(&view, &mut ui, KeyCode::Char('K'));
+    assert_eq!(toast(&ui), "already at the first agent");
+    press(&view, &mut ui, KeyCode::Esc);
+    assert_eq!(
+        ui.screen, back,
+        "Esc still returns where the detail was opened"
+    );
+}
+
+/// `/` filters the agents by name (matches plus their ancestors, folds ignored),
+/// selects the first match, Enter opens it, Esc clears the filter before the view
+/// reset.
+#[test]
+fn slash_filters_agents_by_name() {
+    let view = fixture::workspace();
+    let mut ui = home();
+    ui.collapsed.insert("claude:s-lead".to_string());
+    press(&view, &mut ui, KeyCode::Char('/'));
+    assert!(ui.filter_editing);
+    // Keys are text now: `d` does not hide done agents, `q` does not quit.
+    for c in "AUDIT".chars() {
+        assert_eq!(press(&view, &mut ui, KeyCode::Char(c)), Effect::None);
+    }
+    assert!(!ui.hide_done);
+    let vm = screen(&view, &ui);
+    sync_selection(&mut ui, &vm);
+    let ids: Vec<&str> = vm.tree.iter().map(|r| r.id.as_str()).collect();
+    assert_eq!(
+        ids,
+        ["claude:s-lead", "claude:s-audit-a", "claude:s-audit-b"],
+        "case-insensitive match, ancestor kept, fold ignored"
+    );
+    assert_eq!(vm.status.matches, 2);
+    assert_eq!(ui.selected.as_deref(), Some("claude:s-audit-a"));
+    press(&view, &mut ui, KeyCode::Down);
+    assert_eq!(ui.selected.as_deref(), Some("claude:s-audit-b"));
+    press(&view, &mut ui, KeyCode::Backspace);
+    assert_eq!(ui.filter, "AUDI");
+
+    // Enter keeps the filter and opens the selected match.
+    press(&view, &mut ui, KeyCode::Enter);
+    assert!(!ui.filter_editing);
+    assert_eq!(ui.screen, Screen::Detail);
+    assert!(
+        ui.detail_agent
+            .as_deref()
+            .unwrap()
+            .starts_with("claude:s-audit")
+    );
+    press(&view, &mut ui, KeyCode::Esc);
+    assert_eq!(ui.screen, Screen::Overview);
+    assert_eq!(screen(&view, &ui).tree.len(), 3, "filter kept");
+
+    // Esc: clear the filter first (folds come back), then reset the view.
+    press(&view, &mut ui, KeyCode::Esc);
+    assert!(ui.filter.is_empty());
+    assert_eq!(toast(&ui), "filter cleared");
+    assert!(ui.collapsed.contains("claude:s-lead"));
+    press(&view, &mut ui, KeyCode::Esc);
+    assert!(ui.collapsed.is_empty());
+
+    // Esc while typing drops the filter; no match leaves an empty list.
+    press(&view, &mut ui, KeyCode::Char('/'));
+    press(&view, &mut ui, KeyCode::Char('z'));
+    press(&view, &mut ui, KeyCode::Char('z'));
+    assert!(screen(&view, &ui).tree.is_empty());
+    press(&view, &mut ui, KeyCode::Esc);
+    assert!(!ui.filter_editing && ui.filter.is_empty());
+    assert_eq!(screen(&view, &ui).tree.len(), 9);
+}
+
+/// Collapsed sections: one summary line naming the key; the status bar lists the
+/// section keys; the filter prompt replaces the status bar while typing.
+#[test]
+fn render_detail_collapsed_sections_and_filter_prompt() {
+    let view = fixture::workspace();
+    let mut ui = home();
+    select(&mut ui, "claude:s-lead");
+    press(&view, &mut ui, KeyCode::Enter);
+    press(&view, &mut ui, KeyCode::Char('t'));
+    let out = draw(&view, &mut ui, 80, 24);
+    assert!(out.contains("… press i"), "{out}");
+    insta::assert_snapshot!("render_detail_lead_timeline_80x24", out);
+
+    let mut ui = home();
+    press(&view, &mut ui, KeyCode::Char('/'));
+    for c in "scout".chars() {
+        press(&view, &mut ui, KeyCode::Char(c));
+    }
+    insta::assert_snapshot!(
+        "render_overview_filter_prompt_80x24",
+        draw(&view, &mut ui, 80, 24)
+    );
 }
 
 /// Esc / ← / h go back one level: help → closed, timeline / feed → tree, tree →

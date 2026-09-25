@@ -38,7 +38,8 @@ use crate::presentation::view_models::watch::{
 /// Toast expiry is judged against the monotonic clock (the workspace clock `now`
 /// may be frozen for fixtures).
 pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> WatchScreenVm {
-    let visible = visibility(view, ui.hide_done);
+    let filter = ui.filter.to_lowercase();
+    let visible = visibility(view, ui.hide_done, &filter);
     let selected = effective_selection(view, ui, &visible);
 
     let mut tree = Vec::new();
@@ -62,7 +63,20 @@ pub fn build_screen(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> W
 
     let focus = build_focus(view, ui, selected.as_ref(), now);
     let feed = build_feed(view, ui, selected.as_ref());
-    let status = build_status(view, ui, visible.len());
+    // `hidden` counts what "hide done" hides, not what the filter leaves out.
+    let unfiltered = if filter.is_empty() {
+        visible.len()
+    } else {
+        visibility(view, ui.hide_done, "").len()
+    };
+    let mut status = build_status(view, ui, unfiltered);
+    if !filter.is_empty() {
+        status.matches = view
+            .agents
+            .values()
+            .filter(|a| visible.contains(a.id()) && matches_filter(view, a, &filter))
+            .count();
+    }
     let overview =
         (ui.screen == Screen::Overview).then(|| overview::build_overview(view, ui, &tree, now));
     // The detail screen keeps the agent it was opened on (auto-select or tree
@@ -107,6 +121,7 @@ pub fn build_console(view: &WorkspaceView, ui: &UiState, now: DateTime<Utc>) -> 
         feed_filter: FeedFilter::All,
         hide_done: false,
         collapsed: Default::default(),
+        filter: String::new(),
         ..ui.clone()
     };
     let screen = build_screen(view, &ui, now);
@@ -150,13 +165,27 @@ fn is_hideable(status: AgentStatus) -> bool {
     matches!(status, AgentStatus::Done | AgentStatus::Killed)
 }
 
+/// The agent's labels or id contain `needle` (lowercase), ignoring case.
+fn matches_filter(view: &WorkspaceView, a: &AgentView, needle: &str) -> bool {
+    [
+        a.label(),
+        tree_label(view, a),
+        a.id().as_str().to_string(),
+        a.agent.agent_type.clone().unwrap_or_default(),
+    ]
+    .iter()
+    .any(|s| s.to_lowercase().contains(needle))
+}
+
 /// Agents shown in the tree: all, or (hide_done) those that are not Done/Killed or
-/// have a shown descendant.
-fn visibility(view: &WorkspaceView, hide_done: bool) -> HashSet<AgentId> {
+/// have a shown descendant; with a `/` filter (lowercase, non-empty), only the
+/// matching agents and their ancestors.
+fn visibility(view: &WorkspaceView, hide_done: bool, filter: &str) -> HashSet<AgentId> {
     fn visit(
         view: &WorkspaceView,
         id: &AgentId,
         hide_done: bool,
+        filter: &str,
         out: &mut HashSet<AgentId>,
         seen: &mut HashSet<AgentId>,
     ) -> bool {
@@ -168,9 +197,13 @@ fn visibility(view: &WorkspaceView, hide_done: bool) -> HashSet<AgentId> {
         };
         let mut any_child = false;
         for c in &a.children {
-            any_child |= visit(view, c, hide_done, out, seen);
+            any_child |= visit(view, c, hide_done, filter, out, seen);
         }
-        let shown = !hide_done || !is_hideable(a.status) || any_child;
+        let shown = if filter.is_empty() {
+            !hide_done || !is_hideable(a.status) || any_child
+        } else {
+            any_child || ((!hide_done || !is_hideable(a.status)) && matches_filter(view, a, filter))
+        };
         if shown {
             out.insert(id.clone());
         }
@@ -179,7 +212,7 @@ fn visibility(view: &WorkspaceView, hide_done: bool) -> HashSet<AgentId> {
     let mut out = HashSet::new();
     let mut seen = HashSet::new();
     for r in &view.roots {
-        visit(view, r, hide_done, &mut out, &mut seen);
+        visit(view, r, hide_done, filter, &mut out, &mut seen);
     }
     out
 }
@@ -207,7 +240,12 @@ fn is_row_shown(
     visible.contains(id)
         && tree_ancestors(view, id)
             .iter()
-            .all(|a| !ui.collapsed.contains(a.as_str()))
+            .all(|a| !is_folded(ui, a.as_str()))
+}
+
+/// Folds are ignored while a `/` filter is active (matches must stay visible).
+fn is_folded(ui: &UiState, id: &str) -> bool {
+    ui.filter.is_empty() && ui.collapsed.contains(id)
 }
 
 /// Selected agent: the most recently active one (auto), else the remembered one
@@ -235,11 +273,39 @@ fn effective_selection(
         if shown(id) {
             return Some(id.clone());
         }
+        // Filtered out: jump to the first match rather than an unrelated ancestor.
+        if !ui.filter.is_empty()
+            && let Some(m) = first_match(view, visible, &ui.filter.to_lowercase())
+        {
+            return Some(m);
+        }
         if let Some(a) = tree_ancestors(view, id).into_iter().find(|a| shown(a)) {
             return Some(a.clone());
         }
     }
+    if !ui.filter.is_empty()
+        && let Some(m) = first_match(view, visible, &ui.filter.to_lowercase())
+    {
+        return Some(m);
+    }
     view.roots.iter().find(|r| shown(r)).cloned()
+}
+
+/// First agent matching the filter, in tree order.
+fn first_match(view: &WorkspaceView, visible: &HashSet<AgentId>, needle: &str) -> Option<AgentId> {
+    let mut stack: Vec<&AgentId> = view.roots.iter().rev().collect();
+    let mut seen = HashSet::new();
+    while let Some(id) = stack.pop() {
+        if !visible.contains(id) || !seen.insert(id) {
+            continue;
+        }
+        let Some(a) = view.agent(id) else { continue };
+        if matches_filter(view, a, needle) {
+            return Some(id.clone());
+        }
+        stack.extend(a.children.iter().rev());
+    }
+    None
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -262,7 +328,7 @@ fn push_rows(
         return;
     };
     let children: Vec<&AgentId> = a.children.iter().filter(|c| visible.contains(*c)).collect();
-    let collapsed = ui.collapsed.contains(id.as_str()) && !children.is_empty();
+    let collapsed = is_folded(ui, id.as_str()) && !children.is_empty();
     let hidden_descendants = if collapsed {
         count_descendants(view, visible, id)
     } else {
@@ -768,7 +834,7 @@ fn build_status(view: &WorkspaceView, ui: &UiState, visible: usize) -> StatusBar
         done_hideable: view
             .agents
             .len()
-            .saturating_sub(visibility(view, true).len()),
+            .saturating_sub(visibility(view, true, "").len()),
         diagnostics: view.total_diagnostic_errors(),
         errors: view.errors.len(),
         last_error: view.errors.last().cloned(),
@@ -776,5 +842,8 @@ fn build_status(view: &WorkspaceView, ui: &UiState, visible: usize) -> StatusBar
         hide_done: ui.hide_done,
         auto_select: ui.auto_select,
         collapsed: ui.collapsed.len(),
+        filter: ui.filter.clone(),
+        filter_editing: ui.filter_editing,
+        matches: 0,
     }
 }

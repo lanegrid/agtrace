@@ -243,3 +243,35 @@ mod tests {
         assert_eq!(ctx_bar(150, 3), "███");
     }
 }
+
+/// Bottom-right block title telling how many rows are scrolled off above / below
+/// (`↑3 ↓10`); None when everything is shown.
+pub fn more_marks(start: usize, shown: usize, total: usize) -> Option<Line<'static>> {
+    let below = total.saturating_sub(start + shown);
+    if start == 0 && below == 0 {
+        return None;
+    }
+    let mut parts = Vec::new();
+    if start > 0 {
+        parts.push(format!("↑{start}"));
+    }
+    if below > 0 {
+        parts.push(format!("↓{below}"));
+    }
+    Some(Line::styled(format!(" {} ", parts.join(" ")), dim()).right_aligned())
+}
+
+/// Block title part naming the active `/` filter (`/pr17: 2 matches`).
+pub fn filter_title(
+    vm: &crate::presentation::view_models::watch::WatchScreenVm,
+) -> Option<Span<'static>> {
+    let s = &vm.status;
+    if s.filter.is_empty() {
+        return None;
+    }
+    let noun = if s.matches == 1 { "match" } else { "matches" };
+    Some(Span::styled(
+        format!("· /{}: {} {noun} ", s.filter, s.matches),
+        Style::default().fg(Color::Yellow),
+    ))
+}

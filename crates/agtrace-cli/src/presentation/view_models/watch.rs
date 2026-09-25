@@ -142,6 +142,16 @@ impl DetailSection {
         Self::ALL[(self.index() + 3) % 4]
     }
 
+    /// Key that focuses the section (`i` `n` `r` `t`).
+    pub fn key(self) -> char {
+        match self {
+            DetailSection::Instructions => 'i',
+            DetailSection::Now => 'n',
+            DetailSection::Result => 'r',
+            DetailSection::Timeline => 't',
+        }
+    }
+
     pub fn title(self) -> &'static str {
         match self {
             DetailSection::Instructions => "Instructions",
@@ -255,7 +265,13 @@ pub struct UiState {
     pub detail_return: Screen,
     /// Agent shown on the detail screen (fixed while it is open).
     pub detail_agent: Option<String>,
+    /// Section in effect on the detail screen.
     pub detail_section: DetailSection,
+    /// Section the user last picked (`i` `n` `r` `t`, Tab); kept across agents.
+    pub detail_pref: Option<DetailSection>,
+    /// The detail was just opened: the presenter picks the section
+    /// ([`DetailVm::pick_section`]) and the handler stores it back.
+    pub detail_auto: bool,
     /// Per detail section, in [`DetailSection::index`] order.
     pub detail_scroll: [Scroll; 4],
     /// Overview activity lane span.
@@ -268,6 +284,11 @@ pub struct UiState {
     pub feed_filter: FeedFilter,
     /// Hide Done / Killed agents (kept when a descendant is still shown).
     pub hide_done: bool,
+    /// `/` name filter (case-insensitive substring); empty = off. Matching agents
+    /// are shown with their ancestors, ignoring folds.
+    pub filter: String,
+    /// The filter is being typed (keys go to the filter text).
+    pub filter_editing: bool,
     /// Follow the most recently active agent.
     pub auto_select: bool,
     pub show_help: bool,
@@ -287,6 +308,8 @@ impl Default for UiState {
             detail_return: Screen::Overview,
             detail_agent: None,
             detail_section: DetailSection::Instructions,
+            detail_pref: None,
+            detail_auto: false,
             detail_scroll: initial_detail_scroll(),
             window: LaneWindow::M60,
             selected: None,
@@ -296,6 +319,8 @@ impl Default for UiState {
             feed_scroll: Scroll::Follow,
             feed_filter: FeedFilter::All,
             hide_done: false,
+            filter: String::new(),
+            filter_editing: false,
             auto_select: false,
             show_help: false,
             toast: None,
@@ -499,6 +524,11 @@ pub struct StatusBarVm {
     pub auto_select: bool,
     /// Collapsed tree nodes.
     pub collapsed: usize,
+    /// `/` filter text (empty = off) and whether it is being typed.
+    pub filter: String,
+    pub filter_editing: bool,
+    /// Agents matching the filter.
+    pub matches: usize,
 }
 
 // ============================================================================
@@ -618,6 +648,56 @@ pub struct DetailVm {
     pub timeline: Vec<TimelineRowVm>,
     pub section: DetailSection,
     pub scroll: [Scroll; 4],
+}
+
+impl DetailVm {
+    /// Section with nothing to show for this agent.
+    pub fn is_empty(&self, s: DetailSection) -> bool {
+        match s {
+            DetailSection::Instructions => self.instructions.is_empty(),
+            DetailSection::Now => {
+                self.now.tool.is_none() && self.now.plan.is_empty() && self.now.said.is_none()
+            }
+            DetailSection::Result => !self.has_result(),
+            DetailSection::Timeline => self.timeline.is_empty(),
+        }
+    }
+
+    /// A reported result or a last message stands in for one.
+    pub fn has_result(&self) -> bool {
+        matches!(
+            self.result,
+            ResultVm::Reported { .. } | ResultVm::LastMessage { .. }
+        )
+    }
+
+    /// Section shown when the detail opens: the remembered choice when this agent
+    /// has something there, else Now while running, the result once ended with
+    /// one, else the timeline; never an empty section when another has content.
+    pub fn pick_section(&self, pref: Option<DetailSection>) -> DetailSection {
+        if let Some(p) = pref.filter(|p| !self.is_empty(*p)) {
+            return p;
+        }
+        let ended = matches!(
+            self.status,
+            StatusVm::Done | StatusVm::Killed | StatusVm::Failed
+        );
+        let first = match self.status {
+            StatusVm::Running => DetailSection::Now,
+            _ if ended && self.has_result() => DetailSection::Result,
+            _ => DetailSection::Timeline,
+        };
+        [
+            first,
+            DetailSection::Timeline,
+            DetailSection::Now,
+            DetailSection::Instructions,
+            DetailSection::Result,
+        ]
+        .into_iter()
+        .find(|s| !self.is_empty(*s))
+        .unwrap_or(DetailSection::Timeline)
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -6,7 +6,13 @@
 //! level (close help, leave the detail to where it was opened from, return to the
 //! tree, then reset the view toggles). j/k act on the focused pane or section.
 //!
-//! [`action_for`] maps a key to an [`Action`]; [`apply`] updates the [`UiState`]
+//! Direct keys: `i` `n` `r` `t` focus the Instructions / Now / Result / Timeline
+//! section of the detail (from the overview or the agents screen they open the
+//! detail at that section); `J` / `K` step to the next / previous agent; `/` types
+//! a name filter (`Enter` opens the selected match, `Esc` clears it).
+//!
+//! [`action_in`] maps a key to an [`Action`] (the filter prompt takes typed text);
+//! [`apply`] updates the [`UiState`]
 //! against the last rendered screen (row order, row counts), raises a toast for
 //! every state change, and reports effects that leave the UI (quit, rescan).
 
@@ -30,6 +36,20 @@ pub enum Action {
     Back,
     ShowOverview,
     ShowAgents,
+    /// Focus a detail section (opens the detail from the other screens).
+    Section(DetailSection),
+    /// Next / previous agent in tree order (detail: open its detail instead).
+    NextAgent,
+    PrevAgent,
+    /// `/`: start typing the name filter.
+    StartFilter,
+    /// While typing the filter.
+    FilterChar(char),
+    FilterBackspace,
+    /// Enter: keep the filter and open the selected match.
+    FilterAccept,
+    /// Esc: clear the filter.
+    FilterCancel,
     /// Overview activity window: next wider / narrower span.
     WindowWider,
     WindowNarrower,
@@ -86,8 +106,38 @@ pub fn action_for(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('f') => Action::ToggleFeedFilter,
         KeyCode::Char('d') => Action::ToggleHideDone,
         KeyCode::Char('a') => Action::ToggleAutoSelect,
-        KeyCode::Char('r') => Action::Rescan,
+        KeyCode::Char('i') => Action::Section(DetailSection::Instructions),
+        KeyCode::Char('n') => Action::Section(DetailSection::Now),
+        KeyCode::Char('r') => Action::Section(DetailSection::Result),
+        KeyCode::Char('t') => Action::Section(DetailSection::Timeline),
+        KeyCode::Char('J') => Action::NextAgent,
+        KeyCode::Char('K') => Action::PrevAgent,
+        KeyCode::Char('/') => Action::StartFilter,
+        KeyCode::Char('R') => Action::Rescan,
         KeyCode::Char('?') => Action::ToggleHelp,
+        _ => return None,
+    })
+}
+
+/// Key → action in the current UI state: while the `/` filter is typed, text keys
+/// edit it (arrows still move the selection); otherwise [`action_for`].
+pub fn action_in(ui: &UiState, key: KeyEvent) -> Option<Action> {
+    if !ui.filter_editing || ui.show_help {
+        return action_for(key);
+    }
+    if key.kind == KeyEventKind::Release {
+        return None;
+    }
+    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+    Some(match key.code {
+        KeyCode::Char('c') if ctrl => Action::Quit,
+        KeyCode::Char(_) if ctrl => return None,
+        KeyCode::Char(c) => Action::FilterChar(c),
+        KeyCode::Backspace => Action::FilterBackspace,
+        KeyCode::Enter => Action::FilterAccept,
+        KeyCode::Esc => Action::FilterCancel,
+        KeyCode::Down => Action::Down,
+        KeyCode::Up => Action::Up,
         _ => return None,
     })
 }
@@ -202,17 +252,43 @@ fn scroll_detail(ui: &mut UiState, up: bool, n: usize) {
     };
 }
 
-/// Open the detail screen of the agent under the cursor.
-fn open_detail(ui: &mut UiState, vm: &WatchScreenVm) {
+/// Open the detail screen of the agent under the cursor, at `section` or (None)
+/// at the section the presenter picks (the remembered one if it has content).
+fn open_detail(ui: &mut UiState, vm: &WatchScreenVm, section: Option<DetailSection>) {
     let Some(row) = cursor(ui, vm).and_then(|i| vm.tree.get(i)) else {
         return;
     };
-    ui.selected = Some(row.id.clone());
-    ui.detail_agent = Some(row.id.clone());
     ui.detail_return = ui.screen;
+    show_detail(ui, &row.id.clone(), section);
+}
+
+/// Point the detail screen at agent `id` (scrolls reset).
+fn show_detail(ui: &mut UiState, id: &str, section: Option<DetailSection>) {
+    ui.selected = Some(id.to_string());
+    ui.detail_agent = Some(id.to_string());
     ui.screen = Screen::Detail;
-    ui.detail_section = DetailSection::Instructions;
     ui.detail_scroll = initial_detail_scroll();
+    match section {
+        Some(s) => focus_section(ui, s),
+        None => ui.detail_auto = true,
+    }
+}
+
+/// Focus `s` and remember it for the next agents' details.
+fn focus_section(ui: &mut UiState, s: DetailSection) {
+    ui.detail_section = s;
+    ui.detail_pref = Some(s);
+    ui.detail_auto = false;
+}
+
+/// Move the selection one row down / up the tree (saturating).
+fn step_selection(ui: &mut UiState, vm: &WatchScreenVm, down: bool) {
+    let next = match cursor(ui, vm) {
+        None => 0,
+        Some(i) if down => (i + 1).min(vm.tree.len().saturating_sub(1)),
+        Some(i) => i.saturating_sub(1),
+    };
+    select(ui, vm, next);
 }
 
 fn window_toast(before: LaneWindow, after: LaneWindow) -> String {
@@ -234,6 +310,7 @@ fn window_toast(before: LaneWindow, after: LaneWindow) -> String {
 /// Esc on the tree: back to the default screen (selection and auto-select are kept).
 fn reset_view(ui: &mut UiState) {
     ui.collapsed.clear();
+    ui.filter.clear();
     ui.hide_done = false;
     ui.feed_filter = FeedFilter::All;
     ui.focus = Pane::Tree;
@@ -253,7 +330,7 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
         return Effect::None;
     }
     if ui.screen == Screen::Detail {
-        return apply_detail(ui, action, now);
+        return apply_detail(ui, action, vm, now);
     }
     let page = |h: usize| h.max(1);
     let target = scroll_target(ui);
@@ -279,14 +356,42 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
             };
             toast = Some(window_toast(before, ui.window));
         }
-        Action::Up | Action::Down if ui.focus == Pane::Tree || ui.screen == Screen::Overview => {
-            let cur = cursor(ui, vm);
-            let next = match (cur, action) {
-                (None, _) => 0,
-                (Some(i), Action::Up) => i.saturating_sub(1),
-                (Some(i), _) => (i + 1).min(vm.tree.len().saturating_sub(1)),
-            };
-            select(ui, vm, next);
+        Action::Up | Action::Down
+            if ui.focus == Pane::Tree || ui.screen == Screen::Overview || ui.filter_editing =>
+        {
+            step_selection(ui, vm, action == Action::Down);
+        }
+        Action::NextAgent => step_selection(ui, vm, true),
+        Action::PrevAgent => step_selection(ui, vm, false),
+        Action::Section(s) => open_detail(ui, vm, Some(s)),
+        Action::StartFilter => {
+            ui.filter_editing = true;
+            ui.focus = Pane::Tree;
+        }
+        Action::FilterChar(c) => {
+            ui.filter.push(c);
+            // Re-pick: the presenter selects the first match.
+            ui.selected = None;
+            ui.auto_select = false;
+        }
+        Action::FilterBackspace => {
+            ui.filter.pop();
+            if !ui.filter.is_empty() {
+                ui.selected = None;
+            }
+        }
+        Action::FilterAccept => {
+            ui.filter_editing = false;
+            if !ui.filter.is_empty() {
+                open_detail(ui, vm, None);
+            }
+        }
+        Action::FilterCancel => {
+            ui.filter_editing = false;
+            if !ui.filter.is_empty() {
+                ui.filter.clear();
+                toast = Some("filter cleared".to_string());
+            }
         }
         // The overview has no scrollable pane: page / end keys move the selection.
         Action::PageUp
@@ -317,9 +422,13 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
         Action::HalfPageDown => scroll(ui, vm, target, false, page(height / 2)),
         Action::Tail => set_scroll(ui, target, Scroll::Follow),
         Action::Top => set_scroll(ui, target, Scroll::Offset(0)),
-        Action::Open => open_detail(ui, vm),
+        Action::Open => open_detail(ui, vm, None),
         Action::Back => match ui.focus {
             Pane::Timeline | Pane::Feed if ui.screen == Screen::Agents => ui.focus = Pane::Tree,
+            _ if !ui.filter.is_empty() => {
+                ui.filter.clear();
+                toast = Some("filter cleared".to_string());
+            }
             _ => {
                 reset_view(ui);
                 toast = Some("view reset".to_string());
@@ -367,7 +476,8 @@ pub fn apply(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant)
 
 /// Keys on the detail screen: sections instead of panes, Esc back to where the
 /// detail was opened from; the view toggles of the other screens do not apply.
-fn apply_detail(ui: &mut UiState, action: Action, now: Instant) -> Effect {
+fn apply_detail(ui: &mut UiState, action: Action, vm: &WatchScreenVm, now: Instant) -> Effect {
+    commit_detail_section(ui, vm);
     let i = ui.detail_section.index();
     let page = ui.viewport.detail[i].height.max(1);
     match action {
@@ -379,8 +489,40 @@ fn apply_detail(ui: &mut UiState, action: Action, now: Instant) -> Effect {
         Action::Back => ui.screen = ui.detail_return,
         Action::ShowOverview => ui.screen = Screen::Overview,
         Action::ShowAgents => ui.screen = Screen::Agents,
-        Action::NextPane => ui.detail_section = ui.detail_section.next(),
-        Action::PrevPane => ui.detail_section = ui.detail_section.prev(),
+        Action::NextPane => focus_section(ui, ui.detail_section.next()),
+        Action::PrevPane => focus_section(ui, ui.detail_section.prev()),
+        Action::Section(s) => focus_section(ui, s),
+        Action::NextAgent | Action::PrevAgent => {
+            let cur = ui
+                .detail_agent
+                .as_deref()
+                .and_then(|id| vm.tree.iter().position(|r| r.id == id));
+            let next = match (cur, action) {
+                (Some(i), Action::NextAgent) => (i + 1 < vm.tree.len()).then_some(i + 1),
+                (Some(i), _) => i.checked_sub(1),
+                (None, _) => (!vm.tree.is_empty()).then_some(0),
+            };
+            match next.and_then(|n| vm.tree.get(n)) {
+                Some(row) => {
+                    let id = row.id.clone();
+                    show_detail(ui, &id, None);
+                    ui.auto_select = false;
+                }
+                None => {
+                    let edge = if action == Action::NextAgent {
+                        "last"
+                    } else {
+                        "first"
+                    };
+                    ui.toast = Some(Toast::new(format!("already at the {edge} agent"), now));
+                }
+            }
+        }
+        Action::StartFilter => {
+            ui.screen = ui.detail_return;
+            ui.filter_editing = true;
+            ui.focus = Pane::Tree;
+        }
         Action::Up => scroll_detail(ui, true, 1),
         Action::Down => scroll_detail(ui, false, 1),
         Action::PageUp => scroll_detail(ui, true, page),
@@ -408,9 +550,24 @@ fn apply_detail(ui: &mut UiState, action: Action, now: Instant) -> Effect {
         | Action::ToggleCollapse
         | Action::ToggleFeedFilter
         | Action::ToggleHideDone
-        | Action::ToggleAutoSelect => {}
+        | Action::ToggleAutoSelect
+        | Action::FilterChar(_)
+        | Action::FilterBackspace
+        | Action::FilterAccept
+        | Action::FilterCancel => {}
     }
     Effect::None
+}
+
+/// Adopt the section the presenter picked for a just-opened detail (once shown).
+fn commit_detail_section(ui: &mut UiState, vm: &WatchScreenVm) {
+    if ui.detail_auto
+        && let Some(d) = &vm.detail
+        && ui.detail_agent.as_deref() == Some(d.agent_id.as_str())
+    {
+        ui.detail_section = d.section;
+        ui.detail_auto = false;
+    }
 }
 
 /// Drop the toast once it expired; true when it was visible until now (the
@@ -423,9 +580,10 @@ pub fn expire_toast(ui: &mut UiState, now: Instant) -> bool {
     false
 }
 
-/// Remember the selection the presenter resolved (first row, auto-select, or the
+/// Remember the selection (and detail section) the presenter resolved (first row, auto-select, or the
 /// nearest shown ancestor), so relative moves start from what is displayed.
 pub fn sync_selection(ui: &mut UiState, vm: &WatchScreenVm) {
+    commit_detail_section(ui, vm);
     if let Some(id) = &vm.focus.agent_id
         && ui.selected.as_ref() != Some(id)
     {

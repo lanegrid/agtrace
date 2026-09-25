@@ -65,7 +65,16 @@ The TUI has three screens:
 | `Enter` | **Agent detail** | What one agent was asked to do, what it is doing, what it produced |
 
 `Enter` (or `→` / `l`) on an agent opens its detail, from the overview or the agents
-screen. `Esc` returns to the screen you came from, with the same agent selected.
+screen; `i` / `n` / `r` / `t` open it directly at the Instructions / Now / Result /
+Timeline section. `Esc` returns to the screen you came from, with the same agent
+selected, and is always safe to press: it steps back one level at a time. `?` lists
+every key.
+
+To find an agent among many, press `/` and type part of its name (or id, or agent
+type): the overview and the tree keep only the matches and their parents (folds are
+ignored), and the first match is selected. `↑` / `↓` move between matches, `Enter`
+opens the selected one's detail and keeps the filter, `Esc` clears it. The pane title
+shows the filter and the number of matches (`/audit: 2 matches`).
 
 ### Overview (`1`)
 
@@ -86,7 +95,7 @@ screen. `Esc` returns to the screen you came from, with the same agent selected.
 ┌ Messages ───────────────────────────────────────────────────────────────────────────────────────────┐
 │12:02 explore call sites → s-lead TASK_NOTIFY  "found 2 call sites"                                  │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────┘
- OVERVIEW  9 agents (4 running, 3 idle)                  ↵ detail · +/- window · space fold · ? help
+ OVERVIEW  9 agents (4 running, 3 idle)         ↵ detail · / find · +/- window · space fold · ? help
 ```
 
 Each root session gets a header line: its label, status and age, model, context bar with
@@ -106,7 +115,10 @@ tree has (and how many are running), and its reasoning effort. Below it, one row
   (`▸ Running the tests`, its active form) or else the latest assistant text; `idle Xm`, the result excerpt of a finished agent, or how long ago it
   was killed / failed (and why, when known).
 
-`j` / `k` select a row, `Enter` opens its detail. `space` (fold), `d` (hide done), `f`
+`j` / `k` select a row, `Enter` opens its detail. When the list is longer than the
+screen, the bottom border shows how many rows are above and below (`↑3 ↓10`). When no
+agent had activity in the window (an old session), the activity column header says
+`no activity — + widens`. `space` (fold), `d` (hide done), `f`
 (feed filter) and `a` (auto-select) work as on the agents screen; the rows follow the same
 fold and hide state. The bottom strip is the message feed (newest entries).
 
@@ -116,22 +128,19 @@ fold and hide state. The bottom strip is the message feed (newest entries).
 ┏ ▶ Detail · explore call sites ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃explore call sites · subagent of s-lead · Explore · claude-sonnet-5 · ✓ done 2m          ┃
 ┃ctx ██░░░░░░░░ 15% of 200k [table]  ▂   in 30k / out 10 · 1 tools                        ┃
-┃── ▶ Instructions (1) ────────────────────────────────────────────────────────────────── ┃
-┃[12:00 spawned by s-lead]                                                                ┃
-┃  Find call sites of parse_line                                                          ┃
-┃── Now ───────────────────────────────────────────────────────────────────────────────── ┃
-┃done                                                                                     ┃
-┃last said (12:02):                                                                       ┃
-┃  Two call sites: decoder.rs and lab.rs.                                                 ┃
-┃── Result ────────────────────────────────────────────────────────────────────────────── ┃
+┃── [i] Instructions (1) ──────────────────────────────────────────────────────────────── ┃
+┃[12:00 spawned by s-lead] Find call sites of parse_line                         … press i┃
+┃── [n] Now ───────────────────────────────────────────────────────────────────────────── ┃
+┃said: Two call sites: decoder.rs and lab.rs.                                    … press n┃
+┃── ▶ [r] Result ──────────────────────────────────────────────────────────────────────── ┃
 ┃[12:02 TASK_NOTIFY]                                                                      ┃
 ┃  found 2 call sites                                                                     ┃
-┃── Timeline (3) ──────────────────────────────────────────────────────────────────────── ┃
+┃── [t] Timeline (3) ──────────────────────────────────────────────────────────────────── ┃
 ┃12:00 › user Find call sites of parse_line                                               ┃
 ┃12:00 ▸ Grep parse_line                                                                  ┃
 ┃12:02 •      Two call sites: decoder.rs and lab.rs.                                      ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
- DETAIL · explore call sites · INSTRUCTIONS            Tab section · j/k scroll · Esc back
+ DETAIL · RESULT            i/n/r/t section · j/k scroll · J/K agent · G/g end/top · Esc back
 ```
 
 - **Header.** The agent, how it relates to its parent (`teammate of lead (team t)`,
@@ -164,10 +173,23 @@ fold and hide state. The bottom strip is the message feed (newest entries).
   shows why, when known.
 - **Timeline.** The same rows as the agents screen's timeline.
 
-`Tab` / `Shift-Tab` move between the sections (the focused one is cyan, gets more room,
-and is named in the status bar). `j` / `k`, `PgUp` / `PgDn`, `Ctrl-u` / `Ctrl-d` scroll
-it; `G` / `g` jump to its end / top (the timeline follows its end again). Section
-headings show the visible range (`1-10/40 ↓`). Texts are kept up to 16 KiB each.
+Each section heading names the key that focuses it: `i` Instructions, `n` Now, `r`
+Result, `t` Timeline (`Tab` / `Shift-Tab` cycle through them). The focused section is
+cyan, marked `▶`, named in the status bar, and gets the room it needs. The other
+sections are shown in full when they fit (short ones always), partly when rows are
+left, or else collapsed to a one-line summary ending in `… press <key>`: the latest
+instruction, the running tool (or the task list, or the latest text), the result, the
+newest timeline row. `j` / `k`, `PgUp` / `PgDn`, `Ctrl-u` / `Ctrl-d` scroll the focused
+section; `G` / `g` jump to its end / top (the timeline follows its end again). Section
+headings show the visible range (`1-10/40 ↓`). Texts are kept up to 16 KiB each; runs of
+blank lines are shown as one.
+
+The detail opens where the agent's state is: **Now** while it is running, **Result**
+once it ended (done, killed, failed) with a result, else the **Timeline**, and never on
+an empty section when another one has content. Once you pick a section (with a section
+key or `Tab`), the details of the next agents you open start on it too, unless that
+agent has nothing there. `J` / `K` step to the next / previous agent (in tree order)
+without leaving the detail; `Esc` still returns to where you opened the first one.
 
 ### Agents screen (`2`)
 
@@ -189,7 +211,7 @@ headings show the visible range (`1-10/40 ↓`). Texts are kept up to 16 KiB eac
 │12:02 /root → /root/judge         MESSAGE      [encrypted]                                  │
 │12:02 explore call sites → s-lead TASK_NOTIFY  "found 2 call sites"                         │
 └────────────────────────────────────────────────────────────────────────────────────────────┘
- AGENTS  9 agents (4 running, 3 idle)    ↵ detail · space fold · f msgs · d done · 1 overview · ? help
+ AGENTS  9 agents (4 running, 3 idle)  ↵ detail · / find · space fold · f msgs · 1 overview · ? help
 ```
 
 Three panes answer three questions: **Agents** (who is there and in what state), the
@@ -251,16 +273,19 @@ focus, the other entries are dimmed (highlighted, not filtered; `f` filters).
 
 ### Status bar
 
-- **Left.** The mode: `OVERVIEW`, `AGENTS`, `TIMELINE · <agent>`, `MESSAGES`, or
-  `DETAIL · <agent> · <SECTION>`. Then the agent
+- **Left.** The mode: `OVERVIEW`, `AGENTS`, `TIMELINE · <agent>`, `MESSAGES`,
+  `DETAIL · <SECTION>` (the agent is named in the detail's title), or `FIND` with the
+  filter being typed and its number of matches. Then (except on the detail) the agent
   counts, hidden agents, the number of diagnostics (log lines agtrace could not decode),
   the last error and the active toggles. For about two seconds after a change, a short
   message replaces them: `▸ collapsed judge (+1 hidden)`, `done agents hidden (2) — d to
   show`, `messages: s-lead only — f for all`, `activity window: last 4h`, `view reset`,
-  `rescanning…`, and so on. Keys
+  `filter cleared`, `rescanning…`, and so on. Keys
   that cannot act say why (`can't collapse the only session`, `x has no children`).
 - **Right.** Key hints for the screen and the focused pane. The overview and the tree add
-  `Esc:reset` while a view toggle is active. Hints are shortened on narrow terminals.
+  `Esc:reset` while a view toggle is active (`Esc:clear filter` while a `/` filter is
+  set). Hints are shortened on narrow terminals, keeping `↵ detail`, `? help` and
+  `Esc back`.
 
 ### Keybindings
 
@@ -268,8 +293,11 @@ focus, the other entries are dimmed (highlighted, not filtered; `f` filters).
 |---|---|
 | `1` / `2` | Overview / agents screen (also from the detail). |
 | `Enter` / `→` / `l` | Open the selected agent's detail. |
-| `Esc` / `←` / `h` | Back one level: close help; leave the detail (to the screen it was opened from); return from the timeline / feed to the tree; then (on the tree or the overview) reset the view: expand all, show done, feed: all, follow. The selection is kept. |
+| `Esc` / `←` / `h` | Back one level: close help; leave the detail (to the screen it was opened from); return from the timeline / feed to the tree; clear the `/` filter; then (on the tree or the overview) reset the view: expand all, show done, feed: all, follow. The selection is kept. |
+| `i` / `n` / `r` / `t` | Detail: focus the Instructions / Now / Result / Timeline section (remembered for the next agents). Overview, agents screen: open the selected agent's detail at that section. |
 | `j` / `k`, `↓` / `↑` | Act on the focused pane: move the selection (overview, tree), or scroll the timeline / feed / detail section by a line. |
+| `J` / `K` | Next / previous agent: in the detail, show that agent's detail; elsewhere, move the selection. |
+| `/` | Find agents by name: type to filter, `↑` / `↓` select, `Enter` opens the selected match (the filter stays), `Esc` clears it. From the detail, returns to the screen it was opened from first. |
 | `+` / `]`, `-` / `[` | Overview activity window: wider / narrower (15m, 60m, 4h, all). |
 | `space` | Fold / unfold the selected node. The only root cannot be folded. |
 | `Tab` / `Shift-Tab` | Agents screen: cycle pane focus (tree → timeline → feed). Detail: cycle sections. |
@@ -280,7 +308,7 @@ focus, the other entries are dimmed (highlighted, not filtered; `f` filters).
 | `f` | Feed filter: all messages ↔ only those involving the selected agent. |
 | `d` | Hide or show agents that are done or killed. |
 | `a` | Toggle auto-select of the most recently active agent. |
-| `r` | Rescan for new agent files now. |
+| `R` | Rescan for new agent files now (it was `r`, now the Result section key). |
 | `?` | Toggle the help overlay. |
 | `q`, `Ctrl-c` | Quit. |
 

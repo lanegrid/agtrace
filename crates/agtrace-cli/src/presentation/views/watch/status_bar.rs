@@ -31,7 +31,16 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
             .add_modifier(Modifier::BOLD),
     )];
     spans.push(Span::raw(" "));
-    if let Some(t) = &vm.toast {
+    if s.filter_editing {
+        spans.push(Span::styled(
+            format!("/{}▏", s.filter),
+            Style::default().add_modifier(Modifier::BOLD),
+        ));
+        if !s.filter.is_empty() {
+            let noun = if s.matches == 1 { "match" } else { "matches" };
+            spans.push(Span::styled(format!("  {} {noun}", s.matches), dim()));
+        }
+    } else if let Some(t) = &vm.toast {
         spans.push(Span::styled(
             t.clone(),
             Style::default()
@@ -39,13 +48,26 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
                 .add_modifier(Modifier::BOLD),
         ));
     } else {
-        info(s, &toggles, &mut spans);
+        info(s, &toggles, vm.screen != Screen::Detail, &mut spans);
     }
     let left = Line::from(spans);
 
     // Hints take what the left part leaves, dropping optional items first; the
     // essential ones (`↵ detail`, `? help`, `Esc back`, `Esc:reset`) always show.
-    let items = hints(vm.screen, vm.focus_pane, !toggles.is_empty());
+    let items = if s.filter_editing {
+        vec![
+            hint("↑/↓ select", 1),
+            hint("↵ open", 0),
+            hint("Esc clear", 0),
+        ]
+    } else {
+        hints(
+            vm.screen,
+            vm.focus_pane,
+            !toggles.is_empty(),
+            !s.filter.is_empty(),
+        )
+    };
     let essential = fit(&items, 0);
     let avail = (area.width as usize)
         .saturating_sub(left.width() + 1)
@@ -71,15 +93,17 @@ const fn hint(text: &'static str, drop_rank: u8) -> Hint {
 }
 
 /// Key hints of the screen / focused pane; `Esc:reset` only on the home views
-/// (overview, agents tree) with toggles active.
-pub fn hints(screen: Screen, focus: Pane, toggles_active: bool) -> Vec<Hint> {
+/// (overview, agents tree) with toggles active (`Esc:clear filter` while a `/`
+/// filter is set: Esc clears it first).
+pub fn hints(screen: Screen, focus: Pane, toggles_active: bool, filtered: bool) -> Vec<Hint> {
     let (mut out, home) = match (screen, focus) {
         (Screen::Overview, _) => (
             vec![
                 hint("↵ detail", 0),
-                hint("+/- window", 1),
-                hint("space fold", 3),
-                hint("d done", 4),
+                hint("/ find", 1),
+                hint("+/- window", 3),
+                hint("space fold", 4),
+                hint("d done", 5),
                 hint("2 agents", 2),
                 hint("? help", 0),
             ],
@@ -87,8 +111,9 @@ pub fn hints(screen: Screen, focus: Pane, toggles_active: bool) -> Vec<Hint> {
         ),
         (Screen::Detail, _) => (
             vec![
-                hint("Tab section", 1),
+                hint("i/n/r/t section", 1),
                 hint("j/k scroll", 2),
+                hint("J/K agent", 4),
                 hint("G/g end/top", 3),
                 hint("Esc back", 0),
             ],
@@ -97,9 +122,10 @@ pub fn hints(screen: Screen, focus: Pane, toggles_active: bool) -> Vec<Hint> {
         (Screen::Agents, Pane::Tree) => (
             vec![
                 hint("↵ detail", 0),
-                hint("space fold", 2),
-                hint("f msgs", 3),
-                hint("d done", 4),
+                hint("/ find", 2),
+                hint("space fold", 3),
+                hint("f msgs", 4),
+                hint("d done", 5),
                 hint("1 overview", 1),
                 hint("? help", 0),
             ],
@@ -123,7 +149,9 @@ pub fn hints(screen: Screen, focus: Pane, toggles_active: bool) -> Vec<Hint> {
             false,
         ),
     };
-    if home && toggles_active {
+    if home && filtered {
+        out.push(hint("Esc:clear filter", 0));
+    } else if home && toggles_active {
         out.push(hint("Esc:reset", 0));
     }
     out
@@ -148,27 +176,31 @@ pub fn fit(items: &[Hint], width: usize) -> String {
         .unwrap_or_else(|| join(0))
 }
 
-/// `OVERVIEW`, `AGENTS`, `TIMELINE · <agent>`, `MESSAGES`, `DETAIL · <agent> · <SECTION>`.
+/// `OVERVIEW`, `AGENTS`, `TIMELINE · <agent>`, `MESSAGES`, `DETAIL · <SECTION>`
+/// (the detail names its agent in its title), `FIND` while typing a filter.
 fn mode_label(vm: &WatchScreenVm) -> String {
+    if vm.status.filter_editing {
+        return "FIND".to_string();
+    }
     match (vm.screen, vm.focus_pane) {
         (Screen::Overview, _) => "OVERVIEW".to_string(),
         (Screen::Detail, _) => match &vm.detail {
-            Some(d) => format!(
-                "DETAIL · {} · {}",
-                d.title,
-                d.section.title().to_uppercase()
-            ),
+            Some(d) => format!("DETAIL · {}", d.section.title().to_uppercase()),
             None => "DETAIL".to_string(),
         },
         (Screen::Agents, Pane::Tree) => "AGENTS".to_string(),
-        (Screen::Agents, Pane::Timeline) => format!("TIMELINE · {}", vm.focus.title),
+        (Screen::Agents, Pane::Timeline) => {
+            format!("TIMELINE · {}", super::style::clip(&vm.focus.title, 24))
+        }
         (Screen::Agents, Pane::Feed) => "MESSAGES".to_string(),
     }
 }
 
-/// Active view toggles (the ones Esc on the tree resets, plus auto-select).
+/// Active view toggles (the ones Esc on the tree resets, plus auto-select); the
+/// `/` filter is named in the pane title instead.
 fn toggles(s: &StatusBarVm) -> Vec<String> {
     let mut out = Vec::new();
+
     if s.feed_filter == FeedFilter::Selected {
         out.push("feed:selected".to_string());
     }
@@ -181,24 +213,30 @@ fn toggles(s: &StatusBarVm) -> Vec<String> {
     out
 }
 
-fn info(s: &StatusBarVm, toggles: &[String], spans: &mut Vec<Span<'static>>) {
-    let sep = || Span::styled(" · ", dim());
-    spans.push(Span::raw(format!(
-        "{} agents ({} running, {} idle)",
-        s.agents, s.running, s.idle
-    )));
-    if s.hidden > 0 {
-        spans.push(Span::styled(format!(" {} hidden", s.hidden), dim()));
+/// Agent counts (not on the detail screen, where the key hints need the room),
+/// diagnostics, errors and active toggles.
+fn info(s: &StatusBarVm, toggles: &[String], counts: bool, spans: &mut Vec<Span<'static>>) {
+    let base = spans.len();
+    // Separator before every item but the first.
+    let sep = |spans: &Vec<Span<'static>>| (spans.len() > base).then(|| Span::styled(" · ", dim()));
+    if counts {
+        spans.push(Span::raw(format!(
+            "{} agents ({} running, {} idle)",
+            s.agents, s.running, s.idle
+        )));
+        if s.hidden > 0 {
+            spans.push(Span::styled(format!(" {} hidden", s.hidden), dim()));
+        }
     }
     if s.diagnostics > 0 {
-        spans.push(sep());
+        spans.extend(sep(spans));
         spans.push(Span::styled(
             format!("{} diag", s.diagnostics),
             Style::default().fg(Color::Yellow),
         ));
     }
     if s.errors > 0 {
-        spans.push(sep());
+        spans.extend(sep(spans));
         let msg = s.last_error.as_deref().unwrap_or_default();
         spans.push(Span::styled(
             format!("{} err: {msg}", s.errors),
@@ -210,7 +248,7 @@ fn info(s: &StatusBarVm, toggles: &[String], spans: &mut Vec<Span<'static>>) {
         shown.push("auto");
     }
     if !shown.is_empty() {
-        spans.push(sep());
+        spans.extend(sep(spans));
         spans.push(Span::styled(
             shown.join(" "),
             Style::default().fg(FOCUS_COLOR),

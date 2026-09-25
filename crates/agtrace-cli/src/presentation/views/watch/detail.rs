@@ -5,10 +5,15 @@
 //! ┏ ▶ Detail · audit-A ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 //! ┃ audit-A · teammate of s-lead (team audit) · general-purpose · ○ idle 3m     ┃
 //! ┃ ctx ██░░░░░░░░ 12% of 200k [table]  ▁▁▂   in 24k / out 10 · 1 turns · 1 tools┃
-//! ┃── ▶ Instructions (1) ─────────────────────────────────────────────────────── ┃
-//! ┃[12:00 spawned by s-lead · NEW_TASK]                                          ┃
-//! ┃  review parser                                                               ┃
+//! ┃── [i] Instructions (1) ───────────────────────────────────────────────────── ┃
+//! ┃[12:00 spawned by s-lead · NEW_TASK] review parser               … press i    ┃
+//! ┃── ▶ [t] Timeline (12) ────────────────────────────────────────────────────── ┃
+//! ┃12:00 ▸ Bash  mise run test                                                   ┃
 //! ```
+//!
+//! The focused section gets the room it needs; the others are shown in full when
+//! they fit, else partly (with spare rows) or collapsed to a one-line summary that
+//! names the key focusing them.
 //!
 //! [`plan`] (wrapping + height allocation) is shared by [`render`] and [`metrics`],
 //! which the handler stores so scroll keys can clamp against the last frame.
@@ -31,6 +36,8 @@ use crate::presentation::view_models::watch::{
 
 /// Header rows above the sections (identity line, context / totals line).
 const HEADER_ROWS: u16 = 2;
+/// Sections of at most this many lines are shown in full rather than collapsed.
+const SHORT: usize = 3;
 /// Indent of wrapped body text under an item header.
 const INDENT: &str = "  ";
 
@@ -101,17 +108,24 @@ pub fn render(f: &mut Frame, area: Rect, vm: &WatchScreenVm) {
         let total = p.contents[i].len();
         let start = d.scroll[i].start(total, rows);
         let focused = d.section == *section;
+        let collapsed = !focused && rows == 1 && total > 1;
+        // A summary line has no range to show.
+        let (shown_rows, shown_total) = if collapsed { (0, 0) } else { (rows, total) };
         let heading = heading_line(
             *section,
             d,
             focused,
             start,
-            rows,
-            total,
+            shown_rows,
+            shown_total,
             body.width as usize,
         );
         let mut lines = vec![heading];
-        lines.extend(p.contents[i].iter().skip(start).take(rows).cloned());
+        if collapsed {
+            lines.push(summary_line(*section, d, body.width as usize));
+        } else {
+            lines.extend(p.contents[i].iter().skip(start).take(rows).cloned());
+        }
         let r = Rect::new(body.x, y, body.width, h as u16);
         f.render_widget(Paragraph::new(lines), r);
         y += h as u16;
@@ -132,33 +146,148 @@ fn plan(body: Rect, d: &DetailVm) -> Plan {
     }
 }
 
-/// Rows per section (heading included): every section first gets its heading and
-/// a few lines, then the focused section grows, then the timeline, the
-/// instructions, the result and the now section, each up to its content.
+/// Rows per section (heading included). The focused section comes first: its
+/// heading and a line, then every other heading and a line (a one-line summary
+/// when collapsed; short sections in full), then the focused section grows to its content, the other
+/// sections are shown in full where they fit (shortest first), and spare rows go
+/// to the timeline, the instructions, the now and the result sections, in turn.
 fn allocate(total: usize, contents: &[Vec<Line<'static>>; 4], focus: DetailSection) -> [usize; 4] {
     let desired: [usize; 4] = std::array::from_fn(|i| 1 + contents[i].len());
     let mut h = [0usize; 4];
     let mut left = total;
-    for (i, d) in desired.iter().enumerate() {
-        let min = (1 + (d - 1).min(3)).min(*d);
-        let take = min.min(left);
-        h[i] = take;
-        left -= take;
+    let f = focus.index();
+    let give = |h: &mut [usize; 4], i: usize, n: usize, left: &mut usize| {
+        let n = n.min(desired[i].saturating_sub(h[i])).min(*left);
+        h[i] += n;
+        *left -= n;
+    };
+    give(&mut h, f, 2, &mut left);
+    for i in (0..4).filter(|i| *i != f) {
+        give(&mut h, i, 1, &mut left);
     }
-    let order = [
-        focus.index(),
-        DetailSection::Timeline.index(),
-        DetailSection::Instructions.index(),
-        DetailSection::Result.index(),
-        DetailSection::Now.index(),
-    ];
-    for i in order {
-        let grow = desired[i].saturating_sub(h[i]).min(left);
-        h[i] += grow;
-        left -= grow;
+    // Short sections (up to SHORT lines) are cheaper to show than to summarize.
+    for i in (0..4).filter(|i| *i != f) {
+        let n = if desired[i] <= 1 + SHORT { SHORT } else { 1 };
+        give(&mut h, i, n, &mut left);
+    }
+    give(&mut h, f, usize::MAX, &mut left);
+    let mut others: Vec<usize> = (0..4).filter(|i| *i != f).collect();
+    others.sort_by_key(|i| desired[*i]);
+    for i in others {
+        if desired[i] - h[i] <= left {
+            give(&mut h, i, usize::MAX, &mut left);
+        }
+    }
+    for s in [
+        DetailSection::Timeline,
+        DetailSection::Instructions,
+        DetailSection::Now,
+        DetailSection::Result,
+    ] {
+        give(&mut h, s.index(), usize::MAX, &mut left);
     }
     // Spare rows stay blank below the last section.
     h
+}
+
+/// One line standing for a collapsed section, ending with the key that opens it.
+fn summary_line(s: DetailSection, d: &DetailVm, width: usize) -> Line<'static> {
+    let text = one_line(&summary(s, d));
+    let long = format!(" … press {}", s.key());
+    // A clipped text already ends with `…`.
+    let hint = if text_width(&text) + text_width(&long) > width {
+        format!(" press {}", s.key())
+    } else {
+        long
+    };
+    let room = width.saturating_sub(text_width(&hint));
+    let text = clip(&text, room);
+    let pad = " ".repeat(room.saturating_sub(text_width(&text)));
+    Line::from(vec![
+        Span::styled(text, dim()),
+        Span::raw(pad),
+        Span::styled(hint, Style::default().fg(FOCUS_COLOR)),
+    ])
+}
+
+/// Whitespace runs (newlines included) collapsed to one space.
+fn one_line(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Plain-text summary of a section: the latest instruction, the running tool (or
+/// task list, or latest text), the result, the newest timeline row.
+fn summary(s: DetailSection, d: &DetailVm) -> String {
+    match s {
+        DetailSection::Instructions => match d.instructions.last() {
+            Some(i) => {
+                let latest = if d.instructions.len() > 1 {
+                    "latest "
+                } else {
+                    ""
+                };
+                let body = i
+                    .text
+                    .as_deref()
+                    .or(i.note.as_deref())
+                    .unwrap_or(if i.encrypted { "[encrypted]" } else { "" });
+                format!("{latest}[{} {}] {body}", i.time, i.header)
+            }
+            None => "(no instructions seen in the log)".to_string(),
+        },
+        DetailSection::Now => {
+            if let Some(ActivityVm::Tool {
+                name,
+                summary,
+                elapsed_secs,
+                ..
+            }) = &d.now.tool
+            {
+                return format!("▸ {name} {summary} ({})", elapsed(*elapsed_secs));
+            }
+            let p = &d.now.plan;
+            if !p.tasks.is_empty() {
+                let done = p
+                    .tasks
+                    .iter()
+                    .filter(|t| t.status == TaskStatusVm::Completed)
+                    .count();
+                let current = p
+                    .tasks
+                    .iter()
+                    .find(|t| t.status == TaskStatusVm::InProgress)
+                    .map(|t| format!(" · ▸ {}", t.text))
+                    .unwrap_or_default();
+                return format!("tasks {done}/{} done{current}", p.tasks.len());
+            }
+            match &d.now.said {
+                Some(said) => {
+                    let what = if d.now.said_is_reasoning {
+                        "thinking"
+                    } else {
+                        "said"
+                    };
+                    format!("{what}: {said}")
+                }
+                None => status_word(d.now.status).to_string(),
+            }
+        }
+        DetailSection::Result => match &d.result {
+            ResultVm::Reported {
+                time, tag, text, ..
+            } => format!(
+                "[{time} {tag}] {}",
+                text.as_deref().unwrap_or("[encrypted]")
+            ),
+            ResultVm::LastMessage { time, text, .. } => format!("[{time} last message] {text}"),
+            ResultVm::Pending { .. } => "(no result yet)".to_string(),
+            ResultVm::Ended { status, .. } => format!("({} without a result)", ended_word(*status)),
+        },
+        DetailSection::Timeline => match d.timeline.last() {
+            Some(r) => format!("{} {} {} {}", r.time, r.icon, r.label, r.text),
+            None => "(no events yet)".to_string(),
+        },
+    }
 }
 
 fn heading_line(
@@ -176,7 +305,7 @@ fn heading_line(
         _ => String::new(),
     };
     let marker = if focused { "▶ " } else { "" };
-    let left = format!("── {marker}{}{count} ", s.title());
+    let left = format!("── {marker}[{}] {}{count} ", s.key(), s.title());
     let pos = if total > rows && rows > 0 {
         format!(
             " {}-{}/{total}{} ",
@@ -300,9 +429,20 @@ fn item_header(text: String) -> Line<'static> {
     )
 }
 
-/// `text` wrapped under an item header, indented.
+/// `text` wrapped under an item header, indented; runs of blank lines are
+/// collapsed to one and leading / trailing ones dropped.
 fn body(out: &mut Vec<Line<'static>>, text: &str, width: usize, style: Style) {
-    for l in wrap(text, width.saturating_sub(INDENT.len())) {
+    let lines = wrap(text.trim(), width.saturating_sub(INDENT.len()));
+    let mut blank = false;
+    for l in lines {
+        if l.is_empty() {
+            if !blank {
+                out.push(Line::raw(""));
+            }
+            blank = true;
+            continue;
+        }
+        blank = false;
         out.push(Line::styled(format!("{INDENT}{l}"), style));
     }
 }
@@ -533,16 +673,30 @@ mod tests {
         let c = [lines(40), lines(2), lines(1), lines(30)];
         let h = allocate(30, &c, DetailSection::Instructions);
         assert_eq!(h.iter().sum::<usize>(), 30);
-        // Now and Result are shown in full; the rest goes to the focus first.
+        // Now and Result fit in full; the timeline is left collapsed to a summary.
         assert_eq!(h[1], 3);
         assert_eq!(h[2], 2);
-        assert_eq!(h[3], 4, "timeline keeps its minimum");
-        assert_eq!(h[0], 21);
+        assert_eq!(h[3], 2, "timeline collapsed to heading + summary");
+        assert_eq!(h[0], 23);
         let h = allocate(30, &c, DetailSection::Timeline);
-        assert_eq!(h[0], 4);
-        assert_eq!(h[3], 21);
-        // Tiny terminal: headings first, in order.
+        assert_eq!(
+            h,
+            [2, 3, 2, 23],
+            "short sections in full, instructions summarized"
+        );
+        // Tiny terminal: the focused heading and a line first.
         let h = allocate(3, &c, DetailSection::Timeline);
-        assert_eq!(h, [3, 0, 0, 0]);
+        assert_eq!(h, [1, 0, 0, 2]);
+    }
+
+    #[test]
+    fn small_focus_leaves_the_rest_to_the_timeline() {
+        // A running agent opens on "Now" (3 lines): the timeline gets the spare rows.
+        let c = [lines(40), lines(3), lines(1), lines(300)];
+        let h = allocate(30, &c, DetailSection::Now);
+        assert_eq!(h[1], 4, "focused Now in full");
+        assert_eq!(h[2], 2, "Result in full");
+        assert_eq!(h[0], 2, "instructions collapsed");
+        assert_eq!(h[3], 22, "timeline takes the rest");
     }
 }

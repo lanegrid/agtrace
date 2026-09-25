@@ -465,7 +465,10 @@ expression: "screen(&view, &ui())"
     "feed_filter": "all",
     "hide_done": false,
     "auto_select": false,
-    "collapsed": 0
+    "collapsed": 0,
+    "filter": "",
+    "filter_editing": false,
+    "matches": 0
   },
   "focus_pane": "tree",
   "timeline_scroll": "follow",
