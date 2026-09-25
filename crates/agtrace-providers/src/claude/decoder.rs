@@ -141,7 +141,6 @@ struct Rec {
 
 pub struct ClaudeDecoder {
     builder: EventBuilder,
-    session_id: String,
     /// Agent owning the file (from the file header).
     agent: AgentId,
     agent_kind: AgentKind,
@@ -172,7 +171,6 @@ impl ClaudeDecoder {
         let session_uuid = Uuid::new_v5(&Uuid::NAMESPACE_OID, session_id.as_bytes());
         Self {
             builder: EventBuilder::new(session_uuid),
-            session_id,
             agent: header.agent.id.clone(),
             agent_kind: header.agent.kind,
             team: header.agent.team.clone(),
@@ -202,17 +200,6 @@ impl ClaudeDecoder {
         self.last_timestamp.unwrap_or(DateTime::<Utc>::UNIX_EPOCH)
     }
 
-    /// Records carrying a foreign subagent id (legacy flat sidechain files) belong to
-    /// that subagent; everything else belongs to the file's agent.
-    fn agent_for(&self, env: &Envelope) -> AgentId {
-        match (env.is_sidechain, &env.agent_id) {
-            (true, Some(aid)) if self.agent.native_agent_id() != Some(aid.as_str()) => {
-                AgentId::claude_subagent(&self.session_id, aid)
-            }
-            _ => self.agent.clone(),
-        }
-    }
-
     /// Base id of a record: its uuid, else a per-file line key.
     fn base(&self, uuid: Option<&str>) -> String {
         match uuid.filter(|u| !u.is_empty()) {
@@ -228,7 +215,7 @@ impl ClaudeDecoder {
         Rec {
             base: self.base(env.uuid.as_deref()),
             ts: self.ts(env.timestamp.as_deref()),
-            agent: self.agent_for(env),
+            agent: self.agent.clone(),
         }
     }
 
@@ -555,13 +542,9 @@ impl ClaudeDecoder {
                     tool_use_id,
                     content,
                     is_error,
-                    agent_id,
                 } => {
                     let tool_call_id = self.builder.get_tool_call_uuid(tool_use_id);
                     if let Some(tool_call_id) = tool_call_id {
-                        let agent_id = agent_id
-                            .clone()
-                            .or_else(|| tool_use_result.and_then(|t| str_of(t, "agentId")));
                         self.push(
                             out,
                             &r,
@@ -571,7 +554,6 @@ impl ClaudeDecoder {
                                 output: flatten_tool_output(content),
                                 tool_call_id,
                                 is_error: *is_error,
-                                agent_id,
                             }),
                         );
                     }

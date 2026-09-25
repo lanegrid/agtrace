@@ -24,7 +24,8 @@ agtrace watch
 
 ### Can I monitor multiple projects simultaneously?
 
-Yes, but each project needs its own `agtrace watch` instance. Use terminal multiplexers like tmux or split terminals:
+Yes. `agtrace watch --all-projects` shows the live roots of every project in one tree.
+Alternatively, run one `agtrace watch` per project in tmux or split terminals:
 
 ```bash
 # Terminal 1
@@ -88,9 +89,19 @@ Check these common issues:
 
 1. **Wrong directory** - Ensure you're running `agtrace watch` from the same directory where you started your AI coding agent.
 
-2. **Session not started yet** - If the agent hasn't created any log files yet, `watch` will wait in "waiting mode" until it detects a session.
+2. **Session not started yet** - If the agent hasn't written a log file yet, `watch` shows an empty tree and adds the session as soon as the file appears.
 
-3. **Provider not supported** - Ensure you're using a supported provider (Claude Code or Codex).
+3. **Session too old** - By default, `watch` shows root sessions that wrote to their log within the last 2 hours or still have a running Claude process. Use `--since 1d` to widen the window, or `--session <id>` to watch one specific session tree.
+
+4. **Provider or version not supported** - agtrace supports Claude Code ≥ 2.1.24x and Codex ≥ 0.153. Older log formats are not decoded.
+
+### Where are subagents and teammates?
+
+`agtrace watch` shows them as children of the session that spawned them. `agtrace session show <id>` prints the session's agent tree, and `agtrace session list --all` includes child sessions. See [Multi-Agent Sessions](multi-agent.md).
+
+### What does "N diag" in the watch status bar mean?
+
+It counts log lines agtrace could not decode: invalid JSON, or records whose shape did not match. Such lines are skipped; the rest of the file is still shown. `agtrace doctor run` lists the affected files.
 
 ### How do I find a session ID?
 
@@ -114,7 +125,7 @@ agtrace lab grep "pattern" --json > results.json
 
 ### Why is agtrace slow when I first run it?
 
-agtrace parses logs on demand (schema-on-read). The first time you query a session or run `watch`, it may need to parse large JSONL files. Subsequent queries are faster due to caching.
+agtrace parses logs on demand (schema-on-read). The first `agtrace init` indexes every log file, but reads only file headers, so it is fast even for large histories. Later index updates skip unchanged files. `watch` reads each tracked file once when it attaches, and after that only reads new bytes.
 
 ### Will agtrace slow down my agent?
 

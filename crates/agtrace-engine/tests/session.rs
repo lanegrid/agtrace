@@ -112,7 +112,6 @@ fn test_session_assembly_structure() {
                 output: "hello".to_string(),
                 tool_call_id: tool1_id,
                 is_error: false,
-                agent_id: None,
             }),
         },
         AgentEvent {
@@ -282,7 +281,6 @@ fn test_step_status_determination() {
                 output: "file content".to_string(),
                 tool_call_id: tool3_id,
                 is_error: false,
-                agent_id: None,
             }),
         },
         // Turn 4: Reasoning only -> InProgress
@@ -349,7 +347,6 @@ fn test_step_status_determination() {
                 output: "command not found".to_string(),
                 tool_call_id: tool5_id,
                 is_error: true,
-                agent_id: None,
             }),
         },
     ];

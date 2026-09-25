@@ -228,47 +228,29 @@ This automatically adds:
 - `current_dir(<world.cwd>)`
 - Environment variables from `world.with_env(...)`
 
-### Background Processes
+### Long-running commands (`watch`)
 
-For testing long-running commands like `watch`, use `BackgroundProcess`:
+`watch` does not use the index or the configured log roots; it reads provider homes
+directly. To test it end to end, point it at a writable copy of the synthetic fixture
+workspace with `LiveFixture` (see [Synthetic fixtures](#synthetic-fixtures)) and the
+`AGTRACE_CLAUDE_HOME` / `AGTRACE_CODEX_HOME` overrides. Then run it in console mode and read
+stdout until the expected lines appear. `crates/agtrace-cli/tests/watch_command.rs` shows the
+full pattern:
 
 ```rust
-use agtrace_testing::process::BackgroundProcess;
-use std::io::{BufRead, BufReader};
-use std::process::Command;
+use agtrace_testing::live_fixture::{LiveFixture, PROJECT_ROOT};
 
-// Start watch in the background
+let fx = LiveFixture::new(chrono::Local::now().date_naive())?; // Codex rollouts in "today"
 let mut cmd = Command::cargo_bin("agtrace")?;
-world.configure_command(&mut cmd)
-    .arg("watch")
-    .arg("--mode")
-    .arg("console");
-
-let mut proc = BackgroundProcess::spawn_piped(cmd)?;
-
-// Read output line by line
-if let Some(stdout) = proc.stdout() {
-    let reader = BufReader::new(stdout);
-    for line in reader.lines().take(10) {
-        if let Ok(l) = line {
-            if l.contains("Attached") {
-                // Found what we're looking for
-                break;
-            }
-        }
-    }
-}
-
-// Clean up (or let Drop handle it)
-proc.kill()?;
+cmd.env("AGTRACE_CLAUDE_HOME", fx.claude_home())
+    .env("AGTRACE_CODEX_HOME", fx.codex_home())
+    .args(["--project", PROJECT_ROOT, "watch", "--mode", "console", "--since", "1d"]);
+// spawn with piped stdout, read lines until e.g. "[T] audit-A" and "FINAL_ANSWER" appear, then kill
 ```
 
-**Key methods:**
-- `spawn_piped()` - Start process with stdout/stderr captured
-- `stdout()` - Get mutable access to stdout for reading
-- `stderr()` - Get mutable access to stderr
-- `kill()` - Terminate the process
-- `wait_timeout()` - Wait for process to exit
+`--mode tui` refuses to start without a TTY. The TUI itself is tested without a terminal:
+- presenter snapshots of the `WatchScreenVm`;
+- ratatui `TestBackend` buffer snapshots (`crates/agtrace-cli/tests/watch_tui.rs`).
 
 ### Custom Assertions
 
@@ -492,16 +474,81 @@ assertions::assert_all_sessions_from_provider(&json, "codex")?;
 3. **Data Aggregation**: Sessions from different providers are aggregated into a unified list
 4. **Filtering**: The `--provider` option correctly filters by provider
 
+## Synthetic fixtures
+
+Test data is **synthetic**: no real user text, paths, e-mails, account ids, session ids,
+tokens or encrypted blobs. The formats are copied field for field from real logs of the
+supported versions (Claude Code ≥ 2.1.24x, Codex ≥ 0.153); the values are invented. Ids look
+like `00000000-0000-4000-8000-00000000000N` (Claude) and `01900000-…` (Codex), the project is
+`/work/demo-project`, and encrypted bodies are `gAAAA_SYNTHETIC_…`.
+
+### The fixture tree: `crates/agtrace-testing/fixtures/v2026_09/`
+
+```
+claude/home/projects/-work-demo-project/
+  00000000-…-000000000001.jsonl                        lead: spawns (teammate, subagent, fork), SendMessage,
+                                                       teammate-message, task-notification, handback, compaction, …
+  00000000-…-000000000001/subagents/agent-a0000000000000001.{jsonl,meta.json}   async subagent
+  00000000-…-000000000001/subagents/agent-a0000000000000002.{jsonl,meta.json}   fork
+  00000000-…-000000000002.jsonl                        teammate audit-A
+claude/home/teams/session-00000001/config.json         team config (leadSessionId, members)
+claude/home/sessions/4242.json                         session registry entry
+codex/home/sessions/2026/09/20/rollout-…-01900000-…-000000000001.jsonl   root (spawn_agent, exec, compaction, …)
+codex/home/sessions/2026/09/20/rollout-…-01900000-…-000000000002.jsonl   child /root/judge (thread_spawn)
+codex/home/sessions/2026/09/20/rollout-…-01900000-…-000000000003.jsonl   fork (copied prefix)
+codex/home/session_index.jsonl
+```
+
+It is the integration corpus: decoder snapshots, index tests, the SDK
+`watch_workspace` test, and the `watch --mode console` CLI test all run on it. Keep every
+file small (under 64 KiB).
+
+### `LiveFixture`: a writable copy for watcher tests
+
+`agtrace_testing::live_fixture::LiveFixture::new(day)` copies the tree into a temp directory:
+Claude files under `<tmp>/claude` and the Codex rollouts under the given day in
+`<tmp>/codex`. Pass today so the watcher's today/yesterday discovery sees them. It provides:
+- paths: `claude_home()`, `codex_home()`, `lead_file()`, `teammate_file()`,
+  `subagent_file(id)`, `codex_file(thread)`, `registry_file()`
+- helpers that simulate live changes: `set_registry_pid(pid)` (make the registry entry live),
+  `stash` / `restore` (make a file appear later), and `age_all(secs)` (age mtimes)
+
+### `synth`: builders for unit tests
+
+`agtrace_testing::synth` builds `AgentRef`s and `AgentEvent`s directly, for unit tests that
+need precise variants without writing provider logs:
+
+```rust
+use agtrace_testing::synth::{AgentBuilder, EventLog};
+
+let lead = AgentBuilder::claude_main("00000000-0000-4000-8000-000000000001").name("lead").build();
+let mut log = EventLog::new(&lead.id);
+log.at(10).user("review the parser");
+log.at(12).bash("mise run test");
+log.at(20).usage(42_000, Some("claude-opus-5-5"));
+log.turn_end();
+```
+
+### Sanitization guard
+
+`mise run fixtures:check` (`scripts/check-fixtures.sh`, part of `mise run verify`) fails on:
+- absolute home paths (`/Users/…`, `/home/…`)
+- e-mail addresses other than `@example.com` / `@example.org`
+- `sk-` / `cse_` / `toolu_` values that are not marked synthetic
+- fixture files larger than 64 KiB
+
 ## Examples
 
-See `crates/agtrace-cli/tests/testworld_example.rs` and `crates/agtrace-cli/tests/multi_provider_test.rs` for complete examples.
+- `crates/agtrace-cli/tests/provider_filtering.rs` and `init_configuration.rs`: `TestWorld`
+  with sample sessions
+- `crates/agtrace-cli/tests/watch_command.rs`: `watch --mode console` on `LiveFixture`
+- `crates/agtrace-cli/tests/watch_tui.rs`: TUI presenter and buffer snapshots
+- `crates/agtrace-runtime/src/workspace/tests.rs`: watcher discovery and tailing on `LiveFixture`
 
 ## Next Steps
 
 The next phase of testing improvements will include:
 
 1. **RuntimeContext trait**: Abstract environment dependencies (CWD, time) for unit testing
-2. **Watch logic extraction**: Move complex state management from handlers to runtime/ops
-3. **Background process utilities**: Better support for long-running commands like `watch`
 
 For more details, see the full test strategy document.

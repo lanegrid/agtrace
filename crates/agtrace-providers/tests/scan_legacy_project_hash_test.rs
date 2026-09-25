@@ -26,10 +26,3 @@ fn test_claude_derives_project_hash_from_header() {
 fn test_codex_derives_project_hash_from_header() {
     assert_header_cwd_hash(&CodexProvider, "tests/samples/codex_session.jsonl");
 }
-
-#[test]
-fn test_codex_cwd_helper_still_works() {
-    use agtrace_providers::codex::io::extract_cwd_from_codex_file;
-    let cwd = extract_cwd_from_codex_file(&PathBuf::from("tests/samples/codex_session.jsonl"));
-    assert!(cwd.is_some(), "Codex file should contain cwd field");
-}

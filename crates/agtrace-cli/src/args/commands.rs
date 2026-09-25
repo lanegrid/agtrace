@@ -27,29 +27,41 @@ Use --refresh to force a re-scan of all logs."
         refresh: bool,
     },
 
-    #[command(about = "Monitor live agent sessions in real-time (TUI dashboard)")]
+    #[command(
+        about = "Monitor live agents in real-time (multi-agent TUI)",
+        long_about = "Monitor live agents in real-time.
+
+Shows every live root session of the current project (Claude Code and Codex) with
+its whole agent tree: teammates, subagents, forks and Codex child threads. The
+right pane follows the selected agent; the bottom pane is the inter-agent message
+feed. Press ? in the TUI for key bindings.
+
+By default, root sessions whose log changed within --since (2h) or whose Claude
+process is still running are shown. Use --session to watch one session tree."
+    )]
     Watch {
-        #[arg(long, help = "Filter by provider")]
-        provider: Option<ProviderName>,
+        #[arg(
+            long,
+            alias = "id",
+            value_name = "ID",
+            help = "Watch one session tree (session id or prefix from the index, or an agent id such as codex:<thread>)"
+        )]
+        session: Option<String>,
 
         #[arg(
             long,
-            help = "Explicit session ID or file path to watch (bypasses liveness detection)"
+            default_value = "2h",
+            value_parser = super::parse_since,
+            help = "Include root sessions active within this window (e.g. 30m, 2h, 1d)"
         )]
-        id: Option<String>,
+        since: std::time::Duration,
 
         #[arg(
             long,
             default_value = "tui",
-            help = "Display mode: tui (interactive) or console (streaming text)"
+            help = "Display mode: tui (interactive) or console (line output for non-TTY / CI)"
         )]
         mode: WatchFormat,
-
-        #[arg(
-            long,
-            help = "Enable debug mode (Ctrl+T: add turn, Ctrl+D: add 25 turns)"
-        )]
-        debug: bool,
     },
 
     #[command(about = "Enable agent self-reflection via MCP (Model Context Protocol)")]
@@ -133,19 +145,19 @@ Use --refresh to force a re-scan of all logs."
     },
 
     #[command(
-        about = "Run a simulated live demo of the TUI dashboard",
-        long_about = "Start a simulated session showing how agtrace monitors an AI agent in real-time.
+        about = "Run a live demo of the multi-agent TUI on a synthetic workspace",
+        long_about = "Replay a synthetic multi-agent workspace (a Claude Code lead with a teammate
+and a background subagent, plus a Codex root with a child thread) into a temporary
+directory at real-time pace, and watch it with the real workspace watcher and TUI.
 
-This allows you to experience the TUI dashboard without needing active agent logs.
-It simulates a refactoring session to demonstrate context window tracking and event flow.
-
-Perfect for understanding agtrace's capabilities before setting up your own logs."
+No agent logs of your own are needed; nothing outside the temporary directory is
+read or written."
     )]
     Demo {
         #[arg(
             long,
             default_value = "normal",
-            help = "Simulation speed: slow, normal, or fast"
+            help = "Replay speed: slow (0.5x), normal (1x, real time) or fast (4x)"
         )]
         speed: String,
     },
@@ -167,6 +179,7 @@ The server exposes these tools:
   • search_events: Search events and return navigation coordinates
   • list_turns: List turns with metadata only (no payload content)
   • get_turns: Get details for specific turns with safety valves
+  • get_agent_tree: Agent tree of a session (subagents, teammates, Codex child threads)
 
 Configure in claude_desktop_config.json to use with Claude Desktop."
     )]

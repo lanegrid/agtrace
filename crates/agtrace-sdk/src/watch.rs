@@ -73,6 +73,21 @@ impl LiveWorkspace {
         }
     }
 
+    /// Watch explicit provider directories without a workspace database (demo,
+    /// tools). Context windows are resolved against `catalog` (e.g.
+    /// [`crate::utils::builtin_model_catalog`]). Prefer
+    /// [`crate::Client::watch_workspace`] when a client is available.
+    pub fn watch_roots(
+        scope: WatchScope,
+        roots: WatchRoots,
+        options: WatcherOptions,
+        catalog: Arc<dyn ModelCatalog>,
+    ) -> crate::Result<Self> {
+        let watcher =
+            WorkspaceWatcher::start(scope, roots, options).map_err(crate::Error::Runtime)?;
+        Ok(Self::start(watcher, catalog))
+    }
+
     /// Read access to the current view (holds a read lock; keep it short).
     pub fn view(&self) -> RwLockReadGuard<'_, WorkspaceView> {
         self.shared

@@ -1,0 +1,58 @@
+---
+source: crates/agtrace-cli/tests/help_snapshots.rs
+expression: help
+---
+Monitor live agents in real-time.
+
+Shows every live root session of the current project (Claude Code and Codex) with
+its whole agent tree: teammates, subagents, forks and Codex child threads. The
+right pane follows the selected agent; the bottom pane is the inter-agent message
+feed. Press ? in the TUI for key bindings.
+
+By default, root sessions whose log changed within --since (2h) or whose Claude
+process is still running are shown. Use --session to watch one session tree.
+
+Usage: agtrace watch [OPTIONS]
+
+Options:
+      --session <ID>
+          Watch one session tree (session id or prefix from the index, or an agent id such as codex:<thread>)
+
+      --since <SINCE>
+          Include root sessions active within this window (e.g. 30m, 2h, 1d)
+          
+          [default: 2h]
+
+      --mode <MODE>
+          Display mode: tui (interactive) or console (line output for non-TTY / CI)
+          
+          [default: tui]
+          [possible values: tui, console]
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Global Options:
+      --data-dir <DATA_DIR>
+          Directory for agtrace database and configuration (defaults to system data directory, or AGTRACE_PATH env var)
+
+      --format <FORMAT>
+          Output format for command results
+          
+          [default: plain]
+          [possible values: plain, json]
+
+      --log-level <LOG_LEVEL>
+          Logging verbosity level
+          
+          [default: info]
+          [possible values: error, warn, info, debug, trace]
+
+      --project <PROJECT_ROOT>
+          Target project directory (defaults to current directory)
+
+      --all-projects
+          Operate on all indexed projects instead of current project only
+
+      --all-worktrees
+          Include sessions from all git worktrees of the current repository

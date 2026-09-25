@@ -29,3 +29,12 @@ impl AnalysisViewModel {
         Self(report)
     }
 }
+
+/// Get the agent tree of a session: its own agent, Claude subagents / forks, and
+/// child sessions (Claude teammates, Codex child threads and forks), recursively.
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct GetAgentTreeArgs {
+    /// Session ID obtained from list_sessions response (use the 'id' field).
+    /// Accepts 8-character prefix (e.g., "fb3cff44") or full UUID.
+    pub session_id: String,
+}

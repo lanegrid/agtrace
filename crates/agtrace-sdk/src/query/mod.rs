@@ -9,7 +9,7 @@ pub mod list;
 pub mod project;
 pub mod session;
 
-pub use analysis::{AnalysisViewModel, AnalyzeSessionArgs};
+pub use analysis::{AnalysisViewModel, AnalyzeSessionArgs, GetAgentTreeArgs};
 pub use filters::{EventType, Provider, truncate_json_value, truncate_string};
 pub use list::{ListSessionsArgs, ListSessionsViewModel};
 pub use project::ProjectInfoViewModel;

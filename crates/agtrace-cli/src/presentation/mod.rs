@@ -2,7 +2,7 @@
 //!
 //! This module implements the **User Interface** logic for the CLI.
 //! It is designed using an adaptation of the **MVVM (Model-View-ViewModel)** pattern
-//! with **Component-based UI State management** for interactive TUI.
+//! with handler-owned UI state for the interactive TUI.
 //!
 //! ## 🏗️ Architecture & Data Flow
 //!
@@ -15,19 +15,16 @@
 //!                                                                                 (Layout)
 //! ```
 //!
-//! ### For Interactive TUI:
-//! Components encapsulate UI state and logic to prevent Renderer from becoming a "Big Ball of Mud".
+//! ### For the Interactive TUI (`agtrace watch`):
+//! The handler owns the UI state (selection, scroll, filters); the presenter is a
+//! pure function of the live workspace snapshot and that state.
 //!
 //! ```text
-//! [ Handler ] --> [ Presenter ] --> [ ViewModel ] -----> [ Renderer (Router) ]
-//!                                      (Data)                    |
-//!                                                                v
-//!                                                      [ Component ] <-- User Input
-//!                                                      (State + Logic)
-//!                                                            |
-//!                                                            v
-//!                                                        [ View ]
-//!                                                        (Widget)
+//! [ WorkspaceSource ] --> [ presenters::watch::build_screen ] --> [ WatchScreenVm ]
+//!   (live view + gen)          (pure: view + UiState + now)             |
+//!          ^                                                           v
+//!   [ handlers::watch ] <-- key actions (views::watch::input) -- [ views::watch::* ]
+//!     (UiState, loop)                                             (ratatui widgets)
 //! ```
 //!
 //! ---
@@ -52,29 +49,15 @@
 //! * `--format json` ignores `ViewMode`. It always dumps the complete ViewModel.
 //! * `ViewMode` only affects the Text/Console rendering.
 //!
-//! ### 4. The TUI Component Rules (For Interactive UIs) 🎮
-//! **Separate Data (ViewModel) from State (UI State) and Logic (Component).**
+//! ### 4. The TUI Rules (For Interactive UIs) 🎮
+//! **Separate Data (ViewModel) from State (UI State) and Input (reducer).**
 //!
-//! #### 4 Iron Rules for Multi-Page TUI:
-//!
-//! 1. **Data vs State Separation**
-//!    * **ViewModel (from Presenter):** Read-only snapshot. Contains WHAT to display.
-//!    * **UI State (in Component):** Mutable context. Contains WHERE user is (scroll, selection).
-//!    * ❌ Never put scroll position in ViewModel
-//!    * ✅ Always keep it in Component's private state
-//!
-//! 2. **Renderer as Router**
-//!    * Renderer delegates, it does not decide.
-//!    * ❌ `match key { Up => self.timeline_state.select(...) }`
-//!    * ✅ `self.timeline_component.handle_input(key)`
-//!
-//! 3. **Index Safety**
-//!    * Trust the State, but Verify against Data.
-//!    * Always clamp cursor position before rendering: `selected = min(state.selected, data.len() - 1)`
-//!
-//! 4. **Action Boundaries**
-//!    * UI Actions stay locally (scroll, tab switch) → handled in Component
-//!    * Domain Actions go up (DB write, navigation) → emit Action to Renderer
+//! * **ViewModel (from Presenter):** Read-only snapshot. Contains WHAT to display.
+//! * **UI State (`view_models::watch::UiState`, owned by the handler):** WHERE the user
+//!   is (selection by agent id, collapsed nodes, scroll, filters).
+//! * **Input reducer (`views::watch::input`):** maps keys to actions and applies them to
+//!   the UI state; domain effects (quit, rescan) go back to the handler.
+//! * **Index safety:** views clamp scroll offsets against the data they render.
 //!
 //! ---
 //!
@@ -94,22 +77,13 @@
 //! * **What:** Structs that implement `fmt::Display` or Ratatui `Widget` trait.
 //! * **Rule:** Handles **Layout** (indentation), **Styling** (colors), **Filtering** (hiding items based on Mode), and **Formatting** (using `formatters`).
 //! * **Pattern:** `struct SessionView<'a> { data: &'a SessionVM, mode: ViewMode }`
-//! * **For TUI:** Also contains `views/tui/components/` (see below).
+//! * **For TUI:** `views/watch/` holds the ratatui widgets and the input reducer.
 //!
-//! ### 4. `views/tui/components/` (TUI Component Pattern - NEW)
-//! * **What:** Stateful components that encapsulate UI State + Input Handling + Rendering.
-//! * **Rule:** Each component owns its private UI state (ListState, scroll position, etc.) and exposes:
-//!   * `handle_input(&mut self, key: KeyEvent) -> Option<Action>` - Process user input
-//!   * `render(&mut self, f: &mut Frame, area: Rect, data: &ViewModel)` - Render with index safety
-//! * **Examples:** `TimelineComponent`, `DashboardComponent`
-//! * **When to use:** Interactive TUI pages that need state management
-//!
-//! ### 5. `renderers/` (The Driver / Router)
+//! ### 4. `renderers/` (The Driver)
 //! * **What:** The entry point that takes a ViewModel and handles output.
 //! * **For Console:** Switches between JSON and Text output.
-//! * **For TUI:** Acts as a Router that delegates to Components. **No business logic, only orchestration.**
 //!
-//! ### 6. `formatters/` (The Utilities)
+//! ### 5. `formatters/` (The Utilities)
 //! * **What:** Reusable string manipulation functions used by **Views**.
 //! * **Examples:** `humanize_bytes(1024) -> "1 KB"`, `truncate(str, 80)`.
 //!
@@ -125,10 +99,9 @@
 //! | Change the color of a warning | **`views/`** |
 //! | Hide an item in "Compact" mode | **`views/`** (Logic inside `fmt::Display`) |
 //! | Format a timestamp as "2m ago" | **`formatters/`** (Called by `views`) |
-//! | Handle keyboard input for TUI | **`views/tui/components/`** (Component's `handle_input`) |
-//! | Manage scroll position / selection | **`views/tui/components/`** (Private state in Component) |
-//! | Perform index safety checks | **`views/tui/components/`** (In Component's `render` method) |
-//! | Add a new TUI page/tab | **`views/tui/components/`** (New Component) + **`renderers/tui.rs`** (Router) |
+//! | Handle keyboard input for TUI | **`views/watch/input.rs`** (action + reducer) |
+//! | Manage scroll position / selection | **`view_models/watch.rs`** (`UiState`, owned by the handler) |
+//! | Change what a TUI pane shows | **`presenters/watch.rs`** (pure `build_screen`) |
 
 pub mod formatters;
 pub mod presenters;

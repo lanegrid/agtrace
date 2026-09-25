@@ -1,4 +1,4 @@
-use crate::client::{InsightOps, MonitorBuilder, ProjectOps, SessionOps, WatchService};
+use crate::client::{InsightOps, ProjectOps, SessionOps};
 use crate::config::Config;
 use crate::init::{InitConfig, InitProgress, InitResult, InitService};
 use crate::model_catalog::ConfiguredModelCatalog;
@@ -132,20 +132,6 @@ impl AgTrace {
 
     pub fn insights(&self) -> InsightOps {
         InsightOps::new(self.db.clone(), self.provider_configs.clone())
-    }
-
-    pub fn watch_service(&self) -> WatchService {
-        WatchService::new(
-            self.db.clone(),
-            self.config.clone(),
-            self.provider_configs.clone(),
-            self.watch_roots(),
-        )
-    }
-
-    /// Legacy session-update feed (old `watch` UI); see [`WatchService`].
-    pub fn workspace_monitor(&self) -> Result<MonitorBuilder> {
-        Ok(MonitorBuilder::new(self.watch_roots()))
     }
 
     /// Provider directories for the workspace watcher, for the enabled providers.

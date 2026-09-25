@@ -4,7 +4,7 @@ use super::stats::calculate_session_stats;
 use super::turn_builder::TurnBuilder;
 use super::types::*;
 use agtrace_types::{
-    AgentEvent, AgentId, EventPayload, SpawnContext, SystemGeneratedReason, TurnOrigin, UserPayload,
+    AgentEvent, AgentId, EventPayload, SystemGeneratedReason, TurnOrigin, UserPayload,
 };
 
 /// Whether an agent is the file-owner "main" timeline of a session
@@ -17,7 +17,6 @@ fn is_main_agent(agent: &AgentId) -> bool {
 ///
 /// Returns a Vec of AgentSession, one per distinct AgentId found in the events.
 /// Each session contains only events from its respective agent (input order kept).
-/// For subagent sessions, attempts to link back to the parent turn/step via spawned_by.
 pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
     if events.is_empty() {
         return Vec::new();
@@ -32,23 +31,10 @@ pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
             .push(event.clone());
     }
 
-    // First, assemble the main agents to build the spawn context map
-    let main_events: Vec<AgentEvent> = agents
-        .iter()
-        .filter(|(agent, _)| is_main_agent(agent))
-        .flat_map(|(_, events)| events.iter().cloned())
-        .collect();
-    let spawn_map = build_spawn_context_map(&main_events);
-
     // Assemble each agent into a session
     let mut sessions: Vec<AgentSession> = agents
         .into_iter()
-        .filter_map(|(agent, agent_events)| {
-            let spawned_by = agent
-                .native_agent_id()
-                .and_then(|aid| spawn_map.get(aid).cloned());
-            assemble_session_for_agent(&agent_events, agent, spawned_by)
-        })
+        .filter_map(|(agent, agent_events)| assemble_session_for_agent(&agent_events, agent))
         .collect();
 
     // Sort sessions: main agents first, then subagents by start_time
@@ -62,34 +48,6 @@ pub fn assemble_sessions(events: &[AgentEvent]) -> Vec<AgentSession> {
     });
 
     sessions
-}
-
-/// Build a map from agent_id to SpawnContext by scanning ToolResult events with agent_id.
-fn build_spawn_context_map(events: &[AgentEvent]) -> HashMap<String, SpawnContext> {
-    let mut spawn_map = HashMap::new();
-
-    // Build turns first to get proper indices
-    let turns = build_turns(events);
-
-    for (turn_idx, turn) in turns.iter().enumerate() {
-        for (step_idx, step) in turn.steps.iter().enumerate() {
-            for tool in &step.tools {
-                if let Some(ref result) = tool.result
-                    && let Some(ref agent_id) = result.content.agent_id
-                {
-                    spawn_map.insert(
-                        agent_id.clone(),
-                        SpawnContext {
-                            turn_index: turn_idx,
-                            step_index: step_idx,
-                        },
-                    );
-                }
-            }
-        }
-    }
-
-    spawn_map
 }
 
 /// Assemble the main agent from events into a session.
@@ -110,15 +68,11 @@ pub fn assemble_session(events: &[AgentEvent]) -> Option<AgentSession> {
         .cloned()
         .collect();
 
-    assemble_session_for_agent(&main_events, main_agent, None)
+    assemble_session_for_agent(&main_events, main_agent)
 }
 
 /// Internal: Assemble a session from events belonging to a single agent.
-fn assemble_session_for_agent(
-    events: &[AgentEvent],
-    agent: AgentId,
-    spawned_by: Option<SpawnContext>,
-) -> Option<AgentSession> {
+fn assemble_session_for_agent(events: &[AgentEvent], agent: AgentId) -> Option<AgentSession> {
     if events.is_empty() {
         return None;
     }
@@ -133,7 +87,6 @@ fn assemble_session_for_agent(
     Some(AgentSession {
         session_id,
         agent,
-        spawned_by,
         start_time,
         end_time,
         turns,

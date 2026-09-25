@@ -7,12 +7,13 @@ use std::io::{BufRead, BufReader, Write};
 
 use crate::Client;
 use crate::query::{
-    AnalyzeSessionArgs, GetTurnsArgs, ListSessionsArgs, ListTurnsArgs, SearchEventsArgs,
+    AnalyzeSessionArgs, GetAgentTreeArgs, GetTurnsArgs, ListSessionsArgs, ListTurnsArgs,
+    SearchEventsArgs,
 };
 
 use super::tools::{
-    handle_analyze_session, handle_get_project_info, handle_get_turns, handle_list_sessions,
-    handle_list_turns, handle_search_events,
+    handle_analyze_session, handle_get_agent_tree, handle_get_project_info, handle_get_turns,
+    handle_list_sessions, handle_list_turns, handle_search_events,
 };
 
 #[derive(Debug, Deserialize)]
@@ -132,6 +133,7 @@ impl AgTraceServer {
         let search_events_schema = schema_for!(SearchEventsArgs);
         let list_turns_schema = schema_for!(ListTurnsArgs);
         let get_turns_schema = schema_for!(GetTurnsArgs);
+        let get_agent_tree_schema = schema_for!(GetAgentTreeArgs);
 
         JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
@@ -170,6 +172,11 @@ impl AgTraceServer {
                         "name": "get_turns",
                         "description": "Get details for specific turns. Defaults are tuned for safety based on data distribution (max 30 steps/turn, 3000 chars/field). WORKFLOW: Fetch 1-2 turns at a time to avoid token limits. If data is marked '[TRUNCATED]' and critical, retry with higher limits.",
                         "inputSchema": serde_json::to_value(&get_turns_schema).unwrap(),
+                    },
+                    {
+                        "name": "get_agent_tree",
+                        "description": "Get the agent tree of a session: the session's own agent, its Claude subagents and forks, and child sessions (Claude teammates, Codex child threads and forks) recursively, with kind, name, Codex agent_path and spawn_call_id. WORKFLOW: Call after list_sessions to see which agents a session spawned; child session_ids work with the other tools.",
+                        "inputSchema": serde_json::to_value(&get_agent_tree_schema).unwrap(),
                     }
                 ]
             })),
@@ -255,6 +262,20 @@ impl AgTraceServer {
                     }
                 };
                 handle_search_events(&self.client, args).await
+            }
+            "get_agent_tree" => {
+                let args: GetAgentTreeArgs = match serde_json::from_value(arguments) {
+                    Ok(args) => args,
+                    Err(e) => {
+                        return JsonRpcResponse {
+                            jsonrpc: "2.0".to_string(),
+                            id,
+                            result: None,
+                            error: Some(Self::parse_validation_error("get_agent_tree", e)),
+                        };
+                    }
+                };
+                handle_get_agent_tree(&self.client, args).await
             }
             "list_turns" => {
                 let args: ListTurnsArgs = match serde_json::from_value(arguments) {

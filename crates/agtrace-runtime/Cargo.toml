@@ -9,7 +9,6 @@ keywords = ["agtrace-internal"]
 
 [dependencies]
 chrono.workspace = true
-notify.workspace = true
 walkdir.workspace = true
 agtrace-core.workspace = true
 agtrace-engine.workspace = true

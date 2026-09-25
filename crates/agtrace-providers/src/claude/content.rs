@@ -46,9 +46,6 @@ pub(crate) enum UserContent {
         content: Value,
         #[serde(default)]
         is_error: bool,
-        /// Legacy: subagent id on the result block.
-        #[serde(default, rename = "agentId")]
-        agent_id: Option<String>,
     },
     #[serde(other)]
     Unknown,

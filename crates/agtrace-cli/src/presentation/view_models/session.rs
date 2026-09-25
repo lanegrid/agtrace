@@ -42,6 +42,9 @@ pub struct FilterSummary {
 #[derive(Debug, Serialize)]
 pub struct SessionDetailViewModel {
     pub session: SessionInfoViewModel,
+    /// Agent tree: this session's agent, its subagents / forks and child sessions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agents: Option<AgentNodeViewModel>,
     /// All streams in this session. The main stream comes first.
     pub streams: Vec<StreamAnalysisViewModel>,
 }
@@ -55,31 +58,41 @@ pub struct SessionInfoViewModel {
     pub project_root: Option<String>,
     pub model: Option<String>,
     pub log_files: Vec<String>,
-    /// Spawn context when this entire session is a subagent session
-    /// (e.g. Codex subagents stored in separate files).
+}
+
+/// One agent of the session's agent tree (index: log files + child sessions).
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentNodeViewModel {
+    pub agent_id: String,
+    pub session_id: String,
+    pub provider: String,
+    /// `main`, `subagent`, `fork`, `teammate`, `codex_thread`.
+    pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawned_by: Option<SpawnContextViewModel>,
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Provider call id of the spawning tool call in the parent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spawn_call_id: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<AgentNodeViewModel>,
 }
 
 /// Analysis of a single event stream (main conversation or a sidechain).
 #[derive(Debug, Serialize)]
 pub struct StreamAnalysisViewModel {
     pub stream_id: String,
-    /// Where this stream was spawned from in the parent stream (sidechains only).
+    /// Agent id of the stream (`claude:<sid>`, `claude:<sid>/<aid>`, `codex:<thread>`).
+    pub agent_id: String,
+    /// Agent display name from the index (subagent description, teammate name).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub spawned_by: Option<SpawnContextViewModel>,
+    pub name: Option<String>,
     pub status: String,
     pub duration: Option<String>,
     pub start_time: Option<String>,
     pub context_summary: ContextWindowSummary,
     pub turns: Vec<TurnAnalysisViewModel>,
-}
-
-/// Spawn location (0-based indices) within the parent stream.
-#[derive(Debug, Serialize)]
-pub struct SpawnContextViewModel {
-    pub turn_index: usize,
-    pub step_index: usize,
 }
 
 #[derive(Debug, Serialize)]
@@ -99,16 +112,18 @@ pub struct TurnAnalysisViewModel {
     pub user_query: String,
     pub steps: Vec<AgentStepViewModel>,
     pub metrics: TurnMetrics,
-    /// Child sessions (subagents) spawned from this turn
+    /// Agents spawned by this turn's tool calls
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub spawned_children: Vec<SpawnedChildViewModel>,
 }
 
-/// Information about a child session spawned from a turn
-#[derive(Debug, Serialize)]
+/// An agent spawned by a tool call (matched through the index `spawn_call_id`).
+#[derive(Debug, Clone, Serialize)]
 pub struct SpawnedChildViewModel {
-    pub session_id: String,
-    pub session_id_short: String,
+    pub agent_id: String,
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -133,7 +148,7 @@ pub enum AgentStepViewModel {
         args_formatted: Option<String>, // For JSON serialization compatibility
         result: String,
         is_error: bool,
-        /// Agent ID if this tool spawned a subagent (e.g., Task tool)
+        /// Agent spawned by this call (Claude `Agent`, Codex `spawn_agent`)
         #[serde(skip_serializing_if = "Option::is_none")]
         agent_id: Option<String>,
     },

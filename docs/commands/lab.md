@@ -24,7 +24,7 @@ agtrace lab grep <PATTERN> [OPTIONS]
 
 **Options:**
 - `--json` - Output matching events in JSON format
-- `--raw` - Show raw provider events (before normalization)
+- `--raw` - Show each matching event followed by the raw provider record it was decoded from (re-read from the log file)
 - `--limit N` - Limit results to N matches
 - `--provider <PROVIDER>` - Filter by provider (claude_code, codex)
 - `--type <TYPE>` - Filter by event type (ToolCall, ToolResult, User, Message, etc.)

@@ -3,8 +3,8 @@
 use serde_json::Value;
 
 use crate::query::{
-    AnalysisViewModel, AnalyzeSessionArgs, Cursor, GetTurnsArgs, ListSessionsArgs,
-    ListSessionsViewModel, ListTurnsArgs, ProjectInfoViewModel, SearchEventsArgs,
+    AnalysisViewModel, AnalyzeSessionArgs, Cursor, GetAgentTreeArgs, GetTurnsArgs,
+    ListSessionsArgs, ListSessionsViewModel, ListTurnsArgs, ProjectInfoViewModel, SearchEventsArgs,
 };
 use crate::{Client, Diagnostic, SessionFilter};
 
@@ -157,4 +157,19 @@ pub async fn handle_get_turns(client: &Client, args: GetTurnsArgs) -> Result<Val
         .get_turns(args)
         .map_err(|e| e.to_string())?;
     serde_json::to_value(&response).map_err(|e| format!("Serialization error: {}", e))
+}
+
+/// Agent tree of a session (subagents, forks, teammates, Codex child threads).
+pub async fn handle_get_agent_tree(
+    client: &Client,
+    args: GetAgentTreeArgs,
+) -> Result<Value, String> {
+    let handle = client
+        .sessions()
+        .get(&args.session_id)
+        .map_err(|e| format!("Session not found: {}", e))?;
+    let tree = handle
+        .agent_tree()
+        .map_err(|e| format!("Failed to build agent tree: {}", e))?;
+    serde_json::to_value(&tree).map_err(|e| format!("Serialization error: {}", e))
 }

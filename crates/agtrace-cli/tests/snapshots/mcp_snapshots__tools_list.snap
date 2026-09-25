@@ -410,6 +410,25 @@ expression: response
           "type": "object"
         },
         "name": "get_turns"
+      },
+      {
+        "description": "Get the agent tree of a session: the session's own agent, its Claude subagents and forks, and child sessions (Claude teammates, Codex child threads and forks) recursively, with kind, name, Codex agent_path and spawn_call_id. WORKFLOW: Call after list_sessions to see which agents a session spawned; child session_ids work with the other tools.",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "description": "Get the agent tree of a session: its own agent, Claude subagents / forks, and\nchild sessions (Claude teammates, Codex child threads and forks), recursively.",
+          "properties": {
+            "session_id": {
+              "description": "Session ID obtained from list_sessions response (use the 'id' field).\nAccepts 8-character prefix (e.g., \"fb3cff44\") or full UUID.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "GetAgentTreeArgs",
+          "type": "object"
+        },
+        "name": "get_agent_tree"
       }
     ]
   }

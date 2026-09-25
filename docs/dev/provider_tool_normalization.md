@@ -61,9 +61,9 @@ This document describes the pattern for defining provider-specific tool structur
   - Provider-specific schema is hidden
   - ❌ Cannot verify if normalization is correct
 
-- **`--raw`**: Shows complete AgentEvent with metadata
+- **`--raw`**: Shows the complete AgentEvent, followed by the raw provider record it was decoded from
   - `content.arguments`: Normalized data (after mapping to domain model)
-  - `metadata.payload`: Provider-specific raw data (before normalization)
+  - `--- raw record ---`: The provider's original line (before normalization). It is re-read from the log file at the event's `origin.byte_offset`; events do not carry a copy.
   - ✅ Can compare before/after to verify normalization logic
 
 **Example Output with `--raw`**:
@@ -79,19 +79,14 @@ This document describes the pattern for defining provider-specific tool structur
       "new_string": "*** Begin Patch...", // ← Stored for reference
       "replace_all": false
     }
-  },
-  "metadata": {
-    "payload": {
-      "input": "*** Begin Patch\n*** Update File: test.rs\n@@...",  // ← Original raw string
-      "name": "apply_patch",
-      "type": "custom_tool_call"
-    }
   }
 }
+--- raw record ---
+{"type":"response_item","payload":{"type":"custom_tool_call","name":"apply_patch","input":"*** Begin Patch\n*** Update File: test.rs\n@@..."}}
 ```
 
 **Key Observations**:
-- `metadata.payload.input`: Provider's original format (just a string)
+- `payload.input` in the raw record: Provider's original format (just a string)
 - `content.arguments.file_path`: Extracted during normalization
 - Can verify: "Was `test.rs` correctly extracted from the patch header?"
 
@@ -154,10 +149,10 @@ impl ApplyPatchArgs {
 
 ### Step 3: Map to Domain Model
 
-`crates/agtrace-providers/src/codex/normalize.rs`:
+`crates/agtrace-providers/src/codex/mapper.rs`:
 
 ```rust
-fn normalize_codex_tool_call(
+pub(crate) fn normalize_codex_tool_call(
     tool_name: String,
     arguments: serde_json::Value,
     provider_call_id: Option<String>,
@@ -230,7 +225,7 @@ fn test_parse_add_file_patch() {
 }
 ```
 
-Normalization layer test (`crates/agtrace-providers/src/codex/normalize.rs`):
+Normalization layer test (`crates/agtrace-providers/src/codex/mapper.rs`):
 
 ```rust
 #[test]
@@ -312,18 +307,14 @@ cargo build --release
       "new_string": "*** Begin Patch\n*** Update File: crates/...",  // ← ✅ Raw patch preserved?
       "replace_all": false
     }
-  },
-  "metadata": {
-    "payload": {
-      "input": "*** Begin Patch\n*** Update File: crates/...",  // ← Original raw data
-      "name": "apply_patch"
-    }
   }
 }
+--- raw record ---
+{"type":"response_item","payload":{"type":"custom_tool_call","name":"apply_patch","input":"*** Begin Patch\n*** Update File: crates/..."}}
 ```
 
 **Verification checklist**:
-- ✅ `content.arguments.file_path` matches the file in `metadata.payload.input` header
+- ✅ `content.arguments.file_path` matches the file in the raw record's `payload.input` header
 - ✅ `content.arguments.new_string` contains the full raw patch
 - ✅ `content.name` is still `apply_patch` (original tool name preserved)
 
@@ -351,7 +342,7 @@ cargo build --release
 **With `--raw` (shows both before & after)**:
 ```bash
 ./target/release/agtrace lab grep '"name":"apply_patch"' --raw --limit 1
-# ✅ See metadata.payload (before normalization)
+# ✅ See the raw record (before normalization)
 # ✅ See content.arguments (after normalization)
 # ✅ Can verify: did we extract file_path correctly from the patch header?
 ```

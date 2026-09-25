@@ -28,7 +28,7 @@ use agtrace_types::AgentEvent;
 use chrono::{DateTime, Utc};
 use std::fs::{File, Metadata};
 use std::io::{self, Read, Seek, SeekFrom};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -155,10 +155,6 @@ impl FileCursor {
     pub(crate) fn with_stale_after(mut self, stale_after: Duration) -> Self {
         self.stale_after = stale_after;
         self
-    }
-
-    pub(crate) fn path(&self) -> &Path {
-        &self.path
     }
 
     /// Header of the file, once it has been readable.

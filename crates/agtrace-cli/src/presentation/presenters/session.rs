@@ -1,15 +1,17 @@
 use crate::args::hints::{cmd, fmt};
 use crate::presentation::view_models::{
-    AgentStepViewModel, CommandResultViewModel, ContextUsage, ContextWindowSummary, FilterSummary,
-    Guidance, SessionDetailViewModel, SessionInfoViewModel, SessionListEntry, SessionListViewModel,
-    SpawnContextViewModel, SpawnedChildViewModel, StatusBadge, StreamAnalysisViewModel,
-    TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
+    AgentNodeViewModel, AgentStepViewModel, CommandResultViewModel, ContextUsage,
+    ContextWindowSummary, FilterSummary, Guidance, SessionDetailViewModel, SessionInfoViewModel,
+    SessionListEntry, SessionListViewModel, SpawnedChildViewModel, StatusBadge,
+    StreamAnalysisViewModel, TurnAnalysisViewModel, TurnMetrics as ViewTurnMetrics,
 };
-use agtrace_sdk::ChildSessionInfo;
 use agtrace_sdk::types::{
-    AgentId, AgentSession, ContextWindow, SessionAnalysisExt, SessionSummary,
+    AgentId, AgentNode, AgentSession, ContextWindow, SessionAnalysisExt, SessionSummary,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+
+/// Children spawned by a tool call, keyed by the provider call id.
+type Spawns = HashMap<String, Vec<SpawnedChildViewModel>>;
 
 pub fn present_session_list(
     sessions: Vec<SessionSummary>,
@@ -115,12 +117,22 @@ pub fn present_session_detail(
     provider: &str,
     project_hash: &str,
     project_root: Option<&str>,
-    session_spawned_by: Option<&agtrace_sdk::types::SpawnContext>,
     model: Option<&str>,
     windows: &BTreeMap<AgentId, ContextWindow>,
     log_files: Vec<String>,
-    children: &[ChildSessionInfo],
+    tree: Option<&AgentNode>,
 ) -> CommandResultViewModel<SessionDetailViewModel> {
+    let nodes: Vec<&AgentNode> = tree.map(|t| t.walk()).unwrap_or_default();
+    let mut spawns: Spawns = HashMap::new();
+    for node in &nodes {
+        if let Some(call) = &node.spawn_call_id {
+            spawns
+                .entry(call.clone())
+                .or_default()
+                .push(spawned_child(node));
+        }
+    }
+
     // Order: main agent first, then subagents by agent id
     let mut ordered: Vec<&AgentSession> = streams.iter().collect();
     ordered.sort_by(
@@ -135,16 +147,14 @@ pub fn present_session_detail(
     let stream_views = ordered
         .iter()
         .map(|session| {
-            // Children (subagent sessions in separate files) attach to the main stream only
-            let stream_children: &[ChildSessionInfo] = if !session.agent.is_claude_subagent() {
-                children
-            } else {
-                &[]
-            };
             let max_context = windows
                 .get(&session.agent)
                 .map(|w| w.tokens.min(u32::MAX as u64) as u32);
-            build_stream_analysis(session, max_context, stream_children)
+            let name = nodes
+                .iter()
+                .find(|n| n.agent_id == session.agent.as_str())
+                .and_then(|n| agent_label(n));
+            build_stream_analysis(session, name, max_context, &spawns)
         })
         .collect();
 
@@ -156,8 +166,8 @@ pub fn present_session_detail(
             project_root: project_root.map(|s| s.to_string()),
             model: model.map(str::to_string),
             log_files,
-            spawned_by: session_spawned_by.map(present_spawn_context),
         },
+        agents: tree.map(present_agent_node),
         streams: stream_views,
     };
 
@@ -165,34 +175,41 @@ pub fn present_session_detail(
     result.with_badge(StatusBadge::success("Session Analysis"))
 }
 
-fn present_spawn_context(ctx: &agtrace_sdk::types::SpawnContext) -> SpawnContextViewModel {
-    SpawnContextViewModel {
-        turn_index: ctx.turn_index,
-        step_index: ctx.step_index,
+/// Display label of an agent: name, else Codex path.
+fn agent_label(node: &AgentNode) -> Option<String> {
+    node.name.clone().or_else(|| node.path.clone())
+}
+
+fn spawned_child(node: &AgentNode) -> SpawnedChildViewModel {
+    SpawnedChildViewModel {
+        agent_id: node.agent_id.clone(),
+        kind: node.kind.clone(),
+        label: agent_label(node),
+    }
+}
+
+fn present_agent_node(node: &AgentNode) -> AgentNodeViewModel {
+    AgentNodeViewModel {
+        agent_id: node.agent_id.clone(),
+        session_id: node.session_id.clone(),
+        provider: node.provider.clone(),
+        kind: node.kind.clone(),
+        name: node.name.clone(),
+        path: node.path.clone(),
+        spawn_call_id: node.spawn_call_id.clone(),
+        children: node.children.iter().map(present_agent_node).collect(),
     }
 }
 
 fn build_stream_analysis(
     session: &AgentSession,
+    name: Option<String>,
     max_context: Option<u32>,
-    children: &[ChildSessionInfo],
+    spawns: &Spawns,
 ) -> StreamAnalysisViewModel {
     use crate::presentation::formatters::time;
-    use std::collections::HashMap;
 
     let metrics = session.compute_turn_metrics(max_context);
-
-    // Build children map: turn_index -> Vec<session_id>
-    // Conversion from ChildSessionInfo happens here (Presenter responsibility)
-    let mut children_by_turn: HashMap<usize, Vec<String>> = HashMap::new();
-    for child in children {
-        if let Some(ctx) = &child.spawned_by {
-            children_by_turn
-                .entry(ctx.turn_index)
-                .or_default()
-                .push(child.session_id.clone());
-        }
-    }
 
     // Compute duration
     let duration = if let (Some(first_turn), Some(last_turn)) =
@@ -230,18 +247,13 @@ fn build_stream_analysis(
         .turns
         .iter()
         .zip(metrics.iter())
-        .map(|(turn, metric)| {
-            let children_for_turn = children_by_turn
-                .get(&metric.turn_index)
-                .cloned()
-                .unwrap_or_default();
-            build_turn_analysis(turn, metric, max_context, children_for_turn)
-        })
+        .map(|(turn, metric)| build_turn_analysis(turn, metric, max_context, spawns))
         .collect();
 
     StreamAnalysisViewModel {
         stream_id: stream_label(&session.agent),
-        spawned_by: session.spawned_by.as_ref().map(present_spawn_context),
+        agent_id: session.agent.as_str().to_string(),
+        name,
         status: if session.turns.is_empty() {
             "Empty".to_string()
         } else {
@@ -258,7 +270,7 @@ fn build_turn_analysis(
     turn: &agtrace_sdk::types::AgentTurn,
     metric: &agtrace_sdk::types::TurnMetrics,
     max_context: Option<u32>,
-    children: Vec<String>,
+    spawns: &Spawns,
 ) -> TurnAnalysisViewModel {
     use crate::presentation::formatters::time;
 
@@ -293,7 +305,7 @@ fn build_turn_analysis(
 
             if !step.tools.is_empty() {
                 // Group consecutive tool calls with the same name
-                let grouped_tools = group_consecutive_tools(&step.tools);
+                let grouped_tools = group_consecutive_tools(&step.tools, spawns);
                 for group in grouped_tools {
                     result.extend(group);
                 }
@@ -331,13 +343,14 @@ fn build_turn_analysis(
         .map(|u| u.cache_read.0 as i64)
         .sum();
 
-    // Build spawned children info
-    let spawned_children = children
-        .into_iter()
-        .map(|id| SpawnedChildViewModel {
-            session_id_short: id.chars().take(8).collect(),
-            session_id: id,
-        })
+    // Agents spawned by the turn's tool calls (matched by provider call id)
+    let spawned_children = turn
+        .steps
+        .iter()
+        .flat_map(|step| &step.tools)
+        .filter_map(|tool| spawned_by_call(tool, spawns))
+        .flatten()
+        .cloned()
         .collect();
 
     TurnAnalysisViewModel {
@@ -365,6 +378,7 @@ fn build_turn_analysis(
 
 fn group_consecutive_tools(
     tools: &[agtrace_sdk::types::ToolExecution],
+    spawns: &Spawns,
 ) -> Vec<Vec<AgentStepViewModel>> {
     let mut result: Vec<Vec<AgentStepViewModel>> = Vec::new();
     let mut current_group: Vec<&agtrace_sdk::types::ToolExecution> = Vec::new();
@@ -379,7 +393,7 @@ fn group_consecutive_tools(
         } else {
             // Different tool, flush current group
             if !current_group.is_empty() {
-                result.push(create_tool_view_models(&current_group));
+                result.push(create_tool_view_models(&current_group, spawns));
             }
             current_group = vec![tool];
             current_name = Some(name);
@@ -388,7 +402,7 @@ fn group_consecutive_tools(
 
     // Flush final group
     if !current_group.is_empty() {
-        result.push(create_tool_view_models(&current_group));
+        result.push(create_tool_view_models(&current_group, spawns));
     }
 
     result
@@ -396,6 +410,7 @@ fn group_consecutive_tools(
 
 fn create_tool_view_models(
     tools: &[&agtrace_sdk::types::ToolExecution],
+    spawns: &Spawns,
 ) -> Vec<AgentStepViewModel> {
     if tools.is_empty() {
         return vec![];
@@ -431,11 +446,14 @@ fn create_tool_view_models(
                     .as_ref()
                     .map(|r| r.content.is_error)
                     .unwrap_or(false);
-                let (result_text, agent_id) = tool
+                let result_text = tool
                     .result
                     .as_ref()
-                    .map(|r| (r.content.output.clone(), r.content.agent_id.clone()))
-                    .unwrap_or_else(|| ("(no result)".to_string(), None));
+                    .map(|r| r.content.output.clone())
+                    .unwrap_or_else(|| "(no result)".to_string());
+                let agent_id = spawned_by_call(tool, spawns)
+                    .and_then(|c| c.first())
+                    .map(|c| c.agent_id.clone());
 
                 AgentStepViewModel::ToolCall {
                     name,
@@ -448,4 +466,16 @@ fn create_tool_view_models(
             })
             .collect()
     }
+}
+
+fn spawned_by_call<'a>(
+    tool: &agtrace_sdk::types::ToolExecution,
+    spawns: &'a Spawns,
+) -> Option<&'a Vec<SpawnedChildViewModel>> {
+    let call = tool
+        .call
+        .provider_call_id
+        .as_deref()
+        .or_else(|| tool.call.content.provider_call_id())?;
+    spawns.get(call)
 }

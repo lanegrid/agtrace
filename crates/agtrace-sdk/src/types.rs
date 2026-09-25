@@ -60,7 +60,6 @@ pub use agtrace_types::{
     RepositoryHash,
     SessionMetadata,
     SessionStats,
-    SpawnContext,
     StepStatus,
     SubActionStatus,
     // Token usage types
@@ -129,6 +128,8 @@ pub use agtrace_index::SessionSummary;
 // ============================================================================
 
 pub use agtrace_runtime::{
+    // Agent tree of an indexed session
+    AgentNode,
     // Operations Types
     CheckResult,
     CheckStatus,
@@ -139,8 +140,6 @@ pub use agtrace_runtime::{
     ConfiguredModelCatalog,
     ContextWindowConfig,
     CorpusStats,
-    // Legacy single-session watch types (old `watch` UI)
-    DiscoveryEvent,
     // Event Filters
     EventFilters,
     IndexProgress,
@@ -158,12 +157,7 @@ pub use agtrace_runtime::{
     ScanOutcome,
     // Session Filter
     SessionFilter,
-    SessionState,
     StatsResult,
-    StreamEvent,
-    StreamHandle,
-    WatchEvent,
-    WatchService,
 };
 
 // Workspace watcher (design §4.2 / §4.4)

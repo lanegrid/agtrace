@@ -223,13 +223,30 @@ async fn handle_test(client: &Client, verbose: bool) -> Result<()> {
             verbose,
             &mut total_warnings,
         )?;
+
+        // Test 10: get_agent_tree
+        println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        println!("Test 10: get_agent_tree");
+        println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        run_test(
+            &mut stdin,
+            &mut reader,
+            "get_agent_tree",
+            json!({
+                "name": "get_agent_tree",
+                "arguments": { "session_id": sid }
+            }),
+            30_000,
+            verbose,
+            &mut total_warnings,
+        )?;
     } else {
         println!("\n⚠️  No sessions found. Skipping session-specific tests.");
     }
 
     // Test 10: get_project_info
     println!("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Test 10: get_project_info");
+    println!("Test 11: get_project_info");
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     let (response, size) = send_request(
         &mut stdin,

@@ -165,8 +165,7 @@ pub use agtrace_engine::workspace;
 // Public facade
 pub use analysis::{AnalysisReport, Diagnostic, Insight, Severity};
 pub use client::{
-    ChildSessionInfo, Client, ClientBuilder, InsightClient, ProjectClient, SessionClient,
-    SessionHandle, SystemClient,
+    Client, ClientBuilder, InsightClient, ProjectClient, SessionClient, SessionHandle, SystemClient,
 };
 pub use error::{Error, Result};
 pub use providers::{Providers, ProvidersBuilder};
@@ -189,32 +188,11 @@ pub use query::{EventType, Provider};
 ///
 /// # When to use this module
 ///
-/// - Building custom TUIs or dashboards that need event stream processing
+/// - Resolving context windows outside the live workspace fold
 /// - Writing tests that need to compute project hashes
 /// - Implementing custom project detection logic
 ///
 /// # Examples
-///
-/// ## Event Processing
-///
-/// ```no_run
-/// use agtrace_sdk::{Client, utils, types::SessionFilter};
-///
-/// # #[tokio::main]
-/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let client = Client::connect_default().await?;
-/// let sessions = client.sessions().list(SessionFilter::all().limit(1))?;
-/// if let Some(summary) = sessions.first() {
-///     for event in client.sessions().get(&summary.id)?.events()? {
-///         let updates = utils::extract_state_updates(&event);
-///         if updates.is_new_turn {
-///             println!("New turn started!");
-///         }
-///     }
-/// }
-/// # Ok(())
-/// # }
-/// ```
 ///
 /// ## Project Hash Computation
 ///
@@ -230,9 +208,6 @@ pub use query::{EventType, Provider};
 /// ```
 pub mod utils {
     use crate::types::{AgentProvider, ContextEvidence, ContextWindow, ModelCatalog};
-
-    // Event processing utilities
-    pub use agtrace_engine::extract_state_updates;
 
     // Provider home overrides (tests, demo)
     pub use agtrace_core::{CLAUDE_HOME_ENV, CODEX_HOME_ENV};
@@ -275,40 +250,5 @@ pub mod utils {
     /// [`crate::Client::model_catalog`] when a client is available.
     pub fn builtin_model_catalog() -> agtrace_providers::BuiltinModelCatalog {
         agtrace_providers::BuiltinModelCatalog::tables_only()
-    }
-
-    // Event filtering utilities
-
-    /// Filter events suitable for display (excludes sidechain/subagent events).
-    ///
-    /// This is the recommended way to filter events for user-facing displays
-    /// like TUI or console output. It removes internal agent communication
-    /// (sidechains) and shows only main stream events.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use agtrace_sdk::utils;
-    ///
-    /// let events = vec![];
-    /// assert!(utils::filter_display_events(&events).is_empty());
-    /// ```
-    pub fn filter_display_events(
-        events: &[crate::types::AgentEvent],
-    ) -> Vec<crate::types::AgentEvent> {
-        events
-            .iter()
-            .filter(|e| is_display_event(e))
-            .cloned()
-            .collect()
-    }
-
-    /// Check if an event should be displayed (non-sidechain).
-    ///
-    /// Returns `true` for main agent events, `false` for Claude subagent events.
-    ///
-    /// Used by the legacy single-session `watch` UI.
-    pub fn is_display_event(event: &crate::types::AgentEvent) -> bool {
-        !event.agent.is_claude_subagent()
     }
 }

@@ -221,12 +221,6 @@ impl Client {
         self.inner.model_catalog()
     }
 
-    /// Legacy single-session watch service used by the old `watch` UI.
-    /// Prefer [`Client::watch_workspace`].
-    pub fn watch_service(&self) -> crate::types::WatchService {
-        self.inner.watch_service()
-    }
-
     /// Access lightweight provider operations.
     ///
     /// Returns a [`Providers`] instance configured with the workspace's providers.
@@ -652,54 +646,26 @@ impl SessionHandle {
         Ok(crate::analysis::SessionAnalyzer::new(session))
     }
 
-    /// Child sessions of this session in the index: Codex child threads (and forks) and
-    /// Claude teammates whose team config names this session as lead. Claude
-    /// subagents are not sessions of their own (they are streams of this session).
-    /// Returns an empty vector for standalone sessions.
-    pub fn child_sessions(&self) -> Result<Vec<ChildSessionInfo>> {
+    /// Agent tree of this session: the session's own agent, its Claude subagents and
+    /// forks, and child sessions (Codex child threads and forks, Claude teammates whose
+    /// team config names this session as lead), recursively.
+    ///
+    /// Returns `None` for standalone sessions (created from events without workspace).
+    pub fn agent_tree(&self) -> Result<Option<crate::types::AgentNode>> {
         match &self.source {
             SessionSource::Workspace { inner, id } => {
                 let runtime_handle = inner
                     .sessions()
                     .find(id)
                     .map_err(|e| Error::NotFound(format!("Session {}: {}", id, e)))?;
-
-                let children = runtime_handle.child_sessions().map_err(Error::Runtime)?;
-                Ok(children
-                    .into_iter()
-                    .map(|c| ChildSessionInfo {
-                        session_id: c.id,
-                        provider: c.provider,
-                        agent_kind: c.agent_kind,
-                        agent_name: c.agent_name,
-                        agent_path: c.agent_path,
-                        spawn_call_id: c.spawn_call_id,
-                        spawned_by: None,
-                        snippet: c.snippet,
-                    })
-                    .collect())
+                runtime_handle
+                    .agent_tree()
+                    .map(Some)
+                    .map_err(Error::Runtime)
             }
-            SessionSource::Events { .. } => Ok(vec![]),
+            SessionSource::Events { .. } => Ok(None),
         }
     }
-}
-
-/// Information about a child session spawned from a parent session.
-#[derive(Debug, Clone)]
-pub struct ChildSessionInfo {
-    pub session_id: String,
-    pub provider: String,
-    /// `teammate`, `codex_thread`, `fork`, ...
-    pub agent_kind: String,
-    pub agent_name: Option<String>,
-    /// Codex `agent_path` (`/root/judge`).
-    pub agent_path: Option<String>,
-    /// Provider call id of the spawning tool call in the parent.
-    pub spawn_call_id: Option<String>,
-    /// Turn/step spawn position. No longer indexed (always `None`); kept until the
-    /// session view moves to `spawn_call_id`.
-    pub spawned_by: Option<agtrace_types::SpawnContext>,
-    pub snippet: Option<String>,
 }
 
 // ============================================================================

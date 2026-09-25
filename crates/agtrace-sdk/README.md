@@ -89,16 +89,18 @@ for summary in sessions.iter().take(5) {
 
 #### Real-time Monitoring
 
-Watch for events as they happen:
+Watch every agent of a project (main sessions, teammates, subagents, Codex
+threads) as a live tree:
 
 ```rust
 use agtrace_sdk::Client;
-use futures::stream::StreamExt;
+use agtrace_sdk::watch::WatchScope;
 
 let client = Client::connect_default().await?;
-let mut stream = client.watch().all_providers().start()?;
-while let Some(event) = stream.next().await {
-    println!("Event: {:?}", event);
+let mut live = client.watch_workspace(WatchScope::project(std::env::current_dir()?))?;
+while live.changed().await.is_some() {
+    let view = live.view();
+    println!("{} agents, {} feed entries", view.agents.len(), view.feed.len());
 }
 ```
 

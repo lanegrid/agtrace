@@ -18,24 +18,6 @@ pub fn normalize_codex_file(path: &Path) -> Result<Vec<agtrace_types::AgentEvent
     Ok(events)
 }
 
-/// Extract cwd from a Codex session file by reading the first few records
-pub fn extract_cwd_from_codex_file(path: &Path) -> Option<String> {
-    let file = std::fs::File::open(path).ok()?;
-    let reader = BufReader::new(file);
-
-    for line in reader.lines().take(10).flatten() {
-        let Ok(record) = serde_json::from_str::<Value>(&line) else {
-            continue;
-        };
-        if matches!(record_type(&record), "session_meta" | "turn_context")
-            && let Some(cwd) = payload_str(&record, "cwd")
-        {
-            return Some(cwd.to_string());
-        }
-    }
-    None
-}
-
 fn record_type(record: &Value) -> &str {
     record.get("type").and_then(Value::as_str).unwrap_or("")
 }
