@@ -4,11 +4,9 @@ This file provides guidance for Claude Code when working in this repository.
 
 ## Required
 
-- **Always load `/git-workflow` first** regardless of the conversation topic (before any other task)
 - Before starting work -> `mise tasks` to see available tasks
 - All commands MUST be run via `mise run` (works from any directory)
 - Prefer root-cause fixes over shortcuts (step back, reflect, take the senior engineer approach)
-- **All changes go through PRs via `/git-workflow`** (never commit directly to main)
 - Commit messages must be one-line, Conventional Commits format
 - Write everything in English (OSS project)
 
@@ -74,11 +72,9 @@ This file provides guidance for Claude Code when working in this repository.
 
 ## Required
 
-- **Always load `/git-workflow` first** regardless of the conversation topic (before any other task)
 - Before starting work -> `mise tasks` to see available tasks
 - All commands MUST be run via `mise run` (works from any directory)
 - Prefer root-cause fixes over shortcuts (step back, reflect, take the senior engineer approach)
-- **All changes go through PRs via `/git-workflow`** (never commit directly to main)
 - Commit messages must be one-line, Conventional Commits format
 - Write everything in English (OSS project)
 
